@@ -20,7 +20,10 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     <nav className="bg-card border-r border-border h-screen w-64 flex flex-col shadow-card">
       {/* Header */}
       <div className="p-6 border-b border-border">
-        <div className="flex items-center gap-3">
+        <button 
+          onClick={() => onSectionChange("dashboard")}
+          className="flex items-center gap-3 w-full text-left hover:bg-accent hover:text-accent-foreground rounded-lg p-2 transition-colors"
+        >
           <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
             <FileText className="h-6 w-6 text-primary-foreground" />
           </div>
@@ -28,7 +31,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
             <h1 className="font-bold text-lg text-foreground">LandtagsOS</h1>
             <p className="text-sm text-muted-foreground">Koordinationssystem</p>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Navigation Items */}
