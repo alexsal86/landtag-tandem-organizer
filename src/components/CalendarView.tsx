@@ -1,0 +1,247 @@
+import { useState } from "react";
+import { Calendar, Clock, MapPin, Users, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  time: string;
+  duration: string;
+  location?: string;
+  attendees?: number;
+  type: "meeting" | "appointment" | "deadline" | "session";
+  priority: "low" | "medium" | "high";
+}
+
+export function CalendarView() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<"day" | "week" | "month">("day");
+
+  const events: CalendarEvent[] = [
+    {
+      id: "1",
+      title: "Ausschusssitzung Bildung",
+      time: "10:00",
+      duration: "2h",
+      location: "Raum 204, Landtag",
+      attendees: 12,
+      type: "session",
+      priority: "high",
+    },
+    {
+      id: "2",
+      title: "Bürgersprechstunde",
+      time: "14:30",
+      duration: "1.5h",
+      location: "Wahlkreisbüro",
+      attendees: 8,
+      type: "appointment",
+      priority: "medium",
+    },
+    {
+      id: "3",
+      title: "Fraktionssitzung",
+      time: "16:00",
+      duration: "1h",
+      location: "Fraktionsraum",
+      attendees: 25,
+      type: "meeting",
+      priority: "high",
+    },
+  ];
+
+  const getEventTypeColor = (type: CalendarEvent["type"]) => {
+    switch (type) {
+      case "session":
+        return "bg-primary text-primary-foreground";
+      case "meeting":
+        return "bg-government-blue text-white";
+      case "appointment":
+        return "bg-secondary text-secondary-foreground";
+      case "deadline":
+        return "bg-destructive text-destructive-foreground";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const getPriorityIndicator = (priority: CalendarEvent["priority"]) => {
+    switch (priority) {
+      case "high":
+        return "border-l-4 border-l-destructive";
+      case "medium":
+        return "border-l-4 border-l-government-gold";
+      case "low":
+        return "border-l-4 border-l-muted-foreground";
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString("de-DE", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-subtle p-6">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Terminkalender</h1>
+            <p className="text-muted-foreground">{formatDate(currentDate)}</p>
+          </div>
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Neuer Termin
+          </Button>
+        </div>
+
+        {/* View Controls */}
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() - 1)))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm">
+              Heute
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() + 1)))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="flex gap-2">
+            {["day", "week", "month"].map((viewType) => (
+              <Button
+                key={viewType}
+                variant={view === viewType ? "default" : "outline"}
+                size="sm"
+                onClick={() => setView(viewType as typeof view)}
+              >
+                {viewType === "day" && "Tag"}
+                {viewType === "week" && "Woche"}
+                {viewType === "month" && "Monat"}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Calendar Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Main Calendar */}
+        <Card className="lg:col-span-3 bg-card shadow-card border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              {view === "day" && "Tagesansicht"}
+              {view === "week" && "Wochenansicht"}
+              {view === "month" && "Monatsansicht"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {view === "day" && (
+              <div className="space-y-4">
+                {events.map((event) => (
+                  <div
+                    key={event.id}
+                    className={`p-4 rounded-lg bg-accent hover:bg-accent/80 transition-colors cursor-pointer ${getPriorityIndicator(
+                      event.priority
+                    )}`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-accent-foreground">{event.title}</h3>
+                      <Badge className={getEventTypeColor(event.type)}>
+                        {event.type === "session" && "Sitzung"}
+                        {event.type === "meeting" && "Meeting"}
+                        {event.type === "appointment" && "Termin"}
+                        {event.type === "deadline" && "Deadline"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {event.time} ({event.duration})
+                      </div>
+                      {event.location && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {event.location}
+                        </div>
+                      )}
+                      {event.attendees && (
+                        <div className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          {event.attendees} Teilnehmer
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Quick Stats */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="text-lg">Heute</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Termine gesamt</span>
+                  <span className="font-semibold">{events.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Sitzungen</span>
+                  <span className="font-semibold">{events.filter(e => e.type === "session").length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Termine</span>
+                  <span className="font-semibold">{events.filter(e => e.type === "appointment").length}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Upcoming */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="text-lg">Nächste Termine</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="text-sm">
+                  <div className="font-medium">Morgen</div>
+                  <div className="text-muted-foreground">Plenarsitzung - 09:00</div>
+                </div>
+                <div className="text-sm">
+                  <div className="font-medium">Übermorgen</div>
+                  <div className="text-muted-foreground">Wahlkreistermin - 14:00</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
