@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -135,10 +136,12 @@ export function ContactsView() {
               Verwalten Sie Ihre wichtigsten Kontakte und Beziehungen
             </p>
           </div>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Neuer Kontakt
-          </Button>
+          <Link to="/contacts/new">
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Neuer Kontakt
+            </Button>
+          </Link>
         </div>
 
         {/* Search and Filter */}
