@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ interface Contact {
 export function ContactsView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const navigate = useNavigate();
 
   const contacts: Contact[] = [
     {
@@ -185,6 +186,7 @@ export function ContactsView() {
             className={`bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer ${getPriorityColor(
               contact.priority
             )}`}
+            onClick={() => navigate(`/contacts/${contact.id}`)}
           >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
