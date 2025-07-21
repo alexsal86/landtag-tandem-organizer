@@ -1,6 +1,7 @@
-import { Calendar, Users, CheckSquare, Clock, FileText, Phone } from "lucide-react";
+import { Calendar, Users, CheckSquare, Clock, FileText, Phone, AlertCircle, Circle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface QuickStats {
   todayMeetings: number;
@@ -15,6 +16,16 @@ interface UpcomingEvent {
   time: string;
   type: "meeting" | "appointment" | "deadline";
   location?: string;
+}
+
+interface PendingTask {
+  id: string;
+  title: string;
+  description: string;
+  priority: "high" | "medium" | "low";
+  dueDate: string;
+  daysUntilDue: number;
+  category: "deadline" | "meeting" | "follow-up" | "review";
 }
 
 export function Dashboard() {
@@ -53,6 +64,71 @@ export function Dashboard() {
     { label: "Kontakt hinzufügen", icon: Users, variant: "secondary" as const },
     { label: "Aufgabe erstellen", icon: CheckSquare, variant: "secondary" as const },
   ];
+
+  const pendingTasks: PendingTask[] = [
+    {
+      id: "1",
+      title: "Stellungnahme Verkehrspolitik",
+      description: "Überarbeitung der Verkehrskonzepte für den Wahlkreis",
+      priority: "high" as const,
+      dueDate: "Heute",
+      daysUntilDue: 0,
+      category: "deadline" as const,
+    },
+    {
+      id: "2", 
+      title: "Nachfassgespräch Bürgerinitiative",
+      description: "Follow-up mit Dr. Maria Schmidt bezüglich Verkehrsberuhigung",
+      priority: "high" as const,
+      daysUntilDue: 1,
+      dueDate: "Morgen",
+      category: "follow-up" as const,
+    },
+    {
+      id: "3",
+      title: "Vorbereitung Ausschusssitzung",
+      description: "Unterlagen für Bildungsausschuss durchgehen",
+      priority: "medium" as const,
+      dueDate: "Fr, 24.01",
+      daysUntilDue: 3,
+      category: "meeting" as const,
+    },
+    {
+      id: "4",
+      title: "Monatsreport Wahlkreisarbeit",
+      description: "Zusammenfassung der Aktivitäten für Fraktionsleitung",
+      priority: "medium" as const,
+      dueDate: "Mo, 27.01", 
+      daysUntilDue: 6,
+      category: "review" as const,
+    },
+    {
+      id: "5",
+      title: "Rückruf Wirtschaftsverband", 
+      description: "Gespräch mit Sarah Müller terminieren",
+      priority: "low" as const,
+      dueDate: "Mi, 29.01",
+      daysUntilDue: 8,
+      category: "follow-up" as const,
+    },
+  ].sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+
+  const getPriorityColor = (priority: PendingTask["priority"]) => {
+    switch (priority) {
+      case "high": return "bg-destructive text-destructive-foreground";
+      case "medium": return "bg-government-gold text-foreground";
+      case "low": return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const getCategoryIcon = (category: PendingTask["category"]) => {
+    switch (category) {
+      case "deadline": return AlertCircle;
+      case "meeting": return Users;
+      case "follow-up": return Phone;
+      case "review": return FileText;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
@@ -109,9 +185,67 @@ export function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 mb-6">
+        {/* Pending Tasks Overview */}
+        <Card className="xl:col-span-2 bg-card shadow-card border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5 text-primary" />
+              Ausstehende Aufgaben
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pendingTasks.slice(0, 5).map((task) => {
+                const CategoryIcon = getCategoryIcon(task.category);
+                return (
+                  <div
+                    key={task.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-accent hover:bg-accent/80 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <CategoryIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-accent-foreground truncate">{task.title}</span>
+                          <Badge 
+                            className={`${getPriorityColor(task.priority)} text-xs`}
+                            variant="secondary"
+                          >
+                            {task.priority === "high" ? "Hoch" : task.priority === "medium" ? "Mittel" : "Niedrig"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">{task.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`text-sm font-medium ${
+                        task.daysUntilDue === 0 ? "text-destructive" :
+                        task.daysUntilDue <= 2 ? "text-government-gold" :
+                        "text-muted-foreground"
+                      }`}>
+                        {task.dueDate}
+                      </span>
+                      {task.daysUntilDue === 0 && (
+                        <Circle className="h-2 w-2 fill-destructive text-destructive" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {pendingTasks.length > 5 && (
+              <div className="mt-4 pt-3 border-t border-border">
+                <Button variant="outline" className="w-full text-sm">
+                  Alle {pendingTasks.length} Aufgaben anzeigen
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Today's Schedule */}
-        <Card className="lg:col-span-2 bg-card shadow-card border-border">
+        <Card className="xl:col-span-2 bg-card shadow-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
@@ -144,7 +278,9 @@ export function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Actions */}
         <Card className="bg-card shadow-card border-border">
           <CardHeader>
