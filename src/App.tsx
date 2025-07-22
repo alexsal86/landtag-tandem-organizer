@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
+import CreateAppointment from "./pages/CreateAppointment";
 import ContactDetail from "./pages/ContactDetail";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -23,6 +24,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/contacts/new" element={<CreateContact />} />
+            <Route path="/appointments/new" element={<CreateAppointment />} />
             <Route path="/contacts/:id" element={<ContactDetail />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -14,6 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_contacts: {
+        Row: {
+          appointment_id: string
+          contact_id: string
+          created_at: string
+          id: string
+          role: string | null
+        }
+        Insert: {
+          appointment_id: string
+          contact_id: string
+          created_at?: string
+          id?: string
+          role?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          contact_id?: string
+          created_at?: string
+          id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_contacts_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          end_time: string
+          id: string
+          location: string | null
+          priority: string | null
+          reminder_minutes: number | null
+          start_time: string
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          end_time: string
+          id?: string
+          location?: string | null
+          priority?: string | null
+          reminder_minutes?: number | null
+          start_time: string
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          id?: string
+          location?: string | null
+          priority?: string | null
+          reminder_minutes?: number | null
+          start_time?: string
+          status?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
