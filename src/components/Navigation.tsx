@@ -1,5 +1,7 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/ui/use-toast";
 
 interface NavigationProps {
   activeSection: string;
@@ -7,6 +9,24 @@ interface NavigationProps {
 }
 
 export function Navigation({ activeSection, onSectionChange }: NavigationProps) {
+  const { signOut, user } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Erfolgreich abgemeldet",
+        description: "Sie wurden erfolgreich abgemeldet.",
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler beim Abmelden",
+        description: "Ein Fehler ist beim Abmelden aufgetreten.",
+        variant: "destructive",
+      });
+    }
+  };
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "calendar", label: "Terminkalender", icon: Calendar },
@@ -61,13 +81,25 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       <div className="p-4 border-t border-border">
         <div className="flex items-center gap-3 p-3 rounded-lg bg-accent">
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-sm font-bold text-primary-foreground">MK</span>
+            <span className="text-sm font-bold text-primary-foreground">
+              {user?.email?.charAt(0).toUpperCase() || "U"}
+            </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-accent-foreground truncate">Max Kellner</p>
-            <p className="text-sm text-muted-foreground truncate">MdL - Wahlkreis 42</p>
+            <p className="font-medium text-accent-foreground truncate">
+              {user?.email || "Unbekannter Benutzer"}
+            </p>
+            <p className="text-sm text-muted-foreground truncate">Benutzer</p>
           </div>
         </div>
+        
+        <button
+          onClick={handleSignOut}
+          className="w-full mt-3 flex items-center gap-3 px-4 py-2 rounded-lg text-left transition-all duration-200 hover:bg-destructive hover:text-destructive-foreground text-muted-foreground"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="font-medium">Abmelden</span>
+        </button>
       </div>
     </nav>
   );
