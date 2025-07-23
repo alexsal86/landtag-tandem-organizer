@@ -91,10 +91,16 @@ const CreateAppointment = () => {
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert({
-          ...values,
-          user_id: user.id,
+          title: values.title,
+          description: values.description,
           start_time: new Date(values.start_time).toISOString(),
           end_time: new Date(values.end_time).toISOString(),
+          location: values.location,
+          priority: values.priority,
+          category: values.category,
+          status: values.status,
+          reminder_minutes: values.reminder_minutes,
+          user_id: user.id,
         })
         .select()
         .single();
