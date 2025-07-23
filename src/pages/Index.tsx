@@ -6,6 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { Dashboard } from "@/components/Dashboard";
 import { CalendarView } from "@/components/CalendarView";
 import { ContactsView } from "@/components/ContactsView";
+import { DocumentsView } from "@/components/DocumentsView";
 import { TasksView } from "@/components/TasksView";
 import { SettingsView } from "@/components/SettingsView";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,14 +61,7 @@ const Index = () => {
       case "tasks":
         return <TasksView />;
       case "documents":
-        return (
-          <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold mb-4">Dokumente</h1>
-              <p className="text-muted-foreground">Dokumentenverwaltung wird bald verfügbar sein.</p>
-            </div>
-          </div>
-        );
+        return <DocumentsView />;
       case "settings":
         return <SettingsView />;
       default:
