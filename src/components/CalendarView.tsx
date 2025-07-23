@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, MapPin, Users, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ interface CalendarEvent {
 }
 
 export function CalendarView() {
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"day" | "week" | "month">("day");
 
@@ -96,7 +98,10 @@ export function CalendarView() {
             <h1 className="text-3xl font-bold text-foreground mb-2">Terminkalender</h1>
             <p className="text-muted-foreground">{formatDate(currentDate)}</p>
           </div>
-          <Button className="gap-2">
+          <Button 
+            className="gap-2"
+            onClick={() => navigate("/appointments/new")}
+          >
             <Plus className="h-4 w-4" />
             Neuer Termin
           </Button>

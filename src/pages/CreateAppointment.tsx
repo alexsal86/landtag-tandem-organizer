@@ -105,7 +105,10 @@ const CreateAppointment = () => {
         .select()
         .single();
 
-      if (appointmentError) throw appointmentError;
+      if (appointmentError) {
+        console.error('Appointment error:', appointmentError);
+        throw appointmentError;
+      }
 
       // Link selected contacts to appointment
       if (selectedContacts.length > 0 && appointment) {
