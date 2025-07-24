@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigation } from "@/components/Navigation";
 import { Dashboard } from "@/components/Dashboard";
+import { CustomizableDashboard } from "@/components/CustomizableDashboard";
 import { CalendarView } from "@/components/CalendarView";
 import { ContactsView } from "@/components/ContactsView";
 import { DocumentsView } from "@/components/DocumentsView";
