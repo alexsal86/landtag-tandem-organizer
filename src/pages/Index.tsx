@@ -55,6 +55,8 @@ const Index = () => {
 
   const renderActiveSection = () => {
     switch (activeSection) {
+      case 'dashboard':
+        return <CustomizableDashboard />;
       case "calendar":
         return <CalendarView />;
       case "contacts":

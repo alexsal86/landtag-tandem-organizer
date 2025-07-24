@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Save, Layout, Plus, Trash2 } from "lucide-react";
+import { Settings, Save, Layout, Trash2, GripVertical } from "lucide-react";
 import { DashboardWidget } from '@/components/DashboardWidget';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
 import { toast } from 'sonner';
@@ -25,6 +24,7 @@ export function CustomizableDashboard() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newLayoutName, setNewLayoutName] = useState('');
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
+  const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -42,23 +42,37 @@ export function CustomizableDashboard() {
     );
   }
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination || !isEditMode) return;
+  const handleDragStart = (e: React.DragEvent, widgetId: string) => {
+    if (!isEditMode) return;
+    setDraggedWidget(widgetId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
 
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!isEditMode) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
 
-    if (sourceIndex === destinationIndex) return;
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (!draggedWidget || !isEditMode) return;
+
+    const widgets = [...currentLayout.widgets];
+    const draggedIndex = widgets.findIndex(w => w.id === draggedWidget);
+    
+    if (draggedIndex === -1) return;
 
     // Reorder widgets
-    const newWidgets = [...currentLayout.widgets];
-    const [removed] = newWidgets.splice(sourceIndex, 1);
-    newWidgets.splice(destinationIndex, 0, removed);
+    const [draggedItem] = widgets.splice(draggedIndex, 1);
+    widgets.splice(targetIndex, 0, draggedItem);
 
     // Update positions
-    newWidgets.forEach((widget, index) => {
+    widgets.forEach((widget, index) => {
       updateWidget(widget.id, { position: { x: 0, y: index } });
     });
+
+    setDraggedWidget(null);
   };
 
   const handleSaveLayout = async () => {
@@ -69,7 +83,6 @@ export function CustomizableDashboard() {
     } else {
       await saveCurrentLayout();
     }
-    toast.success('Layout gespeichert!');
   };
 
   const handleSaveAsNew = async () => {
@@ -153,7 +166,7 @@ export function CustomizableDashboard() {
                           {layout.isActive && (
                             <span className="text-xs text-primary">Aktiv</span>
                           )}
-                          {layouts.length > 1 && (
+                          {layouts.length > 1 && layout.id && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -224,48 +237,31 @@ export function CustomizableDashboard() {
       </div>
 
       {/* Dashboard Content */}
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="dashboard" direction="vertical">
-          {(provided) => (
-            <div
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              className="space-y-6"
-            >
-              {currentLayout.widgets.map((widget, index) => (
-                <Draggable
-                  key={widget.id}
-                  draggableId={widget.id}
-                  index={index}
-                  isDragDisabled={!isEditMode}
-                >
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      className={`transition-transform ${
-                        snapshot.isDragging ? 'z-50' : ''
-                      }`}
-                    >
-                      <DashboardWidget
-                        widget={widget}
-                        isDragging={snapshot.isDragging}
-                        isEditMode={isEditMode}
-                      />
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+      <div className="space-y-6">
+        {currentLayout.widgets.map((widget, index) => (
+          <div
+            key={widget.id}
+            draggable={isEditMode}
+            onDragStart={(e) => handleDragStart(e, widget.id)}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, index)}
+            className={`transition-transform ${
+              draggedWidget === widget.id ? 'opacity-50' : ''
+            }`}
+          >
+            <DashboardWidget
+              widget={widget}
+              isDragging={draggedWidget === widget.id}
+              isEditMode={isEditMode}
+            />
+          </div>
+        ))}
+      </div>
 
       {isEditMode && (
         <div className="fixed bottom-6 right-6 bg-card p-4 rounded-lg shadow-lg border">
-          <p className="text-sm text-muted-foreground mb-2">
+          <p className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+            <GripVertical className="h-4 w-4" />
             Ziehen Sie Widgets zum Neuordnen
           </p>
           <Button onClick={() => setShowSaveDialog(true)} size="sm">
