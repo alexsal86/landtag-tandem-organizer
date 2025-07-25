@@ -1,81 +1,92 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Edit, Trash2, Mail, Phone, MapPin, Building } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Contact {
   id: string;
   name: string;
-  role: string;
-  organization: string;
-  email: string;
-  phone: string;
+  role?: string;
+  organization?: string;
+  email?: string;
+  phone?: string;
   location?: string;
-  category: "citizen" | "colleague" | "lobbyist" | "media" | "business";
-  priority: "low" | "medium" | "high";
-  lastContact?: string;
+  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
+  priority?: "low" | "medium" | "high";
+  last_contact?: string;
+  avatar_url?: string;
+  notes?: string;
 }
 
 export default function ContactDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [contact, setContact] = useState<Contact | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - in real app this would come from API/database
-  const contacts: Contact[] = [
-    {
-      id: "1",
-      name: "Dr. Maria Schmidt",
-      role: "Bürgerin",
-      organization: "Bürgerinitiative Verkehr",
-      email: "m.schmidt@email.de",
-      phone: "+49 123 456789",
-      location: "Hauptstadt",
-      category: "citizen",
-      priority: "high",
-      lastContact: "vor 2 Tagen",
-    },
-    {
-      id: "2",
-      name: "Thomas Weber",
-      role: "MdL",
-      organization: "Fraktion ABC",
-      email: "t.weber@landtag.de",
-      phone: "+49 123 456790",
-      category: "colleague",
-      priority: "medium",
-      lastContact: "vor 1 Woche",
-    },
-    {
-      id: "3",
-      name: "Sarah Müller",
-      role: "Geschäftsführerin",
-      organization: "Wirtschaftsverband XY",
-      email: "s.mueller@wirtschaft.de",
-      phone: "+49 123 456791",
-      location: "München",
-      category: "business",
-      priority: "medium",
-      lastContact: "vor 3 Tagen",
-    },
-    {
-      id: "4",
-      name: "Jan Hoffmann",
-      role: "Redakteur",
-      organization: "Lokalzeitung",
-      email: "j.hoffmann@zeitung.de",
-      phone: "+49 123 456792",
-      category: "media",
-      priority: "low",
-      lastContact: "vor 1 Monat",
-    },
-  ];
+  useEffect(() => {
+    if (id && user) {
+      fetchContact();
+    }
+  }, [id, user]);
 
-  const contact = contacts.find(c => c.id === id);
+  const fetchContact = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user!.id)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setContact({
+          id: data.id,
+          name: data.name,
+          role: data.role,
+          organization: data.organization,
+          email: data.email,
+          phone: data.phone,
+          location: data.location,
+          category: data.category as Contact["category"],
+          priority: data.priority as Contact["priority"],
+          last_contact: data.last_contact,
+          avatar_url: data.avatar_url,
+          notes: data.notes,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching contact:', error);
+      toast({
+        title: "Fehler",
+        description: "Kontakt konnte nicht geladen werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Kontakt wird geladen...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!contact) {
     return (
@@ -150,12 +161,29 @@ export default function ContactDetail() {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
 
-  const handleDelete = () => {
-    toast({
-      title: "Kontakt gelöscht",
-      description: `${contact.name} wurde erfolgreich gelöscht.`,
-    });
-    navigate("/");
+  const handleDelete = async () => {
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .delete()
+        .eq('id', contact.id)
+        .eq('user_id', user!.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Kontakt gelöscht",
+        description: `${contact.name} wurde erfolgreich gelöscht.`,
+      });
+      navigate("/");
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+      toast({
+        title: "Fehler",
+        description: "Kontakt konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEdit = () => {
@@ -193,13 +221,14 @@ export default function ContactDetail() {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
+                  <AvatarImage src={contact.avatar_url} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-xl">
                     {getInitials(contact.name)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <CardTitle className="text-2xl mb-2">{contact.name}</CardTitle>
-                  <p className="text-lg text-muted-foreground mb-2">{contact.role}</p>
+                  <p className="text-lg text-muted-foreground mb-2">{contact.role || "Keine Rolle"}</p>
                   <div className="flex gap-2">
                     <Badge className={getCategoryColor(contact.category)}>
                       {getCategoryLabel(contact.category)}
@@ -221,26 +250,26 @@ export default function ContactDetail() {
                 
                 <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                   <Building className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Organisation</p>
-                    <p className="text-muted-foreground">{contact.organization}</p>
-                  </div>
+                    <div>
+                      <p className="font-medium">Organisation</p>
+                      <p className="text-muted-foreground">{contact.organization || "Keine Organisation"}</p>
+                    </div>
                 </div>
                 
                 <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                   <Mail className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">E-Mail</p>
-                    <p className="text-muted-foreground">{contact.email}</p>
-                  </div>
+                    <div>
+                      <p className="font-medium">E-Mail</p>
+                      <p className="text-muted-foreground">{contact.email || "Keine E-Mail"}</p>
+                    </div>
                 </div>
                 
                 <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                   <Phone className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Telefon</p>
-                    <p className="text-muted-foreground">{contact.phone}</p>
-                  </div>
+                    <div>
+                      <p className="font-medium">Telefon</p>
+                      <p className="text-muted-foreground">{contact.phone || "Keine Telefonnummer"}</p>
+                    </div>
                 </div>
                 
                 {contact.location && (
@@ -258,10 +287,10 @@ export default function ContactDetail() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold mb-3">Weitere Informationen</h3>
                 
-                {contact.lastContact && (
+                {contact.last_contact && (
                   <div className="p-3 bg-muted/30 rounded-lg">
                     <p className="font-medium mb-1">Letzter Kontakt</p>
-                    <p className="text-muted-foreground">{contact.lastContact}</p>
+                    <p className="text-muted-foreground">{contact.last_contact}</p>
                   </div>
                 )}
                 

@@ -1,78 +1,112 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface Contact {
   id: string;
   name: string;
-  role: string;
-  organization: string;
-  email: string;
-  phone: string;
+  role?: string;
+  organization?: string;
+  email?: string;
+  phone?: string;
   location?: string;
-  category: "citizen" | "colleague" | "lobbyist" | "media" | "business";
-  priority: "low" | "medium" | "high";
-  lastContact?: string;
+  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
+  priority?: "low" | "medium" | "high";
+  last_contact?: string;
+  avatar_url?: string;
+  notes?: string;
 }
 
 export function ContactsView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const contacts: Contact[] = [
-    {
-      id: "1",
-      name: "Dr. Maria Schmidt",
-      role: "Bürgerin",
-      organization: "Bürgerinitiative Verkehr",
-      email: "m.schmidt@email.de",
-      phone: "+49 123 456789",
-      location: "Hauptstadt",
-      category: "citizen",
-      priority: "high",
-      lastContact: "vor 2 Tagen",
-    },
-    {
-      id: "2",
-      name: "Thomas Weber",
-      role: "MdL",
-      organization: "Fraktion ABC",
-      email: "t.weber@landtag.de",
-      phone: "+49 123 456790",
-      category: "colleague",
-      priority: "medium",
-      lastContact: "vor 1 Woche",
-    },
-    {
-      id: "3",
-      name: "Sarah Müller",
-      role: "Geschäftsführerin",
-      organization: "Wirtschaftsverband XY",
-      email: "s.mueller@wirtschaft.de",
-      phone: "+49 123 456791",
-      location: "München",
-      category: "business",
-      priority: "medium",
-      lastContact: "vor 3 Tagen",
-    },
-    {
-      id: "4",
-      name: "Jan Hoffmann",
-      role: "Redakteur",
-      organization: "Lokalzeitung",
-      email: "j.hoffmann@zeitung.de",
-      phone: "+49 123 456792",
-      category: "media",
-      priority: "low",
-      lastContact: "vor 1 Monat",
-    },
-  ];
+  useEffect(() => {
+    if (user) {
+      fetchContacts();
+    }
+  }, [user]);
+
+  const fetchContacts = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('name');
+
+      if (error) throw error;
+
+      // If no contacts exist, insert sample data
+      if (!data || data.length === 0) {
+        await insertSampleContacts();
+        return;
+      }
+
+      setContacts(data?.map(contact => ({
+        id: contact.id,
+        name: contact.name,
+        role: contact.role,
+        organization: contact.organization,
+        email: contact.email,
+        phone: contact.phone,
+        location: contact.location,
+        category: contact.category as Contact["category"],
+        priority: contact.priority as Contact["priority"],
+        last_contact: contact.last_contact,
+        avatar_url: contact.avatar_url,
+        notes: contact.notes,
+      })) || []);
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+      toast({
+        title: "Fehler",
+        description: "Kontakte konnten nicht geladen werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const insertSampleContacts = async () => {
+    try {
+      const { error } = await supabase.rpc('insert_sample_contacts', {
+        target_user_id: user!.id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Willkommen!",
+        description: "Beispielkontakte wurden zu Ihrem Account hinzugefügt.",
+      });
+
+      // Fetch the newly inserted contacts
+      fetchContacts();
+    } catch (error) {
+      console.error('Error inserting sample contacts:', error);
+      toast({
+        title: "Fehler",
+        description: "Beispielkontakte konnten nicht erstellt werden.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const categories = [
     { value: "all", label: "Alle Kontakte", count: contacts.length },
@@ -114,8 +148,8 @@ export function ContactsView() {
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = 
       contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.role.toLowerCase().includes(searchTerm.toLowerCase());
+      (contact.organization && contact.organization.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (contact.role && contact.role.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesCategory = selectedCategory === "all" || contact.category === selectedCategory;
     
@@ -125,6 +159,17 @@ export function ContactsView() {
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Kontakte werden geladen...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
@@ -192,6 +237,7 @@ export function ContactsView() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar>
+                    <AvatarImage src={contact.avatar_url} />
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {getInitials(contact.name)}
                     </AvatarFallback>
@@ -214,17 +260,17 @@ export function ContactsView() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Building className="h-4 w-4" />
-                  <span className="truncate">{contact.organization}</span>
+                  <span className="truncate">{contact.organization || "Keine Organisation"}</span>
                 </div>
                 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Mail className="h-4 w-4" />
-                  <span className="truncate">{contact.email}</span>
+                  <span className="truncate">{contact.email || "Keine E-Mail"}</span>
                 </div>
                 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Phone className="h-4 w-4" />
-                  <span>{contact.phone}</span>
+                  <span>{contact.phone || "Keine Telefonnummer"}</span>
                 </div>
                 
                 {contact.location && (
@@ -234,10 +280,10 @@ export function ContactsView() {
                   </div>
                 )}
                 
-                {contact.lastContact && (
+                {contact.last_contact && (
                   <div className="pt-2 border-t border-border">
                     <span className="text-xs text-muted-foreground">
-                      Letzter Kontakt: {contact.lastContact}
+                      Letzter Kontakt: {contact.last_contact}
                     </span>
                   </div>
                 )}
