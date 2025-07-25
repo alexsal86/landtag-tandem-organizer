@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
 import CreateAppointment from "./pages/CreateAppointment";
 import ContactDetail from "./pages/ContactDetail";
+import EditContact from "./pages/EditContact";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/contacts/new" element={<CreateContact />} />
             <Route path="/appointments/new" element={<CreateAppointment />} />
             <Route path="/contacts/:id" element={<ContactDetail />} />
+            <Route path="/contacts/:id/edit" element={<EditContact />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -159,10 +159,7 @@ export default function ContactDetail() {
   };
 
   const handleEdit = () => {
-    toast({
-      title: "Bearbeiten",
-      description: "Bearbeitungsfunktion wird implementiert.",
-    });
+    navigate(`/contacts/${id}/edit`);
   };
 
   return (
