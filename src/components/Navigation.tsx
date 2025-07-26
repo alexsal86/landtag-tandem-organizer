@@ -79,7 +79,10 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
 
       {/* User Info */}
       <div className="p-4 border-t border-border">
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-accent">
+        <button
+          onClick={() => onSectionChange("profile")}
+          className="w-full flex items-center gap-3 p-3 rounded-lg bg-accent hover:bg-accent/80 transition-colors text-left"
+        >
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
             <span className="text-sm font-bold text-primary-foreground">
               {user?.email?.charAt(0).toUpperCase() || "U"}
@@ -91,7 +94,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
             </p>
             <p className="text-sm text-muted-foreground truncate">Benutzer</p>
           </div>
-        </div>
+        </button>
         
         <button
           onClick={handleSignOut}
