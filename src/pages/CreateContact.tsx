@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ContactFormData {
   name: string;
@@ -24,6 +26,7 @@ interface ContactFormData {
 export function CreateContact() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [formData, setFormData] = useState<ContactFormData>({
     name: "",
@@ -58,18 +61,51 @@ export function CreateContact() {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Fehler",
+        description: "Sie müssen angemeldet sein, um einen Kontakt zu erstellen.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
-    // Simuliere API-Call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: "Kontakt erstellt",
-      description: `${formData.name} wurde erfolgreich als neuer Kontakt hinzugefügt.`,
-    });
-    
-    setIsSubmitting(false);
-    navigate("/contacts");
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .insert({
+          user_id: user.id,
+          name: formData.name,
+          role: formData.role || null,
+          organization: formData.organization || null,
+          email: formData.email,
+          phone: formData.phone || null,
+          location: formData.location || null,
+          category: formData.category as any,
+          priority: formData.priority as any,
+          notes: formData.notes || null,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Kontakt erstellt",
+        description: `${formData.name} wurde erfolgreich als neuer Kontakt hinzugefügt.`,
+      });
+      
+      navigate("/contacts");
+    } catch (error) {
+      console.error('Error creating contact:', error);
+      toast({
+        title: "Fehler",
+        description: "Der Kontakt konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
