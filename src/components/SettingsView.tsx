@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 export function SettingsView() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [notifications, setNotifications] = useState(true);
   const [emailAlerts, setEmailAlerts] = useState(false);
@@ -216,7 +218,11 @@ export function SettingsView() {
                 </div>
               </div>
 
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate("/profile/edit")}
+              >
                 <User className="h-4 w-4 mr-2" />
                 Profil bearbeiten
               </Button>
