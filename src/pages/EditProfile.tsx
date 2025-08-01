@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, User, Mail, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +29,9 @@ export function EditProfile() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -71,6 +73,75 @@ export function EditProfile() {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie eine Bilddatei aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Fehler",
+        description: "Die Datei ist zu groß. Maximale Größe: 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { 
+          upsert: true,
+          contentType: file.type 
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update form data with new avatar URL
+      setFormData(prev => ({
+        ...prev,
+        avatar_url: publicUrl
+      }));
+
+      toast({
+        title: "Bild hochgeladen",
+        description: "Ihr Profilbild wurde erfolgreich hochgeladen.",
+      });
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Upload-Fehler",
+        description: "Das Bild konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -180,17 +251,42 @@ export function EditProfile() {
                         {getInitials(formData.display_name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="space-y-2">
-                      <Label htmlFor="avatar_url">Avatar URL</Label>
-                      <Input
-                        id="avatar_url"
-                        placeholder="https://beispiel.com/avatar.jpg"
-                        value={formData.avatar_url}
-                        onChange={(e) => handleInputChange("avatar_url", e.target.value)}
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Geben Sie eine URL zu Ihrem Profilbild ein
-                      </p>
+                    <div className="space-y-3 flex-1">
+                      <div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploading}
+                          className="gap-2"
+                        >
+                          <Upload className="h-4 w-4" />
+                          {isUploading ? "Wird hochgeladen..." : "Bild hochladen"}
+                        </Button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Unterstützte Formate: JPG, PNG, GIF (max. 5MB)
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="avatar_url">Oder Avatar URL eingeben</Label>
+                        <Input
+                          id="avatar_url"
+                          placeholder="https://beispiel.com/avatar.jpg"
+                          value={formData.avatar_url}
+                          onChange={(e) => handleInputChange("avatar_url", e.target.value)}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Alternativ können Sie eine URL zu Ihrem Profilbild eingeben
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
