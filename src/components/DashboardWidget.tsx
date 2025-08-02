@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Users, CheckSquare, Clock, FileText, Phone, AlertCircle, Circle, GripVertical } from "lucide-react";
 import { DashboardWidget as WidgetType } from '@/hooks/useDashboardLayout';
+import { supabase } from "@/integrations/supabase/client";
 
 interface WidgetProps {
   widget: WidgetType;
@@ -120,6 +122,31 @@ const getCategoryIcon = (category: PendingTask["category"]) => {
 };
 
 export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps) {
+  const [todayAppointmentsCount, setTodayAppointmentsCount] = useState(0);
+
+  useEffect(() => {
+    const fetchTodayAppointments = async () => {
+      const today = new Date();
+      const startOfDay = new Date(today);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('id')
+        .gte('start_time', startOfDay.toISOString())
+        .lte('start_time', endOfDay.toISOString());
+
+      if (!error && data) {
+        setTodayAppointmentsCount(data.length);
+      }
+    };
+
+    fetchTodayAppointments();
+  }, []);
+
   const renderWidgetContent = () => {
     switch (widget.type) {
       case 'stats':
@@ -131,7 +158,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{sampleStats.todayMeetings}</div>
+                <div className="text-2xl font-bold text-primary">{todayAppointmentsCount}</div>
               </CardContent>
             </Card>
 
