@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, MapPin, Users, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,39 +21,58 @@ export function CalendarView() {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"day" | "week" | "month">("day");
+  const [appointments, setAppointments] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const events: CalendarEvent[] = [
-    {
-      id: "1",
-      title: "Ausschusssitzung Bildung",
-      time: "10:00",
-      duration: "2h",
-      location: "Raum 204, Landtag",
-      attendees: 12,
-      type: "session",
-      priority: "high",
-    },
-    {
-      id: "2",
-      title: "Bürgersprechstunde",
-      time: "14:30",
-      duration: "1.5h",
-      location: "Wahlkreisbüro",
-      attendees: 8,
-      type: "appointment",
-      priority: "medium",
-    },
-    {
-      id: "3",
-      title: "Fraktionssitzung",
-      time: "16:00",
-      duration: "1h",
-      location: "Fraktionsraum",
-      attendees: 25,
-      type: "meeting",
-      priority: "high",
-    },
-  ];
+  useEffect(() => {
+    fetchTodaysAppointments();
+  }, [currentDate]);
+
+  const fetchTodaysAppointments = async () => {
+    try {
+      setLoading(true);
+      const startOfDay = new Date(currentDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(currentDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .gte('start_time', startOfDay.toISOString())
+        .lte('start_time', endOfDay.toISOString())
+        .order('start_time', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching appointments:', error);
+        return;
+      }
+
+      const formattedEvents: CalendarEvent[] = data.map(appointment => {
+        const startTime = new Date(appointment.start_time);
+        const endTime = new Date(appointment.end_time);
+        const durationMs = endTime.getTime() - startTime.getTime();
+        const durationHours = Math.round(durationMs / (1000 * 60 * 60) * 10) / 10;
+        
+        return {
+          id: appointment.id,
+          title: appointment.title,
+          time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+          duration: `${durationHours}h`,
+          location: appointment.location || undefined,
+          type: appointment.category as CalendarEvent["type"] || "meeting",
+          priority: appointment.priority as CalendarEvent["priority"] || "medium",
+        };
+      });
+
+      setAppointments(formattedEvents);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getEventTypeColor = (type: CalendarEvent["type"]) => {
     switch (type) {
@@ -161,8 +181,17 @@ export function CalendarView() {
           <CardContent>
             {view === "day" && (
               <div className="space-y-4">
-                {events.map((event) => (
-                  <div
+                {loading ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Termine werden geladen...
+                  </div>
+                ) : appointments.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Keine Termine für heute
+                  </div>
+                ) : (
+                  appointments.map((event) => (
+                    <div
                     key={event.id}
                     className={`p-4 rounded-lg bg-accent hover:bg-accent/80 transition-colors cursor-pointer ${getPriorityIndicator(
                       event.priority
@@ -195,8 +224,9 @@ export function CalendarView() {
                         </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                   </div>
+                  ))
+                )}
               </div>
             )}
           </CardContent>
@@ -213,15 +243,15 @@ export function CalendarView() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Termine gesamt</span>
-                  <span className="font-semibold">{events.length}</span>
+                  <span className="font-semibold">{appointments.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sitzungen</span>
-                  <span className="font-semibold">{events.filter(e => e.type === "session").length}</span>
+                  <span className="font-semibold">{appointments.filter(e => e.type === "session").length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Termine</span>
-                  <span className="font-semibold">{events.filter(e => e.type === "appointment").length}</span>
+                  <span className="font-semibold">{appointments.filter(e => e.type === "appointment").length}</span>
                 </div>
               </div>
             </CardContent>
