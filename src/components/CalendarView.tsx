@@ -13,6 +13,11 @@ interface CalendarEvent {
   duration: string;
   location?: string;
   attendees?: number;
+  participants?: Array<{
+    id: string;
+    name: string;
+    role: string;
+  }>;
   type: "meeting" | "appointment" | "deadline" | "session";
   priority: "low" | "medium" | "high";
 }
@@ -49,13 +54,33 @@ export function CalendarView() {
         return;
       }
 
-      const formattedEvents: CalendarEvent[] = data.map(appointment => {
+      const formattedEvents: CalendarEvent[] = [];
+
+      for (const appointment of data) {
         const startTime = new Date(appointment.start_time);
         const endTime = new Date(appointment.end_time);
         const durationMs = endTime.getTime() - startTime.getTime();
         const durationHours = Math.round(durationMs / (1000 * 60 * 60) * 10) / 10;
         
-        return {
+        // Fetch participants for this appointment
+        const { data: appointmentContacts } = await supabase
+          .from('appointment_contacts')
+          .select(`
+            role,
+            contacts (
+              id,
+              name
+            )
+          `)
+          .eq('appointment_id', appointment.id);
+
+        const participants = appointmentContacts?.map(ac => ({
+          id: ac.contacts.id,
+          name: ac.contacts.name,
+          role: ac.role
+        })) || [];
+
+        formattedEvents.push({
           id: appointment.id,
           title: appointment.title,
           time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
@@ -63,8 +88,10 @@ export function CalendarView() {
           location: appointment.location || undefined,
           type: appointment.category as CalendarEvent["type"] || "meeting",
           priority: appointment.priority as CalendarEvent["priority"] || "medium",
-        };
-      });
+          participants,
+          attendees: participants.length
+        });
+      }
 
       setAppointments(formattedEvents);
     } catch (error) {
@@ -227,7 +254,20 @@ export function CalendarView() {
                           {event.attendees} Teilnehmer
                         </div>
                       )}
-                    </div>
+                     </div>
+                     {event.participants && event.participants.length > 0 && (
+                       <div className="mt-3 pt-2 border-t border-border">
+                         <div className="text-sm font-medium text-accent-foreground mb-2">Teilnehmer:</div>
+                         <div className="flex flex-wrap gap-2">
+                           {event.participants.map((participant) => (
+                             <Badge key={participant.id} variant="outline" className="text-xs">
+                               {participant.name}
+                               {participant.role !== 'participant' && ` (${participant.role})`}
+                             </Badge>
+                           ))}
+                         </div>
+                       </div>
+                     )}
                    </div>
                   ))
                 )}
