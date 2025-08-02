@@ -13,6 +13,7 @@ import { SettingsView } from "@/components/SettingsView";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState("dashboard");
@@ -74,15 +75,22 @@ const Index = () => {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <div className="flex min-h-screen w-full bg-background">
-        <Navigation 
-          activeSection={activeSection} 
-          onSectionChange={setActiveSection} 
-        />
-        <main className="flex-1">
-          {renderActiveSection()}
-        </main>
-      </div>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full bg-background">
+          {/* Header with trigger */}
+          <header className="fixed top-0 left-0 right-0 z-50 h-12 flex items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <SidebarTrigger className="ml-4" />
+          </header>
+          
+          <Navigation 
+            activeSection={activeSection} 
+            onSectionChange={setActiveSection} 
+          />
+          <main className="flex-1 pt-12">
+            {renderActiveSection()}
+          </main>
+        </div>
+      </SidebarProvider>
     </ThemeProvider>
   );
 };
