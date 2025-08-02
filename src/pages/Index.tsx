@@ -77,16 +77,11 @@ const Index = () => {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <SidebarProvider>
         <div className="flex min-h-screen w-full bg-background">
-          {/* Header with trigger */}
-          <header className="fixed top-0 left-0 right-0 z-50 h-12 flex items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <SidebarTrigger className="ml-4" />
-          </header>
-          
           <Navigation 
             activeSection={activeSection} 
             onSectionChange={setActiveSection} 
           />
-          <main className="flex-1 pt-12">
+          <main className="flex-1">
             {renderActiveSection()}
           </main>
         </div>

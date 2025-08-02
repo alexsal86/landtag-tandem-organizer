@@ -13,6 +13,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 
@@ -53,7 +54,8 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
 
   return (
     <Sidebar collapsible="icon" className="border-r">
-      <SidebarHeader>
+      <SidebarHeader className="border-b">
+        <SidebarTrigger className="ml-auto" />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
