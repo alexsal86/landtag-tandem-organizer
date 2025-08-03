@@ -1,7 +1,9 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +28,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { signOut, user } = useAuth();
   const { toast } = useToast();
   const { state } = useSidebar();
+  const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
 
   const handleSignOut = async () => {
     try {
@@ -51,6 +54,40 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "documents", label: "Dokumente", icon: FileText },
     { id: "settings", label: "Einstellungen", icon: Settings },
   ];
+
+  // Online users presence tracking
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase.channel('online-users');
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const newState = channel.presenceState();
+        const users = Object.keys(newState).map(key => newState[key][0]);
+        setOnlineUsers(users);
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log('user joined:', key, newPresences);
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        console.log('user left:', key, leftPresences);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          // Track current user presence
+          await channel.track({
+            user_id: user.id,
+            email: user.email,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -95,6 +132,40 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Online Users Section */}
+        <div className="border-t border-border mt-4 pt-4">
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs font-medium text-muted-foreground mb-2">
+              Online ({onlineUsers.length})
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="space-y-2">
+                {onlineUsers.slice(0, 5).map((onlineUser, index) => (
+                  <div
+                    key={`${onlineUser.user_id}-${index}`}
+                    className="flex items-center gap-2 px-2 py-1 rounded-md text-sm"
+                  >
+                    <Circle className="h-2 w-2 fill-green-500 text-green-500" />
+                    <span className="text-muted-foreground truncate">
+                      {onlineUser.email?.split('@')[0] || 'Unbekannt'}
+                    </span>
+                  </div>
+                ))}
+                {onlineUsers.length > 5 && (
+                  <div className="text-xs text-muted-foreground px-2">
+                    +{onlineUsers.length - 5} weitere
+                  </div>
+                )}
+                {onlineUsers.length === 0 && (
+                  <div className="text-xs text-muted-foreground px-2">
+                    Niemand online
+                  </div>
+                )}
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </div>
       </SidebarContent>
 
       <SidebarFooter>
