@@ -247,7 +247,7 @@ export function TasksView() {
               Verwalten Sie Ihre Aufgaben und To-Dos effizient
             </p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => window.location.href = '/tasks/new'}>
             <Plus className="h-4 w-4" />
             Neue Aufgabe
           </Button>

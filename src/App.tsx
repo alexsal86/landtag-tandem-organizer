@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
 import CreateAppointment from "./pages/CreateAppointment";
+import CreateTask from "./pages/CreateTask";
 import ContactDetail from "./pages/ContactDetail";
 import EditContact from "./pages/EditContact";
 import EditProfile from "./pages/EditProfile";
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/contacts/new" element={<CreateContact />} />
             <Route path="/appointments/new" element={<CreateAppointment />} />
+            <Route path="/tasks/new" element={<CreateTask />} />
             <Route path="/contacts/:id" element={<ContactDetail />} />
             <Route path="/contacts/:id/edit" element={<EditContact />} />
             <Route path="/profile/edit" element={<EditProfile />} />
