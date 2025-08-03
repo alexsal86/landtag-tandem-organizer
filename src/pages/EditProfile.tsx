@@ -175,7 +175,7 @@ export function EditProfile() {
         description: "Ihre Profilinformationen wurden erfolgreich gespeichert.",
       });
       
-      navigate("/?section=settings");
+      navigate("/");
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
