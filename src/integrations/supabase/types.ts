@@ -266,6 +266,51 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          created_at: string
+          description: string | null
+          due_date: string
+          id: string
+          priority: string
+          progress: number | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          due_date: string
+          id?: string
+          priority?: string
+          progress?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          priority?: string
+          progress?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

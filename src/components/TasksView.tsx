@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Task {
   id: string;
@@ -19,50 +21,115 @@ interface Task {
 
 export function TasksView() {
   const [filter, setFilter] = useState<string>("all");
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const tasks: Task[] = [
-    {
-      id: "1",
-      title: "Stellungnahme Verkehrsgesetz",
-      description: "Überarbeitung der Stellungnahme zum neuen Verkehrsgesetz bis Freitag",
-      priority: "high",
-      status: "in-progress",
-      dueDate: "2024-01-15",
-      category: "legislation",
-      assignedTo: "Max Kellner",
-      progress: 65,
-    },
-    {
-      id: "2",
-      title: "Vorbereitung Ausschusssitzung",
-      description: "Unterlagen für die Bildungsausschuss-Sitzung vorbereiten",
-      priority: "medium",
-      status: "todo",
-      dueDate: "2024-01-12",
-      category: "committee",
-      assignedTo: "Max Kellner",
-    },
-    {
-      id: "3",
-      title: "Bürgersprechstunde auswerten",
-      description: "Anliegen aus der gestrigen Bürgersprechstunde dokumentieren",
-      priority: "low",
-      status: "completed",
-      dueDate: "2024-01-10",
-      category: "constituency",
-      assignedTo: "Max Kellner",
-    },
-    {
-      id: "4",
-      title: "Pressemitteilung Umweltpolitik",
-      description: "Entwurf für Pressemitteilung zur neuen Umweltinitiative",
-      priority: "medium",
-      status: "todo",
-      dueDate: "2024-01-18",
-      category: "personal",
-      assignedTo: "Max Kellner",
-    },
-  ];
+  // Load tasks from database
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Convert database format to component format
+      const formattedTasks: Task[] = (data || []).map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description || '',
+        priority: task.priority as Task['priority'],
+        status: task.status as Task['status'],
+        dueDate: task.due_date,
+        category: task.category as Task['category'],
+        assignedTo: task.assigned_to || undefined,
+        progress: task.progress || undefined,
+      }));
+
+      setTasks(formattedTasks);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      toast({
+        title: "Fehler",
+        description: "Aufgaben konnten nicht geladen werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Migrate sample data to database (run once)
+  useEffect(() => {
+    const migrateSampleData = async () => {
+      const { data: existingTasks } = await supabase
+        .from('tasks')
+        .select('id')
+        .limit(1);
+
+      // Only migrate if no tasks exist
+      if (!existingTasks || existingTasks.length === 0) {
+        const sampleTasks = [
+          {
+            title: "Stellungnahme Verkehrsgesetz",
+            description: "Überarbeitung der Stellungnahme zum neuen Verkehrsgesetz bis Freitag",
+            priority: "high",
+            status: "in-progress",
+            due_date: new Date("2024-01-15").toISOString(),
+            category: "legislation",
+            assigned_to: "Max Kellner",
+            progress: 65,
+          },
+          {
+            title: "Vorbereitung Ausschusssitzung",
+            description: "Unterlagen für die Bildungsausschuss-Sitzung vorbereiten",
+            priority: "medium",
+            status: "todo",
+            due_date: new Date("2024-01-12").toISOString(),
+            category: "committee",
+            assigned_to: "Max Kellner",
+          },
+          {
+            title: "Bürgersprechstunde auswerten",
+            description: "Anliegen aus der gestrigen Bürgersprechstunde dokumentieren",
+            priority: "low",
+            status: "completed",
+            due_date: new Date("2024-01-10").toISOString(),
+            category: "constituency",
+            assigned_to: "Max Kellner",
+          },
+          {
+            title: "Pressemitteilung Umweltpolitik",
+            description: "Entwurf für Pressemitteilung zur neuen Umweltinitiative",
+            priority: "medium",
+            status: "todo",
+            due_date: new Date("2024-01-18").toISOString(),
+            category: "personal",
+            assigned_to: "Max Kellner",
+          },
+        ];
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const tasksWithUserId = sampleTasks.map(task => ({
+            ...task,
+            user_id: user.id,
+          }));
+
+          await supabase.from('tasks').insert(tasksWithUserId);
+          loadTasks(); // Reload tasks after migration
+        }
+      }
+    };
+
+    migrateSampleData();
+  }, []);
 
   const getPriorityColor = (priority: Task["priority"]) => {
     switch (priority) {
@@ -119,9 +186,37 @@ export function TasksView() {
     return task.status === filter;
   });
 
-  const toggleTaskStatus = (taskId: string) => {
-    // In a real app, this would update the task in state/database
-    console.log("Toggle task:", taskId);
+  const toggleTaskStatus = async (taskId: string) => {
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const newStatus = task.status === "completed" ? "todo" : "completed";
+      
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      // Update local state
+      setTasks(prev => prev.map(t => 
+        t.id === taskId ? { ...t, status: newStatus } : t
+      ));
+
+      toast({
+        title: "Aufgabe aktualisiert",
+        description: `Status auf "${newStatus === "completed" ? "Erledigt" : "Zu erledigen"}" geändert.`,
+      });
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Fehler",
+        description: "Aufgabe konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const taskCounts = {
