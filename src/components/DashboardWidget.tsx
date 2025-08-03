@@ -123,6 +123,7 @@ const getCategoryIcon = (category: PendingTask["category"]) => {
 
 export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps) {
   const [todayAppointmentsCount, setTodayAppointmentsCount] = useState(0);
+  const [openTasksCount, setOpenTasksCount] = useState(0);
 
   useEffect(() => {
     const fetchTodayAppointments = async () => {
@@ -144,7 +145,19 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
       }
     };
 
+    const fetchOpenTasks = async () => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('id')
+        .in('status', ['todo', 'in-progress']);
+
+      if (!error && data) {
+        setOpenTasksCount(data.length);
+      }
+    };
+
     fetchTodayAppointments();
+    fetchOpenTasks();
   }, []);
 
   const renderWidgetContent = () => {
@@ -168,7 +181,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
                 <CheckSquare className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{sampleStats.pendingTasks}</div>
+                <div className="text-2xl font-bold text-primary">{openTasksCount}</div>
               </CardContent>
             </Card>
 
