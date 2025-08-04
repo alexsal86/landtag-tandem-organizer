@@ -28,7 +28,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { signOut, user } = useAuth();
   const { toast } = useToast();
   const { state } = useSidebar();
-  const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<Array<{ user_id: string; email: string; online_at: string }>>([]);
 
   const handleSignOut = async () => {
     try {
@@ -64,8 +64,22 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     channel
       .on('presence', { event: 'sync' }, () => {
         const newState = channel.presenceState();
-        const users = Object.keys(newState).map(key => newState[key][0]);
-        setOnlineUsers(users);
+        const allUsers = Object.keys(newState).flatMap(key => newState[key]);
+        
+        // Deduplicate users by user_id to show each user only once
+        const uniqueUsers = allUsers.reduce((acc, user) => {
+          const userData = user as any;
+          if (userData.user_id && !acc.find(u => u.user_id === userData.user_id)) {
+            acc.push({
+              user_id: userData.user_id,
+              email: userData.email,
+              online_at: userData.online_at
+            });
+          }
+          return acc;
+        }, [] as Array<{ user_id: string; email: string; online_at: string }>);
+        
+        setOnlineUsers(uniqueUsers);
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         console.log('user joined:', key, newPresences);
