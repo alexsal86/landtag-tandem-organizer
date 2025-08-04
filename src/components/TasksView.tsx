@@ -30,12 +30,53 @@ export function TasksView() {
   const [loading, setLoading] = useState(true);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Task>>({});
+  const [recentActivities, setRecentActivities] = useState<Array<{
+    id: string;
+    type: 'completed' | 'updated' | 'created';
+    taskTitle: string;
+    timestamp: string;
+  }>>([]);
   const { toast } = useToast();
 
   // Load tasks from database
   useEffect(() => {
     loadTasks();
+    loadRecentActivities();
   }, []);
+
+  const loadRecentActivities = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('id, title, status, updated_at, created_at')
+        .order('updated_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      const activities = (data || []).slice(0, 3).map(task => {
+        const isRecent = new Date(task.updated_at) > new Date(task.created_at);
+        const timeDiff = Date.now() - new Date(task.updated_at).getTime();
+        const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
+        const timeString = hoursAgo < 1 ? 'vor wenigen Minuten' : 
+                          hoursAgo === 1 ? 'vor 1 Stunde' : 
+                          hoursAgo < 24 ? `vor ${hoursAgo} Stunden` : 
+                          `vor ${Math.floor(hoursAgo / 24)} Tagen`;
+
+        return {
+          id: task.id,
+          type: task.status === 'completed' ? 'completed' as const : 
+                isRecent ? 'updated' as const : 'created' as const,
+          taskTitle: task.title,
+          timestamp: timeString,
+        };
+      });
+
+      setRecentActivities(activities);
+    } catch (error) {
+      console.error('Error loading recent activities:', error);
+    }
+  };
 
   const loadTasks = async () => {
     try {
@@ -212,6 +253,9 @@ export function TasksView() {
         t.id === taskId ? { ...t, status: newStatus } : t
       ));
 
+      // Refresh recent activities
+      loadRecentActivities();
+
       toast({
         title: "Aufgabe aktualisiert",
         description: `Status auf "${newStatus === "completed" ? "Erledigt" : "Zu erledigen"}" geändert.`,
@@ -267,6 +311,9 @@ export function TasksView() {
 
       setEditingTask(null);
       setEditFormData({});
+
+      // Refresh recent activities
+      loadRecentActivities();
 
       toast({
         title: "Aufgabe gespeichert",
@@ -595,16 +642,21 @@ export function TasksView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3 text-sm">
-                <div>
-                  <div className="font-medium">Aufgabe erledigt</div>
-                  <div className="text-muted-foreground">Bürgersprechstunde auswerten</div>
-                  <div className="text-xs text-muted-foreground">vor 2 Stunden</div>
-                </div>
-                <div>
-                  <div className="font-medium">Aufgabe aktualisiert</div>
-                  <div className="text-muted-foreground">Stellungnahme Verkehrsgesetz</div>
-                  <div className="text-xs text-muted-foreground">vor 4 Stunden</div>
-                </div>
+                {recentActivities.length > 0 ? (
+                  recentActivities.map((activity) => (
+                    <div key={activity.id}>
+                      <div className="font-medium">
+                        {activity.type === 'completed' && 'Aufgabe erledigt'}
+                        {activity.type === 'updated' && 'Aufgabe aktualisiert'}
+                        {activity.type === 'created' && 'Aufgabe erstellt'}
+                      </div>
+                      <div className="text-muted-foreground">{activity.taskTitle}</div>
+                      <div className="text-xs text-muted-foreground">{activity.timestamp}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-muted-foreground">Keine Aktivitäten vorhanden</div>
+                )}
               </div>
             </CardContent>
           </Card>
