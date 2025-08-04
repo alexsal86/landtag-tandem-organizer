@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,13 @@ export default function CreateTask() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [userProfiles, setUserProfiles] = useState<Array<{
+    id: string;
+    display_name: string | null;
+    user_id: string;
+    isCurrentUser: boolean;
+  }>>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -22,6 +29,41 @@ export default function CreateTask() {
     dueDate: "",
     assignedTo: "",
   });
+
+  // Load user profiles
+  useEffect(() => {
+    const loadUserProfiles = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        setCurrentUserId(user.id);
+
+        const { data: profiles, error } = await supabase
+          .from('profiles')
+          .select('id, display_name, user_id')
+          .order('display_name');
+
+        if (error) throw error;
+
+        // Sort profiles with current user first
+        const sortedProfiles = (profiles || []).map(profile => ({
+          ...profile,
+          isCurrentUser: profile.user_id === user.id
+        })).sort((a, b) => {
+          if (a.isCurrentUser) return -1;
+          if (b.isCurrentUser) return 1;
+          return 0;
+        });
+
+        setUserProfiles(sortedProfiles);
+      } catch (error) {
+        console.error('Error loading user profiles:', error);
+      }
+    };
+
+    loadUserProfiles();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,12 +210,23 @@ export default function CreateTask() {
 
                 <div className="space-y-2">
                   <Label htmlFor="assignedTo">Zugewiesen an</Label>
-                  <Input
-                    id="assignedTo"
+                  <Select
                     value={formData.assignedTo}
-                    onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                    placeholder="Name der zugewiesenen Person..."
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, assignedTo: value })}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Person auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border-border z-50">
+                      <SelectItem value="">Niemand zugewiesen</SelectItem>
+                      {userProfiles.map((profile) => (
+                        <SelectItem key={profile.id} value={profile.display_name || profile.user_id}>
+                          {profile.isCurrentUser ? "Ich" : (profile.display_name || "Unbekannter Nutzer")}
+                          {profile.isCurrentUser && " (Aktueller Nutzer)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
