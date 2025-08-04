@@ -86,7 +86,7 @@ export default function CreateTask() {
         priority: formData.priority,
         category: formData.category,
         due_date: new Date(formData.dueDate).toISOString(),
-        assigned_to: formData.assignedTo || null,
+        assigned_to: formData.assignedTo === "unassigned" ? null : formData.assignedTo || null,
         user_id: user.id,
         status: "todo",
       });
@@ -218,7 +218,7 @@ export default function CreateTask() {
                       <SelectValue placeholder="Person auswählen..." />
                     </SelectTrigger>
                     <SelectContent className="bg-background border-border z-50">
-                      <SelectItem value="">Niemand zugewiesen</SelectItem>
+                      <SelectItem value="unassigned">Niemand zugewiesen</SelectItem>
                       {userProfiles.map((profile) => (
                         <SelectItem key={profile.id} value={profile.display_name || profile.user_id}>
                           {profile.isCurrentUser ? "Ich" : (profile.display_name || "Unbekannter Nutzer")}
