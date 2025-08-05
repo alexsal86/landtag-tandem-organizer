@@ -10,6 +10,7 @@ import { ContactsView } from "@/components/ContactsView";
 import { DocumentsView } from "@/components/DocumentsView";
 import { TasksView } from "@/components/TasksView";
 import { SettingsView } from "@/components/SettingsView";
+import { MeetingsView } from "@/components/MeetingsView";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -64,6 +65,8 @@ const Index = () => {
         return <ContactsView />;
       case "tasks":
         return <TasksView />;
+      case "meetings":
+        return <MeetingsView />;
       case "documents":
         return <DocumentsView />;
       case "settings":

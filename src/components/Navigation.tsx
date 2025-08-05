@@ -1,4 +1,4 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,6 +51,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "calendar", label: "Terminkalender", icon: Calendar },
     { id: "contacts", label: "Kontakte", icon: Users },
     { id: "tasks", label: "Aufgaben", icon: CheckSquare },
+    { id: "meetings", label: "Meetings", icon: MessageSquare },
     { id: "documents", label: "Dokumente", icon: FileText },
     { id: "settings", label: "Einstellungen", icon: Settings },
   ];
