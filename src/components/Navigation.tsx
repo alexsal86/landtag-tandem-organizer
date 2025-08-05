@@ -28,7 +28,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { signOut, user } = useAuth();
   const { toast } = useToast();
   const { state } = useSidebar();
-  const [onlineUsers, setOnlineUsers] = useState<Array<{ user_id: string; email: string; online_at: string }>>([]);
+  const [onlineUsers, setOnlineUsers] = useState<Array<{ user_id: string; email: string; display_name?: string; online_at: string }>>([]);
 
   const handleSignOut = async () => {
     try {
@@ -74,11 +74,12 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
             acc.push({
               user_id: userData.user_id,
               email: userData.email,
+              display_name: userData.display_name,
               online_at: userData.online_at
             });
           }
           return acc;
-        }, [] as Array<{ user_id: string; email: string; online_at: string }>);
+        }, [] as Array<{ user_id: string; email: string; display_name?: string; online_at: string }>);
         
         setOnlineUsers(uniqueUsers);
       })
@@ -90,10 +91,18 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          // Fetch user profile to get display_name
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', user.id)
+            .single();
+
           // Track current user presence
           await channel.track({
             user_id: user.id,
             email: user.email,
+            display_name: profile?.display_name,
             online_at: new Date().toISOString(),
           });
         }
@@ -163,7 +172,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                   >
                     <Circle className="h-2 w-2 fill-green-500 text-green-500" />
                     <span className="text-muted-foreground truncate">
-                      {onlineUser.email?.split('@')[0] || 'Unbekannt'}
+                      {onlineUser.display_name || onlineUser.email || 'Unbekannt'}
                     </span>
                   </div>
                 ))}
