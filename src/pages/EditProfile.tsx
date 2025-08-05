@@ -159,14 +159,38 @@ export function EditProfile() {
     setIsSubmitting(true);
     
     try {
-      const { error } = await supabase
+      // Check if profile exists first
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .upsert({
-          user_id: user.id,
-          display_name: formData.display_name || null,
-          bio: formData.bio || null,
-          avatar_url: formData.avatar_url || null,
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      let error;
+      
+      if (existingProfile) {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            display_name: formData.display_name || null,
+            bio: formData.bio || null,
+            avatar_url: formData.avatar_url || null,
+          })
+          .eq('user_id', user.id);
+        error = updateError;
+      } else {
+        // Insert new profile
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            display_name: formData.display_name || null,
+            bio: formData.bio || null,
+            avatar_url: formData.avatar_url || null,
+          });
+        error = insertError;
+      }
 
       if (error) throw error;
 
