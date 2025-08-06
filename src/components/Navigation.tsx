@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -29,6 +30,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { toast } = useToast();
   const { state } = useSidebar();
   const [onlineUsers, setOnlineUsers] = useState<Array<{ user_id: string; email: string; display_name?: string; online_at: string }>>([]);
+  const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
 
   const handleSignOut = async () => {
     try {
@@ -55,6 +57,23 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "documents", label: "Dokumente", icon: FileText },
     { id: "settings", label: "Einstellungen", icon: Settings },
   ];
+
+  // Load user profile
+  useEffect(() => {
+    if (!user) return;
+    
+    const loadUserProfile = async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url')
+        .eq('user_id', user.id)
+        .single();
+      
+      setUserProfile(profile);
+    };
+    
+    loadUserProfile();
+  }, [user]);
 
   // Online users presence tracking
   useEffect(() => {
@@ -200,14 +219,15 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <span className="text-sm font-semibold">
-                  {user?.email?.charAt(0).toUpperCase() || "U"}
-                </span>
-              </div>
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
+                <AvatarFallback>
+                  {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">
-                  {user?.email || "Unbekannter Benutzer"}
+                  {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
                 </span>
                 <span className="truncate text-xs">Benutzer</span>
               </div>
