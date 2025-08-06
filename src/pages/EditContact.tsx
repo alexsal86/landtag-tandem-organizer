@@ -20,9 +20,18 @@ interface Contact {
   email?: string;
   phone?: string;
   location?: string;
+  address?: string;
+  birthday?: string;
+  website?: string;
+  linkedin?: string;
+  twitter?: string;
+  facebook?: string;
+  instagram?: string;
+  xing?: string;
   category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
   priority?: "low" | "medium" | "high";
   notes?: string;
+  additional_info?: string;
   avatar_url?: string;
 }
 
@@ -41,9 +50,18 @@ export default function EditContact() {
     email: "",
     phone: "",
     location: "",
+    address: "",
+    birthday: "",
+    website: "",
+    linkedin: "",
+    twitter: "",
+    facebook: "",
+    instagram: "",
+    xing: "",
     category: "citizen",
     priority: "medium",
     notes: "",
+    additional_info: "",
     avatar_url: "",
   });
 
@@ -72,9 +90,18 @@ export default function EditContact() {
           email: data.email || "",
           phone: data.phone || "",
           location: data.location || "",
+          address: data.address || "",
+          birthday: data.birthday || "",
+          website: data.website || "",
+          linkedin: data.linkedin || "",
+          twitter: data.twitter || "",
+          facebook: data.facebook || "",
+          instagram: data.instagram || "",
+          xing: data.xing || "",
           category: (data.category as Contact["category"]) || "citizen",
           priority: (data.priority as Contact["priority"]) || "medium",
           notes: data.notes || "",
+          additional_info: data.additional_info || "",
           avatar_url: data.avatar_url || "",
         });
       }
@@ -142,9 +169,18 @@ export default function EditContact() {
           email: contact.email,
           phone: contact.phone,
           location: contact.location,
+          address: contact.address,
+          birthday: contact.birthday,
+          website: contact.website,
+          linkedin: contact.linkedin,
+          twitter: contact.twitter,
+          facebook: contact.facebook,
+          instagram: contact.instagram,
+          xing: contact.xing,
           category: contact.category,
           priority: contact.priority,
           notes: contact.notes,
+          additional_info: contact.additional_info,
           avatar_url: contact.avatar_url,
         })
         .eq('id', contact.id)
@@ -284,6 +320,34 @@ export default function EditContact() {
                   </div>
 
                   <div>
+                    <Label htmlFor="address">Adresse</Label>
+                    <Input
+                      id="address"
+                      value={contact.address}
+                      onChange={(e) => setContact({ ...contact, address: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="birthday">Geburtstag</Label>
+                    <Input
+                      id="birthday"
+                      type="date"
+                      value={contact.birthday}
+                      onChange={(e) => setContact({ ...contact, birthday: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      value={contact.website}
+                      onChange={(e) => setContact({ ...contact, website: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
                     <Label htmlFor="category">Kategorie</Label>
                     <Select
                       value={contact.category}
@@ -321,15 +385,73 @@ export default function EditContact() {
                 </div>
               </div>
 
+              {/* Social Media */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Social Media & Web</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="linkedin">LinkedIn</Label>
+                    <Input
+                      id="linkedin"
+                      value={contact.linkedin}
+                      onChange={(e) => setContact({ ...contact, linkedin: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="xing">XING</Label>
+                    <Input
+                      id="xing"
+                      value={contact.xing}
+                      onChange={(e) => setContact({ ...contact, xing: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="twitter">Twitter/X</Label>
+                    <Input
+                      id="twitter"
+                      value={contact.twitter}
+                      onChange={(e) => setContact({ ...contact, twitter: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="facebook">Facebook</Label>
+                    <Input
+                      id="facebook"
+                      value={contact.facebook}
+                      onChange={(e) => setContact({ ...contact, facebook: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="instagram">Instagram</Label>
+                    <Input
+                      id="instagram"
+                      value={contact.instagram}
+                      onChange={(e) => setContact({ ...contact, instagram: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Notes */}
-              <div>
-                <Label htmlFor="notes">Notizen</Label>
-                <Textarea
-                  id="notes"
-                  value={contact.notes}
-                  onChange={(e) => setContact({ ...contact, notes: e.target.value })}
-                  rows={4}
-                />
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="notes">Notizen</Label>
+                  <Textarea
+                    id="notes"
+                    value={contact.notes}
+                    onChange={(e) => setContact({ ...contact, notes: e.target.value })}
+                    rows={4}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="additional_info">Weitere Informationen</Label>
+                  <Textarea
+                    id="additional_info"
+                    value={contact.additional_info}
+                    onChange={(e) => setContact({ ...contact, additional_info: e.target.value })}
+                    rows={3}
+                  />
+                </div>
               </div>
 
               <div className="flex gap-4 pt-6">

@@ -103,13 +103,19 @@ export type Database = {
       }
       contacts: {
         Row: {
+          additional_info: string | null
+          address: string | null
           avatar_url: string | null
+          birthday: string | null
           category: string | null
           company: string | null
           created_at: string
           email: string | null
+          facebook: string | null
           id: string
+          instagram: string | null
           last_contact: string | null
+          linkedin: string | null
           location: string | null
           name: string
           notes: string | null
@@ -117,17 +123,26 @@ export type Database = {
           phone: string | null
           priority: string | null
           role: string | null
+          twitter: string | null
           updated_at: string
           user_id: string
+          website: string | null
+          xing: string | null
         }
         Insert: {
+          additional_info?: string | null
+          address?: string | null
           avatar_url?: string | null
+          birthday?: string | null
           category?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
+          facebook?: string | null
           id?: string
+          instagram?: string | null
           last_contact?: string | null
+          linkedin?: string | null
           location?: string | null
           name: string
           notes?: string | null
@@ -135,17 +150,26 @@ export type Database = {
           phone?: string | null
           priority?: string | null
           role?: string | null
+          twitter?: string | null
           updated_at?: string
           user_id: string
+          website?: string | null
+          xing?: string | null
         }
         Update: {
+          additional_info?: string | null
+          address?: string | null
           avatar_url?: string | null
+          birthday?: string | null
           category?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
+          facebook?: string | null
           id?: string
+          instagram?: string | null
           last_contact?: string | null
+          linkedin?: string | null
           location?: string | null
           name?: string
           notes?: string | null
@@ -153,8 +177,11 @@ export type Database = {
           phone?: string | null
           priority?: string | null
           role?: string | null
+          twitter?: string | null
           updated_at?: string
           user_id?: string
+          website?: string | null
+          xing?: string | null
         }
         Relationships: []
       }

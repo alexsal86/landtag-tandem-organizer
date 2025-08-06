@@ -18,9 +18,18 @@ interface ContactFormData {
   email: string;
   phone: string;
   location: string;
+  address: string;
+  birthday: string;
+  website: string;
+  linkedin: string;
+  twitter: string;
+  facebook: string;
+  instagram: string;
+  xing: string;
   category: "citizen" | "colleague" | "lobbyist" | "media" | "business" | "";
   priority: "low" | "medium" | "high" | "";
   notes: string;
+  additional_info: string;
 }
 
 export function CreateContact() {
@@ -35,9 +44,18 @@ export function CreateContact() {
     email: "",
     phone: "",
     location: "",
+    address: "",
+    birthday: "",
+    website: "",
+    linkedin: "",
+    twitter: "",
+    facebook: "",
+    instagram: "",
+    xing: "",
     category: "",
     priority: "",
     notes: "",
+    additional_info: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,9 +101,18 @@ export function CreateContact() {
           email: formData.email,
           phone: formData.phone || null,
           location: formData.location || null,
+          address: formData.address || null,
+          birthday: formData.birthday || null,
+          website: formData.website || null,
+          linkedin: formData.linkedin || null,
+          twitter: formData.twitter || null,
+          facebook: formData.facebook || null,
+          instagram: formData.instagram || null,
+          xing: formData.xing || null,
           category: formData.category as any,
           priority: formData.priority as any,
           notes: formData.notes || null,
+          additional_info: formData.additional_info || null,
         });
 
       if (error) throw error;
@@ -221,6 +248,94 @@ export function CreateContact() {
                       onChange={(e) => handleInputChange("location", e.target.value)}
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="address">Adresse</Label>
+                    <Input
+                      id="address"
+                      placeholder="Musterstraße 123, 12345 Musterstadt"
+                      value={formData.address}
+                      onChange={(e) => handleInputChange("address", e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="birthday">Geburtstag</Label>
+                      <Input
+                        id="birthday"
+                        type="date"
+                        value={formData.birthday}
+                        onChange={(e) => handleInputChange("birthday", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="website">Website</Label>
+                      <Input
+                        id="website"
+                        placeholder="https://beispiel.de"
+                        value={formData.website}
+                        onChange={(e) => handleInputChange("website", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Social Media & Zusatzinformationen */}
+              <Card className="bg-card shadow-card border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5 text-primary" />
+                    Social Media & Web
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="linkedin">LinkedIn</Label>
+                      <Input
+                        id="linkedin"
+                        placeholder="https://linkedin.com/in/username"
+                        value={formData.linkedin}
+                        onChange={(e) => handleInputChange("linkedin", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="xing">XING</Label>
+                      <Input
+                        id="xing"
+                        placeholder="https://xing.com/profile/username"
+                        value={formData.xing}
+                        onChange={(e) => handleInputChange("xing", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="twitter">Twitter/X</Label>
+                      <Input
+                        id="twitter"
+                        placeholder="https://twitter.com/username"
+                        value={formData.twitter}
+                        onChange={(e) => handleInputChange("twitter", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="facebook">Facebook</Label>
+                      <Input
+                        id="facebook"
+                        placeholder="https://facebook.com/username"
+                        value={formData.facebook}
+                        onChange={(e) => handleInputChange("facebook", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="instagram">Instagram</Label>
+                      <Input
+                        id="instagram"
+                        placeholder="https://instagram.com/username"
+                        value={formData.instagram}
+                        onChange={(e) => handleInputChange("instagram", e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -232,7 +347,7 @@ export function CreateContact() {
                     Zusätzliche Informationen
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div>
                     <Label htmlFor="notes">Notizen</Label>
                     <Textarea
@@ -241,6 +356,16 @@ export function CreateContact() {
                       rows={4}
                       value={formData.notes}
                       onChange={(e) => handleInputChange("notes", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="additional_info">Weitere Informationen</Label>
+                    <Textarea
+                      id="additional_info"
+                      placeholder="Weitere wichtige Details..."
+                      rows={3}
+                      value={formData.additional_info}
+                      onChange={(e) => handleInputChange("additional_info", e.target.value)}
                     />
                   </div>
                 </CardContent>

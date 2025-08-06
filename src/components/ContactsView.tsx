@@ -18,11 +18,20 @@ interface Contact {
   email?: string;
   phone?: string;
   location?: string;
+  address?: string;
+  birthday?: string;
+  website?: string;
+  linkedin?: string;
+  twitter?: string;
+  facebook?: string;
+  instagram?: string;
+  xing?: string;
   category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
   priority?: "low" | "medium" | "high";
   last_contact?: string;
   avatar_url?: string;
   notes?: string;
+  additional_info?: string;
 }
 
 export function ContactsView() {
@@ -65,11 +74,20 @@ export function ContactsView() {
         email: contact.email,
         phone: contact.phone,
         location: contact.location,
+        address: contact.address,
+        birthday: contact.birthday,
+        website: contact.website,
+        linkedin: contact.linkedin,
+        twitter: contact.twitter,
+        facebook: contact.facebook,
+        instagram: contact.instagram,
+        xing: contact.xing,
         category: contact.category as Contact["category"],
         priority: contact.priority as Contact["priority"],
         last_contact: contact.last_contact,
         avatar_url: contact.avatar_url,
         notes: contact.notes,
+        additional_info: contact.additional_info,
       })) || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -274,19 +292,26 @@ export function ContactsView() {
                 </div>
                 
                 {contact.location && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span>{contact.location}</span>
-                  </div>
-                )}
-                
-                {contact.last_contact && (
-                  <div className="pt-2 border-t border-border">
-                    <span className="text-xs text-muted-foreground">
-                      Letzter Kontakt: {contact.last_contact}
-                    </span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  <span>{contact.location}</span>
+                </div>
+              )}
+
+              {contact.address && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  <span className="truncate">{contact.address}</span>
+                </div>
+              )}
+              
+              {contact.last_contact && (
+                <div className="pt-2 border-t border-border">
+                  <span className="text-xs text-muted-foreground">
+                    Letzter Kontakt: {contact.last_contact}
+                  </span>
+                </div>
+              )}
               </div>
               
               <div className="flex gap-2 mt-4">
