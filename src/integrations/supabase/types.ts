@@ -263,6 +263,66 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_settings: {
+        Row: {
+          created_at: string
+          hours_per_week: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hours_per_week?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hours_per_week?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      leave_requests: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          reason: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["leave_status"]
+          type: Database["public"]["Enums"]["leave_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          reason?: string | null
+          start_date: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          type: Database["public"]["Enums"]["leave_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          reason?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          type?: Database["public"]["Enums"]["leave_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meeting_agenda_items: {
         Row: {
           assigned_to: string | null
@@ -506,6 +566,8 @@ export type Database = {
     }
     Enums: {
       app_role: "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant"
+      leave_status: "pending" | "approved" | "rejected"
+      leave_type: "vacation" | "sick" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -634,6 +696,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant"],
+      leave_status: ["pending", "approved", "rejected"],
+      leave_type: ["vacation", "sick", "other"],
     },
   },
 } as const
