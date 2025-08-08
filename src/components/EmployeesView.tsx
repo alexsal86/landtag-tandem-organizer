@@ -124,6 +124,7 @@ export function EmployeesView() {
         if (managedIds.length === 0) {
           setEmployees([]);
           setLeaves({});
+          setPendingLeaves([]);
           setLoading(false);
           return;
         }
@@ -218,11 +219,84 @@ export function EmployeesView() {
     load();
   }, [user, toast]);
 
-  // Reload data helper
-  const reloadData = () => {
-    if (!user) return;
-    setLoading(true);
-    const load = async () => {
+  // Load self data for non-admin users
+  useEffect(() => {
+    if (!user || isAdmin) return;
+    const loadSelf = async () => {
+      setLoading(true);
+      try {
+        const [settingsRes, profileRes, leavesRes] = await Promise.all([
+          supabase
+            .from("employee_settings")
+            .select("user_id, hours_per_week, timezone, workdays")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("profiles")
+            .select("user_id, display_name, avatar_url")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("leave_requests")
+            .select("user_id, type, status, start_date")
+            .eq("user_id", user.id),
+        ]);
+
+        if (settingsRes.error) throw settingsRes.error;
+        if (profileRes.error) throw profileRes.error;
+        if (leavesRes.error) throw leavesRes.error;
+
+        setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
+        setSelfProfile((profileRes.data as Profile) || null);
+
+        const agg: LeaveAgg = {
+          counts: { vacation: 0, sick: 0, other: 0 },
+          approved: { vacation: 0, sick: 0, other: 0 },
+          pending: { vacation: 0, sick: 0, other: 0 },
+          lastDates: {},
+        };
+        (leavesRes.data as LeaveRow[] | null)?.forEach((lr) => {
+          agg.counts[lr.type]++;
+          if (lr.status === "approved") agg.approved[lr.type]++;
+          if (lr.status === "pending") agg.pending[lr.type]++;
+          const curr = agg.lastDates[lr.type];
+          if (!curr || new Date(lr.start_date) > new Date(curr)) {
+            agg.lastDates[lr.type] = lr.start_date;
+          }
+        });
+        setSelfLeaveAgg(agg);
+      } catch (e: any) {
+        console.error(e);
+        toast({
+          title: "Fehler beim Laden",
+          description: e?.message ?? "Eigene Daten konnten nicht geladen werden.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSelf();
+  }, [user, isAdmin, toast]);
+
+  // Urlaubsantrag freigeben/ablehnen
+  const handleLeaveAction = async (leaveId: string, action: "approved" | "rejected") => {
+    try {
+      const { error } = await supabase
+        .from("leave_requests")
+        .update({ status: action })
+        .eq("id", leaveId);
+
+      if (error) throw error;
+
+      toast({
+        title: action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt",
+        description: "Der Urlaubsantrag wurde aktualisiert.",
+      });
+
+      // Reload data
+      if (!user) return;
+      setLoading(true);
       try {
         const { data: roles, error: rErr } = await supabase
           .from("user_roles")
@@ -324,26 +398,6 @@ export function EmployeesView() {
       } finally {
         setLoading(false);
       }
-    };
-    load();
-  };
-
-  // Urlaubsantrag freigeben/ablehnen
-  const handleLeaveAction = async (leaveId: string, action: "approved" | "rejected") => {
-    try {
-      const { error } = await supabase
-        .from("leave_requests")
-        .update({ status: action })
-        .eq("id", leaveId);
-
-      if (error) throw error;
-
-      toast({
-        title: action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt",
-        description: "Der Urlaubsantrag wurde aktualisiert.",
-      });
-
-      reloadData();
     } catch (e: any) {
       console.error(e);
       toast({
@@ -387,7 +441,67 @@ export function EmployeesView() {
         description: "Stunden pro Woche wurden aktualisiert.",
       });
 
-      reloadData();
+      // Reload data
+      if (!user) return;
+      setLoading(true);
+      try {
+        const { data: roles, error: rErr } = await supabase
+          .from("user_roles")
+          .select("user_id, role");
+        if (rErr) throw rErr;
+
+        const managedIds = (roles || [])
+          .filter((r: any) => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
+          .map((r: any) => r.user_id);
+
+        if (managedIds.length === 0) {
+          setEmployees([]);
+          setLeaves({});
+          setPendingLeaves([]);
+          setLoading(false);
+          return;
+        }
+
+        const [profilesRes, settingsRes] = await Promise.all([
+          supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
+          supabase
+            .from("employee_settings")
+            .select("user_id, hours_per_week, timezone, workdays, admin_id")
+            .in("user_id", managedIds),
+        ]);
+        if (profilesRes.error) throw profilesRes.error;
+        if (settingsRes.error) throw settingsRes.error;
+
+        const profileMap = new Map<string, Profile>();
+        (profilesRes.data as Profile[] | null)?.forEach((p) => profileMap.set(p.user_id, p));
+
+        const settingsMap = new Map<string, EmployeeSettingsRow>();
+        (settingsRes.data as any[] | null)?.forEach((s) => settingsMap.set(s.user_id, s as EmployeeSettingsRow));
+
+        const joined: Employee[] = managedIds.map((uid) => {
+          const s = settingsMap.get(uid);
+          const p = profileMap.get(uid);
+          return {
+            user_id: uid,
+            hours_per_week: s?.hours_per_week ?? 40,
+            timezone: s?.timezone ?? "Europe/Berlin",
+            workdays: s?.workdays ?? [true, true, true, true, true, false, false],
+            display_name: p?.display_name ?? null,
+            avatar_url: p?.avatar_url ?? null,
+            admin_id: (s as any)?.admin_id ?? null,
+          } as Employee;
+        });
+        setEmployees(joined);
+      } catch (e: any) {
+        console.error(e);
+        toast({
+          title: "Fehler beim Laden",
+          description: e?.message ?? "Daten konnten nicht geladen werden.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
     } catch (e: any) {
       console.error(e);
       toast({
@@ -402,66 +516,6 @@ export function EmployeesView() {
     setEditingHours(null);
     setTempHours(0);
   };
-
-  // Load self data for non-admin users
-  useEffect(() => {
-    if (!user || isAdmin) return;
-    const loadSelf = async () => {
-      setLoading(true);
-      try {
-        const [settingsRes, profileRes, leavesRes] = await Promise.all([
-          supabase
-            .from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays")
-            .eq("user_id", user.id)
-            .maybeSingle(),
-          supabase
-            .from("profiles")
-            .select("user_id, display_name, avatar_url")
-            .eq("user_id", user.id)
-            .maybeSingle(),
-          supabase
-            .from("leave_requests")
-            .select("user_id, type, status, start_date")
-            .eq("user_id", user.id),
-        ]);
-
-        if (settingsRes.error) throw settingsRes.error;
-        if (profileRes.error) throw profileRes.error;
-        if (leavesRes.error) throw leavesRes.error;
-
-        setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
-        setSelfProfile((profileRes.data as Profile) || null);
-
-        const agg: LeaveAgg = {
-          counts: { vacation: 0, sick: 0, other: 0 },
-          approved: { vacation: 0, sick: 0, other: 0 },
-          pending: { vacation: 0, sick: 0, other: 0 },
-          lastDates: {},
-        };
-        (leavesRes.data as LeaveRow[] | null)?.forEach((lr) => {
-          agg.counts[lr.type]++;
-          if (lr.status === "approved") agg.approved[lr.type]++;
-          if (lr.status === "pending") agg.pending[lr.type]++;
-          const curr = agg.lastDates[lr.type];
-          if (!curr || new Date(lr.start_date) > new Date(curr)) {
-            agg.lastDates[lr.type] = lr.start_date;
-          }
-        });
-        setSelfLeaveAgg(agg);
-      } catch (e: any) {
-        console.error(e);
-        toast({
-          title: "Fehler beim Laden",
-          description: e?.message ?? "Eigene Daten konnten nicht geladen werden.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadSelf();
-  }, [user, isAdmin, toast]);
 
   const totals = useMemo(() => {
     const init = {
