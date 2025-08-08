@@ -267,6 +267,7 @@ export type Database = {
         Row: {
           admin_id: string | null
           annual_vacation_days: number
+          carry_over_days: number
           contract_file_path: string | null
           created_at: string
           days_per_month: number
@@ -283,6 +284,7 @@ export type Database = {
         Insert: {
           admin_id?: string | null
           annual_vacation_days?: number
+          carry_over_days?: number
           contract_file_path?: string | null
           created_at?: string
           days_per_month?: number
@@ -299,6 +301,7 @@ export type Database = {
         Update: {
           admin_id?: string | null
           annual_vacation_days?: number
+          carry_over_days?: number
           contract_file_path?: string | null
           created_at?: string
           days_per_month?: number
@@ -607,6 +610,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_daily_hours: {
+        Args: { _user_id: string }
+        Returns: number
+      }
       get_user_role_level: {
         Args: { _user_id: string }
         Returns: number
