@@ -17,6 +17,7 @@ type EmployeeSettingsRow = {
   hours_per_week: number;
   timezone: string;
   workdays: boolean[];
+  admin_id?: string | null;
 };
 
 type Profile = {
@@ -93,46 +94,60 @@ export function EmployeesView() {
       if (!user) return;
       setLoading(true);
       try {
-        // Employees assigned to this admin
-        const { data: settings, error: sErr } = await supabase
-          .from("employee_settings")
-          .select("user_id, hours_per_week, timezone, workdays")
-          .eq("admin_id", user.id);
-        if (sErr) throw sErr;
-        const settingsRows = (settings || []) as EmployeeSettingsRow[];
+        // Alle Nicht-Admin-Benutzer (Rollen: Mitarbeiter, Praktikant, Büroleitung)
+        const { data: roles, error: rErr } = await supabase
+          .from("user_roles")
+          .select("user_id, role");
+        if (rErr) throw rErr;
 
-        const userIds = settingsRows.map((s) => s.user_id);
-        if (userIds.length === 0) {
+        const managedIds = (roles || [])
+          .filter((r: any) => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
+          .map((r: any) => r.user_id);
+
+        if (managedIds.length === 0) {
           setEmployees([]);
           setLeaves({});
           setLoading(false);
           return;
         }
 
-        const [{ data: profiles, error: pErr }, { data: leaveRows, error: lErr }] = await Promise.all([
-          supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds),
+        const [profilesRes, settingsRes, leaveRes] = await Promise.all([
+          supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
+          supabase
+            .from("employee_settings")
+            .select("user_id, hours_per_week, timezone, workdays, admin_id")
+            .in("user_id", managedIds),
           supabase
             .from("leave_requests")
             .select("user_id, type, status, start_date")
-            .in("user_id", userIds),
+            .in("user_id", managedIds),
         ]);
-        if (pErr) throw pErr;
-        if (lErr) throw lErr;
+        if (profilesRes.error) throw profilesRes.error;
+        if (settingsRes.error) throw settingsRes.error;
+        if (leaveRes.error) throw leaveRes.error;
 
         const profileMap = new Map<string, Profile>();
-        (profiles as Profile[] | null)?.forEach((p) => profileMap.set(p.user_id, p));
+        (profilesRes.data as Profile[] | null)?.forEach((p) => profileMap.set(p.user_id, p));
 
-        const joined: Employee[] = settingsRows.map((s) => ({
-          user_id: s.user_id,
-          hours_per_week: s.hours_per_week,
-          timezone: s.timezone,
-          workdays: s.workdays,
-          display_name: profileMap.get(s.user_id)?.display_name ?? null,
-          avatar_url: profileMap.get(s.user_id)?.avatar_url ?? null,
-        }));
+        const settingsMap = new Map<string, EmployeeSettingsRow>();
+        (settingsRes.data as any[] | null)?.forEach((s) => settingsMap.set(s.user_id, s as EmployeeSettingsRow));
+
+        const joined: Employee[] = managedIds.map((uid) => {
+          const s = settingsMap.get(uid);
+          const p = profileMap.get(uid);
+          return {
+            user_id: uid,
+            hours_per_week: s?.hours_per_week ?? 40,
+            timezone: s?.timezone ?? "Europe/Berlin",
+            workdays: s?.workdays ?? [true, true, true, true, true, false, false],
+            display_name: p?.display_name ?? null,
+            avatar_url: p?.avatar_url ?? null,
+            admin_id: (s as any)?.admin_id ?? null,
+          } as Employee;
+        });
         setEmployees(joined);
 
-        // Aggregate leaves per user
+        // Abwesenheiten aggregieren (RLS erlaubt nur Zugriff auf zugewiesene Nutzer)
         const agg: Record<string, LeaveAgg> = {};
         const initAgg = (): LeaveAgg => ({
           counts: { vacation: 0, sick: 0, other: 0 },
@@ -141,13 +156,13 @@ export function EmployeesView() {
           lastDates: {},
         });
 
-        (leaveRows as LeaveRow[] | null)?.forEach((lr) => {
+        ((leaveRes.data as LeaveRow[] | null) || []).forEach((lr) => {
           if (!agg[lr.user_id]) agg[lr.user_id] = initAgg();
           agg[lr.user_id].counts[lr.type]++;
           if (lr.status === "approved") agg[lr.user_id].approved[lr.type]++;
           if (lr.status === "pending") agg[lr.user_id].pending[lr.type]++;
           const curr = agg[lr.user_id].lastDates[lr.type];
-          if (!curr || new Date(lr.start_date) > new Date(curr)) {
+          if (!curr || new Date(lr.start_date) > new Date(curr as string)) {
             agg[lr.user_id].lastDates[lr.type] = lr.start_date;
           }
         });
