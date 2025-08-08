@@ -56,6 +56,10 @@ export function TimeTrackingView() {
   const [leaveEnd, setLeaveEnd] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [leaveReason, setLeaveReason] = useState<string>("");
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+  
+  // Krankmeldung – Formularzustand
+  const [sickDate, setSickDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [sickSubmitting, setSickSubmitting] = useState(false);
 
   const monthStart = startOfMonth(new Date());
   const monthEnd = endOfMonth(new Date());
@@ -288,6 +292,28 @@ export function TimeTrackingView() {
     }
   };
 
+  const submitSick = async () => {
+    if (!user) return;
+    setSickSubmitting(true);
+    try {
+      if (!sickDate) throw new Error("Bitte Datum wählen.");
+
+      const { error } = await supabase.from("sick_days").insert({
+        user_id: user.id,
+        sick_date: sickDate,
+      });
+      if (error) throw error;
+
+      toast({ title: "Krankmeldung gesendet", description: "Krankmeldung wurde erfasst." });
+
+      setSickDate(new Date().toISOString().slice(0, 10));
+    } catch (e: any) {
+      toast({ title: "Fehler", description: e.message, variant: "destructive" });
+    } finally {
+      setSickSubmitting(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <header className="sr-only">
@@ -422,7 +448,28 @@ export function TimeTrackingView() {
               <div className="md:col-span-3">
                 <Button onClick={submitLeave} disabled={leaveSubmitting} className="w-full">
                   {leaveSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                  Antrag einreichen
+                  Urlaubsantrag einreichen
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Krankmeldung</CardTitle>
+            <CardDescription>Krankheitstag direkt erfassen (keine Genehmigung erforderlich)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+              <div>
+                <Label htmlFor="sickDate">Krankheitstag</Label>
+                <Input id="sickDate" type="date" value={sickDate} onChange={e => setSickDate(e.target.value)} />
+              </div>
+              <div>
+                <Button onClick={submitSick} disabled={sickSubmitting} className="w-full">
+                  {sickSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                  Krankmeldung erfassen
                 </Button>
               </div>
             </div>

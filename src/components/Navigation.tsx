@@ -55,7 +55,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "calendar", label: "Terminkalender", icon: Calendar },
     { id: "contacts", label: "Kontakte", icon: Contact },
     { id: "tasks", label: "Aufgaben", icon: CheckSquare },
-    { id: "time", label: "Zeiterfassung", icon: Clock },
+    { id: "time", label: "Zeiterfassung", icon: Clock, adminOnly: false },
     { id: "employee", label: "Mitarbeiter", icon: Users },
     { id: "meetings", label: "Meetings", icon: MessageSquare },
     { id: "documents", label: "Dokumente", icon: FileText },
@@ -172,7 +172,9 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
+              {navigationItems.filter(item => 
+                item.id !== "time" || !isAdmin
+              ).map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     onClick={() => onSectionChange(item.id)}

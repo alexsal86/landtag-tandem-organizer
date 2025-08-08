@@ -20,6 +20,8 @@ type EmployeeSettingsRow = {
   timezone: string;
   workdays: boolean[];
   admin_id?: string | null;
+  annual_vacation_days: number;
+  employment_start_date: string | null;
 };
 
 type Profile = {
@@ -66,6 +68,11 @@ export function EmployeesView() {
   const [pendingLeaves, setPendingLeaves] = useState<PendingLeaveRequest[]>([]);
   const [editingHours, setEditingHours] = useState<string | null>(null);
   const [tempHours, setTempHours] = useState<number>(0);
+  const [editingVacationDays, setEditingVacationDays] = useState<string | null>(null);
+  const [tempVacationDays, setTempVacationDays] = useState<number>(0);
+  const [editingStartDate, setEditingStartDate] = useState<string | null>(null);
+  const [tempStartDate, setTempStartDate] = useState<string>("");
+  const [sickDays, setSickDays] = useState<Record<string, number>>({});
 
   // Self-view state for non-admin users
   const [selfSettings, setSelfSettings] = useState<EmployeeSettingsRow | null>(null);
@@ -129,11 +136,11 @@ export function EmployeesView() {
           return;
         }
 
-        const [profilesRes, settingsRes, leaveRes, pendingRes] = await Promise.all([
+        const [profilesRes, settingsRes, leaveRes, pendingRes, sickRes] = await Promise.all([
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
           supabase
             .from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays, admin_id")
+            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date")
             .in("user_id", managedIds),
           supabase
             .from("leave_requests")
@@ -144,7 +151,12 @@ export function EmployeesView() {
             .select("id, user_id, type, status, start_date, end_date")
             .eq("status", "pending")
             .in("user_id", managedIds),
+          supabase
+            .from("sick_days")
+            .select("user_id")
+            .in("user_id", managedIds),
         ]);
+        if (sickRes.error) throw sickRes.error;
         if (profilesRes.error) throw profilesRes.error;
         if (settingsRes.error) throw settingsRes.error;
         if (leaveRes.error) throw leaveRes.error;
@@ -167,6 +179,8 @@ export function EmployeesView() {
             display_name: p?.display_name ?? null,
             avatar_url: p?.avatar_url ?? null,
             admin_id: (s as any)?.admin_id ?? null,
+            annual_vacation_days: s?.annual_vacation_days ?? 30,
+            employment_start_date: s?.employment_start_date ?? null,
           } as Employee;
         });
         setEmployees(joined);
@@ -192,6 +206,13 @@ export function EmployeesView() {
         });
 
         setLeaves(agg);
+
+        // Count sick days per user
+        const sickCount: Record<string, number> = {};
+        (sickRes.data || []).forEach((sick: any) => {
+          sickCount[sick.user_id] = (sickCount[sick.user_id] || 0) + 1;
+        });
+        setSickDays(sickCount);
 
         // Pending leave requests mit User-Namen
         const pendingWithNames: PendingLeaveRequest[] = (pendingRes.data || []).map((req: any) => ({
@@ -319,7 +340,7 @@ export function EmployeesView() {
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
           supabase
             .from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays, admin_id")
+            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date")
             .in("user_id", managedIds),
           supabase
             .from("leave_requests")
@@ -353,6 +374,8 @@ export function EmployeesView() {
             display_name: p?.display_name ?? null,
             avatar_url: p?.avatar_url ?? null,
             admin_id: (s as any)?.admin_id ?? null,
+            annual_vacation_days: s?.annual_vacation_days ?? 30,
+            employment_start_date: s?.employment_start_date ?? null,
           } as Employee;
         });
         setEmployees(joined);
@@ -466,7 +489,7 @@ export function EmployeesView() {
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
           supabase
             .from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays, admin_id")
+            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date")
             .in("user_id", managedIds),
         ]);
         if (profilesRes.error) throw profilesRes.error;
@@ -489,6 +512,8 @@ export function EmployeesView() {
             display_name: p?.display_name ?? null,
             avatar_url: p?.avatar_url ?? null,
             admin_id: (s as any)?.admin_id ?? null,
+            annual_vacation_days: s?.annual_vacation_days ?? 30,
+            employment_start_date: s?.employment_start_date ?? null,
           } as Employee;
         });
         setEmployees(joined);
@@ -515,6 +540,105 @@ export function EmployeesView() {
   const cancelEditHours = () => {
     setEditingHours(null);
     setTempHours(0);
+  };
+
+  // Urlaubstage bearbeiten
+  const startEditVacationDays = (userId: string, currentDays: number) => {
+    setEditingVacationDays(userId);
+    setTempVacationDays(currentDays);
+  };
+
+  const saveVacationDays = async (userId: string) => {
+    if (tempVacationDays < 0 || tempVacationDays > 365) {
+      toast({
+        title: "Ungültige Eingabe",
+        description: "Urlaubstage müssen zwischen 0 und 365 liegen.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("employee_settings")
+        .upsert({ 
+          user_id: userId, 
+          annual_vacation_days: tempVacationDays,
+          admin_id: user?.id 
+        });
+
+      if (error) throw error;
+
+      setEditingVacationDays(null);
+      toast({
+        title: "Gespeichert",
+        description: "Urlaubstage wurden aktualisiert.",
+      });
+
+      // Update local state
+      setEmployees(prev => prev.map(emp => 
+        emp.user_id === userId 
+          ? { ...emp, annual_vacation_days: tempVacationDays }
+          : emp
+      ));
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Fehler",
+        description: e?.message ?? "Urlaubstage konnten nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const cancelEditVacationDays = () => {
+    setEditingVacationDays(null);
+    setTempVacationDays(0);
+  };
+
+  // Startdatum bearbeiten
+  const startEditStartDate = (userId: string, currentDate: string | null) => {
+    setEditingStartDate(userId);
+    setTempStartDate(currentDate || "2025-01-01");
+  };
+
+  const saveStartDate = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from("employee_settings")
+        .upsert({ 
+          user_id: userId, 
+          employment_start_date: tempStartDate,
+          admin_id: user?.id 
+        });
+
+      if (error) throw error;
+
+      setEditingStartDate(null);
+      toast({
+        title: "Gespeichert",
+        description: "Startdatum wurde aktualisiert.",
+      });
+
+      // Update local state
+      setEmployees(prev => prev.map(emp => 
+        emp.user_id === userId 
+          ? { ...emp, employment_start_date: tempStartDate }
+          : emp
+      ));
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Fehler",
+        description: e?.message ?? "Startdatum konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const cancelEditStartDate = () => {
+    setEditingStartDate(null);
+    setTempStartDate("");
   };
 
   const totals = useMemo(() => {
@@ -767,9 +891,10 @@ export function EmployeesView() {
                     <TableHead>Mitarbeiter</TableHead>
                     <TableHead>Stunden/Woche</TableHead>
                     <TableHead>Tage/Woche</TableHead>
-                    <TableHead>Krank (Anträge / genehmigt)</TableHead>
+                    <TableHead>Urlaubstage/Jahr</TableHead>
+                    <TableHead>Beginn Arbeitsverhältnis</TableHead>
+                    <TableHead>Krankentage</TableHead>
                     <TableHead>Urlaub (Anträge / genehmigt)</TableHead>
-                    <TableHead>Letzte Abwesenheit</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -845,10 +970,67 @@ export function EmployeesView() {
                           <Badge variant="outline">{workingDays}</Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span>{sickCount}</span>
-                            <Badge variant="outline">{sickApproved} genehmigt</Badge>
-                          </div>
+                          {editingVacationDays === e.user_id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                value={tempVacationDays}
+                                onChange={(e) => setTempVacationDays(Number(e.target.value))}
+                                className="w-20"
+                                min="0"
+                                max="365"
+                              />
+                              <Button size="sm" onClick={() => saveVacationDays(e.user_id)}>
+                                ✓
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={cancelEditVacationDays}>
+                                ✕
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">{e.annual_vacation_days} Tage</Badge>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => startEditVacationDays(e.user_id, e.annual_vacation_days)}
+                              >
+                                ✏️
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingStartDate === e.user_id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="date"
+                                value={tempStartDate}
+                                onChange={(e) => setTempStartDate(e.target.value)}
+                                className="w-40"
+                              />
+                              <Button size="sm" onClick={() => saveStartDate(e.user_id)}>
+                                ✓
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={cancelEditStartDate}>
+                                ✕
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span>{e.employment_start_date ? new Date(e.employment_start_date).toLocaleDateString("de-DE") : "01.01.2025"}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => startEditStartDate(e.user_id, e.employment_start_date)}
+                              >
+                                ✏️
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{sickDays[e.user_id] || 0} Tage</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -856,7 +1038,6 @@ export function EmployeesView() {
                             <Badge variant="outline">{vacApproved} genehmigt</Badge>
                           </div>
                         </TableCell>
-                        <TableCell>{lastStr}</TableCell>
                       </TableRow>
                     );
                   })}
