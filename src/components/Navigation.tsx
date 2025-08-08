@@ -1,7 +1,8 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, ShieldCheck } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -31,7 +32,8 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { state } = useSidebar();
   const [onlineUsers, setOnlineUsers] = useState<Array<{ user_id: string; email: string; display_name?: string; online_at: string }>>([]);
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
-
+  const [isAdmin, setIsAdmin] = useState(false);
+  const navigate = useNavigate();
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -74,6 +76,14 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     };
     
     loadUserProfile();
+  }, [user]);
+
+  // Check admin role
+  useEffect(() => {
+    if (!user) return;
+    supabase.rpc('is_admin', { _user_id: user.id }).then(({ data }) => {
+      setIsAdmin(!!data);
+    });
   }, [user]);
 
   // Online users presence tracking
@@ -173,6 +183,15 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={() => navigate('/admin/rechte')} tooltip="Rechte verwalten">
+                    <ShieldCheck />
+                    <span>Rechte</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
