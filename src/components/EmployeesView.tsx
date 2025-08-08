@@ -450,11 +450,10 @@ export function EmployeesView() {
     try {
       const { error } = await supabase
         .from("employee_settings")
-        .upsert({ 
-          user_id: userId, 
-          hours_per_week: tempHours,
-          admin_id: user?.id 
-        });
+        .update({ 
+          hours_per_week: tempHours
+        })
+        .eq("user_id", userId);
 
       if (error) throw error;
 
@@ -561,11 +560,10 @@ export function EmployeesView() {
     try {
       const { error } = await supabase
         .from("employee_settings")
-        .upsert({ 
-          user_id: userId, 
-          annual_vacation_days: tempVacationDays,
-          admin_id: user?.id 
-        });
+        .update({ 
+          annual_vacation_days: tempVacationDays
+        })
+        .eq("user_id", userId);
 
       if (error) throw error;
 
@@ -606,11 +604,10 @@ export function EmployeesView() {
     try {
       const { error } = await supabase
         .from("employee_settings")
-        .upsert({ 
-          user_id: userId, 
-          employment_start_date: tempStartDate,
-          admin_id: user?.id 
-        });
+        .update({ 
+          employment_start_date: tempStartDate
+        })
+        .eq("user_id", userId);
 
       if (error) throw error;
 
