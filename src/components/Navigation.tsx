@@ -55,11 +55,11 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "calendar", label: "Terminkalender", icon: Calendar },
     { id: "contacts", label: "Kontakte", icon: Contact },
     { id: "tasks", label: "Aufgaben", icon: CheckSquare },
-    { id: "time", label: "Zeiterfassung", icon: Clock, adminOnly: false },
-    { id: "employee", label: "Mitarbeiter", icon: Users },
     { id: "meetings", label: "Meetings", icon: MessageSquare },
     { id: "documents", label: "Dokumente", icon: FileText },
     { id: "settings", label: "Einstellungen", icon: Settings },
+    { id: "time", label: "Zeiterfassung", icon: Clock, adminOnly: false },
+    { id: "employee", label: "Mitarbeiter", icon: Users },
   ];
 
   // Load user profile
