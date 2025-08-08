@@ -266,32 +266,50 @@ export type Database = {
       employee_settings: {
         Row: {
           admin_id: string | null
+          annual_vacation_days: number
+          contract_file_path: string | null
           created_at: string
+          days_per_month: number
+          employment_start_date: string | null
+          hours_per_month: number
           hours_per_week: number
           id: string
           timezone: string
           updated_at: string
           user_id: string
+          work_location: string | null
           workdays: boolean[]
         }
         Insert: {
           admin_id?: string | null
+          annual_vacation_days?: number
+          contract_file_path?: string | null
           created_at?: string
+          days_per_month?: number
+          employment_start_date?: string | null
+          hours_per_month?: number
           hours_per_week?: number
           id?: string
           timezone?: string
           updated_at?: string
           user_id: string
+          work_location?: string | null
           workdays?: boolean[]
         }
         Update: {
           admin_id?: string | null
+          annual_vacation_days?: number
+          contract_file_path?: string | null
           created_at?: string
+          days_per_month?: number
+          employment_start_date?: string | null
+          hours_per_month?: number
           hours_per_week?: number
           id?: string
           timezone?: string
           updated_at?: string
           user_id?: string
+          work_location?: string | null
           workdays?: boolean[]
         }
         Relationships: []
@@ -515,6 +533,42 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      time_entries: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          minutes: number
+          notes: string | null
+          started_at: string | null
+          updated_at: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          minutes: number
+          notes?: string | null
+          started_at?: string | null
+          updated_at?: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          minutes?: number
+          notes?: string | null
+          started_at?: string | null
+          updated_at?: string
+          user_id?: string
+          work_date?: string
         }
         Relationships: []
       }
