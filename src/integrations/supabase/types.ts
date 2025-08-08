@@ -265,25 +265,34 @@ export type Database = {
       }
       employee_settings: {
         Row: {
+          admin_id: string | null
           created_at: string
           hours_per_week: number
           id: string
+          timezone: string
           updated_at: string
           user_id: string
+          workdays: boolean[]
         }
         Insert: {
+          admin_id?: string | null
           created_at?: string
           hours_per_week?: number
           id?: string
+          timezone?: string
           updated_at?: string
           user_id: string
+          workdays?: boolean[]
         }
         Update: {
+          admin_id?: string | null
           created_at?: string
           hours_per_week?: number
           id?: string
+          timezone?: string
           updated_at?: string
           user_id?: string
+          workdays?: boolean[]
         }
         Relationships: []
       }
@@ -561,6 +570,10 @@ export type Database = {
       }
       is_admin: {
         Args: { _user_id: string }
+        Returns: boolean
+      }
+      is_admin_of: {
+        Args: { employee: string }
         Returns: boolean
       }
     }
