@@ -49,6 +49,11 @@ export function EmployeesView() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [leaves, setLeaves] = useState<Record<string, LeaveAgg>>({});
 
+  // Self-view state for non-admin users
+  const [selfSettings, setSelfSettings] = useState<EmployeeSettingsRow | null>(null);
+  const [selfLeaveAgg, setSelfLeaveAgg] = useState<LeaveAgg | null>(null);
+  const [selfProfile, setSelfProfile] = useState<Profile | null>(null);
+
   // SEO basics
   useEffect(() => {
     document.title = "Mitarbeiterverwaltung | Admin";
@@ -163,6 +168,66 @@ export function EmployeesView() {
     load();
   }, [user, toast]);
 
+  // Load self data for non-admin users
+  useEffect(() => {
+    if (!user || isAdmin) return;
+    const loadSelf = async () => {
+      setLoading(true);
+      try {
+        const [settingsRes, profileRes, leavesRes] = await Promise.all([
+          supabase
+            .from("employee_settings")
+            .select("user_id, hours_per_week, timezone, workdays")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("profiles")
+            .select("user_id, display_name, avatar_url")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("leave_requests")
+            .select("user_id, type, status, start_date")
+            .eq("user_id", user.id),
+        ]);
+
+        if (settingsRes.error) throw settingsRes.error;
+        if (profileRes.error) throw profileRes.error;
+        if (leavesRes.error) throw leavesRes.error;
+
+        setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
+        setSelfProfile((profileRes.data as Profile) || null);
+
+        const agg: LeaveAgg = {
+          counts: { vacation: 0, sick: 0, other: 0 },
+          approved: { vacation: 0, sick: 0, other: 0 },
+          pending: { vacation: 0, sick: 0, other: 0 },
+          lastDates: {},
+        };
+        (leavesRes.data as LeaveRow[] | null)?.forEach((lr) => {
+          agg.counts[lr.type]++;
+          if (lr.status === "approved") agg.approved[lr.type]++;
+          if (lr.status === "pending") agg.pending[lr.type]++;
+          const curr = agg.lastDates[lr.type];
+          if (!curr || new Date(lr.start_date) > new Date(curr)) {
+            agg.lastDates[lr.type] = lr.start_date;
+          }
+        });
+        setSelfLeaveAgg(agg);
+      } catch (e: any) {
+        console.error(e);
+        toast({
+          title: "Fehler beim Laden",
+          description: e?.message ?? "Eigene Daten konnten nicht geladen werden.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSelf();
+  }, [user, isAdmin, toast]);
+
   const totals = useMemo(() => {
     const init = {
       employees: employees.length,
@@ -184,12 +249,113 @@ export function EmployeesView() {
   }, [employees, leaves]);
 
   if (!isAdmin) {
+    const pendingCount =
+      (selfLeaveAgg?.pending.sick ?? 0) +
+      (selfLeaveAgg?.pending.vacation ?? 0) +
+      (selfLeaveAgg?.pending.other ?? 0);
+
     return (
       <main>
         <header className="p-4 sm:p-6">
-          <h1 className="text-2xl font-semibold">Mitarbeiterverwaltung</h1>
-          <p className="text-muted-foreground">Nur Admins haben Zugriff auf diese Seite.</p>
+          <h1 className="text-2xl font-semibold">Mitarbeiter</h1>
+          <p className="text-muted-foreground">Ihre Einstellungen & Abwesenheiten</p>
         </header>
+
+        <section className="px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Stunden/Woche</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <div className="text-2xl font-semibold">{selfSettings?.hours_per_week ?? '–'}</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Offene Anträge</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-semibold">{pendingCount}</div>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Krank (Anträge / genehmigt)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <div className="text-2xl font-semibold">
+                  {(selfLeaveAgg?.counts.sick ?? 0)} <span className="text-sm text-muted-foreground">/ {(selfLeaveAgg?.approved.sick ?? 0)}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Urlaub (Anträge / genehmigt)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <div className="text-2xl font-semibold">
+                  {(selfLeaveAgg?.counts.vacation ?? 0)} <span className="text-sm text-muted-foreground">/ {(selfLeaveAgg?.approved.vacation ?? 0)}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Meine Einstellungen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-5 w-32" />
+                </div>
+              ) : (
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between"><span>Zeitzone</span><span>{selfSettings?.timezone ?? '–'}</span></div>
+                  <div className="flex justify-between"><span>Arbeitstage/Woche</span><span>{selfSettings?.workdays ? selfSettings.workdays.filter((w) => w).length : '–'}</span></div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Letzte Abwesenheiten</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-5 w-48" />
+                </div>
+              ) : (
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between"><span>Krank</span><span>{selfLeaveAgg?.lastDates.sick ? new Date(selfLeaveAgg.lastDates.sick).toLocaleDateString('de-DE') : '–'}</span></div>
+                  <div className="flex justify-between"><span>Urlaub</span><span>{selfLeaveAgg?.lastDates.vacation ? new Date(selfLeaveAgg.lastDates.vacation).toLocaleDateString('de-DE') : '–'}</span></div>
+                  <div className="flex justify-between"><span>Sonstiges</span><span>{selfLeaveAgg?.lastDates.other ? new Date(selfLeaveAgg.lastDates.other).toLocaleDateString('de-DE') : '–'}</span></div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
       </main>
     );
   }
