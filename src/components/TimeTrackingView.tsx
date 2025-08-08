@@ -51,6 +51,12 @@ export function TimeTrackingView() {
   const [endTime, setEndTime] = useState<string>("17:00");
   const [notes, setNotes] = useState<string>("");
 
+  // Urlaub beantragen – Formularzustand
+  const [leaveStart, setLeaveStart] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [leaveEnd, setLeaveEnd] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [leaveReason, setLeaveReason] = useState<string>("");
+  const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+
   const monthStart = startOfMonth(new Date());
   const monthEnd = endOfMonth(new Date());
 
@@ -244,6 +250,44 @@ export function TimeTrackingView() {
     }
   };
 
+  const submitLeave = async () => {
+    if (!user) return;
+    setLeaveSubmitting(true);
+    try {
+      if (!leaveStart || !leaveEnd) throw new Error("Bitte Start- und Enddatum wählen.");
+      const s = new Date(`${leaveStart}T00:00:00`);
+      const e = new Date(`${leaveEnd}T00:00:00`);
+      if (e < s) throw new Error("Ende muss nach Start liegen.");
+
+      const { error } = await supabase.from("leave_requests").insert({
+        user_id: user.id,
+        type: "vacation",
+        start_date: leaveStart,
+        end_date: leaveEnd,
+        reason: leaveReason || null,
+      });
+      if (error) throw error;
+
+      toast({ title: "Antrag gesendet", description: "Urlaubsantrag wurde eingereicht (Status: ausstehend)." });
+
+      // Reload leaves for current month
+      const { data: leavesData, error: leavesErr } = await supabase
+        .from("leave_requests")
+        .select("id, type, status, start_date, end_date")
+        .eq("user_id", user.id)
+        .lte("start_date", monthEnd.toISOString().slice(0,10))
+        .gte("end_date", monthStart.toISOString().slice(0,10));
+      if (leavesErr) throw leavesErr;
+      setLeaves(leavesData || []);
+
+      setLeaveReason("");
+    } catch (e: any) {
+      toast({ title: "Fehler", description: e.message, variant: "destructive" });
+    } finally {
+      setLeaveSubmitting(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <header className="sr-only">
@@ -351,6 +395,73 @@ export function TimeTrackingView() {
             ) : (
               <div className="text-muted-foreground">Keine Mitarbeiter-Einstellungen gefunden.</div>
             )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Urlaub beantragen</CardTitle>
+            <CardDescription>Zeitraum wählen und optionalen Grund angeben</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div>
+                <Label htmlFor="leaveStart">Start</Label>
+                <Input id="leaveStart" type="date" value={leaveStart} onChange={e => setLeaveStart(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="leaveEnd">Ende</Label>
+                <Input id="leaveEnd" type="date" value={leaveEnd} onChange={e => setLeaveEnd(e.target.value)} />
+              </div>
+              <div className="md:col-span-1">
+                <Label htmlFor="leaveReason">Grund (optional)</Label>
+                <Input id="leaveReason" placeholder="z. B. Sommerurlaub" value={leaveReason} onChange={e => setLeaveReason(e.target.value)} />
+              </div>
+              <div className="md:col-span-3">
+                <Button onClick={submitLeave} disabled={leaveSubmitting} className="w-full">
+                  {leaveSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                  Antrag einreichen
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Urlaubsanträge (dieser Monat)</CardTitle>
+            <CardDescription>Eigene Anträge mit Status</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Start</TableHead>
+                    <TableHead>Ende</TableHead>
+                    <TableHead>Typ</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leaves.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">Keine Anträge</TableCell>
+                    </TableRow>
+                  )}
+                  {leaves.map(l => (
+                    <TableRow key={l.id}>
+                      <TableCell>{l.start_date}</TableCell>
+                      <TableCell>{l.end_date}</TableCell>
+                      <TableCell>{l.type}</TableCell>
+                      <TableCell>{l.status}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

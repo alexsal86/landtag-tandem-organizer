@@ -12,6 +12,7 @@ import { TasksView } from "@/components/TasksView";
 import { SettingsView } from "@/components/SettingsView";
 import { MeetingsView } from "@/components/MeetingsView";
 import { EmployeesView } from "@/components/EmployeesView";
+import TimeTrackingView from "@/components/TimeTrackingView";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -66,6 +67,8 @@ const Index = () => {
         return <ContactsView />;
       case "tasks":
         return <TasksView />;
+      case "time":
+        return <TimeTrackingView />;
       case "meetings":
         return <MeetingsView />;
       case "documents":
