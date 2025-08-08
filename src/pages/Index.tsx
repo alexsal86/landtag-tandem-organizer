@@ -11,7 +11,8 @@ import { DocumentsView } from "@/components/DocumentsView";
 import { TasksView } from "@/components/TasksView";
 import { SettingsView } from "@/components/SettingsView";
 import { MeetingsView } from "@/components/MeetingsView";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmployeesView } from "@/components/EmployeesView";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -71,6 +72,9 @@ const Index = () => {
         return <DocumentsView />;
       case "settings":
         return <SettingsView />;
+      case "employee":
+        // Admin-only view is handled inside the component
+        return <EmployeesView />;
       default:
         return <Dashboard />;
     }
