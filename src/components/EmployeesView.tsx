@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 
 // Types derived from DB schema
@@ -27,10 +29,22 @@ type Profile = {
 };
 
 type LeaveRow = {
+  id?: string;
   user_id: string;
   type: LeaveType;
   status: LeaveStatus;
   start_date: string; // ISO date
+  end_date?: string;
+};
+
+type PendingLeaveRequest = {
+  id: string;
+  user_id: string;
+  user_name: string;
+  type: LeaveType;
+  start_date: string;
+  end_date: string;
+  status: LeaveStatus;
 };
 
 type Employee = EmployeeSettingsRow & Profile;
@@ -49,6 +63,9 @@ export function EmployeesView() {
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [leaves, setLeaves] = useState<Record<string, LeaveAgg>>({});
+  const [pendingLeaves, setPendingLeaves] = useState<PendingLeaveRequest[]>([]);
+  const [editingHours, setEditingHours] = useState<string | null>(null);
+  const [tempHours, setTempHours] = useState<number>(0);
 
   // Self-view state for non-admin users
   const [selfSettings, setSelfSettings] = useState<EmployeeSettingsRow | null>(null);
@@ -111,7 +128,7 @@ export function EmployeesView() {
           return;
         }
 
-        const [profilesRes, settingsRes, leaveRes] = await Promise.all([
+        const [profilesRes, settingsRes, leaveRes, pendingRes] = await Promise.all([
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
           supabase
             .from("employee_settings")
@@ -121,10 +138,16 @@ export function EmployeesView() {
             .from("leave_requests")
             .select("user_id, type, status, start_date")
             .in("user_id", managedIds),
+          supabase
+            .from("leave_requests")
+            .select("id, user_id, type, status, start_date, end_date")
+            .eq("status", "pending")
+            .in("user_id", managedIds),
         ]);
         if (profilesRes.error) throw profilesRes.error;
         if (settingsRes.error) throw settingsRes.error;
         if (leaveRes.error) throw leaveRes.error;
+        if (pendingRes.error) throw pendingRes.error;
 
         const profileMap = new Map<string, Profile>();
         (profilesRes.data as Profile[] | null)?.forEach((p) => profileMap.set(p.user_id, p));
@@ -168,6 +191,18 @@ export function EmployeesView() {
         });
 
         setLeaves(agg);
+
+        // Pending leave requests mit User-Namen
+        const pendingWithNames: PendingLeaveRequest[] = (pendingRes.data || []).map((req: any) => ({
+          id: req.id,
+          user_id: req.user_id,
+          user_name: profileMap.get(req.user_id)?.display_name || "Unbekannt",
+          type: req.type,
+          start_date: req.start_date,
+          end_date: req.end_date,
+          status: req.status,
+        }));
+        setPendingLeaves(pendingWithNames);
       } catch (e: any) {
         console.error(e);
         toast({
@@ -182,6 +217,191 @@ export function EmployeesView() {
 
     load();
   }, [user, toast]);
+
+  // Reload data helper
+  const reloadData = () => {
+    if (!user) return;
+    setLoading(true);
+    const load = async () => {
+      try {
+        const { data: roles, error: rErr } = await supabase
+          .from("user_roles")
+          .select("user_id, role");
+        if (rErr) throw rErr;
+
+        const managedIds = (roles || [])
+          .filter((r: any) => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
+          .map((r: any) => r.user_id);
+
+        if (managedIds.length === 0) {
+          setEmployees([]);
+          setLeaves({});
+          setPendingLeaves([]);
+          setLoading(false);
+          return;
+        }
+
+        const [profilesRes, settingsRes, leaveRes, pendingRes] = await Promise.all([
+          supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
+          supabase
+            .from("employee_settings")
+            .select("user_id, hours_per_week, timezone, workdays, admin_id")
+            .in("user_id", managedIds),
+          supabase
+            .from("leave_requests")
+            .select("user_id, type, status, start_date")
+            .in("user_id", managedIds),
+          supabase
+            .from("leave_requests")
+            .select("id, user_id, type, status, start_date, end_date")
+            .eq("status", "pending")
+            .in("user_id", managedIds),
+        ]);
+        if (profilesRes.error) throw profilesRes.error;
+        if (settingsRes.error) throw settingsRes.error;
+        if (leaveRes.error) throw leaveRes.error;
+        if (pendingRes.error) throw pendingRes.error;
+
+        const profileMap = new Map<string, Profile>();
+        (profilesRes.data as Profile[] | null)?.forEach((p) => profileMap.set(p.user_id, p));
+
+        const settingsMap = new Map<string, EmployeeSettingsRow>();
+        (settingsRes.data as any[] | null)?.forEach((s) => settingsMap.set(s.user_id, s as EmployeeSettingsRow));
+
+        const joined: Employee[] = managedIds.map((uid) => {
+          const s = settingsMap.get(uid);
+          const p = profileMap.get(uid);
+          return {
+            user_id: uid,
+            hours_per_week: s?.hours_per_week ?? 40,
+            timezone: s?.timezone ?? "Europe/Berlin",
+            workdays: s?.workdays ?? [true, true, true, true, true, false, false],
+            display_name: p?.display_name ?? null,
+            avatar_url: p?.avatar_url ?? null,
+            admin_id: (s as any)?.admin_id ?? null,
+          } as Employee;
+        });
+        setEmployees(joined);
+
+        const agg: Record<string, LeaveAgg> = {};
+        const initAgg = (): LeaveAgg => ({
+          counts: { vacation: 0, sick: 0, other: 0 },
+          approved: { vacation: 0, sick: 0, other: 0 },
+          pending: { vacation: 0, sick: 0, other: 0 },
+          lastDates: {},
+        });
+
+        ((leaveRes.data as LeaveRow[] | null) || []).forEach((lr) => {
+          if (!agg[lr.user_id]) agg[lr.user_id] = initAgg();
+          agg[lr.user_id].counts[lr.type]++;
+          if (lr.status === "approved") agg[lr.user_id].approved[lr.type]++;
+          if (lr.status === "pending") agg[lr.user_id].pending[lr.type]++;
+          const curr = agg[lr.user_id].lastDates[lr.type];
+          if (!curr || new Date(lr.start_date) > new Date(curr as string)) {
+            agg[lr.user_id].lastDates[lr.type] = lr.start_date;
+          }
+        });
+
+        setLeaves(agg);
+
+        const pendingWithNames: PendingLeaveRequest[] = (pendingRes.data || []).map((req: any) => ({
+          id: req.id,
+          user_id: req.user_id,
+          user_name: profileMap.get(req.user_id)?.display_name || "Unbekannt",
+          type: req.type,
+          start_date: req.start_date,
+          end_date: req.end_date,
+          status: req.status,
+        }));
+        setPendingLeaves(pendingWithNames);
+      } catch (e: any) {
+        console.error(e);
+        toast({
+          title: "Fehler beim Laden",
+          description: e?.message ?? "Daten konnten nicht geladen werden.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  };
+
+  // Urlaubsantrag freigeben/ablehnen
+  const handleLeaveAction = async (leaveId: string, action: "approved" | "rejected") => {
+    try {
+      const { error } = await supabase
+        .from("leave_requests")
+        .update({ status: action })
+        .eq("id", leaveId);
+
+      if (error) throw error;
+
+      toast({
+        title: action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt",
+        description: "Der Urlaubsantrag wurde aktualisiert.",
+      });
+
+      reloadData();
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Fehler",
+        description: e?.message ?? "Antrag konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Stunden pro Woche bearbeiten
+  const startEditHours = (userId: string, currentHours: number) => {
+    setEditingHours(userId);
+    setTempHours(currentHours);
+  };
+
+  const saveHours = async (userId: string) => {
+    if (tempHours < 1 || tempHours > 60) {
+      toast({
+        title: "Ungültige Eingabe",
+        description: "Stunden müssen zwischen 1 und 60 liegen.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("employee_settings")
+        .upsert({ 
+          user_id: userId, 
+          hours_per_week: tempHours,
+          admin_id: user?.id 
+        });
+
+      if (error) throw error;
+
+      setEditingHours(null);
+      toast({
+        title: "Gespeichert",
+        description: "Stunden pro Woche wurden aktualisiert.",
+      });
+
+      reloadData();
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Fehler",
+        description: e?.message ?? "Stunden konnten nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const cancelEditHours = () => {
+    setEditingHours(null);
+    setTempHours(0);
+  };
 
   // Load self data for non-admin users
   useEffect(() => {
@@ -417,6 +637,61 @@ export function EmployeesView() {
         </Card>
       </section>
 
+      {pendingLeaves.length > 0 && (
+        <section className="px-4 sm:px-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Offene Urlaubsanträge ({pendingLeaves.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mitarbeiter</TableHead>
+                    <TableHead>Typ</TableHead>
+                    <TableHead>Von</TableHead>
+                    <TableHead>Bis</TableHead>
+                    <TableHead>Aktionen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingLeaves.map((req) => (
+                    <TableRow key={req.id}>
+                      <TableCell>{req.user_name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {req.type === "vacation" ? "Urlaub" : req.type === "sick" ? "Krank" : "Sonstiges"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{new Date(req.start_date).toLocaleDateString("de-DE")}</TableCell>
+                      <TableCell>{new Date(req.end_date).toLocaleDateString("de-DE")}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleLeaveAction(req.id, "approved")}
+                          >
+                            Genehmigen
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleLeaveAction(req.id, "rejected")}
+                          >
+                            Ablehnen
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
       <section className="p-4 sm:p-6">
         <Card>
           <CardHeader>
@@ -437,6 +712,7 @@ export function EmployeesView() {
                   <TableRow>
                     <TableHead>Mitarbeiter</TableHead>
                     <TableHead>Stunden/Woche</TableHead>
+                    <TableHead>Tage/Woche</TableHead>
                     <TableHead>Krank (Anträge / genehmigt)</TableHead>
                     <TableHead>Urlaub (Anträge / genehmigt)</TableHead>
                     <TableHead>Letzte Abwesenheit</TableHead>
@@ -462,6 +738,8 @@ export function EmployeesView() {
                       ? new Date(lastDate as string).toLocaleDateString("de-DE")
                       : "–";
 
+                    const workingDays = e.workdays.filter((w) => w).length;
+
                     return (
                       <TableRow key={e.user_id}>
                         <TableCell>
@@ -479,7 +757,38 @@ export function EmployeesView() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{e.hours_per_week} h</Badge>
+                          {editingHours === e.user_id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                value={tempHours}
+                                onChange={(e) => setTempHours(Number(e.target.value))}
+                                className="w-20"
+                                min="1"
+                                max="60"
+                              />
+                              <Button size="sm" onClick={() => saveHours(e.user_id)}>
+                                ✓
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={cancelEditHours}>
+                                ✕
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">{e.hours_per_week} h</Badge>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => startEditHours(e.user_id, e.hours_per_week)}
+                              >
+                                ✏️
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{workingDays}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
