@@ -61,6 +61,7 @@ export type Database = {
           end_time: string
           id: string
           location: string | null
+          meeting_id: string | null
           priority: string | null
           reminder_minutes: number | null
           start_time: string
@@ -76,6 +77,7 @@ export type Database = {
           end_time: string
           id?: string
           location?: string | null
+          meeting_id?: string | null
           priority?: string | null
           reminder_minutes?: number | null
           start_time: string
@@ -91,6 +93,7 @@ export type Database = {
           end_time?: string
           id?: string
           location?: string | null
+          meeting_id?: string | null
           priority?: string | null
           reminder_minutes?: number | null
           start_time?: string
@@ -99,7 +102,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "appointments_meeting_fk"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contacts: {
         Row: {
@@ -364,6 +375,7 @@ export type Database = {
           meeting_id: string
           notes: string | null
           order_index: number
+          parent_id: string | null
           task_id: string | null
           title: string
           updated_at: string
@@ -378,6 +390,7 @@ export type Database = {
           meeting_id: string
           notes?: string | null
           order_index?: number
+          parent_id?: string | null
           task_id?: string | null
           title: string
           updated_at?: string
@@ -392,11 +405,20 @@ export type Database = {
           meeting_id?: string
           notes?: string | null
           order_index?: number
+          parent_id?: string | null
           task_id?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "meeting_agenda_items_parent_fk"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_agenda_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       meeting_templates: {
         Row: {
@@ -637,6 +659,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _meeting_default_end: {
+        Args: { _date: string }
+        Returns: string
+      }
+      _meeting_default_start: {
+        Args: { _date: string }
+        Returns: string
+      }
       get_daily_hours: {
         Args: { _user_id: string }
         Returns: number
