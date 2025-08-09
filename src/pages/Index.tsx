@@ -11,6 +11,7 @@ import { DocumentsView } from "@/components/DocumentsView";
 import { TasksView } from "@/components/TasksView";
 import { SettingsView } from "@/components/SettingsView";
 import { MeetingsView } from "@/components/MeetingsView";
+import { EventPlanningView } from "@/components/EventPlanningView";
 import { EmployeesView } from "@/components/EmployeesView";
 import TimeTrackingView from "@/components/TimeTrackingView";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -85,6 +86,9 @@ const Index = () => {
       case "meetings":
         console.log('Rendering MeetingsView');
         return <MeetingsView />;
+      case "eventplanning":
+        console.log('Rendering EventPlanningView');
+        return <EventPlanningView />;
       case "documents":
         console.log('Rendering DocumentsView');
         return <DocumentsView />;

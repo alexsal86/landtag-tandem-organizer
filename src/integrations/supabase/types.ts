@@ -328,6 +328,160 @@ export type Database = {
         }
         Relationships: []
       }
+      event_planning_checklist_items: {
+        Row: {
+          created_at: string
+          event_planning_id: string
+          id: string
+          is_completed: boolean
+          order_index: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_planning_id: string
+          id?: string
+          is_completed?: boolean
+          order_index?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_planning_id?: string
+          id?: string
+          is_completed?: boolean
+          order_index?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_planning_checklist_items_event_planning_id_fkey"
+            columns: ["event_planning_id"]
+            isOneToOne: false
+            referencedRelation: "event_plannings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_planning_collaborators: {
+        Row: {
+          can_edit: boolean
+          created_at: string
+          event_planning_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          can_edit?: boolean
+          created_at?: string
+          event_planning_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          can_edit?: boolean
+          created_at?: string
+          event_planning_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_planning_collaborators_event_planning_id_fkey"
+            columns: ["event_planning_id"]
+            isOneToOne: false
+            referencedRelation: "event_plannings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_planning_dates: {
+        Row: {
+          appointment_id: string | null
+          created_at: string
+          date_time: string
+          event_planning_id: string
+          id: string
+          is_confirmed: boolean
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string
+          date_time: string
+          event_planning_id: string
+          id?: string
+          is_confirmed?: boolean
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string
+          date_time?: string
+          event_planning_id?: string
+          id?: string
+          is_confirmed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_planning_dates_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_planning_dates_event_planning_id_fkey"
+            columns: ["event_planning_id"]
+            isOneToOne: false
+            referencedRelation: "event_plannings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_plannings: {
+        Row: {
+          background_info: string | null
+          confirmed_date: string | null
+          contact_person: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_private: boolean
+          location: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          background_info?: string | null
+          confirmed_date?: string | null
+          contact_person?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_private?: boolean
+          location?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          background_info?: string | null
+          confirmed_date?: string | null
+          contact_person?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_private?: boolean
+          location?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leave_requests: {
         Row: {
           created_at: string
@@ -666,6 +820,10 @@ export type Database = {
       _meeting_default_start: {
         Args: { _date: string }
         Returns: string
+      }
+      create_default_checklist_items: {
+        Args: { planning_id: string }
+        Returns: undefined
       }
       get_daily_hours: {
         Args: { _user_id: string }
