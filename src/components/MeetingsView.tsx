@@ -409,10 +409,15 @@ export function MeetingsView() {
         
         if (parentError) throw parentError;
         parentId = parentData.id;
+        
+        // Update parent in local state
+        const updatedItems = [...agendaItems];
+        updatedItems[parentIndex] = { ...parentItem, id: parentId };
+        setAgendaItems(updatedItems);
       }
 
-      // Insert the task as a sub-item
-      const { error: taskError } = await supabase
+      // Insert the task as a sub-item directly after the parent
+      const { data: taskData, error: taskError } = await supabase
         .from('meeting_agenda_items')
         .insert({
           meeting_id: selectedMeeting.id,
@@ -420,20 +425,36 @@ export function MeetingsView() {
           description: task.description || null,
           task_id: task.id,
           parent_id: parentId,
-          order_index: agendaItems.length,
+          order_index: parentIndex + 1, // Insert right after parent
           is_completed: false,
           is_recurring: false,
-        });
+        })
+        .select()
+        .single();
 
       if (taskError) throw taskError;
+      
+      // Update local state immediately to show the new sub-item
+      const newSubItem: AgendaItem = {
+        ...taskData,
+        parentLocalKey: parentId,
+      };
+      
+      const updatedItems = [...agendaItems];
+      updatedItems.splice(parentIndex + 1, 0, newSubItem);
+      
+      // Reindex order for all items after insertion
+      const reindexedItems = updatedItems.map((item, idx) => ({
+        ...item,
+        order_index: idx
+      }));
+      
+      setAgendaItems(reindexedItems);
       
       toast({
         title: "Aufgabe hinzugefügt",
         description: `"${task.title}" wurde als Unterpunkt hinzugefügt.`,
       });
-
-      // Reload agenda to get fresh data
-      await loadAgendaItems(selectedMeeting.id);
       
     } catch (error) {
       console.error('Error saving task to agenda:', error);
@@ -1088,21 +1109,75 @@ export function MeetingsView() {
                                            />
                                          </div>
 
-                                         <div>
-                                           <label className="text-sm font-medium">Datei anhängen</label>
-                                           <div className="flex items-center gap-2">
-                                             <Button variant="outline" size="sm" className="flex-1">
-                                               <Upload className="h-4 w-4 mr-2" />
-                                               Datei auswählen
-                                             </Button>
-                                             {item.file_path && (
-                                               <Button variant="ghost" size="sm">
-                                                 <FileText className="h-4 w-4 mr-2" />
-                                                 Angehängt
-                                               </Button>
-                                             )}
-                                           </div>
-                                         </div>
+                                          <div>
+                                            <label className="text-sm font-medium">Datei anhängen</label>
+                                            <div className="flex items-center gap-2">
+                                              <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="flex-1"
+                                                onClick={() => {
+                                                  const fileInput = document.createElement('input');
+                                                  fileInput.type = 'file';
+                                                  fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
+                                                  fileInput.onchange = async (e) => {
+                                                    const file = (e.target as HTMLInputElement).files?.[0];
+                                                    if (file && selectedMeeting?.id && item.id) {
+                                                      try {
+                                                        const fileName = `agenda_${item.id}_${Date.now()}_${file.name}`;
+                                                        const { error: uploadError } = await supabase.storage
+                                                          .from('documents')
+                                                          .upload(fileName, file);
+                                                        
+                                                        if (uploadError) throw uploadError;
+                                                        
+                                                        // Update the agenda item with file path
+                                                        await updateAgendaItem(index, 'file_path', fileName);
+                                                        
+                                                        toast({
+                                                          title: "Datei hochgeladen",
+                                                          description: `${file.name} wurde erfolgreich angehängt.`,
+                                                        });
+                                                      } catch (error) {
+                                                        toast({
+                                                          title: "Upload-Fehler",
+                                                          description: "Die Datei konnte nicht hochgeladen werden.",
+                                                          variant: "destructive",
+                                                        });
+                                                      }
+                                                    }
+                                                  };
+                                                  fileInput.click();
+                                                }}
+                                              >
+                                                <Upload className="h-4 w-4 mr-2" />
+                                                Datei auswählen
+                                              </Button>
+                                              {item.file_path && (
+                                                <Button 
+                                                  variant="ghost" 
+                                                  size="sm"
+                                                  onClick={async () => {
+                                                    try {
+                                                      const { data } = await supabase.storage
+                                                        .from('documents')
+                                                        .getPublicUrl(item.file_path!);
+                                                      window.open(data.publicUrl, '_blank');
+                                                    } catch (error) {
+                                                      toast({
+                                                        title: "Fehler",
+                                                        description: "Datei konnte nicht geöffnet werden.",
+                                                        variant: "destructive",
+                                                      });
+                                                    }
+                                                  }}
+                                                >
+                                                  <FileText className="h-4 w-4 mr-2" />
+                                                  Angehängt
+                                                </Button>
+                                              )}
+                                            </div>
+                                          </div>
                                        </>
                                      )}
                                   </div>

@@ -523,6 +523,7 @@ export type Database = {
           assigned_to: string | null
           created_at: string
           description: string | null
+          file_path: string | null
           id: string
           is_completed: boolean
           is_recurring: boolean
@@ -538,6 +539,7 @@ export type Database = {
           assigned_to?: string | null
           created_at?: string
           description?: string | null
+          file_path?: string | null
           id?: string
           is_completed?: boolean
           is_recurring?: boolean
@@ -553,6 +555,7 @@ export type Database = {
           assigned_to?: string | null
           created_at?: string
           description?: string | null
+          file_path?: string | null
           id?: string
           is_completed?: boolean
           is_recurring?: boolean
