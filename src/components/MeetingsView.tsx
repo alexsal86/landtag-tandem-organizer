@@ -35,11 +35,14 @@ interface AgendaItem {
 
 interface Meeting {
   id?: string;
+  user_id?: string;
   title: string;
   description?: string;
   meeting_date: string | Date;
   status: string;
   template_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface Profile {
@@ -163,13 +166,20 @@ export function MeetingsView() {
         meeting_date: format(newMeeting.meeting_date, 'yyyy-MM-dd')
       });
 
+      const insertData = {
+        title: newMeeting.title,
+        description: newMeeting.description || null,
+        meeting_date: format(newMeeting.meeting_date, 'yyyy-MM-dd'),
+        status: newMeeting.status,
+        user_id: user.id,
+        template_id: newMeeting.template_id || null
+      };
+
+      console.log('Creating meeting with data:', insertData);
+
       const { data, error } = await supabase
         .from('meetings')
-        .insert([{
-          ...newMeeting,
-          user_id: user.id,
-          meeting_date: format(newMeeting.meeting_date, 'yyyy-MM-dd')
-        }])
+        .insert([insertData])
         .select()
         .single();
 
