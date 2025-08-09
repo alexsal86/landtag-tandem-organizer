@@ -175,7 +175,9 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
             <SidebarMenu>
               {navigationItems.filter(item => 
                 item.id !== "time" || !isAdmin
-              ).map((item) => (
+              ).map((item) => {
+                console.log('Navigation item:', item.label, 'id:', item.id);
+                return (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     onClick={(e) => {
@@ -193,7 +195,8 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                     <span>{item.label}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
+                );
+              })}
 
               {isAdmin && (
                 <SidebarMenuItem>
