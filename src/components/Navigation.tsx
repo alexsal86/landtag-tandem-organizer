@@ -177,11 +177,16 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
               ).map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
-                    onClick={() => {
-                      console.log('=== Navigation clicked ===');
+                    onClick={(e) => {
+                      console.log('=== NAVIGATION CLICK EVENT ===');
+                      console.log('Event:', e);
                       console.log('Item ID:', item.id);
                       console.log('Item Label:', item.label);
+                      console.log('onSectionChange function:', onSectionChange);
+                      e.preventDefault();
+                      e.stopPropagation();
                       onSectionChange(item.id);
+                      console.log('onSectionChange called with:', item.id);
                     }}
                     isActive={activeSection === item.id}
                     tooltip={item.label}
