@@ -157,6 +157,12 @@ export function MeetingsView() {
     if (!user || !newMeeting.title.trim()) return;
 
     try {
+      console.log('Creating meeting with data:', {
+        ...newMeeting,
+        user_id: user.id,
+        meeting_date: format(newMeeting.meeting_date, 'yyyy-MM-dd')
+      });
+
       const { data, error } = await supabase
         .from('meetings')
         .insert([{
@@ -167,7 +173,12 @@ export function MeetingsView() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error creating meeting:', error);
+        throw error;
+      }
+
+      console.log('Meeting created successfully:', data);
 
       setMeetings([{...data, meeting_date: new Date(data.meeting_date)}, ...meetings]);
       setIsNewMeetingOpen(false);
@@ -183,6 +194,7 @@ export function MeetingsView() {
         description: "Das Meeting wurde erfolgreich erstellt.",
       });
     } catch (error) {
+      console.error('Error creating meeting:', error);
       toast({
         title: "Fehler beim Erstellen",
         description: "Das Meeting konnte nicht erstellt werden.",
