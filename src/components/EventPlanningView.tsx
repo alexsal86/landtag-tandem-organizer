@@ -85,6 +85,7 @@ export function EventPlanningView() {
   const [newChecklistItem, setNewChecklistItem] = useState("");
 
   useEffect(() => {
+    console.log('EventPlanningView mounted, user:', user);
     fetchPlannings();
     fetchAllProfiles();
   }, [user]);
@@ -96,6 +97,7 @@ export function EventPlanningView() {
   }, [selectedPlanning]);
 
   const fetchPlannings = async () => {
+    console.log('fetchPlannings called, user:', user);
     if (!user) return;
 
     const { data, error } = await supabase
@@ -177,6 +179,7 @@ export function EventPlanningView() {
   };
 
   const createPlanning = async () => {
+    console.log('createPlanning called, user:', user, 'title:', newPlanningTitle);
     if (!user || !newPlanningTitle.trim()) return;
 
     const { data, error } = await supabase
