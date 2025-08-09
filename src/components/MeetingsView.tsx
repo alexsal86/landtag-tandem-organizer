@@ -71,7 +71,6 @@ export function MeetingsView() {
   const [newMeetingTime, setNewMeetingTime] = useState<string>("10:00");
   const [showTaskSelector, setShowTaskSelector] = useState<{itemIndex: number} | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -210,18 +209,20 @@ export function MeetingsView() {
 
       if (error) throw error;
 
-      // Erstelle vordefinierte Agenda-Punkte automatisch
-      await createDefaultAgendaItems(data.id);
+      // The database trigger automatically creates default agenda items
+      // so we don't need to call createDefaultAgendaItems here
 
       const newMeetingWithDate = {...data, meeting_date: new Date(data.meeting_date)};
       setMeetings([newMeetingWithDate, ...meetings]);
       setSelectedMeeting(newMeetingWithDate);
       
-      // Clear the agenda items first to prevent double loading
+      // Clear the agenda items first to prevent conflicts
       setAgendaItems([]);
       
-      // Load the created agenda items only once
-      await loadAgendaItems(data.id);
+      // Wait a moment for the trigger to complete, then load the items
+      setTimeout(async () => {
+        await loadAgendaItems(data.id);
+      }, 500);
       
       setIsNewMeetingOpen(false);
       setNewMeeting({
@@ -702,7 +703,6 @@ export function MeetingsView() {
         setAgendaItems([]);
       }
 
-      setShowDeleteConfirm(null);
       toast({
         title: "Meeting gelöscht",
         description: "Das Meeting wurde erfolgreich gelöscht.",
@@ -901,10 +901,9 @@ export function MeetingsView() {
                           onClick={() => setEditingMeeting(meeting)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <AlertDialog open={showDeleteConfirm === meeting.id} onOpenChange={() => setShowDeleteConfirm(null)}>
+                        <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" 
-                              onClick={() => setShowDeleteConfirm(meeting.id!)}>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
                               <Trash className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
