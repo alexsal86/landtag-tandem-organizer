@@ -23,6 +23,11 @@ const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
+  // Debug: Zeige aktuelle Sektion
+  useEffect(() => {
+    console.log('Active section changed to:', activeSection);
+  }, [activeSection]);
+
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
