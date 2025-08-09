@@ -241,7 +241,7 @@ export function MeetingsView() {
       console.error('Error creating meeting:', error);
       toast({
         title: "Fehler beim Erstellen",
-        description: "Das Meeting konnte nicht erstellt werden.",
+        description: `Supabase Fehler: ${error.message || error.toString()}`,
         variant: "destructive",
       });
     }
