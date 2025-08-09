@@ -162,19 +162,12 @@ export function MeetingsView() {
     }
   };
   const createMeeting = async () => {
-    // Visuelles Feedback am Anfang
     toast({
       title: "Meeting wird erstellt...",
       description: "Bitte warten...",
     });
-
-    console.log('=== createMeeting function called ===');
-    console.log('User:', user);
-    console.log('newMeeting:', newMeeting);
-    console.log('Title trimmed:', newMeeting.title.trim());
     
     if (!user) {
-      console.log('No user found, returning early');
       toast({
         title: "Fehler",
         description: "Kein Benutzer gefunden!",
@@ -184,7 +177,6 @@ export function MeetingsView() {
     }
     
     if (!newMeeting.title.trim()) {
-      console.log('No title found, returning early');
       toast({
         title: "Fehler", 
         description: "Bitte geben Sie einen Titel ein!",
@@ -194,12 +186,6 @@ export function MeetingsView() {
     }
 
     try {
-      console.log('Creating meeting with data:', {
-        ...newMeeting,
-        user_id: user.id,
-        meeting_date: format(newMeeting.meeting_date, 'yyyy-MM-dd')
-      });
-
       const insertData = {
         title: newMeeting.title,
         description: newMeeting.description || null,
@@ -209,22 +195,24 @@ export function MeetingsView() {
         template_id: newMeeting.template_id || null
       };
 
-      console.log('Creating meeting with data:', insertData);
-
       const { data, error } = await supabase
         .from('meetings')
         .insert([insertData])
         .select()
         .single();
 
-      if (error) {
-        console.error('Supabase error creating meeting:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('Meeting created successfully:', data);
+      // Erstelle vordefinierte Agenda-Punkte automatisch
+      await createDefaultAgendaItems(data.id);
 
-      setMeetings([{...data, meeting_date: new Date(data.meeting_date)}, ...meetings]);
+      const newMeetingWithDate = {...data, meeting_date: new Date(data.meeting_date)};
+      setMeetings([newMeetingWithDate, ...meetings]);
+      setSelectedMeeting(newMeetingWithDate);
+      
+      // Lade die erstellten Agenda-Punkte
+      await loadAgendaItems(data.id);
+      
       setIsNewMeetingOpen(false);
       setNewMeeting({
         title: "",
@@ -235,7 +223,7 @@ export function MeetingsView() {
 
       toast({
         title: "Meeting erstellt",
-        description: "Das Meeting wurde erfolgreich erstellt.",
+        description: "Das Meeting wurde mit vordefinierter Agenda erstellt.",
       });
     } catch (error) {
       console.error('Error creating meeting:', error);
@@ -245,6 +233,37 @@ export function MeetingsView() {
         variant: "destructive",
       });
     }
+  };
+
+  const createDefaultAgendaItems = async (meetingId: string) => {
+    const defaultItems = [
+      { title: 'Begrüßung', order_index: 0 },
+      { title: 'Aktuelles aus dem Landtag', order_index: 1 },
+      { title: 'Politische Schwerpunktthemen & Projekte', order_index: 2 },
+      { title: 'Wahlkreisarbeit', order_index: 3 },
+      { title: 'Kommunikation & Öffentlichkeitsarbeit', order_index: 4 },
+      { title: 'Organisation & Bürointerna', order_index: 5 },
+      { title: 'Verschiedenes', order_index: 6 }
+    ];
+
+    const insertItems = defaultItems.map(item => ({
+      meeting_id: meetingId,
+      title: item.title,
+      description: null,
+      assigned_to: null,
+      notes: null,
+      is_completed: false,
+      is_recurring: false,
+      task_id: null,
+      order_index: item.order_index,
+      parent_id: null
+    }));
+
+    const { error } = await supabase
+      .from('meeting_agenda_items')
+      .insert(insertItems);
+
+    if (error) throw error;
   };
 
   const addAgendaItem = () => {
@@ -565,42 +584,8 @@ export function MeetingsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Meetings List */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Meetings</h2>
-          {meetings.map((meeting) => (
-            <Card 
-              key={meeting.id} 
-              className={cn(
-                "cursor-pointer transition-colors",
-                selectedMeeting?.id === meeting.id && "ring-2 ring-primary"
-              )}
-              onClick={() => {
-                setSelectedMeeting(meeting);
-                if (meeting.id) loadAgendaItems(meeting.id);
-              }}
-            >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{meeting.title}</CardTitle>
-                <CardDescription>
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="h-4 w-4" />
-                    {format(new Date(meeting.meeting_date), "PPP", { locale: de })}
-                  </div>
-                </CardDescription>
-              </CardHeader>
-              {meeting.description && (
-                <CardContent className="pt-0">
-                  <p className="text-sm text-muted-foreground">{meeting.description}</p>
-                </CardContent>
-              )}
-            </Card>
-          ))}
-        </div>
-
-        {/* Agenda Editor */}
-        <div className="lg:col-span-2 space-y-4">
+      {/* Agenda Editor */}
+      <div className="space-y-4">
           {selectedMeeting ? (
             <>
               <div className="flex justify-between items-center">
@@ -675,28 +660,29 @@ export function MeetingsView() {
                               placeholder={item.parentLocalKey ? 'Unterpunkt' : 'Agenda-Punkt Titel'}
                               className="font-medium flex-1"
                             />
-                            {!item.parentLocalKey && SUBPOINT_OPTIONS[item.title] && (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button size="icon" variant="ghost" className="shrink-0" aria-label="Unterpunkt hinzufügen">
-                                    <Plus className="h-4 w-4" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-64">
-                                  <div className="space-y-2">
-                                    {SUBPOINT_OPTIONS[item.title].map((opt) => (
-                                      <Button key={opt} variant="outline" className="w-full justify-start"
-                                        onClick={() => addSubItem(item, opt)}>
-                                        {opt}
-                                      </Button>
-                                    ))}
-                                    <Button variant="secondary" className="w-full" onClick={() => addSubItem(item, '')}>
-                                      Freien Unterpunkt hinzufügen
-                                    </Button>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
-                            )}
+                             {!item.parentLocalKey && (
+                               <Popover>
+                                 <PopoverTrigger asChild>
+                                   <Button size="icon" variant="ghost" className="shrink-0" aria-label="Unterpunkt hinzufügen">
+                                     <Plus className="h-4 w-4" />
+                                   </Button>
+                                 </PopoverTrigger>
+                                 <PopoverContent className="w-80">
+                                   <div className="space-y-2">
+                                     {SUBPOINT_OPTIONS[item.title] && SUBPOINT_OPTIONS[item.title].map((opt) => (
+                                       <Button key={opt} variant="outline" className="w-full justify-start text-left whitespace-normal h-auto p-3"
+                                         onClick={() => addSubItem(item, opt)}>
+                                         <span className="text-sm">{opt}</span>
+                                       </Button>
+                                     ))}
+                                     <Button variant="secondary" className="w-full" onClick={() => addSubItem(item, '')}>
+                                       <Plus className="h-4 w-4 mr-2" />
+                                       Freien Unterpunkt hinzufügen
+                                     </Button>
+                                   </div>
+                                 </PopoverContent>
+                               </Popover>
+                             )}
                             <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive" 
                               onClick={() => deleteAgendaItem(item, index)} aria-label="Punkt löschen">
                               <Trash className="h-4 w-4" />
@@ -788,7 +774,6 @@ export function MeetingsView() {
               </CardContent>
             </Card>
           )}
-        </div>
       </div>
     </div>
   );
