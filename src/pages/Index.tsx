@@ -58,27 +58,40 @@ const Index = () => {
   }
 
   const renderActiveSection = () => {
+    console.log('=== renderActiveSection called ===');
+    console.log('Current activeSection:', activeSection);
+    
     switch (activeSection) {
       case 'dashboard':
+        console.log('Rendering CustomizableDashboard');
         return <CustomizableDashboard />;
       case "calendar":
+        console.log('Rendering CalendarView');
         return <CalendarView />;
       case "contacts":
+        console.log('Rendering ContactsView');
         return <ContactsView />;
       case "tasks":
+        console.log('Rendering TasksView');
         return <TasksView />;
       case "time":
+        console.log('Rendering TimeTrackingView');
         return <TimeTrackingView />;
       case "meetings":
+        console.log('Rendering MeetingsView');
         return <MeetingsView />;
       case "documents":
+        console.log('Rendering DocumentsView');
         return <DocumentsView />;
       case "settings":
+        console.log('Rendering SettingsView');
         return <SettingsView />;
       case "employee":
+        console.log('Rendering EmployeesView');
         // Admin-only view is handled inside the component
         return <EmployeesView />;
       default:
+        console.log('Rendering default Dashboard');
         return <Dashboard />;
     }
   };
