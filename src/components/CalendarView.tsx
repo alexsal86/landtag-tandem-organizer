@@ -42,7 +42,8 @@ export function CalendarView() {
       const endOfDay = new Date(currentDate);
       endOfDay.setHours(23, 59, 59, 999);
 
-      const { data, error } = await supabase
+      // Fetch regular appointments
+      const { data: appointmentsData, error } = await supabase
         .from('appointments')
         .select('*')
         .gte('start_time', startOfDay.toISOString())
@@ -54,9 +55,51 @@ export function CalendarView() {
         return;
       }
 
+      // Also fetch blocked appointments from event planning dates
+      const { data: eventPlanningDates } = await supabase
+        .from('event_planning_dates')
+        .select(`
+          *,
+          event_plannings (
+            title,
+            user_id
+          )
+        `)
+        .gte('date_time', startOfDay.toISOString())
+        .lte('date_time', endOfDay.toISOString())
+        .eq('event_plannings.user_id', (await supabase.auth.getUser()).data.user?.id);
+
+      // Combine all appointments
+      const allAppointments = [...(appointmentsData || [])];
+
+      // Add blocked appointments from event planning
+      if (eventPlanningDates) {
+        for (const epd of eventPlanningDates) {
+          if (epd.event_plannings && !epd.appointment_id) {
+            // Create virtual blocked appointment if no real appointment exists
+            allAppointments.push({
+              id: `blocked-${epd.id}`,
+              user_id: epd.event_plannings.user_id,
+              title: `Geplant: ${epd.event_plannings.title}`,
+              start_time: epd.date_time,
+              end_time: new Date(new Date(epd.date_time).getTime() + 2 * 60 * 60 * 1000).toISOString(),
+              category: 'blocked',
+              status: epd.is_confirmed ? 'confirmed' : 'planned',
+              priority: 'medium',
+              location: null,
+              description: null,
+              reminder_minutes: 15,
+              meeting_id: null,
+              created_at: epd.created_at,
+              updated_at: epd.created_at
+            });
+          }
+        }
+      }
+
       const formattedEvents: CalendarEvent[] = [];
 
-      for (const appointment of data) {
+      for (const appointment of allAppointments) {
         const startTime = new Date(appointment.start_time);
         const endTime = new Date(appointment.end_time);
         const durationMs = endTime.getTime() - startTime.getTime();
