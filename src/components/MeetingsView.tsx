@@ -377,47 +377,20 @@ export function MeetingsView() {
     }
   };
 
-  const addTaskToAgenda = async (task: any, parentItem: AgendaItem) => {
+  const addTaskToAgenda = async (task: any, parentItem: AgendaItem, parentIndex: number) => {
     if (!selectedMeeting?.id) return;
     
-    const parentKey = parentItem.localKey || parentItem.id || makeLocalKey();
-    const parentIndex = agendaItems.findIndex((i) => (i.localKey || i.id) === parentKey);
-    const childCount = agendaItems.filter((i) => i.parentLocalKey === parentKey).length;
-    const insertIndex = parentIndex + childCount + 1;
-
-    const newChild: AgendaItem = {
-      title: task.title,
-      description: task.description || '',
-      assigned_to: null,
-      notes: '',
-      is_completed: false,
-      is_recurring: false,
-      task_id: task.id,
-      order_index: insertIndex,
-      localKey: makeLocalKey(),
-      parentLocalKey: parentKey,
-    };
-
-    const next = [
-      ...agendaItems.slice(0, insertIndex),
-      newChild,
-      ...agendaItems.slice(insertIndex),
-    ].map((it, idx) => ({ ...it, order_index: idx }));
-
-    setAgendaItems(next);
-    setShowTaskSelector(null);
-
-    // Auto-save to database
     try {
       let parentId = parentItem.id;
-      if (!parentId && parentItem.localKey) {
-        // Save parent first if it doesn't exist
+      
+      // If parent doesn't have an ID yet, save it first
+      if (!parentId) {
         const { data: parentData, error: parentError } = await supabase
           .from('meeting_agenda_items')
           .insert({
             meeting_id: selectedMeeting.id,
             title: parentItem.title,
-            description: parentItem.description,
+            description: parentItem.description || null,
             order_index: parentItem.order_index,
             is_completed: false,
             is_recurring: false,
@@ -427,23 +400,39 @@ export function MeetingsView() {
         
         if (parentError) throw parentError;
         parentId = parentData.id;
+        
+        // Update the parent item in local state
+        const updatedItems = [...agendaItems];
+        updatedItems[parentIndex] = { ...parentItem, id: parentId };
+        setAgendaItems(updatedItems);
       }
 
-      await supabase
+      // Insert the task as a sub-item
+      const { error: taskError } = await supabase
         .from('meeting_agenda_items')
         .insert({
           meeting_id: selectedMeeting.id,
-          title: newChild.title,
-          description: newChild.description,
+          title: task.title,
+          description: task.description || null,
           task_id: task.id,
-          order_index: newChild.order_index,
           parent_id: parentId,
+          order_index: agendaItems.length, // Will be reordered on next load
           is_completed: false,
           is_recurring: false,
         });
 
-      // Reload to get fresh data
+      if (taskError) throw taskError;
+
+      setShowTaskSelector(null);
+      
+      toast({
+        title: "Aufgabe hinzugefügt",
+        description: `"${task.title}" wurde als Unterpunkt hinzugefügt.`,
+      });
+
+      // Reload agenda to get fresh data with proper order
       await loadAgendaItems(selectedMeeting.id);
+      
     } catch (error) {
       console.error('Error saving task to agenda:', error);
       toast({
@@ -492,43 +481,18 @@ export function MeetingsView() {
 
   const addSubItem = async (parent: AgendaItem, title: string) => {
     if (!selectedMeeting?.id) return;
-    const parentKey = parent.localKey || parent.id || makeLocalKey();
-    // Count existing children
-    const parentIndex = agendaItems.findIndex((i) => (i.localKey || i.id) === parentKey);
-    const childCount = agendaItems.filter((i) => i.parentLocalKey === parentKey).length;
-    const insertIndex = parentIndex + childCount + 1;
-
-    const newChild: AgendaItem = {
-      title: title || '',
-      description: '',
-      assigned_to: null,
-      notes: '',
-      is_completed: false,
-      is_recurring: false,
-      order_index: insertIndex,
-      localKey: makeLocalKey(),
-      parentLocalKey: parentKey,
-    };
-
-    const next = [
-      ...agendaItems.slice(0, insertIndex),
-      newChild,
-      ...agendaItems.slice(insertIndex),
-    ].map((it, idx) => ({ ...it, order_index: idx }));
-
-    setAgendaItems(next);
-
-    // Auto-save to database
+    
     try {
       let parentId = parent.id;
-      if (!parentId && parent.localKey) {
-        // Save parent first if it doesn't exist
+      
+      // If parent doesn't have an ID yet, save it first
+      if (!parentId) {
         const { data: parentData, error: parentError } = await supabase
           .from('meeting_agenda_items')
           .insert({
             meeting_id: selectedMeeting.id,
             title: parent.title,
-            description: parent.description,
+            description: parent.description || null,
             order_index: parent.order_index,
             is_completed: false,
             is_recurring: false,
@@ -540,20 +504,27 @@ export function MeetingsView() {
         parentId = parentData.id;
       }
 
+      // Insert the sub-item
       await supabase
         .from('meeting_agenda_items')
         .insert({
           meeting_id: selectedMeeting.id,
-          title: newChild.title,
-          description: newChild.description,
-          order_index: newChild.order_index,
+          title: title || '',
+          description: '',
           parent_id: parentId,
+          order_index: agendaItems.length, // Will be reordered on next load
           is_completed: false,
           is_recurring: false,
         });
 
-      // Reload to get fresh data
+      toast({
+        title: "Unterpunkt hinzugefügt",
+        description: "Der Unterpunkt wurde erfolgreich hinzugefügt.",
+      });
+
+      // Reload agenda to get fresh data
       await loadAgendaItems(selectedMeeting.id);
+      
     } catch (error) {
       console.error('Error saving sub-item:', error);
       toast({
@@ -868,7 +839,7 @@ export function MeetingsView() {
                                                         key={task.id} 
                                                         variant="outline" 
                                                         className="w-full justify-start text-left h-auto p-3"
-                                                        onClick={() => addTaskToAgenda(task, item)}
+                                                        onClick={() => addTaskToAgenda(task, item, index)}
                                                       >
                                                         <div>
                                                           <div className="font-medium">{task.title}</div>
