@@ -366,6 +366,40 @@ export function MeetingsView() {
     setAgendaItems(next);
   };
 
+  const deleteAgendaItem = async (item: AgendaItem, index: number) => {
+    if (!selectedMeeting?.id) return;
+
+    try {
+      // If item has an ID, delete from Supabase
+      if (item.id) {
+        const { error } = await supabase
+          .from('meeting_agenda_items')
+          .delete()
+          .eq('id', item.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Punkt gelöscht",
+          description: "Der Agenda-Punkt wurde erfolgreich gelöscht.",
+        });
+
+        // Reload agenda items to get fresh data
+        await loadAgendaItems(selectedMeeting.id);
+      } else {
+        // If no ID, just remove locally
+        const updated = agendaItems.filter((_, i) => i !== index);
+        setAgendaItems(updated.map((it, idx) => ({ ...it, order_index: idx })));
+      }
+    } catch (error) {
+      toast({
+        title: "Fehler beim Löschen",
+        description: "Der Agenda-Punkt konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getDisplayName = (userId: string) => {
     const profile = profiles.find(p => p.user_id === userId);
     return profile?.display_name || 'Unbekannt';
@@ -607,6 +641,10 @@ export function MeetingsView() {
                                 </PopoverContent>
                               </Popover>
                             )}
+                            <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive" 
+                              onClick={() => deleteAgendaItem(item, index)} aria-label="Punkt löschen">
+                              <Trash className="h-4 w-4" />
+                            </Button>
                           </div>
 
                           <Textarea
