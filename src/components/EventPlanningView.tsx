@@ -67,6 +67,7 @@ interface Profile {
 }
 
 export function EventPlanningView() {
+  console.log('=== EventPlanningView component loaded ===');
   const { user } = useAuth();
   const { toast } = useToast();
   const [plannings, setPlannings] = useState<EventPlanning[]>([]);

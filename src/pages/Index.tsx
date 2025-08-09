@@ -11,7 +11,7 @@ import { DocumentsView } from "@/components/DocumentsView";
 import { TasksView } from "@/components/TasksView";
 import { SettingsView } from "@/components/SettingsView";
 import { MeetingsView } from "@/components/MeetingsView";
-import { EventPlanningView } from "@/components/EventPlanningView";
+import { EventPlanningView } from "@/components/EventPlanningViewTest";
 import { EmployeesView } from "@/components/EmployeesView";
 import TimeTrackingView from "@/components/TimeTrackingView";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
