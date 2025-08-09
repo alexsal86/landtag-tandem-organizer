@@ -181,12 +181,15 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     onClick={(e) => {
+                      console.log('Button clicked for:', item.label, 'id:', item.id);
                       // Visuelles Feedback mit Toast
                       toast({
                         title: `Navigation geklickt: ${item.label}`,
                         description: `Wechsle zu: ${item.id}`,
                       });
+                      console.log('Calling onSectionChange with:', item.id);
                       onSectionChange(item.id);
+                      console.log('onSectionChange called successfully');
                     }}
                     isActive={activeSection === item.id}
                     tooltip={item.label}
