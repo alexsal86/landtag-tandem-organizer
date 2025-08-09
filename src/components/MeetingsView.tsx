@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 interface AgendaItem {
   id?: string;
@@ -475,6 +476,52 @@ export function MeetingsView() {
     }
   };
 
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+
+    const { source, destination } = result;
+    const newItems = Array.from(agendaItems);
+    const draggedItem = newItems[source.index];
+
+    // Remove the dragged item from its original position
+    newItems.splice(source.index, 1);
+
+    // If moving a parent item, also move all its children
+    if (!draggedItem.parentLocalKey) {
+      const draggedKey = draggedItem.localKey || draggedItem.id;
+      const children = newItems.filter(item => item.parentLocalKey === draggedKey);
+      
+      // Remove children from their current positions
+      children.forEach(child => {
+        const childIndex = newItems.findIndex(item => 
+          (item.localKey || item.id) === (child.localKey || child.id)
+        );
+        if (childIndex !== -1) {
+          newItems.splice(childIndex, 1);
+        }
+      });
+
+      // Insert parent at new position
+      newItems.splice(destination.index, 0, draggedItem);
+
+      // Insert children right after parent
+      children.forEach((child, index) => {
+        newItems.splice(destination.index + 1 + index, 0, child);
+      });
+    } else {
+      // For child items, just move them normally
+      newItems.splice(destination.index, 0, draggedItem);
+    }
+
+    // Update order indices
+    const reorderedItems = newItems.map((item, index) => ({
+      ...item,
+      order_index: index
+    }));
+
+    setAgendaItems(reorderedItems);
+  };
+
   const getDisplayName = (userId: string) => {
     const profile = profiles.find(p => p.user_id === userId);
     return profile?.display_name || 'Unbekannt';
@@ -639,112 +686,152 @@ export function MeetingsView() {
               )}
 
               {/* Agenda Items */}
-              <div className="space-y-3">
-                {agendaItems.map((item, index) => (
-                  <Card key={index} className={cn(item.parentLocalKey && 'ml-6 border-l border-border')}> 
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <GripVertical className="h-4 w-4 text-muted-foreground mt-1" />
-                        
-                        <div className="flex-1 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              checked={item.is_completed}
-                              onCheckedChange={(checked) => 
-                                updateAgendaItem(index, 'is_completed', !!checked)
-                              }
-                            />
-                            <Input
-                              value={item.title}
-                              onChange={(e) => updateAgendaItem(index, 'title', e.target.value)}
-                              placeholder={item.parentLocalKey ? 'Unterpunkt' : 'Agenda-Punkt Titel'}
-                              className="font-medium flex-1"
-                            />
-                             {!item.parentLocalKey && (
-                               <Popover>
-                                 <PopoverTrigger asChild>
-                                   <Button size="icon" variant="ghost" className="shrink-0" aria-label="Unterpunkt hinzufügen">
-                                     <Plus className="h-4 w-4" />
-                                   </Button>
-                                 </PopoverTrigger>
-                                 <PopoverContent className="w-80">
-                                   <div className="space-y-2">
-                                     {SUBPOINT_OPTIONS[item.title] && SUBPOINT_OPTIONS[item.title].map((opt) => (
-                                       <Button key={opt} variant="outline" className="w-full justify-start text-left whitespace-normal h-auto p-3"
-                                         onClick={() => addSubItem(item, opt)}>
-                                         <span className="text-sm">{opt}</span>
-                                       </Button>
-                                     ))}
-                                     <Button variant="secondary" className="w-full" onClick={() => addSubItem(item, '')}>
-                                       <Plus className="h-4 w-4 mr-2" />
-                                       Freien Unterpunkt hinzufügen
-                                     </Button>
-                                   </div>
-                                 </PopoverContent>
-                               </Popover>
-                             )}
-                            <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive" 
-                              onClick={() => deleteAgendaItem(item, index)} aria-label="Punkt löschen">
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
+              <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable droppableId="agenda-items">
+                  {(provided) => (
+                    <div 
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-3"
+                    >
+                      {agendaItems.map((item, index) => (
+                        <Draggable 
+                          key={item.localKey || item.id || index} 
+                          draggableId={item.localKey || item.id || `item-${index}`}
+                          index={index}
+                        >
+                          {(provided, snapshot) => (
+                            <Card 
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={cn(
+                                item.parentLocalKey && 'ml-6 border-l border-border',
+                                snapshot.isDragging && 'shadow-glow'
+                              )}
+                            > 
+                              <CardContent className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <div 
+                                    {...provided.dragHandleProps}
+                                    className="cursor-grab active:cursor-grabbing"
+                                  >
+                                    <GripVertical className="h-4 w-4 text-muted-foreground mt-1" />
+                                  </div>
+                                  
+                                  <div className="flex-1 space-y-3">
+                                    <div className="flex items-center gap-2">
+                                      {item.parentLocalKey && (
+                                        <Checkbox
+                                          checked={item.is_completed}
+                                          onCheckedChange={(checked) => 
+                                            updateAgendaItem(index, 'is_completed', !!checked)
+                                          }
+                                        />
+                                      )}
+                                      <Input
+                                        value={item.title}
+                                        onChange={(e) => updateAgendaItem(index, 'title', e.target.value)}
+                                        placeholder={item.parentLocalKey ? 'Unterpunkt' : 'Agenda-Punkt Titel'}
+                                        className="font-medium flex-1"
+                                      />
+                                       {!item.parentLocalKey && (
+                                         <Popover>
+                                           <PopoverTrigger asChild>
+                                             <Button size="icon" variant="ghost" className="shrink-0" aria-label="Unterpunkt hinzufügen">
+                                               <Plus className="h-4 w-4" />
+                                             </Button>
+                                           </PopoverTrigger>
+                                           <PopoverContent className="w-80">
+                                             <div className="space-y-2">
+                                               {SUBPOINT_OPTIONS[item.title] && SUBPOINT_OPTIONS[item.title].map((opt) => (
+                                                 <Button key={opt} variant="outline" className="w-full justify-start text-left whitespace-normal h-auto p-3"
+                                                   onClick={() => addSubItem(item, opt)}>
+                                                   <span className="text-sm">{opt}</span>
+                                                 </Button>
+                                               ))}
+                                               <Button variant="secondary" className="w-full" onClick={() => addSubItem(item, '')}>
+                                                 <Plus className="h-4 w-4 mr-2" />
+                                                 Freien Unterpunkt hinzufügen
+                                               </Button>
+                                             </div>
+                                           </PopoverContent>
+                                         </Popover>
+                                       )}
+                                      <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive" 
+                                        onClick={() => deleteAgendaItem(item, index)} aria-label="Punkt löschen">
+                                        <Trash className="h-4 w-4" />
+                                      </Button>
+                                    </div>
 
-                          <Textarea
-                            value={item.description || ''}
-                            onChange={(e) => updateAgendaItem(index, 'description', e.target.value)}
-                            placeholder="Beschreibung"
-                            className="min-h-[60px]"
-                          />
+                                    {item.parentLocalKey && (
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                          <label className="text-sm font-medium">Zugewiesen an</label>
+                                          <Select
+                                            value={item.assigned_to || "unassigned"}
+                                            onValueChange={(value) => updateAgendaItem(index, 'assigned_to', value)}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Benutzer auswählen" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="unassigned">Niemand zugewiesen</SelectItem>
+                                              {profiles.map((profile) => (
+                                                <SelectItem key={profile.user_id} value={profile.user_id}>
+                                                  {getDisplayName(profile.user_id)}
+                                                  {profile.user_id === user?.id && " (Sie)"}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-sm font-medium">Zugewiesen an</label>
-                              <Select
-                                value={item.assigned_to || "unassigned"}
-                                onValueChange={(value) => updateAgendaItem(index, 'assigned_to', value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Benutzer auswählen" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="unassigned">Niemand zugewiesen</SelectItem>
-                                  {profiles.map((profile) => (
-                                    <SelectItem key={profile.user_id} value={profile.user_id}>
-                                      {getDisplayName(profile.user_id)}
-                                      {profile.user_id === user?.id && " (Sie)"}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                                        <div className="flex items-center gap-4 pt-6">
+                                          <label className="flex items-center gap-2 text-sm">
+                                            <Checkbox
+                                              checked={item.is_recurring}
+                                              onCheckedChange={(checked) => 
+                                                updateAgendaItem(index, 'is_recurring', !!checked)
+                                              }
+                                            />
+                                            Wiederkehrend
+                                          </label>
+                                        </div>
+                                      </div>
+                                    )}
 
-                            <div className="flex items-center gap-4 pt-6">
-                              <label className="flex items-center gap-2 text-sm">
-                                <Checkbox
-                                  checked={item.is_recurring}
-                                  onCheckedChange={(checked) => 
-                                    updateAgendaItem(index, 'is_recurring', !!checked)
-                                  }
-                                />
-                                Wiederkehrend
-                              </label>
-                            </div>
-                          </div>
+                                    {item.parentLocalKey && (
+                                      <>
+                                        <Textarea
+                                          value={item.description || ''}
+                                          onChange={(e) => updateAgendaItem(index, 'description', e.target.value)}
+                                          placeholder="Beschreibung"
+                                          className="min-h-[60px]"
+                                        />
 
-                          <div>
-                            <label className="text-sm font-medium">Notizen</label>
-                            <Textarea
-                              value={item.notes || ''}
-                              onChange={(e) => updateAgendaItem(index, 'notes', e.target.value)}
-                              placeholder="Notizen und Hinweise"
-                              className="min-h-[80px]"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                                        <div>
+                                          <label className="text-sm font-medium">Notizen</label>
+                                          <Textarea
+                                            value={item.notes || ''}
+                                            onChange={(e) => updateAgendaItem(index, 'notes', e.target.value)}
+                                            placeholder="Notizen und Hinweise"
+                                            className="min-h-[80px]"
+                                          />
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
 
                 {agendaItems.length === 0 && (
                   <Card>
@@ -760,8 +847,7 @@ export function MeetingsView() {
                       </Button>
                     </CardContent>
                   </Card>
-                )}
-              </div>
+                 )}
             </>
           ) : (
             <Card>
