@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,8 @@ export function MeetingsView() {
   });
   const [newMeetingTime, setNewMeetingTime] = useState<string>("10:00");
   const [showTaskSelector, setShowTaskSelector] = useState<{itemIndex: number} | null>(null);
+  const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -214,7 +217,10 @@ export function MeetingsView() {
       setMeetings([newMeetingWithDate, ...meetings]);
       setSelectedMeeting(newMeetingWithDate);
       
-      // Lade die erstellten Agenda-Punkte
+      // Clear the agenda items first to prevent double loading
+      setAgendaItems([]);
+      
+      // Load the created agenda items only once
       await loadAgendaItems(data.id);
       
       setIsNewMeetingOpen(false);
@@ -380,6 +386,8 @@ export function MeetingsView() {
   const addTaskToAgenda = async (task: any, parentItem: AgendaItem, parentIndex: number) => {
     if (!selectedMeeting?.id) return;
     
+    setShowTaskSelector(null);
+    
     try {
       let parentId = parentItem.id;
       
@@ -400,11 +408,6 @@ export function MeetingsView() {
         
         if (parentError) throw parentError;
         parentId = parentData.id;
-        
-        // Update the parent item in local state
-        const updatedItems = [...agendaItems];
-        updatedItems[parentIndex] = { ...parentItem, id: parentId };
-        setAgendaItems(updatedItems);
       }
 
       // Insert the task as a sub-item
@@ -416,21 +419,19 @@ export function MeetingsView() {
           description: task.description || null,
           task_id: task.id,
           parent_id: parentId,
-          order_index: agendaItems.length, // Will be reordered on next load
+          order_index: agendaItems.length,
           is_completed: false,
           is_recurring: false,
         });
 
       if (taskError) throw taskError;
-
-      setShowTaskSelector(null);
       
       toast({
         title: "Aufgabe hinzugefügt",
         description: `"${task.title}" wurde als Unterpunkt hinzugefügt.`,
       });
 
-      // Reload agenda to get fresh data with proper order
+      // Reload agenda to get fresh data
       await loadAgendaItems(selectedMeeting.id);
       
     } catch (error) {
@@ -615,6 +616,106 @@ export function MeetingsView() {
     setAgendaItems(reorderedItems);
   };
 
+  // Helper functions for meeting management
+  const updateMeeting = async (meetingId: string, updates: Partial<Meeting>) => {
+    try {
+      // Format meeting_date to string if it's a Date object
+      const formattedUpdates = {
+        ...updates,
+        meeting_date: updates.meeting_date instanceof Date 
+          ? format(updates.meeting_date, 'yyyy-MM-dd')
+          : updates.meeting_date
+      };
+
+      const { error } = await supabase
+        .from('meetings')
+        .update(formattedUpdates)
+        .eq('id', meetingId);
+
+      if (error) throw error;
+
+      // Update local state
+      setMeetings(meetings.map(m => 
+        m.id === meetingId ? { ...m, ...updates } : m
+      ));
+
+      // Update selected meeting if it's the current one
+      if (selectedMeeting?.id === meetingId) {
+        setSelectedMeeting({ ...selectedMeeting, ...updates });
+      }
+
+      // Update corresponding appointment in calendar
+      await supabase
+        .from('appointments')
+        .update({
+          title: updates.title,
+          description: updates.description,
+          start_time: updates.meeting_date ? 
+            `${format(new Date(updates.meeting_date), 'yyyy-MM-dd')}T${newMeetingTime}:00` : 
+            undefined,
+          end_time: updates.meeting_date ? 
+            `${format(new Date(updates.meeting_date), 'yyyy-MM-dd')}T${String(parseInt(newMeetingTime.split(':')[0]) + 1).padStart(2, '0')}:${newMeetingTime.split(':')[1]}:00` : 
+            undefined,
+        })
+        .eq('meeting_id', meetingId);
+
+      toast({
+        title: "Meeting aktualisiert",
+        description: "Das Meeting wurde erfolgreich aktualisiert.",
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Das Meeting konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteMeeting = async (meetingId: string) => {
+    try {
+      // Delete agenda items first
+      await supabase
+        .from('meeting_agenda_items')
+        .delete()
+        .eq('meeting_id', meetingId);
+
+      // Delete corresponding appointment
+      await supabase
+        .from('appointments')
+        .delete()
+        .eq('meeting_id', meetingId);
+
+      // Delete meeting
+      const { error } = await supabase
+        .from('meetings')
+        .delete()
+        .eq('id', meetingId);
+
+      if (error) throw error;
+
+      // Update local state
+      setMeetings(meetings.filter(m => m.id !== meetingId));
+      
+      if (selectedMeeting?.id === meetingId) {
+        setSelectedMeeting(null);
+        setAgendaItems([]);
+      }
+
+      setShowDeleteConfirm(null);
+      toast({
+        title: "Meeting gelöscht",
+        description: "Das Meeting wurde erfolgreich gelöscht.",
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Das Meeting konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getDisplayName = (userId: string) => {
     const profile = profiles.find(p => p.user_id === userId);
     return profile?.display_name || 'Unbekannt';
@@ -716,16 +817,116 @@ export function MeetingsView() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {upcomingMeetings.map((meeting) => (
-            <Card key={meeting.id} className="cursor-pointer hover:shadow-elegant transition"
-              onClick={() => { setSelectedMeeting(meeting); if (meeting.id) loadAgendaItems(meeting.id as string); }}>
+            <Card key={meeting.id} className="hover:shadow-elegant transition">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">{meeting.title}</CardTitle>
-                <CardDescription>
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="h-4 w-4" />
-                    {format(new Date(meeting.meeting_date), 'PPP', { locale: de })}
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 cursor-pointer" onClick={() => { 
+                    setSelectedMeeting(meeting); 
+                    if (meeting.id) {
+                      setAgendaItems([]);
+                      loadAgendaItems(meeting.id as string);
+                    }
+                  }}>
+                    {editingMeeting?.id === meeting.id ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={editingMeeting.title}
+                          onChange={(e) => setEditingMeeting({ ...editingMeeting, title: e.target.value })}
+                          className="font-semibold"
+                        />
+                        <Textarea
+                          value={editingMeeting.description || ''}
+                          onChange={(e) => setEditingMeeting({ ...editingMeeting, description: e.target.value })}
+                          placeholder="Beschreibung"
+                          className="text-sm"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="justify-start text-left font-normal">
+                                <CalendarIcon className="mr-2 h-3 w-3" />
+                                {format(new Date(editingMeeting.meeting_date), "dd.MM.yyyy", { locale: de })}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={new Date(editingMeeting.meeting_date)}
+                                onSelect={(date) => date && setEditingMeeting({ ...editingMeeting, meeting_date: date })}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <Input
+                            type="time"
+                            value={newMeetingTime}
+                            onChange={(e) => setNewMeetingTime(e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <CardTitle className="text-base">{meeting.title}</CardTitle>
+                        <CardDescription>
+                          <div className="flex items-center gap-2">
+                            <CalendarIcon className="h-4 w-4" />
+                            {format(new Date(meeting.meeting_date), 'PPP', { locale: de })}
+                          </div>
+                          {meeting.description && (
+                            <p className="text-xs mt-1 text-muted-foreground">{meeting.description}</p>
+                          )}
+                        </CardDescription>
+                      </>
+                    )}
                   </div>
-                </CardDescription>
+                  <div className="flex gap-1 ml-2">
+                    {editingMeeting?.id === meeting.id ? (
+                      <>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" 
+                          onClick={() => {
+                            updateMeeting(meeting.id!, editingMeeting);
+                            setEditingMeeting(null);
+                          }}>
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" 
+                          onClick={() => setEditingMeeting(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" 
+                          onClick={() => setEditingMeeting(meeting)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog open={showDeleteConfirm === meeting.id} onOpenChange={() => setShowDeleteConfirm(null)}>
+                          <AlertDialogTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" 
+                              onClick={() => setShowDeleteConfirm(meeting.id!)}>
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Meeting löschen</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Sind Sie sicher, dass Sie das Meeting "{meeting.title}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteMeeting(meeting.id!)}>
+                                Löschen
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
             </Card>
           ))}
