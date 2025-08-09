@@ -157,7 +157,20 @@ export function MeetingsView() {
     }
   };
   const createMeeting = async () => {
-    if (!user || !newMeeting.title.trim()) return;
+    console.log('=== createMeeting function called ===');
+    console.log('User:', user);
+    console.log('newMeeting:', newMeeting);
+    console.log('Title trimmed:', newMeeting.title.trim());
+    
+    if (!user) {
+      console.log('No user found, returning early');
+      return;
+    }
+    
+    if (!newMeeting.title.trim()) {
+      console.log('No title found, returning early');
+      return;
+    }
 
     try {
       console.log('Creating meeting with data:', {
