@@ -1116,39 +1116,67 @@ export function MeetingsView() {
                                                 variant="outline" 
                                                 size="sm" 
                                                 className="flex-1"
-                                                onClick={() => {
-                                                  const fileInput = document.createElement('input');
-                                                  fileInput.type = 'file';
-                                                  fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
-                                                  fileInput.onchange = async (e) => {
-                                                    const file = (e.target as HTMLInputElement).files?.[0];
-                                                    if (file && selectedMeeting?.id && item.id) {
-                                                      try {
-                                                        const fileName = `agenda_${item.id}_${Date.now()}_${file.name}`;
-                                                        const { error: uploadError } = await supabase.storage
-                                                          .from('documents')
-                                                          .upload(fileName, file);
-                                                        
-                                                        if (uploadError) throw uploadError;
-                                                        
-                                                        // Update the agenda item with file path
-                                                        await updateAgendaItem(index, 'file_path', fileName);
-                                                        
-                                                        toast({
-                                                          title: "Datei hochgeladen",
-                                                          description: `${file.name} wurde erfolgreich angehängt.`,
-                                                        });
-                                                      } catch (error) {
-                                                        toast({
-                                                          title: "Upload-Fehler",
-                                                          description: "Die Datei konnte nicht hochgeladen werden.",
-                                                          variant: "destructive",
-                                                        });
-                                                      }
-                                                    }
-                                                  };
-                                                  fileInput.click();
-                                                }}
+                                                 onClick={async () => {
+                                                   const fileInput = document.createElement('input');
+                                                   fileInput.type = 'file';
+                                                   fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
+                                                   fileInput.onchange = async (e) => {
+                                                     const file = (e.target as HTMLInputElement).files?.[0];
+                                                     if (file && selectedMeeting?.id) {
+                                                       try {
+                                                         // If item doesn't have an ID yet, save it first
+                                                         let itemId = item.id;
+                                                         if (!itemId) {
+                                                           const { data: savedItem, error: saveError } = await supabase
+                                                             .from('meeting_agenda_items')
+                                                             .insert({
+                                                               meeting_id: selectedMeeting.id,
+                                                               title: item.title || 'Unterpunkt',
+                                                               description: item.description || '',
+                                                               notes: item.notes || '',
+                                                               parent_id: item.parent_id || null,
+                                                               order_index: item.order_index,
+                                                               is_completed: false,
+                                                               is_recurring: false,
+                                                             })
+                                                             .select()
+                                                             .single();
+                                                           
+                                                           if (saveError) throw saveError;
+                                                           itemId = savedItem.id;
+                                                           
+                                                           // Update local state with the new ID
+                                                           const updatedItems = [...agendaItems];
+                                                           updatedItems[index] = { ...item, id: itemId };
+                                                           setAgendaItems(updatedItems);
+                                                         }
+                                                         
+                                                         const fileName = `agenda_${itemId}_${Date.now()}_${file.name}`;
+                                                         const { error: uploadError } = await supabase.storage
+                                                           .from('documents')
+                                                           .upload(fileName, file);
+                                                         
+                                                         if (uploadError) throw uploadError;
+                                                         
+                                                         // Update the agenda item with file path
+                                                         await updateAgendaItem(index, 'file_path', fileName);
+                                                         
+                                                         toast({
+                                                           title: "Datei hochgeladen",
+                                                           description: `${file.name} wurde erfolgreich angehängt.`,
+                                                         });
+                                                       } catch (error) {
+                                                         console.error('Upload error:', error);
+                                                         toast({
+                                                           title: "Upload-Fehler",
+                                                           description: error.message || "Die Datei konnte nicht hochgeladen werden.",
+                                                           variant: "destructive",
+                                                         });
+                                                       }
+                                                     }
+                                                   };
+                                                   fileInput.click();
+                                                 }}
                                               >
                                                 <Upload className="h-4 w-4 mr-2" />
                                                 Datei auswählen
