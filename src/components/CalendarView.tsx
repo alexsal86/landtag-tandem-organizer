@@ -18,7 +18,7 @@ interface CalendarEvent {
     name: string;
     role: string;
   }>;
-  type: "meeting" | "appointment" | "deadline" | "session";
+  type: "meeting" | "appointment" | "deadline" | "session" | "blocked";
   priority: "low" | "medium" | "high";
 }
 
@@ -111,6 +111,8 @@ export function CalendarView() {
         return "bg-secondary text-secondary-foreground";
       case "deadline":
         return "bg-destructive text-destructive-foreground";
+      case "blocked":
+        return "bg-orange-500 text-white";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -235,6 +237,7 @@ export function CalendarView() {
                         {event.type === "meeting" && "Meeting"}
                         {event.type === "appointment" && "Termin"}
                         {event.type === "deadline" && "Deadline"}
+                        {event.type === "blocked" && "Geblockt"}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">

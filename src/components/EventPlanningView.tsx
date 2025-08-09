@@ -693,52 +693,9 @@ export function EventPlanningView() {
             <Button variant="ghost" onClick={() => setSelectedPlanning(null)}>
               ← Zurück
             </Button>
-            <div className="flex items-center space-x-2">
-              {editingTitle ? (
-                <div className="flex items-center space-x-2">
-                  <Input
-                    value={tempTitle}
-                    onChange={(e) => setTempTitle(e.target.value)}
-                    onBlur={() => {
-                      updatePlanningField("title", tempTitle);
-                      setEditingTitle(false);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        updatePlanningField("title", tempTitle);
-                        setEditingTitle(false);
-                      }
-                      if (e.key === "Escape") {
-                        setTempTitle(selectedPlanning.title);
-                        setEditingTitle(false);
-                      }
-                    }}
-                    className="text-3xl font-bold border-none p-0 focus:ring-0"
-                    autoFocus
-                  />
-                </div>
-              ) : (
-                <h1 
-                  className="text-3xl font-bold cursor-pointer hover:text-primary transition-colors"
-                  onClick={() => {
-                    setTempTitle(selectedPlanning.title);
-                    setEditingTitle(true);
-                  }}
-                >
-                  {selectedPlanning.title}
-                </h1>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setTempTitle(selectedPlanning.title);
-                  setEditingTitle(true);
-                }}
-              >
-                <Edit2 className="h-4 w-4" />
-              </Button>
-            </div>
+            <h1 className="text-3xl font-bold text-foreground">
+              Veranstaltungsplanung
+            </h1>
           </div>
           <div className="flex items-center space-x-2">
             <AlertDialog>
@@ -776,6 +733,53 @@ export function EventPlanningView() {
               <CardTitle>Grunddaten</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="title">Titel der Veranstaltung</Label>
+                <div className="flex items-center space-x-2">
+                  {editingTitle ? (
+                    <Input
+                      value={tempTitle}
+                      onChange={(e) => setTempTitle(e.target.value)}
+                      onBlur={() => {
+                        updatePlanningField("title", tempTitle);
+                        setEditingTitle(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updatePlanningField("title", tempTitle);
+                          setEditingTitle(false);
+                        }
+                        if (e.key === "Escape") {
+                          setTempTitle(selectedPlanning.title);
+                          setEditingTitle(false);
+                        }
+                      }}
+                      className="flex-1"
+                      autoFocus
+                    />
+                  ) : (
+                    <Input
+                      value={selectedPlanning.title}
+                      onClick={() => {
+                        setTempTitle(selectedPlanning.title);
+                        setEditingTitle(true);
+                      }}
+                      readOnly
+                      className="flex-1 cursor-pointer"
+                    />
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTempTitle(selectedPlanning.title);
+                      setEditingTitle(true);
+                    }}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
               <div>
                 <Label htmlFor="description">Beschreibung</Label>
                 <Textarea
