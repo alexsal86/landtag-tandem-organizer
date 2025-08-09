@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash } from "lucide-react";
+import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ interface AgendaItem {
   task_id?: string | null;
   order_index: number;
   parent_id?: string | null;
+  file_path?: string | null;
   // lokale Hilfskeys für Hierarchie vor dem Speichern
   localKey?: string;
   parentLocalKey?: string;
@@ -66,6 +67,8 @@ export function MeetingsView() {
     meeting_date: new Date(),
     status: "planned"
   });
+  const [newMeetingTime, setNewMeetingTime] = useState<string>("10:00");
+  const [showTaskSelector, setShowTaskSelector] = useState<{itemIndex: number} | null>(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -286,10 +289,22 @@ export function MeetingsView() {
     setAgendaItems(next);
   };
 
-  const updateAgendaItem = (index: number, field: keyof AgendaItem, value: any) => {
+  const updateAgendaItem = async (index: number, field: keyof AgendaItem, value: any) => {
     const updated = [...agendaItems];
     updated[index] = { ...updated[index], [field]: value };
     setAgendaItems(updated);
+    
+    // Auto-save if item has an ID and we have a selected meeting
+    if (updated[index].id && selectedMeeting?.id) {
+      try {
+        await supabase
+          .from('meeting_agenda_items')
+          .update({ [field]: value })
+          .eq('id', updated[index].id);
+      } catch (error) {
+        console.error('Auto-save error:', error);
+      }
+    }
   };
 
   const saveAgendaItems = async () => {
@@ -362,19 +377,81 @@ export function MeetingsView() {
     }
   };
 
-  const addTaskToAgenda = (task: any) => {
-    const newItem: AgendaItem = {
+  const addTaskToAgenda = async (task: any, parentItem: AgendaItem) => {
+    if (!selectedMeeting?.id) return;
+    
+    const parentKey = parentItem.localKey || parentItem.id || makeLocalKey();
+    const parentIndex = agendaItems.findIndex((i) => (i.localKey || i.id) === parentKey);
+    const childCount = agendaItems.filter((i) => i.parentLocalKey === parentKey).length;
+    const insertIndex = parentIndex + childCount + 1;
+
+    const newChild: AgendaItem = {
       title: task.title,
-      description: task.description,
-      assigned_to: task.assigned_to || "unassigned",
-      notes: "",
+      description: task.description || '',
+      assigned_to: null,
+      notes: '',
       is_completed: false,
       is_recurring: false,
       task_id: task.id,
-      order_index: agendaItems.length
+      order_index: insertIndex,
+      localKey: makeLocalKey(),
+      parentLocalKey: parentKey,
     };
-    
-    setAgendaItems([...agendaItems, newItem]);
+
+    const next = [
+      ...agendaItems.slice(0, insertIndex),
+      newChild,
+      ...agendaItems.slice(insertIndex),
+    ].map((it, idx) => ({ ...it, order_index: idx }));
+
+    setAgendaItems(next);
+    setShowTaskSelector(null);
+
+    // Auto-save to database
+    try {
+      let parentId = parentItem.id;
+      if (!parentId && parentItem.localKey) {
+        // Save parent first if it doesn't exist
+        const { data: parentData, error: parentError } = await supabase
+          .from('meeting_agenda_items')
+          .insert({
+            meeting_id: selectedMeeting.id,
+            title: parentItem.title,
+            description: parentItem.description,
+            order_index: parentItem.order_index,
+            is_completed: false,
+            is_recurring: false,
+          })
+          .select()
+          .single();
+        
+        if (parentError) throw parentError;
+        parentId = parentData.id;
+      }
+
+      await supabase
+        .from('meeting_agenda_items')
+        .insert({
+          meeting_id: selectedMeeting.id,
+          title: newChild.title,
+          description: newChild.description,
+          task_id: task.id,
+          order_index: newChild.order_index,
+          parent_id: parentId,
+          is_completed: false,
+          is_recurring: false,
+        });
+
+      // Reload to get fresh data
+      await loadAgendaItems(selectedMeeting.id);
+    } catch (error) {
+      console.error('Error saving task to agenda:', error);
+      toast({
+        title: "Fehler",
+        description: "Aufgabe konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Vordefinierte Unterpunkte für bestimmte Hauptpunkte
@@ -413,7 +490,7 @@ export function MeetingsView() {
 
   const makeLocalKey = () => `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
 
-  const addSubItem = (parent: AgendaItem, title: string) => {
+  const addSubItem = async (parent: AgendaItem, title: string) => {
     if (!selectedMeeting?.id) return;
     const parentKey = parent.localKey || parent.id || makeLocalKey();
     // Count existing children
@@ -424,7 +501,7 @@ export function MeetingsView() {
     const newChild: AgendaItem = {
       title: title || '',
       description: '',
-      assigned_to: 'unassigned',
+      assigned_to: null,
       notes: '',
       is_completed: false,
       is_recurring: false,
@@ -440,6 +517,51 @@ export function MeetingsView() {
     ].map((it, idx) => ({ ...it, order_index: idx }));
 
     setAgendaItems(next);
+
+    // Auto-save to database
+    try {
+      let parentId = parent.id;
+      if (!parentId && parent.localKey) {
+        // Save parent first if it doesn't exist
+        const { data: parentData, error: parentError } = await supabase
+          .from('meeting_agenda_items')
+          .insert({
+            meeting_id: selectedMeeting.id,
+            title: parent.title,
+            description: parent.description,
+            order_index: parent.order_index,
+            is_completed: false,
+            is_recurring: false,
+          })
+          .select()
+          .single();
+        
+        if (parentError) throw parentError;
+        parentId = parentData.id;
+      }
+
+      await supabase
+        .from('meeting_agenda_items')
+        .insert({
+          meeting_id: selectedMeeting.id,
+          title: newChild.title,
+          description: newChild.description,
+          order_index: newChild.order_index,
+          parent_id: parentId,
+          is_completed: false,
+          is_recurring: false,
+        });
+
+      // Reload to get fresh data
+      await loadAgendaItems(selectedMeeting.id);
+    } catch (error) {
+      console.error('Error saving sub-item:', error);
+      toast({
+        title: "Fehler",
+        description: "Unterpunkt konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const deleteAgendaItem = async (item: AgendaItem, index: number) => {
@@ -573,25 +695,36 @@ export function MeetingsView() {
                   placeholder="Meeting Beschreibung"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium">Datum</label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {format(newMeeting.meeting_date, "PPP", { locale: de })}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={newMeeting.meeting_date instanceof Date ? newMeeting.meeting_date : new Date(newMeeting.meeting_date)}
-                      onSelect={(date) => date && setNewMeeting({ ...newMeeting, meeting_date: date })}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Datum</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(newMeeting.meeting_date, "PPP", { locale: de })}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={newMeeting.meeting_date instanceof Date ? newMeeting.meeting_date : new Date(newMeeting.meeting_date)}
+                        onSelect={(date) => date && setNewMeeting({ ...newMeeting, meeting_date: date })}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Startzeit</label>
+                  <Input
+                    type="time"
+                    value={newMeetingTime}
+                    onChange={(e) => setNewMeetingTime(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
               </div>
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setIsNewMeetingOpen(false)}>
@@ -651,39 +784,6 @@ export function MeetingsView() {
                 </div>
               </div>
 
-              {/* Task Integration */}
-              {tasks.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Aufgaben hinzufügen</CardTitle>
-                    <CardDescription>
-                      Offene Aufgaben zur Agenda hinzufügen
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {tasks.slice(0, 6).map((task) => (
-                        <Button
-                          key={task.id}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addTaskToAgenda(task)}
-                          className="justify-start h-auto p-2"
-                        >
-                          <div className="text-left">
-                            <div className="font-medium truncate">{task.title}</div>
-                            <div className="text-xs text-muted-foreground">
-                              <Badge variant="secondary" className="text-xs">
-                                {task.priority}
-                              </Badge>
-                            </div>
-                          </div>
-                        </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
 
               {/* Agenda Items */}
               <DragDropContext onDragEnd={onDragEnd}>
@@ -718,108 +818,122 @@ export function MeetingsView() {
                                     <GripVertical className="h-4 w-4 text-muted-foreground mt-1" />
                                   </div>
                                   
-                                  <div className="flex-1 space-y-3">
-                                    <div className="flex items-center gap-2">
-                                      {item.parentLocalKey && (
-                                        <Checkbox
-                                          checked={item.is_completed}
-                                          onCheckedChange={(checked) => 
-                                            updateAgendaItem(index, 'is_completed', !!checked)
-                                          }
-                                        />
-                                      )}
-                                      <Input
-                                        value={item.title}
-                                        onChange={(e) => updateAgendaItem(index, 'title', e.target.value)}
-                                        placeholder={item.parentLocalKey ? 'Unterpunkt' : 'Agenda-Punkt Titel'}
-                                        className="font-medium flex-1"
-                                      />
-                                       {!item.parentLocalKey && (
-                                         <Popover>
-                                           <PopoverTrigger asChild>
-                                             <Button size="icon" variant="ghost" className="shrink-0" aria-label="Unterpunkt hinzufügen">
-                                               <Plus className="h-4 w-4" />
+                                   <div className="flex-1 space-y-3">
+                                     <div className="flex items-center gap-2">
+                                       <Input
+                                         value={item.title}
+                                         onChange={(e) => updateAgendaItem(index, 'title', e.target.value)}
+                                         placeholder={item.parentLocalKey ? 'Unterpunkt' : 'Agenda-Punkt Titel'}
+                                         className="font-medium flex-1"
+                                       />
+                                        {!item.parentLocalKey && (
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button size="icon" variant="ghost" className="shrink-0" aria-label="Unterpunkt hinzufügen">
+                                                <Plus className="h-4 w-4" />
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-80">
+                                              <div className="space-y-2">
+                                                {SUBPOINT_OPTIONS[item.title] && SUBPOINT_OPTIONS[item.title].map((opt) => (
+                                                  <Button key={opt} variant="outline" className="w-full justify-start text-left whitespace-normal h-auto p-3"
+                                                    onClick={() => addSubItem(item, opt)}>
+                                                    <span className="text-sm">{opt}</span>
+                                                  </Button>
+                                                ))}
+                                                <Button variant="secondary" className="w-full" onClick={() => addSubItem(item, '')}>
+                                                  <Plus className="h-4 w-4 mr-2" />
+                                                  Freien Unterpunkt hinzufügen
+                                                </Button>
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                        )}
+                                        {!item.parentLocalKey && (
+                                          <Popover open={showTaskSelector?.itemIndex === index} onOpenChange={(open) => 
+                                            setShowTaskSelector(open ? {itemIndex: index} : null)
+                                          }>
+                                            <PopoverTrigger asChild>
+                                              <Button size="icon" variant="ghost" className="shrink-0" aria-label="Aufgabe hinzufügen">
+                                                <ListTodo className="h-4 w-4" />
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-80">
+                                              <div className="space-y-2">
+                                                <div className="text-sm font-medium mb-3">Aufgabe als Unterpunkt hinzufügen</div>
+                                                {tasks.length > 0 ? (
+                                                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                    {tasks.map((task) => (
+                                                      <Button 
+                                                        key={task.id} 
+                                                        variant="outline" 
+                                                        className="w-full justify-start text-left h-auto p-3"
+                                                        onClick={() => addTaskToAgenda(task, item)}
+                                                      >
+                                                        <div>
+                                                          <div className="font-medium">{task.title}</div>
+                                                          <div className="text-xs text-muted-foreground">
+                                                            <Badge variant="secondary" className="text-xs mr-2">
+                                                              {task.priority}
+                                                            </Badge>
+                                                            {task.category}
+                                                          </div>
+                                                        </div>
+                                                      </Button>
+                                                    ))}
+                                                  </div>
+                                                ) : (
+                                                  <div className="text-sm text-muted-foreground text-center py-4">
+                                                    Keine offenen Aufgaben verfügbar
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                        )}
+                                       <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive" 
+                                         onClick={() => deleteAgendaItem(item, index)} aria-label="Punkt löschen">
+                                         <Trash className="h-4 w-4" />
+                                       </Button>
+                                     </div>
+
+
+                                     {item.parentLocalKey && (
+                                       <>
+                                         <Textarea
+                                           value={item.description || ''}
+                                           onChange={(e) => updateAgendaItem(index, 'description', e.target.value)}
+                                           placeholder="Beschreibung"
+                                           className="min-h-[60px]"
+                                         />
+
+                                         <div>
+                                           <label className="text-sm font-medium">Notizen</label>
+                                           <Textarea
+                                             value={item.notes || ''}
+                                             onChange={(e) => updateAgendaItem(index, 'notes', e.target.value)}
+                                             placeholder="Notizen und Hinweise"
+                                             className="min-h-[80px]"
+                                           />
+                                         </div>
+
+                                         <div>
+                                           <label className="text-sm font-medium">Datei anhängen</label>
+                                           <div className="flex items-center gap-2">
+                                             <Button variant="outline" size="sm" className="flex-1">
+                                               <Upload className="h-4 w-4 mr-2" />
+                                               Datei auswählen
                                              </Button>
-                                           </PopoverTrigger>
-                                           <PopoverContent className="w-80">
-                                             <div className="space-y-2">
-                                               {SUBPOINT_OPTIONS[item.title] && SUBPOINT_OPTIONS[item.title].map((opt) => (
-                                                 <Button key={opt} variant="outline" className="w-full justify-start text-left whitespace-normal h-auto p-3"
-                                                   onClick={() => addSubItem(item, opt)}>
-                                                   <span className="text-sm">{opt}</span>
-                                                 </Button>
-                                               ))}
-                                               <Button variant="secondary" className="w-full" onClick={() => addSubItem(item, '')}>
-                                                 <Plus className="h-4 w-4 mr-2" />
-                                                 Freien Unterpunkt hinzufügen
+                                             {item.file_path && (
+                                               <Button variant="ghost" size="sm">
+                                                 <FileText className="h-4 w-4 mr-2" />
+                                                 Angehängt
                                                </Button>
-                                             </div>
-                                           </PopoverContent>
-                                         </Popover>
-                                       )}
-                                      <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive" 
-                                        onClick={() => deleteAgendaItem(item, index)} aria-label="Punkt löschen">
-                                        <Trash className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-
-                                    {item.parentLocalKey && (
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <div>
-                                          <label className="text-sm font-medium">Zugewiesen an</label>
-                                          <Select
-                                            value={item.assigned_to || "unassigned"}
-                                            onValueChange={(value) => updateAgendaItem(index, 'assigned_to', value)}
-                                          >
-                                            <SelectTrigger>
-                                              <SelectValue placeholder="Benutzer auswählen" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="unassigned">Niemand zugewiesen</SelectItem>
-                                              {profiles.map((profile) => (
-                                                <SelectItem key={profile.user_id} value={profile.user_id}>
-                                                  {getDisplayName(profile.user_id)}
-                                                  {profile.user_id === user?.id && " (Sie)"}
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-
-                                        <div className="flex items-center gap-4 pt-6">
-                                          <label className="flex items-center gap-2 text-sm">
-                                            <Checkbox
-                                              checked={item.is_recurring}
-                                              onCheckedChange={(checked) => 
-                                                updateAgendaItem(index, 'is_recurring', !!checked)
-                                              }
-                                            />
-                                            Wiederkehrend
-                                          </label>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {item.parentLocalKey && (
-                                      <>
-                                        <Textarea
-                                          value={item.description || ''}
-                                          onChange={(e) => updateAgendaItem(index, 'description', e.target.value)}
-                                          placeholder="Beschreibung"
-                                          className="min-h-[60px]"
-                                        />
-
-                                        <div>
-                                          <label className="text-sm font-medium">Notizen</label>
-                                          <Textarea
-                                            value={item.notes || ''}
-                                            onChange={(e) => updateAgendaItem(index, 'notes', e.target.value)}
-                                            placeholder="Notizen und Hinweise"
-                                            className="min-h-[80px]"
-                                          />
-                                        </div>
-                                      </>
-                                    )}
+                                             )}
+                                           </div>
+                                         </div>
+                                       </>
+                                     )}
                                   </div>
                                 </div>
                               </CardContent>
