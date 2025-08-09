@@ -162,6 +162,12 @@ export function MeetingsView() {
     }
   };
   const createMeeting = async () => {
+    // Visuelles Feedback am Anfang
+    toast({
+      title: "Meeting wird erstellt...",
+      description: "Bitte warten...",
+    });
+
     console.log('=== createMeeting function called ===');
     console.log('User:', user);
     console.log('newMeeting:', newMeeting);
@@ -169,11 +175,21 @@ export function MeetingsView() {
     
     if (!user) {
       console.log('No user found, returning early');
+      toast({
+        title: "Fehler",
+        description: "Kein Benutzer gefunden!",
+        variant: "destructive",
+      });
       return;
     }
     
     if (!newMeeting.title.trim()) {
       console.log('No title found, returning early');
+      toast({
+        title: "Fehler", 
+        description: "Bitte geben Sie einen Titel ein!",
+        variant: "destructive",
+      });
       return;
     }
 
