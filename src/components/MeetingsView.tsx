@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical } from "lucide-react";
+import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -21,12 +21,16 @@ interface AgendaItem {
   id?: string;
   title: string;
   description?: string;
-  assigned_to?: string;
-  notes?: string;
+  assigned_to?: string | null;
+  notes?: string | null;
   is_completed: boolean;
   is_recurring: boolean;
-  task_id?: string;
+  task_id?: string | null;
   order_index: number;
+  parent_id?: string | null;
+  // lokale Hilfskeys für Hierarchie vor dem Speichern
+  localKey?: string;
+  parentLocalKey?: string;
 }
 
 interface Meeting {
@@ -135,7 +139,12 @@ export function MeetingsView() {
         .order('order_index');
 
       if (error) throw error;
-      setAgendaItems(data || []);
+      const items = (data || []).map((item) => ({
+        ...item,
+        localKey: item.id,
+        parentLocalKey: item.parent_id || undefined,
+      }));
+      setAgendaItems(items);
     } catch (error) {
       toast({
         title: "Fehler beim Laden der Agenda",
@@ -144,7 +153,6 @@ export function MeetingsView() {
       });
     }
   };
-
   const createMeeting = async () => {
     if (!user || !newMeeting.title.trim()) return;
 
@@ -185,7 +193,8 @@ export function MeetingsView() {
 
   const addAgendaItem = () => {
     if (!selectedMeeting?.id) return;
-    
+
+    const localKey = `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
     const newItem: AgendaItem = {
       title: "",
       description: "",
@@ -193,10 +202,12 @@ export function MeetingsView() {
       notes: "",
       is_completed: false,
       is_recurring: false,
-      order_index: agendaItems.length
+      order_index: agendaItems.length,
+      localKey,
     };
-    
-    setAgendaItems([...agendaItems, newItem]);
+
+    const next = [...agendaItems, newItem].map((it, idx) => ({ ...it, order_index: idx }));
+    setAgendaItems(next);
   };
 
   const updateAgendaItem = (index: number, field: keyof AgendaItem, value: any) => {
@@ -209,44 +220,68 @@ export function MeetingsView() {
     if (!selectedMeeting?.id) return;
 
     try {
-      // Delete existing items
-      await supabase
-        .from('meeting_agenda_items')
-        .delete()
-        .eq('meeting_id', selectedMeeting.id);
+      // Always recompute order_index based on current order
+      const ordered = agendaItems
+        .filter((i) => i.title.trim())
+        .map((it, idx) => ({ ...it, order_index: idx }));
 
-      // Insert new items
-      const itemsToInsert = agendaItems
-        .filter(item => item.title.trim())
-        .map(item => ({
-          meeting_id: selectedMeeting.id,
-          title: item.title,
-          description: item.description,
-          assigned_to: item.assigned_to === "unassigned" ? null : item.assigned_to,
-          notes: item.notes,
-          is_completed: item.is_completed,
-          is_recurring: item.is_recurring,
-          task_id: item.task_id,
-          order_index: item.order_index
-        }));
+      // Wipe existing items for this meeting
+      await supabase.from('meeting_agenda_items').delete().eq('meeting_id', selectedMeeting.id);
 
-      if (itemsToInsert.length > 0) {
-        const { error } = await supabase
+      // Split into parents and children
+      const parents = ordered.filter((i) => !i.parentLocalKey);
+      const children = ordered.filter((i) => i.parentLocalKey);
+
+      // Insert parents first and capture returned ids in same order
+      const parentInserts = parents.map((p) => ({
+        meeting_id: selectedMeeting.id,
+        title: p.title,
+        description: p.description,
+        assigned_to: p.assigned_to === 'unassigned' ? null : p.assigned_to || null,
+        notes: p.notes || null,
+        is_completed: p.is_completed,
+        is_recurring: p.is_recurring,
+        task_id: p.task_id || null,
+        order_index: p.order_index,
+      }));
+
+      let parentIdByLocalKey: Record<string, string> = {};
+      if (parentInserts.length > 0) {
+        const { data: insertedParents, error: insErr } = await supabase
           .from('meeting_agenda_items')
-          .insert(itemsToInsert);
-
-        if (error) throw error;
+          .insert(parentInserts)
+          .select();
+        if (insErr) throw insErr;
+        insertedParents?.forEach((row, idx) => {
+          const localKey = parents[idx].localKey || `${parents[idx].title}-${parents[idx].order_index}`;
+          parentIdByLocalKey[localKey] = row.id;
+        });
       }
 
-      toast({
-        title: "Agenda gespeichert",
-        description: "Die Agenda wurde erfolgreich gespeichert.",
-      });
+      // Insert children with mapped parent_id
+      if (children.length > 0) {
+        const childInserts = children.map((c) => ({
+          meeting_id: selectedMeeting.id,
+          title: c.title,
+          description: c.description,
+          assigned_to: c.assigned_to === 'unassigned' ? null : c.assigned_to || null,
+          notes: c.notes || null,
+          is_completed: c.is_completed,
+          is_recurring: c.is_recurring,
+          task_id: c.task_id || null,
+          order_index: c.order_index,
+          parent_id: c.parentLocalKey ? parentIdByLocalKey[c.parentLocalKey] || null : null,
+        }));
+        const { error: childErr } = await supabase.from('meeting_agenda_items').insert(childInserts);
+        if (childErr) throw childErr;
+      }
+
+      toast({ title: 'Agenda gespeichert', description: 'Die Agenda wurde erfolgreich gespeichert.' });
     } catch (error) {
       toast({
-        title: "Fehler beim Speichern",
-        description: "Die Agenda konnte nicht gespeichert werden.",
-        variant: "destructive",
+        title: 'Fehler beim Speichern',
+        description: 'Die Agenda konnte nicht gespeichert werden.',
+        variant: 'destructive',
       });
     }
   };
@@ -266,14 +301,85 @@ export function MeetingsView() {
     setAgendaItems([...agendaItems, newItem]);
   };
 
+  // Vordefinierte Unterpunkte für bestimmte Hauptpunkte
+  const SUBPOINT_OPTIONS: Record<string, string[]> = {
+    'Aktuelles aus dem Landtag': [
+      'Rückblick auf vergangene Plenarsitzungen, Ausschusssitzungen, Fraktionssitzungen',
+      'Wichtige Beschlüsse, Gesetze, Debatten',
+      'Anstehende Termine und Fraktionspositionen',
+      'Offene Punkte, bei denen Handlungsbedarf besteht',
+    ],
+    'Politische Schwerpunktthemen & Projekte': [
+      'Laufende politische Initiativen (z. B. Gesetzesvorhaben, Anträge, Kleine Anfragen)',
+      'Vorbereitung auf anstehende Reden, Stellungnahmen, Medienbeiträge',
+      'Strategische Planung zu Kernthemen des Abgeordneten',
+      'Recherche- und Hintergrundaufträge an Mitarbeiter',
+    ],
+    'Wahlkreisarbeit': [
+      'Aktuelle Anliegen aus dem Wahlkreis (Bürgeranfragen, Vereine, Unternehmen, Kommunen)',
+      'Geplante Wahlkreisbesuche und Gesprächstermine',
+      'Veranstaltungen im Wahlkreis (Planung, Teilnahme, Redeinhalte)',
+      'Presse- und Öffentlichkeitsarbeit vor Ort',
+    ],
+    'Kommunikation & Öffentlichkeitsarbeit': [
+      'Social Media: Planung und Freigabe von Beiträgen, Abstimmung von Inhalten',
+      'Pressearbeit: Pressemeldungen, Interviews, Pressegespräche',
+      'Newsletter, Website-Updates',
+      'Abstimmung mit Fraktions-Pressestelle',
+    ],
+    'Organisation & Bürointerna': [
+      'Aufgabenverteilung im Team',
+      'Rückmeldung zu laufenden Projekten und Deadlines',
+      'Büroorganisation, Urlaubsplanung, Vertretungsregelungen',
+      'Technische und administrative Fragen',
+    ],
+  };
+
+  const makeLocalKey = () => `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+
+  const addSubItem = (parent: AgendaItem, title: string) => {
+    if (!selectedMeeting?.id) return;
+    const parentKey = parent.localKey || parent.id || makeLocalKey();
+    // Count existing children
+    const parentIndex = agendaItems.findIndex((i) => (i.localKey || i.id) === parentKey);
+    const childCount = agendaItems.filter((i) => i.parentLocalKey === parentKey).length;
+    const insertIndex = parentIndex + childCount + 1;
+
+    const newChild: AgendaItem = {
+      title: title || '',
+      description: '',
+      assigned_to: 'unassigned',
+      notes: '',
+      is_completed: false,
+      is_recurring: false,
+      order_index: insertIndex,
+      localKey: makeLocalKey(),
+      parentLocalKey: parentKey,
+    };
+
+    const next = [
+      ...agendaItems.slice(0, insertIndex),
+      newChild,
+      ...agendaItems.slice(insertIndex),
+    ].map((it, idx) => ({ ...it, order_index: idx }));
+
+    setAgendaItems(next);
+  };
+
   const getDisplayName = (userId: string) => {
     const profile = profiles.find(p => p.user_id === userId);
     return profile?.display_name || 'Unbekannt';
   };
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const upcomingMeetings = [...meetings]
+    .filter((m) => new Date(m.meeting_date as any) >= startOfToday)
+    .sort((a, b) => new Date(a.meeting_date as any).getTime() - new Date(b.meeting_date as any).getTime())
+    .slice(0, 3);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gradient-subtle p-6">
+      <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold">Meeting Agenda</h1>
           <p className="text-muted-foreground">
@@ -342,6 +448,31 @@ export function MeetingsView() {
             </div>
           </DialogContent>
         </Dialog>
+      </div>
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xl font-semibold">Nächste Besprechungen</h2>
+          <Button variant="link" className="text-primary px-0" onClick={() => toast({ title: 'Archiv', description: 'Archivansicht folgt.' })}>Archiv</Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {upcomingMeetings.map((meeting) => (
+            <Card key={meeting.id} className="cursor-pointer hover:shadow-elegant transition"
+              onClick={() => { setSelectedMeeting(meeting); if (meeting.id) loadAgendaItems(meeting.id as string); }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{meeting.title}</CardTitle>
+                <CardDescription>
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    {format(new Date(meeting.meeting_date), 'PPP', { locale: de })}
+                  </div>
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+          {upcomingMeetings.length === 0 && (
+            <Card className="md:col-span-3"><CardContent className="p-4 text-muted-foreground">Keine anstehenden Besprechungen</CardContent></Card>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -435,7 +566,7 @@ export function MeetingsView() {
               {/* Agenda Items */}
               <div className="space-y-3">
                 {agendaItems.map((item, index) => (
-                  <Card key={index}>
+                  <Card key={index} className={cn(item.parentLocalKey && 'ml-6 border-l border-border')}> 
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <GripVertical className="h-4 w-4 text-muted-foreground mt-1" />
@@ -451,9 +582,31 @@ export function MeetingsView() {
                             <Input
                               value={item.title}
                               onChange={(e) => updateAgendaItem(index, 'title', e.target.value)}
-                              placeholder="Agenda-Punkt Titel"
-                              className="font-medium"
+                              placeholder={item.parentLocalKey ? 'Unterpunkt' : 'Agenda-Punkt Titel'}
+                              className="font-medium flex-1"
                             />
+                            {!item.parentLocalKey && SUBPOINT_OPTIONS[item.title] && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="shrink-0" aria-label="Unterpunkt hinzufügen">
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64">
+                                  <div className="space-y-2">
+                                    {SUBPOINT_OPTIONS[item.title].map((opt) => (
+                                      <Button key={opt} variant="outline" className="w-full justify-start"
+                                        onClick={() => addSubItem(item, opt)}>
+                                        {opt}
+                                      </Button>
+                                    ))}
+                                    <Button variant="secondary" className="w-full" onClick={() => addSubItem(item, '')}>
+                                      Freien Unterpunkt hinzufügen
+                                    </Button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            )}
                           </div>
 
                           <Textarea
