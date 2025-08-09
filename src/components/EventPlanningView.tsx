@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,12 +59,14 @@ interface Collaborator {
   can_edit: boolean;
   profiles?: {
     display_name?: string;
+    avatar_url?: string;
   };
 }
 
 interface Profile {
   user_id: string;
   display_name?: string;
+  avatar_url?: string;
 }
 
 export function EventPlanningView() {
@@ -85,6 +88,8 @@ export function EventPlanningView() {
   const [selectedTime, setSelectedTime] = useState("10:00");
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [loading, setLoading] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState("");
 
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user);
@@ -142,7 +147,7 @@ export function EventPlanningView() {
   const fetchAllProfiles = async () => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("user_id, display_name");
+      .select("user_id, display_name, avatar_url");
 
     if (error) {
       console.error("Error fetching profiles:", error);
@@ -183,7 +188,7 @@ export function EventPlanningView() {
         collabs.map(async (collab) => {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("display_name")
+            .select("display_name, avatar_url")
             .eq("user_id", collab.user_id)
             .single();
           
@@ -198,6 +203,44 @@ export function EventPlanningView() {
     } else {
       setCollaborators([]);
     }
+  };
+
+  // Utility function for debouncing
+  function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
+    let timeout: NodeJS.Timeout;
+    return ((...args: any[]) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    }) as T;
+  }
+
+  // Debounced auto-save function
+  const debouncedUpdate = useCallback(
+    debounce(async (field: string, value: any, planningId: string) => {
+      const { error } = await supabase
+        .from("event_plannings")
+        .update({ [field]: value })
+        .eq("id", planningId);
+
+      if (error) {
+        toast({
+          title: "Fehler",
+          description: "Änderung konnte nicht gespeichert werden.",
+          variant: "destructive",
+        });
+      }
+    }, 500),
+    []
+  );
+
+  const updatePlanningField = async (field: string, value: any) => {
+    if (!selectedPlanning) return;
+
+    // Update local state immediately
+    setSelectedPlanning({ ...selectedPlanning, [field]: value });
+    
+    // Debounced save to database
+    debouncedUpdate(field, value, selectedPlanning.id);
   };
 
   const createPlanning = async () => {
@@ -266,26 +309,6 @@ export function EventPlanningView() {
     });
   };
 
-  const updatePlanningField = async (field: string, value: any) => {
-    if (!selectedPlanning) return;
-
-    const { error } = await supabase
-      .from("event_plannings")
-      .update({ [field]: value })
-      .eq("id", selectedPlanning.id);
-
-    if (error) {
-      toast({
-        title: "Fehler",
-        description: "Änderung konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSelectedPlanning({ ...selectedPlanning, [field]: value });
-  };
-
   const addPlanningDate = async () => {
     if (!selectedPlanning || !selectedDate) return;
 
@@ -311,8 +334,8 @@ export function EventPlanningView() {
       return;
     }
 
-    // Create blocked appointment
-    await supabase
+    // Create blocked appointment and store appointment_id
+    const { data: appointment, error: appointmentError } = await supabase
       .from("appointments")
       .insert({
         user_id: user?.id,
@@ -321,7 +344,17 @@ export function EventPlanningView() {
         end_time: new Date(dateTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
         category: "blocked",
         status: "planned",
-      });
+      })
+      .select()
+      .single();
+
+    if (!appointmentError && appointment) {
+      // Update the planning date with the appointment_id
+      await supabase
+        .from("event_planning_dates")
+        .update({ appointment_id: appointment.id })
+        .eq("id", data.id);
+    }
 
     fetchPlanningDetails(selectedPlanning.id);
     setSelectedDate(undefined);
@@ -362,6 +395,19 @@ export function EventPlanningView() {
     // Update planning with confirmed date
     await updatePlanningField("confirmed_date", data.date_time);
 
+    // Update the appointment to be confirmed instead of blocked
+    const confirmedDate = planningDates.find(d => d.id === dateId);
+    if (confirmedDate?.appointment_id) {
+      await supabase
+        .from("appointments")
+        .update({
+          title: selectedPlanning.title,
+          category: "appointment",
+          status: "confirmed",
+        })
+        .eq("id", confirmedDate.appointment_id);
+    }
+
     // Delete all other planning dates and their appointments
     const otherDates = planningDates.filter(d => d.id !== dateId);
     for (const date of otherDates) {
@@ -384,6 +430,47 @@ export function EventPlanningView() {
     toast({
       title: "Erfolg",
       description: "Termin wurde bestätigt und andere Termine entfernt.",
+    });
+  };
+
+  const updateConfirmedDate = async (dateId: string, newDateTime: string) => {
+    if (!selectedPlanning) return;
+
+    const { error } = await supabase
+      .from("event_planning_dates")
+      .update({ date_time: newDateTime })
+      .eq("id", dateId);
+
+    if (error) {
+      toast({
+        title: "Fehler", 
+        description: "Termin konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Update the associated appointment
+    const dateToUpdate = planningDates.find(d => d.id === dateId);
+    if (dateToUpdate?.appointment_id) {
+      const newDate = new Date(newDateTime);
+      await supabase
+        .from("appointments")
+        .update({
+          start_time: newDate.toISOString(),
+          end_time: new Date(newDate.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+        })
+        .eq("id", dateToUpdate.appointment_id);
+    }
+
+    // Update planning confirmed date
+    await updatePlanningField("confirmed_date", newDateTime);
+    
+    fetchPlanningDetails(selectedPlanning.id);
+
+    toast({
+      title: "Erfolg",
+      description: "Termin wurde aktualisiert.",
     });
   };
 
@@ -490,354 +577,464 @@ export function EventPlanningView() {
 
   if (!selectedPlanning) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Veranstaltungsplanung</h1>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Neue Planung
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Neue Veranstaltungsplanung</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Titel</Label>
-                  <Input
-                    id="title"
-                    value={newPlanningTitle}
-                    onChange={(e) => setNewPlanningTitle(e.target.value)}
-                    placeholder="Veranstaltungstitel eingeben..."
-                  />
+      <div className="min-h-screen bg-gradient-subtle p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">Veranstaltungsplanung</h1>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Neue Planung
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Neue Veranstaltungsplanung</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="title">Titel</Label>
+                    <Input
+                      id="title"
+                      value={newPlanningTitle}
+                      onChange={(e) => setNewPlanningTitle(e.target.value)}
+                      placeholder="Veranstaltungstitel eingeben..."
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="private"
+                      checked={newPlanningIsPrivate}
+                      onCheckedChange={setNewPlanningIsPrivate}
+                    />
+                    <Label htmlFor="private">Nur für mich sichtbar</Label>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="private"
-                    checked={newPlanningIsPrivate}
-                    onCheckedChange={setNewPlanningIsPrivate}
-                  />
-                  <Label htmlFor="private">Nur für mich sichtbar</Label>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={createPlanning}>Erstellen</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+                <DialogFooter>
+                  <Button onClick={createPlanning}>Erstellen</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {plannings.map((planning) => (
-            <Card
-              key={planning.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => setSelectedPlanning(planning)}
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  {planning.title}
-                  {planning.is_private && (
-                    <Badge variant="secondary">Privat</Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Erstellt am {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
-                </p>
-                {planning.confirmed_date && (
-                  <p className="text-sm font-medium text-primary mt-2">
-                    Bestätigter Termin: {format(new Date(planning.confirmed_date), "dd.MM.yyyy HH:mm", { locale: de })}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {plannings.map((planning) => {
+              // Get collaborators for this planning
+              const planningCollaborators = collaborators.filter(c => c.event_planning_id === planning.id);
+              
+              return (
+                <Card
+                  key={planning.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => setSelectedPlanning(planning)}
+                >
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      {planning.title}
+                      {planning.is_private && (
+                        <Badge variant="secondary">Privat</Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Erstellt am {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
+                    </p>
+                    
+                    {planning.location && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span>{planning.location}</span>
+                      </div>
+                    )}
+
+                    {planning.confirmed_date && (
+                      <p className="text-sm font-medium text-primary">
+                        Bestätigter Termin: {format(new Date(planning.confirmed_date), "dd.MM.yyyy HH:mm", { locale: de })}
+                      </p>
+                    )}
+
+                    {planningCollaborators.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Bearbeiter:</span>
+                        <div className="flex -space-x-2">
+                          {planningCollaborators.slice(0, 3).map((collaborator) => (
+                            <Avatar key={collaborator.id} className="h-6 w-6 border-2 border-background">
+                              <AvatarImage src={collaborator.profiles?.avatar_url} />
+                              <AvatarFallback className="text-xs">
+                                {collaborator.profiles?.display_name?.charAt(0) || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {planningCollaborators.length > 3 && (
+                            <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                              <span className="text-xs text-muted-foreground">+{planningCollaborators.length - 3}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" onClick={() => setSelectedPlanning(null)}>
-            ← Zurück
-          </Button>
-          <h1 className="text-3xl font-bold">{selectedPlanning.title}</h1>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Dialog open={isCollaboratorDialogOpen} onOpenChange={setIsCollaboratorDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Users className="mr-2 h-4 w-4" />
-                Mitarbeiter
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Mitarbeiter hinzufügen</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                {allProfiles
-                  .filter(profile => 
-                    profile.user_id !== user?.id && 
-                    !collaborators.some(c => c.user_id === profile.user_id)
-                  )
-                  .map((profile) => (
-                    <div key={profile.user_id} className="flex items-center justify-between">
-                      <span>{profile.display_name || 'Unbenannt'}</span>
-                      <div className="space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => addCollaborator(profile.user_id, false)}
-                        >
-                          Nur ansehen
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => addCollaborator(profile.user_id, true)}
-                        >
-                          Bearbeiten
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Löschen
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Planung löschen</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Sind Sie sicher, dass Sie diese Planung löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deletePlanning(selectedPlanning.id)}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Löschen
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Grunddaten */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Grunddaten</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="description">Beschreibung</Label>
-              <Textarea
-                id="description"
-                value={selectedPlanning.description || ""}
-                onChange={(e) => updatePlanningField("description", e.target.value)}
-                placeholder="Beschreibung der Veranstaltung..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="location">Ort</Label>
-              <Input
-                id="location"
-                value={selectedPlanning.location || ""}
-                onChange={(e) => updatePlanningField("location", e.target.value)}
-                placeholder="Veranstaltungsort..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="contact">Ansprechperson vor Ort</Label>
-              <Input
-                id="contact"
-                value={selectedPlanning.contact_person || ""}
-                onChange={(e) => updatePlanningField("contact_person", e.target.value)}
-                placeholder="Name und Kontaktdaten..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="background">Hintergründe</Label>
-              <Textarea
-                id="background"
-                value={selectedPlanning.background_info || ""}
-                onChange={(e) => updatePlanningField("background_info", e.target.value)}
-                placeholder="Hintergrundinformationen..."
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Termine */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              Termine
-              <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Termin hinzufügen
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Neuen Termin hinzufügen</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Datum</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !selectedDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {selectedDate ? format(selectedDate, "dd.MM.yyyy", { locale: de }) : "Datum wählen"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={setSelectedDate}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div>
-                      <Label htmlFor="time">Uhrzeit</Label>
-                      <Input
-                        id="time"
-                        type="time"
-                        value={selectedTime}
-                        onChange={(e) => setSelectedTime(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={addPlanningDate}>Hinzufügen</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {planningDates.map((date) => (
-                <div
-                  key={date.id}
-                  className={cn(
-                    "flex items-center justify-between p-3 rounded-md border",
-                    date.is_confirmed && "bg-primary/10 border-primary"
-                  )}
-                >
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4" />
-                    <span>
-                      {format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}
-                    </span>
-                    {date.is_confirmed && (
-                      <Badge variant="default">Bestätigt</Badge>
-                    )}
-                  </div>
-                  {!date.is_confirmed && (
-                    <Button
-                      size="sm"
-                      onClick={() => confirmDate(date.id)}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Checkliste */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Checkliste</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {checklistItems.map((item) => (
-                <div key={item.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={item.is_completed}
-                    onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)}
-                  />
+    <div className="min-h-screen bg-gradient-subtle p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" onClick={() => setSelectedPlanning(null)}>
+              ← Zurück
+            </Button>
+            <div className="flex items-center space-x-2">
+              {editingTitle ? (
+                <div className="flex items-center space-x-2">
                   <Input
-                    value={item.title}
-                    onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
-                    className={cn(
-                      "flex-1",
-                      item.is_completed && "line-through text-muted-foreground"
-                    )}
+                    value={tempTitle}
+                    onChange={(e) => setTempTitle(e.target.value)}
+                    onBlur={() => {
+                      updatePlanningField("title", tempTitle);
+                      setEditingTitle(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        updatePlanningField("title", tempTitle);
+                        setEditingTitle(false);
+                      }
+                      if (e.key === "Escape") {
+                        setTempTitle(selectedPlanning.title);
+                        setEditingTitle(false);
+                      }
+                    }}
+                    className="text-3xl font-bold border-none p-0 focus:ring-0"
+                    autoFocus
                   />
                 </div>
-              ))}
-              <div className="flex items-center space-x-2 mt-4">
-                <Input
-                  value={newChecklistItem}
-                  onChange={(e) => setNewChecklistItem(e.target.value)}
-                  placeholder="Neuen Punkt hinzufügen..."
-                  onKeyPress={(e) => e.key === "Enter" && addChecklistItem()}
-                />
-                <Button onClick={addChecklistItem}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+              ) : (
+                <h1 
+                  className="text-3xl font-bold cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => {
+                    setTempTitle(selectedPlanning.title);
+                    setEditingTitle(true);
+                  }}
+                >
+                  {selectedPlanning.title}
+                </h1>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setTempTitle(selectedPlanning.title);
+                  setEditingTitle(true);
+                }}
+              >
+                <Edit2 className="h-4 w-4" />
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="flex items-center space-x-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Löschen
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Planung löschen</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Sind Sie sicher, dass Sie diese Planung löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deletePlanning(selectedPlanning.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
 
-        {/* Mitarbeiter */}
-        {collaborators.length > 0 && (
-          <Card className="lg:col-span-2">
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Grunddaten */}
+          <Card className="bg-card shadow-card border-border">
             <CardHeader>
-              <CardTitle>Mitarbeiter</CardTitle>
+              <CardTitle>Grunddaten</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-2 md:grid-cols-2">
-                {collaborators.map((collaborator) => (
-                  <div key={collaborator.id} className="flex items-center justify-between p-2 rounded-md border">
-                    <span>{collaborator.profiles?.display_name || 'Unbenannt'}</span>
-                    <Badge variant={collaborator.can_edit ? "default" : "secondary"}>
-                      {collaborator.can_edit ? "Bearbeiten" : "Ansehen"}
-                    </Badge>
-                  </div>
-                ))}
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="description">Beschreibung</Label>
+                <Textarea
+                  id="description"
+                  value={selectedPlanning.description || ""}
+                  onChange={(e) => updatePlanningField("description", e.target.value)}
+                  placeholder="Beschreibung der Veranstaltung..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="location">Ort</Label>
+                <Input
+                  id="location"
+                  value={selectedPlanning.location || ""}
+                  onChange={(e) => updatePlanningField("location", e.target.value)}
+                  placeholder="Veranstaltungsort..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="contact">Ansprechperson vor Ort</Label>
+                <Input
+                  id="contact"
+                  value={selectedPlanning.contact_person || ""}
+                  onChange={(e) => updatePlanningField("contact_person", e.target.value)}
+                  placeholder="Name und Kontaktdaten..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="background">Hintergründe</Label>
+                <Textarea
+                  id="background"
+                  value={selectedPlanning.background_info || ""}
+                  onChange={(e) => updatePlanningField("background_info", e.target.value)}
+                  placeholder="Hintergrundinformationen..."
+                />
               </div>
             </CardContent>
           </Card>
-        )}
+
+          {/* Mitarbeiter */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Mitarbeiter
+                <Dialog open={isCollaboratorDialogOpen} onOpenChange={setIsCollaboratorDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Users className="mr-2 h-4 w-4" />
+                      Hinzufügen
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Mitarbeiter hinzufügen</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {allProfiles
+                        .filter(profile => 
+                          profile.user_id !== user?.id && 
+                          !collaborators.some(c => c.user_id === profile.user_id)
+                        )
+                        .map((profile) => (
+                          <div key={profile.user_id} className="flex items-center justify-between">
+                            <span>{profile.display_name || 'Unbenannt'}</span>
+                            <div className="space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => addCollaborator(profile.user_id, false)}
+                              >
+                                Nur ansehen
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => addCollaborator(profile.user_id, true)}
+                              >
+                                Bearbeiten
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {collaborators.length > 0 ? (
+                <div className="space-y-2">
+                  {collaborators.map((collaborator) => (
+                    <div key={collaborator.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={collaborator.profiles?.avatar_url} />
+                          <AvatarFallback>
+                            {collaborator.profiles?.display_name?.charAt(0) || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>{collaborator.profiles?.display_name || 'Unbenannt'}</span>
+                      </div>
+                      <Badge variant={collaborator.can_edit ? "default" : "secondary"}>
+                        {collaborator.can_edit ? "Bearbeiten" : "Ansehen"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Noch keine Mitarbeiter hinzugefügt</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Termine */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Termine
+                {!planningDates.some(d => d.is_confirmed) && (
+                  <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Termin hinzufügen
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Neuen Termin hinzufügen</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Datum</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !selectedDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {selectedDate ? format(selectedDate, "dd.MM.yyyy", { locale: de }) : "Datum wählen"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={selectedDate}
+                                onSelect={setSelectedDate}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div>
+                          <Label htmlFor="time">Uhrzeit</Label>
+                          <Input
+                            id="time"
+                            type="time"
+                            value={selectedTime}
+                            onChange={(e) => setSelectedTime(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={addPlanningDate}>Hinzufügen</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {planningDates.map((date) => (
+                  <div key={date.id}>
+                    {date.is_confirmed ? (
+                      <div className="flex items-center justify-between p-3 rounded-md border bg-primary/10 border-primary">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4" />
+                          <input
+                            type="datetime-local"
+                            value={new Date(date.date_time).toISOString().slice(0, 16)}
+                            onChange={(e) => updateConfirmedDate(date.id, new Date(e.target.value).toISOString())}
+                            className="bg-transparent border-none outline-none font-medium"
+                          />
+                          <Badge variant="default">Bestätigt</Badge>
+                        </div>
+                        <Button variant="ghost" size="sm">
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between p-3 rounded-md border">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4" />
+                          <span>
+                            {format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => confirmDate(date.id)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {planningDates.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Noch keine Termine hinzugefügt
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Checkliste */}
+          <Card className="lg:col-span-2 bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle>Checkliste</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {checklistItems.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={item.is_completed}
+                      onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)}
+                    />
+                    <Input
+                      value={item.title}
+                      onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
+                      className={cn(
+                        "flex-1",
+                        item.is_completed && "line-through text-muted-foreground"
+                      )}
+                    />
+                  </div>
+                ))}
+                <div className="flex items-center space-x-2 mt-4">
+                  <Input
+                    value={newChecklistItem}
+                    onChange={(e) => setNewChecklistItem(e.target.value)}
+                    placeholder="Neuen Punkt hinzufügen..."
+                    onKeyPress={(e) => e.key === "Enter" && addChecklistItem()}
+                  />
+                  <Button onClick={addChecklistItem}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
