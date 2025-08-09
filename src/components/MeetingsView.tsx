@@ -68,10 +68,15 @@ export function MeetingsView() {
 
   // Load data on component mount
   useEffect(() => {
+    console.log('=== MeetingsView useEffect triggered ===');
+    console.log('User:', user);
     if (user) {
+      console.log('Loading meetings data...');
       loadMeetings();
       loadProfiles();
       loadTasks();
+    } else {
+      console.log('No user found, skipping data load');
     }
   }, [user]);
 
