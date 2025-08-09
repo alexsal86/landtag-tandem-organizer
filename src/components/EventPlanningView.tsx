@@ -84,6 +84,7 @@ export function EventPlanningView() {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("10:00");
   const [newChecklistItem, setNewChecklistItem] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user);
@@ -99,23 +100,43 @@ export function EventPlanningView() {
 
   const fetchPlannings = async () => {
     console.log('fetchPlannings called, user:', user);
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from("event_plannings")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      toast({
-        title: "Fehler",
-        description: "Planungen konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+    if (!user) {
+      console.log('No user found, returning early');
       return;
     }
 
-    setPlannings(data || []);
+    try {
+      setLoading(true);
+      console.log('Fetching plannings from Supabase...');
+      const { data, error } = await supabase
+        .from("event_plannings")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      console.log('Supabase response:', { data, error });
+
+      if (error) {
+        console.error('Error fetching plannings:', error);
+        toast({
+          title: "Fehler",
+          description: `Planungen konnten nicht geladen werden: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Successfully fetched plannings:', data);
+      setPlannings(data || []);
+    } catch (err) {
+      console.error('Unexpected error in fetchPlannings:', err);
+      toast({
+        title: "Fehler",
+        description: "Ein unerwarteter Fehler ist aufgetreten.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchAllProfiles = async () => {
