@@ -609,17 +609,26 @@ export function MeetingsView() {
 
         if (error) throw error;
 
+        // Remove item from local state and reindex properly
+        const updatedItems = agendaItems.filter((_, i) => i !== index);
+        const reindexedItems = updatedItems.map((item, idx) => ({
+          ...item,
+          order_index: idx
+        }));
+        setAgendaItems(reindexedItems);
+
         toast({
           title: "Punkt gelöscht",
           description: "Der Agenda-Punkt wurde erfolgreich gelöscht.",
         });
-
-        // Reload agenda items to get fresh data
-        await loadAgendaItems(selectedMeeting.id);
       } else {
-        // If no ID, just remove locally
-        const updated = agendaItems.filter((_, i) => i !== index);
-        setAgendaItems(updated.map((it, idx) => ({ ...it, order_index: idx })));
+        // If no ID, just remove locally and reindex
+        const updatedItems = agendaItems.filter((_, i) => i !== index);
+        const reindexedItems = updatedItems.map((item, idx) => ({
+          ...item,
+          order_index: idx
+        }));
+        setAgendaItems(reindexedItems);
       }
     } catch (error) {
       toast({
@@ -1210,10 +1219,10 @@ export function MeetingsView() {
                                                            setAgendaItems(updatedItems);
                                                          }
                                                          
-                                                         const fileName = `agenda_${itemId}_${Date.now()}_${file.name}`;
-                                                         const { error: uploadError } = await supabase.storage
-                                                           .from('documents')
-                                                           .upload(fileName, file);
+                                                          const fileName = `${user?.id}/${itemId}_${Date.now()}_${file.name}`;
+                                                          const { error: uploadError } = await supabase.storage
+                                                            .from('documents')
+                                                            .upload(fileName, file);
                                                          
                                                          if (uploadError) throw uploadError;
                                                          
