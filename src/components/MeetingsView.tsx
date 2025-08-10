@@ -420,10 +420,10 @@ export function MeetingsView() {
         setAgendaItems(updatedItems);
       }
 
-    // Calculate proper order index for the sub-item
-      const maxOrderIndex = Math.max(...agendaItems.map(item => item.order_index), -1);
+      // Calculate the correct order index for the sub-item (right after parent)
+      const subItemOrderIndex = parentIndex + 1;
       
-      // Insert the task as a sub-item
+      // Insert the task as a sub-item with correct parent_id
       const { data: taskData, error: taskError } = await supabase
         .from('meeting_agenda_items')
         .insert({
@@ -431,8 +431,8 @@ export function MeetingsView() {
           title: task.title,
           description: task.description || null,
           task_id: task.id,
-          parent_id: parentId,
-          order_index: maxOrderIndex + 1,
+          parent_id: parentId, // This is the key - setting the correct parent_id
+          order_index: subItemOrderIndex,
           is_completed: false,
           is_recurring: false,
         })
@@ -441,19 +441,28 @@ export function MeetingsView() {
 
       if (taskError) throw taskError;
       
-      // Update local state by adding the sub-item to the end
+      // Create the new sub-item with proper parent reference
       const newSubItem: AgendaItem = {
         ...taskData,
-        parent_id: parentId,
         localKey: taskData.id,
         parentLocalKey: parentId,
       };
       
-      setAgendaItems([...agendaItems, newSubItem]);
+      // Insert the sub-item right after its parent in local state
+      const updatedItems = [...agendaItems];
+      updatedItems.splice(parentIndex + 1, 0, newSubItem);
+      
+      // Reindex all items to maintain proper order
+      const reindexedItems = updatedItems.map((item, idx) => ({
+        ...item,
+        order_index: idx
+      }));
+      
+      setAgendaItems(reindexedItems);
       
       toast({
         title: "Aufgabe hinzugefügt",
-        description: `"${task.title}" wurde als Unterpunkt hinzugefügt.`,
+        description: `"${task.title}" wurde als Unterpunkt zu "${parentItem.title}" hinzugefügt.`,
       });
       
     } catch (error) {
@@ -507,6 +516,7 @@ export function MeetingsView() {
     
     try {
       let parentId = parent.id;
+      const parentIndex = agendaItems.findIndex(item => item.localKey === parent.localKey || item.id === parent.id);
       
       // If parent doesn't have an ID yet, save it first
       if (!parentId) {
@@ -525,28 +535,56 @@ export function MeetingsView() {
         
         if (parentError) throw parentError;
         parentId = parentData.id;
+        
+        // Update parent in local state
+        const updatedItems = [...agendaItems];
+        updatedItems[parentIndex] = { ...parent, id: parentId };
+        setAgendaItems(updatedItems);
       }
 
-      // Insert the sub-item
-      await supabase
+      // Calculate the correct order index for the sub-item (right after parent)
+      const subItemOrderIndex = parentIndex + 1;
+
+      // Insert the sub-item with correct parent_id
+      const { data: subItemData, error: subItemError } = await supabase
         .from('meeting_agenda_items')
         .insert({
           meeting_id: selectedMeeting.id,
           title: title || '',
           description: '',
-          parent_id: parentId,
-          order_index: agendaItems.length, // Will be reordered on next load
+          parent_id: parentId, // This is the key - setting the correct parent_id
+          order_index: subItemOrderIndex,
           is_completed: false,
           is_recurring: false,
-        });
+        })
+        .select()
+        .single();
+
+      if (subItemError) throw subItemError;
+
+      // Create the new sub-item with proper parent reference
+      const newSubItem: AgendaItem = {
+        ...subItemData,
+        localKey: subItemData.id,
+        parentLocalKey: parentId,
+      };
+      
+      // Insert the sub-item right after its parent in local state
+      const updatedItems = [...agendaItems];
+      updatedItems.splice(parentIndex + 1, 0, newSubItem);
+      
+      // Reindex all items to maintain proper order
+      const reindexedItems = updatedItems.map((item, idx) => ({
+        ...item,
+        order_index: idx
+      }));
+      
+      setAgendaItems(reindexedItems);
 
       toast({
         title: "Unterpunkt hinzugefügt",
-        description: "Der Unterpunkt wurde erfolgreich hinzugefügt.",
+        description: `Unterpunkt wurde zu "${parent.title}" hinzugefügt.`,
       });
-
-      // Reload agenda to get fresh data
-      await loadAgendaItems(selectedMeeting.id);
       
     } catch (error) {
       console.error('Error saving sub-item:', error);
