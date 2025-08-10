@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2 } from "lucide-react";
+import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,12 +24,29 @@ interface Task {
   progress?: number;
 }
 
+interface TaskComment {
+  id: string;
+  task_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  profile?: {
+    display_name?: string;
+    avatar_url?: string;
+  };
+}
+
 export function TasksView() {
   const [filter, setFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Task>>({});
+  const [taskComments, setTaskComments] = useState<{ [taskId: string]: TaskComment[] }>({});
+  const [newComment, setNewComment] = useState<{ [taskId: string]: string }>({});
+  const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
   const [recentActivities, setRecentActivities] = useState<Array<{
     id: string;
     type: 'completed' | 'updated' | 'created';
@@ -228,10 +245,20 @@ export function TasksView() {
   };
 
   const filteredTasks = tasks.filter(task => {
-    if (filter === "all") return true;
-    if (filter === "pending") return task.status !== "completed";
-    if (filter === "overdue") return isOverdue(task.dueDate);
-    return task.status === filter;
+    // Status filter
+    let statusMatch = false;
+    if (filter === "all") statusMatch = true;
+    else if (filter === "pending") statusMatch = task.status !== "completed";
+    else if (filter === "overdue") statusMatch = isOverdue(task.dueDate);
+    else statusMatch = task.status === filter;
+
+    // Category filter
+    const categoryMatch = categoryFilter === "all" || task.category === categoryFilter;
+    
+    // Priority filter
+    const priorityMatch = priorityFilter === "all" || task.priority === priorityFilter;
+
+    return statusMatch && categoryMatch && priorityMatch;
   });
 
   const toggleTaskStatus = async (taskId: string) => {
@@ -241,24 +268,30 @@ export function TasksView() {
 
       const newStatus = task.status === "completed" ? "todo" : "completed";
       
-      const { error } = await supabase
-        .from('tasks')
-        .update({ status: newStatus })
-        .eq('id', taskId);
+      // If marking as completed, archive the task
+      if (newStatus === "completed") {
+        await archiveTask(task);
+      } else {
+        // If unmarking as completed, just update the status
+        const { error } = await supabase
+          .from('tasks')
+          .update({ status: newStatus })
+          .eq('id', taskId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Update local state
-      setTasks(prev => prev.map(t => 
-        t.id === taskId ? { ...t, status: newStatus } : t
-      ));
+        // Update local state
+        setTasks(prev => prev.map(t => 
+          t.id === taskId ? { ...t, status: newStatus } : t
+        ));
+      }
 
       // Refresh recent activities
       loadRecentActivities();
 
       toast({
         title: "Aufgabe aktualisiert",
-        description: `Status auf "${newStatus === "completed" ? "Erledigt" : "Zu erledigen"}" geändert.`,
+        description: `Status auf "${newStatus === "completed" ? "Erledigt und archiviert" : "Zu erledigen"}" geändert.`,
       });
     } catch (error) {
       console.error('Error updating task:', error);
@@ -267,6 +300,136 @@ export function TasksView() {
         description: "Aufgabe konnte nicht aktualisiert werden.",
         variant: "destructive",
       });
+    }
+  };
+
+  const archiveTask = async (task: Task) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get archive settings for auto-delete duration
+      const { data: archiveSettings } = await supabase
+        .from('task_archive_settings')
+        .select('auto_delete_after_days')
+        .eq('user_id', user.id)
+        .single();
+
+      // Insert into archived_tasks
+      const { error: archiveError } = await supabase
+        .from('archived_tasks')
+        .insert({
+          task_id: task.id,
+          user_id: user.id,
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          category: task.category,
+          assigned_to: task.assignedTo,
+          progress: task.progress,
+          due_date: task.dueDate,
+          auto_delete_after_days: archiveSettings?.auto_delete_after_days,
+        });
+
+      if (archiveError) throw archiveError;
+
+      // Update task status to completed
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ status: 'completed' })
+        .eq('id', task.id);
+
+      if (updateError) throw updateError;
+
+      // Remove from local tasks (since it's now archived)
+      setTasks(prev => prev.filter(t => t.id !== task.id));
+
+    } catch (error) {
+      console.error('Error archiving task:', error);
+      throw error;
+    }
+  };
+
+  const loadTaskComments = async (taskId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('task_comments')
+        .select(`
+          *,
+          profiles:user_id (
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('task_id', taskId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedComments: TaskComment[] = (data || []).map(comment => ({
+        id: comment.id,
+        task_id: comment.task_id,
+        user_id: comment.user_id,
+        content: comment.content,
+        created_at: comment.created_at,
+        profile: Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles,
+      }));
+
+      setTaskComments(prev => ({
+        ...prev,
+        [taskId]: formattedComments,
+      }));
+    } catch (error) {
+      console.error('Error loading task comments:', error);
+    }
+  };
+
+  const addComment = async (taskId: string) => {
+    const content = newComment[taskId]?.trim();
+    if (!content) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('task_comments')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          content,
+        });
+
+      if (error) throw error;
+
+      // Clear the comment input
+      setNewComment(prev => ({ ...prev, [taskId]: '' }));
+
+      // Reload comments
+      loadTaskComments(taskId);
+
+      toast({
+        title: "Kommentar hinzugefügt",
+        description: "Ihr Kommentar wurde erfolgreich hinzugefügt.",
+      });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleComments = (taskId: string) => {
+    if (showCommentsFor === taskId) {
+      setShowCommentsFor(null);
+    } else {
+      setShowCommentsFor(taskId);
+      if (!taskComments[taskId]) {
+        loadTaskComments(taskId);
+      }
     }
   };
 
@@ -364,7 +527,7 @@ export function TasksView() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto mb-4">
           {filters.map((filterOption) => (
             <Button
               key={filterOption.value}
@@ -376,6 +539,39 @@ export function TasksView() {
               {filterOption.label} ({filterOption.count})
             </Button>
           ))}
+        </div>
+
+        {/* Advanced Filters */}
+        <div className="flex gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            <span className="text-sm font-medium">Zusätzliche Filter:</span>
+          </div>
+          
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Kategorie" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Kategorien</SelectItem>
+              <SelectItem value="legislation">Gesetzgebung</SelectItem>
+              <SelectItem value="committee">Ausschuss</SelectItem>
+              <SelectItem value="constituency">Wahlkreis</SelectItem>
+              <SelectItem value="personal">Persönlich</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Priorität" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Prioritäten</SelectItem>
+              <SelectItem value="high">Hoch</SelectItem>
+              <SelectItem value="medium">Mittel</SelectItem>
+              <SelectItem value="low">Niedrig</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -581,12 +777,81 @@ export function TasksView() {
                             style={{ width: `${task.progress}%` }}
                           ></div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                       </div>
+                     )}
+
+                     {/* Comments Section */}
+                     <div className="mt-4 pt-4 border-t">
+                       <div className="flex items-center gap-2 mb-3">
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => toggleComments(task.id)}
+                           className="gap-2"
+                         >
+                           <MessageCircle className="h-4 w-4" />
+                           Kommentare ({taskComments[task.id]?.length || 0})
+                         </Button>
+                       </div>
+
+                       {showCommentsFor === task.id && (
+                         <div className="space-y-3">
+                           {/* Existing Comments */}
+                           {taskComments[task.id]?.map((comment) => (
+                             <div key={comment.id} className="bg-muted/50 rounded-lg p-3">
+                               <div className="flex items-start gap-3">
+                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                   <User className="h-4 w-4" />
+                                 </div>
+                                 <div className="flex-1">
+                                   <div className="flex items-center gap-2 mb-1">
+                                     <span className="text-sm font-medium">
+                                       {comment.profile?.display_name || 'Unbekannter Nutzer'}
+                                     </span>
+                                     <span className="text-xs text-muted-foreground">
+                                       {new Date(comment.created_at).toLocaleDateString('de-DE', {
+                                         day: '2-digit',
+                                         month: '2-digit',
+                                         year: 'numeric',
+                                         hour: '2-digit',
+                                         minute: '2-digit'
+                                       })}
+                                     </span>
+                                   </div>
+                                   <p className="text-sm">{comment.content}</p>
+                                 </div>
+                               </div>
+                             </div>
+                           ))}
+
+                           {/* Add Comment */}
+                           <div className="flex gap-2">
+                             <Input
+                               placeholder="Kommentar hinzufügen..."
+                               value={newComment[task.id] || ''}
+                               onChange={(e) => setNewComment(prev => ({ ...prev, [task.id]: e.target.value }))}
+                               onKeyPress={(e) => {
+                                 if (e.key === 'Enter' && !e.shiftKey) {
+                                   e.preventDefault();
+                                   addComment(task.id);
+                                 }
+                               }}
+                             />
+                             <Button
+                               size="sm"
+                               onClick={() => addComment(task.id)}
+                               disabled={!newComment[task.id]?.trim()}
+                             >
+                               <Send className="h-4 w-4" />
+                             </Button>
+                           </div>
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 </div>
+               </CardContent>
+             </Card>
           ))}
 
           {filteredTasks.length === 0 && (
@@ -608,6 +873,20 @@ export function TasksView() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Archive Link */}
+          <Card className="bg-card shadow-card border-border">
+            <CardContent className="p-4">
+              <Button 
+                variant="outline" 
+                className="w-full gap-2"
+                onClick={() => window.location.href = '/tasks/archive'}
+              >
+                <Archive className="h-4 w-4" />
+                Aufgaben-Archiv
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Quick Stats */}
           <Card className="bg-card shadow-card border-border">
             <CardHeader>

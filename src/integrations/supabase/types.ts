@@ -112,6 +112,57 @@ export type Database = {
           },
         ]
       }
+      archived_tasks: {
+        Row: {
+          archived_at: string
+          assigned_to: string | null
+          auto_delete_after_days: number | null
+          category: string
+          completed_at: string
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string
+          progress: number | null
+          task_id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string
+          assigned_to?: string | null
+          auto_delete_after_days?: number | null
+          category: string
+          completed_at?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority: string
+          progress?: number | null
+          task_id: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string
+          assigned_to?: string | null
+          auto_delete_after_days?: number | null
+          category?: string
+          completed_at?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          progress?: number | null
+          task_id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           additional_info: string | null
@@ -702,6 +753,65 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      task_archive_settings: {
+        Row: {
+          auto_delete_after_days: number | null
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_delete_after_days?: number | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_delete_after_days?: number | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      task_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
