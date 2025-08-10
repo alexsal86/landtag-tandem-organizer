@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X } from "lucide-react";
+import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -1178,6 +1178,80 @@ export function MeetingsView() {
                                          </div>
 
                                           <div>
+                                            {/* Display uploaded files */}
+                                            {item.file_path && (
+                                              <div className="mb-4 bg-muted/30 p-3 rounded-lg border">
+                                                <h4 className="text-sm font-medium mb-2">Angehängte Dateien:</h4>
+                                                <div className="flex items-center justify-between p-2 bg-background rounded border">
+                                                  <div className="flex items-center gap-2">
+                                                    <FileText className="h-4 w-4 text-blue-600" />
+                                                    <span className="text-sm">
+                                                      {item.file_path.split('/').pop()?.split('_').slice(2).join('_') || 'Datei'}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex gap-1">
+                                                    <Button 
+                                                      variant="ghost" 
+                                                      size="sm"
+                                                      onClick={async () => {
+                                                        try {
+                                                          const { data, error } = await supabase.storage
+                                                            .from('documents')
+                                                            .download(item.file_path!);
+                                                          
+                                                          if (error) throw error;
+                                                          
+                                                          const fileName = item.file_path!.split('/').pop()?.split('_').slice(2).join('_') || 'download';
+                                                          const url = URL.createObjectURL(data);
+                                                          const a = document.createElement('a');
+                                                          a.href = url;
+                                                          a.download = fileName;
+                                                          a.click();
+                                                          URL.revokeObjectURL(url);
+                                                        } catch (error) {
+                                                          toast({
+                                                            title: "Download-Fehler",
+                                                            description: "Datei konnte nicht heruntergeladen werden.",
+                                                            variant: "destructive",
+                                                          });
+                                                        }
+                                                      }}
+                                                    >
+                                                      <Download className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button 
+                                                      variant="ghost" 
+                                                      size="sm"
+                                                      onClick={async () => {
+                                                        try {
+                                                          // Remove file from storage
+                                                          await supabase.storage
+                                                            .from('documents')
+                                                            .remove([item.file_path!]);
+                                                          
+                                                          // Update agenda item
+                                                          await updateAgendaItem(index, 'file_path', null);
+                                                          
+                                                          toast({
+                                                            title: "Datei entfernt",
+                                                            description: "Die Datei wurde erfolgreich entfernt.",
+                                                          });
+                                                        } catch (error) {
+                                                          toast({
+                                                            title: "Fehler",
+                                                            description: "Datei konnte nicht entfernt werden.",
+                                                            variant: "destructive",
+                                                          });
+                                                        }
+                                                      }}
+                                                    >
+                                                      <X className="h-4 w-4" />
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            )}
+                                            
                                             <label className="text-sm font-medium">Datei anhängen</label>
                                             <div className="flex items-center gap-2">
                                               <Button 
@@ -1249,29 +1323,6 @@ export function MeetingsView() {
                                                 <Upload className="h-4 w-4 mr-2" />
                                                 Datei auswählen
                                               </Button>
-                                              {item.file_path && (
-                                                <Button 
-                                                  variant="ghost" 
-                                                  size="sm"
-                                                  onClick={async () => {
-                                                    try {
-                                                      const { data } = await supabase.storage
-                                                        .from('documents')
-                                                        .getPublicUrl(item.file_path!);
-                                                      window.open(data.publicUrl, '_blank');
-                                                    } catch (error) {
-                                                      toast({
-                                                        title: "Fehler",
-                                                        description: "Datei konnte nicht geöffnet werden.",
-                                                        variant: "destructive",
-                                                      });
-                                                    }
-                                                  }}
-                                                >
-                                                  <FileText className="h-4 w-4 mr-2" />
-                                                  Angehängt
-                                                </Button>
-                                              )}
                                             </div>
                                           </div>
                                        </>
