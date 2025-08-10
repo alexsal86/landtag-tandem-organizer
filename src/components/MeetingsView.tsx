@@ -42,6 +42,7 @@ interface Meeting {
   title: string;
   description?: string;
   meeting_date: string | Date;
+  location?: string;
   status: string;
   template_id?: string;
   created_at?: string;
@@ -66,6 +67,7 @@ export function MeetingsView() {
     title: "",
     description: "",
     meeting_date: new Date(),
+    location: "",
     status: "planned"
   });
   const [newMeetingTime, setNewMeetingTime] = useState<string>("10:00");
@@ -196,6 +198,7 @@ export function MeetingsView() {
         title: newMeeting.title,
         description: newMeeting.description || null,
         meeting_date: format(newMeeting.meeting_date, 'yyyy-MM-dd'),
+        location: newMeeting.location || null,
         status: newMeeting.status,
         user_id: user.id,
         template_id: newMeeting.template_id || null
@@ -229,6 +232,7 @@ export function MeetingsView() {
         title: "",
         description: "",
         meeting_date: new Date(),
+        location: "",
         status: "planned"
       });
 
@@ -416,7 +420,10 @@ export function MeetingsView() {
         setAgendaItems(updatedItems);
       }
 
-      // Insert the task as a sub-item directly after the parent
+    // Calculate proper order index for the sub-item
+      const maxOrderIndex = Math.max(...agendaItems.map(item => item.order_index), -1);
+      
+      // Insert the task as a sub-item
       const { data: taskData, error: taskError } = await supabase
         .from('meeting_agenda_items')
         .insert({
@@ -425,7 +432,7 @@ export function MeetingsView() {
           description: task.description || null,
           task_id: task.id,
           parent_id: parentId,
-          order_index: parentIndex + 1, // Insert right after parent
+          order_index: maxOrderIndex + 1,
           is_completed: false,
           is_recurring: false,
         })
@@ -434,22 +441,15 @@ export function MeetingsView() {
 
       if (taskError) throw taskError;
       
-      // Update local state immediately to show the new sub-item
+      // Update local state by adding the sub-item to the end
       const newSubItem: AgendaItem = {
         ...taskData,
+        parent_id: parentId,
+        localKey: taskData.id,
         parentLocalKey: parentId,
       };
       
-      const updatedItems = [...agendaItems];
-      updatedItems.splice(parentIndex + 1, 0, newSubItem);
-      
-      // Reindex order for all items after insertion
-      const reindexedItems = updatedItems.map((item, idx) => ({
-        ...item,
-        order_index: idx
-      }));
-      
-      setAgendaItems(reindexedItems);
+      setAgendaItems([...agendaItems, newSubItem]);
       
       toast({
         title: "Aufgabe hinzugefügt",
@@ -672,6 +672,7 @@ export function MeetingsView() {
         .update({
           title: updates.title,
           description: updates.description,
+          location: updates.location,
           start_time: updates.meeting_date ? 
             `${format(new Date(updates.meeting_date), 'yyyy-MM-dd')}T${newMeetingTime}:00` : 
             undefined,
@@ -788,6 +789,14 @@ export function MeetingsView() {
                   placeholder="Meeting Beschreibung"
                 />
               </div>
+              <div>
+                <label className="text-sm font-medium">Ort</label>
+                <Input
+                  value={newMeeting.location || ''}
+                  onChange={(e) => setNewMeeting({ ...newMeeting, location: e.target.value })}
+                  placeholder="Meeting Ort"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">Datum</label>
@@ -855,12 +864,18 @@ export function MeetingsView() {
                           onChange={(e) => setEditingMeeting({ ...editingMeeting, title: e.target.value })}
                           className="font-semibold"
                         />
-                        <Textarea
-                          value={editingMeeting.description || ''}
-                          onChange={(e) => setEditingMeeting({ ...editingMeeting, description: e.target.value })}
-                          placeholder="Beschreibung"
-                          className="text-sm"
-                        />
+                         <Textarea
+                           value={editingMeeting.description || ''}
+                           onChange={(e) => setEditingMeeting({ ...editingMeeting, description: e.target.value })}
+                           placeholder="Beschreibung"
+                           className="text-sm"
+                         />
+                         <Input
+                           value={editingMeeting.location || ''}
+                           onChange={(e) => setEditingMeeting({ ...editingMeeting, location: e.target.value })}
+                           placeholder="Ort"
+                           className="text-sm"
+                         />
                         <div className="grid grid-cols-2 gap-2">
                           <Popover>
                             <PopoverTrigger asChild>
@@ -894,6 +909,12 @@ export function MeetingsView() {
                             <CalendarIcon className="h-4 w-4" />
                             {format(new Date(meeting.meeting_date), 'PPP', { locale: de })}
                           </div>
+                          {meeting.location && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <Users className="h-4 w-4" />
+                              <span className="text-xs">{meeting.location}</span>
+                            </div>
+                          )}
                           {meeting.description && (
                             <p className="text-xs mt-1 text-muted-foreground">{meeting.description}</p>
                           )}

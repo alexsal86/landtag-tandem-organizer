@@ -612,6 +612,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          location: string | null
           meeting_date: string
           status: string
           template_id: string | null
@@ -623,6 +624,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          location?: string | null
           meeting_date: string
           status?: string
           template_id?: string | null
@@ -634,6 +636,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          location?: string | null
           meeting_date?: string
           status?: string
           template_id?: string | null
