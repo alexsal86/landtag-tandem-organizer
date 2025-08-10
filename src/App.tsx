@@ -31,7 +31,7 @@ const App = () => (
             <Route path="/contacts/new" element={<CreateContact />} />
             <Route path="/appointments/new" element={<CreateAppointment />} />
             <Route path="/tasks/new" element={<CreateTask />} />
-            <Route path="/tasks/archive" element={<TaskArchiveView />} />
+            
             <Route path="/contacts/:id" element={<ContactDetail />} />
             <Route path="/contacts/:id/edit" element={<EditContact />} />
             <Route path="/profile/edit" element={<EditProfile />} />

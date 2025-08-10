@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { TaskArchiveModal } from "./TaskArchiveModal";
 
 interface Task {
   id: string;
@@ -46,6 +47,7 @@ export function TasksView() {
   const [editFormData, setEditFormData] = useState<Partial<Task>>({});
   const [taskComments, setTaskComments] = useState<{ [taskId: string]: TaskComment[] }>({});
   const [newComment, setNewComment] = useState<{ [taskId: string]: string }>({});
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
   const [recentActivities, setRecentActivities] = useState<Array<{
     id: string;
@@ -97,9 +99,19 @@ export function TasksView() {
 
   const loadTasks = async () => {
     try {
+      // Get completed task IDs from archive to filter them out
+      const { data: archivedTasks, error: archiveError } = await supabase
+        .from('archived_tasks')
+        .select('task_id');
+
+      if (archiveError) throw archiveError;
+
+      const archivedTaskIds = (archivedTasks || []).map(at => at.task_id);
+
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
+        .not('id', 'in', `(${archivedTaskIds.length > 0 ? archivedTaskIds.join(',') : 'null'})`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -879,7 +891,7 @@ export function TasksView() {
               <Button 
                 variant="outline" 
                 className="w-full gap-2"
-                onClick={() => window.location.href = '/tasks/archive'}
+                onClick={() => setArchiveModalOpen(true)}
               >
                 <Archive className="h-4 w-4" />
                 Aufgaben-Archiv
@@ -941,6 +953,11 @@ export function TasksView() {
           </Card>
         </div>
       </div>
+
+      <TaskArchiveModal
+        isOpen={archiveModalOpen}
+        onClose={() => setArchiveModalOpen(false)}
+      />
     </div>
   );
 }

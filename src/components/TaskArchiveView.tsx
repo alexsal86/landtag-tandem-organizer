@@ -32,7 +32,7 @@ interface ArchiveSettings {
 export function TaskArchiveView() {
   const [archivedTasks, setArchivedTasks] = useState<ArchivedTask[]>([]);
   const [archiveSettings, setArchiveSettings] = useState<ArchiveSettings>({});
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -92,25 +92,29 @@ export function TaskArchiveView() {
     }
   };
 
-  const saveArchiveSettings = async () => {
+  const handleArchiveSettingsChange = async (value: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      const newSettings = {
+        auto_delete_after_days: value === "never" ? null : parseInt(value)
+      };
 
       const { error } = await supabase
         .from('task_archive_settings')
         .upsert({
           user_id: user.id,
-          auto_delete_after_days: archiveSettings.auto_delete_after_days,
+          auto_delete_after_days: newSettings.auto_delete_after_days,
         });
 
       if (error) throw error;
 
+      setArchiveSettings(newSettings);
       toast({
         title: "Einstellungen gespeichert",
-        description: "Archiv-Einstellungen wurden erfolgreich aktualisiert.",
+        description: "Archiv-Einstellungen wurden automatisch aktualisiert.",
       });
-      setSettingsDialogOpen(false);
     } catch (error) {
       console.error('Error saving archive settings:', error);
       toast({
@@ -204,6 +208,25 @@ export function TaskArchiveView() {
     });
   };
 
+  const getTaskDeleteInfo = (task: ArchivedTask) => {
+    if (!archiveSettings.auto_delete_after_days) {
+      return `Archiviert: ${formatDate(task.archived_at)}`;
+    }
+
+    const archivedDate = new Date(task.archived_at);
+    const deleteDate = new Date(archivedDate.getTime() + (archiveSettings.auto_delete_after_days * 24 * 60 * 60 * 1000));
+    const now = new Date();
+    const daysUntilDeletion = Math.max(0, Math.ceil((deleteDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)));
+
+    if (daysUntilDeletion === 0) {
+      return `Wird heute gelöscht`;
+    } else if (daysUntilDeletion === 1) {
+      return `Wird morgen gelöscht`;
+    } else {
+      return `Wird in ${daysUntilDeletion} Tagen gelöscht`;
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center p-8">Lade Archiv...</div>;
   }
@@ -227,42 +250,21 @@ export function TaskArchiveView() {
               <Download className="h-4 w-4" />
               Export
             </Button>
-            <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Settings className="h-4 w-4" />
-                  Einstellungen
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Archiv-Einstellungen</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="autoDelete">Automatisches Löschen nach (Tagen)</Label>
-                    <Select 
-                      value={archiveSettings.auto_delete_after_days?.toString() || "never"} 
-                      onValueChange={(value) => setArchiveSettings({
-                        auto_delete_after_days: value === "never" ? undefined : parseInt(value)
-                      })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="never">Niemals löschen</SelectItem>
-                        <SelectItem value="30">30 Tage</SelectItem>
-                        <SelectItem value="90">90 Tage</SelectItem>
-                        <SelectItem value="180">180 Tage</SelectItem>
-                        <SelectItem value="365">1 Jahr</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={saveArchiveSettings}>Einstellungen speichern</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Select 
+              value={archiveSettings.auto_delete_after_days?.toString() || "never"} 
+              onValueChange={handleArchiveSettingsChange}
+            >
+              <SelectTrigger className="w-60">
+                <SelectValue placeholder="Automatisches Löschen nach..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="never">Niemals löschen</SelectItem>
+                <SelectItem value="30">30 Tage</SelectItem>
+                <SelectItem value="90">90 Tage</SelectItem>
+                <SelectItem value="180">180 Tage</SelectItem>
+                <SelectItem value="365">1 Jahr</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -349,7 +351,7 @@ export function TaskArchiveView() {
                       </div>
                       <div className="flex items-center gap-1">
                         <Archive className="h-4 w-4" />
-                        Archiviert: {formatDate(task.archived_at)}
+                        {getTaskDeleteInfo(task)}
                       </div>
                       {task.assigned_to && (
                         <div>Zugewiesen an: {task.assigned_to}</div>
