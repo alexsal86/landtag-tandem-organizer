@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          name: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          name: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          name?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       appointment_contacts: {
         Row: {
           appointment_id: string
@@ -52,6 +82,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      appointment_statuses: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          name: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          name: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          name?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       appointments: {
         Row: {
@@ -778,6 +838,36 @@ export type Database = {
         }
         Relationships: []
       }
+      task_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          name: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          name: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          name?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_comments: {
         Row: {
           content: string
@@ -812,6 +902,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      task_statuses: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          name: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          name: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          name?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       tasks: {
         Row: {

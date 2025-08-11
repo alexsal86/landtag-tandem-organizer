@@ -21,6 +21,8 @@ export default function CreateTask() {
     isCurrentUser: boolean;
   }>>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [taskCategories, setTaskCategories] = useState<Array<{ name: string; label: string }>>([]);
+  const [taskStatuses, setTaskStatuses] = useState<Array<{ name: string; label: string }>>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -30,21 +32,28 @@ export default function CreateTask() {
     assignedTo: "",
   });
 
-  // Load user profiles
+  // Load user profiles and task configurations
   useEffect(() => {
-    const loadUserProfiles = async () => {
+    const loadData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         setCurrentUserId(user.id);
 
-        const { data: profiles, error } = await supabase
-          .from('profiles')
-          .select('id, display_name, user_id')
-          .order('display_name');
+        const [
+          { data: profiles, error: profilesError },
+          { data: categories, error: categoriesError },
+          { data: statuses, error: statusesError }
+        ] = await Promise.all([
+          supabase.from('profiles').select('id, display_name, user_id').order('display_name'),
+          supabase.from('task_categories').select('name, label').eq('is_active', true).order('order_index'),
+          supabase.from('task_statuses').select('name, label').eq('is_active', true).order('order_index')
+        ]);
 
-        if (error) throw error;
+        if (profilesError) throw profilesError;
+        if (categoriesError) throw categoriesError;
+        if (statusesError) throw statusesError;
 
         // Sort profiles with current user first
         const sortedProfiles = (profiles || []).map(profile => ({
@@ -57,12 +66,19 @@ export default function CreateTask() {
         });
 
         setUserProfiles(sortedProfiles);
+        setTaskCategories(categories || []);
+        setTaskStatuses(statuses || []);
+
+        // Set default category if available
+        if (categories && categories.length > 0) {
+          setFormData(prev => ({ ...prev, category: categories[0].name }));
+        }
       } catch (error) {
-        console.error('Error loading user profiles:', error);
+        console.error('Error loading data:', error);
       }
     };
 
-    loadUserProfiles();
+    loadData();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -187,10 +203,11 @@ export default function CreateTask() {
                       <SelectValue placeholder="Kategorie wählen" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="legislation">Gesetzgebung</SelectItem>
-                      <SelectItem value="committee">Ausschuss</SelectItem>
-                      <SelectItem value="constituency">Wahlkreis</SelectItem>
-                      <SelectItem value="personal">Persönlich</SelectItem>
+                      {taskCategories.map((category) => (
+                        <SelectItem key={category.name} value={category.name}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

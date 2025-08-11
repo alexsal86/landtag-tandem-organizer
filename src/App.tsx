@@ -11,7 +11,7 @@ import CreateTask from "./pages/CreateTask";
 import ContactDetail from "./pages/ContactDetail";
 import EditContact from "./pages/EditContact";
 import EditProfile from "./pages/EditProfile";
-import RoleManagement from "./pages/RoleManagement";
+
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -36,7 +36,7 @@ const App = () => (
             <Route path="/contacts/:id/edit" element={<EditContact />} />
             <Route path="/profile/edit" element={<EditProfile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="/admin/rechte" element={<RoleManagement />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

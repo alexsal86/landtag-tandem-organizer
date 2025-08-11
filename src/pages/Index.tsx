@@ -14,6 +14,7 @@ import { MeetingsView } from "@/components/MeetingsView";
 import { EventPlanningView } from "@/components/EventPlanningView";
 import { EmployeesView } from "@/components/EmployeesView";
 import TimeTrackingView from "@/components/TimeTrackingView";
+import Administration from "@/pages/Administration";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -99,6 +100,9 @@ const Index = () => {
         console.log('Rendering EmployeesView');
         // Admin-only view is handled inside the component
         return <EmployeesView />;
+      case "administration":
+        console.log('Rendering Administration');
+        return <Administration />;
       default:
         console.log('Rendering default Dashboard');
         return <Dashboard />;

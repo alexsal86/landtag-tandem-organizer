@@ -46,6 +46,8 @@ const CreateAppointment = () => {
   const [loading, setLoading] = useState(false);
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
+  const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string }>>([]);
+  const [appointmentStatuses, setAppointmentStatuses] = useState<Array<{ name: string; label: string }>>([]);
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -63,24 +65,38 @@ const CreateAppointment = () => {
   });
 
   useEffect(() => {
-    const fetchContacts = async () => {
+    const fetchData = async () => {
       if (!user) return;
       
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
+      const [
+        { data: contactsData, error: contactsError },
+        { data: categoriesData, error: categoriesError },
+        { data: statusesData, error: statusesError }
+      ] = await Promise.all([
+        supabase.from('contacts').select('*').eq('user_id', user.id).order('name'),
+        supabase.from('appointment_categories').select('name, label').eq('is_active', true).order('order_index'),
+        supabase.from('appointment_statuses').select('name, label').eq('is_active', true).order('order_index')
+      ]);
       
-      if (error) {
-        console.error('Error fetching contacts:', error);
-      } else {
-        setContacts(data || []);
+      if (contactsError) console.error('Error fetching contacts:', contactsError);
+      if (categoriesError) console.error('Error fetching categories:', categoriesError);
+      if (statusesError) console.error('Error fetching statuses:', statusesError);
+      
+      setContacts(contactsData || []);
+      setAppointmentCategories(categoriesData || []);
+      setAppointmentStatuses(statusesData || []);
+
+      // Set default values if data is available
+      if (categoriesData && categoriesData.length > 0) {
+        form.setValue('category', categoriesData[0].name as any);
+      }
+      if (statusesData && statusesData.length > 0) {
+        form.setValue('status', statusesData[0].name as any);
       }
     };
 
-    fetchContacts();
-  }, [user]);
+    fetchData();
+  }, [user, form]);
 
   const onSubmit = async (values: AppointmentFormValues) => {
     if (!user) return;
@@ -308,9 +324,9 @@ const CreateAppointment = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {Object.entries(categoryLabels).map(([value, label]) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
+                            {appointmentCategories.map((category) => (
+                              <SelectItem key={category.name} value={category.name}>
+                                {category.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -358,9 +374,9 @@ const CreateAppointment = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {Object.entries(statusLabels).map(([value, label]) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
+                            {appointmentStatuses.map((status) => (
+                              <SelectItem key={status.name} value={status.name}>
+                                {status.label}
                               </SelectItem>
                             ))}
                           </SelectContent>

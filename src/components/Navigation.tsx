@@ -1,4 +1,4 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, ShieldCheck, Clock, CalendarPlus } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, ShieldCheck, Clock, CalendarPlus, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +33,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const [onlineUsers, setOnlineUsers] = useState<Array<{ user_id: string; email: string; display_name?: string; online_at: string }>>([]);
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const navigate = useNavigate();
   const handleSignOut = async () => {
     try {
@@ -83,9 +84,18 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   // Check admin role
   useEffect(() => {
     if (!user) return;
-    supabase.rpc('is_admin', { _user_id: user.id }).then(({ data }) => {
-      setIsAdmin(!!data);
-    });
+    
+    const checkAdminAccess = async () => {
+      const [{ data: isSuperAdmin }, { data: isBueroleitung }] = await Promise.all([
+        supabase.rpc('is_admin', { _user_id: user.id }),
+        supabase.rpc('has_role', { _user_id: user.id, _role: 'bueroleitung' })
+      ]);
+      
+      setIsAdmin(!!isSuperAdmin);
+      setHasAdminAccess(!!(isSuperAdmin || isBueroleitung));
+    };
+    
+    checkAdminAccess();
   }, [user]);
 
   // Online users presence tracking
@@ -201,11 +211,17 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                 );
               })}
 
-              {isAdmin && (
+              {hasAdminAccess && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => navigate('/admin/rechte')} tooltip="Rechte verwalten">
-                    <ShieldCheck />
-                    <span>Rechte</span>
+                  <SidebarMenuButton 
+                    onClick={() => {
+                      onSectionChange("administration");
+                    }}
+                    isActive={activeSection === "administration"}
+                    tooltip="Administration"
+                  >
+                    <Shield />
+                    <span>Administration</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
