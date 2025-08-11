@@ -575,6 +575,54 @@ export function EventPlanningView() {
     });
   };
 
+  const updateCollaboratorPermission = async (collaboratorId: string, canEdit: boolean) => {
+    const { error } = await supabase
+      .from("event_planning_collaborators")
+      .update({ can_edit: canEdit })
+      .eq("id", collaboratorId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Berechtigung konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCollaborators(collaborators.map(collab =>
+      collab.id === collaboratorId ? { ...collab, can_edit: canEdit } : collab
+    ));
+
+    toast({
+      title: "Erfolg",
+      description: "Berechtigung wurde aktualisiert.",
+    });
+  };
+
+  const removeCollaborator = async (collaboratorId: string) => {
+    const { error } = await supabase
+      .from("event_planning_collaborators")
+      .delete()
+      .eq("id", collaboratorId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Mitarbeiter konnte nicht entfernt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCollaborators(collaborators.filter(collab => collab.id !== collaboratorId));
+
+    toast({
+      title: "Erfolg",
+      description: "Mitarbeiter wurde entfernt.",
+    });
+  };
+
   if (!selectedPlanning) {
     return (
       <div className="min-h-screen bg-gradient-subtle p-6">
@@ -896,9 +944,27 @@ export function EventPlanningView() {
                         </Avatar>
                         <span>{collaborator.profiles?.display_name || 'Unbenannt'}</span>
                       </div>
-                      <Badge variant={collaborator.can_edit ? "default" : "secondary"}>
-                        {collaborator.can_edit ? "Bearbeiten" : "Ansehen"}
-                      </Badge>
+                      <div className="flex items-center space-x-2">
+                        <Select
+                          value={collaborator.can_edit ? "edit" : "view"}
+                          onValueChange={(value) => updateCollaboratorPermission(collaborator.id, value === "edit")}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="view">Ansehen</SelectItem>
+                            <SelectItem value="edit">Bearbeiten</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeCollaborator(collaborator.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
