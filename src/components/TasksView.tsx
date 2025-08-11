@@ -370,10 +370,7 @@ export function TasksView() {
         .from('task_comments')
         .select(`
           *,
-          profiles:user_id (
-            display_name,
-            avatar_url
-          )
+          profiles(display_name, avatar_url)
         `)
         .eq('task_id', taskId)
         .order('created_at', { ascending: true });
@@ -412,23 +409,6 @@ export function TasksView() {
         return;
       }
 
-      // First verify that the task exists and belongs to the user
-      const { data: task, error: taskError } = await supabase
-        .from('tasks')
-        .select('id, user_id')
-        .eq('id', taskId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (taskError || !task) {
-        console.error('Task verification error:', taskError);
-        toast({
-          title: "Fehler", 
-          description: "Aufgabe nicht gefunden oder keine Berechtigung.",
-          variant: "destructive",
-        });
-        return;
-      }
 
       const { error } = await supabase
         .from('task_comments')
