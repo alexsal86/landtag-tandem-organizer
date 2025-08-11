@@ -42,6 +42,8 @@ export default function EditContact() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [useCustomOrganization, setUseCustomOrganization] = useState(false);
   const [contact, setContact] = useState<Contact>({
     id: "",
     name: "",
@@ -68,8 +70,31 @@ export default function EditContact() {
   useEffect(() => {
     if (id && user) {
       fetchContact();
+      fetchOrganizations();
     }
   }, [id, user]);
+
+  const fetchOrganizations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, name')
+        .eq('contact_type', 'organization')
+        .order('name');
+
+      if (error) throw error;
+      const orgs = data || [];
+      setOrganizations(orgs);
+      
+      // Check if current contact's organization is in the list after organizations are loaded
+      if (contact.organization) {
+        const isOrganizationInList = orgs.some(org => org.name === contact.organization);
+        setUseCustomOrganization(!isOrganizationInList && contact.organization !== "");
+      }
+    } catch (error) {
+      console.error('Error fetching organizations:', error);
+    }
+  };
 
   const fetchContact = async () => {
     try {
@@ -77,7 +102,6 @@ export default function EditContact() {
         .from('contacts')
         .select('*')
         .eq('id', id)
-        .eq('user_id', user!.id)
         .single();
 
       if (error) throw error;
@@ -183,8 +207,7 @@ export default function EditContact() {
           additional_info: contact.additional_info,
           avatar_url: contact.avatar_url,
         })
-        .eq('id', contact.id)
-        .eq('user_id', user!.id);
+        .eq('id', contact.id);
 
       if (error) throw error;
 
@@ -281,11 +304,58 @@ export default function EditContact() {
 
                   <div>
                     <Label htmlFor="organization">Organisation</Label>
-                    <Input
-                      id="organization"
-                      value={contact.organization}
-                      onChange={(e) => setContact({ ...contact, organization: e.target.value })}
-                    />
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={!useCustomOrganization ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setUseCustomOrganization(false);
+                            setContact({ ...contact, organization: "" });
+                          }}
+                        >
+                          Aus Liste wählen
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={useCustomOrganization ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setUseCustomOrganization(true);
+                            setContact({ ...contact, organization: "" });
+                          }}
+                        >
+                          Eigene eingeben
+                        </Button>
+                      </div>
+                      
+                      {!useCustomOrganization ? (
+                        <Select
+                          value={contact.organization}
+                          onValueChange={(value) => setContact({ ...contact, organization: value })}
+                        >
+                          <SelectTrigger className="bg-background border-input">
+                            <SelectValue placeholder="Organisation auswählen..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border-border shadow-lg z-50">
+                            <SelectItem value="">Keine Organisation</SelectItem>
+                            {organizations.map((org) => (
+                              <SelectItem key={org.id} value={org.name}>
+                                {org.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          id="organization"
+                          placeholder="Organisation eingeben..."
+                          value={contact.organization}
+                          onChange={(e) => setContact({ ...contact, organization: e.target.value })}
+                        />
+                      )}
+                    </div>
                   </div>
 
                   <div>
