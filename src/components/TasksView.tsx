@@ -412,6 +412,24 @@ export function TasksView() {
         return;
       }
 
+      // First verify that the task exists and belongs to the user
+      const { data: task, error: taskError } = await supabase
+        .from('tasks')
+        .select('id, user_id')
+        .eq('id', taskId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (taskError || !task) {
+        console.error('Task verification error:', taskError);
+        toast({
+          title: "Fehler", 
+          description: "Aufgabe nicht gefunden oder keine Berechtigung.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('task_comments')
         .insert({
@@ -422,7 +440,12 @@ export function TasksView() {
 
       if (error) {
         console.error('Supabase error:', error);
-        throw error;
+        toast({
+          title: "Fehler",
+          description: `Kommentar konnte nicht hinzugefügt werden: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
       }
 
       // Clear the comment input
