@@ -12,9 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Contact {
   id: string;
+  contact_type: "person" | "organization";
   name: string;
   role?: string;
   organization?: string;
+  organization_id?: string;
   email?: string;
   phone?: string;
   location?: string;
@@ -32,11 +34,17 @@ interface Contact {
   avatar_url?: string;
   notes?: string;
   additional_info?: string;
+  // Organization-specific fields
+  legal_form?: string;
+  industry?: string;
+  main_contact_person?: string;
+  business_description?: string;
 }
 
 export function ContactsView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedType, setSelectedType] = useState<string>("all");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -55,7 +63,6 @@ export function ContactsView() {
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
-        .eq('user_id', user!.id)
         .order('name');
 
       if (error) throw error;
@@ -68,9 +75,11 @@ export function ContactsView() {
 
       setContacts(data?.map(contact => ({
         id: contact.id,
+        contact_type: (contact.contact_type as "person" | "organization") || "person",
         name: contact.name,
         role: contact.role,
         organization: contact.organization,
+        organization_id: contact.organization_id,
         email: contact.email,
         phone: contact.phone,
         location: contact.location,
@@ -88,6 +97,10 @@ export function ContactsView() {
         avatar_url: contact.avatar_url,
         notes: contact.notes,
         additional_info: contact.additional_info,
+        legal_form: contact.legal_form,
+        industry: contact.industry,
+        main_contact_person: contact.main_contact_person,
+        business_description: contact.business_description,
       })) || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -167,11 +180,15 @@ export function ContactsView() {
     const matchesSearch = 
       contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (contact.organization && contact.organization.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (contact.role && contact.role.toLowerCase().includes(searchTerm.toLowerCase()));
+      (contact.role && contact.role.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (contact.industry && contact.industry.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (contact.main_contact_person && contact.main_contact_person.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (contact.legal_form && contact.legal_form.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesCategory = selectedCategory === "all" || contact.category === selectedCategory;
+    const matchesType = selectedType === "all" || contact.contact_type === selectedType;
     
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && matchesType;
   });
 
   const getInitials = (name: string) => {
@@ -195,9 +212,9 @@ export function ContactsView() {
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Kontakte</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Kontakte & Organisationen</h1>
             <p className="text-muted-foreground">
-              Verwalten Sie Ihre wichtigsten Kontakte und Beziehungen
+              Verwalten Sie Ihre wichtigsten Kontakte, Organisationen und Beziehungen
             </p>
           </div>
           <Link to="/contacts/new">
@@ -222,6 +239,34 @@ export function ContactsView() {
           <Button variant="outline" className="gap-2">
             <Filter className="h-4 w-4" />
             Filter
+          </Button>
+        </div>
+
+        {/* Type Filter */}
+        <div className="flex gap-2 mb-4 overflow-x-auto">
+          <Button
+            variant={selectedType === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedType("all")}
+            className="whitespace-nowrap"
+          >
+            Alle ({contacts.length})
+          </Button>
+          <Button
+            variant={selectedType === "person" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedType("person")}
+            className="whitespace-nowrap"
+          >
+            Personen ({contacts.filter(c => c.contact_type === "person").length})
+          </Button>
+          <Button
+            variant={selectedType === "organization" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedType("organization")}
+            className="whitespace-nowrap"
+          >
+            Organisationen ({contacts.filter(c => c.contact_type === "organization").length})
           </Button>
         </div>
 
@@ -261,8 +306,18 @@ export function ContactsView() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <CardTitle className="text-lg">{contact.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{contact.role}</p>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-lg">{contact.name}</CardTitle>
+                      <Badge variant="outline" className="text-xs">
+                        {contact.contact_type === "organization" ? "Org" : "Person"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {contact.contact_type === "organization" 
+                        ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
+                        : contact.role
+                      }
+                    </p>
                   </div>
                 </div>
                 <Badge className={getCategoryColor(contact.category)}>
@@ -276,10 +331,17 @@ export function ContactsView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Building className="h-4 w-4" />
-                  <span className="truncate">{contact.organization || "Keine Organisation"}</span>
-                </div>
+                {contact.contact_type === "person" ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Building className="h-4 w-4" />
+                    <span className="truncate">{contact.organization || "Keine Organisation"}</span>
+                  </div>
+                ) : contact.business_description ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Building className="h-4 w-4" />
+                    <span className="truncate">{contact.business_description}</span>
+                  </div>
+                ) : null}
                 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Mail className="h-4 w-4" />
@@ -333,14 +395,22 @@ export function ContactsView() {
         <Card className="bg-card shadow-card border-border">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <User className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Keine Kontakte gefunden</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              {selectedType === "organization" ? "Keine Organisationen gefunden" :
+               selectedType === "person" ? "Keine Personen gefunden" : "Keine Kontakte gefunden"}
+            </h3>
             <p className="text-muted-foreground text-center mb-4">
-              Es wurden keine Kontakte gefunden, die Ihren Suchkriterien entsprechen.
+              Es wurden keine {selectedType === "organization" ? "Organisationen" : 
+                             selectedType === "person" ? "Personen" : "Kontakte"} gefunden, 
+              die Ihren Suchkriterien entsprechen.
             </p>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Ersten Kontakt hinzufügen
-            </Button>
+            <Link to="/contacts/new">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                {selectedType === "organization" ? "Neue Organisation hinzufügen" :
+                 selectedType === "person" ? "Neue Person hinzufügen" : "Neuen Kontakt hinzufügen"}
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       )}

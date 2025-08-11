@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, User, Building, Mail, Phone, MapPin, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,9 +12,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 interface ContactFormData {
+  contact_type: "person" | "organization";
   name: string;
   role: string;
   organization: string;
+  organization_id: string;
   email: string;
   phone: string;
   location: string;
@@ -30,6 +32,17 @@ interface ContactFormData {
   priority: "low" | "medium" | "high" | "";
   notes: string;
   additional_info: string;
+  // Organization-specific fields
+  legal_form: string;
+  tax_number: string;
+  vat_number: string;
+  industry: string;
+  company_size: string;
+  business_description: string;
+  main_contact_person: string;
+  billing_address: string;
+  iban: string;
+  tags: string[];
 }
 
 export function CreateContact() {
@@ -38,9 +51,11 @@ export function CreateContact() {
   const { user } = useAuth();
   
   const [formData, setFormData] = useState<ContactFormData>({
+    contact_type: "person",
     name: "",
     role: "",
     organization: "",
+    organization_id: "",
     email: "",
     phone: "",
     location: "",
@@ -56,7 +71,40 @@ export function CreateContact() {
     priority: "",
     notes: "",
     additional_info: "",
+    legal_form: "",
+    tax_number: "",
+    vat_number: "",
+    industry: "",
+    company_size: "",
+    business_description: "",
+    main_contact_person: "",
+    billing_address: "",
+    iban: "",
+    tags: [],
   });
+
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      fetchOrganizations();
+    }
+  }, [user]);
+
+  const fetchOrganizations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, name')
+        .eq('contact_type', 'organization')
+        .order('name');
+
+      if (error) throw error;
+      setOrganizations(data || []);
+    } catch (error) {
+      console.error('Error fetching organizations:', error);
+    }
+  };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -70,7 +118,13 @@ export function CreateContact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.category || !formData.priority) {
+    const requiredFields = formData.contact_type === "organization" 
+      ? ['name', 'category', 'priority']
+      : ['name', 'email', 'category', 'priority'];
+    
+    const missingFields = requiredFields.filter(field => !formData[field as keyof ContactFormData]);
+    
+    if (missingFields.length > 0) {
       toast({
         title: "Fehler",
         description: "Bitte füllen Sie alle Pflichtfelder aus.",
@@ -95,10 +149,12 @@ export function CreateContact() {
         .from('contacts')
         .insert({
           user_id: user.id,
+          contact_type: formData.contact_type,
           name: formData.name,
           role: formData.role || null,
           organization: formData.organization || null,
-          email: formData.email,
+          organization_id: formData.organization_id || null,
+          email: formData.email || null,
           phone: formData.phone || null,
           location: formData.location || null,
           address: formData.address || null,
@@ -113,16 +169,26 @@ export function CreateContact() {
           priority: formData.priority as any,
           notes: formData.notes || null,
           additional_info: formData.additional_info || null,
+          legal_form: formData.legal_form || null,
+          tax_number: formData.tax_number || null,
+          vat_number: formData.vat_number || null,
+          industry: formData.industry || null,
+          company_size: formData.company_size || null,
+          business_description: formData.business_description || null,
+          main_contact_person: formData.main_contact_person || null,
+          billing_address: formData.billing_address || null,
+          iban: formData.iban || null,
+          tags: formData.tags.length > 0 ? formData.tags : null,
         });
 
       if (error) throw error;
 
       toast({
         title: "Kontakt erstellt",
-        description: `${formData.name} wurde erfolgreich als neuer Kontakt hinzugefügt.`,
+        description: `${formData.name} wurde erfolgreich als ${formData.contact_type === 'organization' ? 'Organisation' : 'Kontakt'} hinzugefügt.`,
       });
       
-      navigate("/contacts");
+      navigate("/");
     } catch (error) {
       console.error('Error creating contact:', error);
       toast({
@@ -144,17 +210,22 @@ export function CreateContact() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => navigate("/contacts")}
+              onClick={() => navigate("/")}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Zurück zu Kontakte
+              Zurück zum Dashboard
             </Button>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Neuen Kontakt erstellen</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              {formData.contact_type === 'organization' ? 'Neue Organisation erstellen' : 'Neuen Kontakt erstellen'}
+            </h1>
             <p className="text-muted-foreground">
-              Fügen Sie einen neuen Kontakt zu Ihrem Netzwerk hinzu
+              {formData.contact_type === 'organization' 
+                ? 'Fügen Sie eine neue Organisation zu Ihrem Netzwerk hinzu'
+                : 'Fügen Sie einen neuen Kontakt zu Ihrem Netzwerk hinzu'
+              }
             </p>
           </div>
         </div>
@@ -166,6 +237,48 @@ export function CreateContact() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Form */}
             <div className="lg:col-span-2 space-y-6">
+              {/* Contact Type Selection */}
+              <Card className="bg-card shadow-card border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-primary" />
+                    Kontakt-Typ
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Kontakt-Typ *</Label>
+                    <Select onValueChange={(value: "person" | "organization") => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        contact_type: value,
+                        // Reset organization-specific fields when switching to person
+                        ...(value === "person" && {
+                          legal_form: "",
+                          tax_number: "",
+                          vat_number: "",
+                          industry: "",
+                          company_size: "",
+                          business_description: "",
+                          main_contact_person: "",
+                          billing_address: "",
+                          iban: "",
+                          tags: []
+                        })
+                      }));
+                    }} defaultValue="person">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Kontakt-Typ wählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="person">Person</SelectItem>
+                        <SelectItem value="organization">Organisation</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Grunddaten */}
               <Card className="bg-card shadow-card border-border">
                 <CardHeader>
@@ -177,34 +290,103 @@ export function CreateContact() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="name">Name *</Label>
+                      <Label htmlFor="name">
+                        {formData.contact_type === 'organization' ? 'Organisationsname' : 'Name'} *
+                      </Label>
                       <Input
                         id="name"
-                        placeholder="Max Mustermann"
+                        placeholder={formData.contact_type === 'organization' ? 'Firma XY GmbH' : 'Max Mustermann'}
                         value={formData.name}
                         onChange={(e) => handleInputChange("name", e.target.value)}
                         required
                       />
                     </div>
+                    {formData.contact_type === 'person' && (
+                      <div>
+                        <Label htmlFor="role">Position/Rolle</Label>
+                        <Input
+                          id="role"
+                          placeholder="Geschäftsführer, Bürger, etc."
+                          value={formData.role}
+                          onChange={(e) => handleInputChange("role", e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {formData.contact_type === 'person' && (
                     <div>
-                      <Label htmlFor="role">Position/Rolle</Label>
-                      <Input
-                        id="role"
-                        placeholder="Geschäftsführer, Bürger, etc."
-                        value={formData.role}
-                        onChange={(e) => handleInputChange("role", e.target.value)}
-                      />
+                      <Label htmlFor="organization_id">Zugehörige Organisation</Label>
+                      <Select onValueChange={(value) => handleInputChange("organization_id", value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Organisation auswählen (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {organizations.map((org) => (
+                            <SelectItem key={org.id} value={org.id}>
+                              {org.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="organization">Organisation/Unternehmen</Label>
-                    <Input
-                      id="organization"
-                      placeholder="Bürgerinitiative, Firma XY, etc."
-                      value={formData.organization}
-                      onChange={(e) => handleInputChange("organization", e.target.value)}
-                    />
-                  </div>
+                  )}
+
+                  {formData.contact_type === 'organization' && (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="legal_form">Rechtsform</Label>
+                          <Input
+                            id="legal_form"
+                            placeholder="GmbH, AG, e.V., etc."
+                            value={formData.legal_form}
+                            onChange={(e) => handleInputChange("legal_form", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="industry">Branche</Label>
+                          <Input
+                            id="industry"
+                            placeholder="IT, Automotive, Gesundheit, etc."
+                            value={formData.industry}
+                            onChange={(e) => handleInputChange("industry", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="tax_number">Steuernummer</Label>
+                          <Input
+                            id="tax_number"
+                            placeholder="12345/67890"
+                            value={formData.tax_number}
+                            onChange={(e) => handleInputChange("tax_number", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="vat_number">USt-IdNr.</Label>
+                          <Input
+                            id="vat_number"
+                            placeholder="DE123456789"
+                            value={formData.vat_number}
+                            onChange={(e) => handleInputChange("vat_number", e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="main_contact_person">Hauptansprechpartner</Label>
+                        <Input
+                          id="main_contact_person"
+                          placeholder="Max Mustermann"
+                          value={formData.main_contact_person}
+                          onChange={(e) => handleInputChange("main_contact_person", e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -219,14 +401,16 @@ export function CreateContact() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="email">E-Mail-Adresse *</Label>
+                      <Label htmlFor="email">
+                        E-Mail-Adresse {formData.contact_type === 'person' ? '*' : ''}
+                      </Label>
                       <Input
                         id="email"
                         type="email"
                         placeholder="max@beispiel.de"
                         value={formData.email}
                         onChange={(e) => handleInputChange("email", e.target.value)}
-                        required
+                        required={formData.contact_type === 'person'}
                       />
                     </div>
                     <div>
@@ -248,25 +432,39 @@ export function CreateContact() {
                       onChange={(e) => handleInputChange("location", e.target.value)}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="address">Adresse</Label>
-                    <Input
-                      id="address"
-                      placeholder="Musterstraße 123, 12345 Musterstadt"
-                      value={formData.address}
-                      onChange={(e) => handleInputChange("address", e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="birthday">Geburtstag</Label>
+                      <Label htmlFor="address">Adresse</Label>
                       <Input
-                        id="birthday"
-                        type="date"
-                        value={formData.birthday}
-                        onChange={(e) => handleInputChange("birthday", e.target.value)}
+                        id="address"
+                        placeholder="Musterstraße 123, 12345 Musterstadt"
+                        value={formData.address}
+                        onChange={(e) => handleInputChange("address", e.target.value)}
                       />
                     </div>
+                    
+                    {formData.contact_type === 'organization' && (
+                      <div>
+                        <Label htmlFor="billing_address">Rechnungsadresse</Label>
+                        <Input
+                          id="billing_address"
+                          placeholder="Falls abweichend von Adresse"
+                          value={formData.billing_address}
+                          onChange={(e) => handleInputChange("billing_address", e.target.value)}
+                        />
+                      </div>
+                    )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {formData.contact_type === 'person' && (
+                      <div>
+                        <Label htmlFor="birthday">Geburtstag</Label>
+                        <Input
+                          id="birthday"
+                          type="date"
+                          value={formData.birthday}
+                          onChange={(e) => handleInputChange("birthday", e.target.value)}
+                        />
+                      </div>
+                    )}
                     <div>
                       <Label htmlFor="website">Website</Label>
                       <Input
@@ -276,6 +474,34 @@ export function CreateContact() {
                         onChange={(e) => handleInputChange("website", e.target.value)}
                       />
                     </div>
+                    {formData.contact_type === 'organization' && (
+                      <>
+                        <div>
+                          <Label htmlFor="company_size">Unternehmensgröße</Label>
+                          <Select onValueChange={(value) => handleInputChange("company_size", value)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Größe auswählen" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="startup">Startup (1-10)</SelectItem>
+                              <SelectItem value="small">Klein (11-50)</SelectItem>
+                              <SelectItem value="medium">Mittel (51-250)</SelectItem>
+                              <SelectItem value="large">Groß (251-1000)</SelectItem>
+                              <SelectItem value="enterprise">Konzern (1000+)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="iban">IBAN</Label>
+                          <Input
+                            id="iban"
+                            placeholder="DE89 3704 0044 0532 0130 00"
+                            value={formData.iban}
+                            onChange={(e) => handleInputChange("iban", e.target.value)}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -348,11 +574,24 @@ export function CreateContact() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {formData.contact_type === 'organization' && (
+                    <div>
+                      <Label htmlFor="business_description">Geschäftsbeschreibung</Label>
+                      <Textarea
+                        id="business_description"
+                        placeholder="Beschreibung der Geschäftstätigkeit..."
+                        rows={3}
+                        value={formData.business_description}
+                        onChange={(e) => handleInputChange("business_description", e.target.value)}
+                      />
+                    </div>
+                  )}
+                  
                   <div>
                     <Label htmlFor="notes">Notizen</Label>
                     <Textarea
                       id="notes"
-                      placeholder="Wichtige Informationen, Interessen, Hintergrund..."
+                      placeholder={formData.contact_type === 'organization' ? "Wichtige Informationen, Besonderheiten, Zusammenarbeit..." : "Wichtige Informationen, Interessen, Hintergrund..."}
                       rows={4}
                       value={formData.notes}
                       onChange={(e) => handleInputChange("notes", e.target.value)}
@@ -425,14 +664,15 @@ export function CreateContact() {
                       disabled={isSubmitting}
                     >
                       <Save className="h-4 w-4" />
-                      {isSubmitting ? "Wird gespeichert..." : "Kontakt speichern"}
+                      {isSubmitting ? "Wird gespeichert..." : 
+                        formData.contact_type === 'organization' ? "Organisation speichern" : "Kontakt speichern"}
                     </Button>
                     
                     <Button 
                       type="button"
                       variant="outline" 
                       className="w-full"
-                      onClick={() => navigate("/contacts")}
+                      onClick={() => navigate("/")}
                     >
                       Abbrechen
                     </Button>
@@ -449,7 +689,10 @@ export function CreateContact() {
                   <ul className="space-y-2">
                     <li>• Felder mit * sind Pflichtfelder</li>
                     <li>• Die Kategorisierung hilft bei der Organisation</li>
-                    <li>• Notizen können später bearbeitet werden</li>
+                    <li>• {formData.contact_type === 'organization' ? 'Organisationen' : 'Kontakte'} können später bearbeitet werden</li>
+                    {formData.contact_type === 'person' && (
+                      <li>• Personen können Organisationen zugeordnet werden</li>
+                    )}
                   </ul>
                 </CardContent>
               </Card>
