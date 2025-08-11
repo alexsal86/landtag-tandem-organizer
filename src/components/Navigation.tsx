@@ -34,6 +34,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
+  const [userRole, setUserRole] = useState<string>("Benutzer");
   const navigate = useNavigate();
   const handleSignOut = async () => {
     try {
@@ -81,18 +82,31 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     loadUserProfile();
   }, [user]);
 
-  // Check admin role
+  // Check admin role and load user role
   useEffect(() => {
     if (!user) return;
     
     const checkAdminAccess = async () => {
-      const [{ data: isSuperAdmin }, { data: isBueroleitung }] = await Promise.all([
+      const [{ data: isSuperAdmin }, { data: isBueroleitung }, { data: roles }] = await Promise.all([
         supabase.rpc('is_admin', { _user_id: user.id }),
-        supabase.rpc('has_role', { _user_id: user.id, _role: 'bueroleitung' })
+        supabase.rpc('has_role', { _user_id: user.id, _role: 'bueroleitung' }),
+        supabase.from('user_roles').select('role').eq('user_id', user.id)
       ]);
       
       setIsAdmin(!!isSuperAdmin);
       setHasAdminAccess(!!(isSuperAdmin || isBueroleitung));
+      
+      // Set user role display name
+      if (roles && roles.length > 0) {
+        const roleMap = {
+          'abgeordneter': 'Abgeordneter',
+          'bueroleitung': 'Büroleitung',
+          'sachbearbeiter': 'Sachbearbeiter'
+        };
+        setUserRole(roleMap[roles[0].role as keyof typeof roleMap] || 'Benutzer');
+      } else {
+        setUserRole('Benutzer');
+      }
     };
     
     checkAdminAccess();
@@ -268,7 +282,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              onClick={() => onSectionChange("profile")}
+              onClick={() => navigate("/edit-profile")}
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
@@ -282,7 +296,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                 <span className="truncate font-semibold">
                   {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
                 </span>
-                <span className="truncate text-xs">Benutzer</span>
+                <span className="truncate text-xs">{userRole}</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
