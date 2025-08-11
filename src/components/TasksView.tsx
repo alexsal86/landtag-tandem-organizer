@@ -402,7 +402,18 @@ export function TasksView() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      console.log('Current user:', user);
+      
+      if (!user) {
+        toast({
+          title: "Fehler",
+          description: "Sie müssen angemeldet sein, um Kommentare zu schreiben.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Inserting comment:', { task_id: taskId, user_id: user.id, content: content });
 
       const { error } = await supabase
         .from('task_comments')
@@ -412,7 +423,12 @@ export function TasksView() {
           content,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Comment inserted successfully');
 
       // Clear the comment input
       setNewComment(prev => ({ ...prev, [taskId]: '' }));
