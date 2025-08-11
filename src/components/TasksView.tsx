@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter } from "lucide-react";
+import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +48,7 @@ export function TasksView() {
   const [editFormData, setEditFormData] = useState<Partial<Task>>({});
   const [taskComments, setTaskComments] = useState<{ [taskId: string]: TaskComment[] }>({});
   const [newComment, setNewComment] = useState<{ [taskId: string]: string }>({});
+  const [editingComment, setEditingComment] = useState<{ [commentId: string]: string }>({});
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
   const [recentActivities, setRecentActivities] = useState<Array<{
@@ -132,6 +133,11 @@ export function TasksView() {
       }));
 
       setTasks(formattedTasks);
+      
+      // Load comments for all tasks automatically
+      formattedTasks.forEach(task => {
+        loadTaskComments(task.id);
+      });
     } catch (error) {
       console.error('Error loading tasks:', error);
       toast({
@@ -455,6 +461,77 @@ export function TasksView() {
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateComment = async (commentId: string, newContent: string) => {
+    if (!newContent.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('task_comments')
+        .update({ content: newContent.trim() })
+        .eq('id', commentId);
+
+      if (error) throw error;
+
+      // Update local state
+      setTaskComments(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(taskId => {
+          updated[taskId] = updated[taskId].map(comment =>
+            comment.id === commentId ? { ...comment, content: newContent.trim() } : comment
+          );
+        });
+        return updated;
+      });
+
+      setEditingComment(prev => {
+        const updated = { ...prev };
+        delete updated[commentId];
+        return updated;
+      });
+
+      toast({
+        title: "Kommentar aktualisiert",
+        description: "Ihr Kommentar wurde erfolgreich bearbeitet.",
+      });
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht bearbeitet werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteComment = async (commentId: string, taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('task_comments')
+        .delete()
+        .eq('id', commentId);
+
+      if (error) throw error;
+
+      // Update local state
+      setTaskComments(prev => ({
+        ...prev,
+        [taskId]: prev[taskId]?.filter(comment => comment.id !== commentId) || []
+      }));
+
+      toast({
+        title: "Kommentar gelöscht",
+        description: "Der Kommentar wurde erfolgreich entfernt.",
+      });
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht gelöscht werden.",
         variant: "destructive",
       });
     }
@@ -842,21 +919,91 @@ export function TasksView() {
                                    <User className="h-4 w-4" />
                                  </div>
                                  <div className="flex-1">
-                                   <div className="flex items-center gap-2 mb-1">
-                                     <span className="text-sm font-medium">
-                                       {comment.profile?.display_name || 'Unbekannter Nutzer'}
-                                     </span>
-                                     <span className="text-xs text-muted-foreground">
-                                       {new Date(comment.created_at).toLocaleDateString('de-DE', {
-                                         day: '2-digit',
-                                         month: '2-digit',
-                                         year: 'numeric',
-                                         hour: '2-digit',
-                                         minute: '2-digit'
-                                       })}
-                                     </span>
-                                   </div>
-                                   <p className="text-sm">{comment.content}</p>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">
+                                          {comment.profile?.display_name || 'Unbekannter Nutzer'}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {new Date(comment.created_at).toLocaleDateString('de-DE', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          })}
+                                        </span>
+                                      </div>
+                                      {/* Edit/Delete buttons for own comments */}
+                                      {comment.user_id === user?.id && (
+                                        <div className="flex gap-1">
+                                          {editingComment[comment.id] !== undefined ? (
+                                            <>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 w-6 p-0"
+                                                onClick={() => updateComment(comment.id, editingComment[comment.id])}
+                                              >
+                                                <Check className="h-3 w-3" />
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 w-6 p-0"
+                                                onClick={() => setEditingComment(prev => {
+                                                  const updated = { ...prev };
+                                                  delete updated[comment.id];
+                                                  return updated;
+                                                })}
+                                              >
+                                                <X className="h-3 w-3" />
+                                              </Button>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 w-6 p-0"
+                                                onClick={() => setEditingComment(prev => ({
+                                                  ...prev,
+                                                  [comment.id]: comment.content
+                                                }))}
+                                              >
+                                                <Edit2 className="h-3 w-3" />
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                                onClick={() => deleteComment(comment.id, task.id)}
+                                              >
+                                                <Trash2 className="h-3 w-3" />
+                                              </Button>
+                                            </>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {editingComment[comment.id] !== undefined ? (
+                                      <Input
+                                        value={editingComment[comment.id]}
+                                        onChange={(e) => setEditingComment(prev => ({
+                                          ...prev,
+                                          [comment.id]: e.target.value
+                                        }))}
+                                        onKeyPress={(e) => {
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            updateComment(comment.id, editingComment[comment.id]);
+                                          }
+                                        }}
+                                        className="text-sm"
+                                      />
+                                    ) : (
+                                      <p className="text-sm">{comment.content}</p>
+                                    )}
                                  </div>
                                </div>
                              </div>
