@@ -282,7 +282,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              onClick={() => navigate("/edit-profile")}
+              onClick={() => navigate("/profile/edit")}
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
