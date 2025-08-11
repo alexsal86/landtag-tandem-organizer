@@ -48,6 +48,8 @@ export function TasksView() {
   const [editFormData, setEditFormData] = useState<Partial<Task>>({});
   const [taskComments, setTaskComments] = useState<{ [taskId: string]: TaskComment[] }>({});
   const [newComment, setNewComment] = useState<{ [taskId: string]: string }>({});
+  const [taskCategories, setTaskCategories] = useState<Array<{ name: string; label: string }>>([]);
+  const [taskStatuses, setTaskStatuses] = useState<Array<{ name: string; label: string }>>([]);
   const [editingComment, setEditingComment] = useState<{ [commentId: string]: string }>({});
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
@@ -64,7 +66,26 @@ export function TasksView() {
   useEffect(() => {
     loadTasks();
     loadRecentActivities();
+    loadTaskConfiguration();
   }, []);
+
+  // Load task categories and statuses from administration
+  const loadTaskConfiguration = async () => {
+    try {
+      const [categoriesResult, statusesResult] = await Promise.all([
+        supabase.from('task_categories').select('name, label').eq('is_active', true).order('order_index'),
+        supabase.from('task_statuses').select('name, label').eq('is_active', true).order('order_index')
+      ]);
+
+      if (categoriesResult.error) throw categoriesResult.error;
+      if (statusesResult.error) throw statusesResult.error;
+
+      setTaskCategories(categoriesResult.data || []);
+      setTaskStatuses(statusesResult.data || []);
+    } catch (error) {
+      console.error('Error loading task configuration:', error);
+    }
+  };
 
   const loadRecentActivities = async () => {
     try {
@@ -763,35 +784,38 @@ export function TasksView() {
                                     </SelectContent>
                                   </Select>
                                 </div>
-                                <div>
-                                  <Label htmlFor="status">Status</Label>
-                                  <Select value={editFormData.status} onValueChange={(value) => setEditFormData(prev => ({ ...prev, status: value as Task['status'] }))}>
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="todo">Zu erledigen</SelectItem>
-                                      <SelectItem value="in-progress">In Bearbeitung</SelectItem>
-                                      <SelectItem value="completed">Erledigt</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                                 <div>
+                                   <Label htmlFor="status">Status</Label>
+                                   <Select value={editFormData.status} onValueChange={(value) => setEditFormData(prev => ({ ...prev, status: value as Task['status'] }))}>
+                                     <SelectTrigger>
+                                       <SelectValue />
+                                     </SelectTrigger>
+                                     <SelectContent>
+                                       {taskStatuses.map((status) => (
+                                         <SelectItem key={status.name} value={status.name}>
+                                           {status.label}
+                                         </SelectItem>
+                                       ))}
+                                     </SelectContent>
+                                   </Select>
+                                 </div>
                               </div>
                               <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label htmlFor="category">Kategorie</Label>
-                                  <Select value={editFormData.category} onValueChange={(value) => setEditFormData(prev => ({ ...prev, category: value as Task['category'] }))}>
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="legislation">Gesetzgebung</SelectItem>
-                                      <SelectItem value="committee">Ausschuss</SelectItem>
-                                      <SelectItem value="constituency">Wahlkreis</SelectItem>
-                                      <SelectItem value="personal">Persönlich</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                                 <div>
+                                   <Label htmlFor="category">Kategorie</Label>
+                                   <Select value={editFormData.category} onValueChange={(value) => setEditFormData(prev => ({ ...prev, category: value as Task['category'] }))}>
+                                     <SelectTrigger>
+                                       <SelectValue />
+                                     </SelectTrigger>
+                                     <SelectContent>
+                                       {taskCategories.map((category) => (
+                                         <SelectItem key={category.name} value={category.name}>
+                                           {category.label}
+                                         </SelectItem>
+                                       ))}
+                                     </SelectContent>
+                                   </Select>
+                                 </div>
                                 <div>
                                   <Label htmlFor="dueDate">Fälligkeitsdatum</Label>
                                   <Input
