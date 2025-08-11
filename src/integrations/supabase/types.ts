@@ -632,6 +632,7 @@ export type Database = {
       meeting_agenda_items: {
         Row: {
           assigned_to: string | null
+          carry_over_to_next: boolean | null
           created_at: string
           description: string | null
           file_path: string | null
@@ -642,12 +643,14 @@ export type Database = {
           notes: string | null
           order_index: number
           parent_id: string | null
+          result_text: string | null
           task_id: string | null
           title: string
           updated_at: string
         }
         Insert: {
           assigned_to?: string | null
+          carry_over_to_next?: boolean | null
           created_at?: string
           description?: string | null
           file_path?: string | null
@@ -658,12 +661,14 @@ export type Database = {
           notes?: string | null
           order_index?: number
           parent_id?: string | null
+          result_text?: string | null
           task_id?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           assigned_to?: string | null
+          carry_over_to_next?: boolean | null
           created_at?: string
           description?: string | null
           file_path?: string | null
@@ -674,6 +679,7 @@ export type Database = {
           notes?: string | null
           order_index?: number
           parent_id?: string | null
+          result_text?: string | null
           task_id?: string | null
           title?: string
           updated_at?: string

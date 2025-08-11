@@ -31,6 +31,8 @@ interface AgendaItem {
   order_index: number;
   parent_id?: string | null;
   file_path?: string | null;
+  result_text?: string | null;
+  carry_over_to_next?: boolean;
   // lokale Hilfskeys für Hierarchie vor dem Speichern
   localKey?: string;
   parentLocalKey?: string;
@@ -81,6 +83,7 @@ export function MeetingsView() {
   const [newMeetingTime, setNewMeetingTime] = useState<string>("10:00");
   const [showTaskSelector, setShowTaskSelector] = useState<{itemIndex: number} | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [activeMeeting, setActiveMeeting] = useState<Meeting | null>(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -302,6 +305,40 @@ export function MeetingsView() {
       .insert(insertItems);
 
     if (error) throw error;
+  };
+
+  const startMeeting = async (meeting: Meeting) => {
+    setActiveMeeting(meeting);
+    if (meeting.id) {
+      await loadAgendaItems(meeting.id);
+    }
+  };
+
+  const stopMeeting = () => {
+    setActiveMeeting(null);
+  };
+
+  const updateAgendaItemResult = async (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => {
+    try {
+      await supabase
+        .from('meeting_agenda_items')
+        .update({ [field]: value })
+        .eq('id', itemId);
+      
+      // Update local state
+      setAgendaItems(items => 
+        items.map(item => 
+          item.id === itemId ? { ...item, [field]: value } : item
+        )
+      );
+    } catch (error) {
+      console.error('Error updating agenda item:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Änderung konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const addAgendaItem = () => {
@@ -1032,12 +1069,17 @@ export function MeetingsView() {
                           onClick={() => setEditingMeeting(meeting)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
+                         <Button size="icon" variant="default" className="h-8 w-8" 
+                           onClick={() => startMeeting(meeting)}
+                           title="Meeting starten">
+                           <CheckCircle className="h-4 w-4" />
+                         </Button>
+                         <AlertDialog>
+                           <AlertDialogTrigger asChild>
+                             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                               <Trash className="h-4 w-4" />
+                             </Button>
+                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Meeting löschen</AlertDialogTitle>
@@ -1066,9 +1108,108 @@ export function MeetingsView() {
         </div>
       </div>
 
+      {/* Active Meeting View */}
+      {activeMeeting && (
+        <div className="space-y-4 mb-8">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-semibold">
+              Aktive Besprechung: {activeMeeting.title}
+            </h2>
+            <Button variant="outline" onClick={stopMeeting}>
+              Besprechung beenden
+            </Button>
+          </div>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Tagesordnung</CardTitle>
+              <CardDescription>
+                {format(new Date(activeMeeting.meeting_date), 'PPP', { locale: de })}
+                {activeMeeting.location && ` • ${activeMeeting.location}`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {agendaItems.filter(item => !item.parent_id).map((item, index) => (
+                  <div key={item.id} className="border rounded-lg p-4">
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
+                        {index + 1}
+                      </div>
+                      <h3 className="font-medium text-lg flex-1">{item.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={item.assigned_to || 'unassigned'}
+                          onValueChange={(value) => updateAgendaItem(
+                            agendaItems.findIndex(i => i.id === item.id), 
+                            'assigned_to', 
+                            value === 'unassigned' ? null : value
+                          )}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Bearbeiter zuweisen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                            {profiles.map((profile) => (
+                              <SelectItem key={profile.user_id} value={profile.user_id}>
+                                {profile.display_name || 'Unbekannter Benutzer'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    {item.description && (
+                      <p className="text-muted-foreground mb-3 ml-12">{item.description}</p>
+                    )}
+                    
+                    <div className="ml-12 space-y-3">
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Ergebnis der Besprechung</label>
+                        <Textarea
+                          value={item.result_text || ''}
+                          onChange={(e) => updateAgendaItemResult(item.id!, 'result_text', e.target.value)}
+                          placeholder="Ergebnis, Beschlüsse oder wichtige Punkte..."
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`carryover-${item.id}`}
+                          checked={item.carry_over_to_next || false}
+                          onCheckedChange={(checked) => 
+                            updateAgendaItemResult(item.id!, 'carry_over_to_next', checked)
+                          }
+                        />
+                        <label 
+                          htmlFor={`carryover-${item.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Auf nächste Besprechung übertragen
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {agendaItems.filter(item => !item.parent_id).length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Clock className="h-12 w-12 mx-auto mb-4" />
+                    <p>Keine Agenda-Punkte für diese Besprechung gefunden.</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Agenda Editor */}
       <div className="space-y-4">
-          {selectedMeeting ? (
+          {selectedMeeting && !activeMeeting ? (
             <>
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">
@@ -1392,7 +1533,7 @@ export function MeetingsView() {
                   </Card>
                  )}
             </>
-          ) : (
+          ) : !activeMeeting ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -1402,7 +1543,7 @@ export function MeetingsView() {
                 </p>
               </CardContent>
             </Card>
-          )}
+          ) : null}
       </div>
     </div>
   );
