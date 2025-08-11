@@ -638,9 +638,11 @@ export function EventPlanningView() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      Erstellt am {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
-                    </p>
+                    {planning.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {planning.description}
+                      </p>
+                    )}
                     
                     {planning.location && (
                       <div className="flex items-center gap-2 text-sm">
@@ -655,11 +657,21 @@ export function EventPlanningView() {
                       </p>
                     )}
 
-                    {planningCollaborators.length > 0 && (
+                    {(planningCollaborators.length > 0 || planning.user_id) && (
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Bearbeiter:</span>
                         <div className="flex -space-x-2">
-                          {planningCollaborators.slice(0, 3).map((collaborator) => (
+                          {/* Show creator first */}
+                          {planning.user_id && (
+                            <Avatar className="h-6 w-6 border-2 border-background">
+                              <AvatarImage src={allProfiles.find(p => p.user_id === planning.user_id)?.avatar_url} />
+                              <AvatarFallback className="text-xs">
+                                {allProfiles.find(p => p.user_id === planning.user_id)?.display_name?.charAt(0) || 'E'}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          {/* Then show other collaborators */}
+                          {planningCollaborators.filter(c => c.user_id !== planning.user_id).slice(0, planning.user_id ? 2 : 3).map((collaborator) => (
                             <Avatar key={collaborator.id} className="h-6 w-6 border-2 border-background">
                               <AvatarImage src={collaborator.profiles?.avatar_url} />
                               <AvatarFallback className="text-xs">
@@ -667,14 +679,18 @@ export function EventPlanningView() {
                               </AvatarFallback>
                             </Avatar>
                           ))}
-                          {planningCollaborators.length > 3 && (
+                          {(planningCollaborators.filter(c => c.user_id !== planning.user_id).length + (planning.user_id ? 1 : 0)) > 3 && (
                             <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                              <span className="text-xs text-muted-foreground">+{planningCollaborators.length - 3}</span>
+                              <span className="text-xs text-muted-foreground">+{(planningCollaborators.filter(c => c.user_id !== planning.user_id).length + (planning.user_id ? 1 : 0)) - 3}</span>
                             </div>
                           )}
                         </div>
                       </div>
                     )}
+
+                    <p className="text-sm text-muted-foreground">
+                      Erstellt am {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
+                    </p>
                   </CardContent>
                 </Card>
               );
