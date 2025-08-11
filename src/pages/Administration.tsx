@@ -303,18 +303,21 @@ export default function Administration() {
     setTemplateItems(templateItems);
   };
 
-  const saveTemplateItems = async () => {
+  const saveTemplateItems = async (items = templateItems) => {
     if (!selectedTemplate) return;
     
     try {
       const { error } = await supabase
         .from('meeting_templates')
-        .update({ template_items: templateItems })
+        .update({ template_items: items })
         .eq('id', selectedTemplate.id);
         
       if (error) throw error;
       
-      toast({ title: "Gespeichert", description: "Template erfolgreich aktualisiert." });
+      // Nur bei manuellem Speichern eine Toast-Nachricht zeigen
+      if (items === templateItems) {
+        toast({ title: "Gespeichert", description: "Template erfolgreich aktualisiert." });
+      }
     } catch (error: any) {
       console.error(error);
       toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
@@ -325,6 +328,9 @@ export default function Administration() {
     const updated = [...templateItems];
     updated[index] = { ...updated[index], [field]: value };
     setTemplateItems(updated);
+    
+    // Auto-save
+    saveTemplateItems(updated);
   };
 
   const updateSubItem = (parentIndex: number, subIndex: number, field: string, value: string) => {
@@ -335,6 +341,9 @@ export default function Administration() {
       [field]: value 
     };
     setTemplateItems(updated);
+    
+    // Auto-save
+    saveTemplateItems(updated);
   };
 
   const addTemplateItem = (title: string, parentIndex?: number) => {
@@ -360,6 +369,9 @@ export default function Administration() {
     
     setTemplateItems(updated);
     setNewTemplateItem(null);
+    
+    // Auto-save
+    saveTemplateItems(updated);
   };
 
   const deleteTemplateItem = (index: number, subIndex?: number) => {
@@ -382,6 +394,9 @@ export default function Administration() {
     }
     
     setTemplateItems(updated);
+    
+    // Auto-save
+    saveTemplateItems(updated);
   };
 
   const ConfigTable = ({ title, items, type }: { title: string, items: ConfigItem[], type: string }) => (
@@ -586,10 +601,9 @@ export default function Administration() {
                     {selectedTemplate ? `${selectedTemplate.name} - Agenda-Punkte` : 'Kein Template ausgewählt'}
                   </CardTitle>
                   {selectedTemplate && (
-                    <Button onClick={saveTemplateItems} className="gap-2">
-                      <Save className="h-4 w-4" />
-                      Speichern
-                    </Button>
+                    <div className="text-sm text-muted-foreground">
+                      Änderungen werden automatisch gespeichert
+                    </div>
                   )}
                 </div>
               </CardHeader>
