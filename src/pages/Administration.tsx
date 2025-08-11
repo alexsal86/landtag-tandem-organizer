@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Edit, Plus, Save, X } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, Copy } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // Roles in descending hierarchy
 const ROLE_OPTIONS = [
@@ -65,6 +66,7 @@ export default function Administration() {
   const [templateItems, setTemplateItems] = useState<any[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<{id: string, field: string, value: string} | null>(null);
   const [newTemplateItem, setNewTemplateItem] = useState<{parentIndex?: number, title: string} | null>(null);
+  const [editingTemplateName, setEditingTemplateName] = useState<{ id: string; value: string } | null>(null);
 
   // SEO basics
   useEffect(() => {
@@ -321,6 +323,81 @@ export default function Administration() {
     } catch (error: any) {
       console.error(error);
       toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
+    }
+  };
+
+  const saveTemplateName = async (templateId: string, newName: string) => {
+    try {
+      const { error } = await supabase
+        .from('meeting_templates')
+        .update({ name: newName })
+        .eq('id', templateId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setMeetingTemplates(prev => prev.map(t => 
+        t.id === templateId ? { ...t, name: newName } : t
+      ));
+      
+      if (selectedTemplate?.id === templateId) {
+        setSelectedTemplate({ ...selectedTemplate, name: newName });
+      }
+      
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Fehler", description: "Fehler beim Speichern des Namens.", variant: "destructive" });
+    }
+  };
+
+  const deleteTemplate = async (templateId: string) => {
+    try {
+      const { error } = await supabase
+        .from('meeting_templates')
+        .delete()
+        .eq('id', templateId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setMeetingTemplates(prev => prev.filter(t => t.id !== templateId));
+      
+      if (selectedTemplate?.id === templateId) {
+        setSelectedTemplate(null);
+        setTemplateItems([]);
+      }
+      
+      toast({ title: "Gelöscht", description: "Template erfolgreich gelöscht." });
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Fehler", description: "Fehler beim Löschen.", variant: "destructive" });
+    }
+  };
+
+  const duplicateTemplate = async (template: any) => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('meeting_templates')
+        .insert({
+          name: `${template.name} (Kopie)`,
+          description: template.description,
+          template_items: template.template_items,
+          user_id: user.id
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Update local state
+      setMeetingTemplates(prev => [...prev, data]);
+      
+      toast({ title: "Dupliziert", description: "Template erfolgreich dupliziert." });
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Fehler", description: "Fehler beim Duplizieren.", variant: "destructive" });
     }
   };
 
@@ -582,14 +659,96 @@ export default function Administration() {
               </CardHeader>
               <CardContent>
                 {meetingTemplates.map((template) => (
-                  <Button
-                    key={template.id}
-                    variant={selectedTemplate?.id === template.id ? "default" : "outline"}
-                    className="w-full mb-2 justify-start"
-                    onClick={() => loadTemplate(template)}
-                  >
-                    {template.name}
-                  </Button>
+                  <div key={template.id} className="mb-2">
+                    <div className="flex items-center gap-2">
+                      {editingTemplateName?.id === template.id ? (
+                        <div className="flex gap-2 flex-1">
+                          <Input
+                            value={editingTemplateName.value}
+                            onChange={(e) => setEditingTemplateName({ ...editingTemplateName, value: e.target.value })}
+                            className="flex-1"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                saveTemplateName(template.id, editingTemplateName.value);
+                                setEditingTemplateName(null);
+                              } else if (e.key === 'Escape') {
+                                setEditingTemplateName(null);
+                              }
+                            }}
+                            autoFocus
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              saveTemplateName(template.id, editingTemplateName.value);
+                              setEditingTemplateName(null);
+                            }}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingTemplateName(null)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <Button
+                            variant={selectedTemplate?.id === template.id ? "default" : "outline"}
+                            className="flex-1 justify-start"
+                            onClick={() => loadTemplate(template)}
+                          >
+                            {template.name}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingTemplateName({ id: template.id, value: template.name })}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => duplicateTemplate(template)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Template löschen</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Sind Sie sicher, dass Sie das Template "{template.name}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteTemplate(template.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Löschen
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </CardContent>
             </Card>

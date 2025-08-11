@@ -49,6 +49,13 @@ interface Meeting {
   updated_at?: string;
 }
 
+interface MeetingTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  template_items: any;
+}
+
 interface Profile {
   user_id: string;
   display_name: string | null;
@@ -62,6 +69,7 @@ export function MeetingsView() {
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
     title: "",
@@ -83,6 +91,7 @@ export function MeetingsView() {
       loadMeetings();
       loadProfiles();
       loadTasks();
+      loadMeetingTemplates();
     } else {
       console.log('No user found, skipping data load');
     }
@@ -143,6 +152,20 @@ export function MeetingsView() {
       setTasks(data || []);
     } catch (error) {
       console.error('Error loading tasks:', error);
+    }
+  };
+
+  const loadMeetingTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('meeting_templates')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setMeetingTemplates(data || []);
+    } catch (error) {
+      console.error('Error loading meeting templates:', error);
     }
   };
 
@@ -843,6 +866,25 @@ export function MeetingsView() {
                   onChange={(e) => setNewMeeting({ ...newMeeting, location: e.target.value })}
                   placeholder="Meeting Ort"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Template</label>
+                <Select
+                  value={newMeeting.template_id || ''}
+                  onValueChange={(value) => setNewMeeting({ ...newMeeting, template_id: value || undefined })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Template auswählen (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Kein Template</SelectItem>
+                    {meetingTemplates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
