@@ -332,14 +332,17 @@ export default function EditContact() {
                       
                       {!useCustomOrganization ? (
                         <Select
-                          value={contact.organization}
-                          onValueChange={(value) => setContact({ ...contact, organization: value })}
+                          value={contact.organization === "" ? "none" : contact.organization}
+                          onValueChange={(value) => setContact({ 
+                            ...contact, 
+                            organization: value === "none" ? "" : value 
+                          })}
                         >
                           <SelectTrigger className="bg-background border-input">
                             <SelectValue placeholder="Organisation auswählen..." />
                           </SelectTrigger>
                           <SelectContent className="bg-background border-border shadow-lg z-50">
-                            <SelectItem value="">Keine Organisation</SelectItem>
+                            <SelectItem value="none">Keine Organisation</SelectItem>
                             {organizations.map((org) => (
                               <SelectItem key={org.id} value={org.name}>
                                 {org.name}
