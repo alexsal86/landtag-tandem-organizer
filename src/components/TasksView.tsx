@@ -366,24 +366,36 @@ export function TasksView() {
 
   const loadTaskComments = async (taskId: string) => {
     try {
-      const { data, error } = await supabase
+      // Load comments and user profiles separately due to missing foreign key
+      const { data: comments, error } = await supabase
         .from('task_comments')
-        .select(`
-          *,
-          profiles(display_name, avatar_url)
-        `)
+        .select('*')
         .eq('task_id', taskId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
 
-      const formattedComments: TaskComment[] = (data || []).map(comment => ({
+      // Load user profiles for comment authors
+      const userIds = [...new Set(comments?.map(c => c.user_id) || [])];
+      let profiles: any[] = [];
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', userIds);
+        
+        profiles = profilesData || [];
+      }
+
+      // Combine comments with user data
+      const formattedComments: TaskComment[] = (comments || []).map(comment => ({
         id: comment.id,
         task_id: comment.task_id,
         user_id: comment.user_id,
         content: comment.content,
         created_at: comment.created_at,
-        profile: Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles,
+        profile: profiles.find(p => p.user_id === comment.user_id) || null,
       }));
 
       setTaskComments(prev => ({
