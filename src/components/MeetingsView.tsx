@@ -1069,11 +1069,6 @@ export function MeetingsView() {
                           onClick={() => setEditingMeeting(meeting)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                         <Button size="icon" variant="default" className="h-8 w-8" 
-                           onClick={() => startMeeting(meeting)}
-                           title="Meeting starten">
-                           <CheckCircle className="h-4 w-4" />
-                         </Button>
                          <AlertDialog>
                            <AlertDialogTrigger asChild>
                              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
@@ -1100,6 +1095,16 @@ export function MeetingsView() {
                   </div>
                 </div>
               </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex justify-end">
+                  <Button size="sm" variant="default" 
+                    onClick={() => startMeeting(meeting)}
+                    className="w-full">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Start
+                  </Button>
+                </div>
+              </CardContent>
             </Card>
           ))}
           {upcomingMeetings.length === 0 && (
@@ -1130,70 +1135,225 @@ export function MeetingsView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {agendaItems.filter(item => !item.parent_id).map((item, index) => (
-                  <div key={item.id} className="border rounded-lg p-4">
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
-                        {index + 1}
-                      </div>
-                      <h3 className="font-medium text-lg flex-1">{item.title}</h3>
-                      <div className="flex items-center gap-2">
-                        <Select
-                          value={item.assigned_to || 'unassigned'}
-                          onValueChange={(value) => updateAgendaItem(
-                            agendaItems.findIndex(i => i.id === item.id), 
-                            'assigned_to', 
-                            value === 'unassigned' ? null : value
-                          )}
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Bearbeiter zuweisen" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
-                            {profiles.map((profile) => (
-                              <SelectItem key={profile.user_id} value={profile.user_id}>
-                                {profile.display_name || 'Unbekannter Benutzer'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    {item.description && (
-                      <p className="text-muted-foreground mb-3 ml-12">{item.description}</p>
-                    )}
-                    
-                    <div className="ml-12 space-y-3">
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Ergebnis der Besprechung</label>
-                        <Textarea
-                          value={item.result_text || ''}
-                          onChange={(e) => updateAgendaItemResult(item.id!, 'result_text', e.target.value)}
-                          placeholder="Ergebnis, Beschlüsse oder wichtige Punkte..."
-                          className="min-h-[80px]"
-                        />
+                {agendaItems.filter(item => !item.parent_id).map((item, index) => {
+                  const subItems = agendaItems.filter(subItem => subItem.parent_id === item.id);
+                  return (
+                    <div key={item.id} className="border rounded-lg p-4">
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
+                          {index + 1}
+                        </div>
+                        <h3 className="font-medium text-lg flex-1">{item.title}</h3>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={item.assigned_to || 'unassigned'}
+                            onValueChange={(value) => updateAgendaItem(
+                              agendaItems.findIndex(i => i.id === item.id), 
+                              'assigned_to', 
+                              value === 'unassigned' ? null : value
+                            )}
+                          >
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Bearbeiter zuweisen" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                              {profiles.map((profile) => (
+                                <SelectItem key={profile.user_id} value={profile.user_id}>
+                                  {profile.display_name || 'Unbekannter Benutzer'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`carryover-${item.id}`}
-                          checked={item.carry_over_to_next || false}
-                          onCheckedChange={(checked) => 
-                            updateAgendaItemResult(item.id!, 'carry_over_to_next', checked)
-                          }
-                        />
-                        <label 
-                          htmlFor={`carryover-${item.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Auf nächste Besprechung übertragen
-                        </label>
+                      {item.description && (
+                        <p className="text-muted-foreground mb-3 ml-12">{item.description}</p>
+                      )}
+
+                      {/* Display notes if available */}
+                      {item.notes && (
+                        <div className="ml-12 mb-3">
+                          <label className="text-sm font-medium mb-1 block">Notizen</label>
+                          <div className="bg-muted/30 p-3 rounded-lg border text-sm">
+                            {item.notes}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Display file attachment if available */}
+                      {item.file_path && (
+                        <div className="ml-12 mb-3">
+                          <label className="text-sm font-medium mb-1 block">Anhang</label>
+                          <div className="flex items-center gap-2 p-2 bg-muted/30 rounded border">
+                            <FileText className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm flex-1">
+                              {item.file_path.split('/').pop()?.split('_').slice(2).join('_') || 'Datei'}
+                            </span>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const { data, error } = await supabase.storage
+                                    .from('documents')
+                                    .download(item.file_path!);
+                                  
+                                  if (error) throw error;
+                                  
+                                  const fileName = item.file_path!.split('/').pop()?.split('_').slice(2).join('_') || 'download';
+                                  const url = URL.createObjectURL(data);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = fileName;
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  toast({
+                                    title: "Download-Fehler",
+                                    description: "Datei konnte nicht heruntergeladen werden.",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Display sub-items */}
+                      {subItems.length > 0 && (
+                        <div className="ml-12 mb-3">
+                          <label className="text-sm font-medium mb-2 block">Unterpunkte</label>
+                          <div className="space-y-2">
+                            {subItems.map((subItem, subIndex) => (
+                              <div key={subItem.id} className="pl-4 border-l-2 border-muted">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-medium text-muted-foreground">
+                                    {index + 1}.{subIndex + 1}
+                                  </span>
+                                  <span className="text-sm font-medium">{subItem.title}</span>
+                                  {subItem.assigned_to && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {getDisplayName(subItem.assigned_to)}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {subItem.description && (
+                                  <p className="text-xs text-muted-foreground mb-2">{subItem.description}</p>
+                                )}
+                                {subItem.notes && (
+                                  <div className="mb-2">
+                                    <span className="text-xs font-medium text-muted-foreground">Notizen: </span>
+                                    <span className="text-xs">{subItem.notes}</span>
+                                  </div>
+                                )}
+                                {subItem.file_path && (
+                                  <div className="mb-2">
+                                    <div className="flex items-center gap-1">
+                                      <FileText className="h-3 w-3 text-blue-600" />
+                                      <span className="text-xs">
+                                        {subItem.file_path.split('/').pop()?.split('_').slice(2).join('_') || 'Datei'}
+                                      </span>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        className="h-4 w-4 p-0"
+                                        onClick={async () => {
+                                          try {
+                                            const { data, error } = await supabase.storage
+                                              .from('documents')
+                                              .download(subItem.file_path!);
+                                            
+                                            if (error) throw error;
+                                            
+                                            const fileName = subItem.file_path!.split('/').pop()?.split('_').slice(2).join('_') || 'download';
+                                            const url = URL.createObjectURL(data);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = fileName;
+                                            a.click();
+                                            URL.revokeObjectURL(url);
+                                          } catch (error) {
+                                            toast({
+                                              title: "Download-Fehler",
+                                              description: "Datei konnte nicht heruntergeladen werden.",
+                                              variant: "destructive",
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        <Download className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="space-y-2">
+                                  <div>
+                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                    <Textarea
+                                      value={subItem.result_text || ''}
+                                      onChange={(e) => updateAgendaItemResult(subItem.id!, 'result_text', e.target.value)}
+                                      placeholder="Ergebnis für diesen Unterpunkt..."
+                                      className="min-h-[60px] text-xs"
+                                    />
+                                  </div>
+                                  
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={`carryover-sub-${subItem.id}`}
+                                      checked={subItem.carry_over_to_next || false}
+                                      onCheckedChange={(checked) => 
+                                        updateAgendaItemResult(subItem.id!, 'carry_over_to_next', checked)
+                                      }
+                                    />
+                                    <label 
+                                      htmlFor={`carryover-sub-${subItem.id}`}
+                                      className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                      Auf nächste Besprechung übertragen
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="ml-12 space-y-3">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Ergebnis der Besprechung</label>
+                          <Textarea
+                            value={item.result_text || ''}
+                            onChange={(e) => updateAgendaItemResult(item.id!, 'result_text', e.target.value)}
+                            placeholder="Ergebnis, Beschlüsse oder wichtige Punkte..."
+                            className="min-h-[80px]"
+                          />
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`carryover-${item.id}`}
+                            checked={item.carry_over_to_next || false}
+                            onCheckedChange={(checked) => 
+                              updateAgendaItemResult(item.id!, 'carry_over_to_next', checked)
+                            }
+                          />
+                          <label 
+                            htmlFor={`carryover-${item.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            Auf nächste Besprechung übertragen
+                          </label>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 
                 {agendaItems.filter(item => !item.parent_id).length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
