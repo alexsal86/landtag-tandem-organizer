@@ -132,6 +132,11 @@ export function EventPlanningView() {
 
       console.log('Successfully fetched plannings:', data);
       setPlannings(data || []);
+      
+      // Also fetch all collaborators for all plannings
+      if (data && data.length > 0) {
+        await fetchAllCollaborators(data.map(p => p.id));
+      }
     } catch (err) {
       console.error('Unexpected error in fetchPlannings:', err);
       toast({
@@ -141,6 +146,35 @@ export function EventPlanningView() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllCollaborators = async (planningIds: string[]) => {
+    const { data: collabs } = await supabase
+      .from("event_planning_collaborators")
+      .select("*")
+      .in("event_planning_id", planningIds);
+
+    if (collabs) {
+      // Fetch profile data separately
+      const collabsWithProfiles = await Promise.all(
+        collabs.map(async (collab) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name, avatar_url")
+            .eq("user_id", collab.user_id)
+            .single();
+          
+          return {
+            ...collab,
+            profiles: profile
+          };
+        })
+      );
+      
+      setCollaborators(collabsWithProfiles);
+    } else {
+      setCollaborators([]);
     }
   };
 
