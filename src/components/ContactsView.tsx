@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { ContactDetailSheet } from "./ContactDetailSheet";
 
 interface Contact {
   id: string;
@@ -47,6 +48,8 @@ export function ContactsView() {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -294,7 +297,10 @@ export function ContactsView() {
             className={`bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer ${getPriorityColor(
               contact.priority
             )}`}
-            onClick={() => navigate(`/contacts/${contact.id}`)}
+            onClick={() => {
+              setSelectedContactId(contact.id);
+              setIsSheetOpen(true);
+            }}
           >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -414,6 +420,16 @@ export function ContactsView() {
           </CardContent>
         </Card>
       )}
+
+      <ContactDetailSheet
+        contactId={selectedContactId}
+        isOpen={isSheetOpen}
+        onClose={() => {
+          setIsSheetOpen(false);
+          setSelectedContactId(null);
+        }}
+        onContactUpdate={fetchContacts}
+      />
     </div>
   );
 }
