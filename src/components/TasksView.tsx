@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { TaskArchiveModal } from "./TaskArchiveModal";
 
 interface Task {
@@ -56,6 +57,7 @@ export function TasksView() {
     timestamp: string;
   }>>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Load tasks from database
   useEffect(() => {
@@ -401,9 +403,6 @@ export function TasksView() {
     if (!content) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('Current user:', user);
-      
       if (!user) {
         toast({
           title: "Fehler",
@@ -412,8 +411,6 @@ export function TasksView() {
         });
         return;
       }
-
-      console.log('Inserting comment:', { task_id: taskId, user_id: user.id, content: content });
 
       const { error } = await supabase
         .from('task_comments')
@@ -427,8 +424,6 @@ export function TasksView() {
         console.error('Supabase error:', error);
         throw error;
       }
-
-      console.log('Comment inserted successfully');
 
       // Clear the comment input
       setNewComment(prev => ({ ...prev, [taskId]: '' }));
