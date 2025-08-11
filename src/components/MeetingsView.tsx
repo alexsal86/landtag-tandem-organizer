@@ -1132,12 +1132,6 @@ export function MeetingsView() {
                                                       >
                                                         <div>
                                                           <div className="font-medium">{task.title}</div>
-                                                          <div className="text-xs text-muted-foreground">
-                                                            <Badge variant="secondary" className="text-xs mr-2">
-                                                              {task.priority}
-                                                            </Badge>
-                                                            {task.category}
-                                                          </div>
                                                         </div>
                                                       </Button>
                                                     ))}
