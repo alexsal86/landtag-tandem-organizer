@@ -870,14 +870,14 @@ export function MeetingsView() {
               <div>
                 <label className="text-sm font-medium">Template</label>
                 <Select
-                  value={newMeeting.template_id || ''}
-                  onValueChange={(value) => setNewMeeting({ ...newMeeting, template_id: value || undefined })}
+                  value={newMeeting.template_id || 'none'}
+                  onValueChange={(value) => setNewMeeting({ ...newMeeting, template_id: value === 'none' ? undefined : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Template auswählen (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Kein Template</SelectItem>
+                    <SelectItem value="none">Kein Template</SelectItem>
                     {meetingTemplates.map((template) => (
                       <SelectItem key={template.id} value={template.id}>
                         {template.name}
