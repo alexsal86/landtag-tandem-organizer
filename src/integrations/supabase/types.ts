@@ -116,6 +116,7 @@ export type Database = {
       appointments: {
         Row: {
           category: string | null
+          contact_id: string | null
           created_at: string
           description: string | null
           end_time: string
@@ -132,6 +133,7 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          contact_id?: string | null
           created_at?: string
           description?: string | null
           end_time: string
@@ -148,6 +150,7 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          contact_id?: string | null
           created_at?: string
           description?: string | null
           end_time?: string
@@ -163,6 +166,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "appointments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "appointments_meeting_fk"
             columns: ["meeting_id"]
@@ -1257,6 +1267,10 @@ export type Database = {
       is_admin_of: {
         Args: { employee: string }
         Returns: boolean
+      }
+      sync_birthday_appointments: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {
