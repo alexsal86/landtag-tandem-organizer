@@ -74,6 +74,14 @@ export default function EditContact() {
     }
   }, [id, user]);
 
+  // Effect to check organization mode when both contact and organizations are loaded
+  useEffect(() => {
+    if (contact.organization && organizations.length > 0) {
+      const isOrganizationInList = organizations.some(org => org.name === contact.organization);
+      setUseCustomOrganization(!isOrganizationInList && contact.organization !== "");
+    }
+  }, [contact.organization, organizations]);
+
   const fetchOrganizations = async () => {
     try {
       const { data, error } = await supabase
@@ -83,14 +91,7 @@ export default function EditContact() {
         .order('name');
 
       if (error) throw error;
-      const orgs = data || [];
-      setOrganizations(orgs);
-      
-      // Check if current contact's organization is in the list after organizations are loaded
-      if (contact.organization) {
-        const isOrganizationInList = orgs.some(org => org.name === contact.organization);
-        setUseCustomOrganization(!isOrganizationInList && contact.organization !== "");
-      }
+      setOrganizations(data || []);
     } catch (error) {
       console.error('Error fetching organizations:', error);
     }
