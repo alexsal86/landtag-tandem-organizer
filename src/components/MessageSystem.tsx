@@ -521,9 +521,64 @@ export function MessageSystem() {
                       <p className="text-xs text-muted-foreground mb-2">
                         {message.content}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground mb-2">
                         Archiviert: {new Date(message.created_at).toLocaleDateString('de-DE')}
                       </p>
+                      
+                      {/* Show read confirmations */}
+                      {message.is_for_all_users && message.confirmations && message.confirmations.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs text-muted-foreground mb-1">Bestätigt von:</p>
+                          <div className="space-y-1">
+                            {message.confirmations.map((confirmation) => (
+                              <div key={confirmation.user_id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Avatar className="h-4 w-4">
+                                  <AvatarImage src={(confirmation as any).profiles?.avatar_url} />
+                                  <AvatarFallback className="text-xs">
+                                    {(confirmation as any).profiles?.display_name?.charAt(0) || 'U'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span>{(confirmation as any).profiles?.display_name || 'Unbekannt'}</span>
+                                <span>am {new Date(confirmation.confirmed_at).toLocaleDateString('de-DE', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {!message.is_for_all_users && message.recipients && message.recipients.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs text-muted-foreground mb-1">Gelesen von:</p>
+                          <div className="space-y-1">
+                            {message.recipients.filter(r => r.has_read).map((recipient) => (
+                              <div key={recipient.recipient_id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Avatar className="h-4 w-4">
+                                  <AvatarImage src={recipient.profile?.avatar_url} />
+                                  <AvatarFallback className="text-xs">
+                                    {recipient.profile?.display_name?.charAt(0) || 'U'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span>{recipient.profile?.display_name || 'Unbekannt'}</span>
+                                {recipient.read_at && (
+                                  <span>am {new Date(recipient.read_at).toLocaleDateString('de-DE', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
