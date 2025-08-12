@@ -914,17 +914,6 @@ export function TasksView() {
                           {task.status === "completed" && "Erledigt"}
                         </Badge>
 
-                        <Dialog open={editingTask?.id === task.id} onOpenChange={(open) => !open && setEditingTask(null)}>
-                          <DialogTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleEditTask(task)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
                           <DialogContent className="max-w-2xl">
                             <DialogHeader>
                               <DialogTitle>Aufgabe bearbeiten</DialogTitle>
@@ -1033,7 +1022,8 @@ export function TasksView() {
                               </div>
                             </div>
                           </DialogContent>
-                        </Dialog>
+                      </div>
+                    </div>
                         <Badge className={getPriorityColor(task.priority)}>
                           <Flag className="h-3 w-3 mr-1" />
                           {task.priority === "high" && "Hoch"}
@@ -1237,8 +1227,9 @@ export function TasksView() {
                         </div>
                       )}
 
-                   </div>
-                 </div>
+                    </div>
+                  </div>
+                </div>
                </CardContent>
              </Card>
           ))}
