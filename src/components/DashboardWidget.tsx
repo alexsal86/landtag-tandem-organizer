@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, CheckSquare, Clock, FileText, Phone, AlertCircle, Circle, GripVertical } from "lucide-react";
+import { Calendar, Users, CheckSquare, Clock, FileText, Phone, AlertCircle, Circle, GripVertical, MessageCircle } from "lucide-react";
 import { DashboardWidget as WidgetType } from '@/hooks/useDashboardLayout';
 import { supabase } from "@/integrations/supabase/client";
+import { MessageSystem } from './MessageSystem';
 
 interface WidgetProps {
   widget: WidgetType;
@@ -299,6 +300,9 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
             ))}
           </div>
         );
+
+      case 'messages':
+        return <MessageSystem />;
 
       default:
         return <div>Unbekanntes Widget</div>;

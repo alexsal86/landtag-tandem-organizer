@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 export interface DashboardWidget {
   id: string;
-  type: 'stats' | 'tasks' | 'schedule' | 'actions';
+  type: 'stats' | 'tasks' | 'schedule' | 'actions' | 'messages';
   title: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -54,6 +54,13 @@ export function useDashboardLayout() {
         title: 'Schnellaktionen',
         position: { x: 0, y: 3 },
         size: { width: 4, height: 1 }
+      },
+      {
+        id: 'messages',
+        type: 'messages',
+        title: 'Nachrichten',
+        position: { x: 4, y: 3 },
+        size: { width: 8, height: 2 }
       }
     ]
   };
