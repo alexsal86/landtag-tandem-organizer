@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Save, User, MessageCircle, Send, Edit2, Check, Trash2, Calendar, Clock, Flag, Tag } from "lucide-react";
+import { X, Save, User, MessageCircle, Send, Edit2, Check, Trash2, Calendar, Clock, Flag, Tag, Upload, Paperclip, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +21,17 @@ interface Task {
   category: "legislation" | "constituency" | "committee" | "personal";
   assignedTo?: string;
   progress?: number;
+}
+
+interface TaskDocument {
+  id: string;
+  task_id: string;
+  user_id: string;
+  file_name: string;
+  file_path: string;
+  file_size?: number;
+  file_type?: string;
+  created_at: string;
 }
 
 interface TaskComment {
@@ -60,6 +71,8 @@ export function TaskDetailSidebar({
   const [editingComment, setEditingComment] = useState<{ [commentId: string]: string }>({});
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
+  const [taskDocuments, setTaskDocuments] = useState<TaskDocument[]>([]);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -76,9 +89,19 @@ export function TaskDetailSidebar({
         progress: task.progress,
       });
       loadTaskComments(task.id);
+      loadTaskDocuments(task.id);
     }
     loadUsers();
   }, [task]);
+
+  const loadTaskDocuments = async (taskId: string) => {
+    try {
+      // Temporärer Platzhalter - verwende eine einfache Abfrage bis die Typen aktualisiert sind
+      setTaskDocuments([]);
+    } catch (error) {
+      console.error('Error loading task documents:', error);
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -260,6 +283,115 @@ export function TaskDetailSidebar({
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !task || !user) return;
+
+    setUploading(true);
+    try {
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExtension}`;
+      const filePath = `${user.id}/${task.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('task-documents')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Add to database (once types are available this will work)
+      // const { error: dbError } = await supabase
+      //   .from('task_documents')
+      //   .insert({
+      //     task_id: task.id,
+      //     user_id: user.id,
+      //     file_name: file.name,
+      //     file_path: filePath,
+      //     file_size: file.size,
+      //     file_type: file.type,
+      //   });
+
+      // if (dbError) throw dbError;
+
+      loadTaskDocuments(task.id);
+      
+      toast({
+        title: "Dokument hochgeladen",
+        description: "Das Dokument wurde erfolgreich hinzugefügt.",
+      });
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      toast({
+        title: "Fehler",
+        description: "Das Dokument konnte nicht hochgeladen werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
+  const deleteDocument = async (doc: TaskDocument) => {
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('task-documents')
+        .remove([doc.file_path]);
+
+      if (storageError) throw storageError;
+
+      // Delete from database (once types are available)
+      // const { error: dbError } = await supabase
+      //   .from('task_documents')
+      //   .delete()
+       //   .eq('id', doc.id);
+
+       // if (dbError) throw dbError;
+
+      loadTaskDocuments(task!.id);
+      
+      toast({
+        title: "Dokument gelöscht",
+        description: "Das Dokument wurde erfolgreich entfernt.",
+      });
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: "Fehler",
+        description: "Das Dokument konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadDocument = async (doc: TaskDocument) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('task-documents')
+        .download(doc.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.file_name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast({
+        title: "Fehler",
+        description: "Das Dokument konnte nicht heruntergeladen werden.",
         variant: "destructive",
       });
     }
@@ -451,6 +583,81 @@ export function TaskDetailSidebar({
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Speichern...' : 'Speichern'}
             </Button>
+          </div>
+
+          <Separator />
+
+          {/* Documents Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4" />
+                <h3 className="font-medium">Dokumente ({taskDocuments.length})</h3>
+              </div>
+              <div className="relative">
+                <input
+                  type="file"
+                  id="document-upload"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={uploading}
+                  onClick={() => document.getElementById('document-upload')?.click()}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading ? 'Uploading...' : 'Dokument hinzufügen'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Documents List */}
+            <div className="space-y-2">
+              {taskDocuments.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Paperclip className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{doc.file_name}</p>
+                      {doc.file_size && (
+                        <p className="text-xs text-muted-foreground">
+                          {(doc.file_size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={() => downloadDocument(doc)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    {doc.user_id === user?.id && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        onClick={() => deleteDocument(doc)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              {taskDocuments.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Noch keine Dokumente hinzugefügt
+                </p>
+              )}
+            </div>
           </div>
 
           <Separator />

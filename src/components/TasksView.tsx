@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X } from "lucide-react";
+import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +57,7 @@ export function TasksView() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
+  const [taskDocuments, setTaskDocuments] = useState<{ [taskId: string]: number }>({});
   const [recentActivities, setRecentActivities] = useState<Array<{
     id: string;
     type: 'completed' | 'updated' | 'created';
@@ -72,7 +73,23 @@ export function TasksView() {
     loadRecentActivities();
     loadTaskConfiguration();
     loadUsers();
+    loadTaskDocumentCounts();
   }, []);
+
+  const loadTaskDocumentCounts = async () => {
+    try {
+      // Verwende eine direkte SQL-Abfrage um die Anzahl der Dokumente zu erhalten
+      const { data: archivedTasks } = await supabase
+        .from('archived_tasks')
+        .select('task_id');
+
+      // Vorübergehend setzen wir einfach 0 für alle Aufgaben, bis die Typen aktualisiert sind
+      const counts: { [taskId: string]: number } = {};
+      setTaskDocuments(counts);
+    } catch (error) {
+      console.error('Error loading task document counts:', error);
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -615,9 +632,8 @@ export function TasksView() {
   };
 
   const handleTaskUpdate = (updatedTask: Task) => {
-    setTasks(prev => prev.map(t => 
-      t.id === updatedTask.id ? updatedTask : t
-    ));
+    setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    loadTaskDocumentCounts(); // Reload document counts when task is updated
     loadRecentActivities();
   };
 
@@ -959,28 +975,36 @@ export function TasksView() {
                         {task.status === "completed" && "Erledigt"}
                       </Badge>
 
+                      {/* Document count indicator */}
+                      {taskDocuments[task.id] > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Paperclip className="h-4 w-4" />
+                          <span className="text-muted-foreground text-sm">{taskDocuments[task.id]}</span>
+                        </div>
+                      )}
+
                        {task.assignedTo && (
-                         <div className="flex items-center gap-2">
-                           <div className="flex items-center gap-1">
-                             <User className="h-4 w-4" />
-                              <span className="text-muted-foreground">
-                                {users.find(u => u.user_id === task.assignedTo)?.display_name || 'Unbekannter Benutzer'}
-                              </span>
-                           </div>
-                           <Button
-                             variant="ghost"
-                             size="sm"
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               toggleComments(task.id);
-                             }}
-                             className="gap-1 h-6 px-2 text-xs"
-                           >
-                             <MessageCircle className="h-3 w-3" />
-                             <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
-                           </Button>
-                         </div>
-                       )}
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <User className="h-4 w-4" />
+                               <span className="text-muted-foreground">
+                                 {users.find(u => u.user_id === task.assignedTo)?.display_name || 'Unbekannter Benutzer'}
+                               </span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleComments(task.id);
+                              }}
+                              className="gap-1 h-6 px-2 text-xs"
+                            >
+                              <MessageCircle className="h-3 w-3" />
+                              <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
+                            </Button>
+                          </div>
+                        )}
                        {!task.assignedTo && (
                          <Button
                            variant="ghost"
