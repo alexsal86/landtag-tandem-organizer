@@ -77,7 +77,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
     setLoading(true);
 
     try {
-      await supabase
+      await (supabase as any)
         .rpc('send_message', {
           author_id_param: user.id,
           title_param: title.trim(),

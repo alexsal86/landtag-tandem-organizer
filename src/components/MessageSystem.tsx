@@ -11,6 +11,31 @@ import { useAuth } from "@/hooks/useAuth";
 import { MessageComposer } from "./MessageComposer";
 import { toast } from "@/hooks/use-toast";
 
+interface ReceivedMessage {
+  id: string;
+  title: string;
+  content: string;
+  author_id: string;
+  is_for_all_users: boolean;
+  status: string;
+  created_at: string;
+  author_name: string;
+  author_avatar: string;
+  has_read: boolean;
+}
+
+interface AuthoredMessage {
+  id: string;
+  title: string;
+  content: string;
+  author_id: string;
+  is_for_all_users: boolean;
+  status: string;
+  created_at: string;
+  recipients_count: number;
+  read_count: number;
+}
+
 interface Message {
   id: string;
   title: string;
@@ -50,19 +75,61 @@ export function MessageSystem() {
     if (!user) return;
 
     try {
-      // Fetch messages with basic data - we'll need to handle the queries differently due to types
-      const { data: receivedMessages } = await supabase
-        .rpc('get_user_messages', { user_id_param: user.id })
-        .then(res => res.data || []);
-
-      const { data: authoredMessages } = await supabase
-        .rpc('get_authored_messages', { author_id_param: user.id })
-        .then(res => res.data || []);
-
-      setActiveMessages(receivedMessages || []);
+      // Fetch messages with basic data
+      const receivedResponse = await (supabase as any)
+        .rpc('get_user_messages', { user_id_param: user.id });
       
-      const activeSent = authoredMessages?.filter(m => m.status === 'active') || [];
-      const archivedSent = authoredMessages?.filter(m => m.status === 'archived') || [];
+      const { data: receivedMessages, error: receivedError } = receivedResponse;
+
+      if (receivedError) {
+        console.error('Error fetching received messages:', receivedError);
+        return;
+      }
+
+      const authoredResponse = await (supabase as any)
+        .rpc('get_authored_messages', { author_id_param: user.id });
+      
+      const { data: authoredMessages, error: authoredError } = authoredResponse;
+
+      if (authoredError) {
+        console.error('Error fetching authored messages:', authoredError);
+        return;
+      }
+
+      // Convert received messages to the Message interface format
+      const convertedReceivedMessages: Message[] = (receivedMessages || []).map(msg => ({
+        id: msg.id,
+        title: msg.title,
+        content: msg.content,
+        author_id: msg.author_id,
+        is_for_all_users: msg.is_for_all_users,
+        status: msg.status as 'active' | 'archived',
+        created_at: msg.created_at,
+        author: {
+          display_name: msg.author_name,
+          avatar_url: msg.author_avatar
+        },
+        recipients: [],
+        confirmations: []
+      }));
+
+      setActiveMessages(convertedReceivedMessages);
+      
+      // Convert authored messages to the Message interface format
+      const convertedAuthoredMessages: Message[] = (authoredMessages || []).map(msg => ({
+        id: msg.id,
+        title: msg.title,
+        content: msg.content,
+        author_id: msg.author_id,
+        is_for_all_users: msg.is_for_all_users,
+        status: msg.status as 'active' | 'archived',
+        created_at: msg.created_at,
+        recipients: [],
+        confirmations: []
+      }));
+
+      const activeSent = convertedAuthoredMessages.filter(m => m.status === 'active');
+      const archivedSent = convertedAuthoredMessages.filter(m => m.status === 'archived');
       
       setSentMessages(activeSent);
       setArchivedMessages(archivedSent);
@@ -81,7 +148,7 @@ export function MessageSystem() {
     if (!user) return;
 
     try {
-      await supabase
+      await (supabase as any)
         .rpc('mark_message_read', { 
           message_id_param: messageId, 
           user_id_param: user.id,
