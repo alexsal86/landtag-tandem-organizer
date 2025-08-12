@@ -105,6 +105,8 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
         return "bg-red-100 text-red-800 border-red-300";
       case "blocked":
         return "bg-orange-100 text-orange-800 border-orange-300";
+      case "veranstaltung":
+        return "bg-purple-100 text-purple-800 border-purple-300";
       default:
         return "bg-muted text-muted-foreground border-muted";
     }

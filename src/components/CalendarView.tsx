@@ -23,7 +23,7 @@ export interface CalendarEvent {
     name: string;
     role: string;
   }>;
-  type: "meeting" | "appointment" | "deadline" | "session" | "blocked";
+  type: "meeting" | "appointment" | "deadline" | "session" | "blocked" | "veranstaltung";
   priority: "low" | "medium" | "high";
   category_color?: string;
 }
@@ -212,17 +212,27 @@ export function CalendarView() {
               console.log('Could not fetch participants for blocked event');
             }
 
+            // Determine title and type based on confirmation status
+            const isConfirmed = eventDate.is_confirmed;
+            const title = isConfirmed 
+              ? eventDate.event_plannings.title 
+              : `Planung: ${eventDate.event_plannings.title}`;
+            const eventType = isConfirmed ? "veranstaltung" : "blocked";
+            const categoryColor = isConfirmed 
+              ? categoryColors.get('veranstaltung') || '#9333ea' 
+              : categoryColors.get('blocked') || '#f97316';
+
             formattedEvents.push({
               id: `blocked-${eventDate.id}`,
-              title: eventDate.event_plannings.title,
+              title: title,
               time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
               duration: "2.0h",
               date: startTime,
-              type: "blocked",
+              type: eventType as CalendarEvent["type"],
               priority: "medium",
               participants,
               attendees: participants.length,
-              category_color: categoryColors.get('blocked') || '#f97316' // Default orange for blocked events
+              category_color: categoryColor
             });
           }
         }

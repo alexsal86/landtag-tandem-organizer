@@ -100,6 +100,8 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
         return "bg-destructive text-destructive-foreground";
       case "blocked":
         return "bg-orange-500 text-white";
+      case "veranstaltung":
+        return "bg-purple-600 text-white";
       default:
         return "bg-muted text-muted-foreground";
     }
