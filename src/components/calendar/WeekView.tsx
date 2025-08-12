@@ -77,15 +77,15 @@ export function WeekView({ weekStart, events }: WeekViewProps) {
               return (
                 <div 
                   key={`${day.toDateString()}-${hour}`} 
-                  className="min-h-[60px] p-1 border-b border-l border-border relative hover:bg-accent/20"
+                  className="min-h-[60px] p-1 border-b border-l border-border relative hover:bg-accent/20 overflow-hidden"
                 >
                   {dayEvents.map((event, index) => (
                     <div
                       key={event.id}
-                      className={`p-1 rounded text-xs mb-1 border-l-2 ${getEventTypeColor(event.type)}`}
+                      className={`p-1 rounded text-xs mb-1 border-l-2 w-full max-w-full ${getEventTypeColor(event.type)}`}
                     >
-                      <div className="font-medium truncate">{event.title}</div>
-                      <div className="opacity-80">{event.time}</div>
+                      <div className="font-medium truncate w-full">{event.title}</div>
+                      <div className="opacity-80 truncate w-full">{event.time}</div>
                     </div>
                   ))}
                 </div>
