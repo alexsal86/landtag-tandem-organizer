@@ -124,36 +124,55 @@ export function MessageSystem() {
           let confirmations = [];
 
           if (msg.is_for_all_users) {
-            // Fetch confirmations for "all users" messages
+            // Fetch confirmations for "all users" messages using basic query without relations
             const { data: confirmData } = await (supabase as any)
               .from('message_confirmations')
-              .select(`
-                user_id,
-                confirmed_at,
-                profiles:user_id (
-                  display_name,
-                  avatar_url
-                )
-              `)
+              .select('user_id, confirmed_at')
               .eq('message_id', msg.id);
             
-            confirmations = confirmData || [];
+            if (confirmData) {
+              // Get profile data separately for each confirmation
+              const confirmationsWithProfiles = await Promise.all(
+                confirmData.map(async (conf: any) => {
+                  const { data: profile } = await (supabase as any)
+                    .from('profiles')
+                    .select('display_name, avatar_url')
+                    .eq('user_id', conf.user_id)
+                    .single();
+                  
+                  return {
+                    ...conf,
+                    profiles: profile
+                  };
+                })
+              );
+              confirmations = confirmationsWithProfiles;
+            }
           } else {
-            // Fetch recipients for targeted messages
+            // Fetch recipients for targeted messages using basic query without relations
             const { data: recipientData } = await (supabase as any)
               .from('message_recipients')
-              .select(`
-                recipient_id,
-                has_read,
-                read_at,
-                profiles:recipient_id (
-                  display_name,
-                  avatar_url
-                )
-              `)
+              .select('recipient_id, has_read, read_at')
               .eq('message_id', msg.id);
             
-            recipients = recipientData || [];
+            if (recipientData) {
+              // Get profile data separately for each recipient
+              const recipientsWithProfiles = await Promise.all(
+                recipientData.map(async (rec: any) => {
+                  const { data: profile } = await (supabase as any)
+                    .from('profiles')
+                    .select('display_name, avatar_url')
+                    .eq('user_id', rec.recipient_id)
+                    .single();
+                  
+                  return {
+                    ...rec,
+                    profile: profile
+                  };
+                })
+              );
+              recipients = recipientsWithProfiles;
+            }
           }
 
           return {
@@ -184,6 +203,35 @@ export function MessageSystem() {
 
   useEffect(() => {
     fetchMessages();
+    
+    // Set up real-time subscriptions
+    const messagesChannel = supabase.channel('messages-channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages'
+      }, () => {
+        fetchMessages();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'message_recipients'
+      }, () => {
+        fetchMessages();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'message_confirmations'
+      }, () => {
+        fetchMessages();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messagesChannel);
+    };
   }, [user]);
 
   const markAsRead = async (messageId: string, isForAllUsers: boolean) => {
