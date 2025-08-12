@@ -40,7 +40,7 @@ interface TaskDetailSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onTaskUpdate: (updatedTask: Task) => void;
-  onTaskRestored: () => void;
+  onTaskRestored: (restoredTask: Task) => void;
   taskCategories: Array<{ name: string; label: string }>;
   taskStatuses: Array<{ name: string; label: string }>;
 }

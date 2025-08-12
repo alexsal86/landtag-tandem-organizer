@@ -30,7 +30,19 @@ interface ArchiveSettings {
 interface TaskArchiveModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTaskRestored?: () => void;
+  onTaskRestored?: (restoredTask: Task) => void;
+}
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  priority: "low" | "medium" | "high";
+  status: "todo" | "in-progress" | "completed";
+  dueDate: string;
+  category: "legislation" | "constituency" | "committee" | "personal";
+  assignedTo?: string;
+  progress?: number;
 }
 
 export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiveModalProps) {
@@ -215,9 +227,22 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
 
       setArchivedTasks(prev => prev.filter(t => t.id !== task.id));
       
+      // Create the restored task object to pass to the callback
+      const restoredTask: Task = {
+        id: task.task_id,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        status: 'todo',
+        dueDate: task.due_date,
+        category: task.category,
+        assignedTo: task.assigned_to,
+        progress: task.progress || 0,
+      };
+      
       // Notify parent component that a task was restored
       if (onTaskRestored) {
-        onTaskRestored();
+        onTaskRestored(restoredTask);
       }
       
       toast({

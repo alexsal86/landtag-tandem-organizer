@@ -605,9 +605,21 @@ export function TasksView() {
     loadRecentActivities();
   };
 
-  const handleTaskRestored = () => {
-    // Reload the entire task list when a task is restored from archive
-    loadTasks();
+  const handleTaskRestored = (restoredTask: Task) => {
+    // Add the specific restored task to the list instead of reloading everything
+    setTasks(prev => {
+      // Check if task already exists to avoid duplicates
+      const existsIndex = prev.findIndex(t => t.id === restoredTask.id);
+      if (existsIndex >= 0) {
+        // Update existing task
+        const updated = [...prev];
+        updated[existsIndex] = restoredTask;
+        return updated;
+      } else {
+        // Add new task to the beginning of the list
+        return [restoredTask, ...prev];
+      }
+    });
     loadRecentActivities();
   };
 
