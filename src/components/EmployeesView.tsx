@@ -745,8 +745,13 @@ export function EmployeesView() {
                           <Input
                             type="number"
                             step="0.5"
-                            value={e.hours_per_week}
-                            onChange={(ev) => updateHours(e.user_id, Number(ev.target.value))}
+                            defaultValue={e.hours_per_week}
+                            onBlur={(ev) => {
+                              const newValue = Number(ev.target.value);
+                              if (newValue !== e.hours_per_week) {
+                                updateHours(e.user_id, newValue);
+                              }
+                            }}
                             className="w-20"
                             min="1"
                             max="60"
@@ -755,8 +760,13 @@ export function EmployeesView() {
                         <TableCell>
                           <Input
                             type="number"
-                            value={e.days_per_month}
-                            onChange={(ev) => updateDaysPerMonth(e.user_id, Number(ev.target.value))}
+                            defaultValue={e.days_per_month}
+                            onBlur={(ev) => {
+                              const newValue = Number(ev.target.value);
+                              if (newValue !== e.days_per_month) {
+                                updateDaysPerMonth(e.user_id, newValue);
+                              }
+                            }}
                             className="w-20"
                             min="1"
                             max="31"
@@ -765,8 +775,13 @@ export function EmployeesView() {
                         <TableCell>
                           <Input
                             type="number"
-                            value={e.annual_vacation_days}
-                            onChange={(ev) => updateVacationDays(e.user_id, Number(ev.target.value))}
+                            defaultValue={e.annual_vacation_days}
+                            onBlur={(ev) => {
+                              const newValue = Number(ev.target.value);
+                              if (newValue !== e.annual_vacation_days) {
+                                updateVacationDays(e.user_id, newValue);
+                              }
+                            }}
                             className="w-20"
                             min="0"
                             max="50"
@@ -775,8 +790,13 @@ export function EmployeesView() {
                         <TableCell>
                           <Input
                             type="date"
-                            value={e.employment_start_date || "2025-01-01"}
-                            onChange={(ev) => updateStartDate(e.user_id, ev.target.value)}
+                            defaultValue={e.employment_start_date || "2025-01-01"}
+                            onBlur={(ev) => {
+                              const newValue = ev.target.value;
+                              if (newValue !== (e.employment_start_date || "2025-01-01")) {
+                                updateStartDate(e.user_id, newValue);
+                              }
+                            }}
                             className="w-40"
                           />
                         </TableCell>
