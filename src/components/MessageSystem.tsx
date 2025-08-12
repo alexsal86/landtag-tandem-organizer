@@ -96,40 +96,82 @@ export function MessageSystem() {
         return;
       }
 
-      // Convert received messages to the Message interface format
-      const convertedReceivedMessages: Message[] = (receivedMessages || []).map(msg => ({
-        id: msg.id,
-        title: msg.title,
-        content: msg.content,
-        author_id: msg.author_id,
-        is_for_all_users: msg.is_for_all_users,
-        status: msg.status as 'active' | 'archived',
-        created_at: msg.created_at,
-        author: {
-          display_name: msg.author_name,
-          avatar_url: msg.author_avatar
-        },
-        recipients: [],
-        confirmations: []
-      }));
+      // Convert received messages to the Message interface format, excluding own authored messages
+      const convertedReceivedMessages: Message[] = (receivedMessages || [])
+        .filter(msg => msg.author_id !== user.id) // Exclude own messages
+        .map(msg => ({
+          id: msg.id,
+          title: msg.title,
+          content: msg.content,
+          author_id: msg.author_id,
+          is_for_all_users: msg.is_for_all_users,
+          status: msg.status as 'active' | 'archived',
+          created_at: msg.created_at,
+          author: {
+            display_name: msg.author_name,
+            avatar_url: msg.author_avatar
+          },
+          recipients: [],
+          confirmations: []
+        }));
 
       setActiveMessages(convertedReceivedMessages);
       
-      // Convert authored messages to the Message interface format
-      const convertedAuthoredMessages: Message[] = (authoredMessages || []).map(msg => ({
-        id: msg.id,
-        title: msg.title,
-        content: msg.content,
-        author_id: msg.author_id,
-        is_for_all_users: msg.is_for_all_users,
-        status: msg.status as 'active' | 'archived',
-        created_at: msg.created_at,
-        recipients: [],
-        confirmations: []
-      }));
+      // For authored messages, fetch detailed recipient and confirmation data
+      const sentMessagesWithDetails = await Promise.all(
+        (authoredMessages || []).map(async (msg) => {
+          let recipients = [];
+          let confirmations = [];
 
-      const activeSent = convertedAuthoredMessages.filter(m => m.status === 'active');
-      const archivedSent = convertedAuthoredMessages.filter(m => m.status === 'archived');
+          if (msg.is_for_all_users) {
+            // Fetch confirmations for "all users" messages
+            const { data: confirmData } = await (supabase as any)
+              .from('message_confirmations')
+              .select(`
+                user_id,
+                confirmed_at,
+                profiles:user_id (
+                  display_name,
+                  avatar_url
+                )
+              `)
+              .eq('message_id', msg.id);
+            
+            confirmations = confirmData || [];
+          } else {
+            // Fetch recipients for targeted messages
+            const { data: recipientData } = await (supabase as any)
+              .from('message_recipients')
+              .select(`
+                recipient_id,
+                has_read,
+                read_at,
+                profiles:recipient_id (
+                  display_name,
+                  avatar_url
+                )
+              `)
+              .eq('message_id', msg.id);
+            
+            recipients = recipientData || [];
+          }
+
+          return {
+            id: msg.id,
+            title: msg.title,
+            content: msg.content,
+            author_id: msg.author_id,
+            is_for_all_users: msg.is_for_all_users,
+            status: msg.status as 'active' | 'archived',
+            created_at: msg.created_at,
+            recipients,
+            confirmations
+          };
+        })
+      );
+
+      const activeSent = sentMessagesWithDetails.filter(m => m.status === 'active');
+      const archivedSent = sentMessagesWithDetails.filter(m => m.status === 'archived');
       
       setSentMessages(activeSent);
       setArchivedMessages(archivedSent);
@@ -358,10 +400,11 @@ export function MessageSystem() {
                           </div>
                         </div>
                         
-                        {!message.is_for_all_users && message.recipients && (
+                        {/* Show recipients for targeted messages */}
+                        {!message.is_for_all_users && message.recipients && message.recipients.length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-2">
                             {message.recipients.map((recipient) => (
-                              <div key={recipient.recipient_id} className="flex items-center gap-1">
+                              <div key={recipient.recipient_id} className="flex items-center gap-1" title={recipient.profile?.display_name || 'Unbekannt'}>
                                 <Avatar className="h-5 w-5">
                                   <AvatarImage src={recipient.profile?.avatar_url} />
                                   <AvatarFallback className="text-xs">
@@ -371,6 +414,23 @@ export function MessageSystem() {
                                 {recipient.has_read && (
                                   <Check className="h-3 w-3 text-green-500" />
                                 )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Show confirmations for "all users" messages */}
+                        {message.is_for_all_users && message.confirmations && message.confirmations.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {message.confirmations.map((confirmation) => (
+                              <div key={confirmation.user_id} className="flex items-center gap-1" title={(confirmation as any).profiles?.display_name || 'Unbekannt'}>
+                                <Avatar className="h-5 w-5">
+                                  <AvatarImage src={(confirmation as any).profiles?.avatar_url} />
+                                  <AvatarFallback className="text-xs">
+                                    {(confirmation as any).profiles?.display_name?.charAt(0) || 'U'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <Check className="h-3 w-3 text-green-500" />
                               </div>
                             ))}
                           </div>
