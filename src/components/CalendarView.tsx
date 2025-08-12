@@ -5,8 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DayView } from "./calendar/DayView";
+import { WeekView } from "./calendar/WeekView";
+import { MonthView } from "./calendar/MonthView";
 
-interface CalendarEvent {
+export interface CalendarEvent {
   id: string;
   title: string;
   time: string;
@@ -182,6 +185,31 @@ export function CalendarView() {
     });
   };
 
+  const getWeekStart = (date: Date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday as start
+    return new Date(d.setDate(diff));
+  };
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    
+    switch (view) {
+      case 'day':
+        newDate.setDate(currentDate.getDate() + (direction === 'next' ? 1 : -1));
+        break;
+      case 'week':
+        newDate.setDate(currentDate.getDate() + (direction === 'next' ? 7 : -7));
+        break;
+      case 'month':
+        newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 1 : -1));
+        break;
+    }
+    
+    setCurrentDate(newDate);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       {/* Header */}
@@ -206,7 +234,7 @@ export function CalendarView() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() - 1)))}
+              onClick={() => navigateDate('prev')}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -220,7 +248,7 @@ export function CalendarView() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() + 1)))}
+              onClick={() => navigateDate('next')}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -256,69 +284,16 @@ export function CalendarView() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {view === "day" && (
-              <div className="space-y-4">
-                {loading ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Termine werden geladen...
-                  </div>
-                ) : appointments.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Keine Termine für heute
-                  </div>
-                ) : (
-                  appointments.map((event) => (
-                    <div
-                    key={event.id}
-                    className={`p-4 rounded-lg bg-accent hover:bg-accent/80 transition-colors cursor-pointer ${getPriorityIndicator(
-                      event.priority
-                    )}`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold text-accent-foreground">{event.title}</h3>
-                      <Badge className={getEventTypeColor(event.type)}>
-                        {event.type === "session" && "Sitzung"}
-                        {event.type === "meeting" && "Meeting"}
-                        {event.type === "appointment" && "Termin"}
-                        {event.type === "deadline" && "Deadline"}
-                        {event.type === "blocked" && "Geblockt"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {event.time} ({event.duration})
-                      </div>
-                      {event.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {event.location}
-                        </div>
-                      )}
-                      {event.attendees && (
-                        <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {event.attendees} Teilnehmer
-                        </div>
-                      )}
-                     </div>
-                     {event.participants && event.participants.length > 0 && (
-                       <div className="mt-3 pt-2 border-t border-border">
-                         <div className="text-sm font-medium text-accent-foreground mb-2">Teilnehmer:</div>
-                         <div className="flex flex-wrap gap-2">
-                           {event.participants.map((participant) => (
-                             <Badge key={participant.id} variant="outline" className="text-xs">
-                               {participant.name}
-                               {participant.role !== 'participant' && ` (${participant.role})`}
-                             </Badge>
-                           ))}
-                         </div>
-                       </div>
-                     )}
-                   </div>
-                  ))
-                )}
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Termine werden geladen...
               </div>
+            ) : (
+              <>
+                {view === "day" && <DayView date={currentDate} events={appointments} />}
+                {view === "week" && <WeekView weekStart={getWeekStart(currentDate)} events={appointments} />}
+                {view === "month" && <MonthView date={currentDate} events={appointments} onDateSelect={setCurrentDate} />}
+              </>
             )}
           </CardContent>
         </Card>
