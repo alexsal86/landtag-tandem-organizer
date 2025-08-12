@@ -85,7 +85,17 @@ export function WeekView({ weekStart, events }: WeekViewProps) {
                       className={`p-1 rounded text-xs mb-1 border-l-2 w-full max-w-full ${getEventTypeColor(event.type)}`}
                     >
                       <div className="font-medium truncate w-full">{event.title}</div>
-                      <div className="opacity-80 truncate w-full">{event.time}</div>
+                      <div className="opacity-80 truncate w-full">
+                        {(() => {
+                          const [hours, minutes] = event.time.split(':').map(Number);
+                          const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+                          const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
+                          const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
+                          const durationHours = (durationMinutes / 60).toFixed(1);
+                          
+                          return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')} (${durationHours}h)`;
+                        })()}
+                      </div>
                     </div>
                   ))}
                 </div>
