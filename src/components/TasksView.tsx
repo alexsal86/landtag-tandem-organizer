@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip } from "lucide-react";
+import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +58,8 @@ export function TasksView() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
   const [taskDocuments, setTaskDocuments] = useState<{ [taskId: string]: number }>({});
+  const [taskDocumentDetails, setTaskDocumentDetails] = useState<{ [taskId: string]: any[] }>({});
+  const [showDocumentsFor, setShowDocumentsFor] = useState<string | null>(null);
   const [recentActivities, setRecentActivities] = useState<Array<{
     id: string;
     type: 'completed' | 'updated' | 'created';
@@ -78,14 +80,27 @@ export function TasksView() {
 
   const loadTaskDocumentCounts = async () => {
     try {
-      // Verwende eine direkte SQL-Abfrage um die Anzahl der Dokumente zu erhalten
-      const { data: archivedTasks } = await supabase
-        .from('archived_tasks')
-        .select('task_id');
+      const { data, error } = await supabase
+        .from('task_documents')
+        .select('task_id, id, file_name, file_path, file_size, created_at');
 
-      // Vorübergehend setzen wir einfach 0 für alle Aufgaben, bis die Typen aktualisiert sind
+      if (error) throw error;
+
+      // Group documents by task_id and count them
       const counts: { [taskId: string]: number } = {};
+      const details: { [taskId: string]: any[] } = {};
+      
+      (data || []).forEach(doc => {
+        if (!counts[doc.task_id]) {
+          counts[doc.task_id] = 0;
+          details[doc.task_id] = [];
+        }
+        counts[doc.task_id]++;
+        details[doc.task_id].push(doc);
+      });
+
       setTaskDocuments(counts);
+      setTaskDocumentDetails(details);
     } catch (error) {
       console.error('Error loading task document counts:', error);
     }
@@ -612,6 +627,74 @@ export function TasksView() {
     }
   };
 
+  const toggleDocuments = (taskId: string) => {
+    if (showDocumentsFor === taskId) {
+      setShowDocumentsFor(null);
+    } else {
+      setShowDocumentsFor(taskId);
+    }
+  };
+
+  const handleDocumentDownload = async (doc: any) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('task-documents')
+        .download(doc.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.file_name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast({
+        title: "Fehler",
+        description: "Das Dokument konnte nicht heruntergeladen werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDocumentDelete = async (doc: any) => {
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('task-documents')
+        .remove([doc.file_path]);
+
+      if (storageError) throw storageError;
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('task_documents')
+        .delete()
+        .eq('id', doc.id);
+
+      if (dbError) throw dbError;
+
+      // Reload document counts
+      loadTaskDocumentCounts();
+      
+      toast({
+        title: "Dokument gelöscht",
+        description: "Das Dokument wurde erfolgreich entfernt.",
+      });
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: "Fehler",
+        description: "Das Dokument konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
     setEditFormData({
@@ -975,13 +1058,21 @@ export function TasksView() {
                         {task.status === "completed" && "Erledigt"}
                       </Badge>
 
-                      {/* Document count indicator */}
-                      {taskDocuments[task.id] > 0 && (
-                        <div className="flex items-center gap-1">
-                          <Paperclip className="h-4 w-4" />
-                          <span className="text-muted-foreground text-sm">{taskDocuments[task.id]}</span>
-                        </div>
-                      )}
+                       {/* Document count indicator */}
+                       {taskDocuments[task.id] > 0 && (
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             toggleDocuments(task.id);
+                           }}
+                           className="gap-1 h-6 px-2 text-xs"
+                         >
+                           <Paperclip className="h-3 w-3" />
+                           <span>{taskDocuments[task.id]} Dokument{taskDocuments[task.id] !== 1 ? 'e' : ''}</span>
+                         </Button>
+                       )}
 
                        {task.assignedTo && (
                           <div className="flex items-center gap-2">
@@ -1093,8 +1184,57 @@ export function TasksView() {
                              <Send className="h-4 w-4" />
                            </Button>
                          </div>
-                       </div>
-                     )}
+                        </div>
+                      )}
+
+                      {/* Inline Documents */}
+                      {showDocumentsFor === task.id && (
+                        <div className="mt-4 pt-4 border-t space-y-3">
+                          <h4 className="text-sm font-medium text-foreground mb-3">Dokumente ({taskDocumentDetails[task.id]?.length || 0})</h4>
+                          {taskDocumentDetails[task.id]?.map((doc) => (
+                            <div key={doc.id} className="bg-muted/50 rounded-lg p-3 flex items-center justify-between">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium truncate">{doc.file_name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {(doc.file_size / 1024).toFixed(1)} KB • {new Date(doc.created_at).toLocaleDateString('de-DE')}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-1 ml-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDocumentDownload(doc);
+                                  }}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDocumentDelete(doc);
+                                  }}
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          {(!taskDocumentDetails[task.id] || taskDocumentDetails[task.id].length === 0) && (
+                            <div className="text-center py-4 text-muted-foreground text-sm">
+                              Keine Dokumente vorhanden
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                    </div>
                  </div>
