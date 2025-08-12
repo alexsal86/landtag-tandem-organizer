@@ -339,8 +339,14 @@ export function EmployeesView() {
     try {
       const { error } = await supabase
         .from("employee_settings")
-        .update({ hours_per_week: newHours })
-        .eq("user_id", userId);
+        .upsert({ 
+          user_id: userId, 
+          hours_per_week: newHours,
+          admin_id: user?.id 
+        }, { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false 
+        });
 
       if (error) throw error;
 
@@ -376,8 +382,14 @@ export function EmployeesView() {
     try {
       const { error } = await supabase
         .from("employee_settings")
-        .update({ days_per_month: newDays })
-        .eq("user_id", userId);
+        .upsert({ 
+          user_id: userId, 
+          days_per_month: newDays,
+          admin_id: user?.id 
+        }, { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false 
+        });
 
       if (error) throw error;
 
@@ -413,8 +425,14 @@ export function EmployeesView() {
     try {
       const { error } = await supabase
         .from("employee_settings")
-        .update({ annual_vacation_days: newDays })
-        .eq("user_id", userId);
+        .upsert({ 
+          user_id: userId, 
+          annual_vacation_days: newDays,
+          admin_id: user?.id 
+        }, { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false 
+        });
 
       if (error) throw error;
 
@@ -441,8 +459,14 @@ export function EmployeesView() {
     try {
       const { error } = await supabase
         .from("employee_settings")
-        .update({ employment_start_date: newDate })
-        .eq("user_id", userId);
+        .upsert({ 
+          user_id: userId, 
+          employment_start_date: newDate,
+          admin_id: user?.id 
+        }, { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false 
+        });
 
       if (error) throw error;
 
