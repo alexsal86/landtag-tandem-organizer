@@ -1120,10 +1120,9 @@ export function TasksView() {
 
                     </div>
                   </div>
-                </div>
-               </CardContent>
-             </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
 
           {filteredTasks.length === 0 && (
             <Card className="bg-card shadow-card border-border">
@@ -1229,6 +1228,6 @@ export function TasksView() {
         taskStatuses={taskStatuses}
       />
     </div>
-  </>
+    </>
   );
 }
