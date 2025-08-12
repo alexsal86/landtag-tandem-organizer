@@ -56,6 +56,7 @@ export function TasksView() {
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
   const [recentActivities, setRecentActivities] = useState<Array<{
     id: string;
     type: 'completed' | 'updated' | 'created';
@@ -70,7 +71,22 @@ export function TasksView() {
     loadTasks();
     loadRecentActivities();
     loadTaskConfiguration();
+    loadUsers();
   }, []);
+
+  const loadUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .order('display_name');
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
 
   // Load task categories and statuses from administration
   const loadTaskConfiguration = async () => {
@@ -947,7 +963,9 @@ export function TasksView() {
                          <div className="flex items-center gap-2">
                            <div className="flex items-center gap-1">
                              <User className="h-4 w-4" />
-                             <span className="text-muted-foreground">{task.assignedTo}</span>
+                              <span className="text-muted-foreground">
+                                {users.find(u => u.user_id === task.assignedTo)?.display_name || 'Unbekannter Benutzer'}
+                              </span>
                            </div>
                            <Button
                              variant="ghost"
