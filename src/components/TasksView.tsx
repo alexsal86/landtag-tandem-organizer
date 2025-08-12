@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { TaskArchiveModal } from "./TaskArchiveModal";
+import { TaskDetailSidebar } from "./TaskDetailSidebar";
 
 interface Task {
   id: string;
@@ -53,6 +54,8 @@ export function TasksView() {
   const [editingComment, setEditingComment] = useState<{ [commentId: string]: string }>({});
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [recentActivities, setRecentActivities] = useState<Array<{
     id: string;
     type: 'completed' | 'updated' | 'created';
@@ -583,6 +586,18 @@ export function TasksView() {
     });
   };
 
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setSidebarOpen(true);
+  };
+
+  const handleTaskUpdate = (updatedTask: Task) => {
+    setTasks(prev => prev.map(t => 
+      t.id === updatedTask.id ? updatedTask : t
+    ));
+    loadRecentActivities();
+  };
+
   const handleSaveTask = async () => {
     if (!editingTask || !editFormData.title) return;
 
@@ -717,9 +732,17 @@ export function TasksView() {
           {filteredTasks.map((task) => (
             <Card
               key={task.id}
-              className="bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300"
+              className="bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer"
+              onClick={() => handleTaskClick(task)}
             >
-              <CardContent className="p-6">
+              <CardContent className="p-6"
+                onClick={(e) => {
+                  // Prevent card click when interacting with form elements
+                  if ((e.target as HTMLElement).closest('button, input, select, textarea, .checkbox')) {
+                    e.stopPropagation();
+                  }
+                }}
+              >
                 <div className="flex items-start gap-4">
                   {/* Checkbox */}
                   <div className="pt-1">
@@ -895,12 +918,40 @@ export function TasksView() {
                         {task.status === "completed" && "Erledigt"}
                       </Badge>
 
-                      {task.assignedTo && (
-                        <div className="flex items-center gap-1">
-                          <User className="h-4 w-4" />
-                          <span className="text-muted-foreground">{task.assignedTo}</span>
-                        </div>
-                      )}
+                       {task.assignedTo && (
+                         <div className="flex items-center gap-2">
+                           <div className="flex items-center gap-1">
+                             <User className="h-4 w-4" />
+                             <span className="text-muted-foreground">{task.assignedTo}</span>
+                           </div>
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               toggleComments(task.id);
+                             }}
+                             className="gap-1 h-6 px-2 text-xs"
+                           >
+                             <MessageCircle className="h-3 w-3" />
+                             <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
+                           </Button>
+                         </div>
+                       )}
+                       {!task.assignedTo && (
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             toggleComments(task.id);
+                           }}
+                           className="gap-1 h-6 px-2 text-xs"
+                         >
+                           <MessageCircle className="h-3 w-3" />
+                           <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
+                         </Button>
+                       )}
                     </div>
 
                     {/* Progress Bar */}
@@ -919,144 +970,65 @@ export function TasksView() {
                        </div>
                      )}
 
-                     {/* Comments Section */}
-                     <div className="mt-4 pt-4 border-t">
-                       <div className="flex items-center gap-2 mb-3">
-                         <Button
-                           variant="ghost"
-                           size="sm"
-                           onClick={() => toggleComments(task.id)}
-                           className="gap-2"
-                         >
-                           <MessageCircle className="h-4 w-4" />
-                           Kommentare ({taskComments[task.id]?.length || 0})
-                         </Button>
-                       </div>
-
-                       {showCommentsFor === task.id && (
-                         <div className="space-y-3">
-                           {/* Existing Comments */}
-                           {taskComments[task.id]?.map((comment) => (
-                             <div key={comment.id} className="bg-muted/50 rounded-lg p-3">
-                               <div className="flex items-start gap-3">
-                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                   <User className="h-4 w-4" />
+                     {/* Inline Comments */}
+                     {showCommentsFor === task.id && (
+                       <div className="mt-4 pt-4 border-t space-y-3">
+                         {taskComments[task.id]?.map((comment) => (
+                           <div key={comment.id} className="bg-muted/50 rounded-lg p-3">
+                             <div className="flex items-start gap-3">
+                               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                 <User className="h-4 w-4" />
+                               </div>
+                               <div className="flex-1">
+                                 <div className="flex items-center justify-between mb-1">
+                                   <div className="flex items-center gap-2">
+                                     <span className="text-sm font-medium">
+                                       {comment.profile?.display_name || 'Unbekannter Nutzer'}
+                                     </span>
+                                     <span className="text-xs text-muted-foreground">
+                                       {new Date(comment.created_at).toLocaleDateString('de-DE', {
+                                         day: '2-digit',
+                                         month: '2-digit',
+                                         year: 'numeric',
+                                         hour: '2-digit',
+                                         minute: '2-digit'
+                                       })}
+                                     </span>
+                                   </div>
                                  </div>
-                                 <div className="flex-1">
-                                    <div className="flex items-center justify-between mb-1">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium">
-                                          {comment.profile?.display_name || 'Unbekannter Nutzer'}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">
-                                          {new Date(comment.created_at).toLocaleDateString('de-DE', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                          })}
-                                        </span>
-                                      </div>
-                                      {/* Edit/Delete buttons for own comments */}
-                                      {comment.user_id === user?.id && (
-                                        <div className="flex gap-1">
-                                          {editingComment[comment.id] !== undefined ? (
-                                            <>
-                                              <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-6 w-6 p-0"
-                                                onClick={() => updateComment(comment.id, editingComment[comment.id])}
-                                              >
-                                                <Check className="h-3 w-3" />
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-6 w-6 p-0"
-                                                onClick={() => setEditingComment(prev => {
-                                                  const updated = { ...prev };
-                                                  delete updated[comment.id];
-                                                  return updated;
-                                                })}
-                                              >
-                                                <X className="h-3 w-3" />
-                                              </Button>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-6 w-6 p-0"
-                                                onClick={() => setEditingComment(prev => ({
-                                                  ...prev,
-                                                  [comment.id]: comment.content
-                                                }))}
-                                              >
-                                                <Edit2 className="h-3 w-3" />
-                                              </Button>
-                                              <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                                                onClick={() => deleteComment(comment.id, task.id)}
-                                              >
-                                                <Trash2 className="h-3 w-3" />
-                                              </Button>
-                                            </>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                    {editingComment[comment.id] !== undefined ? (
-                                      <Input
-                                        value={editingComment[comment.id]}
-                                        onChange={(e) => setEditingComment(prev => ({
-                                          ...prev,
-                                          [comment.id]: e.target.value
-                                        }))}
-                                        onKeyPress={(e) => {
-                                          if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            updateComment(comment.id, editingComment[comment.id]);
-                                          }
-                                        }}
-                                        className="text-sm"
-                                      />
-                                    ) : (
-                                      <p className="text-sm">{comment.content}</p>
-                                    )}
-                                 </div>
+                                 <p className="text-sm">{comment.content}</p>
                                </div>
                              </div>
-                           ))}
-
-                           {/* Add Comment */}
-                           <div className="flex gap-2">
-                             <Input
-                               placeholder="Kommentar hinzufügen..."
-                               value={newComment[task.id] || ''}
-                               onChange={(e) => setNewComment(prev => ({ ...prev, [task.id]: e.target.value }))}
-                               onKeyPress={(e) => {
-                                 if (e.key === 'Enter' && !e.shiftKey) {
-                                   e.preventDefault();
-                                   addComment(task.id);
-                                 }
-                               }}
-                             />
-                             <Button
-                               size="sm"
-                               onClick={() => addComment(task.id)}
-                               disabled={!newComment[task.id]?.trim()}
-                             >
-                               <Send className="h-4 w-4" />
-                             </Button>
                            </div>
+                         ))}
+                         
+                         {/* Add Comment Input */}
+                         <div className="flex gap-2 mt-3">
+                           <Input
+                             placeholder="Kommentar hinzufügen..."
+                             value={newComment[task.id] || ''}
+                             onChange={(e) => setNewComment(prev => ({ ...prev, [task.id]: e.target.value }))}
+                             onKeyPress={(e) => {
+                               if (e.key === 'Enter' && !e.shiftKey) {
+                                 e.preventDefault();
+                                 addComment(task.id);
+                               }
+                             }}
+                           />
+                           <Button
+                             size="sm"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               addComment(task.id);
+                             }}
+                             disabled={!newComment[task.id]?.trim()}
+                           >
+                             <Send className="h-4 w-4" />
+                           </Button>
                          </div>
-                       )}
-                     </div>
+                       </div>
+                     )}
+
                    </div>
                  </div>
                </CardContent>
@@ -1154,6 +1126,15 @@ export function TasksView() {
       <TaskArchiveModal
         isOpen={archiveModalOpen}
         onClose={() => setArchiveModalOpen(false)}
+      />
+
+      <TaskDetailSidebar
+        task={selectedTask}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onTaskUpdate={handleTaskUpdate}
+        taskCategories={taskCategories}
+        taskStatuses={taskStatuses}
       />
     </div>
   );
