@@ -399,14 +399,17 @@ export function TaskDetailSidebar({
             <div>
               <Label htmlFor="assignedTo">Zugewiesen an</Label>
               <Select
-                value={editFormData.assignedTo || ''}
-                onValueChange={(value) => setEditFormData(prev => ({ ...prev, assignedTo: value || undefined }))}
+                value={editFormData.assignedTo || 'unassigned'}
+                onValueChange={(value) => setEditFormData(prev => ({ 
+                  ...prev, 
+                  assignedTo: value === 'unassigned' ? undefined : value 
+                }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Benutzer auswählen..." />
                 </SelectTrigger>
                 <SelectContent className="bg-background border border-border z-50">
-                  <SelectItem value="">Nicht zugewiesen</SelectItem>
+                  <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.user_id} value={user.user_id}>
                       {user.display_name || 'Unbekannter Benutzer'}
