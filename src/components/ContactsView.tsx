@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +51,7 @@ export function ContactsView() {
   const [loading, setLoading] = useState(true);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -239,10 +241,30 @@ export function ContactsView() {
               className="pl-10"
             />
           </div>
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
-          </Button>
+          <div className="flex gap-2">
+            <div className="flex border border-border rounded-md">
+              <Button
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className="rounded-r-none"
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className="rounded-l-none"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button variant="outline" className="gap-2">
+              <Filter className="h-4 w-4" />
+              Filter
+            </Button>
+          </div>
         </div>
 
         {/* Type Filter */}
@@ -289,113 +311,199 @@ export function ContactsView() {
         </div>
       </div>
 
-      {/* Contacts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredContacts.map((contact) => (
-          <Card
-            key={contact.id}
-            className={`bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer ${getPriorityColor(
-              contact.priority
-            )}`}
-            onClick={() => {
-              setSelectedContactId(contact.id);
-              setIsSheetOpen(true);
-            }}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={contact.avatar_url} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials(contact.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-lg">{contact.name}</CardTitle>
-                      <Badge variant="outline" className="text-xs">
-                        {contact.contact_type === "organization" ? "Org" : "Person"}
-                      </Badge>
+      {/* Contacts Display */}
+      {viewMode === "grid" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredContacts.map((contact) => (
+            <Card
+              key={contact.id}
+              className={`bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer ${getPriorityColor(
+                contact.priority
+              )}`}
+              onClick={() => {
+                setSelectedContactId(contact.id);
+                setIsSheetOpen(true);
+              }}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={contact.avatar_url} />
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {getInitials(contact.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">{contact.name}</CardTitle>
+                        <Badge variant="outline" className="text-xs">
+                          {contact.contact_type === "organization" ? "Org" : "Person"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {contact.contact_type === "organization" 
+                          ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
+                          : contact.role
+                        }
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                  </div>
+                  <Badge className={getCategoryColor(contact.category)}>
+                    {contact.category === "citizen" && "Bürger"}
+                    {contact.category === "colleague" && "Kollege"}
+                    {contact.category === "business" && "Wirtschaft"}
+                    {contact.category === "media" && "Medien"}
+                    {contact.category === "lobbyist" && "Lobbyist"}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {contact.contact_type === "person" ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Building className="h-4 w-4" />
+                      <span className="truncate">{contact.organization || "Keine Organisation"}</span>
+                    </div>
+                  ) : contact.business_description ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Building className="h-4 w-4" />
+                      <span className="truncate">{contact.business_description}</span>
+                    </div>
+                  ) : null}
+                  
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Mail className="h-4 w-4" />
+                    <span className="truncate">{contact.email || "Keine E-Mail"}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="h-4 w-4" />
+                    <span>{contact.phone || "Keine Telefonnummer"}</span>
+                  </div>
+                  
+                  {contact.location && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>{contact.location}</span>
+                  </div>
+                )}
+
+                {contact.address && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span className="truncate">{contact.address}</span>
+                  </div>
+                )}
+                
+                {contact.last_contact && (
+                  <div className="pt-2 border-t border-border">
+                    <span className="text-xs text-muted-foreground">
+                      Letzter Kontakt: {contact.last_contact}
+                    </span>
+                  </div>
+                )}
+                </div>
+                
+                <div className="flex gap-2 mt-4">
+                  <Button size="sm" variant="outline" className="flex-1">
+                    <Mail className="h-4 w-4 mr-1" />
+                    E-Mail
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1">
+                    <Phone className="h-4 w-4 mr-1" />
+                    Anrufen
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="bg-card shadow-card border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Kontakt</TableHead>
+                <TableHead>Typ</TableHead>
+                <TableHead>Kategorie</TableHead>
+                <TableHead>Organisation/Rolle</TableHead>
+                <TableHead>E-Mail</TableHead>
+                <TableHead>Telefon</TableHead>
+                <TableHead>Standort</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredContacts.map((contact) => (
+                <TableRow
+                  key={contact.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => {
+                    setSelectedContactId(contact.id);
+                    setIsSheetOpen(true);
+                  }}
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={contact.avatar_url} />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                          {getInitials(contact.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">{contact.name}</div>
+                        {contact.priority && (
+                          <div className={`w-2 h-2 rounded-full mt-1 ${
+                            contact.priority === "high" ? "bg-destructive" :
+                            contact.priority === "medium" ? "bg-government-gold" :
+                            "bg-muted-foreground"
+                          }`} />
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {contact.contact_type === "organization" ? "Organisation" : "Person"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getCategoryColor(contact.category)}>
+                      {contact.category === "citizen" && "Bürger"}
+                      {contact.category === "colleague" && "Kollege"}
+                      {contact.category === "business" && "Wirtschaft"}
+                      {contact.category === "media" && "Medien"}
+                      {contact.category === "lobbyist" && "Lobbyist"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-[200px] truncate">
                       {contact.contact_type === "organization" 
                         ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
-                        : contact.role
+                        : contact.organization || contact.role || "-"
                       }
-                    </p>
-                  </div>
-                </div>
-                <Badge className={getCategoryColor(contact.category)}>
-                  {contact.category === "citizen" && "Bürger"}
-                  {contact.category === "colleague" && "Kollege"}
-                  {contact.category === "business" && "Wirtschaft"}
-                  {contact.category === "media" && "Medien"}
-                  {contact.category === "lobbyist" && "Lobbyist"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {contact.contact_type === "person" ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Building className="h-4 w-4" />
-                    <span className="truncate">{contact.organization || "Keine Organisation"}</span>
-                  </div>
-                ) : contact.business_description ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Building className="h-4 w-4" />
-                    <span className="truncate">{contact.business_description}</span>
-                  </div>
-                ) : null}
-                
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Mail className="h-4 w-4" />
-                  <span className="truncate">{contact.email || "Keine E-Mail"}</span>
-                </div>
-                
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="h-4 w-4" />
-                  <span>{contact.phone || "Keine Telefonnummer"}</span>
-                </div>
-                
-                {contact.location && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span>{contact.location}</span>
-                </div>
-              )}
-
-              {contact.address && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span className="truncate">{contact.address}</span>
-                </div>
-              )}
-              
-              {contact.last_contact && (
-                <div className="pt-2 border-t border-border">
-                  <span className="text-xs text-muted-foreground">
-                    Letzter Kontakt: {contact.last_contact}
-                  </span>
-                </div>
-              )}
-              </div>
-              
-              <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Mail className="h-4 w-4 mr-1" />
-                  E-Mail
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Phone className="h-4 w-4 mr-1" />
-                  Anrufen
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-[200px] truncate">
+                      {contact.email || "-"}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {contact.phone || "-"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-[150px] truncate">
+                      {contact.location || contact.address || "-"}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
 
       {filteredContacts.length === 0 && (
         <Card className="bg-card shadow-card border-border">
