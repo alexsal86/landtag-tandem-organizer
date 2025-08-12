@@ -901,6 +901,19 @@ export function TasksView() {
                         {task.title}
                       </h3>
                       <div className="flex gap-2 ml-4">
+                        <Badge className={getCategoryColor(task.category)}>
+                          {task.category === "legislation" && "Gesetzgebung"}
+                          {task.category === "committee" && "Ausschuss"}
+                          {task.category === "constituency" && "Wahlkreis"}
+                          {task.category === "personal" && "Persönlich"}
+                        </Badge>
+                        
+                        <Badge className={getStatusColor(task.status)}>
+                          {task.status === "todo" && "Zu erledigen"}
+                          {task.status === "in-progress" && "In Bearbeitung"}
+                          {task.status === "completed" && "Erledigt"}
+                        </Badge>
+
                         <Dialog open={editingTask?.id === task.id} onOpenChange={(open) => !open && setEditingTask(null)}>
                           <DialogTrigger asChild>
                             <Button 
@@ -1045,18 +1058,6 @@ export function TasksView() {
                         </span>
                       </div>
 
-                      <Badge className={getCategoryColor(task.category)}>
-                        {task.category === "legislation" && "Gesetzgebung"}
-                        {task.category === "committee" && "Ausschuss"}
-                        {task.category === "constituency" && "Wahlkreis"}
-                        {task.category === "personal" && "Persönlich"}
-                      </Badge>
-
-                      <Badge className={getStatusColor(task.status)}>
-                        {task.status === "todo" && "Zu erledigen"}
-                        {task.status === "in-progress" && "In Bearbeitung"}
-                        {task.status === "completed" && "Erledigt"}
-                      </Badge>
 
                        {/* Document count indicator */}
                        {taskDocuments[task.id] > 0 && (
