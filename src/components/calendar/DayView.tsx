@@ -54,7 +54,17 @@ export function DayView({ date, events }: DayViewProps) {
                   style={{ marginLeft: `${index * 5}px` }}
                 >
                   <div className="font-medium truncate">{event.title}</div>
-                  <div className="opacity-80">{event.time} ({event.duration})</div>
+                  <div className="opacity-80">
+                    {(() => {
+                      const [hours, minutes] = event.time.split(':').map(Number);
+                      const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+                      const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
+                      const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
+                      const durationHours = (durationMinutes / 60).toFixed(1);
+                      
+                      return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')} (${durationHours}h)`;
+                    })()}
+                  </div>
                   {event.location && (
                     <div className="opacity-70 truncate">{event.location}</div>
                   )}
