@@ -165,7 +165,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
     switch (widget.type) {
       case 'stats':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Termine heute</CardTitle>
@@ -183,26 +183,6 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-primary">{openTasksCount}</div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Neue Kontakte</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary">{sampleStats.newContacts}</div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Deadlines</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-destructive">{sampleStats.upcomingDeadlines}</div>
               </CardContent>
             </Card>
           </div>

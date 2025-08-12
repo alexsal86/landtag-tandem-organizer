@@ -32,7 +32,14 @@ export function useDashboardLayout() {
         type: 'stats',
         title: 'Schnellstatistiken',
         position: { x: 0, y: 0 },
-        size: { width: 12, height: 1 }
+        size: { width: 6, height: 1 }
+      },
+      {
+        id: 'messages',
+        type: 'messages',
+        title: 'Nachrichten',
+        position: { x: 6, y: 0 },
+        size: { width: 6, height: 2 }
       },
       {
         id: 'tasks',
@@ -45,22 +52,15 @@ export function useDashboardLayout() {
         id: 'schedule',
         type: 'schedule',
         title: 'Heutiger Terminplan',
-        position: { x: 6, y: 1 },
+        position: { x: 0, y: 2 },
         size: { width: 6, height: 2 }
       },
       {
         id: 'actions',
         type: 'actions',
         title: 'Schnellaktionen',
-        position: { x: 0, y: 3 },
-        size: { width: 4, height: 1 }
-      },
-      {
-        id: 'messages',
-        type: 'messages',
-        title: 'Nachrichten',
-        position: { x: 4, y: 3 },
-        size: { width: 8, height: 2 }
+        position: { x: 6, y: 2 },
+        size: { width: 6, height: 1 }
       }
     ]
   };
