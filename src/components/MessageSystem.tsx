@@ -551,22 +551,36 @@ export function MessageSystem() {
                           </div>
                         )}
                         
-                        {/* Show confirmations for "all users" messages */}
-                        {message.is_for_all_users && message.confirmations && message.confirmations.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {message.confirmations.map((confirmation) => (
-                              <div key={confirmation.user_id} className="flex items-center gap-1" title={(confirmation as any).profiles?.display_name || 'Unbekannt'}>
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage src={(confirmation as any).profiles?.avatar_url} />
-                                  <AvatarFallback className="text-xs">
-                                    {(confirmation as any).profiles?.display_name?.charAt(0) || 'U'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <Check className="h-3 w-3 text-green-500" />
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                         {/* Show confirmations for "all users" messages */}
+                         {message.is_for_all_users && message.confirmations && message.confirmations.length > 0 && (
+                           <div className="space-y-2 mt-2">
+                             <div className="text-xs font-medium text-muted-foreground">Bestätigt von:</div>
+                             <div className="flex flex-wrap gap-2">
+                               {message.confirmations.map((confirmation) => (
+                                 <div key={confirmation.user_id} className="flex items-center gap-1 text-xs bg-muted/50 rounded px-2 py-1">
+                                   <Avatar className="h-4 w-4">
+                                     <AvatarImage src={(confirmation as any).profiles?.avatar_url} />
+                                     <AvatarFallback className="text-xs">
+                                       {(confirmation as any).profiles?.display_name?.charAt(0) || 'U'}
+                                     </AvatarFallback>
+                                   </Avatar>
+                                   <span>{(confirmation as any).profiles?.display_name || 'Unbekannt'}</span>
+                                   <div className="flex items-center gap-1 text-green-600">
+                                     <Check className="h-3 w-3" />
+                                     <span className="text-xs">
+                                       {new Date(confirmation.confirmed_at).toLocaleDateString('de-DE', {
+                                         day: '2-digit',
+                                         month: '2-digit',
+                                         hour: '2-digit',
+                                         minute: '2-digit'
+                                       })}
+                                     </span>
+                                   </div>
+                                 </div>
+                               ))}
+                             </div>
+                           </div>
+                         )}
                         
                         <div className="mt-2 text-xs text-muted-foreground">
                           {message.is_for_all_users ? (
