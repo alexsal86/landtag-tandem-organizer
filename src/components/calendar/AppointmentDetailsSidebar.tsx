@@ -29,7 +29,10 @@ export function AppointmentDetailsSidebar({
   const [editData, setEditData] = useState({
     title: "",
     location: "",
-    priority: "medium" as CalendarEvent["priority"]
+    priority: "medium" as CalendarEvent["priority"],
+    date: "",
+    time: "",
+    duration: ""
   });
 
   const handleEdit = () => {
@@ -37,7 +40,10 @@ export function AppointmentDetailsSidebar({
     setEditData({
       title: appointment.title,
       location: appointment.location || "",
-      priority: appointment.priority
+      priority: appointment.priority,
+      date: appointment.date.toISOString().split('T')[0],
+      time: appointment.time,
+      duration: appointment.duration
     });
     setIsEditing(true);
   };
@@ -46,12 +52,24 @@ export function AppointmentDetailsSidebar({
     if (!appointment || appointment.id.startsWith('blocked-')) return;
     
     try {
+      // Calculate new start and end times
+      const [hours, minutes] = editData.time.split(':').map(Number);
+      const durationMinutes = parseInt(editData.duration.replace(/\D/g, ''));
+      
+      const startTime = new Date(editData.date);
+      startTime.setHours(hours, minutes, 0, 0);
+      
+      const endTime = new Date(startTime);
+      endTime.setMinutes(endTime.getMinutes() + durationMinutes);
+
       const { error } = await supabase
         .from('appointments')
         .update({
           title: editData.title,
           location: editData.location || null,
-          priority: editData.priority
+          priority: editData.priority,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString()
         })
         .eq('id', appointment.id);
 
@@ -239,37 +257,68 @@ export function AppointmentDetailsSidebar({
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <div className="font-medium">
-                  {appointment.date.toLocaleDateString('de-DE', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {appointment.date.toDateString()}
-                </div>
+              <div className="flex-1">
+                <div className="font-medium">Datum</div>
+                {isEditing ? (
+                  <Input
+                    type="date"
+                    value={editData.date}
+                    onChange={(e) => setEditData({...editData, date: e.target.value})}
+                    className="mt-1"
+                  />
+                ) : (
+                  <>
+                    <div className="font-medium">
+                      {appointment.date.toLocaleDateString('de-DE', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {appointment.date.toDateString()}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               <Clock className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <div className="font-medium">
-                  {(() => {
-                    const [hours, minutes] = appointment.time.split(':').map(Number);
-                    const durationMinutes = parseInt(appointment.duration.replace(/\D/g, ''));
-                    const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
-                    const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
-                    
-                    return `${appointment.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
-                  })()}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Dauer: {appointment.duration}
-                </div>
+              <div className="flex-1">
+                <div className="font-medium">Uhrzeit</div>
+                {isEditing ? (
+                  <div className="space-y-2 mt-1">
+                    <Input
+                      type="time"
+                      value={editData.time}
+                      onChange={(e) => setEditData({...editData, time: e.target.value})}
+                      placeholder="Startzeit"
+                    />
+                    <Input
+                      value={editData.duration}
+                      onChange={(e) => setEditData({...editData, duration: e.target.value})}
+                      placeholder="Dauer (z.B. 60min)"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="font-medium">
+                      {(() => {
+                        const [hours, minutes] = appointment.time.split(':').map(Number);
+                        const durationMinutes = parseInt(appointment.duration.replace(/\D/g, ''));
+                        const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
+                        const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
+                        
+                        return `${appointment.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+                      })()}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Dauer: {appointment.duration}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
