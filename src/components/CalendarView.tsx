@@ -90,6 +90,7 @@ export function CalendarView() {
               description: null,
               reminder_minutes: 15,
               meeting_id: null,
+              contact_id: null,
               created_at: epd.created_at,
               updated_at: epd.created_at
             });

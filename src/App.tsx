@@ -27,6 +27,17 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<Index />} />
+            <Route path="/calendar" element={<Index />} />
+            <Route path="/contacts" element={<Index />} />
+            <Route path="/tasks" element={<Index />} />
+            <Route path="/meetings" element={<Index />} />
+            <Route path="/eventplanning" element={<Index />} />
+            <Route path="/documents" element={<Index />} />
+            <Route path="/settings" element={<Index />} />
+            <Route path="/time" element={<Index />} />
+            <Route path="/employee" element={<Index />} />
+            <Route path="/administration" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/contacts/new" element={<CreateContact />} />
             <Route path="/appointments/new" element={<CreateAppointment />} />

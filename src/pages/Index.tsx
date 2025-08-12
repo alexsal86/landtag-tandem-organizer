@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigation } from "@/components/Navigation";
@@ -21,14 +21,31 @@ import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 const Index = () => {
-  const [activeSection, setActiveSection] = useState("dashboard");
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Determine active section from URL
+  const getActiveSectionFromPath = (pathname: string) => {
+    if (pathname === '/') return 'dashboard';
+    const section = pathname.slice(1).split('/')[0];
+    return section || 'dashboard';
+  };
+  
+  const [activeSection, setActiveSection] = useState(() => getActiveSectionFromPath(location.pathname));
 
-  // Debug: Zeige aktuelle Sektion
+  // Update active section when URL changes
   useEffect(() => {
-    console.log('Active section changed to:', activeSection);
-  }, [activeSection]);
+    const newSection = getActiveSectionFromPath(location.pathname);
+    setActiveSection(newSection);
+    console.log('Active section changed to:', newSection);
+  }, [location.pathname]);
+
+  // Handle navigation to sections
+  const handleSectionChange = (section: string) => {
+    const path = section === 'dashboard' ? '/' : `/${section}`;
+    navigate(path);
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -115,7 +132,7 @@ const Index = () => {
         <div className="flex min-h-screen w-full bg-background">
           <Navigation 
             activeSection={activeSection} 
-            onSectionChange={setActiveSection} 
+            onSectionChange={handleSectionChange} 
           />
           <main className="flex-1">
             {renderActiveSection()}
