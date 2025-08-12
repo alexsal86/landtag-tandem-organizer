@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       appointment_categories: {
         Row: {
+          color: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -25,6 +26,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -34,6 +36,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -567,6 +570,7 @@ export type Database = {
           contract_file_path: string | null
           created_at: string
           days_per_month: number
+          days_per_week: number
           employment_start_date: string | null
           hours_per_month: number
           hours_per_week: number
@@ -584,6 +588,7 @@ export type Database = {
           contract_file_path?: string | null
           created_at?: string
           days_per_month?: number
+          days_per_week?: number
           employment_start_date?: string | null
           hours_per_month?: number
           hours_per_week?: number
@@ -601,6 +606,7 @@ export type Database = {
           contract_file_path?: string | null
           created_at?: string
           days_per_month?: number
+          days_per_week?: number
           employment_start_date?: string | null
           hours_per_month?: number
           hours_per_week?: number
@@ -937,6 +943,106 @@ export type Database = {
         }
         Relationships: []
       }
+      message_confirmations: {
+        Row: {
+          confirmed_at: string
+          created_at: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string
+          created_at?: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          created_at?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_confirmations_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_recipients: {
+        Row: {
+          created_at: string
+          has_read: boolean
+          id: string
+          message_id: string
+          read_at: string | null
+          recipient_id: string
+        }
+        Insert: {
+          created_at?: string
+          has_read?: boolean
+          id?: string
+          message_id: string
+          read_at?: string | null
+          recipient_id: string
+        }
+        Update: {
+          created_at?: string
+          has_read?: boolean
+          id?: string
+          message_id?: string
+          read_at?: string | null
+          recipient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_recipients_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          is_for_all_users: boolean
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_for_all_users?: boolean
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_for_all_users?: boolean
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1082,6 +1188,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      task_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       task_statuses: {
         Row: {
@@ -1237,13 +1379,50 @@ export type Database = {
         Args: { _date: string }
         Returns: string
       }
+      can_view_message_confirmations: {
+        Args: { message_id_param: string }
+        Returns: boolean
+      }
+      can_view_message_recipients: {
+        Args: { message_id_param: string }
+        Returns: boolean
+      }
       create_default_checklist_items: {
         Args: { planning_id: string }
         Returns: undefined
       }
+      get_authored_messages: {
+        Args: { author_id_param: string }
+        Returns: {
+          id: string
+          title: string
+          content: string
+          author_id: string
+          is_for_all_users: boolean
+          status: string
+          created_at: string
+          recipients_count: number
+          read_count: number
+        }[]
+      }
       get_daily_hours: {
         Args: { _user_id: string }
         Returns: number
+      }
+      get_user_messages: {
+        Args: { user_id_param: string }
+        Returns: {
+          id: string
+          title: string
+          content: string
+          author_id: string
+          is_for_all_users: boolean
+          status: string
+          created_at: string
+          author_name: string
+          author_avatar: string
+          has_read: boolean
+        }[]
       }
       get_user_role_level: {
         Args: { _user_id: string }
@@ -1267,6 +1446,28 @@ export type Database = {
       is_admin_of: {
         Args: { employee: string }
         Returns: boolean
+      }
+      is_message_recipient: {
+        Args: { message_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
+      mark_message_read: {
+        Args: {
+          message_id_param: string
+          user_id_param: string
+          is_for_all_param: boolean
+        }
+        Returns: undefined
+      }
+      send_message: {
+        Args: {
+          author_id_param: string
+          title_param: string
+          content_param: string
+          is_for_all_param: boolean
+          recipient_ids_param: string[]
+        }
+        Returns: undefined
       }
       sync_birthday_appointments: {
         Args: Record<PropertyKey, never>
