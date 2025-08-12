@@ -77,7 +77,7 @@ export function EmployeesView() {
 
   // SEO basics
   useEffect(() => {
-    document.title = "Mitarbeiterverwaltung | Admin";
+    document.title = "Mitarbeiterverwaltung | Admin Dashboard";
     const canonical = document.createElement("link");
     canonical.setAttribute("rel", "canonical");
     canonical.setAttribute("href", window.location.href);
