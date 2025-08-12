@@ -745,12 +745,18 @@ export function EmployeesView() {
                           <Input
                             type="number"
                             step="0.5"
-                            defaultValue={e.hours_per_week}
+                            value={e.hours_per_week}
                             onBlur={(ev) => {
                               const newValue = Number(ev.target.value);
-                              if (newValue !== e.hours_per_week) {
+                              if (newValue !== e.hours_per_week && newValue >= 1 && newValue <= 60) {
                                 updateHours(e.user_id, newValue);
                               }
+                            }}
+                            onChange={(ev) => {
+                              const newValue = Number(ev.target.value);
+                              setEmployees(prev => prev.map(emp => 
+                                emp.user_id === e.user_id ? { ...emp, hours_per_week: newValue } : emp
+                              ));
                             }}
                             className="w-20"
                             min="1"
@@ -760,12 +766,18 @@ export function EmployeesView() {
                         <TableCell>
                           <Input
                             type="number"
-                            defaultValue={e.days_per_month}
+                            value={e.days_per_month}
                             onBlur={(ev) => {
                               const newValue = Number(ev.target.value);
-                              if (newValue !== e.days_per_month) {
+                              if (newValue !== e.days_per_month && newValue >= 1 && newValue <= 31) {
                                 updateDaysPerMonth(e.user_id, newValue);
                               }
+                            }}
+                            onChange={(ev) => {
+                              const newValue = Number(ev.target.value);
+                              setEmployees(prev => prev.map(emp => 
+                                emp.user_id === e.user_id ? { ...emp, days_per_month: newValue } : emp
+                              ));
                             }}
                             className="w-20"
                             min="1"
@@ -775,12 +787,18 @@ export function EmployeesView() {
                         <TableCell>
                           <Input
                             type="number"
-                            defaultValue={e.annual_vacation_days}
+                            value={e.annual_vacation_days}
                             onBlur={(ev) => {
                               const newValue = Number(ev.target.value);
-                              if (newValue !== e.annual_vacation_days) {
+                              if (newValue !== e.annual_vacation_days && newValue >= 0 && newValue <= 50) {
                                 updateVacationDays(e.user_id, newValue);
                               }
+                            }}
+                            onChange={(ev) => {
+                              const newValue = Number(ev.target.value);
+                              setEmployees(prev => prev.map(emp => 
+                                emp.user_id === e.user_id ? { ...emp, annual_vacation_days: newValue } : emp
+                              ));
                             }}
                             className="w-20"
                             min="0"
@@ -790,12 +808,18 @@ export function EmployeesView() {
                         <TableCell>
                           <Input
                             type="date"
-                            defaultValue={e.employment_start_date || "2025-01-01"}
+                            value={e.employment_start_date || "2025-01-01"}
                             onBlur={(ev) => {
                               const newValue = ev.target.value;
                               if (newValue !== (e.employment_start_date || "2025-01-01")) {
                                 updateStartDate(e.user_id, newValue);
                               }
+                            }}
+                            onChange={(ev) => {
+                              const newValue = ev.target.value;
+                              setEmployees(prev => prev.map(emp => 
+                                emp.user_id === e.user_id ? { ...emp, employment_start_date: newValue } : emp
+                              ));
                             }}
                             className="w-40"
                           />
