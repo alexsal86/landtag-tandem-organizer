@@ -801,21 +801,22 @@ export function TasksView() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Aufgaben</h1>
-            <p className="text-muted-foreground">
-              Verwalten Sie Ihre Aufgaben und To-Dos effizient
-            </p>
+    <>
+      <div className="min-h-screen bg-gradient-subtle p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Aufgaben</h1>
+              <p className="text-muted-foreground">
+                Verwalten Sie Ihre Aufgaben und To-Dos effizient
+              </p>
+            </div>
+            <Button className="gap-2" onClick={() => window.location.href = '/tasks/new'}>
+              <Plus className="h-4 w-4" />
+              Neue Aufgabe
+            </Button>
           </div>
-          <Button className="gap-2" onClick={() => window.location.href = '/tasks/new'}>
-            <Plus className="h-4 w-4" />
-            Neue Aufgabe
-          </Button>
-        </div>
 
         {/* Filter Tabs */}
         <div className="flex gap-2 overflow-x-auto mb-4">
@@ -914,116 +915,6 @@ export function TasksView() {
                           {task.status === "completed" && "Erledigt"}
                         </Badge>
 
-                          <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                              <DialogTitle>Aufgabe bearbeiten</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <Label htmlFor="title">Titel</Label>
-                                <Input
-                                  id="title"
-                                  value={editFormData.title || ''}
-                                  onChange={(e) => setEditFormData(prev => ({ ...prev, title: e.target.value }))}
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="description">Beschreibung</Label>
-                                <Textarea
-                                  id="description"
-                                  value={editFormData.description || ''}
-                                  onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
-                                />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label htmlFor="priority">Priorität</Label>
-                                  <Select value={editFormData.priority} onValueChange={(value) => setEditFormData(prev => ({ ...prev, priority: value as Task['priority'] }))}>
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="low">Niedrig</SelectItem>
-                                      <SelectItem value="medium">Mittel</SelectItem>
-                                      <SelectItem value="high">Hoch</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                 <div>
-                                   <Label htmlFor="status">Status</Label>
-                                   <Select value={editFormData.status} onValueChange={(value) => setEditFormData(prev => ({ ...prev, status: value as Task['status'] }))}>
-                                     <SelectTrigger>
-                                       <SelectValue />
-                                     </SelectTrigger>
-                                     <SelectContent>
-                                       {taskStatuses.map((status) => (
-                                         <SelectItem key={status.name} value={status.name}>
-                                           {status.label}
-                                         </SelectItem>
-                                       ))}
-                                     </SelectContent>
-                                   </Select>
-                                 </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                   <Label htmlFor="category">Kategorie</Label>
-                                   <Select value={editFormData.category} onValueChange={(value) => setEditFormData(prev => ({ ...prev, category: value as Task['category'] }))}>
-                                     <SelectTrigger>
-                                       <SelectValue />
-                                     </SelectTrigger>
-                                     <SelectContent>
-                                       {taskCategories.map((category) => (
-                                         <SelectItem key={category.name} value={category.name}>
-                                           {category.label}
-                                         </SelectItem>
-                                       ))}
-                                     </SelectContent>
-                                   </Select>
-                                 </div>
-                                <div>
-                                  <Label htmlFor="dueDate">Fälligkeitsdatum</Label>
-                                  <Input
-                                    id="dueDate"
-                                    type="datetime-local"
-                                    value={editFormData.dueDate ? new Date(editFormData.dueDate).toISOString().slice(0, 16) : ''}
-                                    onChange={(e) => setEditFormData(prev => ({ ...prev, dueDate: e.target.value ? new Date(e.target.value).toISOString() : '' }))}
-                                  />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label htmlFor="assignedTo">Zugewiesen an</Label>
-                                  <Input
-                                    id="assignedTo"
-                                    value={editFormData.assignedTo || ''}
-                                    onChange={(e) => setEditFormData(prev => ({ ...prev, assignedTo: e.target.value }))}
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="progress">Fortschritt (%)</Label>
-                                  <Input
-                                    id="progress"
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={editFormData.progress || 0}
-                                    onChange={(e) => setEditFormData(prev => ({ ...prev, progress: parseInt(e.target.value) || 0 }))}
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex justify-end gap-2 pt-4">
-                                <Button variant="outline" onClick={() => setEditingTask(null)}>
-                                  Abbrechen
-                                </Button>
-                                <Button onClick={handleSaveTask}>
-                                  Speichern
-                                </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                      </div>
-                    </div>
                         <Badge className={getPriorityColor(task.priority)}>
                           <Flag className="h-3 w-3 mr-1" />
                           {task.priority === "high" && "Hoch"}
@@ -1225,7 +1116,7 @@ export function TasksView() {
                             </div>
                           )}
                         </div>
-                      )}
+                       )}
 
                     </div>
                   </div>
@@ -1338,5 +1229,6 @@ export function TasksView() {
         taskStatuses={taskStatuses}
       />
     </div>
+  </>
   );
 }
