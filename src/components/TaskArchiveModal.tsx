@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Archive, Trash2, Download, Flag, Tag, Calendar } from "lucide-react";
+import { Archive, Trash2, Download, Flag, Tag, Calendar, RotateCcw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -147,6 +147,51 @@ export function TaskArchiveModal({ isOpen, onClose }: TaskArchiveModalProps) {
       toast({
         title: "Fehler",
         description: "Aufgabe konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const restoreArchivedTask = async (task: ArchivedTask) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Restore task to main tasks table
+      const { error: insertError } = await supabase
+        .from('tasks')
+        .insert({
+          user_id: user.id,
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          category: task.category,
+          assigned_to: task.assigned_to,
+          progress: task.progress || 0,
+          due_date: task.due_date,
+          status: 'todo'
+        });
+
+      if (insertError) throw insertError;
+
+      // Remove from archived tasks
+      const { error: deleteError } = await supabase
+        .from('archived_tasks')
+        .delete()
+        .eq('id', task.id);
+
+      if (deleteError) throw deleteError;
+
+      setArchivedTasks(prev => prev.filter(t => t.id !== task.id));
+      toast({
+        title: "Aufgabe wiederhergestellt",
+        description: "Die Aufgabe wurde erfolgreich aktiviert und ist wieder in der Aufgabenliste verfügbar.",
+      });
+    } catch (error) {
+      console.error('Error restoring archived task:', error);
+      toast({
+        title: "Fehler",
+        description: "Aufgabe konnte nicht wiederhergestellt werden.",
         variant: "destructive",
       });
     }
@@ -361,14 +406,26 @@ export function TaskArchiveModal({ isOpen, onClose }: TaskArchiveModalProps) {
                         </div>
                       </div>
                       
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteArchivedTask(task.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => restoreArchivedTask(task)}
+                          className="text-primary hover:text-primary"
+                          title="Aufgabe wiederherstellen"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteArchivedTask(task.id)}
+                          className="text-destructive hover:text-destructive"
+                          title="Aufgabe endgültig löschen"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
