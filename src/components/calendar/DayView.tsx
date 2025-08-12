@@ -4,9 +4,10 @@ import { CalendarEvent } from "../CalendarView";
 interface DayViewProps {
   date: Date;
   events: CalendarEvent[];
+  onAppointmentClick?: (appointment: CalendarEvent) => void;
 }
 
-export function DayView({ date, events }: DayViewProps) {
+export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -65,8 +66,9 @@ export function DayView({ date, events }: DayViewProps) {
                 {getEventsForHour(hour).map((event, index) => (
                   <div
                     key={event.id}
-                    className={`p-2 rounded text-xs mb-1 ${getEventTypeColor(event.type)}`}
+                    className={`p-2 rounded text-xs mb-1 cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event.type)}`}
                     style={{ marginLeft: `${index * 5}px` }}
+                    onClick={() => onAppointmentClick?.(event)}
                   >
                     <div className="font-medium truncate">{event.title}</div>
                     <div className="opacity-80">

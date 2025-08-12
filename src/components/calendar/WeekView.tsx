@@ -4,9 +4,10 @@ import { CalendarEvent } from "../CalendarView";
 interface WeekViewProps {
   weekStart: Date;
   events: CalendarEvent[];
+  onAppointmentClick?: (appointment: CalendarEvent) => void;
 }
 
-export function WeekView({ weekStart, events }: WeekViewProps) {
+export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -95,7 +96,8 @@ export function WeekView({ weekStart, events }: WeekViewProps) {
                     {dayEvents.map((event, index) => (
                       <div
                         key={event.id}
-                        className={`p-1 rounded text-xs mb-1 border-l-2 w-full max-w-full ${getEventTypeColor(event.type)}`}
+                        className={`p-1 rounded text-xs mb-1 border-l-2 w-full max-w-full cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event.type)}`}
+                        onClick={() => onAppointmentClick?.(event)}
                       >
                         <div className="font-medium truncate w-full">{event.title}</div>
                         <div className="opacity-80 truncate w-full">

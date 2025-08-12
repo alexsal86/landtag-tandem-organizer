@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { DayView } from "./calendar/DayView";
 import { WeekView } from "./calendar/WeekView";
 import { MonthView } from "./calendar/MonthView";
+import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
 
 export interface CalendarEvent {
   id: string;
@@ -32,6 +33,8 @@ export function CalendarView() {
   const [view, setView] = useState<"day" | "week" | "month">("day");
   const [appointments, setAppointments] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedAppointment, setSelectedAppointment] = useState<CalendarEvent | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (view === 'week') {
@@ -249,6 +252,25 @@ export function CalendarView() {
     setCurrentDate(newDate);
   };
 
+  const handleAppointmentClick = (appointment: CalendarEvent) => {
+    setSelectedAppointment(appointment);
+    setSidebarOpen(true);
+  };
+
+  const handleSidebarClose = () => {
+    setSidebarOpen(false);
+    setSelectedAppointment(null);
+  };
+
+  const handleAppointmentUpdate = () => {
+    // Refresh appointments after update/delete
+    if (view === 'week') {
+      fetchWeekAppointments();
+    } else {
+      fetchTodaysAppointments();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       {/* Header */}
@@ -329,8 +351,8 @@ export function CalendarView() {
               </div>
             ) : (
               <>
-                {view === "day" && <DayView date={currentDate} events={appointments} />}
-                {view === "week" && <WeekView weekStart={getWeekStart(currentDate)} events={appointments} />}
+                {view === "day" && <DayView date={currentDate} events={appointments} onAppointmentClick={handleAppointmentClick} />}
+                {view === "week" && <WeekView weekStart={getWeekStart(currentDate)} events={appointments} onAppointmentClick={handleAppointmentClick} />}
                 {view === "month" && <MonthView date={currentDate} events={appointments} onDateSelect={setCurrentDate} />}
               </>
             )}
@@ -382,6 +404,14 @@ export function CalendarView() {
           </Card>
         </div>
       </div>
+
+      {/* Appointment Details Sidebar */}
+      <AppointmentDetailsSidebar
+        appointment={selectedAppointment}
+        open={sidebarOpen}
+        onClose={handleSidebarClose}
+        onUpdate={handleAppointmentUpdate}
+      />
     </div>
   );
 }
