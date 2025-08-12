@@ -56,12 +56,7 @@ export function CalendarView() {
       // Fetch regular appointments for the entire week
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
-        .select(`
-          *,
-          appointment_categories (
-            color
-          )
-        `)
+        .select('*')
         .gte('start_time', weekStart.toISOString())
         .lte('start_time', weekEnd.toISOString())
         .order('start_time', { ascending: true });
@@ -91,12 +86,7 @@ export function CalendarView() {
       // Fetch regular appointments
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
-        .select(`
-          *,
-          appointment_categories (
-            color
-          )
-        `)
+        .select('*')
         .gte('start_time', startOfDay.toISOString())
         .lte('start_time', endOfDay.toISOString())
         .order('start_time', { ascending: true });
@@ -115,91 +105,134 @@ export function CalendarView() {
   };
 
   const processAppointments = async (appointmentsData: any[], startDate: Date, endDate: Date) => {
-    // Also fetch blocked appointments from event planning dates
-    const { data: eventPlanningDates } = await supabase
-      .from('event_planning_dates')
-      .select(`
-        *,
-        event_plannings (
-          title,
-          user_id
-        )
-      `)
-      .gte('date_time', startDate.toISOString())
-      .lte('date_time', endDate.toISOString())
-      .eq('event_plannings.user_id', (await supabase.auth.getUser()).data.user?.id);
+    try {
+      // Fetch appointment categories to get colors
+      const { data: categoriesData } = await supabase
+        .from('appointment_categories')
+        .select('name, color');
 
-    // Combine all appointments
-    const allAppointments = [...appointmentsData];
-
-    // Add blocked appointments from event planning
-    if (eventPlanningDates) {
-      for (const epd of eventPlanningDates) {
-        if (epd.event_plannings && !epd.appointment_id) {
-          // Create virtual blocked appointment if no real appointment exists
-          allAppointments.push({
-            id: `blocked-${epd.id}`,
-            user_id: epd.event_plannings.user_id,
-            title: `Geplant: ${epd.event_plannings.title}`,
-            start_time: epd.date_time,
-            end_time: new Date(new Date(epd.date_time).getTime() + 2 * 60 * 60 * 1000).toISOString(),
-            category: 'blocked',
-            status: epd.is_confirmed ? 'confirmed' : 'planned',
-            priority: 'medium',
-            location: null,
-            description: null,
-            reminder_minutes: 15,
-            meeting_id: null,
-            contact_id: null,
-            created_at: epd.created_at,
-            updated_at: epd.created_at
-          });
-        }
+      // Create a map of category name to color
+      const categoryColors = new Map();
+      if (categoriesData) {
+        categoriesData.forEach((cat: any) => {
+          categoryColors.set(cat.name, cat.color);
+        });
       }
-    }
 
-    const formattedEvents: CalendarEvent[] = [];
+      const formattedEvents: CalendarEvent[] = [];
 
-    for (const appointment of allAppointments) {
-      const startTime = new Date(appointment.start_time);
-      const endTime = new Date(appointment.end_time);
-      const durationMs = endTime.getTime() - startTime.getTime();
-      const durationHours = Math.round(durationMs / (1000 * 60 * 60) * 10) / 10;
-      
-      // Fetch participants for this appointment
-      const { data: appointmentContacts } = await supabase
-        .from('appointment_contacts')
+      // Process regular appointments
+      for (const appointment of appointmentsData) {
+        const startTime = new Date(appointment.start_time);
+        const endTime = new Date(appointment.end_time);
+        const durationMs = endTime.getTime() - startTime.getTime();
+        const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(1);
+
+        // Fetch participants for this appointment
+        const { data: contactsData } = await supabase
+          .from('appointment_contacts')
+          .select(`
+            role,
+            contacts (
+              id,
+              name
+            )
+          `)
+          .eq('appointment_id', appointment.id);
+
+        const participants = contactsData?.map((contact: any) => ({
+          id: contact.contacts?.id || '',
+          name: contact.contacts?.name || 'Unknown',
+          role: contact.role || 'participant'
+        })) || [];
+
+        // Get the color for this category
+        const categoryColor = categoryColors.get(appointment.category);
+
+        formattedEvents.push({
+          id: appointment.id,
+          title: appointment.title,
+          time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+          duration: `${durationHours}h`,
+          date: startTime, // Add the actual date
+          location: appointment.location || undefined,
+          type: appointment.category as CalendarEvent["type"] || "meeting",
+          priority: appointment.priority as CalendarEvent["priority"] || "medium",
+          participants,
+          attendees: participants.length,
+          category_color: categoryColor
+        });
+      }
+
+      // Get current user
+      const { data: userData } = await supabase.auth.getUser();
+      const currentUserId = userData.user?.id;
+
+      // Process blocked times from event planning
+      const { data: eventPlanningData } = await supabase
+        .from('event_planning_dates')
         .select(`
-          role,
-          contacts (
-            id,
-            name
+          *,
+          event_plannings (
+            title,
+            user_id
           )
         `)
-        .eq('appointment_id', appointment.id);
+        .gte('date_time', startDate.toISOString())
+        .lte('date_time', endDate.toISOString())
+        .eq('event_plannings.user_id', currentUserId);
 
-      const participants = appointmentContacts?.map(ac => ({
-        id: ac.contacts.id,
-        name: ac.contacts.name,
-        role: ac.role
-      })) || [];
+      if (eventPlanningData) {
+        for (const eventDate of eventPlanningData) {
+          if (eventDate.event_plannings) {
+            const startTime = new Date(eventDate.date_time);
+            const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000); // 2 hours default
+            
+            // Try to fetch participants for the blocked event but handle gracefully if it fails
+            let participants: any[] = [];
+            try {
+              const { data: contactsData } = await supabase
+                .from('appointment_contacts')
+                .select(`
+                  role,
+                  contacts (
+                    id,
+                    name
+                  )
+                `)
+                .eq('appointment_id', `blocked-${eventDate.id}`);
+              
+              participants = contactsData?.map((contact: any) => ({
+                id: contact.contacts?.id || '',
+                name: contact.contacts?.name || 'Unknown',
+                role: contact.role || 'participant'
+              })) || [];
+            } catch (error) {
+              // Silently handle the error, participants will remain empty
+              console.log('Could not fetch participants for blocked event');
+            }
 
-      formattedEvents.push({
-        id: appointment.id,
-        title: appointment.title,
-        time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-        duration: `${durationHours}h`,
-        date: startTime, // Add the actual date
-        location: appointment.location || undefined,
-        type: appointment.category as CalendarEvent["type"] || "meeting",
-        priority: appointment.priority as CalendarEvent["priority"] || "medium",
-        participants,
-        attendees: participants.length,
-        category_color: appointment.appointment_categories?.color
-      });
+            formattedEvents.push({
+              id: `blocked-${eventDate.id}`,
+              title: eventDate.event_plannings.title,
+              time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+              duration: "2.0h",
+              date: startTime,
+              type: "blocked",
+              priority: "medium",
+              participants,
+              attendees: participants.length,
+              category_color: categoryColors.get('blocked') || '#f97316' // Default orange for blocked events
+            });
+          }
+        }
+      }
+
+      setAppointments(formattedEvents);
+    } catch (error) {
+      console.error('Error processing appointments:', error);
+      setAppointments([]);
     }
-
-    setAppointments(formattedEvents);
   };
 
   const getEventTypeColor = (type: CalendarEvent["type"]) => {
