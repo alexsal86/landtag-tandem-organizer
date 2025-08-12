@@ -59,6 +59,7 @@ export function TaskDetailSidebar({
   const [newComment, setNewComment] = useState("");
   const [editingComment, setEditingComment] = useState<{ [commentId: string]: string }>({});
   const [saving, setSaving] = useState(false);
+  const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -76,7 +77,22 @@ export function TaskDetailSidebar({
       });
       loadTaskComments(task.id);
     }
+    loadUsers();
   }, [task]);
+
+  const loadUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .order('display_name');
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
 
   const loadTaskComments = async (taskId: string) => {
     try {
@@ -382,11 +398,22 @@ export function TaskDetailSidebar({
 
             <div>
               <Label htmlFor="assignedTo">Zugewiesen an</Label>
-              <Input
-                id="assignedTo"
+              <Select
                 value={editFormData.assignedTo || ''}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, assignedTo: e.target.value }))}
-              />
+                onValueChange={(value) => setEditFormData(prev => ({ ...prev, assignedTo: value || undefined }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Benutzer auswählen..." />
+                </SelectTrigger>
+                <SelectContent className="bg-background border border-border z-50">
+                  <SelectItem value="">Nicht zugewiesen</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.user_id} value={user.user_id}>
+                      {user.display_name || 'Unbekannter Benutzer'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
