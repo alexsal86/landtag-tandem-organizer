@@ -16,6 +16,7 @@ export interface CalendarEvent {
   time: string;
   duration: string;
   date: Date; // Add date field for proper filtering
+  endTime?: Date; // Add actual end time from database
   location?: string;
   attendees?: number;
   participants?: Array<{
@@ -155,6 +156,7 @@ export function CalendarView() {
           time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
           duration: `${durationHours}h`,
           date: startTime, // Add the actual date
+          endTime: endTime, // Add actual end time from database
           location: appointment.location || undefined,
           type: appointment.category as CalendarEvent["type"] || "meeting",
           priority: appointment.priority as CalendarEvent["priority"] || "medium",

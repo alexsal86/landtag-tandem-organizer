@@ -145,17 +145,34 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
                           onClick={() => onAppointmentClick?.(event)}
                         >
                          <div className="font-medium truncate">{event.title}</div>
-                         <div className="opacity-80">
-                           {(() => {
-                             const [hours, minutes] = event.time.split(':').map(Number);
-                             const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-                             const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
-                             const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
-                             const durationHours = (durationMinutes / 60).toFixed(1);
-                             
-                             return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')} (${durationHours}h)`;
-                           })()}
-                         </div>
+                          <div className="opacity-80">
+                            {(() => {
+                              if (event.endTime) {
+                                // Use actual end time from database
+                                const endTimeStr = event.endTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                const startDate = event.date.toDateString();
+                                const endDate = event.endTime.toDateString();
+                                
+                                if (startDate === endDate) {
+                                  // Same day
+                                  return `${event.time} - ${endTimeStr} (${event.duration})`;
+                                } else {
+                                  // Multi-day event
+                                  const endDateStr = event.endTime.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+                                  return `${event.time} - ${endDateStr} ${endTimeStr} (${event.duration})`;
+                                }
+                              } else {
+                                // Fallback to old calculation
+                                const [hours, minutes] = event.time.split(':').map(Number);
+                                const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+                                const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
+                                const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
+                                const durationHours = (durationMinutes / 60).toFixed(1);
+                                
+                                return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')} (${durationHours}h)`;
+                              }
+                            })()}
+                          </div>
                          {event.location && (
                            <div className="opacity-70 truncate">{event.location}</div>
                          )}
