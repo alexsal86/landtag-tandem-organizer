@@ -40,6 +40,7 @@ interface TaskDetailSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onTaskUpdate: (updatedTask: Task) => void;
+  onTaskRestored: () => void;
   taskCategories: Array<{ name: string; label: string }>;
   taskStatuses: Array<{ name: string; label: string }>;
 }
@@ -49,6 +50,7 @@ export function TaskDetailSidebar({
   isOpen, 
   onClose, 
   onTaskUpdate, 
+  onTaskRestored,
   taskCategories, 
   taskStatuses 
 }: TaskDetailSidebarProps) {
@@ -140,6 +142,7 @@ export function TaskDetailSidebar({
       };
 
       onTaskUpdate(updatedTask);
+      setEditFormData(updatedTask);
 
       toast({
         title: "Aufgabe gespeichert",

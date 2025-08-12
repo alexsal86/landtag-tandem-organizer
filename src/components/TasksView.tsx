@@ -135,11 +135,18 @@ export function TasksView() {
 
       const archivedTaskIds = (archivedTasks || []).map(at => at.task_id);
 
-      const { data, error } = await supabase
+      // Build the query to exclude archived tasks
+      let query = supabase
         .from('tasks')
         .select('*')
-        .not('id', 'in', `(${archivedTaskIds.length > 0 ? archivedTaskIds.join(',') : 'null'})`)
         .order('created_at', { ascending: false });
+
+      // Only apply the filter if there are archived tasks
+      if (archivedTaskIds.length > 0) {
+        query = query.not('id', 'in', `(${archivedTaskIds.join(',')})`);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -595,6 +602,12 @@ export function TasksView() {
     setTasks(prev => prev.map(t => 
       t.id === updatedTask.id ? updatedTask : t
     ));
+    loadRecentActivities();
+  };
+
+  const handleTaskRestored = () => {
+    // Reload the entire task list when a task is restored from archive
+    loadTasks();
     loadRecentActivities();
   };
 
@@ -1126,6 +1139,7 @@ export function TasksView() {
       <TaskArchiveModal
         isOpen={archiveModalOpen}
         onClose={() => setArchiveModalOpen(false)}
+        onTaskRestored={handleTaskRestored}
       />
 
       <TaskDetailSidebar
@@ -1133,6 +1147,7 @@ export function TasksView() {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onTaskUpdate={handleTaskUpdate}
+        onTaskRestored={handleTaskRestored}
         taskCategories={taskCategories}
         taskStatuses={taskStatuses}
       />

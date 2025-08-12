@@ -30,9 +30,10 @@ interface ArchiveSettings {
 interface TaskArchiveModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onTaskRestored?: () => void;
 }
 
-export function TaskArchiveModal({ isOpen, onClose }: TaskArchiveModalProps) {
+export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiveModalProps) {
   const [archivedTasks, setArchivedTasks] = useState<ArchivedTask[]>([]);
   const [archiveSettings, setArchiveSettings] = useState<ArchiveSettings>({});
   const [loading, setLoading] = useState(true);
@@ -183,6 +184,12 @@ export function TaskArchiveModal({ isOpen, onClose }: TaskArchiveModalProps) {
       if (deleteError) throw deleteError;
 
       setArchivedTasks(prev => prev.filter(t => t.id !== task.id));
+      
+      // Notify parent component that a task was restored
+      if (onTaskRestored) {
+        onTaskRestored();
+      }
+      
       toast({
         title: "Aufgabe wiederhergestellt",
         description: "Die Aufgabe wurde erfolgreich aktiviert und ist wieder in der Aufgabenliste verfügbar.",
