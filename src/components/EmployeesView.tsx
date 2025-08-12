@@ -24,6 +24,7 @@ type EmployeeSettingsRow = {
   employment_start_date: string | null;
   hours_per_month: number;
   days_per_month: number;
+  days_per_week: number;
 };
 
 type Profile = {
@@ -136,7 +137,7 @@ export function EmployeesView() {
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
           supabase
             .from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date, hours_per_month, days_per_month")
+            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date, hours_per_month, days_per_month, days_per_week")
             .in("user_id", managedIds),
           supabase
             .from("leave_requests")
@@ -179,6 +180,7 @@ export function EmployeesView() {
             employment_start_date: s?.employment_start_date ?? null,
             hours_per_month: s?.hours_per_month ?? 160,
             days_per_month: s?.days_per_month ?? 20,
+            days_per_week: s?.days_per_week ?? 5,
           } as Employee;
         });
         setEmployees(joined);
@@ -364,6 +366,49 @@ export function EmployeesView() {
       toast({
         title: "Fehler",
         description: e?.message ?? "Stunden konnten nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateDaysPerWeek = async (userId: string, newDays: number) => {
+    if (newDays < 1 || newDays > 7) {
+      toast({
+        title: "Ungültige Eingabe",
+        description: "Tage müssen zwischen 1 und 7 liegen.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("employee_settings")
+        .upsert({ 
+          user_id: userId, 
+          days_per_week: newDays,
+          admin_id: user?.id 
+        }, { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false 
+        });
+
+      if (error) throw error;
+
+      // Update local state
+      setEmployees(prev => prev.map(emp => 
+        emp.user_id === userId ? { ...emp, days_per_week: newDays } : emp
+      ));
+
+      toast({
+        title: "Gespeichert",
+        description: "Tage pro Woche wurden aktualisiert.",
+      });
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Fehler",
+        description: e?.message ?? "Tage konnten nicht aktualisiert werden.",
         variant: "destructive",
       });
     }
@@ -737,7 +782,7 @@ export function EmployeesView() {
                   <TableRow>
                     <TableHead>Mitarbeiter</TableHead>
                     <TableHead>Stunden/Woche</TableHead>
-                    <TableHead>Tage/Monat</TableHead>
+                    <TableHead>Tage/Woche</TableHead>
                     <TableHead>Urlaubstage/Jahr</TableHead>
                     <TableHead>Beginn Arbeitsverhältnis</TableHead>
                     <TableHead>Krankentage</TableHead>
@@ -787,19 +832,19 @@ export function EmployeesView() {
                         <TableCell>
                           <Input
                             type="number"
-                            value={e.days_per_month}
+                            value={e.days_per_week}
                             onChange={(ev) => {
                               const newValue = Number(ev.target.value);
-                              if (newValue >= 1 && newValue <= 31) {
+                              if (newValue >= 1 && newValue <= 7) {
                                 setEmployees(prev => prev.map(emp => 
-                                  emp.user_id === e.user_id ? { ...emp, days_per_month: newValue } : emp
+                                  emp.user_id === e.user_id ? { ...emp, days_per_week: newValue } : emp
                                 ));
-                                updateDaysPerMonth(e.user_id, newValue);
+                                updateDaysPerWeek(e.user_id, newValue);
                               }
                             }}
                             className="w-20"
                             min="1"
-                            max="31"
+                            max="7"
                           />
                         </TableCell>
                         <TableCell>
