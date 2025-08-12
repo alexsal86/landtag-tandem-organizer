@@ -384,15 +384,15 @@ export function TasksView() {
 
       if (archiveError) throw archiveError;
 
-      // Update task status to completed
-      const { error: updateError } = await supabase
+      // Delete the task from the tasks table completely
+      const { error: deleteError } = await supabase
         .from('tasks')
-        .update({ status: 'completed' })
+        .delete()
         .eq('id', task.id);
 
-      if (updateError) throw updateError;
+      if (deleteError) throw deleteError;
 
-      // Remove from local tasks (since it's now archived)
+      // Remove from local tasks (since it's now deleted)
       setTasks(prev => prev.filter(t => t.id !== task.id));
 
     } catch (error) {
