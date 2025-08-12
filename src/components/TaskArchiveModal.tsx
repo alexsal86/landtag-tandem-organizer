@@ -158,22 +158,52 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Restore task to main tasks table
-      const { error: insertError } = await supabase
+      // First, check if the original task still exists and update it, or create a new one with the original ID
+      const { data: existingTask, error: checkError } = await supabase
         .from('tasks')
-        .insert({
-          user_id: user.id,
-          title: task.title,
-          description: task.description,
-          priority: task.priority,
-          category: task.category,
-          assigned_to: task.assigned_to,
-          progress: task.progress || 0,
-          due_date: task.due_date,
-          status: 'todo'
-        });
+        .select('*')
+        .eq('id', task.task_id)
+        .maybeSingle();
 
-      if (insertError) throw insertError;
+      if (checkError) throw checkError;
+
+      if (existingTask) {
+        // Update existing task to restore it
+        const { error: updateError } = await supabase
+          .from('tasks')
+          .update({
+            title: task.title,
+            description: task.description,
+            priority: task.priority,
+            category: task.category,
+            assigned_to: task.assigned_to,
+            progress: task.progress || 0,
+            due_date: task.due_date,
+            status: 'todo',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', task.task_id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new task with the original ID if it doesn't exist
+        const { error: insertError } = await supabase
+          .from('tasks')
+          .insert({
+            id: task.task_id, // Use the original task ID
+            user_id: user.id,
+            title: task.title,
+            description: task.description,
+            priority: task.priority,
+            category: task.category,
+            assigned_to: task.assigned_to,
+            progress: task.progress || 0,
+            due_date: task.due_date,
+            status: 'todo'
+          });
+
+        if (insertError) throw insertError;
+      }
 
       // Remove from archived tasks
       const { error: deleteError } = await supabase
