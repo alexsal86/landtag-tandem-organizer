@@ -17,9 +17,8 @@ export function WeekView({ weekStart, events }: WeekViewProps) {
   
   const getEventsForDay = (day: Date) => {
     return events.filter(event => {
-      // In a real implementation, you'd filter by the actual event date
-      // For now, showing all events on the current day
-      return day.toDateString() === new Date().toDateString();
+      // Filter by the actual event date
+      return event.date.toDateString() === day.toDateString();
     });
   };
 
@@ -70,15 +69,14 @@ export function WeekView({ weekStart, events }: WeekViewProps) {
             </div>
             
             {/* Day columns */}
-            {days.map((day) => (
-              <div 
-                key={`${day.toISOString()}-${hour}`} 
-                className="min-h-[60px] p-1 border-b border-l border-border relative hover:bg-accent/20"
-              >
-                {day.toDateString() === new Date().toDateString() && 
-                 getEventsForDay(day)
-                   .filter(event => parseInt(event.time.split(':')[0]) === hour)
-                   .map((event, index) => (
+            {days.map((day) => {
+              const dayEvents = getEventsForDay(day).filter(event => parseInt(event.time.split(':')[0]) === hour);
+              return (
+                <div 
+                  key={`${day.toISOString()}-${hour}`} 
+                  className="min-h-[60px] p-1 border-b border-l border-border relative hover:bg-accent/20"
+                >
+                  {dayEvents.map((event, index) => (
                   <div
                     key={event.id}
                     className={`p-1 rounded text-xs mb-1 border-l-2 ${getEventTypeColor(event.type)}`}
@@ -86,9 +84,10 @@ export function WeekView({ weekStart, events }: WeekViewProps) {
                     <div className="font-medium truncate">{event.title}</div>
                     <div className="opacity-80">{event.time}</div>
                   </div>
-                ))}
-              </div>
-            ))}
+                  ))}
+                </div>
+              );
+            })}
           </React.Fragment>
         ))}
       </div>

@@ -14,6 +14,7 @@ export interface CalendarEvent {
   title: string;
   time: string;
   duration: string;
+  date: Date; // Add date field for proper filtering
   location?: string;
   attendees?: number;
   participants?: Array<{
@@ -33,8 +34,41 @@ export function CalendarView() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTodaysAppointments();
-  }, [currentDate]);
+    if (view === 'week') {
+      fetchWeekAppointments();
+    } else {
+      fetchTodaysAppointments();
+    }
+  }, [currentDate, view]);
+
+  const fetchWeekAppointments = async () => {
+    try {
+      setLoading(true);
+      const weekStart = getWeekStart(currentDate);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      
+      // Fetch regular appointments for the entire week
+      const { data: appointmentsData, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .gte('start_time', weekStart.toISOString())
+        .lte('start_time', weekEnd.toISOString())
+        .order('start_time', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching appointments:', error);
+        return;
+      }
+
+      await processAppointments(appointmentsData || [], weekStart, weekEnd);
+    } catch (error) {
+      console.error('Error fetching week appointments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchTodaysAppointments = async () => {
     try {
@@ -58,94 +92,99 @@ export function CalendarView() {
         return;
       }
 
-      // Also fetch blocked appointments from event planning dates
-      const { data: eventPlanningDates } = await supabase
-        .from('event_planning_dates')
-        .select(`
-          *,
-          event_plannings (
-            title,
-            user_id
-          )
-        `)
-        .gte('date_time', startOfDay.toISOString())
-        .lte('date_time', endOfDay.toISOString())
-        .eq('event_plannings.user_id', (await supabase.auth.getUser()).data.user?.id);
-
-      // Combine all appointments
-      const allAppointments = [...(appointmentsData || [])];
-
-      // Add blocked appointments from event planning
-      if (eventPlanningDates) {
-        for (const epd of eventPlanningDates) {
-          if (epd.event_plannings && !epd.appointment_id) {
-            // Create virtual blocked appointment if no real appointment exists
-            allAppointments.push({
-              id: `blocked-${epd.id}`,
-              user_id: epd.event_plannings.user_id,
-              title: `Geplant: ${epd.event_plannings.title}`,
-              start_time: epd.date_time,
-              end_time: new Date(new Date(epd.date_time).getTime() + 2 * 60 * 60 * 1000).toISOString(),
-              category: 'blocked',
-              status: epd.is_confirmed ? 'confirmed' : 'planned',
-              priority: 'medium',
-              location: null,
-              description: null,
-              reminder_minutes: 15,
-              meeting_id: null,
-              contact_id: null,
-              created_at: epd.created_at,
-              updated_at: epd.created_at
-            });
-          }
-        }
-      }
-
-      const formattedEvents: CalendarEvent[] = [];
-
-      for (const appointment of allAppointments) {
-        const startTime = new Date(appointment.start_time);
-        const endTime = new Date(appointment.end_time);
-        const durationMs = endTime.getTime() - startTime.getTime();
-        const durationHours = Math.round(durationMs / (1000 * 60 * 60) * 10) / 10;
-        
-        // Fetch participants for this appointment
-        const { data: appointmentContacts } = await supabase
-          .from('appointment_contacts')
-          .select(`
-            role,
-            contacts (
-              id,
-              name
-            )
-          `)
-          .eq('appointment_id', appointment.id);
-
-        const participants = appointmentContacts?.map(ac => ({
-          id: ac.contacts.id,
-          name: ac.contacts.name,
-          role: ac.role
-        })) || [];
-
-        formattedEvents.push({
-          id: appointment.id,
-          title: appointment.title,
-          time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-          duration: `${durationHours}h`,
-          location: appointment.location || undefined,
-          type: appointment.category as CalendarEvent["type"] || "meeting",
-          priority: appointment.priority as CalendarEvent["priority"] || "medium",
-          participants,
-          attendees: participants.length
-        });
-      }
-
-      setAppointments(formattedEvents);
+      await processAppointments(appointmentsData || [], startOfDay, endOfDay);
     } catch (error) {
       console.error('Error fetching appointments:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const processAppointments = async (appointmentsData: any[], startDate: Date, endDate: Date) => {
+    // Also fetch blocked appointments from event planning dates
+    const { data: eventPlanningDates } = await supabase
+      .from('event_planning_dates')
+      .select(`
+        *,
+        event_plannings (
+          title,
+          user_id
+        )
+      `)
+      .gte('date_time', startDate.toISOString())
+      .lte('date_time', endDate.toISOString())
+      .eq('event_plannings.user_id', (await supabase.auth.getUser()).data.user?.id);
+
+    // Combine all appointments
+    const allAppointments = [...appointmentsData];
+
+    // Add blocked appointments from event planning
+    if (eventPlanningDates) {
+      for (const epd of eventPlanningDates) {
+        if (epd.event_plannings && !epd.appointment_id) {
+          // Create virtual blocked appointment if no real appointment exists
+          allAppointments.push({
+            id: `blocked-${epd.id}`,
+            user_id: epd.event_plannings.user_id,
+            title: `Geplant: ${epd.event_plannings.title}`,
+            start_time: epd.date_time,
+            end_time: new Date(new Date(epd.date_time).getTime() + 2 * 60 * 60 * 1000).toISOString(),
+            category: 'blocked',
+            status: epd.is_confirmed ? 'confirmed' : 'planned',
+            priority: 'medium',
+            location: null,
+            description: null,
+            reminder_minutes: 15,
+            meeting_id: null,
+            contact_id: null,
+            created_at: epd.created_at,
+            updated_at: epd.created_at
+          });
+        }
+      }
+    }
+
+    const formattedEvents: CalendarEvent[] = [];
+
+    for (const appointment of allAppointments) {
+      const startTime = new Date(appointment.start_time);
+      const endTime = new Date(appointment.end_time);
+      const durationMs = endTime.getTime() - startTime.getTime();
+      const durationHours = Math.round(durationMs / (1000 * 60 * 60) * 10) / 10;
+      
+      // Fetch participants for this appointment
+      const { data: appointmentContacts } = await supabase
+        .from('appointment_contacts')
+        .select(`
+          role,
+          contacts (
+            id,
+            name
+          )
+        `)
+        .eq('appointment_id', appointment.id);
+
+      const participants = appointmentContacts?.map(ac => ({
+        id: ac.contacts.id,
+        name: ac.contacts.name,
+        role: ac.role
+      })) || [];
+
+      formattedEvents.push({
+        id: appointment.id,
+        title: appointment.title,
+        time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+        duration: `${durationHours}h`,
+        date: startTime, // Add the actual date
+        location: appointment.location || undefined,
+        type: appointment.category as CalendarEvent["type"] || "meeting",
+        priority: appointment.priority as CalendarEvent["priority"] || "medium",
+        participants,
+        attendees: participants.length
+      });
+    }
+
+    setAppointments(formattedEvents);
   };
 
   const getEventTypeColor = (type: CalendarEvent["type"]) => {

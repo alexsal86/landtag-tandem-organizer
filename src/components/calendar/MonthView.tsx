@@ -28,12 +28,10 @@ export function MonthView({ date, events, onDateSelect }: MonthViewProps) {
   };
 
   const getDayEvents = (day: Date) => {
-    // In a real implementation, you'd filter events by the specific day
-    // For now, showing today's events only on today
-    if (day.toDateString() === new Date().toDateString()) {
-      return events.slice(0, 3); // Limit to 3 events per day for display
-    }
-    return [];
+    // Filter events by the specific day using the date field
+    return events.filter(event => 
+      event.date.toDateString() === day.toDateString()
+    ).slice(0, 3); // Limit to 3 events per day for display
   };
 
   return (

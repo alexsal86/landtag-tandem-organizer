@@ -11,8 +11,9 @@ export function DayView({ date, events }: DayViewProps) {
   
   const getEventsForHour = (hour: number) => {
     return events.filter(event => {
-      const eventHour = parseInt(event.time.split(':')[0]);
-      return eventHour === hour;
+      // Filter by date and hour
+      return event.date.toDateString() === date.toDateString() && 
+             parseInt(event.time.split(':')[0]) === hour;
     });
   };
 
