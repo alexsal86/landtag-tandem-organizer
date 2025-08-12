@@ -1,8 +1,11 @@
 import React, { useState } from "react";
-import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon } from "lucide-react";
+import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarEvent } from "../CalendarView";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +25,56 @@ export function AppointmentDetailsSidebar({
 }: AppointmentDetailsSidebarProps) {
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    title: "",
+    location: "",
+    priority: "medium" as CalendarEvent["priority"]
+  });
+
+  const handleEdit = () => {
+    if (!appointment) return;
+    setEditData({
+      title: appointment.title,
+      location: appointment.location || "",
+      priority: appointment.priority
+    });
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!appointment || appointment.id.startsWith('blocked-')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({
+          title: editData.title,
+          location: editData.location || null,
+          priority: editData.priority
+        })
+        .eq('id', appointment.id);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Termin aktualisiert",
+        description: "Die Änderungen wurden erfolgreich gespeichert."
+      });
+      
+      setIsEditing(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      toast({
+        title: "Fehler",
+        description: "Der Termin konnte nicht aktualisiert werden.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleDelete = async () => {
     if (!appointment || isDeleting) return;
@@ -148,15 +201,38 @@ export function AppointmentDetailsSidebar({
         <div className="space-y-6 mt-6">
           {/* Title and Type */}
           <div>
-            <h2 className="text-2xl font-semibold mb-2">{appointment.title}</h2>
-            <div className="flex gap-2">
-              <Badge className={getEventTypeColor(appointment.type)}>
-                {getEventTypeLabel(appointment.type)}
-              </Badge>
-              <Badge className={getPriorityColor(appointment.priority)}>
-                Priorität: {getPriorityLabel(appointment.priority)}
-              </Badge>
-            </div>
+            {isEditing ? (
+              <div className="space-y-3">
+                <Input
+                  value={editData.title}
+                  onChange={(e) => setEditData({...editData, title: e.target.value})}
+                  placeholder="Titel"
+                  className="text-xl font-semibold"
+                />
+                <Select value={editData.priority} onValueChange={(value: CalendarEvent["priority"]) => setEditData({...editData, priority: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Niedrig</SelectItem>
+                    <SelectItem value="medium">Mittel</SelectItem>
+                    <SelectItem value="high">Hoch</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-2xl font-semibold mb-2">{appointment.title}</h2>
+                <div className="flex gap-2">
+                  <Badge className={getEventTypeColor(appointment.type)}>
+                    {getEventTypeLabel(appointment.type)}
+                  </Badge>
+                  <Badge className={getPriorityColor(appointment.priority)}>
+                    Priorität: {getPriorityLabel(appointment.priority)}
+                  </Badge>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Time Information */}
@@ -199,17 +275,24 @@ export function AppointmentDetailsSidebar({
           </div>
 
           {/* Location */}
-          {appointment.location && (
-            <div className="flex items-start gap-3">
-              <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div>
-                <div className="font-medium">Ort</div>
+          <div className="flex items-start gap-3">
+            <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <div className="flex-1">
+              <div className="font-medium">Ort</div>
+              {isEditing ? (
+                <Input
+                  value={editData.location}
+                  onChange={(e) => setEditData({...editData, location: e.target.value})}
+                  placeholder="Ort eingeben"
+                  className="mt-1"
+                />
+              ) : (
                 <div className="text-sm text-muted-foreground">
-                  {appointment.location}
+                  {appointment.location || "Kein Ort angegeben"}
                 </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Participants */}
           {appointment.participants && appointment.participants.length > 0 && (
@@ -238,23 +321,45 @@ export function AppointmentDetailsSidebar({
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4 border-t">
-            <Button 
-              className="flex-1 gap-2"
-              variant="outline"
-              disabled={appointment.id.startsWith('blocked-')}
-            >
-              <Edit className="h-4 w-4" />
-              Bearbeiten
-            </Button>
-            <Button 
-              className="flex-1 gap-2"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting || appointment.id.startsWith('blocked-')}
-            >
-              <Trash2 className="h-4 w-4" />
-              {isDeleting ? "Lösche..." : "Löschen"}
-            </Button>
+            {isEditing ? (
+              <>
+                <Button 
+                  className="flex-1 gap-2"
+                  onClick={handleSave}
+                >
+                  <Save className="h-4 w-4" />
+                  Speichern
+                </Button>
+                <Button 
+                  className="flex-1 gap-2"
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                >
+                  Abbrechen
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  className="flex-1 gap-2"
+                  variant="outline"
+                  onClick={handleEdit}
+                  disabled={appointment.id.startsWith('blocked-')}
+                >
+                  <Edit className="h-4 w-4" />
+                  Bearbeiten
+                </Button>
+                <Button 
+                  className="flex-1 gap-2"
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={isDeleting || appointment.id.startsWith('blocked-')}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isDeleting ? "Lösche..." : "Löschen"}
+                </Button>
+              </>
+            )}
           </div>
 
           {appointment.id.startsWith('blocked-') && (
