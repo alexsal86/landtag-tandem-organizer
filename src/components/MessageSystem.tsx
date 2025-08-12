@@ -201,7 +201,9 @@ export function MessageSystem() {
             confirmations
           };
         })
-      );
+       );
+
+      console.log('Sent messages with details:', sentMessagesWithDetails);
 
       const activeSent = sentMessagesWithDetails.filter(m => m.status === 'active');
       const archivedSent = sentMessagesWithDetails.filter(m => m.status === 'archived');
