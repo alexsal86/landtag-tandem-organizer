@@ -138,7 +138,7 @@ export function MessageSystem() {
                     .from('profiles')
                     .select('display_name, avatar_url')
                     .eq('user_id', conf.user_id)
-                    .single();
+                    .maybeSingle();
                   
                   return {
                     ...conf,
@@ -163,7 +163,7 @@ export function MessageSystem() {
                     .from('profiles')
                     .select('display_name, avatar_url')
                     .eq('user_id', rec.recipient_id)
-                    .single();
+                    .maybeSingle();
                   
                   return {
                     ...rec,
