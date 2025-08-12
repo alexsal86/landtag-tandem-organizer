@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageCircle, Check, Archive, Send, X } from "lucide-react";
+import { MessageCircle, Check, Archive, Send, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { MessageComposer } from "./MessageComposer";
@@ -44,6 +44,7 @@ interface Message {
   is_for_all_users: boolean;
   status: 'active' | 'archived';
   created_at: string;
+  has_read?: boolean; // Add this property
   author?: {
     display_name: string;
     avatar_url?: string;
@@ -67,9 +68,16 @@ export function MessageSystem() {
   const { user } = useAuth();
   const [activeMessages, setActiveMessages] = useState<Message[]>([]);
   const [archivedMessages, setArchivedMessages] = useState<Message[]>([]);
+  const [archivedUserMessages, setArchivedUserMessages] = useState<Message[]>([]);
   const [sentMessages, setSentMessages] = useState<Message[]>([]);
   const [showComposer, setShowComposer] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // Pagination states
+  const [receivedPage, setReceivedPage] = useState(0);
+  const [sentPage, setSentPage] = useState(0);
+  const [archivePage, setArchivePage] = useState(0);
+  const messagesPerPage = 3;
 
   const fetchMessages = async () => {
     if (!user) return;
@@ -107,6 +115,7 @@ export function MessageSystem() {
           is_for_all_users: msg.is_for_all_users,
           status: msg.status as 'active' | 'archived',
           created_at: msg.created_at,
+          has_read: msg.has_read, // Add this property
           author: {
             display_name: msg.author_name,
             avatar_url: msg.author_avatar
@@ -115,7 +124,12 @@ export function MessageSystem() {
           confirmations: []
         }));
 
-      setActiveMessages(convertedReceivedMessages);
+      // Separate read messages for user archive
+      const unreadMessages = convertedReceivedMessages.filter(msg => !msg.has_read);
+      const readMessages = convertedReceivedMessages.filter(msg => msg.has_read);
+
+      setActiveMessages(unreadMessages);
+      setArchivedUserMessages(readMessages);
       
       // For authored messages, fetch detailed recipient and confirmation data
       const sentMessagesWithDetails = await Promise.all(
@@ -193,7 +207,7 @@ export function MessageSystem() {
       const archivedSent = sentMessagesWithDetails.filter(m => m.status === 'archived');
       
       setSentMessages(activeSent);
-      setArchivedMessages(archivedSent);
+      setArchivedMessages([...archivedSent, ...readMessages]); // Combine archived sent and read received messages
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
@@ -280,6 +294,55 @@ export function MessageSystem() {
     return { total, read };
   };
 
+  const getPaginatedMessages = (messages: Message[], page: number) => {
+    const startIndex = page * messagesPerPage;
+    return messages.slice(startIndex, startIndex + messagesPerPage);
+  };
+
+  const getTotalPages = (totalMessages: number) => {
+    return Math.ceil(totalMessages / messagesPerPage);
+  };
+
+  const PaginationControls = ({ 
+    currentPage, 
+    totalMessages, 
+    onPageChange 
+  }: { 
+    currentPage: number; 
+    totalMessages: number; 
+    onPageChange: (page: number) => void; 
+  }) => {
+    const totalPages = getTotalPages(totalMessages);
+    
+    if (totalPages <= 1) return null;
+    
+    return (
+      <div className="flex items-center justify-between mt-4 px-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 0}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Zurück
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          Seite {currentPage + 1} von {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages - 1}
+        >
+          Weiter
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <Card>
@@ -342,7 +405,7 @@ export function MessageSystem() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {activeMessages.map((message) => {
+                  {getPaginatedMessages(activeMessages, receivedPage).map((message) => {
                     const isRead = isMessageRead(message);
                     return (
                       <div
@@ -405,6 +468,11 @@ export function MessageSystem() {
                 </div>
               )}
             </ScrollArea>
+            <PaginationControls
+              currentPage={receivedPage}
+              totalMessages={activeMessages.length}
+              onPageChange={setReceivedPage}
+            />
           </TabsContent>
 
           <TabsContent value="sent" className="mt-4">
@@ -415,7 +483,7 @@ export function MessageSystem() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {sentMessages.map((message) => {
+                  {getPaginatedMessages(sentMessages, sentPage).map((message) => {
                     const status = getRecipientStatus(
                       message.recipients, 
                       message.confirmations, 
@@ -450,20 +518,36 @@ export function MessageSystem() {
                         
                         {/* Show recipients for targeted messages */}
                         {!message.is_for_all_users && message.recipients && message.recipients.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {message.recipients.map((recipient) => (
-                              <div key={recipient.recipient_id} className="flex items-center gap-1" title={recipient.profile?.display_name || 'Unbekannt'}>
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage src={recipient.profile?.avatar_url} />
-                                  <AvatarFallback className="text-xs">
-                                    {recipient.profile?.display_name?.charAt(0) || 'U'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                {recipient.has_read && (
-                                  <Check className="h-3 w-3 text-green-500" />
-                                )}
-                              </div>
-                            ))}
+                          <div className="space-y-2 mt-2">
+                            <div className="text-xs font-medium text-muted-foreground">Empfänger:</div>
+                            <div className="flex flex-wrap gap-2">
+                              {message.recipients.map((recipient) => (
+                                <div key={recipient.recipient_id} className="flex items-center gap-1 text-xs bg-muted/50 rounded px-2 py-1">
+                                  <Avatar className="h-4 w-4">
+                                    <AvatarImage src={recipient.profile?.avatar_url} />
+                                    <AvatarFallback className="text-xs">
+                                      {recipient.profile?.display_name?.charAt(0) || 'U'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span>{recipient.profile?.display_name || 'Unbekannt'}</span>
+                                  {recipient.has_read ? (
+                                    <div className="flex items-center gap-1 text-green-600">
+                                      <Check className="h-3 w-3" />
+                                      <span className="text-xs">
+                                        {recipient.read_at && new Date(recipient.read_at).toLocaleDateString('de-DE', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">Nicht gelesen</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                         
@@ -497,6 +581,11 @@ export function MessageSystem() {
                 </div>
               )}
             </ScrollArea>
+            <PaginationControls
+              currentPage={sentPage}
+              totalMessages={sentMessages.length}
+              onPageChange={setSentPage}
+            />
           </TabsContent>
 
           <TabsContent value="archived" className="mt-4">
@@ -507,83 +596,102 @@ export function MessageSystem() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {archivedMessages.map((message) => (
+                  {getPaginatedMessages(archivedMessages, archivePage).map((message) => (
                     <div key={message.id} className="p-3 border rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Archive className="h-4 w-4 text-muted-foreground" />
-                        <h4 className="font-medium text-sm">{message.title}</h4>
-                        {message.is_for_all_users && (
-                          <Badge variant="secondary" className="text-xs">
-                            An alle
-                          </Badge>
-                        )}
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Archive className="h-4 w-4 text-muted-foreground" />
+                            {message.author?.display_name && (
+                              <span className="text-sm font-medium">
+                                Von: {message.author.display_name}
+                              </span>
+                            )}
+                            {message.author_id === user?.id && (
+                              <span className="text-sm font-medium text-primary">
+                                Gesendet
+                              </span>
+                            )}
+                            {message.is_for_all_users && (
+                              <Badge variant="secondary" className="text-xs">
+                                An alle
+                              </Badge>
+                            )}
+                          </div>
+                          <h4 className="font-medium text-sm mb-1">{message.title}</h4>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            {message.content}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Gesendet: {new Date(message.created_at).toLocaleDateString('de-DE', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                          
+                          {/* Show read confirmation for received messages */}
+                          {message.author_id !== user?.id && (
+                            <div className="mt-2">
+                              <div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded inline-block">
+                                ✓ Als gelesen bestätigt
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Show confirmations for sent "all users" messages */}
+                          {message.author_id === user?.id && message.is_for_all_users && message.confirmations && message.confirmations.length > 0 && (
+                            <div className="mt-2">
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Bestätigt von:</div>
+                              <div className="flex flex-wrap gap-1">
+                                {message.confirmations.map((confirmation) => (
+                                  <div key={confirmation.user_id} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                    {(confirmation as any).profiles?.display_name || 'Unbekannt'} - {new Date(confirmation.confirmed_at).toLocaleDateString('de-DE', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Show read status for sent targeted messages */}
+                          {message.author_id === user?.id && !message.is_for_all_users && message.recipients && message.recipients.length > 0 && (
+                            <div className="mt-2">
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Gelesen von:</div>
+                              <div className="flex flex-wrap gap-1">
+                                {message.recipients
+                                  .filter(r => r.has_read)
+                                  .map((recipient) => (
+                                    <div key={recipient.recipient_id} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                      {recipient.profile?.display_name || 'Unbekannt'} - {recipient.read_at && new Date(recipient.read_at).toLocaleDateString('de-DE', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        {message.content}
-                      </p>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Archiviert: {new Date(message.created_at).toLocaleDateString('de-DE')}
-                      </p>
-                      
-                      {/* Show read confirmations */}
-                      {message.is_for_all_users && message.confirmations && message.confirmations.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-xs text-muted-foreground mb-1">Bestätigt von:</p>
-                          <div className="space-y-1">
-                            {message.confirmations.map((confirmation) => (
-                              <div key={confirmation.user_id} className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Avatar className="h-4 w-4">
-                                  <AvatarImage src={(confirmation as any).profiles?.avatar_url} />
-                                  <AvatarFallback className="text-xs">
-                                    {(confirmation as any).profiles?.display_name?.charAt(0) || 'U'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span>{(confirmation as any).profiles?.display_name || 'Unbekannt'}</span>
-                                <span>am {new Date(confirmation.confirmed_at).toLocaleDateString('de-DE', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {!message.is_for_all_users && message.recipients && message.recipients.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-xs text-muted-foreground mb-1">Gelesen von:</p>
-                          <div className="space-y-1">
-                            {message.recipients.filter(r => r.has_read).map((recipient) => (
-                              <div key={recipient.recipient_id} className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Avatar className="h-4 w-4">
-                                  <AvatarImage src={recipient.profile?.avatar_url} />
-                                  <AvatarFallback className="text-xs">
-                                    {recipient.profile?.display_name?.charAt(0) || 'U'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span>{recipient.profile?.display_name || 'Unbekannt'}</span>
-                                {recipient.read_at && (
-                                  <span>am {new Date(recipient.read_at).toLocaleDateString('de-DE', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}</span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
               )}
             </ScrollArea>
+            <PaginationControls
+              currentPage={archivePage}
+              totalMessages={archivedMessages.length}
+              onPageChange={setArchivePage}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>

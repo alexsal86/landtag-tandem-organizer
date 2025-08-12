@@ -56,10 +56,10 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
   };
 
   const handleSend = async () => {
-    if (!user || !title.trim() || !content.trim()) {
+    if (!user || !content.trim()) {
       toast({
         title: "Fehler",
-        description: "Bitte füllen Sie alle Felder aus.",
+        description: "Bitte geben Sie eine Nachricht ein.",
         variant: "destructive"
       });
       return;
@@ -80,7 +80,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
       await (supabase as any)
         .rpc('send_message', {
           author_id_param: user.id,
-          title_param: title.trim(),
+          title_param: title.trim() || "Ohne Betreff",
           content_param: content.trim(),
           is_for_all_param: isForAllUsers,
           recipient_ids_param: isForAllUsers ? [] : selectedRecipients
@@ -114,12 +114,12 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="title">Betreff</Label>
+          <Label htmlFor="title">Betreff (optional)</Label>
           <Input
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Nachrichtentitel eingeben..."
+            placeholder="Betreff eingeben (optional)..."
           />
         </div>
 
