@@ -87,8 +87,14 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
     return layout;
   };
 
-  const getEventTypeColor = (type: CalendarEvent["type"]) => {
-    switch (type) {
+  const getEventTypeColor = (event: CalendarEvent) => {
+    // If the event has a category color from the database, use it
+    if (event.category_color) {
+      return `text-white border-2`;
+    }
+    
+    // Fallback to hardcoded colors for built-in types
+    switch (event.type) {
       case "session":
         return "bg-primary/80 text-primary-foreground border-primary";
       case "meeting":
@@ -153,16 +159,18 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                        const leftOffset = (widthPercentage * column);
                        
                        return (
-                         <div
-                           key={event.id}
-                           className={`absolute p-1 rounded text-xs border-l-2 cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event.type)}`}
-                           style={{ 
-                             width: `${widthPercentage - 1}%`,
-                             left: `${leftOffset}%`,
-                             marginBottom: '4px'
-                           }}
-                           onClick={() => onAppointmentClick?.(event)}
-                         >
+                          <div
+                            key={event.id}
+                            className={`absolute p-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)}`}
+                            style={{ 
+                              width: `${widthPercentage - 1}%`,
+                              left: `${leftOffset}%`,
+                              marginBottom: '4px',
+                              backgroundColor: event.category_color || undefined,
+                              borderLeftColor: event.category_color || undefined
+                            }}
+                            onClick={() => onAppointmentClick?.(event)}
+                          >
                            <div className="font-medium truncate w-full">{event.title}</div>
                            <div className="opacity-80 truncate w-full">
                              {(() => {

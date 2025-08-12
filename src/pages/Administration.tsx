@@ -40,6 +40,7 @@ type ConfigItem = {
   label: string;
   is_active: boolean;
   order_index: number;
+  color?: string;
 };
 
 export default function Administration() {
@@ -57,8 +58,8 @@ export default function Administration() {
   const [appointmentStatuses, setAppointmentStatuses] = useState<ConfigItem[]>([]);
   const [taskCategories, setTaskCategories] = useState<ConfigItem[]>([]);
   const [taskStatuses, setTaskStatuses] = useState<ConfigItem[]>([]);
-  const [editingItem, setEditingItem] = useState<{type: string, id: string, value: string} | null>(null);
-  const [newItem, setNewItem] = useState<{type: string, value: string} | null>(null);
+  const [editingItem, setEditingItem] = useState<{type: string, id: string, value: string, color?: string} | null>(null);
+  const [newItem, setNewItem] = useState<{type: string, value: string, color?: string} | null>(null);
   
   // Meeting template states
   const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
@@ -198,10 +199,12 @@ export default function Administration() {
     }
   };
 
-  const saveConfigItem = async (type: string, id: string, label: string) => {
+  const saveConfigItem = async (type: string, id: string, label: string, color?: string) => {
     try {
       if (type === 'appointment_categories') {
-        const { error } = await supabase.from('appointment_categories').update({ label }).eq('id', id);
+        const updateData: any = { label };
+        if (color !== undefined) updateData.color = color;
+        const { error } = await supabase.from('appointment_categories').update(updateData).eq('id', id);
         if (error) throw error;
         const { data } = await supabase.from('appointment_categories').select("*").order("order_index");
         setAppointmentCategories(data || []);
@@ -230,7 +233,7 @@ export default function Administration() {
     }
   };
 
-  const addConfigItem = async (type: string, label: string) => {
+  const addConfigItem = async (type: string, label: string, color?: string) => {
     try {
       const name = label.toLowerCase().replace(/\s+/g, '_').replace(/[äöüß]/g, (char) => {
         const map: Record<string, string> = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss' };
@@ -238,7 +241,9 @@ export default function Administration() {
       });
       
       if (type === 'appointment_categories') {
-        const { error } = await supabase.from('appointment_categories').insert({ name, label, order_index: 999 });
+        const insertData: any = { name, label, order_index: 999 };
+        if (color) insertData.color = color;
+        const { error } = await supabase.from('appointment_categories').insert(insertData);
         if (error) throw error;
         const { data } = await supabase.from('appointment_categories').select("*").order("order_index");
         setAppointmentCategories(data || []);
@@ -476,43 +481,136 @@ export default function Administration() {
     saveTemplateItems(updated);
   };
 
-  const ConfigTable = ({ title, items, type }: { title: string, items: ConfigItem[], type: string }) => (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle>{title}</CardTitle>
-          <Button 
-            onClick={() => setNewItem({ type, value: '' })}
-            disabled={!!newItem || !!editingItem}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Hinzufügen
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Bezeichnung</TableHead>
-              <TableHead className="text-right">Aktionen</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  {editingItem?.type === type && editingItem?.id === item.id ? (
+  const ConfigTable = ({ title, items, type }: { title: string, items: ConfigItem[], type: string }) => {
+    const showColorColumn = type === 'appointment_categories';
+    
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>{title}</CardTitle>
+            <Button 
+              onClick={() => setNewItem({ type, value: '', color: showColorColumn ? '#3b82f6' : undefined })}
+              disabled={!!newItem || !!editingItem}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Hinzufügen
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Bezeichnung</TableHead>
+                {showColorColumn && <TableHead>Farbe</TableHead>}
+                <TableHead className="text-right">Aktionen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    {editingItem?.type === type && editingItem?.id === item.id ? (
+                      <div className="flex gap-2">
+                        <Input
+                          value={editingItem.value}
+                          onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                          className="flex-1"
+                        />
+                        {showColorColumn && (
+                          <input
+                            type="color"
+                            value={editingItem.color || item.color || '#3b82f6'}
+                            onChange={(e) => setEditingItem({ ...editingItem, color: e.target.value })}
+                            className="w-12 h-9 rounded border border-input cursor-pointer"
+                          />
+                        )}
+                        <Button 
+                          size="sm" 
+                          onClick={() => saveConfigItem(type, item.id, editingItem.value, editingItem.color)}
+                          className="gap-1"
+                        >
+                          <Save className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => setEditingItem(null)}
+                          className="gap-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {showColorColumn && (
+                          <div 
+                            className="w-4 h-4 rounded border border-border"
+                            style={{ backgroundColor: item.color || '#3b82f6' }}
+                          />
+                        )}
+                        <span>{item.label}</span>
+                      </div>
+                    )}
+                  </TableCell>
+                  {showColorColumn && !editingItem && (
+                    <TableCell>
+                      <div 
+                        className="w-8 h-6 rounded border border-border"
+                        style={{ backgroundColor: item.color || '#3b82f6' }}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell className="text-right">
+                    {!(editingItem?.type === type && editingItem?.id === item.id) && (
+                      <div className="flex gap-2 justify-end">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setEditingItem({ type, id: item.id, value: item.label, color: item.color })}
+                          disabled={!!editingItem || !!newItem}
+                          className="gap-1"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => deleteConfigItem(type, item.id)}
+                          disabled={!!editingItem || !!newItem}
+                          className="gap-1"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {newItem?.type === type && (
+                <TableRow>
+                  <TableCell>
                     <div className="flex gap-2">
                       <Input
-                        value={editingItem.value}
-                        onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                        value={newItem.value}
+                        onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
+                        placeholder="Neue Bezeichnung eingeben..."
                         className="flex-1"
                       />
+                      {showColorColumn && (
+                        <input
+                          type="color"
+                          value={newItem.color || '#3b82f6'}
+                          onChange={(e) => setNewItem({ ...newItem, color: e.target.value })}
+                          className="w-12 h-9 rounded border border-input cursor-pointer"
+                        />
+                      )}
                       <Button 
                         size="sm" 
-                        onClick={() => saveConfigItem(type, item.id, editingItem.value)}
+                        onClick={() => addConfigItem(type, newItem.value, newItem.color)}
+                        disabled={!newItem.value.trim()}
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />
@@ -520,78 +618,23 @@ export default function Administration() {
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        onClick={() => setEditingItem(null)}
+                        onClick={() => setNewItem(null)}
                         className="gap-1"
                       >
                         <X className="h-3 w-3" />
                       </Button>
                     </div>
-                  ) : (
-                    item.label
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  {!(editingItem?.type === type && editingItem?.id === item.id) && (
-                    <div className="flex gap-2 justify-end">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => setEditingItem({ type, id: item.id, value: item.label })}
-                        disabled={!!editingItem || !!newItem}
-                        className="gap-1"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive"
-                        onClick={() => deleteConfigItem(type, item.id)}
-                        disabled={!!editingItem || !!newItem}
-                        className="gap-1"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {newItem?.type === type && (
-              <TableRow>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newItem.value}
-                      onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
-                      placeholder="Neue Bezeichnung eingeben..."
-                      className="flex-1"
-                    />
-                    <Button 
-                      size="sm" 
-                      onClick={() => addConfigItem(type, newItem.value)}
-                      disabled={!newItem.value.trim()}
-                      className="gap-1"
-                    >
-                      <Save className="h-3 w-3" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => setNewItem(null)}
-                      className="gap-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </TableCell>
-                <TableCell></TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
+                  </TableCell>
+                  {showColorColumn && <TableCell></TableCell>}
+                  <TableCell></TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (loading) return null;
 

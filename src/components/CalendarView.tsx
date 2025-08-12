@@ -25,6 +25,7 @@ export interface CalendarEvent {
   }>;
   type: "meeting" | "appointment" | "deadline" | "session" | "blocked";
   priority: "low" | "medium" | "high";
+  category_color?: string;
 }
 
 export function CalendarView() {
@@ -55,7 +56,12 @@ export function CalendarView() {
       // Fetch regular appointments for the entire week
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
-        .select('*')
+        .select(`
+          *,
+          appointment_categories (
+            color
+          )
+        `)
         .gte('start_time', weekStart.toISOString())
         .lte('start_time', weekEnd.toISOString())
         .order('start_time', { ascending: true });
@@ -85,7 +91,12 @@ export function CalendarView() {
       // Fetch regular appointments
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
-        .select('*')
+        .select(`
+          *,
+          appointment_categories (
+            color
+          )
+        `)
         .gte('start_time', startOfDay.toISOString())
         .lte('start_time', endOfDay.toISOString())
         .order('start_time', { ascending: true });
@@ -183,7 +194,8 @@ export function CalendarView() {
         type: appointment.category as CalendarEvent["type"] || "meeting",
         priority: appointment.priority as CalendarEvent["priority"] || "medium",
         participants,
-        attendees: participants.length
+        attendees: participants.length,
+        category_color: appointment.appointment_categories?.color
       });
     }
 
