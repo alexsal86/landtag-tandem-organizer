@@ -96,8 +96,14 @@ export function TaskDetailSidebar({
 
   const loadTaskDocuments = async (taskId: string) => {
     try {
-      // Temporärer Platzhalter - verwende eine einfache Abfrage bis die Typen aktualisiert sind
-      setTaskDocuments([]);
+      const { data, error } = await supabase
+        .from('task_documents')
+        .select('*')
+        .eq('task_id', taskId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTaskDocuments(data || []);
     } catch (error) {
       console.error('Error loading task documents:', error);
     }
@@ -304,19 +310,19 @@ export function TaskDetailSidebar({
 
       if (uploadError) throw uploadError;
 
-      // Add to database (once types are available this will work)
-      // const { error: dbError } = await supabase
-      //   .from('task_documents')
-      //   .insert({
-      //     task_id: task.id,
-      //     user_id: user.id,
-      //     file_name: file.name,
-      //     file_path: filePath,
-      //     file_size: file.size,
-      //     file_type: file.type,
-      //   });
+      // Add to database
+      const { error: dbError } = await supabase
+        .from('task_documents')
+        .insert({
+          task_id: task.id,
+          user_id: user.id,
+          file_name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+          file_type: file.type,
+        });
 
-      // if (dbError) throw dbError;
+      if (dbError) throw dbError;
 
       loadTaskDocuments(task.id);
       
@@ -347,13 +353,13 @@ export function TaskDetailSidebar({
 
       if (storageError) throw storageError;
 
-      // Delete from database (once types are available)
-      // const { error: dbError } = await supabase
-      //   .from('task_documents')
-      //   .delete()
-       //   .eq('id', doc.id);
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('task_documents')
+        .delete()
+        .eq('id', doc.id);
 
-       // if (dbError) throw dbError;
+      if (dbError) throw dbError;
 
       loadTaskDocuments(task!.id);
       
