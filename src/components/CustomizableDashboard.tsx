@@ -238,24 +238,51 @@ export function CustomizableDashboard() {
 
       {/* Dashboard Content */}
       <div className="space-y-6">
-        {currentLayout.widgets.map((widget, index) => (
-          <div
-            key={widget.id}
-            draggable={isEditMode}
-            onDragStart={(e) => handleDragStart(e, widget.id)}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, index)}
-            className={`transition-transform ${
-              draggedWidget === widget.id ? 'opacity-50' : ''
-            }`}
-          >
-            <DashboardWidget
-              widget={widget}
-              isDragging={draggedWidget === widget.id}
-              isEditMode={isEditMode}
-            />
-          </div>
-        ))}
+        {/* Top Row - Stats and Messages side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {currentLayout.widgets
+            .filter(widget => widget.type === 'stats' || widget.type === 'messages')
+            .map((widget, index) => (
+              <div
+                key={widget.id}
+                draggable={isEditMode}
+                onDragStart={(e) => handleDragStart(e, widget.id)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, index)}
+                className={`transition-transform ${
+                  draggedWidget === widget.id ? 'opacity-50' : ''
+                }`}
+              >
+                <DashboardWidget
+                  widget={widget}
+                  isDragging={draggedWidget === widget.id}
+                  isEditMode={isEditMode}
+                />
+              </div>
+            ))}
+        </div>
+        
+        {/* Other Widgets */}
+        {currentLayout.widgets
+          .filter(widget => widget.type !== 'stats' && widget.type !== 'messages')
+          .map((widget, index) => (
+            <div
+              key={widget.id}
+              draggable={isEditMode}
+              onDragStart={(e) => handleDragStart(e, widget.id)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, index)}
+              className={`transition-transform ${
+                draggedWidget === widget.id ? 'opacity-50' : ''
+              }`}
+            >
+              <DashboardWidget
+                widget={widget}
+                isDragging={draggedWidget === widget.id}
+                isEditMode={isEditMode}
+              />
+            </div>
+          ))}
       </div>
 
       {isEditMode && (
