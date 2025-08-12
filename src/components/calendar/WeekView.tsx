@@ -34,6 +34,59 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
     });
   };
 
+  // Helper function to check if two events overlap
+  const eventsOverlap = (event1: CalendarEvent, event2: CalendarEvent): boolean => {
+    const getEventTimes = (event: CalendarEvent) => {
+      const [hours, minutes] = event.time.split(':').map(Number);
+      const startMinutes = hours * 60 + minutes;
+      const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+      const endMinutes = startMinutes + durationMinutes;
+      return { start: startMinutes, end: endMinutes };
+    };
+
+    const times1 = getEventTimes(event1);
+    const times2 = getEventTimes(event2);
+
+    return times1.start < times2.end && times2.start < times1.end;
+  };
+
+  // Helper function to get layout for overlapping events
+  const getEventLayout = (hourEvents: CalendarEvent[]) => {
+    const layout: Array<{ event: CalendarEvent; column: number; totalColumns: number }> = [];
+    const groups: CalendarEvent[][] = [];
+
+    // Group overlapping events
+    hourEvents.forEach(event => {
+      let addedToGroup = false;
+      
+      for (const group of groups) {
+        if (group.some(groupEvent => eventsOverlap(event, groupEvent))) {
+          group.push(event);
+          addedToGroup = true;
+          break;
+        }
+      }
+      
+      if (!addedToGroup) {
+        groups.push([event]);
+      }
+    });
+
+    // Create layout information
+    groups.forEach(group => {
+      const totalColumns = group.length;
+      group.forEach((event, index) => {
+        layout.push({
+          event,
+          column: index,
+          totalColumns
+        });
+      });
+    });
+
+    return layout;
+  };
+
   const getEventTypeColor = (type: CalendarEvent["type"]) => {
     switch (type) {
       case "session":
@@ -85,37 +138,49 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                 {hour.toString().padStart(2, '0')}:00
               </div>
               
-              {/* Day columns for this hour */}
-              {days.map((day) => {
-                const dayEvents = getEventsForDay(day).filter(event => parseInt(event.time.split(':')[0]) === hour);
-                return (
-                  <div 
-                    key={`${day.toDateString()}-${hour}`} 
-                    className="min-h-[60px] p-1 border-b border-l border-border relative hover:bg-accent/20 overflow-hidden"
-                  >
-                    {dayEvents.map((event, index) => (
-                      <div
-                        key={event.id}
-                        className={`p-1 rounded text-xs mb-1 border-l-2 w-full max-w-full cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event.type)}`}
-                        onClick={() => onAppointmentClick?.(event)}
-                      >
-                        <div className="font-medium truncate w-full">{event.title}</div>
-                        <div className="opacity-80 truncate w-full">
-                          {(() => {
-                            const [hours, minutes] = event.time.split(':').map(Number);
-                            const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-                            const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
-                            const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
-                            const durationHours = (durationMinutes / 60).toFixed(1);
-                            
-                            return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')} (${durationHours}h)`;
-                          })()}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
+               {/* Day columns for this hour */}
+               {days.map((day) => {
+                 const dayEvents = getEventsForDay(day).filter(event => parseInt(event.time.split(':')[0]) === hour);
+                 const eventLayout = getEventLayout(dayEvents);
+                 
+                 return (
+                   <div 
+                     key={`${day.toDateString()}-${hour}`} 
+                     className="min-h-[60px] p-1 border-b border-l border-border relative hover:bg-accent/20 overflow-hidden"
+                   >
+                     {eventLayout.map(({ event, column, totalColumns }) => {
+                       const widthPercentage = 100 / totalColumns;
+                       const leftOffset = (widthPercentage * column);
+                       
+                       return (
+                         <div
+                           key={event.id}
+                           className={`absolute p-1 rounded text-xs border-l-2 cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event.type)}`}
+                           style={{ 
+                             width: `${widthPercentage - 1}%`,
+                             left: `${leftOffset}%`,
+                             marginBottom: '4px'
+                           }}
+                           onClick={() => onAppointmentClick?.(event)}
+                         >
+                           <div className="font-medium truncate w-full">{event.title}</div>
+                           <div className="opacity-80 truncate w-full">
+                             {(() => {
+                               const [hours, minutes] = event.time.split(':').map(Number);
+                               const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+                               const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
+                               const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
+                               const durationHours = (durationMinutes / 60).toFixed(1);
+                               
+                               return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')} (${durationHours}h)`;
+                             })()}
+                           </div>
+                         </div>
+                       );
+                     })}
+                   </div>
+                 );
+               })}
             </>
           ))}
         </div>
