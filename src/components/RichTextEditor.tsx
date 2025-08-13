@@ -51,24 +51,14 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       // Handle lists
       .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
       .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
-      // Handle checkboxes with clean HTML
-      .replace(/^☑ (.*)$/gm, (match, text) => {
-        // Clean the text from any HTML artifacts
-        const cleanText = text.replace(/<!--.*?-->/g, '').trim();
-        return `<div class="todo-item"><input type="checkbox" checked style="margin-right: 8px;"><span style="text-decoration: line-through;">${cleanText}</span></div>`;
-      })
-      .replace(/^☐ (.*)$/gm, (match, text) => {
-        // Clean the text from any HTML artifacts
-        const cleanText = text.replace(/<!--.*?-->/g, '').trim();
-        return `<div class="todo-item"><input type="checkbox" style="margin-right: 8px;"><span>${cleanText}</span></div>`;
-      })
+      // Handle todo lists - ensure clean conversion
+      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item"><input type="checkbox" checked data-todo-text="$1"><span class="todo-text">$1</span></div>')
+      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item"><input type="checkbox" data-todo-text="$1"><span class="todo-text">$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>')
       // Merge consecutive list items
       .replace(/<\/ul><br><ul>/g, '')
-      .replace(/<\/ol><br><ol>/g, '')
-      // Clean up any remaining artifacts
-      .replace(/<!--.*?-->/g, '');
+      .replace(/<\/ol><br><ol>/g, '');
     console.log('convertToHtml output:', result);
     return result;
   };
@@ -98,14 +88,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         let counter = 1;
         return content.replace(/<li[^>]*>(.*?)<\/li>/gi, (li, text) => `${counter++}. ${text}\n`).trim();
       })
-      // Handle todo checkboxes properly - clean conversion
-      .replace(/<div[^>]*class="todo-item"[^>]*><input[^>]*type="checkbox"[^>]*checked[^>]*\/?>([^<]*)<span[^>]*style="text-decoration: line-through;"[^>]*>(.*?)<\/span><\/div>/gi, '☑ $2')
-      .replace(/<div[^>]*class="todo-item"[^>]*><input[^>]*type="checkbox"[^>]*\/?>([^<]*)<span[^>]*>(.*?)<\/span><\/div>/gi, '☐ $2')
-      // Fallback for simpler checkbox patterns
-      .replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*\/?>([^<]*)/gi, '☑ $1')
-      .replace(/<input[^>]*type="checkbox"[^>]*\/?>([^<]*)/gi, '☐ $1')
-      .replace(/<span[^>]*style="color: #888; font-style: italic;"[^>]*>(.*?)<\/span>/gi, '<!-- $1 -->')
-      .replace(/<span[^>]*>(.*?)<\/span>/gi, '$1')
+      // Handle todo checkboxes with proper structure detection
+      .replace(/<div[^>]*class="todo-item"[^>]*>.*?<input[^>]*type="checkbox"[^>]*checked[^>]*>.*?<span[^>]*class="todo-text"[^>]*>(.*?)<\/span>.*?<\/div>/gis, '☑ $1')
+      .replace(/<div[^>]*class="todo-item"[^>]*>.*?<input[^>]*type="checkbox"[^>]*>.*?<span[^>]*class="todo-text"[^>]*>(.*?)<\/span>.*?<\/div>/gis, '☐ $1')
+      // Clean up any nested spans and formatting artifacts
+      .replace(/<span[^>]*style="color:\s*#888;\s*font-style:\s*italic;"[^>]*>(.*?)<\/span>/gi, '$1')
+      .replace(/<!--\s*(.*?)\s*-->/g, '$1')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<div[^>]*>/gi, '\n')
       .replace(/<\/div>/gi, '')
@@ -153,10 +141,20 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         editorRef.current.innerHTML = html;
         
         // Re-attach event listeners to checkboxes after setting HTML
-        const checkboxes = editorRef.current.querySelectorAll('input[type="checkbox"]');
+        const checkboxes = editorRef.current.querySelectorAll('.todo-item input[type="checkbox"]');
         checkboxes.forEach((checkbox, index) => {
-          (checkbox as HTMLInputElement).onclick = function(this: HTMLInputElement) {
-            const span = this.nextSibling as HTMLSpanElement;
+          const input = checkbox as HTMLInputElement;
+          const todoText = input.getAttribute('data-todo-text') || '';
+          const span = input.nextElementSibling as HTMLSpanElement;
+          
+          // Set initial style based on checked state
+          if (span) {
+            span.style.marginLeft = '8px';
+            span.style.textDecoration = input.checked ? 'line-through' : 'none';
+          }
+          
+          input.onclick = function(this: HTMLInputElement) {
+            const span = this.nextElementSibling as HTMLSpanElement;
             if (span) {
               span.style.textDecoration = this.checked ? 'line-through' : 'none';
             }
@@ -164,6 +162,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
             if (onCheckboxChange) {
               onCheckboxChange(index, this.checked);
             }
+            // Update content immediately
+            setTimeout(() => handleInput(), 0);
           };
         });
         
@@ -545,21 +545,27 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         wrapper.className = 'todo-item';
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.style.marginRight = '8px';
+        checkbox.setAttribute('data-todo-text', selectedText || 'Todo item');
+        const span = document.createElement('span');
+        span.className = 'todo-text';
+        span.style.marginLeft = '8px';
+        span.textContent = selectedText || 'Todo item';
+        
         checkbox.onclick = function(this: HTMLInputElement) {
-          const span = this.nextSibling as HTMLSpanElement;
+          const span = this.nextElementSibling as HTMLSpanElement;
           if (span) {
             span.style.textDecoration = this.checked ? 'line-through' : 'none';
           }
           // Broadcast checkbox change
-          const checkboxes = editorRef.current?.querySelectorAll('input[type="checkbox"]');
+          const checkboxes = editorRef.current?.querySelectorAll('.todo-item input[type="checkbox"]');
           if (checkboxes && onCheckboxChange) {
             const index = Array.from(checkboxes).indexOf(this);
             onCheckboxChange(index, this.checked);
           }
+          // Update content immediately
+          setTimeout(() => handleInput(), 0);
         };
-        const span = document.createElement('span');
-        span.textContent = selectedText || 'Todo item';
+        
         wrapper.appendChild(checkbox);
         wrapper.appendChild(span);
         needsSelection = false;
@@ -626,12 +632,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   const updateCheckboxState = (checkboxIndex: number, checked: boolean) => {
     if (!editorRef.current) return;
     
-    const checkboxes = editorRef.current.querySelectorAll('input[type="checkbox"]');
+    const checkboxes = editorRef.current.querySelectorAll('.todo-item input[type="checkbox"]');
     const targetCheckbox = checkboxes[checkboxIndex] as HTMLInputElement;
     
     if (targetCheckbox) {
       targetCheckbox.checked = checked;
-      const span = targetCheckbox.nextSibling as HTMLSpanElement;
+      const span = targetCheckbox.nextElementSibling as HTMLSpanElement;
       if (span) {
         span.style.textDecoration = checked ? 'line-through' : 'none';
       }
@@ -646,29 +652,47 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   }));
 
   return (
-    <div
-      ref={editorRef}
-      contentEditable={!disabled}
-      className={cn(
-        "min-h-96 border-none px-0 focus-visible:outline-none bg-transparent resize-none text-base leading-relaxed",
-        "prose prose-sm max-w-none",
-        disabled && "opacity-50 cursor-not-allowed",
-        className
-      )}
-      style={{
-        whiteSpace: 'pre-wrap',
-        wordWrap: 'break-word'
-      }}
-      onInput={handleInput}
-      onMouseUp={handleSelectionChange}
-      onKeyUp={handleSelectionChange}
-      onPaste={handlePaste}
-      onCompositionStart={() => setIsComposing(true)}
-      onCompositionEnd={() => setIsComposing(false)}
-      onKeyDown={handleKeyDown}
-      data-placeholder={placeholder}
-      suppressContentEditableWarning={true}
-    />
+    <div>
+      <style>{`
+        .todo-item {
+          display: flex;
+          align-items: flex-start;
+          margin: 4px 0;
+        }
+        .todo-item input[type="checkbox"] {
+          margin: 0 8px 0 0;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .todo-text {
+          flex: 1;
+          min-height: 1.2em;
+        }
+      `}</style>
+      <div
+        ref={editorRef}
+        contentEditable={!disabled}
+        className={cn(
+          "min-h-96 border-none px-0 focus-visible:outline-none bg-transparent resize-none text-base leading-relaxed",
+          "prose prose-sm max-w-none",
+          disabled && "opacity-50 cursor-not-allowed",
+          className
+        )}
+        style={{
+          whiteSpace: 'pre-wrap',
+          wordWrap: 'break-word'
+        }}
+        onInput={handleInput}
+        onMouseUp={handleSelectionChange}
+        onKeyUp={handleSelectionChange}
+        onPaste={handlePaste}
+        onCompositionStart={() => setIsComposing(true)}
+        onCompositionEnd={() => setIsComposing(false)}
+        onKeyDown={handleKeyDown}
+        data-placeholder={placeholder}
+        suppressContentEditableWarning={true}
+      />
+    </div>
   );
 });
 
