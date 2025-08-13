@@ -55,72 +55,79 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   // Update editor content when value changes
   useEffect(() => {
-    if (!editorRef.current || isComposing) return;
+    if (!editorRef.current || isComposing || isUpdatingRef.current) return;
     
     const currentContent = editorRef.current.innerText;
     const newContent = value;
     
-    // Only update if content actually changed to prevent cursor jumps
+    // Only update if content actually changed and it's not our own input
     if (currentContent !== newContent) {
-      console.log('RichTextEditor: Content update needed', { currentContent, newContent });
-      console.log('RichTextEditor: This is likely a remote update');
+      console.log('RichTextEditor: External content update needed', { currentContent, newContent });
       
       // Set flag to prevent onChange loop
       isUpdatingRef.current = true;
       
-      // Save current cursor position
+      // Store current selection details
       const selection = window.getSelection();
-      let cursorPosition = 0;
-      let cursorNode: Node | null = null;
+      let savedSelection: { node: Node | null; offset: number; } | null = null;
       
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        cursorPosition = range.startOffset;
-        cursorNode = range.startContainer;
-        console.log('RichTextEditor: Saved cursor position', cursorPosition);
+        savedSelection = {
+          node: range.startContainer,
+          offset: range.startOffset
+        };
       }
       
-      // Update content without triggering onChange
+      // Update content
       const newHtml = convertToHtml(newContent);
       editorRef.current.innerHTML = newHtml;
       
-      // Restore cursor position
-      if (selection && cursorNode) {
+      // Restore cursor position only if we have a valid saved selection
+      if (savedSelection && savedSelection.node) {
         try {
           const newRange = document.createRange();
-          // Try to find equivalent position in new content
+          
+          // Find a suitable text node to place cursor
           const walker = document.createTreeWalker(
             editorRef.current,
             NodeFilter.SHOW_TEXT,
             null
           );
           
-          let currentNode = walker.nextNode();
-          let currentPos = 0;
+          let targetNode = walker.nextNode();
+          let targetOffset = 0;
           
-          while (currentNode && currentPos + currentNode.textContent!.length < cursorPosition) {
-            currentPos += currentNode.textContent!.length;
-            currentNode = walker.nextNode();
+          // Try to find the closest position in the new content
+          if (targetNode && targetNode.textContent) {
+            targetOffset = Math.min(savedSelection.offset, targetNode.textContent.length);
           }
           
-          if (currentNode) {
-            const offsetInNode = cursorPosition - currentPos;
-            const safeOffset = Math.min(offsetInNode, currentNode.textContent?.length || 0);
-            newRange.setStart(currentNode, safeOffset);
+          if (targetNode) {
+            newRange.setStart(targetNode, targetOffset);
             newRange.collapse(true);
             selection.removeAllRanges();
             selection.addRange(newRange);
-            console.log('RichTextEditor: Restored cursor position', safeOffset);
           }
         } catch (e) {
-          console.log('RichTextEditor: Could not restore cursor position', e);
+          console.log('RichTextEditor: Could not restore cursor, placing at end');
+          // Fallback: place cursor at end
+          try {
+            const range = document.createRange();
+            range.selectNodeContents(editorRef.current);
+            range.collapse(false);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+          } catch (fallbackError) {
+            // If all else fails, just leave the cursor where it is
+          }
         }
       }
       
-      // Reset flag after update completes
+      // Reset flag after DOM update completes
       setTimeout(() => {
         isUpdatingRef.current = false;
-      }, 50);
+      }, 10);
     }
   }, [value, isComposing]);
 
