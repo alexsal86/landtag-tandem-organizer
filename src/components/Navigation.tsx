@@ -1,4 +1,4 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, ShieldCheck, Clock, CalendarPlus, Shield } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,7 +60,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "meetings", label: "Jour fixe", icon: MessageSquare },
     { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
     { id: "documents", label: "Dokumente", icon: FileText },
-    { id: "knowledge", label: "Wissen", icon: ShieldCheck },
+    { id: "knowledge", label: "Wissen", icon: Database },
     { id: "settings", label: "Einstellungen", icon: Settings },
     { id: "time", label: "Zeiterfassung", icon: Clock, adminOnly: false },
     { id: "employee", label: "Mitarbeiter", icon: Users },
