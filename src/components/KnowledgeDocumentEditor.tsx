@@ -58,6 +58,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   const broadcastTimeoutRef = useRef<NodeJS.Timeout>();
   const isUpdatingFromRemoteRef = useRef(false);
   const lastLocalUpdateRef = useRef<string>('');
+  const lastUpdateRef = useRef<string>('');
 
   const categories = [
     { value: 'general', label: 'Allgemein' },
@@ -228,8 +229,12 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         const { user_id, checkboxIndex, checked } = payload.payload;
         if (user_id !== user.id && richTextEditorRef.current) {
           console.log('KnowledgeDocumentEditor: Updating checkbox state for other user', { checkboxIndex, checked });
-          // Update checkbox state immediately
-          richTextEditorRef.current.updateCheckboxState(checkboxIndex, checked);
+          // Add debouncing to prevent rapid fire updates
+          const updateId = `${checkboxIndex}-${checked}`;
+          if (lastUpdateRef.current !== updateId) {
+            lastUpdateRef.current = updateId;
+            richTextEditorRef.current.updateCheckboxState(checkboxIndex, checked);
+          }
         }
       })
       .subscribe(async (status) => {

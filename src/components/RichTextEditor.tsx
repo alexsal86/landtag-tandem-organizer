@@ -323,11 +323,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       onCheckboxChange(todoIndex, newChecked);
     }
     
-    // Force immediate save but don't re-setup handlers unless needed
-    setTimeout(() => {
-      console.log('RichTextEditor: Forcing save after todo click');
-      handleInput();
-    }, 10);
+    // Only save if this is not a remote update to avoid feedback loops
+    if (!isUpdatingFromRemote.current) {
+      setTimeout(() => {
+        console.log('RichTextEditor: Forcing save after todo click');
+        handleInput();
+      }, 10);
+    }
   };
 
   const handleSelectionChange = () => {
