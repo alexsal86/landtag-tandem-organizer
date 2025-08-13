@@ -172,10 +172,18 @@ All colors MUST be HSL.
 
   .prose .todo-checkbox.checked {
     @apply border-primary bg-primary text-primary-foreground;
+    /* Ensure visibility in both themes */
+    border-color: hsl(var(--primary)) !important;
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
   }
 
   .prose .todo-checkbox.empty {
     @apply border-muted-foreground bg-transparent;
+    /* Ensure visibility in both themes */
+    border-color: hsl(var(--muted-foreground)) !important;
+    background-color: transparent !important;
+    color: hsl(var(--foreground)) !important;
   }
 
   .prose .todo-text {
