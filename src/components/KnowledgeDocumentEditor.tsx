@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import FloatingTextToolbar from './FloatingTextToolbar';
 
 interface KnowledgeDocument {
   id: string;
@@ -43,6 +44,8 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [activeUsers, setActiveUsers] = useState<string[]>([]);
   const [userCursors, setUserCursors] = useState<Record<string, { position: number; name: string }>>({});
+  const [selectedText, setSelectedText] = useState('');
+  const [showToolbar, setShowToolbar] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -258,6 +261,74 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     };
   };
 
+  // Handle text selection for floating toolbar
+  const handleTextSelection = () => {
+    if (!textareaRef.current || !canEdit) return;
+    
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = textarea.value.substring(start, end);
+    
+    setSelectedText(selected);
+    setShowToolbar(selected.length > 0);
+  };
+
+  // Format selected text
+  const handleFormatText = (format: string) => {
+    if (!textareaRef.current || !selectedText) return;
+    
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const content = editedDoc.content;
+    
+    let formattedText = selectedText;
+    
+    switch (format) {
+      case 'bold':
+        formattedText = `**${selectedText}**`;
+        break;
+      case 'italic':
+        formattedText = `*${selectedText}*`;
+        break;
+      case 'underline':
+        formattedText = `<u>${selectedText}</u>`;
+        break;
+      case 'strikethrough':
+        formattedText = `~~${selectedText}~~`;
+        break;
+      case 'link':
+        const url = prompt('Link-URL eingeben:');
+        if (url) formattedText = `[${selectedText}](${url})`;
+        break;
+      case 'heading':
+        formattedText = `## ${selectedText}`;
+        break;
+      case 'comment':
+        formattedText = `<!-- ${selectedText} -->`;
+        break;
+      default:
+        return;
+    }
+    
+    const newContent = content.substring(0, start) + formattedText + content.substring(end);
+    setEditedDoc(prev => ({ ...prev, content: newContent }));
+    broadcastContentChange('content', newContent);
+    
+    // Hide toolbar and clear selection
+    setShowToolbar(false);
+    setSelectedText('');
+    
+    // Focus back to textarea
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(start + formattedText.length, start + formattedText.length);
+      }
+    }, 0);
+  };
+
   // Broadcast content changes to other users
   const broadcastContentChange = async (field: string, value: any) => {
     if (!user) return;
@@ -458,9 +529,16 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
                 setEditedDoc(prev => ({ ...prev, content: newContent }));
                 broadcastContentChange('content', newContent);
               }}
-              onSelect={handleCursorChange}
+              onSelect={(e) => {
+                handleCursorChange();
+                handleTextSelection();
+              }}
               onKeyUp={handleCursorChange}
-              onClick={handleCursorChange}
+              onClick={(e) => {
+                handleCursorChange();
+                handleTextSelection();
+              }}
+              onMouseUp={handleTextSelection}
               className="min-h-96 border-none px-0 focus-visible:ring-0 bg-transparent resize-none text-base leading-relaxed"
               placeholder="Beginnen Sie zu schreiben..."
               disabled={!canEdit}
@@ -489,6 +567,14 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Floating Text Toolbar */}
+      <FloatingTextToolbar
+        textareaRef={textareaRef}
+        onFormatText={handleFormatText}
+        isVisible={showToolbar}
+        selectedText={selectedText}
+      />
 
       {/* Footer */}
       {canEdit && (
