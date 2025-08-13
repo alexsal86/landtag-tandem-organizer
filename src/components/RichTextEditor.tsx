@@ -88,10 +88,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         let counter = 1;
         return content.replace(/<li[^>]*>(.*?)<\/li>/gi, (li, text) => `${counter++}. ${text}\n`).trim();
       })
-      // Handle todo checkboxes with proper structure detection
+      // Handle both new and old checkbox structures
       .replace(/<div[^>]*class="todo-item"[^>]*>.*?<input[^>]*type="checkbox"[^>]*checked[^>]*>.*?<span[^>]*class="todo-text"[^>]*>(.*?)<\/span>.*?<\/div>/gis, '☑ $1')
       .replace(/<div[^>]*class="todo-item"[^>]*>.*?<input[^>]*type="checkbox"[^>]*>.*?<span[^>]*class="todo-text"[^>]*>(.*?)<\/span>.*?<\/div>/gis, '☐ $1')
-      // Clean up any nested spans and formatting artifacts
+      // Handle old checkbox structures  
+      .replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*[^>]*>[\s]*<span[^>]*style="[^"]*text-decoration:\s*line-through[^"]*"[^>]*>(.*?)<\/span>/gi, '☑ $1')
+      .replace(/<input[^>]*type="checkbox"[^>]*>[\s]*<span[^>]*>(.*?)<\/span>/gi, '☐ $1')
+      // Clean up any remaining artifacts
       .replace(/<span[^>]*style="color:\s*#888;\s*font-style:\s*italic;"[^>]*>(.*?)<\/span>/gi, '$1')
       .replace(/<!--\s*(.*?)\s*-->/g, '$1')
       .replace(/<br\s*\/?>/gi, '\n')
@@ -140,14 +143,57 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         console.log('RichTextEditor: Converting markdown to HTML', { markdown: value, html });
         editorRef.current.innerHTML = html;
         
-        // Re-attach event listeners to checkboxes after setting HTML
-        const checkboxes = editorRef.current.querySelectorAll('.todo-item input[type="checkbox"]');
-        checkboxes.forEach((checkbox, index) => {
+        // Re-attach event listeners to ALL checkboxes after setting HTML
+        const allCheckboxes = editorRef.current.querySelectorAll('input[type="checkbox"]');
+        console.log('RichTextEditor: Found total checkboxes after HTML update:', allCheckboxes.length);
+        
+        allCheckboxes.forEach((checkbox, index) => {
           const input = checkbox as HTMLInputElement;
-          const todoText = input.getAttribute('data-todo-text') || '';
-          const span = input.nextElementSibling as HTMLSpanElement;
           
-          // Set initial style based on checked state
+          // Standardize checkbox structure
+          const parentDiv = input.closest('.todo-item');
+          if (!parentDiv) {
+            // Convert old structure to new structure
+            const nextElement = input.nextElementSibling;
+            if (nextElement && nextElement.tagName === 'SPAN') {
+              const span = nextElement as HTMLSpanElement;
+              const text = span.textContent || '';
+              const isChecked = input.checked;
+              
+              // Create new todo-item structure
+              const newTodoItem = document.createElement('div');
+              newTodoItem.className = 'todo-item';
+              
+              const newCheckbox = document.createElement('input');
+              newCheckbox.type = 'checkbox';
+              newCheckbox.checked = isChecked;
+              newCheckbox.setAttribute('data-todo-text', text);
+              
+              const newSpan = document.createElement('span');
+              newSpan.className = 'todo-text';
+              newSpan.style.marginLeft = '8px';
+              newSpan.textContent = text;
+              newSpan.style.textDecoration = isChecked ? 'line-through' : 'none';
+              
+              newTodoItem.appendChild(newCheckbox);
+              newTodoItem.appendChild(newSpan);
+              
+              // Replace old structure
+              input.parentNode?.insertBefore(newTodoItem, input);
+              input.remove();
+              span.remove();
+              
+              // Set up new checkbox
+              setupCheckboxHandler(newCheckbox, index);
+            }
+          } else {
+            // Setup existing todo-item checkbox
+            setupCheckboxHandler(input, index);
+          }
+        });
+        
+        function setupCheckboxHandler(input: HTMLInputElement, index: number) {
+          const span = input.nextElementSibling as HTMLSpanElement;
           if (span) {
             span.style.marginLeft = '8px';
             span.style.textDecoration = input.checked ? 'line-through' : 'none';
@@ -168,7 +214,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
             // Update content immediately
             setTimeout(() => handleInput(), 0);
           };
-        });
+        }
         
         lastValueRef.current = value;
       } catch (error) {
@@ -562,9 +608,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
             console.log('RichTextEditor: Updated new checkbox strikethrough', { checked: this.checked });
           }
           // Broadcast checkbox change
-          const checkboxes = editorRef.current?.querySelectorAll('.todo-item input[type="checkbox"]');
-          if (checkboxes && onCheckboxChange) {
-            const index = Array.from(checkboxes).indexOf(this);
+          const allCheckboxes = editorRef.current?.querySelectorAll('input[type="checkbox"]');
+          if (allCheckboxes && onCheckboxChange) {
+            const index = Array.from(allCheckboxes).indexOf(this);
             console.log('RichTextEditor: Broadcasting new checkbox change', { index, checked: this.checked });
             onCheckboxChange(index, this.checked);
           }
@@ -642,9 +688,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       return;
     }
     
-    const checkboxes = editorRef.current.querySelectorAll('.todo-item input[type="checkbox"]');
-    console.log('RichTextEditor: Found checkboxes', { count: checkboxes.length });
-    const targetCheckbox = checkboxes[checkboxIndex] as HTMLInputElement;
+    const allCheckboxes = editorRef.current.querySelectorAll('input[type="checkbox"]');
+    console.log('RichTextEditor: Found checkboxes for update', { count: allCheckboxes.length });
+    const targetCheckbox = allCheckboxes[checkboxIndex] as HTMLInputElement;
     
     if (targetCheckbox) {
       console.log('RichTextEditor: Updating checkbox state', { checkboxIndex, checked, currentState: targetCheckbox.checked });
@@ -654,6 +700,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         span.style.textDecoration = checked ? 'line-through' : 'none';
         console.log('RichTextEditor: Updated span style', { textDecoration: span.style.textDecoration });
       }
+      // Trigger content update to save the state
+      setTimeout(() => handleInput(), 0);
     } else {
       console.log('RichTextEditor: Target checkbox not found', { checkboxIndex });
     }
