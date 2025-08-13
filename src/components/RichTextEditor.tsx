@@ -496,18 +496,26 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         if (currentElement.classList?.contains('todo-item')) {
           e.preventDefault();
           
-          // Check if current todo item is empty (only considering the text part)
+          // Check if current todo item is empty by looking at the text content
           const todoText = currentElement.querySelector('.todo-text');
-          const isEmpty = !todoText?.textContent?.trim() || todoText.innerHTML === '<br>';
+          const textContent = todoText?.textContent?.trim() || '';
+          const innerHTML = todoText?.innerHTML || '';
+          
+          // Consider it empty if no text content or only contains <br>
+          const isEmpty = textContent === '' || innerHTML === '<br>' || innerHTML === '';
+          
+          console.log('Todo item Enter pressed:', { textContent, innerHTML, isEmpty });
           
           if (isEmpty) {
-            // Remove empty todo item and exit todo list
-            currentElement.remove();
-            
-            // Create new div after the removed todo item
+            // Remove empty todo item and create normal text line
             const newDiv = document.createElement('div');
             newDiv.innerHTML = '<br>';
+            
+            // Insert the new div after the current todo item
             currentElement.parentNode?.insertBefore(newDiv, currentElement.nextSibling);
+            
+            // Remove the empty todo item
+            currentElement.remove();
             
             // Set cursor in new div
             const newRange = document.createRange();
