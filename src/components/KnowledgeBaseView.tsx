@@ -362,7 +362,46 @@ const KnowledgeBaseView = () => {
                                   )}
                                 </div>
                                 <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                                  {doc.content || 'Kein Inhalt verfügbar...'}
+                                  <span 
+                                    dangerouslySetInnerHTML={{
+                                      __html: (() => {
+                                        const content = doc.content || 'Kein Inhalt verfügbar...';
+                                        // Convert markdown to HTML for display
+                                        const htmlContent = content
+                                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                                          .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
+                                          .replace(/~~(.*?)~~/g, '<del>$1</del>')
+                                          .replace(/^### (.*$)/gm, '<strong>$1</strong>')
+                                          .replace(/^## (.*$)/gm, '<strong>$1</strong>')
+                                          .replace(/^# (.*$)/gm, '<strong>$1</strong>');
+                                        
+                                        // Remove HTML tags for length calculation
+                                        const textContent = htmlContent.replace(/<[^>]*>/g, '');
+                                        
+                                        if (textContent.length <= 100) {
+                                          return htmlContent;
+                                        }
+                                        
+                                        // Truncate to 100 characters and add ellipsis
+                                        const truncated = textContent.substring(0, 100);
+                                        const lastSpace = truncated.lastIndexOf(' ');
+                                        const cutPoint = lastSpace > 80 ? lastSpace : 100;
+                                        
+                                        // Apply formatting to truncated text
+                                        return content
+                                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                                          .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
+                                          .replace(/~~(.*?)~~/g, '<del>$1</del>')
+                                          .replace(/^### (.*$)/gm, '<strong>$1</strong>')
+                                          .replace(/^## (.*$)/gm, '<strong>$1</strong>')
+                                          .replace(/^# (.*$)/gm, '<strong>$1</strong>')
+                                          .replace(/<[^>]*>/g, '')
+                                          .substring(0, cutPoint) + '...';
+                                      })()
+                                    }}
+                                  />
                                 </p>
                                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                   <div className="flex items-center gap-1">
