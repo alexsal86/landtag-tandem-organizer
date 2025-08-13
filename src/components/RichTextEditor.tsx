@@ -67,49 +67,47 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   const convertToMarkdown = (html: string) => {
     console.log('convertToMarkdown input:', html);
     
-    // Enhanced conversion that properly detects checked state
+    // Enhanced conversion that properly detects checked state from actual DOM
     let result = html;
     
-    // First, let's handle checkboxes by actually checking the DOM for their state
-    if (editorRef.current) {
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = html;
-      
-      const todoItems = tempDiv.querySelectorAll('.todo-item');
-      todoItems.forEach((todoItem) => {
-        const checkbox = todoItem.querySelector('input[type="checkbox"]') as HTMLInputElement;
-        const span = todoItem.querySelector('.todo-text');
-        if (checkbox && span) {
-          const text = span.textContent || '';
-          const replacement = checkbox.checked ? `☑ ${text}` : `☐ ${text}`;
-          const todoHtml = todoItem.outerHTML;
-          result = result.replace(todoHtml, replacement);
-        }
-      });
-      
-      // Also check for any standalone checkboxes
-      const standaloneCheckboxes = tempDiv.querySelectorAll('input[type="checkbox"]:not(.todo-item input)');
-      standaloneCheckboxes.forEach((checkbox) => {
-        const input = checkbox as HTMLInputElement;
-        const nextElement = input.nextElementSibling;
-        if (nextElement && nextElement.tagName === 'SPAN') {
-          const span = nextElement as HTMLSpanElement;
-          const text = span.textContent || '';
-          const replacement = input.checked ? `☑ ${text}` : `☐ ${text}`;
-          
-          // Find and replace the checkbox + span pattern
-          const pattern = input.outerHTML + nextElement.outerHTML;
-          result = result.replace(pattern, replacement);
-        }
-      });
-    } else {
-      // Fallback to regex-based conversion
-      result = result
-        .replace(/<div[^>]*class="todo-item"[^>]*>.*?<input[^>]*type="checkbox"[^>]*checked[^>]*>.*?<span[^>]*class="todo-text"[^>]*>(.*?)<\/span>.*?<\/div>/gis, '☑ $1')
-        .replace(/<div[^>]*class="todo-item"[^>]*>.*?<input[^>]*type="checkbox"(?![^>]*checked)[^>]*>.*?<span[^>]*class="todo-text"[^>]*>(.*?)<\/span>.*?<\/div>/gis, '☐ $1')
-        .replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*[^>]*>[\s]*<span[^>]*style="[^"]*text-decoration:\s*line-through[^"]*"[^>]*>(.*?)<\/span>/gi, '☑ $1')
-        .replace(/<input[^>]*type="checkbox"(?![^>]*checked)[^>]*>[\s]*<span[^>]*>(.*?)<\/span>/gi, '☐ $1');
-    }
+    // Create temporary DOM to parse HTML accurately
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    // Handle todo items with accurate checked state detection
+    const todoItems = tempDiv.querySelectorAll('.todo-item');
+    console.log('convertToMarkdown: Found todo items:', todoItems.length);
+    
+    todoItems.forEach((todoItem, index) => {
+      const checkbox = todoItem.querySelector('input[type="checkbox"]') as HTMLInputElement;
+      const span = todoItem.querySelector('.todo-text, span');
+      if (checkbox && span) {
+        const text = span.textContent || '';
+        const isChecked = checkbox.checked;
+        console.log(`convertToMarkdown: Todo ${index} - text: "${text}", checked: ${isChecked}`);
+        
+        const replacement = isChecked ? `☑ ${text}` : `☐ ${text}`;
+        const todoHtml = todoItem.outerHTML;
+        result = result.replace(todoHtml, replacement);
+      }
+    });
+    
+    // Handle any remaining standalone checkboxes
+    const standaloneCheckboxes = tempDiv.querySelectorAll('input[type="checkbox"]:not(.todo-item input)');
+    standaloneCheckboxes.forEach((checkbox) => {
+      const input = checkbox as HTMLInputElement;
+      const nextElement = input.nextElementSibling;
+      if (nextElement && nextElement.tagName === 'SPAN') {
+        const span = nextElement as HTMLSpanElement;
+        const text = span.textContent || '';
+        const isChecked = input.checked;
+        const replacement = isChecked ? `☑ ${text}` : `☐ ${text}`;
+        
+        // Find and replace the checkbox + span pattern
+        const pattern = input.outerHTML + nextElement.outerHTML;
+        result = result.replace(pattern, replacement);
+      }
+    });
     
     result = result
       // Handle headings first (before other formatting)
@@ -292,11 +290,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   const handleInput = () => {
     if (!editorRef.current || disabled || isComposing) return;
     
-    const html = editorRef.current.innerHTML;
-    const markdown = convertToMarkdown(html);
+    // CRITICAL FIX: Read actual DOM state instead of innerHTML
+    const actualHtml = getActualDOMState();
+    const markdown = convertToMarkdown(actualHtml);
     
     console.log('RichTextEditor: handleInput', { 
-      html, 
+      originalHTML: editorRef.current.innerHTML,
+      actualHTML: actualHtml,
       markdown,
       innerHTML: editorRef.current.innerHTML
     });
@@ -305,7 +305,33 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     skipNextUpdateRef.current = true;
     lastValueRef.current = markdown;
     
-    onChange(markdown, html);
+    onChange(markdown, actualHtml);
+  };
+
+  // Helper function to get actual DOM state including checkbox status
+  const getActualDOMState = (): string => {
+    if (!editorRef.current) return '';
+    
+    const clone = editorRef.current.cloneNode(true) as HTMLElement;
+    
+    // Update all checkboxes in the clone to reflect their actual checked state
+    const originalCheckboxes = editorRef.current.querySelectorAll('input[type="checkbox"]');
+    const cloneCheckboxes = clone.querySelectorAll('input[type="checkbox"]');
+    
+    originalCheckboxes.forEach((originalCheckbox, index) => {
+      const original = originalCheckbox as HTMLInputElement;
+      const cloneCheckbox = cloneCheckboxes[index] as HTMLInputElement;
+      if (cloneCheckbox) {
+        cloneCheckbox.checked = original.checked;
+        // Also update the span styling to match
+        const span = cloneCheckbox.nextElementSibling as HTMLSpanElement;
+        if (span) {
+          span.style.textDecoration = original.checked ? 'line-through' : 'none';
+        }
+      }
+    });
+    
+    return clone.innerHTML;
   };
 
   const handleSelectionChange = () => {
