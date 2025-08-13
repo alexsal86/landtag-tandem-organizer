@@ -20,25 +20,23 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isVisible || !editorRef.current) return;
+    if (!isVisible || !selectedText) return;
 
     const selection = window.getSelection();
-    
     if (!selection || selection.rangeCount === 0) return;
 
-    // Calculate position based on selection
     const range = selection.getRangeAt(0);
     const rangeRect = range.getBoundingClientRect();
     
-    // Position toolbar above the selection
-    const top = rangeRect.top + window.scrollY - 60;
-    const left = rangeRect.left + window.scrollX + (rangeRect.width / 2) - 150;
+    // Position toolbar above the selection, accounting for viewport position
+    const top = rangeRect.top - 60;
+    const left = rangeRect.left + (rangeRect.width / 2) - 150;
 
     setPosition({
-      top: Math.max(window.scrollY + 10, top),
+      top: Math.max(10, top),
       left: Math.min(window.innerWidth - 300, Math.max(10, left))
     });
-  }, [isVisible, editorRef, selectedText]);
+  }, [isVisible, selectedText]);
 
   const formatButtons = [
     { icon: Bold, action: 'bold', label: 'Fett' },
