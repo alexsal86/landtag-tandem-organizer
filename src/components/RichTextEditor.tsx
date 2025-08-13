@@ -120,9 +120,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     const range = selection.getRangeAt(0);
     const selectedText = range.toString();
     
-    if (!selectedText) return;
-    
     let wrapper: HTMLElement;
+    let needsSelection = true;
     
     switch (format) {
       case 'bold':
@@ -146,7 +145,74 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         (wrapper as HTMLAnchorElement).rel = 'noopener noreferrer';
         break;
       case 'heading':
+      case 'heading1':
+        wrapper = document.createElement('h1');
+        break;
+      case 'heading2':
         wrapper = document.createElement('h2');
+        break;
+      case 'heading3':
+        wrapper = document.createElement('h3');
+        break;
+      case 'text':
+        // Convert to plain text - remove formatting
+        if (selectedText) {
+          range.deleteContents();
+          const textNode = document.createTextNode(selectedText);
+          range.insertNode(textNode);
+          setTimeout(() => handleInput(), 0);
+        }
+        return;
+      case 'bulletlist':
+        wrapper = document.createElement('ul');
+        const li = document.createElement('li');
+        li.textContent = selectedText || 'List item';
+        wrapper.appendChild(li);
+        needsSelection = false;
+        break;
+      case 'numberlist':
+        wrapper = document.createElement('ol');
+        const liNum = document.createElement('li');
+        liNum.textContent = selectedText || 'List item';
+        wrapper.appendChild(liNum);
+        needsSelection = false;
+        break;
+      case 'todolist':
+        wrapper = document.createElement('div');
+        wrapper.className = 'todo-item';
+        wrapper.innerHTML = `<input type="checkbox" style="margin-right: 8px;" /><span>${selectedText || 'Todo item'}</span>`;
+        needsSelection = false;
+        break;
+      case 'togglelist':
+        wrapper = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = selectedText || 'Toggle';
+        wrapper.appendChild(summary);
+        const content = document.createElement('div');
+        content.textContent = 'Content here...';
+        wrapper.appendChild(content);
+        needsSelection = false;
+        break;
+      case 'code':
+        wrapper = document.createElement('pre');
+        const code = document.createElement('code');
+        code.textContent = selectedText || 'Code here...';
+        wrapper.appendChild(code);
+        needsSelection = false;
+        break;
+      case 'quote':
+        wrapper = document.createElement('blockquote');
+        wrapper.style.borderLeft = '4px solid #ccc';
+        wrapper.style.paddingLeft = '16px';
+        wrapper.style.fontStyle = 'italic';
+        wrapper.textContent = selectedText || 'Quote text';
+        needsSelection = false;
+        break;
+      case 'page':
+        wrapper = document.createElement('div');
+        wrapper.style.pageBreakBefore = 'always';
+        wrapper.innerHTML = `<hr style="margin: 20px 0;" /><h1>${selectedText || 'New Page'}</h1>`;
+        needsSelection = false;
         break;
       case 'comment':
         wrapper = document.createElement('span');
@@ -158,7 +224,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     }
     
     try {
-      range.surroundContents(wrapper);
+      if (needsSelection && selectedText) {
+        range.surroundContents(wrapper);
+      } else {
+        range.deleteContents();
+        range.insertNode(wrapper);
+      }
       selection.removeAllRanges();
       
       // Trigger input event to update content
@@ -166,7 +237,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     } catch (e) {
       // Fallback: replace selection with formatted text
       range.deleteContents();
-      wrapper.textContent = selectedText;
+      if (needsSelection && selectedText) {
+        wrapper.textContent = selectedText;
+      }
       range.insertNode(wrapper);
       
       setTimeout(() => handleInput(), 0);
