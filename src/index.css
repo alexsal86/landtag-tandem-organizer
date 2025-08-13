@@ -155,12 +155,12 @@ All colors MUST be HSL.
 
   /* Todo list styles matching the design from the image */
   .prose .todo-item {
-    @apply flex items-start gap-3 mb-3 p-2 rounded hover:bg-accent/50 transition-all cursor-pointer;
+    @apply flex items-start gap-3 mb-1 p-2 rounded hover:bg-accent/50 transition-all cursor-pointer;
     display: flex !important;
     flex-direction: row !important;
     align-items: flex-start !important;
     width: 100% !important;
-    margin-bottom: 12px !important;
+    margin-bottom: 4px !important;
   }
 
   .prose .todo-checkbox {
