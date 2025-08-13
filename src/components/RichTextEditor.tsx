@@ -57,10 +57,14 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked" contenteditable="false" data-checkbox="true">✓</span><span class="todo-text checked">$1</span></div>')
       .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox empty" contenteditable="false" data-checkbox="true"></span><span class="todo-text">$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
+      // Remove line breaks between todo items to prevent extra spacing
+      .replace(/(<\/div>)\n+(?=<div class="todo-item")/g, '$1')
       .replace(/\n/g, '<br>')
       // Merge consecutive list items
       .replace(/<\/ul><br><ul>/g, '')
-      .replace(/<\/ol><br><ol>/g, '');
+      .replace(/<\/ol><br><ol>/g, '')
+      // Remove <br> tags that appear after todo items
+      .replace(/(<div class="todo-item"[^>]*>.*?<\/div>)<br>/g, '$1');
     console.log('convertToHtml output:', result);
     return result;
   };
