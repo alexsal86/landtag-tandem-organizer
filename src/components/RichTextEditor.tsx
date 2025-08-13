@@ -798,6 +798,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         // Force a content update without triggering broadcast
         setTimeout(() => {
           if (editorRef.current) {
+            // Clear any active selection to avoid cursor overlay issues
+            const selection = window.getSelection();
+            if (selection) {
+              selection.removeAllRanges();
+            }
+            
             const markdown = convertToMarkdown(editorRef.current.innerHTML);
             const html = convertToHtml(markdown);
             lastValueRef.current = markdown;
