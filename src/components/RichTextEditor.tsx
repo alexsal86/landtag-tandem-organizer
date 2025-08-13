@@ -162,6 +162,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       editorRef.current.innerHTML = html;
       lastValueRef.current = cleanedValue;
       
+      // Set up todo click handlers
+      setupTodoClickHandlers();
+      
       // Immediately save the cleaned version
       if (onChange && cleanedValue !== value) {
         console.log('RichTextEditor: Saving cleaned data');
@@ -246,6 +249,26 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     lastValueRef.current = markdown;
     
     onChange(markdown, html);
+  };
+
+  // Setup todo click handlers
+  const setupTodoClickHandlers = () => {
+    if (!editorRef.current) return;
+    
+    console.log('RichTextEditor: Setting up todo click handlers');
+    
+    // Add event delegation to the editor itself
+    editorRef.current.onclick = (event) => {
+      const target = event.target as HTMLElement;
+      const todoItem = target.closest('.todo-item') as HTMLElement;
+      
+      if (todoItem) {
+        console.log('RichTextEditor: Todo item clicked via delegation');
+        event.preventDefault();
+        event.stopPropagation();
+        handleTodoClick(todoItem);
+      }
+    };
   };
 
   // Simplified function to handle todo clicks
