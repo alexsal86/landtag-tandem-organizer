@@ -262,8 +262,11 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     
     console.log('RichTextEditor: Setting up todo click handlers');
     
-    // Add event delegation to the editor itself
-    editorRef.current.onclick = (event) => {
+    // Remove any existing click handlers first
+    editorRef.current.onclick = null;
+    
+    // Add event delegation to the editor itself using addEventListener for better control
+    const handleClick = (event: Event) => {
       const target = event.target as HTMLElement;
       const todoItem = target.closest('.todo-item') as HTMLElement;
       
@@ -274,6 +277,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         handleTodoClick(todoItem);
       }
     };
+    
+    // Remove any existing listeners and add new one
+    editorRef.current.removeEventListener('click', handleClick);
+    editorRef.current.addEventListener('click', handleClick);
+    
+    console.log('RichTextEditor: Event handlers attached successfully');
   };
 
   // Simplified function to handle todo clicks
@@ -310,18 +319,14 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     if (!isUpdatingFromRemote.current && onCheckboxChange) {
       const todoItems = Array.from(editorRef.current?.querySelectorAll('.todo-item') || []);
       const todoIndex = todoItems.indexOf(todoElement);
-      console.log('RichTextEditor: Notifying parent of checkbox change', { todoIndex, newChecked });
+      console.log('RichTextEditor: Notifying parent of checkbox change', { todoIndex, newChecked, isRemoteUpdate: isUpdatingFromRemote.current });
       onCheckboxChange(todoIndex, newChecked);
     }
     
-    // Force immediate save and re-setup handlers
+    // Force immediate save but don't re-setup handlers unless needed
     setTimeout(() => {
       console.log('RichTextEditor: Forcing save after todo click');
       handleInput();
-      // Re-setup handlers to ensure they work for subsequent clicks
-      setTimeout(() => {
-        setupTodoClickHandlers();
-      }, 100);
     }, 10);
   };
 
@@ -797,8 +802,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
             const html = convertToHtml(markdown);
             lastValueRef.current = markdown;
             onChange(markdown, html);
+            
+            // Re-setup handlers after remote update
+            setTimeout(() => {
+              setupTodoClickHandlers();
+              isUpdatingFromRemote.current = false;
+            }, 50);
           }
-          isUpdatingFromRemote.current = false;
         }, 10);
       }
     } else {
