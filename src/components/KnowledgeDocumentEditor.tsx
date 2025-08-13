@@ -226,11 +226,11 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
       })
       .on('broadcast', { event: 'checkbox_change' }, (payload) => {
         console.log('KnowledgeDocumentEditor: Received checkbox change broadcast', payload);
-        const { user_id, checkboxIndex, checked } = payload.payload;
+        const { user_id, checkboxIndex, checked, timestamp } = payload.payload;
         if (user_id !== user.id && richTextEditorRef.current) {
-          console.log('KnowledgeDocumentEditor: Updating checkbox state for other user', { checkboxIndex, checked });
-          // Add debouncing to prevent rapid fire updates
-          const updateId = `${checkboxIndex}-${checked}`;
+          console.log('KnowledgeDocumentEditor: Updating checkbox state for other user', { checkboxIndex, checked, timestamp });
+          // Use timestamp-based deduplication instead of state-based to allow multiple changes
+          const updateId = `${user_id}-${checkboxIndex}-${timestamp}`;
           if (lastUpdateRef.current !== updateId) {
             lastUpdateRef.current = updateId;
             richTextEditorRef.current.updateCheckboxState(checkboxIndex, checked);
