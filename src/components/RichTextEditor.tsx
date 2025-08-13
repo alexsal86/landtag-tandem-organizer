@@ -52,34 +52,40 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
 
   // Convert HTML back to markdown-like syntax for storage
   const convertToMarkdown = (html: string) => {
-    return html
-      .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
-      .replace(/<em>(.*?)<\/em>/g, '*$1*')
-      .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
-      .replace(/<del>(.*?)<\/del>/g, '~~$1~~')
-      .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/g, '[$2]($1)')
-      .replace(/<h1[^>]*>(.*?)<\/h1>/g, '# $1')
-      .replace(/<h2[^>]*>(.*?)<\/h2>/g, '## $1')
-      .replace(/<h3[^>]*>(.*?)<\/h3>/g, '### $1')
-      .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/g, '> $1')
-      .replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/g, '```\n$1\n```')
-      .replace(/<code[^>]*>(.*?)<\/code>/g, '`$1`')
-      .replace(/<ul[^>]*>(.*?)<\/ul>/gs, (match, content) => {
-        return content.replace(/<li[^>]*>(.*?)<\/li>/g, '- $1\n').trim();
+    console.log('convertToMarkdown input:', html);
+    
+    const result = html
+      // Handle headings first (before other formatting)
+      .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1')
+      .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1')
+      .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1')
+      .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '> $1')
+      .replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis, '```\n$1\n```')
+      .replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
+      .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+      .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+      .replace(/<u[^>]*>(.*?)<\/u>/gi, '<u>$1</u>')
+      .replace(/<del[^>]*>(.*?)<\/del>/gi, '~~$1~~')
+      .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+      .replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
+        return content.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n').trim();
       })
-      .replace(/<ol[^>]*>(.*?)<\/ol>/gs, (match, content) => {
+      .replace(/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
         let counter = 1;
-        return content.replace(/<li[^>]*>(.*?)<\/li>/g, () => `${counter++}. $1\n`).trim();
+        return content.replace(/<li[^>]*>(.*?)<\/li>/gi, () => `${counter++}. $1\n`).trim();
       })
-      .replace(/<span[^>]*>(.*?)<\/span>/g, '<!-- $1 -->')
-      .replace(/<br\s*\/?>/g, '\n')
-      .replace(/<div[^>]*>/g, '\n')
-      .replace(/<\/div>/g, '')
-      .replace(/<p[^>]*>/g, '\n')
-      .replace(/<\/p>/g, '')
-      .replace(/&nbsp;/g, ' ')
+      .replace(/<span[^>]*>(.*?)<\/span>/gi, '<!-- $1 -->')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<div[^>]*>/gi, '\n')
+      .replace(/<\/div>/gi, '')
+      .replace(/<p[^>]*>/gi, '\n')
+      .replace(/<\/p>/gi, '')
+      .replace(/&nbsp;/gi, ' ')
       .replace(/\n\s*\n\s*\n/g, '\n\n') // Reduce multiple newlines
       .trim();
+      
+    console.log('convertToMarkdown output:', result);
+    return result;
   };
 
   // Initialize content on mount
