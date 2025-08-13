@@ -372,10 +372,11 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     }
   };
 
-  const hasUnsavedChanges = editedDoc.title !== document.title || 
-                          editedDoc.content !== document.content || 
-                          editedDoc.category !== document.category ||
-                          editedDoc.is_published !== document.is_published;
+  const hasUnsavedChanges = !isUpdatingFromRemoteRef.current && 
+                           (editedDoc.title !== document.title || 
+                            editedDoc.content !== document.content || 
+                            editedDoc.category !== document.category ||
+                            editedDoc.is_published !== document.is_published);
 
   return (
     <div className="h-full flex flex-col bg-background">
