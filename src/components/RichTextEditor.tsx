@@ -87,7 +87,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         const text = textSpan.textContent || '';
         console.log(`convertToMarkdown: Todo ${index} - text: "${text}", checked: ${isChecked}`);
         
-        const replacement = isChecked ? `☑ ${text}` : `☐ ${text}`;
+        const replacement = isChecked ? `☑ ${text}\n` : `☐ ${text}\n`;
         const todoHtml = todoItem.outerHTML;
         result = result.replace(todoHtml, replacement);
       }
