@@ -79,32 +79,39 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .trim();
   };
 
-  // Initialize content on mount and when value changes
+  // Initialize content on mount
   useEffect(() => {
-    if (editorRef.current) {
+    if (editorRef.current && !lastValueRef.current && value) {
       const html = convertToHtml(value);
       editorRef.current.innerHTML = html;
       lastValueRef.current = value;
     }
-  }, [value]);
+  }, []);
 
   // Only update from external changes (not user input)
   useEffect(() => {
-    if (!editorRef.current || isComposing || skipNextUpdateRef.current) {
+    if (!editorRef.current || isComposing) return;
+
+    // Skip update if this was triggered by our own input
+    if (skipNextUpdateRef.current) {
       skipNextUpdateRef.current = false;
       return;
     }
 
-    // Always update if the value changed from outside, regardless of source
+    // Only update if the value actually changed from outside
     if (value !== lastValueRef.current) {
       console.log('RichTextEditor: External update detected', { 
         newValue: value, 
         lastValue: lastValueRef.current 
       });
       
-      const html = convertToHtml(value);
-      editorRef.current.innerHTML = html;
-      lastValueRef.current = value;
+      try {
+        const html = convertToHtml(value);
+        editorRef.current.innerHTML = html;
+        lastValueRef.current = value;
+      } catch (error) {
+        console.warn('RichTextEditor: Error during HTML conversion:', error);
+      }
     }
   }, [value, isComposing]);
 
@@ -137,6 +144,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
+
+    // Prevent React from updating the DOM while we're manually manipulating it
+    skipNextUpdateRef.current = true;
     
     // For headings, we need to work with the current line/block
     if (['heading1', 'heading2', 'heading3', 'text'].includes(format)) {
@@ -183,7 +193,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         }
         
         newElement.textContent = text;
-        lineElement.parentNode?.replaceChild(newElement, lineElement);
+        
+        try {
+          lineElement.parentNode?.replaceChild(newElement, lineElement);
+        } catch (error) {
+          console.warn('RichTextEditor: Error replacing element:', error);
+          return;
+        }
         
         // Set cursor at the end of the new element
         const newRange = document.createRange();
