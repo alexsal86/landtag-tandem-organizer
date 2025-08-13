@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import KnowledgeDocumentEditor from './KnowledgeDocumentEditor';
@@ -62,18 +62,26 @@ const KnowledgeBaseView = () => {
     try {
       const { data, error } = await supabase
         .from('knowledge_documents')
-        .select(`
-          *,
-          profiles!knowledge_documents_created_by_fkey(display_name)
-        `)
+        .select('*')
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
 
-      const documentsWithCreator = data?.map(doc => ({
-        ...doc,
-        creator_name: (doc.profiles as any)?.display_name || 'Unbekannt'
-      })) || [];
+      // Fetch creator names separately to avoid join issues
+      const documentsWithCreator = await Promise.all(
+        (data || []).map(async (doc) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', doc.created_by)
+            .maybeSingle();
+          
+          return {
+            ...doc,
+            creator_name: profile?.display_name || 'Unbekannt'
+          };
+        })
+      );
 
       setDocuments(documentsWithCreator);
     } catch (error) {

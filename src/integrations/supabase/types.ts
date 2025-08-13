@@ -1447,6 +1447,14 @@ export type Database = {
         Args: { _date: string }
         Returns: string
       }
+      can_access_knowledge_document: {
+        Args: { _document_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_edit_knowledge_document: {
+        Args: { _document_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_view_message_confirmations: {
         Args: { message_id_param: string }
         Returns: boolean
