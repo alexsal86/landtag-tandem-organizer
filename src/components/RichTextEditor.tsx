@@ -200,72 +200,23 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         console.log('RichTextEditor: Converting cleaned markdown to HTML', { original: value, cleaned: cleanedValue, html });
         editorRef.current.innerHTML = html;
         
-        // Set up click handlers for todo items (using spans instead of checkboxes)
-        console.log('RichTextEditor: Setting up todo item click listeners');
+        // Set up click handlers for todo items - SIMPLE VERSION
+        console.log('RichTextEditor: Setting up simple todo click handlers');
         
-        setTimeout(() => {
-          const todoItems = editorRef.current?.querySelectorAll('.todo-item');
-          console.log('RichTextEditor: Found todo items for click setup:', todoItems?.length || 0);
-          
-          todoItems?.forEach((todoItem, index) => {
-            const todoDiv = todoItem as HTMLElement;
-            const checkboxSpan = todoDiv.querySelector('.todo-checkbox');
-            const textSpan = todoDiv.querySelector('.todo-text');
+        // Add event delegation to the editor itself
+        if (editorRef.current) {
+          editorRef.current.onclick = (event) => {
+            const target = event.target as HTMLElement;
+            const todoItem = target.closest('.todo-item') as HTMLElement;
             
-            if (checkboxSpan && textSpan) {
-              console.log(`RichTextEditor: Setting up todo item ${index}`);
-              
-              // Remove existing click handlers
-              todoDiv.onclick = null;
-              
-              // Add click handler to the entire todo item
-              todoDiv.addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                
-                const currentlyChecked = this.getAttribute('data-checked') === 'true';
-                const newChecked = !currentlyChecked;
-                
-                console.log('RichTextEditor: Todo item clicked!', { index, wasChecked: currentlyChecked, nowChecked: newChecked });
-                
-                // Update data attribute
-                this.setAttribute('data-checked', newChecked.toString());
-                
-                // Update visual appearance
-                const checkbox = this.querySelector('.todo-checkbox');
-                const text = this.querySelector('.todo-text');
-                
-                if (checkbox && text) {
-                  if (newChecked) {
-                    checkbox.textContent = '☑';
-                    checkbox.classList.add('checked');
-                    text.classList.add('checked');
-                    (text as HTMLElement).style.textDecoration = 'line-through';
-                  } else {
-                    checkbox.textContent = '☐';
-                    checkbox.classList.remove('checked');
-                    text.classList.remove('checked');
-                    (text as HTMLElement).style.textDecoration = 'none';
-                  }
-                }
-                
-                console.log('RichTextEditor: Updated todo item appearance', { newChecked });
-                
-                // Broadcast change
-                if (onCheckboxChange) {
-                  console.log('RichTextEditor: Broadcasting todo change', { index, checked: newChecked });
-                  onCheckboxChange(index, newChecked);
-                }
-                
-                // Save content
-                setTimeout(() => {
-                  console.log('RichTextEditor: Triggering save after todo change');
-                  handleInput();
-                }, 50);
-              });
+            if (todoItem) {
+              console.log('RichTextEditor: Todo item clicked via delegation');
+              event.preventDefault();
+              event.stopPropagation();
+              handleTodoClick(todoItem);
             }
-          });
-        }, 100);
+          };
+        }
         
         lastValueRef.current = cleanedValue;
         
@@ -279,48 +230,53 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   const handleInput = () => {
     if (!editorRef.current || disabled || isComposing) return;
     
-    // CRITICAL FIX: Read actual DOM state instead of innerHTML
-    const actualHtml = getActualDOMState();
-    const markdown = convertToMarkdown(actualHtml);
+    console.log('RichTextEditor: handleInput called');
     
-    console.log('RichTextEditor: handleInput', { 
-      originalHTML: editorRef.current.innerHTML,
-      actualHTML: actualHtml,
-      markdown,
-      innerHTML: editorRef.current.innerHTML
+    // Simple approach: Just get current innerHTML and convert it
+    const html = editorRef.current.innerHTML;
+    const markdown = convertToMarkdown(html);
+    
+    console.log('RichTextEditor: handleInput conversion', { 
+      html: html.substring(0, 200) + '...', 
+      markdown: markdown.substring(0, 200) + '...'
     });
     
     // Skip the next external update since this is our own change
     skipNextUpdateRef.current = true;
     lastValueRef.current = markdown;
     
-    onChange(markdown, actualHtml);
+    onChange(markdown, html);
   };
 
-  // Helper function to get actual DOM state including checkbox status
-  const getActualDOMState = (): string => {
-    if (!editorRef.current) return '';
+  // Simplified function to handle todo clicks
+  const handleTodoClick = (todoElement: HTMLElement) => {
+    const currentChecked = todoElement.getAttribute('data-checked') === 'true';
+    const newChecked = !currentChecked;
     
-    const clone = editorRef.current.cloneNode(true) as HTMLElement;
+    console.log('RichTextEditor: Todo clicked, changing state', { currentChecked, newChecked });
     
-    // Update all checkboxes in the clone to reflect their actual checked state
-    const originalCheckboxes = editorRef.current.querySelectorAll('input[type="checkbox"]');
-    const cloneCheckboxes = clone.querySelectorAll('input[type="checkbox"]');
+    // Update the element
+    todoElement.setAttribute('data-checked', newChecked.toString());
+    const checkbox = todoElement.querySelector('.todo-checkbox');
+    const text = todoElement.querySelector('.todo-text');
     
-    originalCheckboxes.forEach((originalCheckbox, index) => {
-      const original = originalCheckbox as HTMLInputElement;
-      const cloneCheckbox = cloneCheckboxes[index] as HTMLInputElement;
-      if (cloneCheckbox) {
-        cloneCheckbox.checked = original.checked;
-        // Also update the span styling to match
-        const span = cloneCheckbox.nextElementSibling as HTMLSpanElement;
-        if (span) {
-          span.style.textDecoration = original.checked ? 'line-through' : 'none';
-        }
+    if (checkbox && text) {
+      if (newChecked) {
+        checkbox.textContent = '☑';
+        (text as HTMLElement).style.textDecoration = 'line-through';
+        (text as HTMLElement).style.color = '#666';
+      } else {
+        checkbox.textContent = '☐';
+        (text as HTMLElement).style.textDecoration = 'none';
+        (text as HTMLElement).style.color = 'inherit';
       }
-    });
+    }
     
-    return clone.innerHTML;
+    // Force immediate save
+    setTimeout(() => {
+      console.log('RichTextEditor: Forcing save after todo click');
+      handleInput();
+    }, 10);
   };
 
   const handleSelectionChange = () => {
