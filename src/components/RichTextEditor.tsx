@@ -149,9 +149,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       }
     });
     
-    // Apply replacements
-    todoReplacements.forEach(({ html, markdown }) => {
-      result = result.replace(html, markdown);
+    // Apply replacements with line breaks between todo items
+    todoReplacements.forEach(({ html, markdown }, index) => {
+      const replacement = index === todoReplacements.length - 1 ? markdown : markdown + '\n';
+      result = result.replace(html, replacement);
     });
     
     // Handle any remaining old checkbox structures
