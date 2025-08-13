@@ -219,49 +219,101 @@ const KnowledgeBaseView = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-background">
-      <div className="flex-none border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Database className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-semibold text-foreground">Wissensdatenbank</h1>
-          </div>
+    <div className="h-full flex bg-background">
+      {/* Main Content */}
+      <div className={`${selectedDocument && isEditorOpen ? 'w-1/2' : 'w-full'} flex flex-col`}>
+        <div className="flex-none border-b border-border bg-card/50 backdrop-blur-sm">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <Database className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-semibold text-foreground">Wissensdatenbank</h1>
+            </div>
 
-          <Tabs defaultValue="manage" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="add" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Hinzufügen
-              </TabsTrigger>
-              <TabsTrigger value="manage" className="flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                Verwalten ({documents.length})
-              </TabsTrigger>
-            </TabsList>
+            <Tabs defaultValue="manage" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="add" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Hinzufügen
+                </TabsTrigger>
+                <TabsTrigger value="manage" className="flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Verwalten ({documents.length})
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="add" className="mt-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Neues Dokument erstellen</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="title">Titel</Label>
-                    <Input
-                      id="title"
-                      value={newDocument.title}
-                      onChange={(e) => setNewDocument(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Titel des Dokuments..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="category">Kategorie</Label>
-                    <Select value={newDocument.category} onValueChange={(value) => setNewDocument(prev => ({ ...prev, category: value }))}>
-                      <SelectTrigger>
+              <TabsContent value="add" className="mt-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Neues Dokument erstellen</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="title">Titel</Label>
+                      <Input
+                        id="title"
+                        value={newDocument.title}
+                        onChange={(e) => setNewDocument(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="Titel des Dokuments..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="category">Kategorie</Label>
+                      <Select value={newDocument.category} onValueChange={(value) => setNewDocument(prev => ({ ...prev, category: value }))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.slice(1).map(category => (
+                            <SelectItem key={category.value} value={category.value}>
+                              {category.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="content">Inhalt</Label>
+                      <Textarea
+                        id="content"
+                        value={newDocument.content}
+                        onChange={(e) => setNewDocument(prev => ({ ...prev, content: e.target.value }))}
+                        placeholder="Inhalt des Dokuments..."
+                        rows={4}
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="published"
+                        checked={newDocument.is_published}
+                        onCheckedChange={(checked) => setNewDocument(prev => ({ ...prev, is_published: checked }))}
+                      />
+                      <Label htmlFor="published">Für alle sichtbar</Label>
+                    </div>
+                    <Button onClick={handleCreateDocument} disabled={!newDocument.title.trim()}>
+                      Dokument erstellen
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="manage" className="mt-0">
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Dokumente durchsuchen..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="w-48">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.slice(1).map(category => (
+                        {categories.map(category => (
                           <SelectItem key={category.value} value={category.value}>
                             {category.label}
                           </SelectItem>
@@ -269,154 +321,107 @@ const KnowledgeBaseView = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label htmlFor="content">Inhalt</Label>
-                    <Textarea
-                      id="content"
-                      value={newDocument.content}
-                      onChange={(e) => setNewDocument(prev => ({ ...prev, content: e.target.value }))}
-                      placeholder="Inhalt des Dokuments..."
-                      rows={4}
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="published"
-                      checked={newDocument.is_published}
-                      onCheckedChange={(checked) => setNewDocument(prev => ({ ...prev, is_published: checked }))}
-                    />
-                    <Label htmlFor="published">Für alle sichtbar</Label>
-                  </div>
-                  <Button onClick={handleCreateDocument} disabled={!newDocument.title.trim()}>
-                    Dokument erstellen
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
-            <TabsContent value="manage" className="mt-0">
-              <div className="space-y-4">
-                <div className="flex gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Dokumente durchsuchen..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category.value} value={category.value}>
-                          {category.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {filteredDocuments.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <Database className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">
-                        {documents.length === 0 ? 'Keine Dokumente vorhanden' : 'Keine Ergebnisse gefunden'}
-                      </h3>
-                      <p className="text-muted-foreground">
-                        {documents.length === 0 
-                          ? 'Erstellen Sie Ihr erstes Dokument über den "Hinzufügen" Tab.'
-                          : 'Versuchen Sie andere Suchbegriffe oder Kategorien.'
-                        }
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid gap-4">
-                    {filteredDocuments.map((doc) => (
-                      <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                        <CardContent 
-                          className="p-4"
-                          onClick={() => {
-                            setSelectedDocument(doc);
-                            setIsEditorOpen(true);
-                          }}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-medium text-foreground truncate">{doc.title}</h3>
-                                <Badge variant="secondary" className="text-xs">
-                                  {getCategoryLabel(doc.category)}
-                                </Badge>
-                                {doc.is_published && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Öffentlich
+                  {filteredDocuments.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Database className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-2">
+                          {documents.length === 0 ? 'Keine Dokumente vorhanden' : 'Keine Ergebnisse gefunden'}
+                        </h3>
+                        <p className="text-muted-foreground">
+                          {documents.length === 0 
+                            ? 'Erstellen Sie Ihr erstes Dokument über den "Hinzufügen" Tab.'
+                            : 'Versuchen Sie andere Suchbegriffe oder Kategorien.'
+                          }
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-4">
+                      {filteredDocuments.map((doc) => (
+                        <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                          <CardContent 
+                            className="p-4"
+                            onClick={() => {
+                              setSelectedDocument(doc);
+                              setIsEditorOpen(true);
+                            }}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h3 className="font-medium text-foreground truncate">{doc.title}</h3>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {getCategoryLabel(doc.category)}
                                   </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                                {doc.content || 'Kein Inhalt verfügbar...'}
-                              </p>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {doc.creator_name}
+                                  {doc.is_published && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Öffentlich
+                                    </Badge>
+                                  )}
                                 </div>
-                                <div>
-                                  Hinzugefügt: {formatDate(doc.created_at)}
-                                </div>
-                                {doc.updated_at !== doc.created_at && (
-                                  <div>
-                                    Aktualisiert: {formatDate(doc.updated_at)}
+                                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                                  {doc.content || 'Kein Inhalt verfügbar...'}
+                                </p>
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <User className="h-3 w-3" />
+                                    {doc.creator_name}
                                   </div>
+                                  <div>
+                                    Hinzugefügt: {formatDate(doc.created_at)}
+                                  </div>
+                                  {doc.updated_at !== doc.created_at && (
+                                    <div>
+                                      Aktualisiert: {formatDate(doc.updated_at)}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                {doc.created_by === user?.id && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteDocument(doc.id);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    Löschen
+                                  </Button>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                              {doc.created_by === user?.id && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteDocument(doc.id);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-1" />
-                                  Löschen
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
 
-      {/* Document Editor */}
-      {selectedDocument && (
-        <KnowledgeDocumentEditor
-          document={selectedDocument}
-          isOpen={isEditorOpen}
-          onClose={() => {
-            setIsEditorOpen(false);
-            setSelectedDocument(null);
-          }}
-          onSave={() => {
-            fetchDocuments();
-          }}
-        />
+      {/* Document Editor Sidebar */}
+      {selectedDocument && isEditorOpen && (
+        <div className="w-1/2 border-l bg-background flex flex-col">
+          <KnowledgeDocumentEditor
+            document={selectedDocument}
+            isOpen={isEditorOpen}
+            onClose={() => {
+              setIsEditorOpen(false);
+              setSelectedDocument(null);
+            }}
+            onSave={() => {
+              fetchDocuments();
+            }}
+          />
+        </div>
       )}
     </div>
   );

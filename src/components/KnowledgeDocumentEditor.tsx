@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -208,66 +207,77 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
                           editedDoc.is_published !== document.is_published;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
-        <DialogHeader className="flex-none">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <span>Dokument bearbeiten</span>
+    <div className="h-full flex flex-col bg-background">
+      {/* Header */}
+      <div className="flex-none border-b bg-card/50 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <FileText className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Dokument bearbeiten</span>
               {activeUsers.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
                   <Users className="h-3 w-3 mr-1" />
-                  {activeUsers.length} weitere Benutzer
-                </Badge>
-              )}
-            </DialogTitle>
-            <div className="flex items-center gap-2">
-              {saving && (
-                <Badge variant="outline" className="text-xs">
-                  Speichert...
-                </Badge>
-              )}
-              {lastSaved && (
-                <Badge variant="outline" className="text-xs">
-                  Gespeichert: {lastSaved.toLocaleTimeString('de-DE')}
-                </Badge>
-              )}
-              {hasUnsavedChanges && (
-                <Badge variant="destructive" className="text-xs">
-                  <AlertTriangle className="h-3 w-3 mr-1" />
-                  Ungespeichert
+                  {activeUsers.length}
                 </Badge>
               )}
             </div>
           </div>
-        </DialogHeader>
+          <div className="flex items-center gap-2">
+            {saving && (
+              <Badge variant="outline" className="text-xs">
+                Speichert...
+              </Badge>
+            )}
+            {lastSaved && (
+              <Badge variant="outline" className="text-xs">
+                {lastSaved.toLocaleTimeString('de-DE')}
+              </Badge>
+            )}
+            {hasUnsavedChanges && (
+              <Badge variant="destructive" className="text-xs">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Nicht gespeichert
+              </Badge>
+            )}
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
         {!canEdit && (
-          <div className="bg-muted p-3 rounded-lg flex items-center gap-2 text-sm">
+          <div className="bg-muted p-3 rounded-lg flex items-center gap-2 text-sm mt-3">
             <EyeOff className="h-4 w-4" />
             Sie haben nur Lesezugriff auf dieses Dokument.
           </div>
         )}
+      </div>
 
-        <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label htmlFor="title">Titel</Label>
-              <Input
-                id="title"
-                value={editedDoc.title}
-                onChange={(e) => setEditedDoc(prev => ({ ...prev, title: e.target.value }))}
-                disabled={!canEdit}
-              />
-            </div>
-            <div className="w-48">
-              <Label htmlFor="category">Kategorie</Label>
+      {/* Content */}
+      <div className="flex-1 p-6 overflow-auto">
+        <div className="max-w-full space-y-6">
+          {/* Title */}
+          <div>
+            <Input
+              value={editedDoc.title}
+              onChange={(e) => setEditedDoc(prev => ({ ...prev, title: e.target.value }))}
+              disabled={!canEdit}
+              className="text-2xl font-bold border-none px-0 focus-visible:ring-0 bg-transparent"
+              placeholder="Untitled"
+            />
+          </div>
+
+          {/* Metadata */}
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-4">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="category" className="text-xs font-medium">Kategorie:</Label>
               <Select 
                 value={editedDoc.category} 
                 onValueChange={(value) => setEditedDoc(prev => ({ ...prev, category: value }))}
                 disabled={!canEdit}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-7 w-auto text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -279,48 +289,46 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="published"
+                checked={editedDoc.is_published}
+                onCheckedChange={(checked) => setEditedDoc(prev => ({ ...prev, is_published: checked }))}
+                disabled={!canEdit}
+              />
+              <Label htmlFor="published" className="flex items-center gap-1 text-xs">
+                {editedDoc.is_published ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                Öffentlich
+              </Label>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="published"
-              checked={editedDoc.is_published}
-              onCheckedChange={(checked) => setEditedDoc(prev => ({ ...prev, is_published: checked }))}
-              disabled={!canEdit}
-            />
-            <Label htmlFor="published" className="flex items-center gap-2">
-              {editedDoc.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              Für alle sichtbar
-            </Label>
-          </div>
-
-          <div className="flex-1 flex flex-col">
-            <Label htmlFor="content">Inhalt</Label>
+          {/* Content Editor */}
+          <div className="min-h-96">
             <Textarea
-              id="content"
               value={editedDoc.content}
               onChange={(e) => setEditedDoc(prev => ({ ...prev, content: e.target.value }))}
-              className="flex-1 min-h-0 resize-none"
-              placeholder="Geben Sie den Inhalt des Dokuments ein..."
+              className="min-h-96 border-none px-0 focus-visible:ring-0 bg-transparent resize-none text-base leading-relaxed"
+              placeholder="Beginnen Sie zu schreiben..."
               disabled={!canEdit}
             />
           </div>
         </div>
+      </div>
 
-        <div className="flex-none flex justify-between pt-4">
-          <Button variant="outline" onClick={onClose}>
-            <X className="h-4 w-4 mr-2" />
-            Schließen
-          </Button>
-          {canEdit && (
+      {/* Footer */}
+      {canEdit && (
+        <div className="flex-none border-t p-4">
+          <div className="flex justify-end">
             <Button onClick={handleManualSave} disabled={saving || !hasUnsavedChanges}>
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Speichert...' : 'Speichern'}
             </Button>
-          )}
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+    </div>
   );
 };
 
