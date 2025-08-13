@@ -286,10 +286,14 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     }, 300); // 300ms debounce delay
   };
 
-  // Format selected text for rich text editor
+  // Format selected text using the RichTextEditor's formatSelection function
   const handleFormatText = (format: string) => {
-    if (!selectedText) return;
+    if (!selectedText || !editorRef.current) return;
     
+    // Access the RichTextEditor instance and call formatSelection
+    const editorElement = editorRef.current.querySelector('[contenteditable="true"]') as HTMLDivElement;
+    if (!editorElement) return;
+
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
@@ -333,25 +337,17 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
       range.surroundContents(wrapper);
       selection.removeAllRanges();
       
-      // Get updated content from editor
-      if (editorRef.current) {
-        const newContent = editorRef.current.innerText;
-        const newHtml = editorRef.current.innerHTML;
-        setEditedDoc(prev => ({ ...prev, content: newContent, content_html: newHtml }));
-        broadcastContentChange('content', newContent, newHtml);
-      }
+      // Trigger input event to update content
+      const inputEvent = new Event('input', { bubbles: true });
+      editorElement.dispatchEvent(inputEvent);
     } catch (e) {
       // Fallback: replace selection with formatted text
       range.deleteContents();
       wrapper.textContent = selectedText;
       range.insertNode(wrapper);
       
-      if (editorRef.current) {
-        const newContent = editorRef.current.innerText;
-        const newHtml = editorRef.current.innerHTML;
-        setEditedDoc(prev => ({ ...prev, content: newContent, content_html: newHtml }));
-        broadcastContentChange('content', newContent, newHtml);
-      }
+      const inputEvent = new Event('input', { bubbles: true });
+      editorElement.dispatchEvent(inputEvent);
     }
     
     // Hide toolbar and clear selection

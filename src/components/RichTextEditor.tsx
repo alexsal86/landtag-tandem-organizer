@@ -22,7 +22,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isComposing, setIsComposing] = useState(false);
-  const isUpdatingRef = useRef(false);
+  const lastValueRef = useRef<string>('');
+  const skipNextUpdateRef = useRef(false);
 
   // Convert markdown-like syntax to HTML for display
   const convertToHtml = (text: string) => {
@@ -53,109 +54,57 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       .replace(/&nbsp;/g, ' ');
   };
 
-  // Update editor content when value changes
+  // Initialize content on mount
   useEffect(() => {
-    if (!editorRef.current || isComposing || isUpdatingRef.current) return;
-    
-    const currentContent = editorRef.current.innerText;
-    const newContent = value;
-    
-    // Only update if content actually changed and it's not our own input
-    if (currentContent !== newContent) {
-      console.log('RichTextEditor: External content update needed', { currentContent, newContent });
+    if (editorRef.current && !lastValueRef.current) {
+      const html = convertToHtml(value);
+      editorRef.current.innerHTML = html;
+      lastValueRef.current = value;
+    }
+  }, []);
+
+  // Only update from external changes (not user input)
+  useEffect(() => {
+    if (!editorRef.current || isComposing || skipNextUpdateRef.current) {
+      skipNextUpdateRef.current = false;
+      return;
+    }
+
+    // Only update if the value actually changed from outside
+    if (value !== lastValueRef.current) {
+      console.log('RichTextEditor: External update detected', { 
+        newValue: value, 
+        lastValue: lastValueRef.current 
+      });
       
-      // Set flag to prevent onChange loop
-      isUpdatingRef.current = true;
-      
-      // Store current selection details
-      const selection = window.getSelection();
-      let savedSelection: { node: Node | null; offset: number; } | null = null;
-      
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        savedSelection = {
-          node: range.startContainer,
-          offset: range.startOffset
-        };
-      }
-      
-      // Update content
-      const newHtml = convertToHtml(newContent);
-      editorRef.current.innerHTML = newHtml;
-      
-      // Restore cursor position only if we have a valid saved selection
-      if (savedSelection && savedSelection.node) {
-        try {
-          const newRange = document.createRange();
-          
-          // Find a suitable text node to place cursor
-          const walker = document.createTreeWalker(
-            editorRef.current,
-            NodeFilter.SHOW_TEXT,
-            null
-          );
-          
-          let targetNode = walker.nextNode();
-          let targetOffset = 0;
-          
-          // Try to find the closest position in the new content
-          if (targetNode && targetNode.textContent) {
-            targetOffset = Math.min(savedSelection.offset, targetNode.textContent.length);
-          }
-          
-          if (targetNode) {
-            newRange.setStart(targetNode, targetOffset);
-            newRange.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
-          }
-        } catch (e) {
-          console.log('RichTextEditor: Could not restore cursor, placing at end');
-          // Fallback: place cursor at end
-          try {
-            const range = document.createRange();
-            range.selectNodeContents(editorRef.current);
-            range.collapse(false);
-            selection?.removeAllRanges();
-            selection?.addRange(range);
-          } catch (fallbackError) {
-            // If all else fails, just leave the cursor where it is
-          }
-        }
-      }
-      
-      // Reset flag after DOM update completes
-      setTimeout(() => {
-        isUpdatingRef.current = false;
-      }, 10);
+      const html = convertToHtml(value);
+      editorRef.current.innerHTML = html;
+      lastValueRef.current = value;
     }
   }, [value, isComposing]);
 
   const handleInput = () => {
-    if (!editorRef.current || disabled || isUpdatingRef.current) return;
+    if (!editorRef.current || disabled || isComposing) return;
     
     const html = editorRef.current.innerHTML;
     const markdown = convertToMarkdown(html);
-    console.log('RichTextEditor: Input changed', { html, markdown });
+    
+    // Skip the next external update since this is our own change
+    skipNextUpdateRef.current = true;
+    lastValueRef.current = markdown;
+    
+    console.log('RichTextEditor: Local input change', { html, markdown });
     onChange(markdown, html);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      // Let the browser handle Enter naturally for contentEditable
-      // This prevents cursor jumping issues
-      setTimeout(() => {
-        if (!editorRef.current || isUpdatingRef.current) return;
-        const html = editorRef.current.innerHTML;
-        const markdown = convertToMarkdown(html);
-        console.log('RichTextEditor: Enter key processed', { html, markdown });
-        onChange(markdown, html);
-      }, 0);
-    }
   };
 
   const handleSelectionChange = () => {
     onSelectionChange?.();
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
   };
 
   const formatSelection = (format: string) => {
@@ -235,9 +184,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         wordWrap: 'break-word'
       }}
       onInput={handleInput}
-      onKeyDown={handleKeyDown}
       onMouseUp={handleSelectionChange}
       onKeyUp={handleSelectionChange}
+      onPaste={handlePaste}
       onCompositionStart={() => setIsComposing(true)}
       onCompositionEnd={() => setIsComposing(false)}
       data-placeholder={placeholder}
