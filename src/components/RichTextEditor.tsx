@@ -51,18 +51,24 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       // Handle lists
       .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
       .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
-      // Handle checkboxes with proper click handling and real-time sync
+      // Handle checkboxes with clean HTML
       .replace(/^☑ (.*)$/gm, (match, text) => {
-        return `<div class="todo-item"><input type="checkbox" checked style="margin-right: 8px;"><span style="text-decoration: line-through;">${text}</span></div>`;
+        // Clean the text from any HTML artifacts
+        const cleanText = text.replace(/<!--.*?-->/g, '').trim();
+        return `<div class="todo-item"><input type="checkbox" checked style="margin-right: 8px;"><span style="text-decoration: line-through;">${cleanText}</span></div>`;
       })
       .replace(/^☐ (.*)$/gm, (match, text) => {
-        return `<div class="todo-item"><input type="checkbox" style="margin-right: 8px;"><span>${text}</span></div>`;
+        // Clean the text from any HTML artifacts
+        const cleanText = text.replace(/<!--.*?-->/g, '').trim();
+        return `<div class="todo-item"><input type="checkbox" style="margin-right: 8px;"><span>${cleanText}</span></div>`;
       })
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>')
       // Merge consecutive list items
       .replace(/<\/ul><br><ul>/g, '')
-      .replace(/<\/ol><br><ol>/g, '');
+      .replace(/<\/ol><br><ol>/g, '')
+      // Clean up any remaining artifacts
+      .replace(/<!--.*?-->/g, '');
     console.log('convertToHtml output:', result);
     return result;
   };
@@ -92,10 +98,14 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         let counter = 1;
         return content.replace(/<li[^>]*>(.*?)<\/li>/gi, (li, text) => `${counter++}. ${text}\n`).trim();
       })
-      // Handle todo checkboxes
+      // Handle todo checkboxes properly - clean conversion
+      .replace(/<div[^>]*class="todo-item"[^>]*><input[^>]*type="checkbox"[^>]*checked[^>]*\/?>([^<]*)<span[^>]*style="text-decoration: line-through;"[^>]*>(.*?)<\/span><\/div>/gi, '☑ $2')
+      .replace(/<div[^>]*class="todo-item"[^>]*><input[^>]*type="checkbox"[^>]*\/?>([^<]*)<span[^>]*>(.*?)<\/span><\/div>/gi, '☐ $2')
+      // Fallback for simpler checkbox patterns
       .replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*\/?>([^<]*)/gi, '☑ $1')
       .replace(/<input[^>]*type="checkbox"[^>]*\/?>([^<]*)/gi, '☐ $1')
-      .replace(/<span[^>]*>(.*?)<\/span>/gi, '<!-- $1 -->')
+      .replace(/<span[^>]*style="color: #888; font-style: italic;"[^>]*>(.*?)<\/span>/gi, '<!-- $1 -->')
+      .replace(/<span[^>]*>(.*?)<\/span>/gi, '$1')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<div[^>]*>/gi, '\n')
       .replace(/<\/div>/gi, '')
