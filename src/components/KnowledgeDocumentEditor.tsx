@@ -42,7 +42,9 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [activeUsers, setActiveUsers] = useState<string[]>([]);
+  const [userCursors, setUserCursors] = useState<Record<string, { position: number; name: string }>>({});
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const categories = [
     { value: 'general', label: 'Allgemein' },
@@ -89,19 +91,48 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     const channel = supabase.channel(`document-${document.id}`)
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
-        const users = Object.keys(state).map(key => (state[key][0] as any)?.user_id).filter(id => id !== user.id);
-        setActiveUsers(users);
+        const users = Object.keys(state).map(key => {
+          const presence = (state[key][0] as any);
+          return {
+            userId: presence?.user_id,
+            name: presence?.user_name,
+            cursorPosition: presence?.cursor_position
+          };
+        }).filter(u => u.userId && u.userId !== user.id);
+        
+        setActiveUsers(users.map(u => u.userId));
+        
+        // Update cursor positions
+        const cursors = users.reduce((acc, u) => {
+          if (u.cursorPosition !== undefined) {
+            acc[u.userId] = { position: u.cursorPosition, name: u.name || 'Unbekannt' };
+          }
+          return acc;
+        }, {} as Record<string, { position: number; name: string }>);
+        setUserCursors(cursors);
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        const userId = (newPresences[0] as any)?.user_id;
+        const presence = (newPresences[0] as any);
+        const userId = presence?.user_id;
         if (userId && userId !== user.id) {
           setActiveUsers(prev => [...prev, userId]);
+          if (presence?.cursor_position !== undefined) {
+            setUserCursors(prev => ({
+              ...prev,
+              [userId]: { position: presence.cursor_position, name: presence.user_name || 'Unbekannt' }
+            }));
+          }
         }
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
         const userId = (leftPresences[0] as any)?.user_id;
         if (userId) {
           setActiveUsers(prev => prev.filter(id => id !== userId));
+          setUserCursors(prev => {
+            const newCursors = { ...prev };
+            delete newCursors[userId];
+            return newCursors;
+          });
         }
       })
       .on('postgres_changes', {
@@ -111,19 +142,48 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         filter: `id=eq.${document.id}`
       }, (payload) => {
         if (payload.new.updated_at !== document.updated_at && payload.new.created_by !== user.id) {
+          // Preserve cursor position before update
+          const currentPosition = textareaRef.current?.selectionStart || 0;
+          
           // Another user updated the document
           setEditedDoc(payload.new as KnowledgeDocument);
+          
+          // Restore cursor position after content update
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.setSelectionRange(currentPosition, currentPosition);
+            }
+          }, 0);
+          
           toast({
             title: "Dokument aktualisiert",
             description: "Ein anderer Benutzer hat das Dokument bearbeitet.",
           });
         }
       })
+      .on('broadcast', { event: 'cursor_move' }, (payload) => {
+        const { user_id, cursor_position, user_name } = payload.payload;
+        if (user_id !== user.id) {
+          setUserCursors(prev => ({
+            ...prev,
+            [user_id]: { position: cursor_position, name: user_name || 'Unbekannt' }
+          }));
+        }
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          // Get user name from profiles
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', user.id)
+            .single();
+          
           await channel.track({
             user_id: user.id,
+            user_name: profile?.display_name || 'Unbekannt',
             online_at: new Date().toISOString(),
+            cursor_position: 0
           });
         }
       });
@@ -132,6 +192,48 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
       supabase.removeChannel(channel);
     };
   }, [isOpen, user, document.id]);
+
+  // Handle cursor position changes
+  const handleCursorChange = async () => {
+    if (!textareaRef.current || !user) return;
+    
+    const cursorPosition = textareaRef.current.selectionStart;
+    
+    // Broadcast cursor position to other users
+    const channel = supabase.channel(`document-${document.id}`);
+    await channel.send({
+      type: 'broadcast',
+      event: 'cursor_move',
+      payload: {
+        user_id: user.id,
+        cursor_position: cursorPosition,
+        user_name: user.email || 'Unbekannt'
+      }
+    });
+    
+    // Update presence with cursor position
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('user_id', user.id)
+      .single();
+    
+    await channel.track({
+      user_id: user.id,
+      user_name: profile?.display_name || 'Unbekannt',
+      online_at: new Date().toISOString(),
+      cursor_position: cursorPosition
+    });
+  };
+
+  // Convert cursor position to line/column for display
+  const getCursorLineColumn = (content: string, position: number) => {
+    const lines = content.substring(0, position).split('\n');
+    return {
+      line: lines.length,
+      column: lines[lines.length - 1].length + 1
+    };
+  };
 
   const handleAutoSave = async () => {
     if (!canEdit) return;
@@ -305,14 +407,39 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
           </div>
 
           {/* Content Editor */}
-          <div className="min-h-96">
+          <div className="min-h-96 relative">
             <Textarea
+              ref={textareaRef}
               value={editedDoc.content}
               onChange={(e) => setEditedDoc(prev => ({ ...prev, content: e.target.value }))}
+              onSelect={handleCursorChange}
+              onKeyUp={handleCursorChange}
+              onClick={handleCursorChange}
               className="min-h-96 border-none px-0 focus-visible:ring-0 bg-transparent resize-none text-base leading-relaxed"
               placeholder="Beginnen Sie zu schreiben..."
               disabled={!canEdit}
             />
+            
+            {/* Other users' cursors */}
+            {Object.entries(userCursors).map(([userId, cursor]) => {
+              const { line, column } = getCursorLineColumn(editedDoc.content, cursor.position);
+              return (
+                <div
+                  key={userId}
+                  className="absolute pointer-events-none z-10"
+                  style={{
+                    top: `${(line - 1) * 1.5 + 0.5}rem`,
+                    left: `${(column - 1) * 0.6}rem`,
+                  }}
+                >
+                  <div className="w-0.5 h-5 bg-blue-500 relative">
+                    <div className="absolute -top-6 left-0 bg-blue-500 text-white text-xs px-1 py-0.5 rounded whitespace-nowrap">
+                      {cursor.name}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
