@@ -84,6 +84,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     const todoItems = tempDiv.querySelectorAll('.todo-item');
     console.log('convertToMarkdown: Found todo items:', todoItems.length);
     
+    // Process todo items in reverse order to avoid replacement conflicts
+    const todoReplacements: { html: string; markdown: string }[] = [];
+    
     todoItems.forEach((todoItem, index) => {
       const isChecked = todoItem.getAttribute('data-checked') === 'true';
       const textSpan = todoItem.querySelector('.todo-text');
@@ -91,10 +94,19 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         const text = textSpan.textContent || '';
         console.log(`convertToMarkdown: Todo ${index} - text: "${text}", checked: ${isChecked}`);
         
-        const replacement = isChecked ? `☑ ${text}` : `☐ ${text}`;
-        const todoHtml = todoItem.outerHTML;
-        result = result.replace(todoHtml, replacement);
+        const markdownSymbol = isChecked ? '☑' : '☐';
+        const replacement = `${markdownSymbol} ${text}`;
+        
+        todoReplacements.push({
+          html: todoItem.outerHTML,
+          markdown: replacement
+        });
       }
+    });
+    
+    // Apply replacements
+    todoReplacements.forEach(({ html, markdown }) => {
+      result = result.replace(html, markdown);
     });
     
     // Handle any remaining old checkbox structures
@@ -115,6 +127,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     });
     
     result = result
+      // Handle todo items FIRST before other conversions destroy them
+      // (This has already been done above, but ensure clean result)
+      
       // Handle headings first (before other formatting)
       .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1')
       .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1')
@@ -134,11 +149,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         let counter = 1;
         return content.replace(/<li[^>]*>(.*?)<\/li>/gi, (li, text) => `${counter++}. ${text}\n`).trim();
       })
-      // Clean up any remaining artifacts
+      // Clean up any remaining artifacts (but preserve todo markers)
       .replace(/<span[^>]*style="color:\s*#888;\s*font-style:\s*italic;"[^>]*>(.*?)<\/span>/gi, '$1')
       .replace(/<!--\s*(.*?)\s*-->/g, '$1')
       .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<div[^>]*>/gi, '\n')
+      // Handle remaining divs that are not todo-items
+      .replace(/<div(?![^>]*class="todo-item")[^>]*>/gi, '\n')
       .replace(/<\/div>/gi, '')
       .replace(/<p[^>]*>/gi, '\n')
       .replace(/<\/p>/gi, '')
