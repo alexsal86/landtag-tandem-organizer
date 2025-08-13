@@ -124,6 +124,59 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     const range = selection.getRangeAt(0);
     const selectedText = range.toString();
     
+    // Get the parent element to check for existing formatting
+    const parentElement = range.commonAncestorContainer.nodeType === Node.TEXT_NODE 
+      ? range.commonAncestorContainer.parentElement 
+      : range.commonAncestorContainer as Element;
+
+    // For headings, replace the entire line/block
+    if (['heading1', 'heading2', 'heading3', 'text'].includes(format)) {
+      // Find the containing block element
+      let blockElement = parentElement;
+      while (blockElement && !['DIV', 'H1', 'H2', 'H3', 'P'].includes(blockElement.tagName)) {
+        blockElement = blockElement.parentElement;
+      }
+      
+      if (blockElement && (blockElement as HTMLElement).isContentEditable !== false) {
+        const text = blockElement.textContent || selectedText || 'Heading';
+        let newElement: HTMLElement;
+        
+        switch (format) {
+          case 'heading1':
+            newElement = document.createElement('h1');
+            break;
+          case 'heading2':
+            newElement = document.createElement('h2');
+            break;
+          case 'heading3':
+            newElement = document.createElement('h3');
+            break;
+          case 'text':
+            newElement = document.createElement('div');
+            break;
+          default:
+            return;
+        }
+        
+        newElement.textContent = text;
+        blockElement.parentNode?.replaceChild(newElement, blockElement);
+        
+        // Set cursor at the end of the new element
+        const newRange = document.createRange();
+        newRange.selectNodeContents(newElement);
+        newRange.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+        
+        setTimeout(() => handleInput(), 0);
+        return;
+      }
+    }
+    
+    if (!selectedText && !['bulletlist', 'numberlist', 'todolist', 'togglelist', 'code', 'quote', 'page'].includes(format)) {
+      return;
+    }
+    
     let wrapper: HTMLElement;
     let needsSelection = true;
     
@@ -148,25 +201,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         (wrapper as HTMLAnchorElement).target = '_blank';
         (wrapper as HTMLAnchorElement).rel = 'noopener noreferrer';
         break;
-      case 'heading':
-      case 'heading1':
-        wrapper = document.createElement('h1');
-        break;
-      case 'heading2':
-        wrapper = document.createElement('h2');
-        break;
-      case 'heading3':
-        wrapper = document.createElement('h3');
-        break;
-      case 'text':
-        // Convert to plain text - remove formatting
-        if (selectedText) {
-          range.deleteContents();
-          const textNode = document.createTextNode(selectedText);
-          range.insertNode(textNode);
-          setTimeout(() => handleInput(), 0);
-        }
-        return;
       case 'bulletlist':
         wrapper = document.createElement('ul');
         const li = document.createElement('li');
@@ -206,15 +240,11 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         break;
       case 'quote':
         wrapper = document.createElement('blockquote');
-        wrapper.style.borderLeft = '4px solid #ccc';
-        wrapper.style.paddingLeft = '16px';
-        wrapper.style.fontStyle = 'italic';
         wrapper.textContent = selectedText || 'Quote text';
         needsSelection = false;
         break;
       case 'page':
         wrapper = document.createElement('div');
-        wrapper.style.pageBreakBefore = 'always';
         wrapper.innerHTML = `<hr style="margin: 20px 0;" /><h1>${selectedText || 'New Page'}</h1>`;
         needsSelection = false;
         break;
