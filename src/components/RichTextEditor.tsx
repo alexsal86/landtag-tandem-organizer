@@ -51,9 +51,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       // Handle lists
       .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
       .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
-      // Handle todo lists - use CLICKABLE spans instead of disabled checkboxes
-      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked">☑</span><span class="todo-text checked">$1</span></div>')
-      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox">☐</span><span class="todo-text">$1</span></div>')
+      // Handle todo lists - simplified checkboxes with just checkmark
+      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked">✓</span><span class="todo-text checked">$1</span></div>')
+      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox"></span><span class="todo-text">$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>')
       // Merge consecutive list items
@@ -285,14 +285,26 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     
     if (checkbox && text) {
       if (newChecked) {
-        checkbox.textContent = '☑';
+        checkbox.textContent = '✓';
+        checkbox.classList.add('checked');
         (text as HTMLElement).style.textDecoration = 'line-through';
         (text as HTMLElement).style.color = '#666';
+        (text as HTMLElement).classList.add('checked');
       } else {
-        checkbox.textContent = '☐';
+        checkbox.textContent = '';
+        checkbox.classList.remove('checked');
         (text as HTMLElement).style.textDecoration = 'none';
         (text as HTMLElement).style.color = 'inherit';
+        (text as HTMLElement).classList.remove('checked');
       }
+    }
+    
+    // Notify parent component for real-time broadcast
+    if (onCheckboxChange) {
+      const todoItems = Array.from(editorRef.current?.querySelectorAll('.todo-item') || []);
+      const todoIndex = todoItems.indexOf(todoElement);
+      console.log('RichTextEditor: Notifying parent of checkbox change', { todoIndex, newChecked });
+      onCheckboxChange(todoIndex, newChecked);
     }
     
     // Force immediate save
