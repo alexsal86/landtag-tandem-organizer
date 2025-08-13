@@ -492,40 +492,46 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         if (currentElement.classList?.contains('todo-item')) {
           e.preventDefault();
           
-          // Create new todo item
+          // Create new todo item using the new styled format
           const newTodoItem = document.createElement('div');
           newTodoItem.className = 'todo-item';
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.style.marginRight = '8px';
-        checkbox.onclick = function(this: HTMLInputElement) {
-          const span = this.nextSibling as HTMLSpanElement;
-          if (span) {
-            span.style.textDecoration = this.checked ? 'line-through' : 'none';
-          }
-          // Broadcast checkbox change
-          const checkboxes = editorRef.current?.querySelectorAll('input[type="checkbox"]');
-          if (checkboxes && onCheckboxChange) {
-            const index = Array.from(checkboxes).indexOf(this);
-            onCheckboxChange(index, this.checked);
-          }
-        };
-          const span = document.createElement('span');
-          span.innerHTML = '<br>';
+          newTodoItem.setAttribute('data-checked', 'false');
+          
+          // Create styled checkbox
+          const checkbox = document.createElement('span');
+          checkbox.className = 'todo-checkbox empty';
+          checkbox.setAttribute('contenteditable', 'false');
+          checkbox.setAttribute('data-checkbox', 'true');
+          checkbox.setAttribute('tabindex', '-1');
+          checkbox.style.cursor = 'pointer';
+          checkbox.style.userSelect = 'none';
+          checkbox.style.pointerEvents = 'auto';
+          checkbox.style.caretColor = 'transparent';
+          checkbox.style.outline = 'none';
+          
+          // Create text span
+          const textSpan = document.createElement('span');
+          textSpan.className = 'todo-text';
+          textSpan.textContent = '';
+          
           newTodoItem.appendChild(checkbox);
-          newTodoItem.appendChild(span);
+          newTodoItem.appendChild(textSpan);
           
           // Insert after current todo item
           currentElement.parentNode?.insertBefore(newTodoItem, currentElement.nextSibling);
           
-          // Set cursor in new todo item
+          // Set cursor in text span
           const newRange = document.createRange();
-          newRange.selectNodeContents(span);
+          newRange.selectNodeContents(textSpan);
           newRange.collapse(true);
           selection.removeAllRanges();
           selection.addRange(newRange);
           
-          setTimeout(() => handleInput(), 0);
+          // Setup click handlers for the new todo item
+          setTimeout(() => {
+            setupTodoClickHandlers();
+            handleInput();
+          }, 0);
           return;
         }
         
