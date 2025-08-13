@@ -54,6 +54,8 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
   const broadcastTimeoutRef = useRef<NodeJS.Timeout>();
+  const isUpdatingFromRemoteRef = useRef(false);
+  const lastLocalUpdateRef = useRef<string>('');
 
   const categories = [
     { value: 'general', label: 'Allgemein' },
@@ -180,6 +182,10 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         const { user_id, content, content_html, title, category, is_published } = payload.payload;
         if (user_id !== user.id) {
           console.log('KnowledgeDocumentEditor: Applying content change from another user', { user_id, content, content_html, title });
+          
+          // Prevent update loop by setting flag
+          isUpdatingFromRemoteRef.current = true;
+          
           // Update content from another user
           setEditedDoc(prev => ({
             ...prev,
@@ -189,6 +195,11 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
             category: category !== undefined ? category : prev.category,
             is_published: is_published !== undefined ? is_published : prev.is_published
           }));
+          
+          // Reset flag after a short delay
+          setTimeout(() => {
+            isUpdatingFromRemoteRef.current = false;
+          }, 100);
           
           toast({
             title: "Dokument aktualisiert",
@@ -529,8 +540,15 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
             <RichTextEditor
               value={editedDoc.content}
               onChange={(newContent, newHtml) => {
-                setEditedDoc(prev => ({ ...prev, content: newContent, content_html: newHtml || '' }));
-                broadcastContentChange('content', newContent, newHtml);
+                // Only broadcast if this is not a remote update
+                if (!isUpdatingFromRemoteRef.current) {
+                  console.log('KnowledgeDocumentEditor: Local content change', { newContent, newHtml });
+                  setEditedDoc(prev => ({ ...prev, content: newContent, content_html: newHtml || '' }));
+                  lastLocalUpdateRef.current = newContent;
+                  broadcastContentChange('content', newContent, newHtml);
+                } else {
+                  console.log('KnowledgeDocumentEditor: Skipping broadcast for remote update');
+                }
               }}
               onSelectionChange={handleSelectionChange}
               disabled={!canEdit}

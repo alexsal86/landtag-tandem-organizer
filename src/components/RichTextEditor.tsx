@@ -22,6 +22,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isComposing, setIsComposing] = useState(false);
+  const isUpdatingRef = useRef(false);
 
   // Convert markdown-like syntax to HTML for display
   const convertToHtml = (text: string) => {
@@ -63,42 +64,67 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (currentContent !== newContent) {
       console.log('RichTextEditor: Content update needed', { currentContent, newContent });
       
+      // Set flag to prevent onChange loop
+      isUpdatingRef.current = true;
+      
       // Save current cursor position
       const selection = window.getSelection();
       let cursorPosition = 0;
+      let cursorNode: Node | null = null;
       
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
         cursorPosition = range.startOffset;
+        cursorNode = range.startContainer;
         console.log('RichTextEditor: Saved cursor position', cursorPosition);
       }
       
-      // Update content
+      // Update content without triggering onChange
       const newHtml = convertToHtml(newContent);
       editorRef.current.innerHTML = newHtml;
       
       // Restore cursor position
-      if (selection && editorRef.current.firstChild) {
+      if (selection && cursorNode) {
         try {
           const newRange = document.createRange();
-          const textNode = editorRef.current.firstChild;
-          const maxOffset = textNode.textContent?.length || 0;
-          const safeOffset = Math.min(cursorPosition, maxOffset);
+          // Try to find equivalent position in new content
+          const walker = document.createTreeWalker(
+            editorRef.current,
+            NodeFilter.SHOW_TEXT,
+            null
+          );
           
-          newRange.setStart(textNode, safeOffset);
-          newRange.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-          console.log('RichTextEditor: Restored cursor position', safeOffset);
+          let currentNode = walker.nextNode();
+          let currentPos = 0;
+          
+          while (currentNode && currentPos + currentNode.textContent!.length < cursorPosition) {
+            currentPos += currentNode.textContent!.length;
+            currentNode = walker.nextNode();
+          }
+          
+          if (currentNode) {
+            const offsetInNode = cursorPosition - currentPos;
+            const safeOffset = Math.min(offsetInNode, currentNode.textContent?.length || 0);
+            newRange.setStart(currentNode, safeOffset);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            console.log('RichTextEditor: Restored cursor position', safeOffset);
+          }
         } catch (e) {
           console.log('RichTextEditor: Could not restore cursor position', e);
         }
       }
+      
+      // Reset flag after update completes
+      setTimeout(() => {
+        isUpdatingRef.current = false;
+      }, 50);
     }
   }, [value, isComposing]);
 
   const handleInput = () => {
-    if (!editorRef.current || disabled) return;
+    if (!editorRef.current || disabled || isUpdatingRef.current) return;
     
     const html = editorRef.current.innerHTML;
     const markdown = convertToMarkdown(html);
