@@ -773,6 +773,74 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_document_permissions: {
+        Row: {
+          created_at: string
+          document_id: string
+          granted_by: string
+          id: string
+          permission_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          granted_by: string
+          id?: string
+          permission_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          granted_by?: string
+          id?: string
+          permission_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_document_permissions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_documents: {
+        Row: {
+          category: string | null
+          content: string | null
+          created_at: string
+          created_by: string
+          id: string
+          is_published: boolean | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          is_published?: boolean | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_published?: boolean | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leave_requests: {
         Row: {
           created_at: string

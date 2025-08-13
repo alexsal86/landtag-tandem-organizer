@@ -60,6 +60,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "meetings", label: "Jour fixe", icon: MessageSquare },
     { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
     { id: "documents", label: "Dokumente", icon: FileText },
+    { id: "knowledge", label: "Wissen", icon: ShieldCheck },
     { id: "settings", label: "Einstellungen", icon: Settings },
     { id: "time", label: "Zeiterfassung", icon: Clock, adminOnly: false },
     { id: "employee", label: "Mitarbeiter", icon: Users },

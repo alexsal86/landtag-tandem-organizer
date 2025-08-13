@@ -8,6 +8,7 @@ import { CustomizableDashboard } from "@/components/CustomizableDashboard";
 import { CalendarView } from "@/components/CalendarView";
 import { ContactsView } from "@/components/ContactsView";
 import { DocumentsView } from "@/components/DocumentsView";
+import KnowledgeBaseView from "@/components/KnowledgeBaseView";
 import { TasksView } from "@/components/TasksView";
 import { SettingsView } from "@/components/SettingsView";
 import { MeetingsView } from "@/components/MeetingsView";
@@ -110,6 +111,9 @@ const Index = () => {
       case "documents":
         console.log('Rendering DocumentsView');
         return <DocumentsView />;
+      case "knowledge":
+        console.log('Rendering KnowledgeBaseView');
+        return <KnowledgeBaseView />;
       case "settings":
         console.log('Rendering SettingsView');
         return <SettingsView />;
