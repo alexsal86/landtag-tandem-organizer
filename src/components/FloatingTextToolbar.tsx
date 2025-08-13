@@ -4,14 +4,14 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface FloatingTextToolbarProps {
-  textareaRef: React.RefObject<HTMLDivElement>;
+  editorRef: React.RefObject<HTMLDivElement>;
   onFormatText: (format: string) => void;
   isVisible: boolean;
   selectedText: string;
 }
 
 const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
-  textareaRef,
+  editorRef,
   onFormatText,
   isVisible,
   selectedText
@@ -20,9 +20,9 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isVisible || !textareaRef.current) return;
+    if (!isVisible || !editorRef.current) return;
 
-    const editor = textareaRef.current;
+    const editor = editorRef.current;
     const selection = window.getSelection();
     
     if (!selection || selection.rangeCount === 0) return;
@@ -39,7 +39,7 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
       top: Math.max(10, top),
       left: Math.min(window.innerWidth - 300, Math.max(10, left))
     });
-  }, [isVisible, textareaRef]);
+  }, [isVisible, editorRef]);
 
   const formatButtons = [
     { icon: Bold, action: 'bold', label: 'Fett' },

@@ -211,14 +211,6 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     setShowToolbar(selectedText.length > 0);
   };
 
-  // Convert cursor position to line/column for display
-  const getCursorLineColumn = (content: string, position: number) => {
-    const lines = content.substring(0, position).split('\n');
-    return {
-      line: lines.length,
-      column: lines[lines.length - 1].length + 1
-    };
-  };
 
   // Format selected text for rich text editor
   const handleFormatText = (format: string) => {
@@ -494,34 +486,13 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
               className="min-h-96"
               placeholder="Beginnen Sie zu schreiben..."
             />
-            
-            {/* Other users' cursors */}
-            {Object.entries(userCursors).map(([userId, cursor]) => {
-              const { line, column } = getCursorLineColumn(editedDoc.content, cursor.position);
-              return (
-                <div
-                  key={userId}
-                  className="absolute pointer-events-none z-10"
-                  style={{
-                    top: `${(line - 1) * 1.5 + 0.5}rem`,
-                    left: `${(column - 1) * 0.6}rem`,
-                  }}
-                >
-                  <div className="w-0.5 h-5 bg-blue-500 relative">
-                    <div className="absolute -top-6 left-0 bg-blue-500 text-white text-xs px-1 py-0.5 rounded whitespace-nowrap">
-                      {cursor.name}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       </div>
 
       {/* Floating Text Toolbar */}
       <FloatingTextToolbar
-        textareaRef={editorRef}
+        editorRef={editorRef}
         onFormatText={handleFormatText}
         isVisible={showToolbar}
         selectedText={selectedText}
