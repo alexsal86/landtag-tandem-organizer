@@ -155,19 +155,7 @@ All colors MUST be HSL.
 
   /* Todo list styles matching the design from the image */
   .prose .todo-item {
-    @apply flex items-start gap-3 p-2 rounded hover:bg-accent/50 transition-all cursor-pointer;
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: flex-start !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 4px 8px !important;
-  }
-
-  /* Remove spacing from elements that might appear between todo items */
-  .prose .todo-item + br,
-  .prose .todo-item + .todo-item {
-    margin-top: 0 !important;
+    @apply flex items-start gap-3 mb-2 p-2 rounded hover:bg-accent/50 transition-all cursor-pointer;
   }
 
   .prose .todo-checkbox {
@@ -200,8 +188,6 @@ All colors MUST be HSL.
 
   .prose .todo-text {
     @apply flex-1 leading-relaxed;
-    flex: 1 !important;
-    word-wrap: break-word !important;
   }
 
   .prose .todo-text.checked {

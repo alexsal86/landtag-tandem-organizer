@@ -38,78 +38,29 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   // Convert markdown-like syntax to HTML for display
   const convertToHtml = (text: string) => {
     console.log('convertToHtml input:', text);
-    
-    // Split text into lines and process each line individually
-    const lines = text.split('\n');
-    const processedLines: string[] = [];
-    
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i];
-      
-      // Handle todo items first (they should be complete lines)
-      if (/^☑\s+/.test(line)) {
-        const content = line.replace(/^☑\s+/, '');
-        processedLines.push(`<div class="todo-item" data-checked="true"><span class="todo-checkbox checked" contenteditable="false" data-checkbox="true">✓</span><span class="todo-text checked">${content}</span></div>`);
-        continue;
-      }
-      
-      if (/^☐\s+/.test(line)) {
-        const content = line.replace(/^☐\s+/, '');
-        processedLines.push(`<div class="todo-item" data-checked="false"><span class="todo-checkbox empty" contenteditable="false" data-checkbox="true"></span><span class="todo-text">${content}</span></div>`);
-        continue;
-      }
-      
-      // Apply other formatting to non-todo lines
-      line = line
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
-        .replace(/~~(.*?)~~/g, '<del>$1</del>')
-        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-        .replace(/^### (.*$)/, '<h3>$1</h3>')
-        .replace(/^## (.*$)/, '<h2>$1</h2>')
-        .replace(/^# (.*$)/, '<h1>$1</h1>')
-        .replace(/^> (.*$)/, '<blockquote>$1</blockquote>')
-        .replace(/```\n(.*?)\n```/gs, '<pre><code>$1</code></pre>')
-        .replace(/`(.*?)`/g, '<code>$1</code>')
-        .replace(/^• (.*)$/, '<ul><li>$1</li></ul>')
-        .replace(/^(\d+)\. (.*)$/, '<ol><li>$2</li></ol>')
-        .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>');
-      
-      // Handle empty lines (preserve them as line breaks)
-      if (line.trim() === '') {
-        processedLines.push('<br>');
-      } else {
-        processedLines.push(line);
-      }
-    }
-    
-    // Join all processed lines with line breaks, but not for todo items
-    let result = '';
-    for (let i = 0; i < processedLines.length; i++) {
-      const currentLine = processedLines[i];
-      const nextLine = processedLines[i + 1];
-      
-      result += currentLine;
-      
-      // Add line break only if:
-      // 1. This is not the last line
-      // 2. Current line is not a todo item
-      // 3. Next line is not a todo item
-      // 4. Current line is not already a <br>
-      if (i < processedLines.length - 1 && 
-          !currentLine.includes('todo-item') && 
-          !nextLine?.includes('todo-item') &&
-          currentLine !== '<br>') {
-        result += '<br>';
-      }
-    }
-    
-    // Clean up consecutive list items
-    result = result
+    const result = text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
+      .replace(/~~(.*?)~~/g, '<del>$1</del>')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+      .replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>')
+      .replace(/```\n(.*?)\n```/gs, '<pre><code>$1</code></pre>')
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      // Handle lists
+      .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
+      .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
+      // Handle todo lists - styled checkboxes matching the design
+      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked" contenteditable="false" data-checkbox="true">✓</span><span class="todo-text checked">$1</span></div>')
+      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox empty" contenteditable="false" data-checkbox="true"></span><span class="todo-text">$1</span></div>')
+      .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
+      .replace(/\n/g, '<br>')
+      // Merge consecutive list items
       .replace(/<\/ul><br><ul>/g, '')
       .replace(/<\/ol><br><ol>/g, '');
-    
     console.log('convertToHtml output:', result);
     return result;
   };
@@ -129,9 +80,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     const todoItems = tempDiv.querySelectorAll('.todo-item');
     console.log('convertToMarkdown: Found todo items:', todoItems.length);
     
-    // Process todo items in reverse order to avoid replacement conflicts
-    const todoReplacements: { html: string; markdown: string }[] = [];
-    
     todoItems.forEach((todoItem, index) => {
       const isChecked = todoItem.getAttribute('data-checked') === 'true';
       const textSpan = todoItem.querySelector('.todo-text');
@@ -139,20 +87,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         const text = textSpan.textContent || '';
         console.log(`convertToMarkdown: Todo ${index} - text: "${text}", checked: ${isChecked}`);
         
-        const markdownSymbol = isChecked ? '☑' : '☐';
-        const replacement = `${markdownSymbol} ${text}`;
-        
-        todoReplacements.push({
-          html: todoItem.outerHTML,
-          markdown: replacement
-        });
+        const replacement = isChecked ? `☑ ${text}` : `☐ ${text}`;
+        const todoHtml = todoItem.outerHTML;
+        result = result.replace(todoHtml, replacement);
       }
-    });
-    
-    // Apply replacements with line breaks between todo items
-    todoReplacements.forEach(({ html, markdown }, index) => {
-      const replacement = index === todoReplacements.length - 1 ? markdown : markdown + '\n';
-      result = result.replace(html, replacement);
     });
     
     // Handle any remaining old checkbox structures
@@ -173,9 +111,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     });
     
     result = result
-      // Handle todo items FIRST before other conversions destroy them
-      // (This has already been done above, but ensure clean result)
-      
       // Handle headings first (before other formatting)
       .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1')
       .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1')
@@ -195,12 +130,11 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         let counter = 1;
         return content.replace(/<li[^>]*>(.*?)<\/li>/gi, (li, text) => `${counter++}. ${text}\n`).trim();
       })
-      // Clean up any remaining artifacts (but preserve todo markers)
+      // Clean up any remaining artifacts
       .replace(/<span[^>]*style="color:\s*#888;\s*font-style:\s*italic;"[^>]*>(.*?)<\/span>/gi, '$1')
       .replace(/<!--\s*(.*?)\s*-->/g, '$1')
       .replace(/<br\s*\/?>/gi, '\n')
-      // Handle remaining divs that are not todo-items
-      .replace(/<div(?![^>]*class="todo-item")[^>]*>/gi, '\n')
+      .replace(/<div[^>]*>/gi, '\n')
       .replace(/<\/div>/gi, '')
       .replace(/<p[^>]*>/gi, '\n')
       .replace(/<\/p>/gi, '')
@@ -558,66 +492,40 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         if (currentElement.classList?.contains('todo-item')) {
           e.preventDefault();
           
-          // Check if current todo item is empty by looking at the text content
-          const todoText = currentElement.querySelector('.todo-text');
-          const textContent = todoText?.textContent?.trim() || '';
-          const innerHTML = todoText?.innerHTML || '';
-          
-          // Consider it empty if no text content or only contains <br>
-          const isEmpty = textContent === '' || innerHTML === '<br>' || innerHTML === '';
-          
-          console.log('Todo item Enter pressed:', { textContent, innerHTML, isEmpty });
-          
-          if (isEmpty) {
-            // Remove empty todo item and create normal text line
-            const newDiv = document.createElement('div');
-            newDiv.innerHTML = '<br>';
-            
-            // Insert the new div after the current todo item
-            currentElement.parentNode?.insertBefore(newDiv, currentElement.nextSibling);
-            
-            // Remove the empty todo item
-            currentElement.remove();
-            
-            // Set cursor in new div
-            const newRange = document.createRange();
-            newRange.selectNodeContents(newDiv);
-            newRange.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
-          } else {
-            // Create new todo item with proper structure
-            const newTodoItem = document.createElement('div');
-            newTodoItem.className = 'todo-item';
-            newTodoItem.setAttribute('data-checked', 'false');
-            
-            const checkbox = document.createElement('span');
-            checkbox.className = 'todo-checkbox empty';
-            checkbox.setAttribute('contenteditable', 'false');
-            checkbox.setAttribute('data-checkbox', 'true');
-            
-            const textSpan = document.createElement('span');
-            textSpan.className = 'todo-text';
-            textSpan.innerHTML = '<br>';
-            
-            newTodoItem.appendChild(checkbox);
-            newTodoItem.appendChild(textSpan);
-            
-            // Insert after current todo item
-            currentElement.parentNode?.insertBefore(newTodoItem, currentElement.nextSibling);
-            
-            // Set cursor in new todo item text
-            const newRange = document.createRange();
-            newRange.selectNodeContents(textSpan);
-            newRange.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
+          // Create new todo item
+          const newTodoItem = document.createElement('div');
+          newTodoItem.className = 'todo-item';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.style.marginRight = '8px';
+        checkbox.onclick = function(this: HTMLInputElement) {
+          const span = this.nextSibling as HTMLSpanElement;
+          if (span) {
+            span.style.textDecoration = this.checked ? 'line-through' : 'none';
           }
+          // Broadcast checkbox change
+          const checkboxes = editorRef.current?.querySelectorAll('input[type="checkbox"]');
+          if (checkboxes && onCheckboxChange) {
+            const index = Array.from(checkboxes).indexOf(this);
+            onCheckboxChange(index, this.checked);
+          }
+        };
+          const span = document.createElement('span');
+          span.innerHTML = '<br>';
+          newTodoItem.appendChild(checkbox);
+          newTodoItem.appendChild(span);
           
-          setTimeout(() => {
-            handleInput();
-            setupTodoClickHandlers();
-          }, 0);
+          // Insert after current todo item
+          currentElement.parentNode?.insertBefore(newTodoItem, currentElement.nextSibling);
+          
+          // Set cursor in new todo item
+          const newRange = document.createRange();
+          newRange.selectNodeContents(span);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+          
+          setTimeout(() => handleInput(), 0);
           return;
         }
         
