@@ -92,21 +92,23 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   useEffect(() => {
     if (!editorRef.current || isComposing) return;
 
-    // Skip update if this was triggered by our own input
-    if (skipNextUpdateRef.current) {
-      skipNextUpdateRef.current = false;
-      return;
-    }
-
-    // Only update if the value actually changed from outside
+    // Always process external updates, but be careful with timing
     if (value !== lastValueRef.current) {
       console.log('RichTextEditor: External update detected', { 
         newValue: value, 
-        lastValue: lastValueRef.current 
+        lastValue: lastValueRef.current,
+        skipNext: skipNextUpdateRef.current
       });
+      
+      // If we just made a local change, skip this update to prevent loops
+      if (skipNextUpdateRef.current) {
+        skipNextUpdateRef.current = false;
+        return;
+      }
       
       try {
         const html = convertToHtml(value);
+        console.log('RichTextEditor: Converting markdown to HTML', { markdown: value, html });
         editorRef.current.innerHTML = html;
         lastValueRef.current = value;
       } catch (error) {

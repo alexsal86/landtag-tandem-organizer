@@ -201,6 +201,14 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
             is_published: is_published !== undefined ? is_published : prev.is_published
           }));
           
+          console.log('KnowledgeDocumentEditor: Remote update received', { 
+            content, 
+            content_html, 
+            title, 
+            category, 
+            is_published 
+          });
+          
           // Reset flag after a longer delay to ensure no interference
           setTimeout(() => {
             isUpdatingFromRemoteRef.current = false;
