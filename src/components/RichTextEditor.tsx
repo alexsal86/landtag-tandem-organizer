@@ -496,40 +496,58 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         if (currentElement.classList?.contains('todo-item')) {
           e.preventDefault();
           
-          // Create new todo item
-          const newTodoItem = document.createElement('div');
-          newTodoItem.className = 'todo-item';
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.style.marginRight = '8px';
-        checkbox.onclick = function(this: HTMLInputElement) {
-          const span = this.nextSibling as HTMLSpanElement;
-          if (span) {
-            span.style.textDecoration = this.checked ? 'line-through' : 'none';
+          // Check if current todo item is empty (only considering the text part)
+          const todoText = currentElement.querySelector('.todo-text');
+          const isEmpty = !todoText?.textContent?.trim() || todoText.innerHTML === '<br>';
+          
+          if (isEmpty) {
+            // Remove empty todo item and exit todo list
+            currentElement.remove();
+            
+            // Create new div after the removed todo item
+            const newDiv = document.createElement('div');
+            newDiv.innerHTML = '<br>';
+            currentElement.parentNode?.insertBefore(newDiv, currentElement.nextSibling);
+            
+            // Set cursor in new div
+            const newRange = document.createRange();
+            newRange.selectNodeContents(newDiv);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          } else {
+            // Create new todo item with proper structure
+            const newTodoItem = document.createElement('div');
+            newTodoItem.className = 'todo-item';
+            newTodoItem.setAttribute('data-checked', 'false');
+            
+            const checkbox = document.createElement('span');
+            checkbox.className = 'todo-checkbox empty';
+            checkbox.setAttribute('contenteditable', 'false');
+            checkbox.setAttribute('data-checkbox', 'true');
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'todo-text';
+            textSpan.innerHTML = '<br>';
+            
+            newTodoItem.appendChild(checkbox);
+            newTodoItem.appendChild(textSpan);
+            
+            // Insert after current todo item
+            currentElement.parentNode?.insertBefore(newTodoItem, currentElement.nextSibling);
+            
+            // Set cursor in new todo item text
+            const newRange = document.createRange();
+            newRange.selectNodeContents(textSpan);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
           }
-          // Broadcast checkbox change
-          const checkboxes = editorRef.current?.querySelectorAll('input[type="checkbox"]');
-          if (checkboxes && onCheckboxChange) {
-            const index = Array.from(checkboxes).indexOf(this);
-            onCheckboxChange(index, this.checked);
-          }
-        };
-          const span = document.createElement('span');
-          span.innerHTML = '<br>';
-          newTodoItem.appendChild(checkbox);
-          newTodoItem.appendChild(span);
           
-          // Insert after current todo item
-          currentElement.parentNode?.insertBefore(newTodoItem, currentElement.nextSibling);
-          
-          // Set cursor in new todo item
-          const newRange = document.createRange();
-          newRange.selectNodeContents(span);
-          newRange.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-          
-          setTimeout(() => handleInput(), 0);
+          setTimeout(() => {
+            handleInput();
+            setupTodoClickHandlers();
+          }, 0);
           return;
         }
         
