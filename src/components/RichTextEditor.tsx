@@ -79,14 +79,14 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .trim();
   };
 
-  // Initialize content on mount
+  // Initialize content on mount and when value changes
   useEffect(() => {
-    if (editorRef.current && !lastValueRef.current) {
+    if (editorRef.current) {
       const html = convertToHtml(value);
       editorRef.current.innerHTML = html;
       lastValueRef.current = value;
     }
-  }, []);
+  }, [value]);
 
   // Only update from external changes (not user input)
   useEffect(() => {
@@ -95,7 +95,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       return;
     }
 
-    // Only update if the value actually changed from outside
+    // Always update if the value changed from outside, regardless of source
     if (value !== lastValueRef.current) {
       console.log('RichTextEditor: External update detected', { 
         newValue: value, 
