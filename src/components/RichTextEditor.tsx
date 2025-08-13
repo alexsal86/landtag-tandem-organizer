@@ -492,6 +492,32 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         if (currentElement.classList?.contains('todo-item')) {
           e.preventDefault();
           
+          // Check if current todo item is empty
+          const currentTextSpan = currentElement.querySelector('.todo-text');
+          if (currentTextSpan && currentTextSpan.textContent?.trim() === '') {
+            // Remove empty todo item and exit todo mode
+            const nextElement = currentElement.nextSibling;
+            if (nextElement && nextElement.nodeName === 'BR') {
+              nextElement.remove();
+            }
+            
+            // Create a new paragraph for normal text
+            const newParagraph = document.createElement('p');
+            newParagraph.innerHTML = '<br>';
+            currentElement.parentNode?.insertBefore(newParagraph, currentElement.nextSibling);
+            currentElement.remove();
+            
+            // Set cursor in new paragraph
+            const newRange = document.createRange();
+            newRange.selectNodeContents(newParagraph);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            
+            handleInput();
+            return;
+          }
+          
           // Create new todo item using the new styled format
           const newTodoItem = document.createElement('div');
           newTodoItem.className = 'todo-item';
