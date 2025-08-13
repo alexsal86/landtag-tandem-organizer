@@ -75,22 +75,24 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     });
   }, [document]);
 
-  // Auto-save functionality
+  // Auto-save functionality - only for local changes
   useEffect(() => {
-    if (!canEdit) return;
+    if (!canEdit || isUpdatingFromRemoteRef.current) return;
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
     saveTimeoutRef.current = setTimeout(() => {
-      if (editedDoc.title !== document.title || 
-          editedDoc.content !== document.content || 
-          editedDoc.category !== document.category ||
-          editedDoc.is_published !== document.is_published) {
+      // Only auto-save if this is not a remote update and content actually changed
+      if (!isUpdatingFromRemoteRef.current && 
+          (editedDoc.title !== document.title || 
+           editedDoc.content !== document.content || 
+           editedDoc.category !== document.category ||
+           editedDoc.is_published !== document.is_published)) {
         handleAutoSave();
       }
-    }, 1000);
+    }, 1500); // Increased delay to reduce frequent saves
 
     return () => {
       if (saveTimeoutRef.current) {
@@ -179,13 +181,15 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         }
       })
       .on('broadcast', { event: 'content_change' }, (payload) => {
-        console.log('KnowledgeDocumentEditor: Received content change broadcast', payload);
         const { user_id, value: content, content_html, title, category, is_published } = payload.payload;
         if (user_id !== user.id) {
-          console.log('KnowledgeDocumentEditor: Applying content change from another user', { user_id, content, content_html, title });
-          
-          // Prevent update loop by setting flag
+          // Prevent update loop and auto-save by setting flag
           isUpdatingFromRemoteRef.current = true;
+          
+          // Clear any pending auto-save timeout to prevent saving remote changes
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
           
           // Update content from another user
           setEditedDoc(prev => ({
@@ -197,15 +201,16 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
             is_published: is_published !== undefined ? is_published : prev.is_published
           }));
           
-          // Reset flag after a short delay
+          // Reset flag after a longer delay to ensure no interference
           setTimeout(() => {
             isUpdatingFromRemoteRef.current = false;
-          }, 100);
+          }, 500);
           
+          // Show subtle update notification
           toast({
-            title: "Dokument aktualisiert",
-            description: `${payload.payload.user_name} hat das Dokument bearbeitet.`,
-            duration: 2000,
+            title: "Live-Update",
+            description: `${payload.payload.user_name} bearbeitet gerade...`,
+            duration: 1500,
           });
         }
       })
@@ -273,18 +278,12 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         payload.content_html = htmlValue;
       }
       
-      console.log('KnowledgeDocumentEditor: Broadcasting content change', payload);
-      
       channelRef.current.send({
         type: 'broadcast',
         event: 'content_change',
         payload
-      }).then(() => {
-        console.log('KnowledgeDocumentEditor: Broadcast sent successfully');
-      }).catch((error: any) => {
-        console.error('KnowledgeDocumentEditor: Failed to broadcast', error);
       });
-    }, 300); // 300ms debounce delay
+    }, 500); // Increased debounce delay for smoother experience
   };
 
   // Format selected text using the RichTextEditor's formatSelection function
