@@ -138,24 +138,31 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
-    const range = selection.getRangeAt(0);
-    const selectedText = range.toString();
-    
-    // Get the parent element to check for existing formatting
-    const parentElement = range.commonAncestorContainer.nodeType === Node.TEXT_NODE 
-      ? range.commonAncestorContainer.parentElement 
-      : range.commonAncestorContainer as Element;
-
-    // For headings, replace the entire line/block
+    // For headings, we need to work with the current line/block
     if (['heading1', 'heading2', 'heading3', 'text'].includes(format)) {
-      // Find the containing block element
-      let blockElement = parentElement;
-      while (blockElement && !['DIV', 'H1', 'H2', 'H3', 'P'].includes(blockElement.tagName)) {
-        blockElement = blockElement.parentElement;
+      const range = selection.getRangeAt(0);
+      
+      // Find the current line by expanding to line boundaries
+      let startContainer = range.startContainer;
+      let endContainer = range.endContainer;
+      
+      // If we're in a text node, get the parent element
+      if (startContainer.nodeType === Node.TEXT_NODE) {
+        startContainer = startContainer.parentNode as Node;
+      }
+      if (endContainer.nodeType === Node.TEXT_NODE) {
+        endContainer = endContainer.parentNode as Node;
       }
       
-      if (blockElement && (blockElement as HTMLElement).isContentEditable !== false) {
-        const text = blockElement.textContent || selectedText || 'Heading';
+      // Find the line element (div, p, h1, h2, h3, or create one if needed)
+      let lineElement = startContainer as Element;
+      while (lineElement && lineElement !== editorRef.current && 
+             !['DIV', 'P', 'H1', 'H2', 'H3'].includes(lineElement.tagName)) {
+        lineElement = lineElement.parentElement!;
+      }
+      
+      if (lineElement && lineElement !== editorRef.current) {
+        const text = lineElement.textContent || '';
         let newElement: HTMLElement;
         
         switch (format) {
@@ -176,7 +183,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         }
         
         newElement.textContent = text;
-        blockElement.parentNode?.replaceChild(newElement, blockElement);
+        lineElement.parentNode?.replaceChild(newElement, lineElement);
         
         // Set cursor at the end of the new element
         const newRange = document.createRange();
@@ -187,8 +194,44 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         
         setTimeout(() => handleInput(), 0);
         return;
+      } else {
+        // If no line element found, create a new heading with selected text
+        const range = selection.getRangeAt(0);
+        const selectedText = range.toString();
+        
+        if (selectedText) {
+          let newElement: HTMLElement;
+          
+          switch (format) {
+            case 'heading1':
+              newElement = document.createElement('h1');
+              break;
+            case 'heading2':
+              newElement = document.createElement('h2');
+              break;
+            case 'heading3':
+              newElement = document.createElement('h3');
+              break;
+            case 'text':
+              newElement = document.createElement('div');
+              break;
+            default:
+              return;
+          }
+          
+          newElement.textContent = selectedText;
+          range.deleteContents();
+          range.insertNode(newElement);
+          
+          setTimeout(() => handleInput(), 0);
+          return;
+        }
       }
     }
+    
+    // For other formatting (bold, italic, etc.)
+    const range = selection.getRangeAt(0);
+    const selectedText = range.toString();
     
     if (!selectedText && !['bulletlist', 'numberlist', 'todolist', 'togglelist', 'code', 'quote', 'page'].includes(format)) {
       return;
