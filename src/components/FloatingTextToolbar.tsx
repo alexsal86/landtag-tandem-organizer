@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface FloatingTextToolbarProps {
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  textareaRef: React.RefObject<HTMLDivElement>;
   onFormatText: (format: string) => void;
   isVisible: boolean;
   selectedText: string;
@@ -22,24 +22,18 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
   useEffect(() => {
     if (!isVisible || !textareaRef.current) return;
 
-    const textarea = textareaRef.current;
-    const selectionStart = textarea.selectionStart;
-    const selectionEnd = textarea.selectionEnd;
-
-    if (selectionStart === selectionEnd) return;
+    const editor = textareaRef.current;
+    const selection = window.getSelection();
+    
+    if (!selection || selection.rangeCount === 0) return;
 
     // Calculate position based on selection
-    const textareaRect = textarea.getBoundingClientRect();
-    const textBeforeSelection = textarea.value.substring(0, selectionStart);
-    const lines = textBeforeSelection.split('\n');
-    const lineHeight = 24; // Approximate line height
+    const editorRect = editor.getBoundingClientRect();
+    const range = selection.getRangeAt(0);
+    const rangeRect = range.getBoundingClientRect();
     
-    // Calculate approximate position
-    const lineNumber = lines.length - 1;
-    const characterPosition = lines[lines.length - 1].length;
-    
-    const top = textareaRect.top - 50 + (lineNumber * lineHeight);
-    const left = textareaRect.left + (characterPosition * 8); // Approximate character width
+    const top = rangeRect.top - 50;
+    const left = rangeRect.left + (rangeRect.width / 2) - 150;
 
     setPosition({
       top: Math.max(10, top),

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from './RichTextEditor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -47,7 +47,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   const [selectedText, setSelectedText] = useState('');
   const [showToolbar, setShowToolbar] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const categories = [
     { value: 'general', label: 'Allgemein' },
@@ -145,18 +145,8 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         filter: `id=eq.${document.id}`
       }, (payload) => {
         if (payload.new.updated_at !== document.updated_at && payload.new.created_by !== user.id) {
-          // Preserve cursor position before update
-          const currentPosition = textareaRef.current?.selectionStart || 0;
-          
           // Another user updated the document
           setEditedDoc(payload.new as KnowledgeDocument);
-          
-          // Restore cursor position after content update
-          setTimeout(() => {
-            if (textareaRef.current) {
-              textareaRef.current.setSelectionRange(currentPosition, currentPosition);
-            }
-          }, 0);
           
           toast({
             title: "Dokument aktualisiert",
@@ -176,9 +166,6 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
       .on('broadcast', { event: 'content_change' }, (payload) => {
         const { user_id, content, title, category, is_published } = payload.payload;
         if (user_id !== user.id) {
-          // Preserve current cursor position
-          const currentPosition = textareaRef.current?.selectionStart || 0;
-          
           // Update content from another user
           setEditedDoc(prev => ({
             ...prev,
@@ -187,13 +174,6 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
             category: category || prev.category,
             is_published: is_published !== undefined ? is_published : prev.is_published
           }));
-          
-          // Restore cursor position
-          setTimeout(() => {
-            if (textareaRef.current) {
-              textareaRef.current.setSelectionRange(currentPosition, currentPosition);
-            }
-          }, 0);
         }
       })
       .subscribe(async (status) => {
@@ -219,37 +199,16 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     };
   }, [isOpen, user, document.id]);
 
-  // Handle cursor position changes
-  const handleCursorChange = async () => {
-    if (!textareaRef.current || !user) return;
+  // Handle selection changes for rich text editor
+  const handleSelectionChange = () => {
+    if (!canEdit) return;
     
-    const cursorPosition = textareaRef.current.selectionStart;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
     
-    // Broadcast cursor position to other users
-    const channel = supabase.channel(`document-${document.id}`);
-    await channel.send({
-      type: 'broadcast',
-      event: 'cursor_move',
-      payload: {
-        user_id: user.id,
-        cursor_position: cursorPosition,
-        user_name: user.email || 'Unbekannt'
-      }
-    });
-    
-    // Update presence with cursor position
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('user_id', user.id)
-      .single();
-    
-    await channel.track({
-      user_id: user.id,
-      user_name: profile?.display_name || 'Unbekannt',
-      online_at: new Date().toISOString(),
-      cursor_position: cursorPosition
-    });
+    const selectedText = selection.toString();
+    setSelectedText(selectedText);
+    setShowToolbar(selectedText.length > 0);
   };
 
   // Convert cursor position to line/column for display
@@ -261,72 +220,75 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     };
   };
 
-  // Handle text selection for floating toolbar
-  const handleTextSelection = () => {
-    if (!textareaRef.current || !canEdit) return;
-    
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = textarea.value.substring(start, end);
-    
-    setSelectedText(selected);
-    setShowToolbar(selected.length > 0);
-  };
-
-  // Format selected text
+  // Format selected text for rich text editor
   const handleFormatText = (format: string) => {
-    if (!textareaRef.current || !selectedText) return;
+    if (!selectedText) return;
     
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const content = editedDoc.content;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
     
-    let formattedText = selectedText;
+    const range = selection.getRangeAt(0);
+    let wrapper: HTMLElement;
     
     switch (format) {
       case 'bold':
-        formattedText = `**${selectedText}**`;
+        wrapper = window.document.createElement('strong');
         break;
       case 'italic':
-        formattedText = `*${selectedText}*`;
+        wrapper = window.document.createElement('em');
         break;
       case 'underline':
-        formattedText = `<u>${selectedText}</u>`;
+        wrapper = window.document.createElement('u');
         break;
       case 'strikethrough':
-        formattedText = `~~${selectedText}~~`;
+        wrapper = window.document.createElement('del');
         break;
       case 'link':
         const url = prompt('Link-URL eingeben:');
-        if (url) formattedText = `[${selectedText}](${url})`;
+        if (!url) return;
+        wrapper = window.document.createElement('a');
+        (wrapper as HTMLAnchorElement).href = url;
+        (wrapper as HTMLAnchorElement).target = '_blank';
+        (wrapper as HTMLAnchorElement).rel = 'noopener noreferrer';
         break;
       case 'heading':
-        formattedText = `## ${selectedText}`;
+        wrapper = window.document.createElement('h2');
         break;
       case 'comment':
-        formattedText = `<!-- ${selectedText} -->`;
+        wrapper = window.document.createElement('span');
+        wrapper.style.color = '#888';
+        wrapper.style.fontStyle = 'italic';
         break;
       default:
         return;
     }
     
-    const newContent = content.substring(0, start) + formattedText + content.substring(end);
-    setEditedDoc(prev => ({ ...prev, content: newContent }));
-    broadcastContentChange('content', newContent);
+    try {
+      range.surroundContents(wrapper);
+      selection.removeAllRanges();
+      
+      // Get updated content from editor
+      if (editorRef.current) {
+        const newContent = editorRef.current.innerText;
+        setEditedDoc(prev => ({ ...prev, content: newContent }));
+        broadcastContentChange('content', newContent);
+      }
+    } catch (e) {
+      // Fallback: replace selection with formatted text
+      range.deleteContents();
+      wrapper.textContent = selectedText;
+      range.insertNode(wrapper);
+      
+      if (editorRef.current) {
+        const newContent = editorRef.current.innerText;
+        setEditedDoc(prev => ({ ...prev, content: newContent }));
+        broadcastContentChange('content', newContent);
+      }
+    }
     
     // Hide toolbar and clear selection
     setShowToolbar(false);
     setSelectedText('');
-    
-    // Focus back to textarea
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        textareaRef.current.setSelectionRange(start + formattedText.length, start + formattedText.length);
-      }
-    }, 0);
   };
 
   // Broadcast content changes to other users
@@ -521,27 +483,16 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
 
           {/* Content Editor */}
           <div className="min-h-96 relative">
-            <Textarea
-              ref={textareaRef}
+            <RichTextEditor
               value={editedDoc.content}
-              onChange={(e) => {
-                const newContent = e.target.value;
+              onChange={(newContent) => {
                 setEditedDoc(prev => ({ ...prev, content: newContent }));
                 broadcastContentChange('content', newContent);
               }}
-              onSelect={(e) => {
-                handleCursorChange();
-                handleTextSelection();
-              }}
-              onKeyUp={handleCursorChange}
-              onClick={(e) => {
-                handleCursorChange();
-                handleTextSelection();
-              }}
-              onMouseUp={handleTextSelection}
-              className="min-h-96 border-none px-0 focus-visible:ring-0 bg-transparent resize-none text-base leading-relaxed"
-              placeholder="Beginnen Sie zu schreiben..."
+              onSelectionChange={handleSelectionChange}
               disabled={!canEdit}
+              className="min-h-96"
+              placeholder="Beginnen Sie zu schreiben..."
             />
             
             {/* Other users' cursors */}
@@ -570,7 +521,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
 
       {/* Floating Text Toolbar */}
       <FloatingTextToolbar
-        textareaRef={textareaRef}
+        textareaRef={editorRef}
         onFormatText={handleFormatText}
         isVisible={showToolbar}
         selectedText={selectedText}
