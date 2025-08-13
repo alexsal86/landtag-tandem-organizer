@@ -338,8 +338,14 @@ const KnowledgeBaseView = () => {
                 ) : (
                   <div className="grid gap-4">
                     {filteredDocuments.map((doc) => (
-                      <Card key={doc.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
+                      <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                        <CardContent 
+                          className="p-4"
+                          onClick={() => {
+                            setSelectedDocument(doc);
+                            setIsEditorOpen(true);
+                          }}
+                        >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-2">
@@ -371,35 +377,19 @@ const KnowledgeBaseView = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedDocument(doc);
-                                  setIsEditorOpen(true);
-                                }}
-                              >
-                                <Edit className="h-4 w-4 mr-1" />
-                                Bearbeiten
-                              </Button>
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                               {doc.created_by === user?.id && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      onClick={() => handleDeleteDocument(doc.id)}
-                                      className="text-destructive"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Löschen
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDocument(doc.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Löschen
+                                </Button>
                               )}
                             </div>
                           </div>
