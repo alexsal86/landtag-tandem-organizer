@@ -56,29 +56,42 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   useEffect(() => {
     if (!editorRef.current || isComposing) return;
     
-    const currentHtml = editorRef.current.innerHTML;
-    const newHtml = convertToHtml(value);
+    const currentContent = editorRef.current.innerText;
+    const newContent = value;
     
-    if (currentHtml !== newHtml) {
-      const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
-      const startOffset = range?.startOffset || 0;
+    // Only update if content actually changed to prevent cursor jumps
+    if (currentContent !== newContent) {
+      console.log('RichTextEditor: Content update needed', { currentContent, newContent });
       
+      // Save current cursor position
+      const selection = window.getSelection();
+      let cursorPosition = 0;
+      
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        cursorPosition = range.startOffset;
+        console.log('RichTextEditor: Saved cursor position', cursorPosition);
+      }
+      
+      // Update content
+      const newHtml = convertToHtml(newContent);
       editorRef.current.innerHTML = newHtml;
       
       // Restore cursor position
-      if (selection && range) {
+      if (selection && editorRef.current.firstChild) {
         try {
           const newRange = document.createRange();
           const textNode = editorRef.current.firstChild;
-          if (textNode) {
-            newRange.setStart(textNode, Math.min(startOffset, textNode.textContent?.length || 0));
-            newRange.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
-          }
+          const maxOffset = textNode.textContent?.length || 0;
+          const safeOffset = Math.min(cursorPosition, maxOffset);
+          
+          newRange.setStart(textNode, safeOffset);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+          console.log('RichTextEditor: Restored cursor position', safeOffset);
         } catch (e) {
-          // Ignore cursor position errors
+          console.log('RichTextEditor: Could not restore cursor position', e);
         }
       }
     }
@@ -89,6 +102,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     
     const html = editorRef.current.innerHTML;
     const markdown = convertToMarkdown(html);
+    console.log('RichTextEditor: Input changed', { html, markdown });
     onChange(markdown, html);
   };
 

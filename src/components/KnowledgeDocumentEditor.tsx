@@ -53,6 +53,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const editorRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
+  const broadcastTimeoutRef = useRef<NodeJS.Timeout>();
 
   const categories = [
     { value: 'general', label: 'Allgemein' },
@@ -175,8 +176,10 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         }
       })
       .on('broadcast', { event: 'content_change' }, (payload) => {
+        console.log('KnowledgeDocumentEditor: Received content change broadcast', payload);
         const { user_id, content, content_html, title, category, is_published } = payload.payload;
         if (user_id !== user.id) {
+          console.log('KnowledgeDocumentEditor: Applying content change from another user', { user_id, content, content_html, title });
           // Update content from another user
           setEditedDoc(prev => ({
             ...prev,
@@ -186,6 +189,12 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
             category: category !== undefined ? category : prev.category,
             is_published: is_published !== undefined ? is_published : prev.is_published
           }));
+          
+          toast({
+            title: "Dokument aktualisiert",
+            description: `${payload.payload.user_name} hat das Dokument bearbeitet.`,
+            duration: 2000,
+          });
         }
       })
       .subscribe(async (status) => {
@@ -226,28 +235,44 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     setShowToolbar(selectedText.length > 0);
   };
 
-  // Broadcast content changes to other users including HTML formatting
+  // Debounced broadcast content changes to other users including HTML formatting
   const broadcastContentChange = (field: string, value: string, htmlValue?: string) => {
-    if (!channelRef.current) return;
-    
-    const payload: any = {
-      type: 'content_change',
-      field,
-      value,
-      user_id: user?.id,
-      user_name: user?.user_metadata?.display_name || 'Unbekannt',
-      timestamp: new Date().toISOString()
-    };
-
-    if (htmlValue && field === 'content') {
-      payload.content_html = htmlValue;
+    if (!channelRef.current || !user) {
+      console.log('KnowledgeDocumentEditor: Cannot broadcast - no channel or user', { channel: !!channelRef.current, user: !!user });
+      return;
     }
     
-    channelRef.current.send({
-      type: 'broadcast',
-      event: 'content_change',
-      payload
-    });
+    // Clear previous broadcast timeout to debounce rapid changes
+    if (broadcastTimeoutRef.current) {
+      clearTimeout(broadcastTimeoutRef.current);
+    }
+    
+    broadcastTimeoutRef.current = setTimeout(() => {
+      const payload: any = {
+        type: 'content_change',
+        field,
+        value,
+        user_id: user.id,
+        user_name: user.user_metadata?.display_name || 'Unbekannt',
+        timestamp: new Date().toISOString()
+      };
+
+      if (htmlValue && field === 'content') {
+        payload.content_html = htmlValue;
+      }
+      
+      console.log('KnowledgeDocumentEditor: Broadcasting content change', payload);
+      
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'content_change',
+        payload
+      }).then(() => {
+        console.log('KnowledgeDocumentEditor: Broadcast sent successfully');
+      }).catch((error: any) => {
+        console.error('KnowledgeDocumentEditor: Failed to broadcast', error);
+      });
+    }, 300); // 300ms debounce delay
   };
 
   // Format selected text for rich text editor
