@@ -223,6 +223,13 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
           });
         }
       })
+      .on('broadcast', { event: 'checkbox_change' }, (payload) => {
+        const { user_id, checkboxIndex, checked } = payload.payload;
+        if (user_id !== user.id && richTextEditorRef.current) {
+          // Update checkbox state for other users
+          richTextEditorRef.current.updateCheckboxState(checkboxIndex, checked);
+        }
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           // Get user name from profiles
@@ -291,6 +298,24 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         payload
       });
     }, 500); // Increased debounce delay for smoother experience
+  };
+
+  // Broadcast checkbox state changes immediately
+  const broadcastCheckboxChange = (checkboxIndex: number, checked: boolean) => {
+    if (!channelRef.current || !user) return;
+    
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'checkbox_change',
+      payload: {
+        type: 'checkbox_change',
+        checkboxIndex,
+        checked,
+        user_id: user.id,
+        user_name: user.user_metadata?.display_name || 'Unbekannt',
+        timestamp: new Date().toISOString()
+      }
+    });
   };
 
   // Format selected text using the RichTextEditor's formatSelection function
@@ -504,6 +529,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
                 }
               }}
               onSelectionChange={handleSelectionChange}
+              onCheckboxChange={broadcastCheckboxChange}
               disabled={!canEdit}
               className="min-h-96"
               placeholder="Beginnen Sie zu schreiben..."

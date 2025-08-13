@@ -6,6 +6,7 @@ interface RichTextEditorProps {
   onChange: (content: string, html?: string) => void;
   onSelectionChange?: (activeFormats?: string[]) => void;
   onFormatText?: (format: string) => void;
+  onCheckboxChange?: (checkboxIndex: number, checked: boolean) => void;
   disabled?: boolean;
   className?: string;
   placeholder?: string;
@@ -14,6 +15,7 @@ interface RichTextEditorProps {
 interface RichTextEditorRef {
   formatSelection: (format: string) => void;
   getActiveFormats: () => string[];
+  updateCheckboxState: (checkboxIndex: number, checked: boolean) => void;
 }
 
 const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(({
@@ -21,6 +23,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   onChange,
   onSelectionChange,
   onFormatText,
+  onCheckboxChange,
   disabled = false,
   className,
   placeholder = "Beginnen Sie zu schreiben..."
@@ -48,9 +51,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       // Handle lists
       .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
       .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
-      // Handle checkboxes with proper click handling
-      .replace(/^☑ (.*)$/gm, '<div class="todo-item"><input type="checkbox" checked style="margin-right: 8px;" onclick="this.nextSibling.style.textDecoration = this.checked ? \'line-through\' : \'none\'"><span style="text-decoration: line-through;">$1</span></div>')
-      .replace(/^☐ (.*)$/gm, '<div class="todo-item"><input type="checkbox" style="margin-right: 8px;" onclick="this.nextSibling.style.textDecoration = this.checked ? \'line-through\' : \'none\'"><span>$1</span></div>')
+      // Handle checkboxes with proper click handling and real-time sync
+      .replace(/^☑ (.*)$/gm, (match, text) => {
+        return `<div class="todo-item"><input type="checkbox" checked style="margin-right: 8px;"><span style="text-decoration: line-through;">${text}</span></div>`;
+      })
+      .replace(/^☐ (.*)$/gm, (match, text) => {
+        return `<div class="todo-item"><input type="checkbox" style="margin-right: 8px;"><span>${text}</span></div>`;
+      })
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>')
       // Merge consecutive list items
@@ -134,6 +141,22 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         const html = convertToHtml(value);
         console.log('RichTextEditor: Converting markdown to HTML', { markdown: value, html });
         editorRef.current.innerHTML = html;
+        
+        // Re-attach event listeners to checkboxes after setting HTML
+        const checkboxes = editorRef.current.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach((checkbox, index) => {
+          (checkbox as HTMLInputElement).onclick = function(this: HTMLInputElement) {
+            const span = this.nextSibling as HTMLSpanElement;
+            if (span) {
+              span.style.textDecoration = this.checked ? 'line-through' : 'none';
+            }
+            // Broadcast checkbox change
+            if (onCheckboxChange) {
+              onCheckboxChange(index, this.checked);
+            }
+          };
+        });
+        
         lastValueRef.current = value;
       } catch (error) {
         console.warn('RichTextEditor: Error during HTML conversion:', error);
@@ -276,12 +299,18 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.style.marginRight = '8px';
-          checkbox.onclick = function(this: HTMLInputElement) {
-            const span = this.nextSibling as HTMLSpanElement;
-            if (span) {
-              span.style.textDecoration = this.checked ? 'line-through' : 'none';
-            }
-          };
+        checkbox.onclick = function(this: HTMLInputElement) {
+          const span = this.nextSibling as HTMLSpanElement;
+          if (span) {
+            span.style.textDecoration = this.checked ? 'line-through' : 'none';
+          }
+          // Broadcast checkbox change
+          const checkboxes = editorRef.current?.querySelectorAll('input[type="checkbox"]');
+          if (checkboxes && onCheckboxChange) {
+            const index = Array.from(checkboxes).indexOf(this);
+            onCheckboxChange(index, this.checked);
+          }
+        };
           const span = document.createElement('span');
           span.innerHTML = '<br>';
           newTodoItem.appendChild(checkbox);
@@ -512,6 +541,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
           if (span) {
             span.style.textDecoration = this.checked ? 'line-through' : 'none';
           }
+          // Broadcast checkbox change
+          const checkboxes = editorRef.current?.querySelectorAll('input[type="checkbox"]');
+          if (checkboxes && onCheckboxChange) {
+            const index = Array.from(checkboxes).indexOf(this);
+            onCheckboxChange(index, this.checked);
+          }
         };
         const span = document.createElement('span');
         span.textContent = selectedText || 'Todo item';
@@ -578,10 +613,26 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     }
   };
 
-  // Expose formatSelection and getActiveFormats through ref
+  const updateCheckboxState = (checkboxIndex: number, checked: boolean) => {
+    if (!editorRef.current) return;
+    
+    const checkboxes = editorRef.current.querySelectorAll('input[type="checkbox"]');
+    const targetCheckbox = checkboxes[checkboxIndex] as HTMLInputElement;
+    
+    if (targetCheckbox) {
+      targetCheckbox.checked = checked;
+      const span = targetCheckbox.nextSibling as HTMLSpanElement;
+      if (span) {
+        span.style.textDecoration = checked ? 'line-through' : 'none';
+      }
+    }
+  };
+
+  // Expose formatSelection, getActiveFormats, and updateCheckboxState through ref
   React.useImperativeHandle(ref, () => ({
     formatSelection,
-    getActiveFormats
+    getActiveFormats,
+    updateCheckboxState
   }));
 
   return (
