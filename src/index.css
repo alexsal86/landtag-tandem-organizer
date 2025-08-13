@@ -159,7 +159,13 @@ All colors MUST be HSL.
   }
 
   .prose .todo-checkbox {
-    @apply w-5 h-5 border-2 border-muted-foreground rounded flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5 transition-all;
+    @apply w-5 h-5 border-2 border-muted-foreground rounded flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5 transition-all cursor-pointer;
+    /* Prevent text cursor and text editing */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: auto;
   }
 
   .prose .todo-checkbox.checked {

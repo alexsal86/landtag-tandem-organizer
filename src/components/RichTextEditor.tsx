@@ -54,8 +54,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
       .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
       // Handle todo lists - styled checkboxes matching the design
-      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked empty">✓</span><span class="todo-text checked">$1</span></div>')
-      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox empty"></span><span class="todo-text">$1</span></div>')
+      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked empty" contenteditable="false" data-checkbox="true">✓</span><span class="todo-text checked">$1</span></div>')
+      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox empty" contenteditable="false" data-checkbox="true"></span><span class="todo-text">$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>')
       // Merge consecutive list items
@@ -685,8 +685,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         wrapper.setAttribute('data-checked', 'false');
         
         const checkboxSpan = document.createElement('span');
-        checkboxSpan.className = 'todo-checkbox';
-        checkboxSpan.textContent = '☐';
+        checkboxSpan.className = 'todo-checkbox empty';
+        checkboxSpan.setAttribute('contenteditable', 'false');
+        checkboxSpan.setAttribute('data-checkbox', 'true');
         
         const textSpan = document.createElement('span');
         textSpan.className = 'todo-text';
@@ -856,6 +857,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
           user-select: none;
           font-size: 16px;
           line-height: 1.2;
+          cursor: pointer;
+          pointer-events: auto;
         }
         .todo-text {
           flex: 1;
