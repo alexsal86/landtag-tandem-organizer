@@ -133,6 +133,20 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     onChange(markdown, html);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      // Let the browser handle Enter naturally for contentEditable
+      // This prevents cursor jumping issues
+      setTimeout(() => {
+        if (!editorRef.current || isUpdatingRef.current) return;
+        const html = editorRef.current.innerHTML;
+        const markdown = convertToMarkdown(html);
+        console.log('RichTextEditor: Enter key processed', { html, markdown });
+        onChange(markdown, html);
+      }, 0);
+    }
+  };
+
   const handleSelectionChange = () => {
     onSelectionChange?.();
   };
@@ -214,6 +228,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         wordWrap: 'break-word'
       }}
       onInput={handleInput}
+      onKeyDown={handleKeyDown}
       onMouseUp={handleSelectionChange}
       onKeyUp={handleSelectionChange}
       onCompositionStart={() => setIsComposing(true)}
