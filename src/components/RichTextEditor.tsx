@@ -38,52 +38,31 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   // Convert markdown-like syntax to HTML for display
   const convertToHtml = (text: string) => {
     console.log('convertToHtml input:', text);
-    
-    // Split into lines and process each line individually
-    const lines = text.split('\n');
-    const processedLines: string[] = [];
-    
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i];
-      
-      // Handle todo lists first with exact pattern matching
-      if (/^☑\s/.test(line)) {
-        const todoText = line.replace(/^☑\s/, '');
-        processedLines.push(`<div class="todo-item" data-checked="true"><span class="todo-checkbox checked" contenteditable="false" data-checkbox="true">✓</span><span class="todo-text checked">${todoText}</span></div>`);
-      } else if (/^☐\s/.test(line)) {
-        const todoText = line.replace(/^☐\s/, '');
-        processedLines.push(`<div class="todo-item" data-checked="false"><span class="todo-checkbox empty" contenteditable="false" data-checkbox="true"></span><span class="todo-text">${todoText}</span></div>`);
-      } else {
-        // Process other markdown for non-todo lines
-        line = line
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
-          .replace(/~~(.*?)~~/g, '<del>$1</del>')
-          .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-          .replace(/^### (.*$)/, '<h3>$1</h3>')
-          .replace(/^## (.*$)/, '<h2>$1</h2>')
-          .replace(/^# (.*$)/, '<h1>$1</h1>')
-          .replace(/^> (.*$)/, '<blockquote>$1</blockquote>')
-          .replace(/^• (.*)$/, '<ul><li>$1</li></ul>')
-          .replace(/^(\d+)\. (.*)$/, '<ol><li>$2</li></ol>')
-          .replace(/`(.*?)`/g, '<code>$1</code>');
-        
-        if (line.trim() === '') {
-          processedLines.push('<br>');
-        } else {
-          processedLines.push(line);
-        }
-      }
-    }
-    
-    let result = processedLines.join('')
+    const result = text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
+      .replace(/~~(.*?)~~/g, '<del>$1</del>')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+      .replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>')
       .replace(/```\n(.*?)\n```/gs, '<pre><code>$1</code></pre>')
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      // Handle lists
+      .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
+      .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
+      // Handle todo lists - styled checkboxes matching the design
+      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked" contenteditable="false" data-checkbox="true">✓</span><span class="todo-text checked">$1</span></div>')
+      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox empty" contenteditable="false" data-checkbox="true"></span><span class="todo-text">$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
+      // Convert newlines to breaks BUT preserve todo item structure
+      .replace(/\n(?!<div class="todo-item")/g, '<br>')
+      .replace(/\n(?=<div class="todo-item")/g, '')
       // Merge consecutive list items
-      .replace(/<\/ul><ul>/g, '')
-      .replace(/<\/ol><ol>/g, '');
-
+      .replace(/<\/ul><br><ul>/g, '')
+      .replace(/<\/ol><br><ol>/g, '');
     console.log('convertToHtml output:', result);
     return result;
   };
