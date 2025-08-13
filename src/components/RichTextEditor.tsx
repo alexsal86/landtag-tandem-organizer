@@ -211,13 +211,23 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         // Set up click handlers for todo items and ensure checkboxes are non-editable
         console.log('RichTextEditor: Setting up simple todo click handlers');
         
-        // First, make all checkboxes non-editable
+        // First, make all checkboxes non-editable and prevent cursor
         const checkboxes = editorRef.current.querySelectorAll('.todo-checkbox');
         checkboxes.forEach((checkbox) => {
-          (checkbox as HTMLElement).setAttribute('contenteditable', 'false');
-          (checkbox as HTMLElement).style.cursor = 'pointer';
-          (checkbox as HTMLElement).style.userSelect = 'none';
-          (checkbox as HTMLElement).style.pointerEvents = 'auto';
+          const element = checkbox as HTMLElement;
+          element.setAttribute('contenteditable', 'false');
+          element.setAttribute('tabindex', '-1');
+          element.style.cursor = 'pointer';
+          element.style.userSelect = 'none';
+          element.style.pointerEvents = 'auto';
+          element.style.caretColor = 'transparent';
+          element.style.outline = 'none';
+          // Prevent any focus that could cause cursor
+          element.addEventListener('focus', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            element.blur();
+          });
         });
         
         // Add event delegation to the editor itself
@@ -274,11 +284,21 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     // First, ensure all checkboxes are properly configured as non-editable
     const checkboxes = editorRef.current.querySelectorAll('.todo-checkbox');
     checkboxes.forEach((checkbox) => {
-      (checkbox as HTMLElement).setAttribute('contenteditable', 'false');
-      (checkbox as HTMLElement).style.cursor = 'pointer';
-      (checkbox as HTMLElement).style.userSelect = 'none';
-      (checkbox as HTMLElement).style.pointerEvents = 'auto';
-      (checkbox as HTMLElement).setAttribute('data-checkbox', 'true');
+      const element = checkbox as HTMLElement;
+      element.setAttribute('contenteditable', 'false');
+      element.setAttribute('tabindex', '-1');
+      element.setAttribute('data-checkbox', 'true');
+      element.style.cursor = 'pointer';
+      element.style.userSelect = 'none';
+      element.style.pointerEvents = 'auto';
+      element.style.caretColor = 'transparent';
+      element.style.outline = 'none';
+      // Prevent focus
+      element.addEventListener('focus', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        element.blur();
+      });
     });
     
     // Remove any existing click handlers first

@@ -159,14 +159,20 @@ All colors MUST be HSL.
   }
 
   .prose .todo-checkbox {
-    @apply w-5 h-5 border-2 border-muted-foreground rounded flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5 transition-all cursor-pointer;
-    /* Prevent text cursor and text editing */
+    @apply w-5 h-5 border-2 border-muted-foreground rounded flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5 transition-all;
+    /* Completely disable text editing and cursor */
     user-select: none !important;
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
     -ms-user-select: none !important;
     pointer-events: auto !important;
     cursor: pointer !important;
+    /* Prevent any text cursor appearance */
+    caret-color: transparent !important;
+    outline: none !important;
+    /* Make sure it's not focusable */
+    -webkit-touch-callout: none !important;
+    -webkit-tap-highlight-color: transparent !important;
   }
 
   .prose .todo-checkbox.checked {
