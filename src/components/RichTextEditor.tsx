@@ -54,8 +54,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
       .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
       // Handle todo lists - styled checkboxes matching the design
-      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked" contenteditable="false" data-checkbox="true">✓</span><span class="todo-text checked">$1</span></div><br>')
-      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox empty" contenteditable="false" data-checkbox="true"></span><span class="todo-text">$1</span></div><br>')
+      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked" contenteditable="false" data-checkbox="true">✓</span><span class="todo-text checked">$1</span></div>')
+      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox empty" contenteditable="false" data-checkbox="true"></span><span class="todo-text">$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>')
       // Merge consecutive list items
@@ -517,8 +517,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
           newTodoItem.appendChild(checkbox);
           newTodoItem.appendChild(textSpan);
           
-          // Insert after current todo item
+          // Insert after current todo item with line break
+          const lineBreak = document.createElement('br');
           currentElement.parentNode?.insertBefore(newTodoItem, currentElement.nextSibling);
+          currentElement.parentNode?.insertBefore(lineBreak, newTodoItem.nextSibling);
           
           // Set cursor in text span
           const newRange = document.createRange();
