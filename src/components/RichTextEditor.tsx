@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 interface RichTextEditorProps {
   value: string;
   onChange: (content: string, html?: string) => void;
-  onSelectionChange?: () => void;
+  onSelectionChange?: (activeFormats?: string[]) => void;
   onFormatText?: (format: string) => void;
   disabled?: boolean;
   className?: string;
@@ -13,6 +13,7 @@ interface RichTextEditorProps {
 
 interface RichTextEditorRef {
   formatSelection: (format: string) => void;
+  getActiveFormats: () => string[];
 }
 
 const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(({
@@ -147,7 +148,52 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   };
 
   const handleSelectionChange = () => {
-    onSelectionChange?.();
+    const activeFormats = getActiveFormats();
+    onSelectionChange?.(activeFormats);
+  };
+
+  const getActiveFormats = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return [];
+
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return [];
+
+    const container = range.commonAncestorContainer;
+    const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+    
+    const activeFormats: string[] = [];
+    
+    // Check for formatting in the selection
+    let currentElement = element;
+    while (currentElement && currentElement !== editorRef.current) {
+      const tagName = currentElement.tagName?.toLowerCase();
+      
+      switch (tagName) {
+        case 'strong':
+        case 'b':
+          activeFormats.push('bold');
+          break;
+        case 'em':
+        case 'i':
+          activeFormats.push('italic');
+          break;
+        case 'u':
+          activeFormats.push('underline');
+          break;
+        case 'del':
+        case 's':
+          activeFormats.push('strikethrough');
+          break;
+        case 'a':
+          activeFormats.push('link');
+          break;
+      }
+      
+      currentElement = currentElement.parentElement;
+    }
+    
+    return [...new Set(activeFormats)]; // Remove duplicates
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -269,6 +315,43 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     if (!selectedText && !['bulletlist', 'numberlist', 'todolist', 'togglelist', 'code', 'quote', 'page'].includes(format)) {
       return;
     }
+
+    // Check if formatting already exists and remove it
+    const activeFormats = getActiveFormats();
+    const isActive = activeFormats.includes(format);
+    
+    if (isActive && ['bold', 'italic', 'underline', 'strikethrough'].includes(format)) {
+      // Remove existing formatting
+      const container = range.commonAncestorContainer;
+      let element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+      
+      // Find the formatting element to remove
+      while (element && element !== editorRef.current) {
+        const tagName = element.tagName?.toLowerCase();
+        const shouldRemove = (
+          (format === 'bold' && (tagName === 'strong' || tagName === 'b')) ||
+          (format === 'italic' && (tagName === 'em' || tagName === 'i')) ||
+          (format === 'underline' && tagName === 'u') ||
+          (format === 'strikethrough' && (tagName === 'del' || tagName === 's'))
+        );
+        
+        if (shouldRemove) {
+          // Replace the formatted element with its text content
+          const textNode = document.createTextNode(element.textContent || '');
+          element.parentNode?.replaceChild(textNode, element);
+          
+          // Select the text
+          const newRange = document.createRange();
+          newRange.selectNode(textNode);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+          
+          setTimeout(() => handleInput(), 0);
+          return;
+        }
+        element = element.parentElement;
+      }
+    }
     
     let wrapper: HTMLElement;
     let needsSelection = true;
@@ -373,9 +456,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     }
   };
 
-  // Expose formatSelection through ref
+  // Expose formatSelection and getActiveFormats through ref
   React.useImperativeHandle(ref, () => ({
-    formatSelection
+    formatSelection,
+    getActiveFormats
   }));
 
   return (

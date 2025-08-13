@@ -50,6 +50,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   const [userCursors, setUserCursors] = useState<Record<string, { position: number; name: string }>>({});
   const [selectedText, setSelectedText] = useState('');
   const [showToolbar, setShowToolbar] = useState(false);
+  const [activeFormats, setActiveFormats] = useState<string[]>([]);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const editorRef = useRef<HTMLDivElement>(null);
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -248,15 +249,13 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     };
   }, [isOpen, user, document.id]);
 
-  // Handle selection changes for rich text editor
-  const handleSelectionChange = () => {
-    if (!canEdit) return;
-    
+  // Handle text selection changes
+  const handleSelectionChange = (formats: string[] = []) => {
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+    const selectedText = selection?.toString() || "";
     
-    const selectedText = selection.toString();
     setSelectedText(selectedText);
+    setActiveFormats(formats);
     setShowToolbar(selectedText.length > 0);
   };
 
@@ -519,6 +518,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         onFormatText={handleFormatText}
         isVisible={showToolbar}
         selectedText={selectedText}
+        activeFormats={activeFormats}
       />
 
       {/* Footer */}

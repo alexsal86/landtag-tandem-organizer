@@ -9,13 +9,15 @@ interface FloatingTextToolbarProps {
   onFormatText: (format: string) => void;
   isVisible: boolean;
   selectedText: string;
+  activeFormats?: string[];
 }
 
 const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
   editorRef,
   onFormatText,
   isVisible,
-  selectedText
+  selectedText,
+  activeFormats = []
 }) => {
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -112,18 +114,26 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
 
       <div className="w-px h-6 bg-border mx-1" />
 
-      {formatButtons.map((button) => (
-        <Button
-          key={button.action}
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 hover:bg-muted"
-          onClick={() => onFormatText(button.action)}
-          title={button.label}
-        >
-          <button.icon className="h-4 w-4" />
-        </Button>
-      ))}
+      {formatButtons.map((button) => {
+        const isActive = activeFormats.includes(button.action);
+        return (
+          <Button
+            key={button.action}
+            variant={isActive ? "default" : "ghost"}
+            size="sm"
+            className={cn(
+              "h-8 w-8 p-0",
+              isActive 
+                ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+                : "hover:bg-muted"
+            )}
+            onClick={() => onFormatText(button.action)}
+            title={button.label}
+          >
+            <button.icon className="h-4 w-4" />
+          </Button>
+        );
+      })}
     </div>
   );
 };
