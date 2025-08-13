@@ -52,14 +52,28 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
       .replace(/<del>(.*?)<\/del>/g, '~~$1~~')
       .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/g, '[$2]($1)')
-      .replace(/<h1>(.*?)<\/h1>/g, '# $1')
-      .replace(/<h2>(.*?)<\/h2>/g, '## $1')
-      .replace(/<h3>(.*?)<\/h3>/g, '### $1')
+      .replace(/<h1[^>]*>(.*?)<\/h1>/g, '# $1')
+      .replace(/<h2[^>]*>(.*?)<\/h2>/g, '## $1')
+      .replace(/<h3[^>]*>(.*?)<\/h3>/g, '### $1')
+      .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/g, '> $1')
+      .replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/g, '```\n$1\n```')
+      .replace(/<code[^>]*>(.*?)<\/code>/g, '`$1`')
+      .replace(/<ul[^>]*>(.*?)<\/ul>/gs, (match, content) => {
+        return content.replace(/<li[^>]*>(.*?)<\/li>/g, '- $1\n').trim();
+      })
+      .replace(/<ol[^>]*>(.*?)<\/ol>/gs, (match, content) => {
+        let counter = 1;
+        return content.replace(/<li[^>]*>(.*?)<\/li>/g, () => `${counter++}. $1\n`).trim();
+      })
       .replace(/<span[^>]*>(.*?)<\/span>/g, '<!-- $1 -->')
       .replace(/<br\s*\/?>/g, '\n')
-      .replace(/<div>/g, '\n')
+      .replace(/<div[^>]*>/g, '\n')
       .replace(/<\/div>/g, '')
-      .replace(/&nbsp;/g, ' ');
+      .replace(/<p[^>]*>/g, '\n')
+      .replace(/<\/p>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\n\s*\n\s*\n/g, '\n\n') // Reduce multiple newlines
+      .trim();
   };
 
   // Initialize content on mount
