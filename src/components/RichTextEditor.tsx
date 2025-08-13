@@ -151,9 +151,25 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   useEffect(() => {
     if (editorRef.current && !lastValueRef.current && value) {
       console.log('RichTextEditor: Initial mount with value:', value);
-      const html = convertToHtml(value);
+      
+      // CLEAN UP CORRUPTED DATA: Remove any old checkbox HTML before conversion
+      const cleanedValue = value
+        .replace(/<input[^>]*type="checkbox"[^>]*style="margin-right: 8px;"[^>]*><span[^>]*style="text-decoration: line-through;"[^>]*>(.*?)<\/span>/gi, '☑ $1')
+        .replace(/<input[^>]*type="checkbox"[^>]*style="margin-right: 8px;"[^>]*><span[^>]*>(.*?)<\/span>/gi, '☐ $1')
+        .replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*[^>]*>[\s]*<span[^>]*>(.*?)<\/span>/gi, '☑ $1')
+        .replace(/<input[^>]*type="checkbox"[^>]*>[\s]*<span[^>]*>(.*?)<\/span>/gi, '☐ $1');
+      
+      console.log('RichTextEditor: Cleaned value:', cleanedValue);
+      
+      const html = convertToHtml(cleanedValue);
       editorRef.current.innerHTML = html;
-      lastValueRef.current = value;
+      lastValueRef.current = cleanedValue;
+      
+      // Immediately save the cleaned version
+      if (onChange && cleanedValue !== value) {
+        console.log('RichTextEditor: Saving cleaned data');
+        onChange(cleanedValue, html);
+      }
     }
   }, []);
 
@@ -176,8 +192,15 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       }
       
       try {
-        const html = convertToHtml(value);
-        console.log('RichTextEditor: Converting markdown to HTML', { markdown: value, html });
+        // CLEAN INPUT: Remove corrupted checkbox HTML before conversion
+        const cleanedValue = value
+          .replace(/<input[^>]*type="checkbox"[^>]*style="margin-right: 8px;"[^>]*><span[^>]*style="text-decoration: line-through;"[^>]*>(.*?)<\/span>/gi, '☑ $1')
+          .replace(/<input[^>]*type="checkbox"[^>]*style="margin-right: 8px;"[^>]*><span[^>]*>(.*?)<\/span>/gi, '☐ $1')
+          .replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*[^>]*>[\s]*<span[^>]*>(.*?)<\/span>/gi, '☑ $1')
+          .replace(/<input[^>]*type="checkbox"[^>]*>[\s]*<span[^>]*>(.*?)<\/span>/gi, '☐ $1');
+        
+        const html = convertToHtml(cleanedValue);
+        console.log('RichTextEditor: Converting cleaned markdown to HTML', { original: value, cleaned: cleanedValue, html });
         editorRef.current.innerHTML = html;
         
         // Re-attach event listeners to ALL checkboxes after setting HTML
@@ -187,15 +210,16 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         allCheckboxes.forEach((checkbox, index) => {
           const input = checkbox as HTMLInputElement;
           
-          // Standardize checkbox structure
+          // Ensure all checkboxes are in todo-item structure
           const parentDiv = input.closest('.todo-item');
           if (!parentDiv) {
+            console.log('RichTextEditor: Converting old checkbox to new structure', index);
             // Convert old structure to new structure
             const nextElement = input.nextElementSibling;
             if (nextElement && nextElement.tagName === 'SPAN') {
               const span = nextElement as HTMLSpanElement;
               const text = span.textContent || '';
-              const isChecked = input.checked;
+              const isChecked = input.checked || span.style.textDecoration === 'line-through';
               
               // Create new todo-item structure
               const newTodoItem = document.createElement('div');
@@ -248,10 +272,15 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
               console.log('RichTextEditor: Broadcasting checkbox change', { index, checked: this.checked });
               onCheckboxChange(index, this.checked);
             }
-            // Update content immediately
-            setTimeout(() => handleInput(), 0);
+            // Update content immediately to save state
+            setTimeout(() => {
+              console.log('RichTextEditor: Triggering content update after checkbox change');
+              handleInput();
+            }, 0);
           };
         }
+        
+        lastValueRef.current = cleanedValue;
         
         lastValueRef.current = value;
       } catch (error) {
