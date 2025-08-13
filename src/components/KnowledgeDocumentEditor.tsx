@@ -179,7 +179,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
       })
       .on('broadcast', { event: 'content_change' }, (payload) => {
         console.log('KnowledgeDocumentEditor: Received content change broadcast', payload);
-        const { user_id, content, content_html, title, category, is_published } = payload.payload;
+        const { user_id, value: content, content_html, title, category, is_published } = payload.payload;
         if (user_id !== user.id) {
           console.log('KnowledgeDocumentEditor: Applying content change from another user', { user_id, content, content_html, title });
           

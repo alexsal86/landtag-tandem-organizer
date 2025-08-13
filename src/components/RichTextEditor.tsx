@@ -63,6 +63,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     // Only update if content actually changed to prevent cursor jumps
     if (currentContent !== newContent) {
       console.log('RichTextEditor: Content update needed', { currentContent, newContent });
+      console.log('RichTextEditor: This is likely a remote update');
       
       // Set flag to prevent onChange loop
       isUpdatingRef.current = true;
