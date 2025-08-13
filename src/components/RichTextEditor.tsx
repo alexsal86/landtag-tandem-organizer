@@ -51,9 +51,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       // Handle lists
       .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
       .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
-      // Handle todo lists - ensure clean conversion with proper checked state
-      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item"><input type="checkbox" checked data-todo-text="$1"><span class="todo-text" style="text-decoration: line-through;">$1</span></div>')
-      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item"><input type="checkbox" data-todo-text="$1"><span class="todo-text">$1</span></div>')
+      // Handle todo lists - use CLICKABLE spans instead of disabled checkboxes
+      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked">☑</span><span class="todo-text checked">$1</span></div>')
+      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox">☐</span><span class="todo-text">$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>')
       // Merge consecutive list items
@@ -79,11 +79,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     console.log('convertToMarkdown: Found todo items:', todoItems.length);
     
     todoItems.forEach((todoItem, index) => {
-      const checkbox = todoItem.querySelector('input[type="checkbox"]') as HTMLInputElement;
-      const span = todoItem.querySelector('.todo-text, span');
-      if (checkbox && span) {
-        const text = span.textContent || '';
-        const isChecked = checkbox.checked;
+      const isChecked = todoItem.getAttribute('data-checked') === 'true';
+      const textSpan = todoItem.querySelector('.todo-text');
+      if (textSpan) {
+        const text = textSpan.textContent || '';
         console.log(`convertToMarkdown: Todo ${index} - text: "${text}", checked: ${isChecked}`);
         
         const replacement = isChecked ? `☑ ${text}` : `☐ ${text}`;
@@ -92,9 +91,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       }
     });
     
-    // Handle any remaining standalone checkboxes
-    const standaloneCheckboxes = tempDiv.querySelectorAll('input[type="checkbox"]:not(.todo-item input)');
-    standaloneCheckboxes.forEach((checkbox) => {
+    // Handle any remaining old checkbox structures
+    const oldCheckboxes = tempDiv.querySelectorAll('input[type="checkbox"]');
+    oldCheckboxes.forEach((checkbox) => {
       const input = checkbox as HTMLInputElement;
       const nextElement = input.nextElementSibling;
       if (nextElement && nextElement.tagName === 'SPAN') {
@@ -201,50 +200,69 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         console.log('RichTextEditor: Converting cleaned markdown to HTML', { original: value, cleaned: cleanedValue, html });
         editorRef.current.innerHTML = html;
         
-        // Re-attach event listeners to ALL checkboxes after setting HTML
-        console.log('RichTextEditor: Setting up event listeners for checkboxes');
+        // Set up click handlers for todo items (using spans instead of checkboxes)
+        console.log('RichTextEditor: Setting up todo item click listeners');
         
-        // Use setTimeout to ensure DOM is fully rendered
         setTimeout(() => {
-          const allCheckboxes = editorRef.current?.querySelectorAll('input[type="checkbox"]');
-          console.log('RichTextEditor: Found checkboxes for event setup:', allCheckboxes?.length || 0);
+          const todoItems = editorRef.current?.querySelectorAll('.todo-item');
+          console.log('RichTextEditor: Found todo items for click setup:', todoItems?.length || 0);
           
-          allCheckboxes?.forEach((checkbox, index) => {
-            const input = checkbox as HTMLInputElement;
-            console.log(`RichTextEditor: Setting up checkbox ${index}, checked: ${input.checked}`);
+          todoItems?.forEach((todoItem, index) => {
+            const todoDiv = todoItem as HTMLElement;
+            const checkboxSpan = todoDiv.querySelector('.todo-checkbox');
+            const textSpan = todoDiv.querySelector('.todo-text');
             
-            // Remove any existing listeners
-            input.onclick = null;
-            
-            // Add new click handler
-            input.addEventListener('click', function(this: HTMLInputElement, event) {
-              console.log('RichTextEditor: Checkbox clicked!', { index, checked: this.checked, event });
+            if (checkboxSpan && textSpan) {
+              console.log(`RichTextEditor: Setting up todo item ${index}`);
               
-              // Update visual styling immediately
-              const span = this.nextElementSibling as HTMLSpanElement;
-              if (span) {
-                span.style.textDecoration = this.checked ? 'line-through' : 'none';
-                console.log('RichTextEditor: Updated visual styling', { checked: this.checked });
-              }
+              // Remove existing click handlers
+              todoDiv.onclick = null;
               
-              // Broadcast change
-              if (onCheckboxChange) {
-                console.log('RichTextEditor: Broadcasting checkbox change', { index, checked: this.checked });
-                onCheckboxChange(index, this.checked);
-              }
-              
-              // Force content update and save
-              setTimeout(() => {
-                console.log('RichTextEditor: Triggering handleInput after checkbox change');
-                handleInput();
-              }, 100);
-            });
-            
-            // Also set initial styling based on checked state
-            const span = input.nextElementSibling as HTMLSpanElement;
-            if (span) {
-              span.style.marginLeft = '8px';
-              span.style.textDecoration = input.checked ? 'line-through' : 'none';
+              // Add click handler to the entire todo item
+              todoDiv.addEventListener('click', function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                const currentlyChecked = this.getAttribute('data-checked') === 'true';
+                const newChecked = !currentlyChecked;
+                
+                console.log('RichTextEditor: Todo item clicked!', { index, wasChecked: currentlyChecked, nowChecked: newChecked });
+                
+                // Update data attribute
+                this.setAttribute('data-checked', newChecked.toString());
+                
+                // Update visual appearance
+                const checkbox = this.querySelector('.todo-checkbox');
+                const text = this.querySelector('.todo-text');
+                
+                if (checkbox && text) {
+                  if (newChecked) {
+                    checkbox.textContent = '☑';
+                    checkbox.classList.add('checked');
+                    text.classList.add('checked');
+                    (text as HTMLElement).style.textDecoration = 'line-through';
+                  } else {
+                    checkbox.textContent = '☐';
+                    checkbox.classList.remove('checked');
+                    text.classList.remove('checked');
+                    (text as HTMLElement).style.textDecoration = 'none';
+                  }
+                }
+                
+                console.log('RichTextEditor: Updated todo item appearance', { newChecked });
+                
+                // Broadcast change
+                if (onCheckboxChange) {
+                  console.log('RichTextEditor: Broadcasting todo change', { index, checked: newChecked });
+                  onCheckboxChange(index, newChecked);
+                }
+                
+                // Save content
+                setTimeout(() => {
+                  console.log('RichTextEditor: Triggering save after todo change');
+                  handleInput();
+                }, 50);
+              });
             }
           });
         }, 100);
@@ -655,34 +673,18 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       case 'todolist':
         wrapper = document.createElement('div');
         wrapper.className = 'todo-item';
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.setAttribute('data-todo-text', selectedText || 'Todo item');
-        const span = document.createElement('span');
-        span.className = 'todo-text';
-        span.style.marginLeft = '8px';
-        span.textContent = selectedText || 'Todo item';
+        wrapper.setAttribute('data-checked', 'false');
         
-        checkbox.onclick = function(this: HTMLInputElement) {
-          console.log('RichTextEditor: New checkbox clicked', { checked: this.checked });
-          const span = this.nextElementSibling as HTMLSpanElement;
-          if (span) {
-            span.style.textDecoration = this.checked ? 'line-through' : 'none';
-            console.log('RichTextEditor: Updated new checkbox strikethrough', { checked: this.checked });
-          }
-          // Broadcast checkbox change
-          const allCheckboxes = editorRef.current?.querySelectorAll('input[type="checkbox"]');
-          if (allCheckboxes && onCheckboxChange) {
-            const index = Array.from(allCheckboxes).indexOf(this);
-            console.log('RichTextEditor: Broadcasting new checkbox change', { index, checked: this.checked });
-            onCheckboxChange(index, this.checked);
-          }
-          // Update content immediately
-          setTimeout(() => handleInput(), 0);
-        };
+        const checkboxSpan = document.createElement('span');
+        checkboxSpan.className = 'todo-checkbox';
+        checkboxSpan.textContent = '☐';
         
-        wrapper.appendChild(checkbox);
-        wrapper.appendChild(span);
+        const textSpan = document.createElement('span');
+        textSpan.className = 'todo-text';
+        textSpan.textContent = selectedText || 'Todo item';
+        
+        wrapper.appendChild(checkboxSpan);
+        wrapper.appendChild(textSpan);
         needsSelection = false;
         break;
       case 'togglelist':
@@ -784,15 +786,27 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
           display: flex;
           align-items: flex-start;
           margin: 4px 0;
-        }
-        .todo-item input[type="checkbox"] {
-          margin: 0 8px 0 0;
           cursor: pointer;
-          flex-shrink: 0;
+          padding: 2px;
+          border-radius: 4px;
+        }
+        .todo-item:hover {
+          background-color: rgba(0, 0, 0, 0.05);
+        }
+        .todo-checkbox {
+          margin: 0 8px 0 0;
+          user-select: none;
+          font-size: 16px;
+          line-height: 1.2;
         }
         .todo-text {
           flex: 1;
           min-height: 1.2em;
+          user-select: text;
+        }
+        .todo-text.checked {
+          text-decoration: line-through;
+          color: #666;
         }
       `}</style>
       <div
