@@ -75,7 +75,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     });
   }, [document]);
 
-  // Auto-save functionality - only for local changes
+  // Auto-save functionality - optimized for smooth writing experience
   useEffect(() => {
     if (!canEdit || isUpdatingFromRemoteRef.current) return;
 
@@ -92,7 +92,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
            editedDoc.is_published !== document.is_published)) {
         handleAutoSave();
       }
-    }, 1500); // Increased delay to reduce frequent saves
+    }, 800); // Faster auto-save for better UX
 
     return () => {
       if (saveTimeoutRef.current) {
@@ -302,7 +302,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   };
 
   const handleAutoSave = async () => {
-    if (!canEdit) return;
+    if (!canEdit || isUpdatingFromRemoteRef.current) return;
     
     setSaving(true);
     try {
@@ -325,12 +325,14 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     } catch (error) {
       console.error('Error auto-saving document:', error);
       toast({
-        title: "Fehler beim Speichern",
-        description: "Das Dokument konnte nicht automatisch gespeichert werden.",
+        title: "Speicherfehler",
+        description: "Automatisches Speichern fehlgeschlagen. Bitte manuell speichern.",
         variant: "destructive",
+        duration: 3000,
       });
     } finally {
-      setSaving(false);
+      // Hide saving indicator quickly for smooth experience
+      setTimeout(() => setSaving(false), 200);
     }
   };
 
@@ -394,19 +396,19 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
           </div>
           <div className="flex items-center gap-2">
             {saving && (
-              <Badge variant="outline" className="text-xs">
-                Speichert...
+              <Badge variant="outline" className="text-xs animate-pulse">
+                •••
               </Badge>
             )}
-            {lastSaved && (
-              <Badge variant="outline" className="text-xs">
-                {lastSaved.toLocaleTimeString('de-DE')}
+            {lastSaved && !saving && (
+              <Badge variant="outline" className="text-xs opacity-60">
+                ✓ {lastSaved.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
               </Badge>
             )}
-            {hasUnsavedChanges && (
-              <Badge variant="destructive" className="text-xs">
+            {hasUnsavedChanges && !saving && (
+              <Badge variant="outline" className="text-xs border-amber-200 text-amber-700">
                 <AlertTriangle className="h-3 w-3 mr-1" />
-                Nicht gespeichert
+                Wird gespeichert...
               </Badge>
             )}
             <Button variant="ghost" size="sm" onClick={onClose}>
