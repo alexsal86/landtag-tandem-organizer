@@ -208,8 +208,17 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         console.log('RichTextEditor: Converting cleaned markdown to HTML', { original: value, cleaned: cleanedValue, html });
         editorRef.current.innerHTML = html;
         
-        // Set up click handlers for todo items - SIMPLE VERSION
+        // Set up click handlers for todo items and ensure checkboxes are non-editable
         console.log('RichTextEditor: Setting up simple todo click handlers');
+        
+        // First, make all checkboxes non-editable
+        const checkboxes = editorRef.current.querySelectorAll('.todo-checkbox');
+        checkboxes.forEach((checkbox) => {
+          (checkbox as HTMLElement).setAttribute('contenteditable', 'false');
+          (checkbox as HTMLElement).style.cursor = 'pointer';
+          (checkbox as HTMLElement).style.userSelect = 'none';
+          (checkbox as HTMLElement).style.pointerEvents = 'auto';
+        });
         
         // Add event delegation to the editor itself
         if (editorRef.current) {
@@ -261,6 +270,16 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     if (!editorRef.current) return;
     
     console.log('RichTextEditor: Setting up todo click handlers');
+    
+    // First, ensure all checkboxes are properly configured as non-editable
+    const checkboxes = editorRef.current.querySelectorAll('.todo-checkbox');
+    checkboxes.forEach((checkbox) => {
+      (checkbox as HTMLElement).setAttribute('contenteditable', 'false');
+      (checkbox as HTMLElement).style.cursor = 'pointer';
+      (checkbox as HTMLElement).style.userSelect = 'none';
+      (checkbox as HTMLElement).style.pointerEvents = 'auto';
+      (checkbox as HTMLElement).setAttribute('data-checkbox', 'true');
+    });
     
     // Remove any existing click handlers first
     editorRef.current.onclick = null;
