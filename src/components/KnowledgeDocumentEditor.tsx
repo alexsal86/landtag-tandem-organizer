@@ -228,8 +228,13 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         const { user_id, checkboxIndex, checked } = payload.payload;
         if (user_id !== user.id && richTextEditorRef.current) {
           console.log('KnowledgeDocumentEditor: Updating checkbox state for other user', { checkboxIndex, checked });
-          // Update checkbox state for other users
-          richTextEditorRef.current.updateCheckboxState(checkboxIndex, checked);
+          // Force re-setup of handlers and then update
+          richTextEditorRef.current.forceUpdateHandlers();
+          setTimeout(() => {
+            if (richTextEditorRef.current) {
+              richTextEditorRef.current.updateCheckboxState(checkboxIndex, checked);
+            }
+          }, 150);
         }
       })
       .subscribe(async (status) => {

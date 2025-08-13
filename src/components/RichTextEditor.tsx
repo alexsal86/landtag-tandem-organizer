@@ -16,6 +16,7 @@ interface RichTextEditorRef {
   formatSelection: (format: string) => void;
   getActiveFormats: () => string[];
   updateCheckboxState: (checkboxIndex: number, checked: boolean) => void;
+  forceUpdateHandlers: () => void;
 }
 
 const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(({
@@ -32,6 +33,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   const [isComposing, setIsComposing] = useState(false);
   const lastValueRef = useRef<string>('');
   const skipNextUpdateRef = useRef(false);
+  const isUpdatingFromRemote = useRef(false);
 
   // Convert markdown-like syntax to HTML for display
   const convertToHtml = (text: string) => {
@@ -52,7 +54,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
       .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
       // Handle todo lists - styled checkboxes matching the design
-      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked">✓</span><span class="todo-text checked">$1</span></div>')
+      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked empty">✓</span><span class="todo-text checked">$1</span></div>')
       .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox empty"></span><span class="todo-text">$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>')
@@ -162,10 +164,11 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       editorRef.current.innerHTML = html;
       lastValueRef.current = cleanedValue;
       
-      // Set up todo click handlers after content is updated
+      // Set up todo click handlers after content is updated - with longer delay for remote updates
+      const delay = isUpdatingFromRemote ? 200 : 50;
       setTimeout(() => {
         setupTodoClickHandlers();
-      }, 50);
+      }, delay);
       
       // Immediately save the cleaned version
       if (onChange && cleanedValue !== value) {
@@ -303,8 +306,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       }
     }
     
-    // Notify parent component for real-time broadcast
-    if (onCheckboxChange) {
+    // Only broadcast if this is not a remote update
+    if (!isUpdatingFromRemote.current && onCheckboxChange) {
       const todoItems = Array.from(editorRef.current?.querySelectorAll('.todo-item') || []);
       const todoIndex = todoItems.indexOf(todoElement);
       console.log('RichTextEditor: Notifying parent of checkbox change', { todoIndex, newChecked });
@@ -745,29 +748,62 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     }
   };
 
+  // Function to update checkbox state (called from parent for real-time sync)
   const updateCheckboxState = (checkboxIndex: number, checked: boolean) => {
-    console.log('RichTextEditor: updateCheckboxState called', { checkboxIndex, checked });
     if (!editorRef.current) {
-      console.log('RichTextEditor: No editor ref available');
+      console.log('RichTextEditor: updateCheckboxState - no editor ref');
       return;
     }
     
-    const allCheckboxes = editorRef.current.querySelectorAll('input[type="checkbox"]');
-    console.log('RichTextEditor: Found checkboxes for update', { count: allCheckboxes.length });
-    const targetCheckbox = allCheckboxes[checkboxIndex] as HTMLInputElement;
+    console.log('RichTextEditor: updateCheckboxState called', { checkboxIndex, checked });
     
-    if (targetCheckbox) {
-      console.log('RichTextEditor: Updating checkbox state', { checkboxIndex, checked, currentState: targetCheckbox.checked });
-      targetCheckbox.checked = checked;
-      const span = targetCheckbox.nextElementSibling as HTMLSpanElement;
-      if (span) {
-        span.style.textDecoration = checked ? 'line-through' : 'none';
-        console.log('RichTextEditor: Updated span style', { textDecoration: span.style.textDecoration });
+    // Set flag to indicate remote update
+    isUpdatingFromRemote.current = true;
+    
+    const todoItems = editorRef.current.querySelectorAll('.todo-item');
+    console.log('RichTextEditor: Found checkboxes for update', { count: todoItems.length });
+    
+    if (checkboxIndex >= 0 && checkboxIndex < todoItems.length) {
+      const todoItem = todoItems[checkboxIndex];
+      const checkbox = todoItem.querySelector('.todo-checkbox');
+      const text = todoItem.querySelector('.todo-text');
+      
+      console.log('RichTextEditor: Updating checkbox', { checkboxIndex, checked, hasCheckbox: !!checkbox, hasText: !!text });
+      
+      // Update the data attribute
+      todoItem.setAttribute('data-checked', checked.toString());
+      
+      if (checkbox && text) {
+        if (checked) {
+          checkbox.textContent = '✓';
+          checkbox.classList.add('checked');
+          checkbox.classList.remove('empty');
+          (text as HTMLElement).style.textDecoration = 'line-through';
+          (text as HTMLElement).style.opacity = '0.6';
+          (text as HTMLElement).classList.add('checked');
+        } else {
+          checkbox.textContent = '';
+          checkbox.classList.remove('checked');
+          checkbox.classList.add('empty');
+          (text as HTMLElement).style.textDecoration = 'none';
+          (text as HTMLElement).style.opacity = '1';
+          (text as HTMLElement).classList.remove('checked');
+        }
+        
+        // Force a content update without triggering broadcast
+        setTimeout(() => {
+          if (editorRef.current) {
+            const markdown = convertToMarkdown(editorRef.current.innerHTML);
+            const html = convertToHtml(markdown);
+            lastValueRef.current = markdown;
+            onChange(markdown, html);
+          }
+          isUpdatingFromRemote.current = false;
+        }, 10);
       }
-      // Trigger content update to save the state
-      setTimeout(() => handleInput(), 0);
     } else {
-      console.log('RichTextEditor: Target checkbox not found', { checkboxIndex });
+      console.log('RichTextEditor: Target checkbox not found', { checkboxIndex, totalCheckboxes: todoItems.length });
+      isUpdatingFromRemote.current = false;
     }
   };
 
@@ -775,7 +811,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   React.useImperativeHandle(ref, () => ({
     formatSelection,
     getActiveFormats,
-    updateCheckboxState
+    updateCheckboxState,
+    forceUpdateHandlers: () => {
+      setTimeout(() => {
+        setupTodoClickHandlers();
+      }, 100);
+    }
   }));
 
   return (
