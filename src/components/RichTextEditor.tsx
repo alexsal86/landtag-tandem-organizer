@@ -230,24 +230,30 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
           });
         });
         
-        // Add event delegation to the editor itself
+        // Add event delegation to the editor itself - simplified approach
         if (editorRef.current) {
+          // Remove any existing handlers first
+          editorRef.current.onclick = null;
+          
+          // Use a simple onclick handler to avoid duplicate event listeners
           editorRef.current.onclick = (event) => {
             const target = event.target as HTMLElement;
-            const todoItem = target.closest('.todo-item') as HTMLElement;
             
-            if (todoItem) {
-              console.log('RichTextEditor: Todo item clicked via delegation');
-              event.preventDefault();
-              event.stopPropagation();
-              handleTodoClick(todoItem);
+            // Only handle clicks on checkboxes or their containers
+            if (target.classList.contains('todo-checkbox') || target.closest('.todo-item')) {
+              const todoItem = target.closest('.todo-item') as HTMLElement;
+              
+              if (todoItem) {
+                console.log('RichTextEditor: Todo item clicked');
+                event.preventDefault();
+                event.stopPropagation();
+                handleTodoClick(todoItem);
+              }
             }
           };
         }
         
         lastValueRef.current = cleanedValue;
-        
-        lastValueRef.current = value;
       } catch (error) {
         console.warn('RichTextEditor: Error during HTML conversion:', error);
       }
@@ -301,24 +307,29 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       });
     });
     
-    // Remove any existing click handlers first
+    // Remove any existing click handlers first to prevent duplicate handlers
     editorRef.current.onclick = null;
+    editorRef.current.removeEventListener('click', (editorRef.current as any)._todoClickHandler);
     
-    // Add event delegation to the editor itself using addEventListener for better control
+    // Create a single click handler and store reference to prevent duplicates
     const handleClick = (event: Event) => {
       const target = event.target as HTMLElement;
-      const todoItem = target.closest('.todo-item') as HTMLElement;
       
-      if (todoItem) {
-        console.log('RichTextEditor: Todo item clicked via delegation');
-        event.preventDefault();
-        event.stopPropagation();
-        handleTodoClick(todoItem);
+      // Only handle clicks on checkboxes or todo items
+      if (target.classList.contains('todo-checkbox') || target.closest('.todo-item')) {
+        const todoItem = target.closest('.todo-item') as HTMLElement;
+        
+        if (todoItem) {
+          console.log('RichTextEditor: Todo item clicked via delegation');
+          event.preventDefault();
+          event.stopPropagation();
+          handleTodoClick(todoItem);
+        }
       }
     };
     
-    // Remove any existing listeners and add new one
-    editorRef.current.removeEventListener('click', handleClick);
+    // Store reference and add listener
+    (editorRef.current as any)._todoClickHandler = handleClick;
     editorRef.current.addEventListener('click', handleClick);
     
     console.log('RichTextEditor: Event handlers attached successfully');
