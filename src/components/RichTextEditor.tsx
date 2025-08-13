@@ -31,7 +31,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
 
   // Convert markdown-like syntax to HTML for display
   const convertToHtml = (text: string) => {
-    return text
+    console.log('convertToHtml input:', text);
+    const result = text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
@@ -45,6 +46,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/`(.*?)`/g, '<code>$1</code>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>');
+    console.log('convertToHtml output:', result);
+    return result;
   };
 
   // Convert HTML back to markdown-like syntax for storage
@@ -82,6 +85,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   // Initialize content on mount
   useEffect(() => {
     if (editorRef.current && !lastValueRef.current && value) {
+      console.log('RichTextEditor: Initial mount with value:', value);
       const html = convertToHtml(value);
       editorRef.current.innerHTML = html;
       lastValueRef.current = value;
@@ -123,11 +127,16 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     const html = editorRef.current.innerHTML;
     const markdown = convertToMarkdown(html);
     
+    console.log('RichTextEditor: handleInput', { 
+      html, 
+      markdown,
+      innerHTML: editorRef.current.innerHTML
+    });
+    
     // Skip the next external update since this is our own change
     skipNextUpdateRef.current = true;
     lastValueRef.current = markdown;
     
-    console.log('RichTextEditor: Local input change', { html, markdown });
     onChange(markdown, html);
   };
 
