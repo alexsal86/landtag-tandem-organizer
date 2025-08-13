@@ -224,8 +224,10 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         }
       })
       .on('broadcast', { event: 'checkbox_change' }, (payload) => {
+        console.log('KnowledgeDocumentEditor: Received checkbox change broadcast', payload);
         const { user_id, checkboxIndex, checked } = payload.payload;
         if (user_id !== user.id && richTextEditorRef.current) {
+          console.log('KnowledgeDocumentEditor: Updating checkbox state for other user', { checkboxIndex, checked });
           // Update checkbox state for other users
           richTextEditorRef.current.updateCheckboxState(checkboxIndex, checked);
         }
@@ -302,7 +304,12 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
 
   // Broadcast checkbox state changes immediately
   const broadcastCheckboxChange = (checkboxIndex: number, checked: boolean) => {
-    if (!channelRef.current || !user) return;
+    if (!channelRef.current || !user) {
+      console.log('KnowledgeDocumentEditor: Cannot broadcast checkbox change - no channel or user', { channel: !!channelRef.current, user: !!user });
+      return;
+    }
+    
+    console.log('KnowledgeDocumentEditor: Broadcasting checkbox change', { checkboxIndex, checked });
     
     channelRef.current.send({
       type: 'broadcast',

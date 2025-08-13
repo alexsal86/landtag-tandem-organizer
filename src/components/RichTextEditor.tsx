@@ -154,12 +154,15 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
           }
           
           input.onclick = function(this: HTMLInputElement) {
+            console.log('RichTextEditor: Checkbox clicked', { index, checked: this.checked });
             const span = this.nextElementSibling as HTMLSpanElement;
             if (span) {
               span.style.textDecoration = this.checked ? 'line-through' : 'none';
+              console.log('RichTextEditor: Updated strikethrough style', { checked: this.checked });
             }
             // Broadcast checkbox change
             if (onCheckboxChange) {
+              console.log('RichTextEditor: Broadcasting checkbox change', { index, checked: this.checked });
               onCheckboxChange(index, this.checked);
             }
             // Update content immediately
@@ -552,14 +555,17 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         span.textContent = selectedText || 'Todo item';
         
         checkbox.onclick = function(this: HTMLInputElement) {
+          console.log('RichTextEditor: New checkbox clicked', { checked: this.checked });
           const span = this.nextElementSibling as HTMLSpanElement;
           if (span) {
             span.style.textDecoration = this.checked ? 'line-through' : 'none';
+            console.log('RichTextEditor: Updated new checkbox strikethrough', { checked: this.checked });
           }
           // Broadcast checkbox change
           const checkboxes = editorRef.current?.querySelectorAll('.todo-item input[type="checkbox"]');
           if (checkboxes && onCheckboxChange) {
             const index = Array.from(checkboxes).indexOf(this);
+            console.log('RichTextEditor: Broadcasting new checkbox change', { index, checked: this.checked });
             onCheckboxChange(index, this.checked);
           }
           // Update content immediately
@@ -630,17 +636,26 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   };
 
   const updateCheckboxState = (checkboxIndex: number, checked: boolean) => {
-    if (!editorRef.current) return;
+    console.log('RichTextEditor: updateCheckboxState called', { checkboxIndex, checked });
+    if (!editorRef.current) {
+      console.log('RichTextEditor: No editor ref available');
+      return;
+    }
     
     const checkboxes = editorRef.current.querySelectorAll('.todo-item input[type="checkbox"]');
+    console.log('RichTextEditor: Found checkboxes', { count: checkboxes.length });
     const targetCheckbox = checkboxes[checkboxIndex] as HTMLInputElement;
     
     if (targetCheckbox) {
+      console.log('RichTextEditor: Updating checkbox state', { checkboxIndex, checked, currentState: targetCheckbox.checked });
       targetCheckbox.checked = checked;
       const span = targetCheckbox.nextElementSibling as HTMLSpanElement;
       if (span) {
         span.style.textDecoration = checked ? 'line-through' : 'none';
+        console.log('RichTextEditor: Updated span style', { textDecoration: span.style.textDecoration });
       }
+    } else {
+      console.log('RichTextEditor: Target checkbox not found', { checkboxIndex });
     }
   };
 
