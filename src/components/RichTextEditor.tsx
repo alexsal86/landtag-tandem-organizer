@@ -51,9 +51,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       // Handle lists
       .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
       .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
-      // Handle todo lists - simplified checkboxes with just checkmark
+      // Handle todo lists - styled checkboxes matching the design
       .replace(/^☑\s+(.*)$/gm, '<div class="todo-item" data-checked="true"><span class="todo-checkbox checked">✓</span><span class="todo-text checked">$1</span></div>')
-      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox"></span><span class="todo-text">$1</span></div>')
+      .replace(/^☐\s+(.*)$/gm, '<div class="todo-item" data-checked="false"><span class="todo-checkbox empty"></span><span class="todo-text">$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>')
       // Merge consecutive list items
@@ -162,8 +162,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       editorRef.current.innerHTML = html;
       lastValueRef.current = cleanedValue;
       
-      // Set up todo click handlers
-      setupTodoClickHandlers();
+      // Set up todo click handlers after content is updated
+      setTimeout(() => {
+        setupTodoClickHandlers();
+      }, 50);
       
       // Immediately save the cleaned version
       if (onChange && cleanedValue !== value) {
@@ -287,14 +289,16 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       if (newChecked) {
         checkbox.textContent = '✓';
         checkbox.classList.add('checked');
+        checkbox.classList.remove('empty');
         (text as HTMLElement).style.textDecoration = 'line-through';
-        (text as HTMLElement).style.color = '#666';
+        (text as HTMLElement).style.opacity = '0.6';
         (text as HTMLElement).classList.add('checked');
       } else {
         checkbox.textContent = '';
         checkbox.classList.remove('checked');
+        checkbox.classList.add('empty');
         (text as HTMLElement).style.textDecoration = 'none';
-        (text as HTMLElement).style.color = 'inherit';
+        (text as HTMLElement).style.opacity = '1';
         (text as HTMLElement).classList.remove('checked');
       }
     }
@@ -307,10 +311,14 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       onCheckboxChange(todoIndex, newChecked);
     }
     
-    // Force immediate save
+    // Force immediate save and re-setup handlers
     setTimeout(() => {
       console.log('RichTextEditor: Forcing save after todo click');
       handleInput();
+      // Re-setup handlers to ensure they work for subsequent clicks
+      setTimeout(() => {
+        setupTodoClickHandlers();
+      }, 100);
     }, 10);
   };
 

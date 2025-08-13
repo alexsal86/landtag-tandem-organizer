@@ -153,8 +153,38 @@ All colors MUST be HSL.
     @apply text-foreground;
   }
 
+  /* Todo list styles matching the design from the image */
   .prose .todo-item {
-    @apply flex items-center space-x-2 my-2;
+    @apply flex items-start gap-3 mb-2 p-2 rounded hover:bg-accent/50 transition-all cursor-pointer;
+  }
+
+  .prose .todo-checkbox {
+    @apply w-5 h-5 border-2 border-muted-foreground rounded flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5 transition-all;
+  }
+
+  .prose .todo-checkbox.checked {
+    @apply border-primary bg-primary text-primary-foreground;
+  }
+
+  .prose .todo-checkbox.empty {
+    @apply border-muted-foreground bg-transparent;
+  }
+
+  .prose .todo-text {
+    @apply flex-1 leading-relaxed;
+  }
+
+  .prose .todo-text.checked {
+    @apply line-through opacity-60;
+  }
+
+  /* Hover effects for better UX */
+  .prose .todo-item:hover .todo-checkbox.empty {
+    @apply border-primary/60;
+  }
+
+  .prose .todo-item:hover .todo-checkbox.checked {
+    @apply bg-primary/90;
   }
 
   .prose details {
