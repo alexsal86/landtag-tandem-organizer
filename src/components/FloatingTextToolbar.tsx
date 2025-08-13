@@ -93,7 +93,7 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
           sideOffset={5}
         >
           {turnIntoOptions.map((option, index) => (
-            <React.Fragment key={option.action}>
+            <div key={option.action}>
               <DropdownMenuItem
                 onClick={() => onFormatText(option.action)}
                 className="flex items-center gap-3 px-3 py-2 hover:bg-accent cursor-pointer"
@@ -105,7 +105,7 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
                 </div>
               </DropdownMenuItem>
               {(index === 0 || index === 3 || index === 4) && <DropdownMenuSeparator />}
-            </React.Fragment>
+            </div>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
