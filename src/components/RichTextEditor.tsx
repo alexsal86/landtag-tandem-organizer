@@ -45,8 +45,17 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>')
       .replace(/```\n(.*?)\n```/gs, '<pre><code>$1</code></pre>')
       .replace(/`(.*?)`/g, '<code>$1</code>')
+      // Handle lists
+      .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
+      .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
+      // Handle checkboxes with proper click handling
+      .replace(/^☑ (.*)$/gm, '<div class="todo-item"><input type="checkbox" checked style="margin-right: 8px;" onclick="this.nextSibling.style.textDecoration = this.checked ? \'line-through\' : \'none\'"><span style="text-decoration: line-through;">$1</span></div>')
+      .replace(/^☐ (.*)$/gm, '<div class="todo-item"><input type="checkbox" style="margin-right: 8px;" onclick="this.nextSibling.style.textDecoration = this.checked ? \'line-through\' : \'none\'"><span>$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
-      .replace(/\n/g, '<br>');
+      .replace(/\n/g, '<br>')
+      // Merge consecutive list items
+      .replace(/<\/ul><br><ul>/g, '')
+      .replace(/<\/ol><br><ol>/g, '');
     console.log('convertToHtml output:', result);
     return result;
   };
@@ -68,13 +77,17 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/<u[^>]*>(.*?)<\/u>/gi, '<u>$1</u>')
       .replace(/<del[^>]*>(.*?)<\/del>/gi, '~~$1~~')
       .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+      // Handle lists properly
       .replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
-        return content.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n').trim();
+        return content.replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n').trim();
       })
       .replace(/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
         let counter = 1;
-        return content.replace(/<li[^>]*>(.*?)<\/li>/gi, () => `${counter++}. $1\n`).trim();
+        return content.replace(/<li[^>]*>(.*?)<\/li>/gi, (li, text) => `${counter++}. ${text}\n`).trim();
       })
+      // Handle todo checkboxes
+      .replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*\/?>([^<]*)/gi, '☑ $1')
+      .replace(/<input[^>]*type="checkbox"[^>]*\/?>([^<]*)/gi, '☐ $1')
       .replace(/<span[^>]*>(.*?)<\/span>/gi, '<!-- $1 -->')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<div[^>]*>/gi, '\n')
@@ -194,6 +207,82 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
     }
     
     return [...new Set(activeFormats)]; // Remove duplicates
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      
+      const range = selection.getRangeAt(0);
+      const container = range.startContainer;
+      
+      // Find parent list item or todo item
+      let currentElement = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+      
+      // Check if we're in a list item
+      while (currentElement && currentElement !== editorRef.current) {
+        if (currentElement.tagName === 'LI') {
+          e.preventDefault();
+          
+          // Create new list item
+          const newLi = document.createElement('li');
+          newLi.innerHTML = '<br>';
+          
+          // Insert after current item
+          if (currentElement.parentElement) {
+            currentElement.parentElement.insertBefore(newLi, currentElement.nextSibling);
+          }
+          
+          // Set cursor in new item
+          const newRange = document.createRange();
+          newRange.selectNodeContents(newLi);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+          
+          setTimeout(() => handleInput(), 0);
+          return;
+        }
+        
+        // Check if we're in a todo item
+        if (currentElement.classList?.contains('todo-item')) {
+          e.preventDefault();
+          
+          // Create new todo item
+          const newTodoItem = document.createElement('div');
+          newTodoItem.className = 'todo-item';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.style.marginRight = '8px';
+          checkbox.onclick = function(this: HTMLInputElement) {
+            const span = this.nextSibling as HTMLSpanElement;
+            if (span) {
+              span.style.textDecoration = this.checked ? 'line-through' : 'none';
+            }
+          };
+          const span = document.createElement('span');
+          span.innerHTML = '<br>';
+          newTodoItem.appendChild(checkbox);
+          newTodoItem.appendChild(span);
+          
+          // Insert after current todo item
+          currentElement.parentNode?.insertBefore(newTodoItem, currentElement.nextSibling);
+          
+          // Set cursor in new todo item
+          const newRange = document.createRange();
+          newRange.selectNodeContents(span);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+          
+          setTimeout(() => handleInput(), 0);
+          return;
+        }
+        
+        currentElement = currentElement.parentElement;
+      }
+    }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -394,7 +483,19 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       case 'todolist':
         wrapper = document.createElement('div');
         wrapper.className = 'todo-item';
-        wrapper.innerHTML = `<input type="checkbox" style="margin-right: 8px;" /><span>${selectedText || 'Todo item'}</span>`;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.style.marginRight = '8px';
+        checkbox.onclick = function(this: HTMLInputElement) {
+          const span = this.nextSibling as HTMLSpanElement;
+          if (span) {
+            span.style.textDecoration = this.checked ? 'line-through' : 'none';
+          }
+        };
+        const span = document.createElement('span');
+        span.textContent = selectedText || 'Todo item';
+        wrapper.appendChild(checkbox);
+        wrapper.appendChild(span);
         needsSelection = false;
         break;
       case 'togglelist':
@@ -482,6 +583,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       onPaste={handlePaste}
       onCompositionStart={() => setIsComposing(true)}
       onCompositionEnd={() => setIsComposing(false)}
+      onKeyDown={handleKeyDown}
       data-placeholder={placeholder}
       suppressContentEditableWarning={true}
     />
