@@ -225,21 +225,42 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         if (currentElement.tagName === 'LI') {
           e.preventDefault();
           
-          // Create new list item
-          const newLi = document.createElement('li');
-          newLi.innerHTML = '<br>';
+          // Check if current list item is empty
+          const isEmpty = !currentElement.textContent?.trim() || currentElement.innerHTML === '<br>';
           
-          // Insert after current item
-          if (currentElement.parentElement) {
-            currentElement.parentElement.insertBefore(newLi, currentElement.nextSibling);
+          if (isEmpty) {
+            // Remove empty list item and exit list
+            const listParent = currentElement.parentElement;
+            currentElement.remove();
+            
+            // Create new div after the list
+            const newDiv = document.createElement('div');
+            newDiv.innerHTML = '<br>';
+            listParent?.parentNode?.insertBefore(newDiv, listParent.nextSibling);
+            
+            // Set cursor in new div
+            const newRange = document.createRange();
+            newRange.selectNodeContents(newDiv);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          } else {
+            // Create new list item
+            const newLi = document.createElement('li');
+            newLi.innerHTML = '<br>';
+            
+            // Insert after current item
+            if (currentElement.parentElement) {
+              currentElement.parentElement.insertBefore(newLi, currentElement.nextSibling);
+            }
+            
+            // Set cursor in new item
+            const newRange = document.createRange();
+            newRange.selectNodeContents(newLi);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
           }
-          
-          // Set cursor in new item
-          const newRange = document.createRange();
-          newRange.selectNodeContents(newLi);
-          newRange.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
           
           setTimeout(() => handleInput(), 0);
           return;
