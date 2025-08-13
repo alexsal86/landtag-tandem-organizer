@@ -16,6 +16,7 @@ interface KnowledgeDocument {
   id: string;
   title: string;
   content: string;
+  content_html?: string;
   category: string;
   created_by: string;
   created_at: string;
@@ -39,7 +40,10 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [editedDoc, setEditedDoc] = useState(document);
+  const [editedDoc, setEditedDoc] = useState({
+    ...document,
+    content_html: document.content_html || '' // Add HTML content tracking
+  });
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [activeUsers, setActiveUsers] = useState<string[]>([]);
@@ -60,7 +64,10 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   const canEdit = user?.id === document.created_by || document.is_published;
 
   useEffect(() => {
-    setEditedDoc(document);
+    setEditedDoc({
+      ...document,
+      content_html: document.content_html || ''
+    });
   }, [document]);
 
   // Auto-save functionality
@@ -146,7 +153,10 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
       }, (payload) => {
         if (payload.new.updated_at !== document.updated_at && payload.new.created_by !== user.id) {
           // Another user updated the document
-          setEditedDoc(payload.new as KnowledgeDocument);
+          setEditedDoc({
+            ...(payload.new as KnowledgeDocument),
+            content_html: (payload.new as any).content_html || ''
+          });
           
           toast({
             title: "Dokument aktualisiert",
