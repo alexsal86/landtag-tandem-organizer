@@ -812,6 +812,7 @@ export type Database = {
         Row: {
           category: string | null
           content: string | null
+          content_html: string | null
           created_at: string
           created_by: string
           id: string
@@ -822,6 +823,7 @@ export type Database = {
         Insert: {
           category?: string | null
           content?: string | null
+          content_html?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -832,6 +834,7 @@ export type Database = {
         Update: {
           category?: string | null
           content?: string | null
+          content_html?: string | null
           created_at?: string
           created_by?: string
           id?: string

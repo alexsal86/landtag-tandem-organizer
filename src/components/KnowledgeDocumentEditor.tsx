@@ -52,6 +52,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   const [showToolbar, setShowToolbar] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const editorRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<any>(null);
 
   const categories = [
     { value: 'general', label: 'Allgemein' },
@@ -174,14 +175,15 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         }
       })
       .on('broadcast', { event: 'content_change' }, (payload) => {
-        const { user_id, content, title, category, is_published } = payload.payload;
+        const { user_id, content, content_html, title, category, is_published } = payload.payload;
         if (user_id !== user.id) {
           // Update content from another user
           setEditedDoc(prev => ({
             ...prev,
-            content: content || prev.content,
-            title: title || prev.title,
-            category: category || prev.category,
+            content: content !== undefined ? content : prev.content,
+            content_html: content_html !== undefined ? content_html : prev.content_html,
+            title: title !== undefined ? title : prev.title,
+            category: category !== undefined ? category : prev.category,
             is_published: is_published !== undefined ? is_published : prev.is_published
           }));
         }
@@ -204,6 +206,9 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         }
       });
 
+    // Store channel reference for broadcasting functions
+    channelRef.current = channel;
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -221,6 +226,29 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
     setShowToolbar(selectedText.length > 0);
   };
 
+  // Broadcast content changes to other users including HTML formatting
+  const broadcastContentChange = (field: string, value: string, htmlValue?: string) => {
+    if (!channelRef.current) return;
+    
+    const payload: any = {
+      type: 'content_change',
+      field,
+      value,
+      user_id: user?.id,
+      user_name: user?.user_metadata?.display_name || 'Unbekannt',
+      timestamp: new Date().toISOString()
+    };
+
+    if (htmlValue && field === 'content') {
+      payload.content_html = htmlValue;
+    }
+    
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'content_change',
+      payload
+    });
+  };
 
   // Format selected text for rich text editor
   const handleFormatText = (format: string) => {
@@ -272,8 +300,9 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
       // Get updated content from editor
       if (editorRef.current) {
         const newContent = editorRef.current.innerText;
-        setEditedDoc(prev => ({ ...prev, content: newContent }));
-        broadcastContentChange('content', newContent);
+        const newHtml = editorRef.current.innerHTML;
+        setEditedDoc(prev => ({ ...prev, content: newContent, content_html: newHtml }));
+        broadcastContentChange('content', newContent, newHtml);
       }
     } catch (e) {
       // Fallback: replace selection with formatted text
@@ -283,29 +312,15 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
       
       if (editorRef.current) {
         const newContent = editorRef.current.innerText;
-        setEditedDoc(prev => ({ ...prev, content: newContent }));
-        broadcastContentChange('content', newContent);
+        const newHtml = editorRef.current.innerHTML;
+        setEditedDoc(prev => ({ ...prev, content: newContent, content_html: newHtml }));
+        broadcastContentChange('content', newContent, newHtml);
       }
     }
     
     // Hide toolbar and clear selection
     setShowToolbar(false);
     setSelectedText('');
-  };
-
-  // Broadcast content changes to other users
-  const broadcastContentChange = async (field: string, value: any) => {
-    if (!user) return;
-    
-    const channel = supabase.channel(`document-${document.id}`);
-    await channel.send({
-      type: 'broadcast',
-      event: 'content_change',
-      payload: {
-        user_id: user.id,
-        [field]: value
-      }
-    });
   };
 
   const handleAutoSave = async () => {
@@ -318,6 +333,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
         .update({
           title: editedDoc.title,
           content: editedDoc.content,
+          content_html: editedDoc.content_html,
           category: editedDoc.category,
           is_published: editedDoc.is_published,
           updated_at: new Date().toISOString()
@@ -487,9 +503,9 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
           <div className="min-h-96 relative">
             <RichTextEditor
               value={editedDoc.content}
-              onChange={(newContent) => {
-                setEditedDoc(prev => ({ ...prev, content: newContent }));
-                broadcastContentChange('content', newContent);
+              onChange={(newContent, newHtml) => {
+                setEditedDoc(prev => ({ ...prev, content: newContent, content_html: newHtml || '' }));
+                broadcastContentChange('content', newContent, newHtml);
               }}
               onSelectionChange={handleSelectionChange}
               disabled={!canEdit}

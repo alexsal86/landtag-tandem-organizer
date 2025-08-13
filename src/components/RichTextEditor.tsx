@@ -3,8 +3,9 @@ import { cn } from '@/lib/utils';
 
 interface RichTextEditorProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (content: string, html?: string) => void;
   onSelectionChange?: () => void;
+  onFormatText?: (format: string) => void;
   disabled?: boolean;
   className?: string;
   placeholder?: string;
@@ -14,6 +15,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
   onSelectionChange,
+  onFormatText,
   disabled = false,
   className,
   placeholder = "Beginnen Sie zu schreiben..."
@@ -87,7 +89,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     
     const html = editorRef.current.innerHTML;
     const markdown = convertToMarkdown(html);
-    onChange(markdown);
+    onChange(markdown, html);
   };
 
   const handleSelectionChange = () => {
