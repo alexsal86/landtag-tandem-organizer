@@ -51,8 +51,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       // Handle lists
       .replace(/^• (.*)$/gm, '<ul><li>$1</li></ul>')
       .replace(/^(\d+)\. (.*)$/gm, '<ol><li>$2</li></ol>')
-      // Handle todo lists - ensure clean conversion
-      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item"><input type="checkbox" checked data-todo-text="$1"><span class="todo-text">$1</span></div>')
+      // Handle todo lists - ensure clean conversion with proper checked state
+      .replace(/^☑\s+(.*)$/gm, '<div class="todo-item"><input type="checkbox" checked data-todo-text="$1"><span class="todo-text" style="text-decoration: line-through;">$1</span></div>')
       .replace(/^☐\s+(.*)$/gm, '<div class="todo-item"><input type="checkbox" data-todo-text="$1"><span class="todo-text">$1</span></div>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>')
@@ -67,7 +67,51 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
   const convertToMarkdown = (html: string) => {
     console.log('convertToMarkdown input:', html);
     
-    const result = html
+    // Enhanced conversion that properly detects checked state
+    let result = html;
+    
+    // First, let's handle checkboxes by actually checking the DOM for their state
+    if (editorRef.current) {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      
+      const todoItems = tempDiv.querySelectorAll('.todo-item');
+      todoItems.forEach((todoItem) => {
+        const checkbox = todoItem.querySelector('input[type="checkbox"]') as HTMLInputElement;
+        const span = todoItem.querySelector('.todo-text');
+        if (checkbox && span) {
+          const text = span.textContent || '';
+          const replacement = checkbox.checked ? `☑ ${text}` : `☐ ${text}`;
+          const todoHtml = todoItem.outerHTML;
+          result = result.replace(todoHtml, replacement);
+        }
+      });
+      
+      // Also check for any standalone checkboxes
+      const standaloneCheckboxes = tempDiv.querySelectorAll('input[type="checkbox"]:not(.todo-item input)');
+      standaloneCheckboxes.forEach((checkbox) => {
+        const input = checkbox as HTMLInputElement;
+        const nextElement = input.nextElementSibling;
+        if (nextElement && nextElement.tagName === 'SPAN') {
+          const span = nextElement as HTMLSpanElement;
+          const text = span.textContent || '';
+          const replacement = input.checked ? `☑ ${text}` : `☐ ${text}`;
+          
+          // Find and replace the checkbox + span pattern
+          const pattern = input.outerHTML + nextElement.outerHTML;
+          result = result.replace(pattern, replacement);
+        }
+      });
+    } else {
+      // Fallback to regex-based conversion
+      result = result
+        .replace(/<div[^>]*class="todo-item"[^>]*>.*?<input[^>]*type="checkbox"[^>]*checked[^>]*>.*?<span[^>]*class="todo-text"[^>]*>(.*?)<\/span>.*?<\/div>/gis, '☑ $1')
+        .replace(/<div[^>]*class="todo-item"[^>]*>.*?<input[^>]*type="checkbox"(?![^>]*checked)[^>]*>.*?<span[^>]*class="todo-text"[^>]*>(.*?)<\/span>.*?<\/div>/gis, '☐ $1')
+        .replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*[^>]*>[\s]*<span[^>]*style="[^"]*text-decoration:\s*line-through[^"]*"[^>]*>(.*?)<\/span>/gi, '☑ $1')
+        .replace(/<input[^>]*type="checkbox"(?![^>]*checked)[^>]*>[\s]*<span[^>]*>(.*?)<\/span>/gi, '☐ $1');
+    }
+    
+    result = result
       // Handle headings first (before other formatting)
       .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1')
       .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1')
@@ -80,7 +124,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/<u[^>]*>(.*?)<\/u>/gi, '<u>$1</u>')
       .replace(/<del[^>]*>(.*?)<\/del>/gi, '~~$1~~')
       .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
-      // Handle lists properly
       .replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
         return content.replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n').trim();
       })
@@ -88,12 +131,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         let counter = 1;
         return content.replace(/<li[^>]*>(.*?)<\/li>/gi, (li, text) => `${counter++}. ${text}\n`).trim();
       })
-      // Handle both new and old checkbox structures
-      .replace(/<div[^>]*class="todo-item"[^>]*>.*?<input[^>]*type="checkbox"[^>]*checked[^>]*>.*?<span[^>]*class="todo-text"[^>]*>(.*?)<\/span>.*?<\/div>/gis, '☑ $1')
-      .replace(/<div[^>]*class="todo-item"[^>]*>.*?<input[^>]*type="checkbox"[^>]*>.*?<span[^>]*class="todo-text"[^>]*>(.*?)<\/span>.*?<\/div>/gis, '☐ $1')
-      // Handle old checkbox structures  
-      .replace(/<input[^>]*type="checkbox"[^>]*checked[^>]*[^>]*>[\s]*<span[^>]*style="[^"]*text-decoration:\s*line-through[^"]*"[^>]*>(.*?)<\/span>/gi, '☑ $1')
-      .replace(/<input[^>]*type="checkbox"[^>]*>[\s]*<span[^>]*>(.*?)<\/span>/gi, '☐ $1')
       // Clean up any remaining artifacts
       .replace(/<span[^>]*style="color:\s*#888;\s*font-style:\s*italic;"[^>]*>(.*?)<\/span>/gi, '$1')
       .replace(/<!--\s*(.*?)\s*-->/g, '$1')
