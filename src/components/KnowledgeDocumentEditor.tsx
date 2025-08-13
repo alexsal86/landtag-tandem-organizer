@@ -170,6 +170,29 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
           }));
         }
       })
+      .on('broadcast', { event: 'content_change' }, (payload) => {
+        const { user_id, content, title, category, is_published } = payload.payload;
+        if (user_id !== user.id) {
+          // Preserve current cursor position
+          const currentPosition = textareaRef.current?.selectionStart || 0;
+          
+          // Update content from another user
+          setEditedDoc(prev => ({
+            ...prev,
+            content: content || prev.content,
+            title: title || prev.title,
+            category: category || prev.category,
+            is_published: is_published !== undefined ? is_published : prev.is_published
+          }));
+          
+          // Restore cursor position
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.setSelectionRange(currentPosition, currentPosition);
+            }
+          }, 0);
+        }
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           // Get user name from profiles
@@ -233,6 +256,21 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
       line: lines.length,
       column: lines[lines.length - 1].length + 1
     };
+  };
+
+  // Broadcast content changes to other users
+  const broadcastContentChange = async (field: string, value: any) => {
+    if (!user) return;
+    
+    const channel = supabase.channel(`document-${document.id}`);
+    await channel.send({
+      type: 'broadcast',
+      event: 'content_change',
+      payload: {
+        user_id: user.id,
+        [field]: value
+      }
+    });
   };
 
   const handleAutoSave = async () => {
@@ -363,7 +401,11 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
           <div>
             <Input
               value={editedDoc.title}
-              onChange={(e) => setEditedDoc(prev => ({ ...prev, title: e.target.value }))}
+              onChange={(e) => {
+                const newTitle = e.target.value;
+                setEditedDoc(prev => ({ ...prev, title: newTitle }));
+                broadcastContentChange('title', newTitle);
+              }}
               disabled={!canEdit}
               className="text-2xl font-bold border-none px-0 focus-visible:ring-0 bg-transparent"
               placeholder="Untitled"
@@ -411,7 +453,11 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
             <Textarea
               ref={textareaRef}
               value={editedDoc.content}
-              onChange={(e) => setEditedDoc(prev => ({ ...prev, content: e.target.value }))}
+              onChange={(e) => {
+                const newContent = e.target.value;
+                setEditedDoc(prev => ({ ...prev, content: newContent }));
+                broadcastContentChange('content', newContent);
+              }}
               onSelect={handleCursorChange}
               onKeyUp={handleCursorChange}
               onClick={handleCursorChange}
