@@ -202,81 +202,52 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
         editorRef.current.innerHTML = html;
         
         // Re-attach event listeners to ALL checkboxes after setting HTML
-        const allCheckboxes = editorRef.current.querySelectorAll('input[type="checkbox"]');
-        console.log('RichTextEditor: Found total checkboxes after HTML update:', allCheckboxes.length);
+        console.log('RichTextEditor: Setting up event listeners for checkboxes');
         
-        allCheckboxes.forEach((checkbox, index) => {
-          const input = checkbox as HTMLInputElement;
+        // Use setTimeout to ensure DOM is fully rendered
+        setTimeout(() => {
+          const allCheckboxes = editorRef.current?.querySelectorAll('input[type="checkbox"]');
+          console.log('RichTextEditor: Found checkboxes for event setup:', allCheckboxes?.length || 0);
           
-          // Ensure all checkboxes are in todo-item structure
-          const parentDiv = input.closest('.todo-item');
-          if (!parentDiv) {
-            console.log('RichTextEditor: Converting old checkbox to new structure', index);
-            // Convert old structure to new structure
-            const nextElement = input.nextElementSibling;
-            if (nextElement && nextElement.tagName === 'SPAN') {
-              const span = nextElement as HTMLSpanElement;
-              const text = span.textContent || '';
-              const isChecked = input.checked || span.style.textDecoration === 'line-through';
+          allCheckboxes?.forEach((checkbox, index) => {
+            const input = checkbox as HTMLInputElement;
+            console.log(`RichTextEditor: Setting up checkbox ${index}, checked: ${input.checked}`);
+            
+            // Remove any existing listeners
+            input.onclick = null;
+            
+            // Add new click handler
+            input.addEventListener('click', function(this: HTMLInputElement, event) {
+              console.log('RichTextEditor: Checkbox clicked!', { index, checked: this.checked, event });
               
-              // Create new todo-item structure
-              const newTodoItem = document.createElement('div');
-              newTodoItem.className = 'todo-item';
+              // Update visual styling immediately
+              const span = this.nextElementSibling as HTMLSpanElement;
+              if (span) {
+                span.style.textDecoration = this.checked ? 'line-through' : 'none';
+                console.log('RichTextEditor: Updated visual styling', { checked: this.checked });
+              }
               
-              const newCheckbox = document.createElement('input');
-              newCheckbox.type = 'checkbox';
-              newCheckbox.checked = isChecked;
-              newCheckbox.setAttribute('data-todo-text', text);
+              // Broadcast change
+              if (onCheckboxChange) {
+                console.log('RichTextEditor: Broadcasting checkbox change', { index, checked: this.checked });
+                onCheckboxChange(index, this.checked);
+              }
               
-              const newSpan = document.createElement('span');
-              newSpan.className = 'todo-text';
-              newSpan.style.marginLeft = '8px';
-              newSpan.textContent = text;
-              newSpan.style.textDecoration = isChecked ? 'line-through' : 'none';
-              
-              newTodoItem.appendChild(newCheckbox);
-              newTodoItem.appendChild(newSpan);
-              
-              // Replace old structure
-              input.parentNode?.insertBefore(newTodoItem, input);
-              input.remove();
-              span.remove();
-              
-              // Set up new checkbox
-              setupCheckboxHandler(newCheckbox, index);
-            }
-          } else {
-            // Setup existing todo-item checkbox
-            setupCheckboxHandler(input, index);
-          }
-        });
-        
-        function setupCheckboxHandler(input: HTMLInputElement, index: number) {
-          const span = input.nextElementSibling as HTMLSpanElement;
-          if (span) {
-            span.style.marginLeft = '8px';
-            span.style.textDecoration = input.checked ? 'line-through' : 'none';
-          }
-          
-          input.onclick = function(this: HTMLInputElement) {
-            console.log('RichTextEditor: Checkbox clicked', { index, checked: this.checked });
-            const span = this.nextElementSibling as HTMLSpanElement;
+              // Force content update and save
+              setTimeout(() => {
+                console.log('RichTextEditor: Triggering handleInput after checkbox change');
+                handleInput();
+              }, 100);
+            });
+            
+            // Also set initial styling based on checked state
+            const span = input.nextElementSibling as HTMLSpanElement;
             if (span) {
-              span.style.textDecoration = this.checked ? 'line-through' : 'none';
-              console.log('RichTextEditor: Updated strikethrough style', { checked: this.checked });
+              span.style.marginLeft = '8px';
+              span.style.textDecoration = input.checked ? 'line-through' : 'none';
             }
-            // Broadcast checkbox change
-            if (onCheckboxChange) {
-              console.log('RichTextEditor: Broadcasting checkbox change', { index, checked: this.checked });
-              onCheckboxChange(index, this.checked);
-            }
-            // Update content immediately to save state
-            setTimeout(() => {
-              console.log('RichTextEditor: Triggering content update after checkbox change');
-              handleInput();
-            }, 0);
-          };
-        }
+          });
+        }, 100);
         
         lastValueRef.current = cleanedValue;
         
