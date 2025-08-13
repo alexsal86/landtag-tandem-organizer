@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RichTextEditor } from './RichTextEditor';
+import { RichTextEditor, type RichTextEditorRef } from './RichTextEditor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -52,6 +52,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
   const [showToolbar, setShowToolbar] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const editorRef = useRef<HTMLDivElement>(null);
+  const richTextEditorRef = useRef<RichTextEditorRef>(null);
   const channelRef = useRef<any>(null);
   const broadcastTimeoutRef = useRef<NodeJS.Timeout>();
   const isUpdatingFromRemoteRef = useRef(false);
@@ -288,67 +289,13 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
 
   // Format selected text using the RichTextEditor's formatSelection function
   const handleFormatText = (format: string) => {
-    if (!selectedText || !editorRef.current) return;
-    
-    // Access the RichTextEditor instance and call formatSelection
-    const editorElement = editorRef.current.querySelector('[contenteditable="true"]') as HTMLDivElement;
-    if (!editorElement) return;
-
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    
-    const range = selection.getRangeAt(0);
-    let wrapper: HTMLElement;
-    
-    switch (format) {
-      case 'bold':
-        wrapper = window.document.createElement('strong');
-        break;
-      case 'italic':
-        wrapper = window.document.createElement('em');
-        break;
-      case 'underline':
-        wrapper = window.document.createElement('u');
-        break;
-      case 'strikethrough':
-        wrapper = window.document.createElement('del');
-        break;
-      case 'link':
-        const url = prompt('Link-URL eingeben:');
-        if (!url) return;
-        wrapper = window.document.createElement('a');
-        (wrapper as HTMLAnchorElement).href = url;
-        (wrapper as HTMLAnchorElement).target = '_blank';
-        (wrapper as HTMLAnchorElement).rel = 'noopener noreferrer';
-        break;
-      case 'heading':
-        wrapper = window.document.createElement('h2');
-        break;
-      case 'comment':
-        wrapper = window.document.createElement('span');
-        wrapper.style.color = '#888';
-        wrapper.style.fontStyle = 'italic';
-        break;
-      default:
-        return;
+    if (!selectedText || !richTextEditorRef.current) {
+      console.log('KnowledgeDocumentEditor: Cannot format - no selection or editor ref');
+      return;
     }
     
-    try {
-      range.surroundContents(wrapper);
-      selection.removeAllRanges();
-      
-      // Trigger input event to update content
-      const inputEvent = new Event('input', { bubbles: true });
-      editorElement.dispatchEvent(inputEvent);
-    } catch (e) {
-      // Fallback: replace selection with formatted text
-      range.deleteContents();
-      wrapper.textContent = selectedText;
-      range.insertNode(wrapper);
-      
-      const inputEvent = new Event('input', { bubbles: true });
-      editorElement.dispatchEvent(inputEvent);
-    }
+    console.log('KnowledgeDocumentEditor: Formatting text with format:', format);
+    richTextEditorRef.current.formatSelection(format);
     
     // Hide toolbar and clear selection
     setShowToolbar(false);
@@ -534,6 +481,7 @@ const KnowledgeDocumentEditor: React.FC<KnowledgeDocumentEditorProps> = ({
           {/* Content Editor */}
           <div className="min-h-96 relative">
             <RichTextEditor
+              ref={richTextEditorRef}
               value={editedDoc.content}
               onChange={(newContent, newHtml) => {
                 // Only broadcast if this is not a remote update

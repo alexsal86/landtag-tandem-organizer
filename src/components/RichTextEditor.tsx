@@ -11,7 +11,11 @@ interface RichTextEditorProps {
   placeholder?: string;
 }
 
-const RichTextEditor: React.FC<RichTextEditorProps> = ({
+interface RichTextEditorRef {
+  formatSelection: (format: string) => void;
+}
+
+const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(({
   value,
   onChange,
   onSelectionChange,
@@ -19,7 +23,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   disabled = false,
   className,
   placeholder = "Beginnen Sie zu schreiben..."
-}) => {
+}, ref) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isComposing, setIsComposing] = useState(false);
   const lastValueRef = useRef<string>('');
@@ -169,6 +173,11 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
+  // Expose formatSelection through ref
+  React.useImperativeHandle(ref, () => ({
+    formatSelection
+  }));
+
   return (
     <div
       ref={editorRef}
@@ -193,6 +202,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       suppressContentEditableWarning={true}
     />
   );
-};
+});
 
-export { RichTextEditor, type RichTextEditorProps };
+RichTextEditor.displayName = 'RichTextEditor';
+
+export { RichTextEditor, type RichTextEditorProps, type RichTextEditorRef };
