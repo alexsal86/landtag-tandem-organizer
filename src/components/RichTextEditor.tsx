@@ -37,7 +37,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
       .replace(/~~(.*?)~~/g, '<del>$1</del>')
       .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
       .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
       .replace(/<!-- (.*?) -->/g, '<span style="color: #888; font-style: italic;">$1</span>')
       .replace(/\n/g, '<br>');
   };
@@ -50,7 +52,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
       .replace(/<del>(.*?)<\/del>/g, '~~$1~~')
       .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/g, '[$2]($1)')
+      .replace(/<h1>(.*?)<\/h1>/g, '# $1')
       .replace(/<h2>(.*?)<\/h2>/g, '## $1')
+      .replace(/<h3>(.*?)<\/h3>/g, '### $1')
       .replace(/<span[^>]*>(.*?)<\/span>/g, '<!-- $1 -->')
       .replace(/<br\s*\/?>/g, '\n')
       .replace(/<div>/g, '\n')
