@@ -94,6 +94,7 @@ export function TasksView() {
   const [snoozeDialogOpen, setSnoozeDialogOpen] = useState<{ type: 'task' | 'subtask'; id: string } | null>(null);
   const [snoozeDate, setSnoozeDate] = useState<string>('');
   const [snoozeManagementOpen, setSnoozeManagementOpen] = useState(false);
+  const [hideSnoozeSubtasks, setHideSnoozeSubtasks] = useState(false);
   const [allSnoozes, setAllSnoozes] = useState<Array<{
     id: string;
     task_id?: string;
@@ -872,7 +873,8 @@ export function TasksView() {
   });
 
   const filteredAssignedSubtasks = assignedSubtasks.filter(subtask => {
-    return !subtaskSnoozes[subtask.id] || new Date(subtaskSnoozes[subtask.id]) <= new Date();
+    const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
+    return hideSnoozeSubtasks ? !isSnoozed : true;
   });
 
   const taskCounts = {
@@ -984,7 +986,7 @@ export function TasksView() {
             <CardTitle className="text-lg flex items-center gap-2">
               <ListTodo className="h-5 w-5" />
               Mir zugewiesene Unteraufgaben ({assignedSubtasks.length})
-              {assignedSubtasks.length !== filteredAssignedSubtasks.length && (
+              {hideSnoozeSubtasks && assignedSubtasks.length !== filteredAssignedSubtasks.length && (
                 <span className="text-sm text-muted-foreground">
                   ({filteredAssignedSubtasks.length} sichtbar)
                 </span>
@@ -1002,19 +1004,13 @@ export function TasksView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {/* Show snoozed subtasks with visual indication */}
-                {assignedSubtasks.map((subtask) => {
+                {/* Show subtasks based on visibility setting */}
+                {filteredAssignedSubtasks.map((subtask) => {
                   const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
                   return (
                     <TableRow key={subtask.id} className={isSnoozed ? "opacity-50" : ""}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          {isSnoozed && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                              <AlarmClock className="h-3 w-3" />
-                              <span>Wiedervorlage bis {new Date(subtaskSnoozes[subtask.id]).toLocaleDateString('de-DE')}</span>
-                            </div>
-                          )}
                           <Checkbox
                             checked={subtask.is_completed}
                             onCheckedChange={(checked) => {
@@ -1028,7 +1024,15 @@ export function TasksView() {
                             disabled={isSnoozed}
                           />
                           <div className="flex-1">
-                            <span className="font-medium">{subtask.description}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{subtask.description}</span>
+                              {isSnoozed && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <AlarmClock className="h-3 w-3" />
+                                  <span>bis {new Date(subtaskSnoozes[subtask.id]).toLocaleDateString('de-DE')}</span>
+                                </div>
+                              )}
+                            </div>
                             {subtask.result_text && (
                               <div className="mt-1 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-500">
                                 <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
@@ -1533,6 +1537,8 @@ export function TasksView() {
         snoozes={allSnoozes}
         onUpdateSnooze={updateSnooze}
         onDeleteSnooze={deleteSnooze}
+        hideSnoozeSubtasks={hideSnoozeSubtasks}
+        onToggleHideSnoozeSubtasks={setHideSnoozeSubtasks}
       />
     </>
   );

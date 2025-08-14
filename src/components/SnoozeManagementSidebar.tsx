@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { X, AlarmClock, Calendar, Edit, Trash2 } from 'lucide-react';
+import { X, AlarmClock, Calendar, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface SnoozeItem {
   id: string;
@@ -20,6 +22,8 @@ interface SnoozeManagementSidebarProps {
   snoozes: SnoozeItem[];
   onUpdateSnooze: (snoozeId: string, newDate: string) => void;
   onDeleteSnooze: (snoozeId: string) => void;
+  hideSnoozeSubtasks: boolean;
+  onToggleHideSnoozeSubtasks: (hide: boolean) => void;
 }
 
 export function SnoozeManagementSidebar({ 
@@ -27,7 +31,9 @@ export function SnoozeManagementSidebar({
   onClose, 
   snoozes, 
   onUpdateSnooze, 
-  onDeleteSnooze 
+  onDeleteSnooze,
+  hideSnoozeSubtasks,
+  onToggleHideSnoozeSubtasks
 }: SnoozeManagementSidebarProps) {
   const [editingSnooze, setEditingSnooze] = useState<string | null>(null);
   const [editDate, setEditDate] = useState<string>('');
@@ -89,6 +95,26 @@ export function SnoozeManagementSidebar({
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
+          </div>
+
+          {/* Display Options */}
+          <div className="border-b pb-4 mb-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="hide-snooze-subtasks" className="text-sm font-medium">
+                Wiedervorlagen in Unteraufgaben ausblenden
+              </Label>
+              <Switch
+                id="hide-snooze-subtasks"
+                checked={hideSnoozeSubtasks}
+                onCheckedChange={onToggleHideSnoozeSubtasks}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {hideSnoozeSubtasks 
+                ? "Wiedervorgelagte Unteraufgaben werden komplett ausgeblendet" 
+                : "Wiedervorgelagte Unteraufgaben werden mit reduzierter Opazität angezeigt"
+              }
+            </p>
           </div>
 
           {/* Content */}
