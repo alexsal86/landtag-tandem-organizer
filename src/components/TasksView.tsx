@@ -977,13 +977,18 @@ export function TasksView() {
         </div>
       </div>
 
-      {/* Assigned Subtasks Table */}
-      {filteredAssignedSubtasks.length > 0 && (
+      {/* Assigned Subtasks Table - Always show if there are any assigned subtasks */}
+      {assignedSubtasks.length > 0 && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <ListTodo className="h-5 w-5" />
-              Mir zugewiesene Unteraufgaben ({filteredAssignedSubtasks.length})
+              Mir zugewiesene Unteraufgaben ({assignedSubtasks.length})
+              {assignedSubtasks.length !== filteredAssignedSubtasks.length && (
+                <span className="text-sm text-muted-foreground">
+                  ({filteredAssignedSubtasks.length} sichtbar)
+                </span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -997,76 +1002,87 @@ export function TasksView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAssignedSubtasks.map((subtask) => (
-                  <TableRow key={subtask.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={subtask.is_completed}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setCompletingSubtask(subtask.id);
-                              setCompletionResult('');
-                            } else {
-                              handleSubtaskComplete(subtask.id, false, '');
-                            }
-                          }}
-                        />
-                        <div className="flex-1">
-                          <span className="font-medium">{subtask.description}</span>
-                          {subtask.result_text && (
-                            <div className="mt-1 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-500">
-                              <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
-                              <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
+                {/* Show snoozed subtasks with visual indication */}
+                {assignedSubtasks.map((subtask) => {
+                  const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
+                  return (
+                    <TableRow key={subtask.id} className={isSnoozed ? "opacity-50" : ""}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {isSnoozed && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                              <AlarmClock className="h-3 w-3" />
+                              <span>Wiedervorlage bis {new Date(subtaskSnoozes[subtask.id]).toLocaleDateString('de-DE')}</span>
                             </div>
                           )}
+                          <Checkbox
+                            checked={subtask.is_completed}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setCompletingSubtask(subtask.id);
+                                setCompletionResult('');
+                              } else {
+                                handleSubtaskComplete(subtask.id, false, '');
+                              }
+                            }}
+                            disabled={isSnoozed}
+                          />
+                          <div className="flex-1">
+                            <span className="font-medium">{subtask.description}</span>
+                            {subtask.result_text && (
+                              <div className="mt-1 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-500">
+                                <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
+                                <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-muted-foreground">{subtask.task_title}</span>
-                    </TableCell>
-                    <TableCell>
-                      {subtask.due_date ? (
-                        <span className={new Date(subtask.due_date) < new Date() ? "text-destructive font-medium" : "text-muted-foreground"}>
-                          {formatDate(subtask.due_date)}
-                          {new Date(subtask.due_date) < new Date() && " (Überfällig)"}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Keine Frist</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSnoozeDialogOpen({ type: 'subtask', id: subtask.id });
-                            setSnoozeDate('');
-                          }}
-                          className="h-8 w-8 p-0"
-                          title="Auf Wiedervorlage setzen"
-                        >
-                          <AlarmClock className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const parentTask = tasks.find(t => t.id === subtask.task_id);
-                            if (parentTask) {
-                              handleTaskClick(parentTask);
-                            }
-                          }}
-                          className="h-8 w-8 p-0"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-muted-foreground">{subtask.task_title}</span>
+                      </TableCell>
+                      <TableCell>
+                        {subtask.due_date ? (
+                          <span className={new Date(subtask.due_date) < new Date() ? "text-destructive font-medium" : "text-muted-foreground"}>
+                            {formatDate(subtask.due_date)}
+                            {new Date(subtask.due_date) < new Date() && " (Überfällig)"}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Keine Frist</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSnoozeDialogOpen({ type: 'subtask', id: subtask.id });
+                              setSnoozeDate('');
+                            }}
+                            className="h-8 w-8 p-0"
+                            title="Auf Wiedervorlage setzen"
+                          >
+                            <AlarmClock className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const parentTask = tasks.find(t => t.id === subtask.task_id);
+                              if (parentTask) {
+                                handleTaskClick(parentTask);
+                              }
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
