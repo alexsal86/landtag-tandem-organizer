@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo } from "lucide-react";
+import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo, AlarmClock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,6 +88,10 @@ export function TasksView() {
   const [assignedSubtasks, setAssignedSubtasks] = useState<Array<Subtask & { task_title: string }>>([]);
   const [completingSubtask, setCompletingSubtask] = useState<string | null>(null);
   const [completionResult, setCompletionResult] = useState<string>('');
+  const [taskSnoozes, setTaskSnoozes] = useState<{ [taskId: string]: string }>({});
+  const [subtaskSnoozes, setSubtaskSnoozes] = useState<{ [subtaskId: string]: string }>({});
+  const [snoozeDialogOpen, setSnoozeDialogOpen] = useState<{ type: 'task' | 'subtask'; id: string } | null>(null);
+  const [snoozeDate, setSnoozeDate] = useState<string>('');
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -100,6 +104,7 @@ export function TasksView() {
     loadTaskDocumentCounts();
     loadSubtaskCounts();
     loadAssignedSubtasks();
+    loadTaskSnoozes();
   }, []);
 
   const loadAssignedSubtasks = async () => {
@@ -159,6 +164,36 @@ export function TasksView() {
       setAssignedSubtasks(formattedSubtasks);
     } catch (error) {
       console.error('Error loading assigned subtasks:', error);
+    }
+  };
+
+  const loadTaskSnoozes = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('task_snoozes')
+        .select('*')
+        .eq('user_id', user.id)
+        .gt('snoozed_until', new Date().toISOString());
+
+      if (error) throw error;
+
+      const taskSnoozeMap: { [taskId: string]: string } = {};
+      const subtaskSnoozeMap: { [subtaskId: string]: string } = {};
+      
+      (data || []).forEach(snooze => {
+        if (snooze.task_id) {
+          taskSnoozeMap[snooze.task_id] = snooze.snoozed_until;
+        } else if (snooze.subtask_id) {
+          subtaskSnoozeMap[snooze.subtask_id] = snooze.snoozed_until;
+        }
+      });
+
+      setTaskSnoozes(taskSnoozeMap);
+      setSubtaskSnoozes(subtaskSnoozeMap);
+    } catch (error) {
+      console.error('Error loading task snoozes:', error);
     }
   };
 
@@ -953,6 +988,155 @@ export function TasksView() {
     }
     };
 
+  const snoozeTask = async (taskId: string, snoozeUntil: string) => {
+    if (!user) return;
+
+    try {
+      // Delete existing snooze if any
+      await supabase
+        .from('task_snoozes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('task_id', taskId);
+
+      // Insert new snooze
+      const { error } = await supabase
+        .from('task_snoozes')
+        .insert({
+          user_id: user.id,
+          task_id: taskId,
+          snoozed_until: snoozeUntil
+        });
+
+      if (error) throw error;
+
+      await loadTaskSnoozes();
+      
+      toast({
+        title: "Aufgabe auf Wiedervorlage gesetzt",
+        description: `Die Aufgabe erscheint wieder am ${new Date(snoozeUntil).toLocaleDateString('de-DE')}`
+      });
+    } catch (error) {
+      console.error('Error snoozing task:', error);
+      toast({
+        title: "Fehler",
+        description: "Wiedervorlage konnte nicht gesetzt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const snoozeSubtask = async (subtaskId: string, snoozeUntil: string) => {
+    if (!user) return;
+
+    try {
+      // Delete existing snooze if any
+      await supabase
+        .from('task_snoozes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('subtask_id', subtaskId);
+
+      // Insert new snooze
+      const { error } = await supabase
+        .from('task_snoozes')
+        .insert({
+          user_id: user.id,
+          subtask_id: subtaskId,
+          snoozed_until: snoozeUntil
+        });
+
+      if (error) throw error;
+
+      await loadTaskSnoozes();
+      await loadAssignedSubtasks();
+      
+      toast({
+        title: "Unteraufgabe auf Wiedervorlage gesetzt",
+        description: `Die Unteraufgabe erscheint wieder am ${new Date(snoozeUntil).toLocaleDateString('de-DE')}`
+      });
+    } catch (error) {
+      console.error('Error snoozing subtask:', error);
+      toast({
+        title: "Fehler",
+        description: "Wiedervorlage konnte nicht gesetzt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const unsnoozeTask = async (taskId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('task_snoozes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('task_id', taskId);
+
+      if (error) throw error;
+
+      await loadTaskSnoozes();
+      
+      toast({
+        title: "Wiedervorlage entfernt",
+        description: "Die Aufgabe ist wieder sichtbar."
+      });
+    } catch (error) {
+      console.error('Error removing snooze:', error);
+    }
+  };
+
+  const unsnoozeSubtask = async (subtaskId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('task_snoozes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('subtask_id', subtaskId);
+
+      if (error) throw error;
+
+      await loadTaskSnoozes();
+      await loadAssignedSubtasks();
+      
+      toast({
+        title: "Wiedervorlage entfernt",
+        description: "Die Unteraufgabe ist wieder sichtbar."
+      });
+    } catch (error) {
+      console.error('Error removing snooze:', error);
+    }
+  };
+
+  const handleSnoozeDialogSubmit = () => {
+    if (!snoozeDialogOpen || !snoozeDate) return;
+
+    const snoozeUntil = new Date(snoozeDate).toISOString();
+    
+    if (snoozeDialogOpen.type === 'task') {
+      snoozeTask(snoozeDialogOpen.id, snoozeUntil);
+    } else {
+      snoozeSubtask(snoozeDialogOpen.id, snoozeUntil);
+    }
+
+    setSnoozeDialogOpen(null);
+    setSnoozeDate('');
+  };
+
+  // Filter out snoozed tasks for current user
+  const filteredTasksWithSnooze = filteredTasks.filter(task => {
+    return !taskSnoozes[task.id] || new Date(taskSnoozes[task.id]) <= new Date();
+  });
+
+  // Filter out snoozed subtasks for current user
+  const filteredAssignedSubtasks = assignedSubtasks.filter(subtask => {
+    return !subtaskSnoozes[subtask.id] || new Date(subtaskSnoozes[subtask.id]) <= new Date();
+  });
+
   const taskCounts = {
     all: tasks.length,
     todo: tasks.filter(t => t.status === "todo").length,
@@ -1063,7 +1247,7 @@ export function TasksView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assignedSubtasks.map((subtask) => (
+                {filteredAssignedSubtasks.map((subtask) => (
                   <TableRow key={subtask.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -1104,19 +1288,33 @@ export function TasksView() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          const parentTask = tasks.find(t => t.id === subtask.task_id);
-                          if (parentTask) {
-                            handleTaskClick(parentTask);
-                          }
-                        }}
-                        className="h-8 w-8 p-0"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSnoozeDialogOpen({ type: 'subtask', id: subtask.id });
+                            setSnoozeDate('');
+                          }}
+                          className="h-8 w-8 p-0"
+                          title="Auf Wiedervorlage setzen"
+                        >
+                          <AlarmClock className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const parentTask = tasks.find(t => t.id === subtask.task_id);
+                            if (parentTask) {
+                              handleTaskClick(parentTask);
+                            }
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1129,7 +1327,7 @@ export function TasksView() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Task List */}
         <div className="lg:col-span-3 space-y-4">
-          {filteredTasks.map((task) => (
+          {filteredTasksWithSnooze.map((task) => (
             <Card
               key={task.id}
               className="bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer"
@@ -1236,14 +1434,30 @@ export function TasksView() {
                          </Button>
                        )}
 
-                       {task.assignedTo && (
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1">
-                              <User className="h-4 w-4" />
-                               <span className="text-muted-foreground">
-                                 {users.find(u => u.user_id === task.assignedTo)?.display_name || 'Unbekannter Benutzer'}
-                               </span>
-                            </div>
+                        {/* Snooze Button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSnoozeDialogOpen({ type: 'task', id: task.id });
+                            setSnoozeDate('');
+                          }}
+                          className="gap-1 h-6 px-2 text-xs"
+                          title="Auf Wiedervorlage setzen"
+                        >
+                          <AlarmClock className="h-3 w-3" />
+                          <span>Wiedervorlage</span>
+                        </Button>
+
+                        {task.assignedTo && (
+                           <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-1">
+                               <User className="h-4 w-4" />
+                                <span className="text-muted-foreground">
+                                  {users.find(u => u.user_id === task.assignedTo)?.display_name || 'Unbekannter Benutzer'}
+                                </span>
+                             </div>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1606,6 +1820,50 @@ export function TasksView() {
                 disabled={!completionResult.trim()}
               >
                 Als erledigt markieren
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Snooze Dialog */}
+      <Dialog open={!!snoozeDialogOpen} onOpenChange={() => setSnoozeDialogOpen(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {snoozeDialogOpen?.type === 'task' ? 'Aufgabe' : 'Unteraufgabe'} auf Wiedervorlage setzen
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Wiedervorlage-Datum</Label>
+              <Input
+                type="datetime-local"
+                value={snoozeDate}
+                onChange={(e) => setSnoozeDate(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
+                className="mt-2"
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                Die {snoozeDialogOpen?.type === 'task' ? 'Aufgabe' : 'Unteraufgabe'} wird bis zu diesem Datum ausgeblendet.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSnoozeDialogOpen(null);
+                  setSnoozeDate('');
+                }}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={handleSnoozeDialogSubmit}
+                disabled={!snoozeDate}
+              >
+                <AlarmClock className="h-4 w-4 mr-2" />
+                Wiedervorlage setzen
               </Button>
             </div>
           </div>

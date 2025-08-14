@@ -1373,6 +1373,36 @@ export type Database = {
         }
         Relationships: []
       }
+      task_snoozes: {
+        Row: {
+          created_at: string
+          id: string
+          snoozed_until: string
+          subtask_id: string | null
+          task_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          snoozed_until: string
+          subtask_id?: string | null
+          task_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          snoozed_until?: string
+          subtask_id?: string | null
+          task_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       task_statuses: {
         Row: {
           created_at: string
