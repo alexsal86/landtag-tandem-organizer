@@ -356,6 +356,13 @@ export function ContactsView() {
                 </div>
               </CardHeader>
               <CardContent>
+                   <Badge className={getCategoryColor(contact.category)}>
+                            {contact.category === "citizen" && "Bürger"}
+                            {contact.category === "colleague" && "Kollege"}
+                            {contact.category === "business" && "Wirtschaft"}
+                            {contact.category === "media" && "Medien"}
+                            {contact.category === "lobbyist" && "Lobbyist"}
+                          </Badge>
                 <div className="space-y-3">
                   {contact.contact_type === "person" ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
