@@ -1078,7 +1078,15 @@ export function TasksView() {
                             }
                           }}
                         />
-                        <span className="font-medium">{subtask.description}</span>
+                        <div className="flex-1">
+                          <span className="font-medium">{subtask.description}</span>
+                          {subtask.result_text && (
+                            <div className="mt-1 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-500">
+                              <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
+                              <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -1292,19 +1300,36 @@ export function TasksView() {
                                   checked={subtask.is_completed}
                                   className="mt-0.5"
                                 />
-                                <div className="flex-1">
-                                  <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                                    {subtask.description}
-                                  </p>
-                                  <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                                    {subtask.assigned_to && (
-                                      <span>Zuständig: {subtask.assigned_to}</span>
-                                    )}
-                                    {subtask.due_date && (
-                                      <span>Fällig: {formatDate(subtask.due_date)}</span>
-                                    )}
-                                  </div>
-                                </div>
+                                 <div className="flex-1">
+                                   <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
+                                     {subtask.description}
+                                   </p>
+                                   {subtask.is_completed && subtask.result_text && (
+                                     <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
+                                       <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
+                                       <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
+                                       {subtask.completed_at && (
+                                         <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                           Erledigt am: {new Date(subtask.completed_at).toLocaleDateString('de-DE', {
+                                             day: '2-digit',
+                                             month: '2-digit',
+                                             year: 'numeric',
+                                             hour: '2-digit',
+                                             minute: '2-digit'
+                                           })}
+                                         </p>
+                                       )}
+                                     </div>
+                                   )}
+                                   <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                                     {subtask.assigned_to && (
+                                       <span>Zuständig: {subtask.assigned_to}</span>
+                                     )}
+                                     {subtask.due_date && (
+                                       <span>Fällig: {formatDate(subtask.due_date)}</span>
+                                     )}
+                                   </div>
+                                 </div>
                               </div>
                             </div>
                           ))}
