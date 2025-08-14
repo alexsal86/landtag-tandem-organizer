@@ -334,24 +334,24 @@ export function ContactsView() {
                          {getInitials(contact.name)}
                        </AvatarFallback>
                      </Avatar>
-                     <div className="flex-1">
-                       <CardTitle className="text-lg mb-2">{contact.name}</CardTitle>
-                        <div className="mt-1">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg mb-2">{contact.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          {contact.contact_type === "organization" 
+                            ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
+                            : contact.role
+                          }
+                        </p>
+                        <div className="mt-2">
                           <Badge className={getCategoryColor(contact.category)}>
-                         {contact.category === "citizen" && "Bürger"}
-                         {contact.category === "colleague" && "Kollege"}
-                         {contact.category === "business" && "Wirtschaft"}
-                         {contact.category === "media" && "Medien"}
-                         {contact.category === "lobbyist" && "Lobbyist"}
-                        </Badge>
+                            {contact.category === "citizen" && "Bürger"}
+                            {contact.category === "colleague" && "Kollege"}
+                            {contact.category === "business" && "Wirtschaft"}
+                            {contact.category === "media" && "Medien"}
+                            {contact.category === "lobbyist" && "Lobbyist"}
+                          </Badge>
                         </div>
-                       <p className="text-sm text-muted-foreground mt-2">
-                         {contact.contact_type === "organization" 
-                           ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
-                           : contact.role
-                         }
-                       </p>
-                     </div>
+                      </div>
                    </div>
                 </div>
               </CardHeader>
