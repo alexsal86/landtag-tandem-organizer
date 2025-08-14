@@ -99,7 +99,12 @@ export function TasksView() {
   }, []);
 
   const loadAssignedSubtasks = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user found for assigned subtasks');
+      return;
+    }
+    
+    console.log('Loading assigned subtasks for user:', user.id);
     
     try {
       // Get current user's profile to match assigned_to field
@@ -110,7 +115,10 @@ export function TasksView() {
         .single();
 
       const userName = profile?.display_name || user.email;
+      console.log('User name for subtask assignment:', userName);
+      console.log('User ID for subtask assignment:', user.id);
 
+      // First try to match by display name, then by user ID
       const { data, error } = await supabase
         .from('subtasks')
         .select(`
@@ -126,17 +134,24 @@ export function TasksView() {
           user_id,
           tasks!inner(title)
         `)
-        .eq('assigned_to', userName)
+        .or(`assigned_to.eq.${userName},assigned_to.eq.${user.id}`)
         .eq('is_completed', false)
         .order('due_date', { ascending: true, nullsFirst: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error in assigned subtasks query:', error);
+        throw error;
+      }
+
+      console.log('Raw assigned subtasks data:', data);
+      console.log('Number of assigned subtasks found:', data?.length || 0);
 
       const formattedSubtasks = (data || []).map((subtask: any) => ({
         ...subtask,
         task_title: subtask.tasks?.title || 'Unbekannte Aufgabe'
       }));
 
+      console.log('Formatted assigned subtasks:', formattedSubtasks);
       setAssignedSubtasks(formattedSubtasks);
     } catch (error) {
       console.error('Error loading assigned subtasks:', error);
@@ -978,7 +993,13 @@ export function TasksView() {
       </div>
 
       {/* Assigned Subtasks Table */}
-      {assignedSubtasks.length > 0 && (
+      {(() => {
+        console.log('Checking assigned subtasks table condition:');
+        console.log('assignedSubtasks:', assignedSubtasks);
+        console.log('assignedSubtasks.length:', assignedSubtasks.length);
+        console.log('Should show table:', assignedSubtasks.length > 0);
+        return assignedSubtasks.length > 0;
+      })() && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
