@@ -84,6 +84,8 @@ export function TasksView() {
   const [subtasks, setSubtasks] = useState<{ [taskId: string]: Subtask[] }>({});
   const [showSubtasksFor, setShowSubtasksFor] = useState<string | null>(null);
   const [assignedSubtasks, setAssignedSubtasks] = useState<Array<Subtask & { task_title: string }>>([]);
+  const [completingSubtask, setCompletingSubtask] = useState<string | null>(null);
+  const [completionResult, setCompletionResult] = useState<string>('');
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -906,7 +908,47 @@ export function TasksView() {
         variant: "destructive",
       });
     }
-  };
+    };
+
+  const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string) => {
+    try {
+      const updateData: any = { 
+        is_completed: isCompleted,
+        updated_at: new Date().toISOString()
+      };
+      
+      if (isCompleted && result) {
+        updateData.result_text = result;
+        updateData.completed_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('subtasks')
+        .update(updateData)
+        .eq('id', subtaskId);
+      
+      if (error) throw error;
+      
+      if (isCompleted) {
+        setAssignedSubtasks(prev => prev.filter(s => s.id !== subtaskId));
+      }
+      
+      // Refresh subtasks for the expanded task view
+      loadSubtaskCounts();
+      
+      toast({
+        title: "Unteraufgabe aktualisiert",
+        description: isCompleted ? "Unteraufgabe als erledigt markiert" : "Unteraufgabe als offen markiert",
+      });
+    } catch (error) {
+      console.error('Error updating subtask:', error);
+      toast({
+        title: "Fehler",
+        description: "Unteraufgabe konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+    };
 
   const taskCounts = {
     all: tasks.length,
@@ -1024,30 +1066,13 @@ export function TasksView() {
                       <div className="flex items-center gap-3">
                         <Checkbox
                           checked={subtask.is_completed}
-                          onCheckedChange={async (checked) => {
-                            try {
-                              const { error } = await supabase
-                                .from('subtasks')
-                                .update({ is_completed: !!checked })
-                                .eq('id', subtask.id);
-                              
-                              if (error) throw error;
-                              
-                              if (checked) {
-                                setAssignedSubtasks(prev => prev.filter(s => s.id !== subtask.id));
-                              }
-                              
-                              toast({
-                                title: "Unteraufgabe aktualisiert",
-                                description: checked ? "Unteraufgabe als erledigt markiert" : "Unteraufgabe als offen markiert",
-                              });
-                            } catch (error) {
-                              console.error('Error updating subtask:', error);
-                              toast({
-                                title: "Fehler",
-                                description: "Unteraufgabe konnte nicht aktualisiert werden.",
-                                variant: "destructive",
-                              });
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setCompletingSubtask(subtask.id);
+                              setCompletionResult('');
+                            } else {
+                              // Handle unchecking
+                              handleSubtaskComplete(subtask.id, false, '');
                             }
                           }}
                         />
@@ -1506,6 +1531,50 @@ export function TasksView() {
         taskCategories={taskCategories}
         taskStatuses={taskStatuses}
       />
+
+      {/* Subtask Completion Dialog */}
+      <Dialog open={!!completingSubtask} onOpenChange={() => setCompletingSubtask(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unteraufgabe als erledigt markieren</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Wie wurde die Aufgabe gelöst?</Label>
+              <Textarea
+                placeholder="Beschreiben Sie, wie die Unteraufgabe erledigt wurde..."
+                value={completionResult}
+                onChange={(e) => setCompletionResult(e.target.value)}
+                className="mt-2"
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCompletingSubtask(null);
+                  setCompletionResult('');
+                }}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={() => {
+                  if (completingSubtask) {
+                    handleSubtaskComplete(completingSubtask, true, completionResult);
+                    setCompletingSubtask(null);
+                    setCompletionResult('');
+                  }
+                }}
+                disabled={!completionResult.trim()}
+              >
+                Als erledigt markieren
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
     </>
   );
