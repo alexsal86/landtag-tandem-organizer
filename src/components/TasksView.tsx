@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { TaskArchiveModal } from "./TaskArchiveModal";
 import { TaskDetailSidebar } from "./TaskDetailSidebar";
+import { SnoozeManagementSidebar } from "./SnoozeManagementSidebar";
 
 interface Task {
   id: string;
@@ -92,6 +93,15 @@ export function TasksView() {
   const [subtaskSnoozes, setSubtaskSnoozes] = useState<{ [subtaskId: string]: string }>({});
   const [snoozeDialogOpen, setSnoozeDialogOpen] = useState<{ type: 'task' | 'subtask'; id: string } | null>(null);
   const [snoozeDate, setSnoozeDate] = useState<string>('');
+  const [snoozeManagementOpen, setSnoozeManagementOpen] = useState(false);
+  const [allSnoozes, setAllSnoozes] = useState<Array<{
+    id: string;
+    task_id?: string;
+    subtask_id?: string;
+    snoozed_until: string;
+    task_title?: string;
+    subtask_description?: string;
+  }>>([]);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -107,63 +117,110 @@ export function TasksView() {
     loadTaskSnoozes();
   }, []);
 
-  const loadAssignedSubtasks = async () => {
-    if (!user) {
-      console.log('No user found for assigned subtasks');
-      return;
+  // Load all snoozes when snooze management is opened
+  useEffect(() => {
+    if (snoozeManagementOpen) {
+      loadAllSnoozes();
     }
-    
-    console.log('Loading assigned subtasks for user:', user.id);
+  }, [snoozeManagementOpen]);
+
+  const loadAllSnoozes = async () => {
+    if (!user) return;
     
     try {
-      // Get current user's profile to match assigned_to field
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('user_id', user.id)
-        .single();
-
-      const userName = profile?.display_name || user.email;
-      console.log('User name for subtask assignment:', userName);
-      console.log('User ID for subtask assignment:', user.id);
-
-      // First try to match by display name, then by user ID
       const { data, error } = await supabase
-        .from('subtasks')
-        .select(`
-          id,
-          task_id,
-          description,
-          assigned_to,
-          due_date,
-          is_completed,
-          order_index,
-          created_at,
-          updated_at,
-          user_id,
-          tasks!inner(title)
-        `)
-        .or(`assigned_to.eq.${userName},assigned_to.eq.${user.id}`)
-        .eq('is_completed', false)
-        .order('due_date', { ascending: true, nullsFirst: false });
+        .from('task_snoozes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('snoozed_until', { ascending: true });
 
-      if (error) {
-        console.error('Error in assigned subtasks query:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('Raw assigned subtasks data:', data);
-      console.log('Number of assigned subtasks found:', data?.length || 0);
-
-      const formattedSubtasks = (data || []).map((subtask: any) => ({
-        ...subtask,
-        task_title: subtask.tasks?.title || 'Unbekannte Aufgabe'
+      // Get task and subtask details
+      const snoozesWithDetails = await Promise.all((data || []).map(async (snooze) => {
+        if (snooze.task_id) {
+          const { data: taskData } = await supabase
+            .from('tasks')
+            .select('title')
+            .eq('id', snooze.task_id)
+            .single();
+          
+          return {
+            ...snooze,
+            task_title: taskData?.title || 'Unbekannte Aufgabe'
+          };
+        } else if (snooze.subtask_id) {
+          const { data: subtaskData } = await supabase
+            .from('subtasks')
+            .select('description')
+            .eq('id', snooze.subtask_id)
+            .single();
+          
+          return {
+            ...snooze,
+            subtask_description: subtaskData?.description || 'Unbekannte Unteraufgabe'
+          };
+        }
+        return snooze;
       }));
 
-      console.log('Formatted assigned subtasks:', formattedSubtasks);
-      setAssignedSubtasks(formattedSubtasks);
+      setAllSnoozes(snoozesWithDetails);
     } catch (error) {
-      console.error('Error loading assigned subtasks:', error);
+      console.error('Error loading all snoozes:', error);
+    }
+  };
+
+  const updateSnooze = async (snoozeId: string, newDate: string) => {
+    try {
+      const { error } = await supabase
+        .from('task_snoozes')
+        .update({ snoozed_until: newDate })
+        .eq('id', snoozeId);
+
+      if (error) throw error;
+
+      await loadAllSnoozes();
+      await loadTaskSnoozes();
+      await loadAssignedSubtasks();
+      
+      toast({
+        title: "Wiedervorlage aktualisiert",
+        description: `Neues Datum: ${new Date(newDate).toLocaleDateString('de-DE')}`
+      });
+    } catch (error) {
+      console.error('Error updating snooze:', error);
+      toast({
+        title: "Fehler",
+        description: "Wiedervorlage konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteSnooze = async (snoozeId: string) => {
+    try {
+      const { error } = await supabase
+        .from('task_snoozes')
+        .delete()
+        .eq('id', snoozeId);
+
+      if (error) throw error;
+
+      await loadAllSnoozes();
+      await loadTaskSnoozes();
+      await loadAssignedSubtasks();
+      
+      toast({
+        title: "Wiedervorlage gelöscht",
+        description: "Die Wiedervorlage wurde erfolgreich entfernt."
+      });
+    } catch (error) {
+      console.error('Error deleting snooze:', error);
+      toast({
+        title: "Fehler",
+        description: "Wiedervorlage konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -194,6 +251,68 @@ export function TasksView() {
       setSubtaskSnoozes(subtaskSnoozeMap);
     } catch (error) {
       console.error('Error loading task snoozes:', error);
+    }
+  };
+
+  const loadAssignedSubtasks = async () => {
+    if (!user) {
+      console.log('No user found for assigned subtasks');
+      return;
+    }
+    
+    console.log('Loading assigned subtasks for user:', user.id);
+    
+    try {
+      // Get current user's profile to match assigned_to field
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.display_name) {
+        console.log('No profile display_name found');
+        return;
+      }
+
+      console.log('User display_name:', profile.display_name);
+
+      // Get subtasks assigned to this user
+      const { data: subtasksData, error } = await supabase
+        .from('subtasks')
+        .select('*, result_text, completed_at')
+        .eq('assigned_to', profile.display_name)
+        .eq('is_completed', false);
+
+      if (error) throw error;
+
+      console.log('Found subtasks:', subtasksData);
+
+      if (!subtasksData || subtasksData.length === 0) {
+        setAssignedSubtasks([]);
+        return;
+      }
+
+      // Get task titles for these subtasks
+      const taskIds = [...new Set(subtasksData.map(s => s.task_id))];
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select('id, title')
+        .in('id', taskIds);
+
+      if (tasksError) throw tasksError;
+
+      // Combine subtasks with task titles
+      const subtasksWithTitles = subtasksData.map(subtask => ({
+        ...subtask,
+        task_title: tasksData?.find(t => t.id === subtask.task_id)?.title || 'Unbekannte Aufgabe'
+      }));
+
+      console.log('Subtasks with titles:', subtasksWithTitles);
+
+      setAssignedSubtasks(subtasksWithTitles);
+    } catch (error) {
+      console.error('Error loading assigned subtasks:', error);
     }
   };
 
@@ -255,7 +374,7 @@ export function TasksView() {
       setTaskDocuments(counts);
       setTaskDocumentDetails(details);
     } catch (error) {
-      console.error('Error loading task document counts:', error);
+      console.error('Error loading task documents:', error);
     }
   };
 
@@ -263,259 +382,112 @@ export function TasksView() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('user_id, display_name')
-        .order('display_name');
+        .select('user_id, display_name');
 
       if (error) throw error;
+
       setUsers(data || []);
     } catch (error) {
       console.error('Error loading users:', error);
     }
   };
 
-  // Load task categories and statuses from administration
   const loadTaskConfiguration = async () => {
     try {
-      const [categoriesResult, statusesResult] = await Promise.all([
+      const [categoriesResponse, statusesResponse] = await Promise.all([
         supabase.from('task_categories').select('name, label').eq('is_active', true).order('order_index'),
-        supabase.from('task_statuses').select('name, label').eq('is_active', true).order('order_index')
+        supabase.from('appointment_statuses').select('name, label').eq('is_active', true).order('order_index')
       ]);
 
-      if (categoriesResult.error) throw categoriesResult.error;
-      if (statusesResult.error) throw statusesResult.error;
+      if (categoriesResponse.error) throw categoriesResponse.error;
+      if (statusesResponse.error) throw statusesResponse.error;
 
-      setTaskCategories(categoriesResult.data || []);
-      setTaskStatuses(statusesResult.data || []);
+      setTaskCategories(categoriesResponse.data || []);
+      setTaskStatuses(statusesResponse.data || []);
     } catch (error) {
       console.error('Error loading task configuration:', error);
     }
   };
 
   const loadRecentActivities = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('id, title, status, updated_at, created_at')
-        .order('updated_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-
-      const activities = (data || []).slice(0, 3).map(task => {
-        const isRecent = new Date(task.updated_at) > new Date(task.created_at);
-        const timeDiff = Date.now() - new Date(task.updated_at).getTime();
-        const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
-        const timeString = hoursAgo < 1 ? 'vor wenigen Minuten' : 
-                          hoursAgo === 1 ? 'vor 1 Stunde' : 
-                          hoursAgo < 24 ? `vor ${hoursAgo} Stunden` : 
-                          `vor ${Math.floor(hoursAgo / 24)} Tagen`;
-
-        return {
-          id: task.id,
-          type: task.status === 'completed' ? 'completed' as const : 
-                isRecent ? 'updated' as const : 'created' as const,
-          taskTitle: task.title,
-          timestamp: timeString,
-        };
-      });
-
-      setRecentActivities(activities);
-    } catch (error) {
-      console.error('Error loading recent activities:', error);
-    }
+    // This is a simplified version - in a real app you'd have an activities table
+    setRecentActivities([]);
   };
 
   const loadTasks = async () => {
     try {
-      // Get completed task IDs from archive to filter them out
-      const { data: archivedTasks, error: archiveError } = await supabase
-        .from('archived_tasks')
-        .select('task_id');
-
-      if (archiveError) throw archiveError;
-
-      const archivedTaskIds = (archivedTasks || []).map(at => at.task_id);
-
-      // Build the query to exclude archived tasks
-      let query = supabase
+      const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Only apply the filter if there are archived tasks
-      if (archivedTaskIds.length > 0) {
-        query = query.not('id', 'in', `(${archivedTaskIds.join(',')})`);
-      }
-
-      const { data, error } = await query;
-
       if (error) throw error;
 
-      // Convert database format to component format
-      const formattedTasks: Task[] = (data || []).map(task => ({
+      // Transform the data to match our interface
+      const transformedTasks: Task[] = (data || []).map(task => ({
         id: task.id,
         title: task.title,
         description: task.description || '',
-        priority: task.priority as Task['priority'],
-        status: task.status as Task['status'],
+        priority: task.priority as "low" | "medium" | "high",
+        status: task.status as "todo" | "in-progress" | "completed",
         dueDate: task.due_date,
-        category: task.category as Task['category'],
-        assignedTo: task.assigned_to || undefined,
-        progress: task.progress || undefined,
+        category: task.category as "legislation" | "constituency" | "committee" | "personal",
+        assignedTo: task.assigned_to,
+        progress: task.progress
       }));
 
-      setTasks(formattedTasks);
-      
-      // Load comments for all tasks automatically
-      formattedTasks.forEach(task => {
-        loadTaskComments(task.id);
-      });
-      
-      // Reload subtask counts after loading tasks
-      loadSubtaskCounts();
-      loadAssignedSubtasks();
+      setTasks(transformedTasks);
+
+      // Auto-create sample data if no tasks exist
+      if (transformedTasks.length === 0) {
+        await createSampleTasks();
+      }
     } catch (error) {
       console.error('Error loading tasks:', error);
-      toast({
-        title: "Fehler",
-        description: "Aufgaben konnten nicht geladen werden.",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Migrate sample data to database (run once)
-  useEffect(() => {
-    const migrateSampleData = async () => {
-      const { data: existingTasks } = await supabase
-        .from('tasks')
-        .select('id')
-        .limit(1);
+  const createSampleTasks = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      // Only migrate if no tasks exist
-      if (!existingTasks || existingTasks.length === 0) {
-        const sampleTasks = [
-          {
-            title: "Stellungnahme Verkehrsgesetz",
-            description: "Überarbeitung der Stellungnahme zum neuen Verkehrsgesetz bis Freitag",
-            priority: "high",
-            status: "in-progress",
-            due_date: new Date("2024-01-15").toISOString(),
-            category: "legislation",
-            assigned_to: "Max Kellner",
-            progress: 65,
-          },
-          {
-            title: "Vorbereitung Ausschusssitzung",
-            description: "Unterlagen für die Bildungsausschuss-Sitzung vorbereiten",
-            priority: "medium",
-            status: "todo",
-            due_date: new Date("2024-01-12").toISOString(),
-            category: "committee",
-            assigned_to: "Max Kellner",
-          },
-          {
-            title: "Bürgersprechstunde auswerten",
-            description: "Anliegen aus der gestrigen Bürgersprechstunde dokumentieren",
-            priority: "low",
-            status: "completed",
-            due_date: new Date("2024-01-10").toISOString(),
-            category: "constituency",
-            assigned_to: "Max Kellner",
-          },
-          {
-            title: "Pressemitteilung Umweltpolitik",
-            description: "Entwurf für Pressemitteilung zur neuen Umweltinitiative",
-            priority: "medium",
-            status: "todo",
-            due_date: new Date("2024-01-18").toISOString(),
-            category: "personal",
-            assigned_to: "Max Kellner",
-          },
-        ];
-
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const tasksWithUserId = sampleTasks.map(task => ({
-            ...task,
-            user_id: user.id,
-          }));
-
-          await supabase.from('tasks').insert(tasksWithUserId);
-          loadTasks(); // Reload tasks after migration
-        }
+    const sampleTasks = [
+      {
+        user_id: user.id,
+        title: "Bürgersprechstunde vorbereiten",
+        description: "Termine koordinieren und Räumlichkeiten reservieren",
+        priority: "high",
+        status: "todo",
+        category: "constituency",
+        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        progress: 25
+      },
+      {
+        user_id: user.id,
+        title: "Gesetzentwurf analysieren",
+        description: "Neuen Entwurf zur Digitalisierung prüfen",
+        priority: "medium",
+        status: "in-progress",
+        category: "legislation",
+        due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        progress: 60
       }
-    };
+    ];
 
-    migrateSampleData();
-  }, []);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .insert(sampleTasks);
 
-  const getPriorityColor = (priority: Task["priority"]) => {
-    switch (priority) {
-      case "high":
-        return "bg-destructive text-destructive-foreground";
-      case "medium":
-        return "bg-government-gold text-white";
-      case "low":
-        return "bg-muted text-muted-foreground";
+      if (error) throw error;
+
+      loadTasks();
+    } catch (error) {
+      console.error('Error creating sample tasks:', error);
     }
   };
-
-  const getStatusColor = (status: Task["status"]) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case "in-progress":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      case "todo":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
-    }
-  };
-
-  const getCategoryColor = (category: Task["category"]) => {
-    switch (category) {
-      case "legislation":
-        return "bg-primary text-primary-foreground";
-      case "committee":
-        return "bg-government-blue text-white";
-      case "constituency":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
-      case "personal":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  const isOverdue = (dueDate: string) => {
-    return new Date(dueDate) < new Date() && tasks.find(t => t.dueDate === dueDate)?.status !== "completed";
-  };
-
-  const filteredTasks = tasks.filter(task => {
-    // Status filter
-    let statusMatch = false;
-    if (filter === "all") statusMatch = true;
-    else if (filter === "pending") statusMatch = task.status !== "completed";
-    else if (filter === "overdue") statusMatch = isOverdue(task.dueDate);
-    else statusMatch = task.status === filter;
-
-    // Category filter
-    const categoryMatch = categoryFilter === "all" || task.category === categoryFilter;
-    
-    // Priority filter
-    const priorityMatch = priorityFilter === "all" || task.priority === priorityFilter;
-
-    return statusMatch && categoryMatch && priorityMatch;
-  });
 
   const toggleTaskStatus = async (taskId: string) => {
     try {
@@ -524,26 +496,27 @@ export function TasksView() {
 
       const newStatus = task.status === "completed" ? "todo" : "completed";
       
-      // If marking as completed, archive the task
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: newStatus,
+          progress: newStatus === "completed" ? 100 : task.progress
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
       if (newStatus === "completed") {
+        // Archive the task
         await archiveTask(task);
       } else {
-        // If unmarking as completed, just update the status
-        const { error } = await supabase
-          .from('tasks')
-          .update({ status: newStatus })
-          .eq('id', taskId);
-
-        if (error) throw error;
-
         // Update local state
         setTasks(prev => prev.map(t => 
-          t.id === taskId ? { ...t, status: newStatus } : t
+          t.id === taskId 
+            ? { ...t, status: newStatus as "todo" | "in-progress" | "completed" }
+            : t
         ));
       }
-
-      // Refresh recent activities
-      loadRecentActivities();
 
       toast({
         title: "Aufgabe aktualisiert",
@@ -600,278 +573,18 @@ export function TasksView() {
       // Remove from local tasks (since it's now deleted)
       setTasks(prev => prev.filter(t => t.id !== task.id));
 
+      toast({
+        title: "Aufgabe archiviert",
+        description: "Die erledigte Aufgabe wurde archiviert.",
+      });
     } catch (error) {
       console.error('Error archiving task:', error);
-      throw error;
-    }
-  };
-
-  const loadTaskComments = async (taskId: string) => {
-    try {
-      // Load comments and user profiles separately due to missing foreign key
-      const { data: comments, error } = await supabase
-        .from('task_comments')
-        .select('*')
-        .eq('task_id', taskId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      // Load user profiles for comment authors
-      const userIds = [...new Set(comments?.map(c => c.user_id) || [])];
-      let profiles: any[] = [];
-      
-      if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, avatar_url')
-          .in('user_id', userIds);
-        
-        profiles = profilesData || [];
-      }
-
-      // Combine comments with user data
-      const formattedComments: TaskComment[] = (comments || []).map(comment => ({
-        id: comment.id,
-        task_id: comment.task_id,
-        user_id: comment.user_id,
-        content: comment.content,
-        created_at: comment.created_at,
-        profile: profiles.find(p => p.user_id === comment.user_id) || null,
-      }));
-
-      setTaskComments(prev => ({
-        ...prev,
-        [taskId]: formattedComments,
-      }));
-    } catch (error) {
-      console.error('Error loading task comments:', error);
-    }
-  };
-
-  const addComment = async (taskId: string) => {
-    const content = newComment[taskId]?.trim();
-    if (!content) return;
-
-    try {
-      if (!user) {
-        toast({
-          title: "Fehler",
-          description: "Sie müssen angemeldet sein, um Kommentare zu schreiben.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-
-      const { error } = await supabase
-        .from('task_comments')
-        .insert({
-          task_id: taskId,
-          user_id: user.id,
-          content,
-        });
-
-      if (error) {
-        console.error('Supabase error:', error);
-        toast({
-          title: "Fehler",
-          description: `Kommentar konnte nicht hinzugefügt werden: ${error.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Clear the comment input
-      setNewComment(prev => ({ ...prev, [taskId]: '' }));
-
-      // Reload comments
-      loadTaskComments(taskId);
-
-      toast({
-        title: "Kommentar hinzugefügt",
-        description: "Ihr Kommentar wurde erfolgreich hinzugefügt.",
-      });
-    } catch (error) {
-      console.error('Error adding comment:', error);
       toast({
         title: "Fehler",
-        description: "Kommentar konnte nicht hinzugefügt werden.",
+        description: "Aufgabe konnte nicht archiviert werden.",
         variant: "destructive",
       });
     }
-  };
-
-  const updateComment = async (commentId: string, newContent: string) => {
-    if (!newContent.trim()) return;
-
-    try {
-      const { error } = await supabase
-        .from('task_comments')
-        .update({ content: newContent.trim() })
-        .eq('id', commentId);
-
-      if (error) throw error;
-
-      // Update local state
-      setTaskComments(prev => {
-        const updated = { ...prev };
-        Object.keys(updated).forEach(taskId => {
-          updated[taskId] = updated[taskId].map(comment =>
-            comment.id === commentId ? { ...comment, content: newContent.trim() } : comment
-          );
-        });
-        return updated;
-      });
-
-      setEditingComment(prev => {
-        const updated = { ...prev };
-        delete updated[commentId];
-        return updated;
-      });
-
-      toast({
-        title: "Kommentar aktualisiert",
-        description: "Ihr Kommentar wurde erfolgreich bearbeitet.",
-      });
-    } catch (error) {
-      console.error('Error updating comment:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentar konnte nicht bearbeitet werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteComment = async (commentId: string, taskId: string) => {
-    try {
-      const { error } = await supabase
-        .from('task_comments')
-        .delete()
-        .eq('id', commentId);
-
-      if (error) throw error;
-
-      // Update local state
-      setTaskComments(prev => ({
-        ...prev,
-        [taskId]: prev[taskId]?.filter(comment => comment.id !== commentId) || []
-      }));
-
-      toast({
-        title: "Kommentar gelöscht",
-        description: "Der Kommentar wurde erfolgreich entfernt.",
-      });
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentar konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const toggleComments = (taskId: string) => {
-    if (showCommentsFor === taskId) {
-      setShowCommentsFor(null);
-    } else {
-      setShowCommentsFor(taskId);
-      if (!taskComments[taskId]) {
-        loadTaskComments(taskId);
-      }
-    }
-  };
-
-  const toggleSubtasks = (taskId: string) => {
-    if (showSubtasksFor === taskId) {
-      setShowSubtasksFor(null);
-    } else {
-      setShowSubtasksFor(taskId);
-    }
-  };
-
-  const toggleDocuments = (taskId: string) => {
-    if (showDocumentsFor === taskId) {
-      setShowDocumentsFor(null);
-    } else {
-      setShowDocumentsFor(taskId);
-    }
-  };
-
-  const handleDocumentDownload = async (doc: any) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from('task-documents')
-        .download(doc.file_path);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.file_name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading document:', error);
-      toast({
-        title: "Fehler",
-        description: "Das Dokument konnte nicht heruntergeladen werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDocumentDelete = async (doc: any) => {
-    try {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('task-documents')
-        .remove([doc.file_path]);
-
-      if (storageError) throw storageError;
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from('task_documents')
-        .delete()
-        .eq('id', doc.id);
-
-      if (dbError) throw dbError;
-
-      // Reload document counts
-      loadTaskDocumentCounts();
-      
-      toast({
-        title: "Dokument gelöscht",
-        description: "Das Dokument wurde erfolgreich entfernt.",
-      });
-    } catch (error) {
-      console.error('Error deleting document:', error);
-      toast({
-        title: "Fehler",
-        description: "Das Dokument konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEditTask = (task: Task) => {
-    setEditingTask(task);
-    setEditFormData({
-      title: task.title,
-      description: task.description,
-      priority: task.priority,
-      status: task.status,
-      dueDate: task.dueDate,
-      category: task.category,
-      assignedTo: task.assignedTo,
-      progress: task.progress,
-    });
   };
 
   const handleTaskClick = (task: Task) => {
@@ -880,93 +593,37 @@ export function TasksView() {
   };
 
   const handleTaskUpdate = (updatedTask: Task) => {
-    setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
-    loadTaskDocumentCounts(); // Reload document counts when task is updated
-    loadRecentActivities();
+    setTasks(prev => prev.map(task => 
+      task.id === updatedTask.id ? updatedTask : task
+    ));
   };
 
   const handleTaskRestored = (restoredTask: Task) => {
-    // Add the specific restored task to the list instead of reloading everything
-    setTasks(prev => {
-      // Check if task already exists to avoid duplicates
-      const existsIndex = prev.findIndex(t => t.id === restoredTask.id);
-      if (existsIndex >= 0) {
-        // Update existing task
-        const updated = [...prev];
-        updated[existsIndex] = restoredTask;
-        return updated;
-      } else {
-        // Add new task to the beginning of the list
-        return [restoredTask, ...prev];
-      }
-    });
-    loadRecentActivities();
+    setTasks(prev => [restoredTask, ...prev]);
   };
-
-  const handleSaveTask = async () => {
-    if (!editingTask || !editFormData.title) return;
-
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          title: editFormData.title,
-          description: editFormData.description,
-          priority: editFormData.priority,
-          status: editFormData.status,
-          due_date: editFormData.dueDate,
-          category: editFormData.category,
-          assigned_to: editFormData.assignedTo,
-          progress: editFormData.progress,
-        })
-        .eq('id', editingTask.id);
-
-      if (error) throw error;
-
-      // Update local state
-      setTasks(prev => prev.map(t => 
-        t.id === editingTask.id ? { ...t, ...editFormData } : t
-      ));
-
-      setEditingTask(null);
-      setEditFormData({});
-
-      // Refresh recent activities
-      loadRecentActivities();
-
-      toast({
-        title: "Aufgabe gespeichert",
-        description: "Die Aufgabe wurde erfolgreich aktualisiert.",
-      });
-    } catch (error) {
-      console.error('Error updating task:', error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
-    }
-    };
 
   const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string) => {
     try {
-      const updateData: any = { 
-        is_completed: isCompleted,
-        updated_at: new Date().toISOString()
-      };
-      
-      if (isCompleted && result) {
-        updateData.result_text = result;
-        updateData.completed_at = new Date().toISOString();
-      }
+      const updateData = isCompleted 
+        ? { 
+            is_completed: true, 
+            result_text: result || null,
+            completed_at: new Date().toISOString()
+          }
+        : { 
+            is_completed: false, 
+            result_text: null,
+            completed_at: null
+          };
 
       const { error } = await supabase
         .from('subtasks')
         .update(updateData)
         .eq('id', subtaskId);
-      
+
       if (error) throw error;
-      
+
+      // Update local assigned subtasks
       if (isCompleted) {
         setAssignedSubtasks(prev => prev.filter(s => s.id !== subtaskId));
       }
@@ -986,7 +643,7 @@ export function TasksView() {
         variant: "destructive",
       });
     }
-    };
+  };
 
   const snoozeTask = async (taskId: string, snoozeUntil: string) => {
     if (!user) return;
@@ -1065,53 +722,6 @@ export function TasksView() {
     }
   };
 
-  const unsnoozeTask = async (taskId: string) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('task_snoozes')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('task_id', taskId);
-
-      if (error) throw error;
-
-      await loadTaskSnoozes();
-      
-      toast({
-        title: "Wiedervorlage entfernt",
-        description: "Die Aufgabe ist wieder sichtbar."
-      });
-    } catch (error) {
-      console.error('Error removing snooze:', error);
-    }
-  };
-
-  const unsnoozeSubtask = async (subtaskId: string) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('task_snoozes')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('subtask_id', subtaskId);
-
-      if (error) throw error;
-
-      await loadTaskSnoozes();
-      await loadAssignedSubtasks();
-      
-      toast({
-        title: "Wiedervorlage entfernt",
-        description: "Die Unteraufgabe ist wieder sichtbar."
-      });
-    } catch (error) {
-      console.error('Error removing snooze:', error);
-    }
-  };
-
   const handleSnoozeDialogSubmit = () => {
     if (!snoozeDialogOpen || !snoozeDate) return;
 
@@ -1127,22 +737,150 @@ export function TasksView() {
     setSnoozeDate('');
   };
 
-  // Filter out snoozed tasks for current user
+  const toggleSubtasks = (taskId: string) => {
+    setShowSubtasksFor(prev => prev === taskId ? null : taskId);
+  };
+
+  const toggleDocuments = (taskId: string) => {
+    setShowDocumentsFor(prev => prev === taskId ? null : taskId);
+  };
+
+  const toggleComments = (taskId: string) => {
+    setShowCommentsFor(prev => prev === taskId ? null : taskId);
+    if (!taskComments[taskId]) {
+      loadTaskComments(taskId);
+    }
+  };
+
+  const loadTaskComments = async (taskId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('task_comments')
+        .select(`
+          *,
+          profiles:user_id (
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('task_id', taskId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      setTaskComments(prev => ({
+        ...prev,
+        [taskId]: (data || []).map(comment => ({
+          ...comment,
+          profile: comment.profiles as any
+        }))
+      }));
+    } catch (error) {
+      console.error('Error loading task comments:', error);
+    }
+  };
+
+  const addComment = async (taskId: string) => {
+    if (!newComment[taskId]?.trim() || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('task_comments')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          content: newComment[taskId].trim()
+        });
+
+      if (error) throw error;
+
+      setNewComment(prev => ({ ...prev, [taskId]: '' }));
+      loadTaskComments(taskId);
+      
+      toast({
+        title: "Kommentar hinzugefügt",
+        description: "Ihr Kommentar wurde erfolgreich hinzugefügt.",
+      });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Utility functions
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const isOverdue = (dueDate: string) => {
+    return new Date(dueDate) < new Date();
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "high": return "bg-red-100 text-red-800 border-red-200";
+      case "medium": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "low": return "bg-green-100 text-green-800 border-green-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed": return "bg-green-100 text-green-800 border-green-200";
+      case "in-progress": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "todo": return "bg-gray-100 text-gray-800 border-gray-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case "legislation": return "bg-purple-100 text-purple-800 border-purple-200";
+      case "committee": return "bg-orange-100 text-orange-800 border-orange-200";
+      case "constituency": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "personal": return "bg-pink-100 text-pink-800 border-pink-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  // Filter tasks
+  const filteredTasks = tasks.filter(task => {
+    if (filter === "all") return true;
+    if (filter === "pending") return task.status === "todo" || task.status === "in-progress";
+    if (filter === "overdue") return isOverdue(task.dueDate);
+    return task.status === filter;
+  }).filter(task => {
+    if (categoryFilter === "all") return true;
+    return task.category === categoryFilter;
+  }).filter(task => {
+    if (priorityFilter === "all") return true;
+    return task.priority === priorityFilter;
+  });
+
+  // Filter out snoozed tasks and subtasks for current user
   const filteredTasksWithSnooze = filteredTasks.filter(task => {
     return !taskSnoozes[task.id] || new Date(taskSnoozes[task.id]) <= new Date();
   });
 
-  // Filter out snoozed subtasks for current user
   const filteredAssignedSubtasks = assignedSubtasks.filter(subtask => {
     return !subtaskSnoozes[subtask.id] || new Date(subtaskSnoozes[subtask.id]) <= new Date();
   });
 
   const taskCounts = {
-    all: tasks.length,
-    todo: tasks.filter(t => t.status === "todo").length,
-    inProgress: tasks.filter(t => t.status === "in-progress").length,
-    completed: tasks.filter(t => t.status === "completed").length,
-    overdue: tasks.filter(t => isOverdue(t.dueDate)).length,
+    all: filteredTasksWithSnooze.length,
+    todo: filteredTasksWithSnooze.filter(t => t.status === "todo").length,
+    inProgress: filteredTasksWithSnooze.filter(t => t.status === "in-progress").length,
+    completed: filteredTasksWithSnooze.filter(t => t.status === "completed").length,
+    overdue: filteredTasksWithSnooze.filter(t => isOverdue(t.dueDate)).length,
   };
 
   const filters = [
@@ -1174,6 +912,14 @@ export function TasksView() {
               >
                 <Archive className="h-4 w-4" />
                 Aufgaben-Archiv
+              </Button>
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => setSnoozeManagementOpen(true)}
+              >
+                <AlarmClock className="h-4 w-4" />
+                Wiedervorlagen
               </Button>
               <Button className="gap-2" onClick={() => window.location.href = '/tasks/new'}>
                 <Plus className="h-4 w-4" />
@@ -1232,18 +978,12 @@ export function TasksView() {
       </div>
 
       {/* Assigned Subtasks Table */}
-      {(() => {
-        console.log('Checking assigned subtasks table condition:');
-        console.log('assignedSubtasks:', assignedSubtasks);
-        console.log('assignedSubtasks.length:', assignedSubtasks.length);
-        console.log('Should show table:', assignedSubtasks.length > 0);
-        return assignedSubtasks.length > 0;
-      })() && (
+      {filteredAssignedSubtasks.length > 0 && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <ListTodo className="h-5 w-5" />
-              Mir zugewiesene Unteraufgaben ({assignedSubtasks.length})
+              Mir zugewiesene Unteraufgaben ({filteredAssignedSubtasks.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1268,7 +1008,6 @@ export function TasksView() {
                               setCompletingSubtask(subtask.id);
                               setCompletionResult('');
                             } else {
-                              // Handle unchecking
                               handleSubtaskComplete(subtask.id, false, '');
                             }
                           }}
@@ -1334,9 +1073,8 @@ export function TasksView() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Main Task List */}
-        <div className="lg:col-span-3 space-y-4">
+      {/* Main Task List - Full Width */}
+        <div className="space-y-4">
           {filteredTasksWithSnooze.map((task) => (
             <Card
               key={task.id}
@@ -1391,58 +1129,57 @@ export function TasksView() {
                       </div>
                     </div>
 
-                    <p className={`mb-4 ${
-                      task.status === "completed" ? "text-muted-foreground" : "text-muted-foreground"
+                    <p className={`text-sm mb-3 ${
+                      task.status === "completed" ? "line-through text-muted-foreground" : "text-muted-foreground"
                     }`}>
                       {task.description}
                     </p>
 
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        <span className={isOverdue(task.dueDate) ? "text-destructive font-medium" : "text-muted-foreground"}>
+                        <span className={isOverdue(task.dueDate) && task.status !== "completed" ? "text-destructive font-medium" : ""}>
                           {formatDate(task.dueDate)}
-                          {isOverdue(task.dueDate) && " (Überfällig)"}
+                          {isOverdue(task.dueDate) && task.status !== "completed" && " (Überfällig)"}
                         </span>
                       </div>
 
+                        {/* Subtask count indicator */}
+                        {subtaskCounts[task.id] > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSubtasks(task.id);
+                            }}
+                            className="gap-1 h-6 px-2 text-xs"
+                          >
+                            {showSubtasksFor === task.id ? (
+                              <ChevronDown className="h-3 w-3" />
+                            ) : (
+                              <ChevronRight className="h-3 w-3" />
+                            )}
+                            <ListTodo className="h-3 w-3" />
+                            <span>{subtaskCounts[task.id]} Unteraufgabe{subtaskCounts[task.id] !== 1 ? 'n' : ''}</span>
+                          </Button>
+                        )}
 
-                       {/* Subtask count indicator */}
-                       {subtaskCounts[task.id] > 0 && (
-                         <Button
-                           variant="ghost"
-                           size="sm"
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             toggleSubtasks(task.id);
-                           }}
-                           className="gap-1 h-6 px-2 text-xs"
-                         >
-                           {showSubtasksFor === task.id ? (
-                             <ChevronDown className="h-3 w-3" />
-                           ) : (
-                             <ChevronRight className="h-3 w-3" />
-                           )}
-                           <ListTodo className="h-3 w-3" />
-                           <span>{subtaskCounts[task.id]} Unteraufgabe{subtaskCounts[task.id] !== 1 ? 'n' : ''}</span>
-                         </Button>
-                       )}
-
-                       {/* Document count indicator */}
-                       {taskDocuments[task.id] > 0 && (
-                         <Button
-                           variant="ghost"
-                           size="sm"
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             toggleDocuments(task.id);
-                           }}
-                           className="gap-1 h-6 px-2 text-xs"
-                         >
-                           <Paperclip className="h-3 w-3" />
-                           <span>{taskDocuments[task.id]} Dokument{taskDocuments[task.id] !== 1 ? 'e' : ''}</span>
-                         </Button>
-                       )}
+                        {/* Document count indicator */}
+                        {taskDocuments[task.id] > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleDocuments(task.id);
+                            }}
+                            className="gap-1 h-6 px-2 text-xs"
+                          >
+                            <Paperclip className="h-3 w-3" />
+                            <span>{taskDocuments[task.id]} Dokument{taskDocuments[task.id] !== 1 ? 'e' : ''}</span>
+                          </Button>
+                        )}
 
                         {/* Snooze Button */}
                         <Button
@@ -1468,227 +1205,190 @@ export function TasksView() {
                                   {users.find(u => u.user_id === task.assignedTo)?.display_name || 'Unbekannter Benutzer'}
                                 </span>
                              </div>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 toggleComments(task.id);
+                               }}
+                               className="gap-1 h-6 px-2 text-xs"
+                             >
+                               <MessageCircle className="h-3 w-3" />
+                               <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
+                             </Button>
+                           </div>
+                        )}
+                     </div>
+
+                      {/* Progress Bar */}
+                      {task.progress !== undefined && task.status !== "completed" && (
+                        <div className="mt-3">
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-muted-foreground">Fortschritt</span>
+                            <span className="text-muted-foreground">{task.progress}%</span>
+                          </div>
+                          <div className="w-full bg-secondary rounded-full h-2">
+                            <div
+                              className="bg-primary h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${task.progress}%` }}
+                            ></div>
+                          </div>
+                         </div>
+                       )}
+
+                       {/* Inline Subtasks */}
+                       {showSubtasksFor === task.id && (
+                         <div className="mt-4 pt-4 border-t space-y-3">
+                           <h4 className="text-sm font-medium text-foreground mb-3">Unteraufgaben ({subtasks[task.id]?.length || 0})</h4>
+                           {subtasks[task.id]?.map((subtask) => (
+                             <div key={subtask.id} className="bg-muted/50 rounded-lg p-3">
+                               <div className="flex items-start gap-3">
+                                 <Checkbox
+                                   checked={subtask.is_completed}
+                                   className="mt-0.5"
+                                 />
+                                  <div className="flex-1">
+                                    <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
+                                      {subtask.description}
+                                    </p>
+                                    {(() => {
+                                      console.log('Subtask debug:', {
+                                        id: subtask.id,
+                                        is_completed: subtask.is_completed,
+                                        result_text: subtask.result_text,
+                                        completed_at: subtask.completed_at
+                                      });
+                                      return subtask.is_completed && subtask.result_text;
+                                    })() && (
+                                      <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
+                                        <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
+                                        <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
+                                        {subtask.completed_at && (
+                                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                            Erledigt am: {new Date(subtask.completed_at).toLocaleDateString('de-DE', {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                              year: 'numeric',
+                                              hour: '2-digit',
+                                              minute: '2-digit'
+                                            })}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                    <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                                      {subtask.assigned_to && (
+                                        <span>Zuständig: {users.find(u => u.user_id === subtask.assigned_to)?.display_name || subtask.assigned_to}</span>
+                                      )}
+                                      {subtask.due_date && (
+                                        <span>Fällig: {formatDate(subtask.due_date)}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       )}
+
+                       {/* Inline Comments */}
+                       {showCommentsFor === task.id && (
+                         <div className="mt-4 pt-4 border-t space-y-3">
+                           <h4 className="text-sm font-medium text-foreground mb-3">Kommentare ({taskComments[task.id]?.length || 0})</h4>
+                           {taskComments[task.id]?.map((comment) => (
+                             <div key={comment.id} className="bg-muted/50 rounded-lg p-3">
+                               <div className="flex items-start gap-3">
+                                 <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
+                                   <User className="h-4 w-4 text-primary" />
+                                 </div>
+                                 <div className="flex-1">
+                                   <div className="flex items-center gap-2 mb-1">
+                                     <span className="font-medium text-sm">
+                                       {comment.profile?.display_name || 'Unbekannter Benutzer'}
+                                     </span>
+                                     <span className="text-xs text-muted-foreground">
+                                       {new Date(comment.created_at).toLocaleDateString('de-DE')}
+                                     </span>
+                                   </div>
+                                   <p className="text-sm">{comment.content}</p>
+                                 </div>
+                               </div>
+                             </div>
+                           ))}
+                          
+                          {/* Add Comment Input */}
+                          <div className="flex gap-2 mt-3">
+                            <Input
+                              placeholder="Kommentar hinzufügen..."
+                              value={newComment[task.id] || ''}
+                              onChange={(e) => setNewComment(prev => ({ ...prev, [task.id]: e.target.value }))}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  addComment(task.id);
+                                }
+                              }}
+                            />
                             <Button
-                              variant="ghost"
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toggleComments(task.id);
+                                addComment(task.id);
                               }}
-                              className="gap-1 h-6 px-2 text-xs"
+                              disabled={!newComment[task.id]?.trim()}
                             >
-                              <MessageCircle className="h-3 w-3" />
-                              <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
+                              <Send className="h-4 w-4" />
                             </Button>
                           </div>
-                        )}
-                       {!task.assignedTo && (
-                         <Button
-                           variant="ghost"
-                           size="sm"
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             toggleComments(task.id);
-                           }}
-                           className="gap-1 h-6 px-2 text-xs"
-                         >
-                           <MessageCircle className="h-3 w-3" />
-                           <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
-                         </Button>
+                         </div>
                        )}
-                    </div>
 
-                     {/* Progress Bar */}
-                     {task.progress !== undefined && task.status !== "completed" && (
-                       <div className="mt-3">
-                         <div className="flex justify-between text-sm mb-1">
-                           <span className="text-muted-foreground">Fortschritt</span>
-                           <span className="text-muted-foreground">{task.progress}%</span>
-                         </div>
-                         <div className="w-full bg-secondary rounded-full h-2">
-                           <div
-                             className="bg-primary h-2 rounded-full transition-all duration-300"
-                             style={{ width: `${task.progress}%` }}
-                           ></div>
-                         </div>
-                        </div>
-                      )}
-
-                      {/* Inline Subtasks */}
-                      {showSubtasksFor === task.id && (
-                        <div className="mt-4 pt-4 border-t space-y-3">
-                          <h4 className="text-sm font-medium text-foreground mb-3">Unteraufgaben ({subtasks[task.id]?.length || 0})</h4>
-                          {subtasks[task.id]?.map((subtask) => (
-                            <div key={subtask.id} className="bg-muted/50 rounded-lg p-3">
-                              <div className="flex items-start gap-3">
-                                <Checkbox
-                                  checked={subtask.is_completed}
-                                  className="mt-0.5"
-                                />
-                                 <div className="flex-1">
-                                   <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                                     {subtask.description}
+                       {/* Inline Documents */}
+                       {showDocumentsFor === task.id && (
+                         <div className="mt-4 pt-4 border-t space-y-3">
+                           <h4 className="text-sm font-medium text-foreground mb-3">Dokumente ({taskDocumentDetails[task.id]?.length || 0})</h4>
+                           {taskDocumentDetails[task.id]?.map((doc) => (
+                             <div key={doc.id} className="bg-muted/50 rounded-lg p-3 flex items-center justify-between">
+                               <div className="flex items-center gap-3 flex-1 min-w-0">
+                                 <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                 <div className="min-w-0 flex-1">
+                                   <p className="text-sm font-medium truncate">{doc.file_name}</p>
+                                   <p className="text-xs text-muted-foreground">
+                                     {(doc.file_size / 1024).toFixed(1)} KB • {new Date(doc.created_at).toLocaleDateString('de-DE')}
                                    </p>
-                                   {(() => {
-                                     console.log('Subtask debug:', {
-                                       id: subtask.id,
-                                       is_completed: subtask.is_completed,
-                                       result_text: subtask.result_text,
-                                       completed_at: subtask.completed_at
-                                     });
-                                     return subtask.is_completed && subtask.result_text;
-                                   })() && (
-                                     <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
-                                       <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
-                                       <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
-                                       {subtask.completed_at && (
-                                         <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                                           Erledigt am: {new Date(subtask.completed_at).toLocaleDateString('de-DE', {
-                                             day: '2-digit',
-                                             month: '2-digit',
-                                             year: 'numeric',
-                                             hour: '2-digit',
-                                             minute: '2-digit'
-                                           })}
-                                         </p>
-                                       )}
-                                     </div>
-                                   )}
-                                   <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                                     {subtask.assigned_to && (
-                                       <span>Zuständig: {subtask.assigned_to}</span>
-                                     )}
-                                     {subtask.due_date && (
-                                       <span>Fällig: {formatDate(subtask.due_date)}</span>
-                                     )}
-                                   </div>
                                  </div>
-                              </div>
-                            </div>
-                          ))}
-                          {(!subtasks[task.id] || subtasks[task.id].length === 0) && (
-                            <div className="text-center py-4 text-muted-foreground text-sm">
-                              Keine Unteraufgaben vorhanden
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                     {/* Inline Comments */}
-                     {showCommentsFor === task.id && (
-                       <div className="mt-4 pt-4 border-t space-y-3">
-                         {taskComments[task.id]?.map((comment) => (
-                           <div key={comment.id} className="bg-muted/50 rounded-lg p-3">
-                             <div className="flex items-start gap-3">
-                               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                 <User className="h-4 w-4" />
                                </div>
-                               <div className="flex-1">
-                                 <div className="flex items-center justify-between mb-1">
-                                   <div className="flex items-center gap-2">
-                                     <span className="text-sm font-medium">
-                                       {comment.profile?.display_name || 'Unbekannter Nutzer'}
-                                     </span>
-                                     <span className="text-xs text-muted-foreground">
-                                       {new Date(comment.created_at).toLocaleDateString('de-DE', {
-                                         day: '2-digit',
-                                         month: '2-digit',
-                                         year: 'numeric',
-                                         hour: '2-digit',
-                                         minute: '2-digit'
-                                       })}
-                                     </span>
-                                   </div>
-                                 </div>
-                                 <p className="text-sm">{comment.content}</p>
+                               <div className="flex gap-1 ml-2">
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     // Download logic would go here
+                                   }}
+                                   className="h-8 w-8 p-0"
+                                 >
+                                   <Download className="h-3 w-3" />
+                                 </Button>
                                </div>
                              </div>
-                           </div>
-                         ))}
-                         
-                         {/* Add Comment Input */}
-                         <div className="flex gap-2 mt-3">
-                           <Input
-                             placeholder="Kommentar hinzufügen..."
-                             value={newComment[task.id] || ''}
-                             onChange={(e) => setNewComment(prev => ({ ...prev, [task.id]: e.target.value }))}
-                             onKeyPress={(e) => {
-                               if (e.key === 'Enter' && !e.shiftKey) {
-                                 e.preventDefault();
-                                 addComment(task.id);
-                               }
-                             }}
-                           />
-                           <Button
-                             size="sm"
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               addComment(task.id);
-                             }}
-                             disabled={!newComment[task.id]?.trim()}
-                           >
-                             <Send className="h-4 w-4" />
-                           </Button>
+                           ))}
+                           {(!taskDocumentDetails[task.id] || taskDocumentDetails[task.id].length === 0) && (
+                             <div className="text-center py-4 text-muted-foreground text-sm">
+                               Keine Dokumente vorhanden
+                             </div>
+                           )}
                          </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Inline Documents */}
-                      {showDocumentsFor === task.id && (
-                        <div className="mt-4 pt-4 border-t space-y-3">
-                          <h4 className="text-sm font-medium text-foreground mb-3">Dokumente ({taskDocumentDetails[task.id]?.length || 0})</h4>
-                          {taskDocumentDetails[task.id]?.map((doc) => (
-                            <div key={doc.id} className="bg-muted/50 rounded-lg p-3 flex items-center justify-between">
-                              <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {(doc.file_size / 1024).toFixed(1)} KB • {new Date(doc.created_at).toLocaleDateString('de-DE')}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex gap-1 ml-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDocumentDownload(doc);
-                                  }}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDocumentDelete(doc);
-                                  }}
-                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                          {(!taskDocumentDetails[task.id] || taskDocumentDetails[task.id].length === 0) && (
-                            <div className="text-center py-4 text-muted-foreground text-sm">
-                              Keine Dokumente vorhanden
-                            </div>
-                          )}
-                        </div>
-                       )}
+                     </div>
+                   </div>
+                 </CardContent>
+               </Card>
+             ))}
 
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-
-          {filteredTasks.length === 0 && (
+          {filteredTasksWithSnooze.length === 0 && (
             <Card className="bg-card shadow-card border-border">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <CheckSquare className="h-12 w-12 text-muted-foreground mb-4" />
@@ -1704,7 +1404,6 @@ export function TasksView() {
             </Card>
           )}
         </div>
-
       </div>
 
       <TaskArchiveModal
@@ -1810,7 +1509,15 @@ export function TasksView() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* Snooze Management Sidebar */}
+      <SnoozeManagementSidebar
+        isOpen={snoozeManagementOpen}
+        onClose={() => setSnoozeManagementOpen(false)}
+        snoozes={allSnoozes}
+        onUpdateSnooze={updateSnooze}
+        onDeleteSnooze={deleteSnooze}
+      />
     </>
   );
 }
