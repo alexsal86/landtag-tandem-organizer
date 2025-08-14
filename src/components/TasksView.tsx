@@ -51,6 +51,8 @@ interface Subtask {
   order_index: number;
   created_at: string;
   updated_at: string;
+  result_text?: string;
+  completed_at?: string;
 }
 
 export function TasksView() {

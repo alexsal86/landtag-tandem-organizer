@@ -1198,36 +1198,42 @@ export type Database = {
       subtasks: {
         Row: {
           assigned_to: string | null
+          completed_at: string | null
           created_at: string
           description: string
           due_date: string | null
           id: string
           is_completed: boolean
           order_index: number
+          result_text: string | null
           task_id: string
           updated_at: string
           user_id: string
         }
         Insert: {
           assigned_to?: string | null
+          completed_at?: string | null
           created_at?: string
           description: string
           due_date?: string | null
           id?: string
           is_completed?: boolean
           order_index?: number
+          result_text?: string | null
           task_id: string
           updated_at?: string
           user_id: string
         }
         Update: {
           assigned_to?: string | null
+          completed_at?: string | null
           created_at?: string
           description?: string
           due_date?: string | null
           id?: string
           is_completed?: boolean
           order_index?: number
+          result_text?: string | null
           task_id?: string
           updated_at?: string
           user_id?: string
