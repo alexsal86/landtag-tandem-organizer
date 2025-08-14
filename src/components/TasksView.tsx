@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +83,7 @@ export function TasksView() {
   const [subtaskCounts, setSubtaskCounts] = useState<{ [taskId: string]: number }>({});
   const [subtasks, setSubtasks] = useState<{ [taskId: string]: Subtask[] }>({});
   const [showSubtasksFor, setShowSubtasksFor] = useState<string | null>(null);
+  const [assignedSubtasks, setAssignedSubtasks] = useState<Array<Subtask & { task_title: string }>>([]);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -93,7 +95,53 @@ export function TasksView() {
     loadUsers();
     loadTaskDocumentCounts();
     loadSubtaskCounts();
+    loadAssignedSubtasks();
   }, []);
+
+  const loadAssignedSubtasks = async () => {
+    if (!user) return;
+    
+    try {
+      // Get current user's profile to match assigned_to field
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', user.id)
+        .single();
+
+      const userName = profile?.display_name || user.email;
+
+      const { data, error } = await supabase
+        .from('subtasks')
+        .select(`
+          id,
+          task_id,
+          description,
+          assigned_to,
+          due_date,
+          is_completed,
+          order_index,
+          created_at,
+          updated_at,
+          user_id,
+          tasks!inner(title)
+        `)
+        .eq('assigned_to', userName)
+        .eq('is_completed', false)
+        .order('due_date', { ascending: true, nullsFirst: false });
+
+      if (error) throw error;
+
+      const formattedSubtasks = (data || []).map((subtask: any) => ({
+        ...subtask,
+        task_title: subtask.tasks?.title || 'Unbekannte Aufgabe'
+      }));
+
+      setAssignedSubtasks(formattedSubtasks);
+    } catch (error) {
+      console.error('Error loading assigned subtasks:', error);
+    }
+  };
 
   const loadSubtaskCounts = async () => {
     try {
@@ -270,6 +318,7 @@ export function TasksView() {
       
       // Reload subtask counts after loading tasks
       loadSubtaskCounts();
+      loadAssignedSubtasks();
     } catch (error) {
       console.error('Error loading tasks:', error);
       toast({
@@ -927,6 +976,98 @@ export function TasksView() {
           </Select>
         </div>
       </div>
+
+      {/* Assigned Subtasks Table */}
+      {assignedSubtasks.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ListTodo className="h-5 w-5" />
+              Mir zugewiesene Unteraufgaben ({assignedSubtasks.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Unteraufgabe</TableHead>
+                  <TableHead>Übergeordnete Aufgabe</TableHead>
+                  <TableHead>Fälligkeitsdatum</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assignedSubtasks.map((subtask) => (
+                  <TableRow key={subtask.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={subtask.is_completed}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              const { error } = await supabase
+                                .from('subtasks')
+                                .update({ is_completed: !!checked })
+                                .eq('id', subtask.id);
+                              
+                              if (error) throw error;
+                              
+                              if (checked) {
+                                setAssignedSubtasks(prev => prev.filter(s => s.id !== subtask.id));
+                              }
+                              
+                              toast({
+                                title: "Unteraufgabe aktualisiert",
+                                description: checked ? "Unteraufgabe als erledigt markiert" : "Unteraufgabe als offen markiert",
+                              });
+                            } catch (error) {
+                              console.error('Error updating subtask:', error);
+                              toast({
+                                title: "Fehler",
+                                description: "Unteraufgabe konnte nicht aktualisiert werden.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        />
+                        <span className="font-medium">{subtask.description}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-muted-foreground">{subtask.task_title}</span>
+                    </TableCell>
+                    <TableCell>
+                      {subtask.due_date ? (
+                        <span className={new Date(subtask.due_date) < new Date() ? "text-destructive font-medium" : "text-muted-foreground"}>
+                          {formatDate(subtask.due_date)}
+                          {new Date(subtask.due_date) < new Date() && " (Überfällig)"}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Keine Frist</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const parentTask = tasks.find(t => t.id === subtask.task_id);
+                          if (parentTask) {
+                            handleTaskClick(parentTask);
+                          }
+                        }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Task List */}
