@@ -166,7 +166,7 @@ export function TasksView() {
     try {
       const { data, error } = await supabase
         .from('subtasks')
-        .select('task_id, id, description, assigned_to, due_date, is_completed, order_index, created_at, updated_at, user_id');
+        .select('task_id, id, description, assigned_to, due_date, is_completed, order_index, created_at, updated_at, user_id, result_text, completed_at');
 
       if (error) throw error;
 
@@ -186,6 +186,7 @@ export function TasksView() {
       // Sort subtasks by order_index
       Object.keys(details).forEach(taskId => {
         details[taskId].sort((a, b) => a.order_index - b.order_index);
+        console.log(`Subtasks for task ${taskId}:`, details[taskId]);
       });
 
       setSubtaskCounts(counts);
@@ -1304,7 +1305,15 @@ export function TasksView() {
                                    <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
                                      {subtask.description}
                                    </p>
-                                   {subtask.is_completed && subtask.result_text && (
+                                   {(() => {
+                                     console.log('Subtask debug:', {
+                                       id: subtask.id,
+                                       is_completed: subtask.is_completed,
+                                       result_text: subtask.result_text,
+                                       completed_at: subtask.completed_at
+                                     });
+                                     return subtask.is_completed && subtask.result_text;
+                                   })() && (
                                      <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
                                        <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
                                        <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
