@@ -341,21 +341,13 @@ export function ContactsView() {
                             ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
                             : contact.role
                           }
-                        </p>
-                        <div className="mt-2">
-                          <Badge className={getCategoryColor(contact.category)}>
-                            {contact.category === "citizen" && "Bürger"}
-                            {contact.category === "colleague" && "Kollege"}
-                            {contact.category === "business" && "Wirtschaft"}
-                            {contact.category === "media" && "Medien"}
-                            {contact.category === "lobbyist" && "Lobbyist"}
-                          </Badge>
-                        </div>
+                        </p>                       
                       </div>
                    </div>
                 </div>
               </CardHeader>
               <CardContent>
+                <div className="mt-2">
                    <Badge className={getCategoryColor(contact.category)}>
                             {contact.category === "citizen" && "Bürger"}
                             {contact.category === "colleague" && "Kollege"}
@@ -363,6 +355,7 @@ export function ContactsView() {
                             {contact.category === "media" && "Medien"}
                             {contact.category === "lobbyist" && "Lobbyist"}
                           </Badge>
+                </div>
                 <div className="space-y-3">
                   {contact.contact_type === "person" ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
