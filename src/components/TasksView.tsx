@@ -294,9 +294,23 @@ export function TasksView() {
         task_title: tasksData?.find(t => t.id === subtask.task_id)?.title || 'Unbekannte Aufgabe'
       }));
 
-      console.log('Subtasks with titles:', subtasksWithTitles);
+      // Sort subtasks: non-snoozed first, then snoozed ones at the end
+      const sortedSubtasks = subtasksWithTitles.sort((a, b) => {
+        const aIsSnoozed = subtaskSnoozes[a.id] ? 1 : 0;
+        const bIsSnoozed = subtaskSnoozes[b.id] ? 1 : 0;
+        
+        // If snooze status is different, sort by snooze status (non-snoozed first)
+        if (aIsSnoozed !== bIsSnoozed) {
+          return aIsSnoozed - bIsSnoozed;
+        }
+        
+        // If both have same snooze status, sort by created_at (newest first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
 
-      setAssignedSubtasks(subtasksWithTitles);
+      console.log('Subtasks with titles:', sortedSubtasks);
+
+      setAssignedSubtasks(sortedSubtasks);
     } catch (error) {
       console.error('Error loading assigned subtasks:', error);
     }
