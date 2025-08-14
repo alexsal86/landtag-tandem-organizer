@@ -35,6 +35,11 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [userRole, setUserRole] = useState<string>("Benutzer");
+  const [appSettings, setAppSettings] = useState({
+    app_name: "LandtagsOS",
+    app_subtitle: "Koordinationssystem",
+    app_logo_url: ""
+  });
   const navigate = useNavigate();
   const handleSignOut = async () => {
     try {
@@ -66,21 +71,40 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "employee", label: "Mitarbeiter", icon: Users },
   ];
 
-  // Load user profile
+  // Load user profile and app settings
   useEffect(() => {
-    if (!user) return;
-    
-    const loadUserProfile = async () => {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name, avatar_url')
-        .eq('user_id', user.id)
-        .single();
-      
-      setUserProfile(profile);
+    const loadData = async () => {
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, avatar_url')
+          .eq('user_id', user.id)
+          .single();
+        
+        setUserProfile(profile);
+      }
+
+      // Load app settings
+      const { data: settings } = await supabase
+        .from('app_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
+
+      if (settings) {
+        const settingsMap = settings.reduce((acc, item) => {
+          acc[item.setting_key] = item.setting_value || '';
+          return acc;
+        }, {} as Record<string, string>);
+
+        setAppSettings({
+          app_name: settingsMap.app_name || "LandtagsOS",
+          app_subtitle: settingsMap.app_subtitle || "Koordinationssystem",
+          app_logo_url: settingsMap.app_logo_url || ""
+        });
+      }
     };
     
-    loadUserProfile();
+    loadData();
   }, [user]);
 
   // Check admin role and load user role
@@ -182,11 +206,19 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <FileText className="size-4" />
+                {appSettings.app_logo_url ? (
+                  <img 
+                    src={appSettings.app_logo_url} 
+                    alt="App Logo" 
+                    className="size-4 object-contain"
+                  />
+                ) : (
+                  <FileText className="size-4" />
+                )}
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">LandtagsOS</span>
-                <span className="truncate text-xs">Koordinationssystem</span>
+                <span className="truncate font-semibold">{appSettings.app_name}</span>
+                <span className="truncate text-xs">{appSettings.app_subtitle}</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

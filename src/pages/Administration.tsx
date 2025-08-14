@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { GeneralSettings } from "@/components/GeneralSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
@@ -656,13 +657,18 @@ export default function Administration() {
         <p className="text-muted-foreground">Systemkonfiguration und Benutzerverwaltung</p>
       </header>
 
-      <Tabs defaultValue="appointments" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs defaultValue="general" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="general">Allgemein</TabsTrigger>
           <TabsTrigger value="appointments">Termine</TabsTrigger>
           <TabsTrigger value="tasks">Aufgaben</TabsTrigger>
           <TabsTrigger value="meetings">Meetings</TabsTrigger>
           {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
         </TabsList>
+
+        <TabsContent value="general" className="space-y-6">
+          <GeneralSettings />
+        </TabsContent>
 
         <TabsContent value="appointments" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
