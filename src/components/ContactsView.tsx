@@ -327,35 +327,30 @@ export function ContactsView() {
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={contact.avatar_url} />
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        {getInitials(contact.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg">{contact.name}</CardTitle>
-                        <Badge variant="outline" className="text-xs">
-                          {contact.contact_type === "organization" ? "Org" : "Person"}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {contact.contact_type === "organization" 
-                          ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
-                          : contact.role
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  <Badge className={getCategoryColor(contact.category)}>
-                    {contact.category === "citizen" && "Bürger"}
-                    {contact.category === "colleague" && "Kollege"}
-                    {contact.category === "business" && "Wirtschaft"}
-                    {contact.category === "media" && "Medien"}
-                    {contact.category === "lobbyist" && "Lobbyist"}
-                  </Badge>
+                   <div className="flex items-center gap-3">
+                     <Avatar>
+                       <AvatarImage src={contact.avatar_url} />
+                       <AvatarFallback className="bg-primary text-primary-foreground">
+                         {getInitials(contact.name)}
+                       </AvatarFallback>
+                     </Avatar>
+                     <div className="flex-1">
+                       <CardTitle className="text-lg mb-2">{contact.name}</CardTitle>
+                       <Badge className={getCategoryColor(contact.category)}>
+                         {contact.category === "citizen" && "Bürger"}
+                         {contact.category === "colleague" && "Kollege"}
+                         {contact.category === "business" && "Wirtschaft"}
+                         {contact.category === "media" && "Medien"}
+                         {contact.category === "lobbyist" && "Lobbyist"}
+                       </Badge>
+                       <p className="text-sm text-muted-foreground mt-2">
+                         {contact.contact_type === "organization" 
+                           ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
+                           : contact.role
+                         }
+                       </p>
+                     </div>
+                   </div>
                 </div>
               </CardHeader>
               <CardContent>
