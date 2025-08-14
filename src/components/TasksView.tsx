@@ -263,25 +263,11 @@ export function TasksView() {
     console.log('Loading assigned subtasks for user:', user.id);
     
     try {
-      // Get current user's profile to match assigned_to field
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!profile?.display_name) {
-        console.log('No profile display_name found');
-        return;
-      }
-
-      console.log('User display_name:', profile.display_name);
-
-      // Get subtasks assigned to this user
+      // Get subtasks assigned to this user (using user_id, not display_name)
       const { data: subtasksData, error } = await supabase
         .from('subtasks')
         .select('*, result_text, completed_at')
-        .eq('assigned_to', profile.display_name)
+        .eq('assigned_to', user.id)
         .eq('is_completed', false);
 
       if (error) throw error;
