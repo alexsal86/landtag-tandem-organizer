@@ -335,7 +335,7 @@ export function ContactsView() {
                        </AvatarFallback>
                      </Avatar>
                       <div className="flex-1">
-                        <CardTitle className="text-lg mb-2">{contact.name}</CardTitle>
+                        <CardTitle className="text-lg mb0">{contact.name}</CardTitle>
                         <p className="text-sm text-muted-foreground">
                           {contact.contact_type === "organization" 
                             ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
