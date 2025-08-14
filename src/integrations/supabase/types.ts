@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1195,6 +1195,53 @@ export type Database = {
         }
         Relationships: []
       }
+      subtasks: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          description: string
+          due_date: string | null
+          id: string
+          is_completed: boolean
+          order_index: number
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          description: string
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          order_index?: number
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          order_index?: number
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_archive_settings: {
         Row: {
           auto_delete_after_days: number | null
@@ -1497,15 +1544,15 @@ export type Database = {
       get_authored_messages: {
         Args: { author_id_param: string }
         Returns: {
-          id: string
-          title: string
-          content: string
           author_id: string
-          is_for_all_users: boolean
-          status: string
+          content: string
           created_at: string
-          recipients_count: number
+          id: string
+          is_for_all_users: boolean
           read_count: number
+          recipients_count: number
+          status: string
+          title: string
         }[]
       }
       get_daily_hours: {
@@ -1515,16 +1562,16 @@ export type Database = {
       get_user_messages: {
         Args: { user_id_param: string }
         Returns: {
-          id: string
-          title: string
-          content: string
+          author_avatar: string
           author_id: string
+          author_name: string
+          content: string
+          created_at: string
+          has_read: boolean
+          id: string
           is_for_all_users: boolean
           status: string
-          created_at: string
-          author_name: string
-          author_avatar: string
-          has_read: boolean
+          title: string
         }[]
       }
       get_user_role_level: {
@@ -1533,8 +1580,8 @@ export type Database = {
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
@@ -1556,19 +1603,19 @@ export type Database = {
       }
       mark_message_read: {
         Args: {
+          is_for_all_param: boolean
           message_id_param: string
           user_id_param: string
-          is_for_all_param: boolean
         }
         Returns: undefined
       }
       send_message: {
         Args: {
           author_id_param: string
-          title_param: string
           content_param: string
           is_for_all_param: boolean
           recipient_ids_param: string[]
+          title_param: string
         }
         Returns: undefined
       }

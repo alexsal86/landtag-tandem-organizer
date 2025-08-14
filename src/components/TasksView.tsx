@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download } from "lucide-react";
+import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,19 @@ interface TaskComment {
   };
 }
 
+interface Subtask {
+  id: string;
+  task_id: string;
+  user_id: string;
+  description: string;
+  assigned_to?: string;
+  due_date?: string;
+  is_completed: boolean;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export function TasksView() {
   const [filter, setFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -66,6 +79,9 @@ export function TasksView() {
     taskTitle: string;
     timestamp: string;
   }>>([]);
+  const [subtaskCounts, setSubtaskCounts] = useState<{ [taskId: string]: number }>({});
+  const [subtasks, setSubtasks] = useState<{ [taskId: string]: Subtask[] }>({});
+  const [showSubtasksFor, setShowSubtasksFor] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -76,7 +92,41 @@ export function TasksView() {
     loadTaskConfiguration();
     loadUsers();
     loadTaskDocumentCounts();
+    loadSubtaskCounts();
   }, []);
+
+  const loadSubtaskCounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subtasks')
+        .select('task_id, id, description, assigned_to, due_date, is_completed, order_index, created_at, updated_at, user_id');
+
+      if (error) throw error;
+
+      // Group subtasks by task_id and count them
+      const counts: { [taskId: string]: number } = {};
+      const details: { [taskId: string]: Subtask[] } = {};
+      
+      (data || []).forEach(subtask => {
+        if (!counts[subtask.task_id]) {
+          counts[subtask.task_id] = 0;
+          details[subtask.task_id] = [];
+        }
+        counts[subtask.task_id]++;
+        details[subtask.task_id].push(subtask);
+      });
+
+      // Sort subtasks by order_index
+      Object.keys(details).forEach(taskId => {
+        details[taskId].sort((a, b) => a.order_index - b.order_index);
+      });
+
+      setSubtaskCounts(counts);
+      setSubtasks(details);
+    } catch (error) {
+      console.error('Error loading subtask counts:', error);
+    }
+  };
 
   const loadTaskDocumentCounts = async () => {
     try {
@@ -217,6 +267,9 @@ export function TasksView() {
       formattedTasks.forEach(task => {
         loadTaskComments(task.id);
       });
+      
+      // Reload subtask counts after loading tasks
+      loadSubtaskCounts();
     } catch (error) {
       console.error('Error loading tasks:', error);
       toast({
@@ -627,6 +680,14 @@ export function TasksView() {
     }
   };
 
+  const toggleSubtasks = (taskId: string) => {
+    if (showSubtasksFor === taskId) {
+      setShowSubtasksFor(null);
+    } else {
+      setShowSubtasksFor(taskId);
+    }
+  };
+
   const toggleDocuments = (taskId: string) => {
     if (showDocumentsFor === taskId) {
       setShowDocumentsFor(null);
@@ -940,6 +1001,27 @@ export function TasksView() {
                       </div>
 
 
+                       {/* Subtask count indicator */}
+                       {subtaskCounts[task.id] > 0 && (
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             toggleSubtasks(task.id);
+                           }}
+                           className="gap-1 h-6 px-2 text-xs"
+                         >
+                           {showSubtasksFor === task.id ? (
+                             <ChevronDown className="h-3 w-3" />
+                           ) : (
+                             <ChevronRight className="h-3 w-3" />
+                           )}
+                           <ListTodo className="h-3 w-3" />
+                           <span>{subtaskCounts[task.id]} Unteraufgabe{subtaskCounts[task.id] !== 1 ? 'n' : ''}</span>
+                         </Button>
+                       )}
+
                        {/* Document count indicator */}
                        {taskDocuments[task.id] > 0 && (
                          <Button
@@ -994,21 +1076,56 @@ export function TasksView() {
                        )}
                     </div>
 
-                    {/* Progress Bar */}
-                    {task.progress !== undefined && task.status !== "completed" && (
-                      <div className="mt-3">
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-muted-foreground">Fortschritt</span>
-                          <span className="text-muted-foreground">{task.progress}%</span>
+                     {/* Progress Bar */}
+                     {task.progress !== undefined && task.status !== "completed" && (
+                       <div className="mt-3">
+                         <div className="flex justify-between text-sm mb-1">
+                           <span className="text-muted-foreground">Fortschritt</span>
+                           <span className="text-muted-foreground">{task.progress}%</span>
+                         </div>
+                         <div className="w-full bg-secondary rounded-full h-2">
+                           <div
+                             className="bg-primary h-2 rounded-full transition-all duration-300"
+                             style={{ width: `${task.progress}%` }}
+                           ></div>
+                         </div>
                         </div>
-                        <div className="w-full bg-secondary rounded-full h-2">
-                          <div
-                            className="bg-primary h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${task.progress}%` }}
-                          ></div>
+                      )}
+
+                      {/* Inline Subtasks */}
+                      {showSubtasksFor === task.id && (
+                        <div className="mt-4 pt-4 border-t space-y-3">
+                          <h4 className="text-sm font-medium text-foreground mb-3">Unteraufgaben ({subtasks[task.id]?.length || 0})</h4>
+                          {subtasks[task.id]?.map((subtask) => (
+                            <div key={subtask.id} className="bg-muted/50 rounded-lg p-3">
+                              <div className="flex items-start gap-3">
+                                <Checkbox
+                                  checked={subtask.is_completed}
+                                  className="mt-0.5"
+                                />
+                                <div className="flex-1">
+                                  <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
+                                    {subtask.description}
+                                  </p>
+                                  <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                                    {subtask.assigned_to && (
+                                      <span>Zuständig: {subtask.assigned_to}</span>
+                                    )}
+                                    {subtask.due_date && (
+                                      <span>Fällig: {formatDate(subtask.due_date)}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          {(!subtasks[task.id] || subtasks[task.id].length === 0) && (
+                            <div className="text-center py-4 text-muted-foreground text-sm">
+                              Keine Unteraufgaben vorhanden
+                            </div>
+                          )}
                         </div>
-                       </div>
-                     )}
+                      )}
 
                      {/* Inline Comments */}
                      {showCommentsFor === task.id && (

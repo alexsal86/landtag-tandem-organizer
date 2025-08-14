@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Save, User, MessageCircle, Send, Edit2, Check, Trash2, Calendar, Clock, Flag, Tag, Upload, Paperclip, Download } from "lucide-react";
+import { X, Save, User, MessageCircle, Send, Edit2, Check, Trash2, Calendar, Clock, Flag, Tag, Upload, Paperclip, Download, Plus, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +46,19 @@ interface TaskComment {
   };
 }
 
+interface Subtask {
+  id: string;
+  task_id: string;
+  user_id: string;
+  description: string;
+  assigned_to?: string;
+  due_date?: string;
+  is_completed: boolean;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface TaskDetailSidebarProps {
   task: Task | null;
   isOpen: boolean;
@@ -73,6 +86,9 @@ export function TaskDetailSidebar({
   const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
   const [taskDocuments, setTaskDocuments] = useState<TaskDocument[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [newSubtask, setNewSubtask] = useState({ description: '', assigned_to: '', due_date: '' });
+  const [editingSubtask, setEditingSubtask] = useState<{ [id: string]: Partial<Subtask> }>({});
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -90,9 +106,25 @@ export function TaskDetailSidebar({
       });
       loadTaskComments(task.id);
       loadTaskDocuments(task.id);
+      loadSubtasks(task.id);
     }
     loadUsers();
   }, [task]);
+
+  const loadSubtasks = async (taskId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('subtasks')
+        .select('*')
+        .eq('task_id', taskId)
+        .order('order_index', { ascending: true });
+
+      if (error) throw error;
+      setSubtasks(data || []);
+    } catch (error) {
+      console.error('Error loading subtasks:', error);
+    }
+  };
 
   const loadTaskDocuments = async (taskId: string) => {
     try {
@@ -427,6 +459,119 @@ export function TaskDetailSidebar({
     }
   };
 
+  const addSubtask = async () => {
+    if (!newSubtask.description.trim() || !task || !user) return;
+
+    try {
+      const nextOrderIndex = Math.max(...subtasks.map(s => s.order_index), -1) + 1;
+      
+      const { error } = await supabase
+        .from('subtasks')
+        .insert({
+          task_id: task.id,
+          user_id: user.id,
+          description: newSubtask.description.trim(),
+          assigned_to: newSubtask.assigned_to || null,
+          due_date: newSubtask.due_date || null,
+          order_index: nextOrderIndex,
+        });
+
+      if (error) throw error;
+
+      setNewSubtask({ description: '', assigned_to: '', due_date: '' });
+      loadSubtasks(task.id);
+
+      toast({
+        title: "Unteraufgabe hinzugefügt",
+        description: "Die Unteraufgabe wurde erfolgreich erstellt.",
+      });
+    } catch (error) {
+      console.error('Error adding subtask:', error);
+      toast({
+        title: "Fehler",
+        description: "Unteraufgabe konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateSubtask = async (subtaskId: string, updates: Partial<Subtask>) => {
+    try {
+      const { error } = await supabase
+        .from('subtasks')
+        .update(updates)
+        .eq('id', subtaskId);
+
+      if (error) throw error;
+
+      loadSubtasks(task!.id);
+      
+      // Remove from editing state
+      setEditingSubtask(prev => {
+        const updated = { ...prev };
+        delete updated[subtaskId];
+        return updated;
+      });
+
+      toast({
+        title: "Unteraufgabe aktualisiert",
+        description: "Die Änderungen wurden gespeichert.",
+      });
+    } catch (error) {
+      console.error('Error updating subtask:', error);
+      toast({
+        title: "Fehler",
+        description: "Unteraufgabe konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleSubtaskComplete = async (subtaskId: string, isCompleted: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('subtasks')
+        .update({ is_completed: isCompleted })
+        .eq('id', subtaskId);
+
+      if (error) throw error;
+
+      loadSubtasks(task!.id);
+    } catch (error) {
+      console.error('Error toggling subtask completion:', error);
+      toast({
+        title: "Fehler",
+        description: "Status konnte nicht geändert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteSubtask = async (subtaskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('subtasks')
+        .delete()
+        .eq('id', subtaskId);
+
+      if (error) throw error;
+
+      loadSubtasks(task!.id);
+
+      toast({
+        title: "Unteraufgabe gelöscht",
+        description: "Die Unteraufgabe wurde entfernt.",
+      });
+    } catch (error) {
+      console.error('Error deleting subtask:', error);
+      toast({
+        title: "Fehler",
+        description: "Unteraufgabe konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("de-DE", {
@@ -589,6 +734,194 @@ export function TaskDetailSidebar({
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Speichern...' : 'Speichern'}
             </Button>
+          </div>
+
+          <Separator />
+
+          {/* Subtasks Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ListTodo className="h-4 w-4" />
+                <h3 className="font-medium">Unteraufgaben ({subtasks.length})</h3>
+              </div>
+            </div>
+
+            {/* Add new subtask */}
+            <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
+              <div>
+                <Label htmlFor="subtask-description">Beschreibung</Label>
+                <Input
+                  id="subtask-description"
+                  placeholder="Neue Unteraufgabe..."
+                  value={newSubtask.description}
+                  onChange={(e) => setNewSubtask(prev => ({ ...prev, description: e.target.value }))}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="subtask-assigned">Zuständig</Label>
+                  <Select
+                    value={newSubtask.assigned_to}
+                    onValueChange={(value) => setNewSubtask(prev => ({ ...prev, assigned_to: value === 'unassigned' ? '' : value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Optional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                      {users.map((user) => (
+                        <SelectItem key={user.user_id} value={user.user_id}>
+                          {user.display_name || 'Unbekannter Benutzer'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="subtask-due">Fällig</Label>
+                  <Input
+                    id="subtask-due"
+                    type="date"
+                    value={newSubtask.due_date}
+                    onChange={(e) => setNewSubtask(prev => ({ ...prev, due_date: e.target.value }))}
+                  />
+                </div>
+              </div>
+              
+              <Button onClick={addSubtask} size="sm" disabled={!newSubtask.description.trim()} className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Unteraufgabe hinzufügen
+              </Button>
+            </div>
+
+            {/* Existing subtasks */}
+            <div className="space-y-2">
+              {subtasks.map((subtask) => (
+                <div key={subtask.id} className="p-3 bg-muted/30 rounded-lg">
+                  {editingSubtask[subtask.id] ? (
+                    <div className="space-y-3">
+                      <Input
+                        value={editingSubtask[subtask.id]?.description || subtask.description}
+                        onChange={(e) => setEditingSubtask(prev => ({
+                          ...prev,
+                          [subtask.id]: { ...prev[subtask.id], description: e.target.value }
+                        }))}
+                        placeholder="Beschreibung..."
+                      />
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select
+                          value={editingSubtask[subtask.id]?.assigned_to || subtask.assigned_to || 'unassigned'}
+                          onValueChange={(value) => setEditingSubtask(prev => ({
+                            ...prev,
+                            [subtask.id]: { ...prev[subtask.id], assigned_to: value === 'unassigned' ? null : value }
+                          }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Zuständig" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                            {users.map((user) => (
+                              <SelectItem key={user.user_id} value={user.user_id}>
+                                {user.display_name || 'Unbekannter Benutzer'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        
+                        <Input
+                          type="date"
+                          value={editingSubtask[subtask.id]?.due_date || (subtask.due_date ? subtask.due_date.split('T')[0] : '')}
+                          onChange={(e) => setEditingSubtask(prev => ({
+                            ...prev,
+                            [subtask.id]: { ...prev[subtask.id], due_date: e.target.value }
+                          }))}
+                        />
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => updateSubtask(subtask.id, editingSubtask[subtask.id])}
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Speichern
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingSubtask(prev => {
+                            const updated = { ...prev };
+                            delete updated[subtask.id];
+                            return updated;
+                          })}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Abbrechen
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={subtask.is_completed}
+                        onChange={(e) => toggleSubtaskComplete(subtask.id, e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
+                          {subtask.description}
+                        </p>
+                        <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                          {subtask.assigned_to && (
+                            <span>Zuständig: {users.find(u => u.user_id === subtask.assigned_to)?.display_name || subtask.assigned_to}</span>
+                          )}
+                          {subtask.due_date && (
+                            <span>Fällig: {formatDate(subtask.due_date)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          onClick={() => setEditingSubtask(prev => ({
+                            ...prev,
+                            [subtask.id]: {
+                              description: subtask.description,
+                              assigned_to: subtask.assigned_to,
+                              due_date: subtask.due_date
+                            }
+                          }))}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                          onClick={() => deleteSubtask(subtask.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {subtasks.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Noch keine Unteraufgaben erstellt
+                </p>
+              )}
+            </div>
           </div>
 
           <Separator />
