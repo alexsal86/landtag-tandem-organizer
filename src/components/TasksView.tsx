@@ -1166,10 +1166,20 @@ export function TasksView() {
                 Verwalten Sie Ihre Aufgaben und To-Dos effizient
               </p>
             </div>
-            <Button className="gap-2" onClick={() => window.location.href = '/tasks/new'}>
-              <Plus className="h-4 w-4" />
-              Neue Aufgabe
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => setArchiveModalOpen(true)}
+              >
+                <Archive className="h-4 w-4" />
+                Aufgaben-Archiv
+              </Button>
+              <Button className="gap-2" onClick={() => window.location.href = '/tasks/new'}>
+                <Plus className="h-4 w-4" />
+                Neue Aufgabe
+              </Button>
+            </div>
           </div>
 
         {/* Filter Tabs */}
@@ -1695,75 +1705,6 @@ export function TasksView() {
           )}
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Archive Link */}
-          <Card className="bg-card shadow-card border-border">
-            <CardContent className="p-4">
-              <Button 
-                variant="outline" 
-                className="w-full gap-2"
-                onClick={() => setArchiveModalOpen(true)}
-              >
-                <Archive className="h-4 w-4" />
-                Aufgaben-Archiv
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Quick Stats */}
-          <Card className="bg-card shadow-card border-border">
-            <CardHeader>
-              <CardTitle className="text-lg">Übersicht</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Gesamt</span>
-                  <span className="font-semibold">{taskCounts.all}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Offen</span>
-                  <span className="font-semibold">{taskCounts.todo + taskCounts.inProgress}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Erledigt</span>
-                  <span className="font-semibold text-green-600">{taskCounts.completed}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Überfällig</span>
-                  <span className="font-semibold text-destructive">{taskCounts.overdue}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Activity */}
-          <Card className="bg-card shadow-card border-border">
-            <CardHeader>
-              <CardTitle className="text-lg">Letzte Aktivitäten</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm">
-                {recentActivities.length > 0 ? (
-                  recentActivities.map((activity) => (
-                    <div key={activity.id}>
-                      <div className="font-medium">
-                        {activity.type === 'completed' && 'Aufgabe erledigt'}
-                        {activity.type === 'updated' && 'Aufgabe aktualisiert'}
-                        {activity.type === 'created' && 'Aufgabe erstellt'}
-                      </div>
-                      <div className="text-muted-foreground">{activity.taskTitle}</div>
-                      <div className="text-xs text-muted-foreground">{activity.timestamp}</div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-muted-foreground">Keine Aktivitäten vorhanden</div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       <TaskArchiveModal
