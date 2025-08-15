@@ -69,6 +69,13 @@ export function SnoozeManagementSidebar({
     });
   };
 
+  // Filter out expired snoozes
+  const activeSnoozes = snoozes.filter(snooze => {
+    const snoozeDate = new Date(snooze.snoozed_until);
+    const now = new Date();
+    return snoozeDate > now;
+  });
+
   return (
     <>
       {/* Overlay */}
@@ -119,13 +126,13 @@ export function SnoozeManagementSidebar({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto space-y-4">
-            {snoozes.length === 0 ? (
+            {activeSnoozes.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <AlarmClock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Keine Wiedervorlagen vorhanden</p>
+                <p>Keine aktiven Wiedervorlagen vorhanden</p>
               </div>
             ) : (
-              snoozes.map((snooze) => (
+              activeSnoozes.map((snooze) => (
                 <Card key={snooze.id} className="relative">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
