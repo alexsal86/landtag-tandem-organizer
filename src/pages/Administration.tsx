@@ -353,6 +353,74 @@ export default function Administration() {
     savePlanningTemplateItems(newItems);
   };
 
+  // Configuration item functions
+  const addConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses', value: string, color?: string) => {
+    if (!value.trim()) return;
+    
+    try {
+      const data: any = {
+        name: value.toLowerCase().replace(/\s+/g, '_'),
+        label: value,
+        order_index: getNextOrderIndex(tableName)
+      };
+      
+      if (color) data.color = color;
+      
+      const { error } = await supabase.from(tableName).insert(data);
+      if (error) throw error;
+      
+      await loadData();
+      setNewItem(null);
+      toast({ title: "Gespeichert", description: "Element erfolgreich hinzugefügt." });
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Fehler", description: "Fehler beim Hinzufügen.", variant: "destructive" });
+    }
+  };
+
+  const saveConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses', id: string, value: string, color?: string) => {
+    if (!value.trim()) return;
+    
+    try {
+      const data: any = {
+        name: value.toLowerCase().replace(/\s+/g, '_'),
+        label: value
+      };
+      
+      if (color) data.color = color;
+      
+      const { error } = await supabase.from(tableName).update(data).eq('id', id);
+      if (error) throw error;
+      
+      await loadData();
+      setEditingItem(null);
+      toast({ title: "Gespeichert", description: "Element erfolgreich aktualisiert." });
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
+    }
+  };
+
+  const deleteConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses', id: string) => {
+    try {
+      const { error } = await supabase.from(tableName).delete().eq('id', id);
+      if (error) throw error;
+      
+      await loadData();
+      toast({ title: "Gelöscht", description: "Element erfolgreich gelöscht." });
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Fehler", description: "Fehler beim Löschen.", variant: "destructive" });
+    }
+  };
+
+  const getNextOrderIndex = (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses') => {
+    const items = tableName === 'appointment_categories' ? appointmentCategories :
+                  tableName === 'appointment_statuses' ? appointmentStatuses :
+                  tableName === 'task_categories' ? taskCategories : taskStatuses;
+    return Math.max(...items.map(i => i.order_index), -1) + 1;
+  };
+
   const deleteTemplateItem = (index: number, subIndex?: number) => {
     const newItems = [...templateItems];
     if (subIndex !== undefined) {
@@ -407,6 +475,283 @@ export default function Administration() {
 
         <TabsContent value="general" className="space-y-6">
           <GeneralSettings />
+        </TabsContent>
+
+        <TabsContent value="appointments" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Termine - Kategorien</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {appointmentCategories.map((item, index) => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    {editingItem?.type === 'appointment_categories' && editingItem.id === item.id ? (
+                      <>
+                        <Input
+                          value={editingItem.value}
+                          onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Input
+                          type="color"
+                          value={editingItem.color || '#3b82f6'}
+                          onChange={(e) => setEditingItem({ ...editingItem, color: e.target.value })}
+                          className="w-12 h-9 p-1 rounded border"
+                        />
+                        <Button size="sm" onClick={() => saveConfigItem('appointment_categories', item.id, editingItem.value, editingItem.color)}>
+                          <Check className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: item.color }}></div>
+                        <span className="flex-1">{item.label}</span>
+                        <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'appointment_categories', id: item.id, value: item.label, color: item.color })}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('appointment_categories', item.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                
+                {newItem?.type === 'appointment_categories' ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newItem.value}
+                      onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
+                      placeholder="Neue Kategorie..."
+                      className="flex-1"
+                    />
+                    <Input
+                      type="color"
+                      value={newItem.color || '#3b82f6'}
+                      onChange={(e) => setNewItem({ ...newItem, color: e.target.value })}
+                      className="w-12 h-9 p-1 rounded border"
+                    />
+                    <Button size="sm" onClick={() => addConfigItem('appointment_categories', newItem.value, newItem.color)}>
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setNewItem({ type: 'appointment_categories', value: '', color: '#3b82f6' })}
+                    disabled={!!editingItem || !!newItem}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Kategorie hinzufügen
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Termine - Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {appointmentStatuses.map((item, index) => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    {editingItem?.type === 'appointment_statuses' && editingItem.id === item.id ? (
+                      <>
+                        <Input
+                          value={editingItem.value}
+                          onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Button size="sm" onClick={() => saveConfigItem('appointment_statuses', item.id, editingItem.value)}>
+                          <Check className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1">{item.label}</span>
+                        <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'appointment_statuses', id: item.id, value: item.label })}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('appointment_statuses', item.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                
+                {newItem?.type === 'appointment_statuses' ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newItem.value}
+                      onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
+                      placeholder="Neuer Status..."
+                      className="flex-1"
+                    />
+                    <Button size="sm" onClick={() => addConfigItem('appointment_statuses', newItem.value)}>
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setNewItem({ type: 'appointment_statuses', value: '' })}
+                    disabled={!!editingItem || !!newItem}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Status hinzufügen
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="tasks" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Aufgaben - Kategorien</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {taskCategories.map((item, index) => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    {editingItem?.type === 'task_categories' && editingItem.id === item.id ? (
+                      <>
+                        <Input
+                          value={editingItem.value}
+                          onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Button size="sm" onClick={() => saveConfigItem('task_categories', item.id, editingItem.value)}>
+                          <Check className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1">{item.label}</span>
+                        <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'task_categories', id: item.id, value: item.label })}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('task_categories', item.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                
+                {newItem?.type === 'task_categories' ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newItem.value}
+                      onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
+                      placeholder="Neue Kategorie..."
+                      className="flex-1"
+                    />
+                    <Button size="sm" onClick={() => addConfigItem('task_categories', newItem.value)}>
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setNewItem({ type: 'task_categories', value: '' })}
+                    disabled={!!editingItem || !!newItem}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Kategorie hinzufügen
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Aufgaben - Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {taskStatuses.map((item, index) => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    {editingItem?.type === 'task_statuses' && editingItem.id === item.id ? (
+                      <>
+                        <Input
+                          value={editingItem.value}
+                          onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Button size="sm" onClick={() => saveConfigItem('task_statuses', item.id, editingItem.value)}>
+                          <Check className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1">{item.label}</span>
+                        <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'task_statuses', id: item.id, value: item.label })}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('task_statuses', item.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                
+                {newItem?.type === 'task_statuses' ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newItem.value}
+                      onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
+                      placeholder="Neuer Status..."
+                      className="flex-1"
+                    />
+                    <Button size="sm" onClick={() => addConfigItem('task_statuses', newItem.value)}>
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setNewItem({ type: 'task_statuses', value: '' })}
+                    disabled={!!editingItem || !!newItem}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Status hinzufügen
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="meetings" className="space-y-6">
@@ -492,26 +837,54 @@ export default function Administration() {
                                       </div>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center gap-2">
-                                      <div {...provided.dragHandleProps}>
-                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                      </div>
-                                      <span className="font-medium flex-1">{item.title}</span>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => setEditingTemplate({ id: `${index}`, field: 'title', value: item.title })}
-                                      >
-                                        <Edit className="h-3 w-3" />
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => deleteTemplateItem(index)}
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </div>
+                                     <div className="space-y-2">
+                                       <div className="flex items-center gap-2">
+                                         <div {...provided.dragHandleProps}>
+                                           <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                         </div>
+                                         <span className="font-medium flex-1">{item.title}</span>
+                                         <Button
+                                           size="sm"
+                                           variant="outline"
+                                           onClick={() => setNewTemplateItem({ title: '', parentIndex: index })}
+                                         >
+                                           <Plus className="h-3 w-3 mr-1" />
+                                           Unterpunkt
+                                         </Button>
+                                         <Button
+                                           size="sm"
+                                           variant="outline"
+                                           onClick={() => setEditingTemplate({ id: `${index}`, field: 'title', value: item.title })}
+                                         >
+                                           <Edit className="h-3 w-3" />
+                                         </Button>
+                                         <Button
+                                           size="sm"
+                                           variant="destructive"
+                                           onClick={() => deleteTemplateItem(index)}
+                                         >
+                                           <Trash2 className="h-3 w-3" />
+                                         </Button>
+                                       </div>
+                                       
+                                       {/* Sub-items */}
+                                       {item.children && item.children.length > 0 && (
+                                         <div className="ml-8 space-y-2">
+                                           {item.children.map((subItem: any, subIndex: number) => (
+                                             <div key={subIndex} className="flex items-center gap-2 text-sm">
+                                               <span className="flex-1 text-muted-foreground">• {subItem.title}</span>
+                                               <Button
+                                                 size="sm"
+                                                 variant="outline"
+                                                 onClick={() => deleteTemplateItem(index, subIndex)}
+                                               >
+                                                 <Trash2 className="h-3 w-3" />
+                                               </Button>
+                                             </div>
+                                           ))}
+                                         </div>
+                                       )}
+                                     </div>
                                   )}
                                 </div>
                               )}
@@ -520,17 +893,17 @@ export default function Administration() {
                           {provided.placeholder}
                           
                           {/* Add new item */}
-                          {newTemplateItem && newTemplateItem.parentIndex === undefined ? (
+                          {newTemplateItem ? (
                             <div className="flex gap-2">
                               <Input
                                 value={newTemplateItem.title}
                                 onChange={(e) => setNewTemplateItem({ ...newTemplateItem, title: e.target.value })}
-                                placeholder="Punkt eingeben (--- für Trenner)..."
+                                placeholder={newTemplateItem.parentIndex !== undefined ? "Unterpunkt eingeben..." : "Punkt eingeben (--- für Trenner)..."}
                                 className="flex-1"
                               />
                               <Button 
                                 size="sm" 
-                                onClick={() => addTemplateItem(newTemplateItem.title)}
+                                onClick={() => addTemplateItem(newTemplateItem.title, newTemplateItem.parentIndex)}
                                 disabled={!newTemplateItem.title.trim()}
                               >
                                 <Save className="h-3 w-3" />
@@ -548,7 +921,7 @@ export default function Administration() {
                               variant="outline"
                               className="w-full"
                               onClick={() => setNewTemplateItem({ title: '' })}
-                              disabled={!!editingTemplate || !!newTemplateItem}
+                              disabled={!!editingTemplate}
                             >
                               <Plus className="h-4 w-4 mr-2" />
                               Punkt hinzufügen
@@ -649,26 +1022,54 @@ export default function Administration() {
                                       </div>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center gap-2">
-                                      <div {...provided.dragHandleProps}>
-                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                      </div>
-                                      <span className="font-medium flex-1">{item.title}</span>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => setEditingPlanningTemplate({ id: `${index}`, field: 'title', value: item.title })}
-                                      >
-                                        <Edit className="h-3 w-3" />
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => deletePlanningTemplateItem(index)}
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </div>
+                                     <div className="space-y-2">
+                                       <div className="flex items-center gap-2">
+                                         <div {...provided.dragHandleProps}>
+                                           <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                         </div>
+                                         <span className="font-medium flex-1">{item.title}</span>
+                                         <Button
+                                           size="sm"
+                                           variant="outline"
+                                           onClick={() => setNewPlanningTemplateItem({ title: '', parentIndex: index })}
+                                         >
+                                           <Plus className="h-3 w-3 mr-1" />
+                                           Unterpunkt
+                                         </Button>
+                                         <Button
+                                           size="sm"
+                                           variant="outline"
+                                           onClick={() => setEditingPlanningTemplate({ id: `${index}`, field: 'title', value: item.title })}
+                                         >
+                                           <Edit className="h-3 w-3" />
+                                         </Button>
+                                         <Button
+                                           size="sm"
+                                           variant="destructive"
+                                           onClick={() => deletePlanningTemplateItem(index)}
+                                         >
+                                           <Trash2 className="h-3 w-3" />
+                                         </Button>
+                                       </div>
+                                       
+                                       {/* Sub-items */}
+                                       {item.sub_items && item.sub_items.length > 0 && (
+                                         <div className="ml-8 space-y-2">
+                                           {item.sub_items.map((subItem: any, subIndex: number) => (
+                                             <div key={subIndex} className="flex items-center gap-2 text-sm">
+                                               <span className="flex-1 text-muted-foreground">• {subItem.title}</span>
+                                               <Button
+                                                 size="sm"
+                                                 variant="outline"
+                                                 onClick={() => deletePlanningTemplateItem(index, subIndex)}
+                                               >
+                                                 <Trash2 className="h-3 w-3" />
+                                               </Button>
+                                             </div>
+                                           ))}
+                                         </div>
+                                       )}
+                                     </div>
                                   )}
                                 </div>
                               )}
@@ -677,17 +1078,17 @@ export default function Administration() {
                           {provided.placeholder}
                           
                           {/* Add new item */}
-                          {newPlanningTemplateItem && newPlanningTemplateItem.parentIndex === undefined ? (
+                          {newPlanningTemplateItem ? (
                             <div className="flex gap-2">
                               <Input
                                 value={newPlanningTemplateItem.title}
                                 onChange={(e) => setNewPlanningTemplateItem({ ...newPlanningTemplateItem, title: e.target.value })}
-                                placeholder="Punkt eingeben (--- für Trenner)..."
+                                placeholder={newPlanningTemplateItem.parentIndex !== undefined ? "Unterpunkt eingeben..." : "Punkt eingeben (--- für Trenner)..."}
                                 className="flex-1"
                               />
                               <Button 
                                 size="sm" 
-                                onClick={() => addPlanningTemplateItem(newPlanningTemplateItem.title)}
+                                onClick={() => addPlanningTemplateItem(newPlanningTemplateItem.title, newPlanningTemplateItem.parentIndex)}
                                 disabled={!newPlanningTemplateItem.title.trim()}
                               >
                                 <Save className="h-3 w-3" />
@@ -705,7 +1106,7 @@ export default function Administration() {
                               variant="outline"
                               className="w-full"
                               onClick={() => setNewPlanningTemplateItem({ title: '' })}
-                              disabled={!!editingPlanningTemplate || !!newPlanningTemplateItem}
+                              disabled={!!editingPlanningTemplate}
                             >
                               <Plus className="h-4 w-4 mr-2" />
                               Punkt hinzufügen
