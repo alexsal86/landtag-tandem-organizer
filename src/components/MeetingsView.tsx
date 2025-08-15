@@ -1918,22 +1918,31 @@ export function MeetingsView() {
                                               </Button>
                                             </div>
                                           </div>
-                                       </>
-                                     )}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
+                                        </>
+                                      )}
+                                    </CardContent>
+                                  </Card>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                    
+                    <div className="mt-4 flex gap-2">
+                      <Button onClick={addAgendaItem}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Punkt hinzufügen
+                      </Button>
+                      <Button onClick={saveAgendaItems} variant="outline">
+                        <Save className="h-4 w-4 mr-2" />
+                        Speichern
+                      </Button>
                     </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
-
-                {agendaItems.length === 0 && (
+                  </div>
+                ) : (
                   <Card>
                     <CardContent className="p-8 text-center">
                       <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -1947,19 +1956,20 @@ export function MeetingsView() {
                       </Button>
                     </CardContent>
                   </Card>
-                 )}
-            </>
-          ) : !activeMeeting ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium">Kein Meeting ausgewählt</h3>
-                <p className="text-muted-foreground">
-                  Wählen Sie ein Meeting aus der Liste links aus, um die Agenda zu bearbeiten
-                </p>
-              </CardContent>
-            </Card>
-          ) : null}
+                )}
+              </>
+            ) : !activeMeeting ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium">Kein Meeting ausgewählt</h3>
+                  <p className="text-muted-foreground">
+                    Wählen Sie ein Meeting aus der Liste links aus, um die Agenda zu bearbeiten
+                  </p>
+                </CardContent>
+              </Card>
+            ) : null}
+        </div>
       </div>
     </div>
   );
