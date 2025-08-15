@@ -149,6 +149,10 @@ export function EventPlanningView() {
   const [showItemSubtasks, setShowItemSubtasks] = useState<{ [itemId: string]: boolean }>({});
   const [showItemComments, setShowItemComments] = useState<{ [itemId: string]: boolean }>({});
   const [showItemDocuments, setShowItemDocuments] = useState<{ [itemId: string]: boolean }>({});
+  
+  // New states for result dialog
+  const [completingSubtask, setCompletingSubtask] = useState<string | null>(null);
+  const [completionResult, setCompletionResult] = useState('');
 
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user);
@@ -1295,6 +1299,46 @@ export function EventPlanningView() {
     }
   };
 
+  const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string, itemId: string) => {
+    try {
+      const updateData = isCompleted 
+        ? { 
+            is_completed: true, 
+            result_text: result || null,
+            completed_at: new Date().toISOString()
+          }
+        : { 
+            is_completed: false, 
+            result_text: null,
+            completed_at: null
+          };
+
+      const { error } = await supabase
+        .from('planning_item_subtasks')
+        .update(updateData)
+        .eq('id', subtaskId);
+
+      if (error) throw error;
+
+      loadItemSubtasks(itemId);
+      loadAllItemCounts();
+
+      if (isCompleted) {
+        toast({
+          title: "Unteraufgabe abgeschlossen",
+          description: "Die Unteraufgabe wurde erfolgreich als erledigt markiert.",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating subtask:', error);
+      toast({
+        title: "Fehler",
+        description: "Unteraufgabe konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const updateItemComment = async (commentId: string, newContent: string) => {
     if (!user) return;
 
@@ -1950,18 +1994,25 @@ export function EventPlanningView() {
                                              <div className="flex items-center space-x-2">
                                                <Checkbox
                                                  checked={subtask.is_completed}
-                                                 onCheckedChange={() => {
-                                                   supabase
-                                                     .from('planning_item_subtasks')
-                                                     .update({ 
-                                                       is_completed: !subtask.is_completed,
-                                                       completed_at: !subtask.is_completed ? new Date().toISOString() : null
-                                                     })
-                                                     .eq('id', subtask.id)
-                                                     .then(() => {
-                                                       loadItemSubtasks(item.id);
-                                                       loadAllItemCounts();
-                                                     });
+                                                 onCheckedChange={(checked) => {
+                                                   if (checked) {
+                                                     setCompletingSubtask(subtask.id);
+                                                     setCompletionResult('');
+                                                   } else {
+                                                     // When unchecking, directly update
+                                                     supabase
+                                                       .from('planning_item_subtasks')
+                                                       .update({ 
+                                                         is_completed: false,
+                                                         result_text: null,
+                                                         completed_at: null
+                                                       })
+                                                       .eq('id', subtask.id)
+                                                       .then(() => {
+                                                         loadItemSubtasks(item.id);
+                                                         loadAllItemCounts();
+                                                       });
+                                                   }
                                                  }}
                                                />
                                                <Input
@@ -2037,6 +2088,18 @@ export function EventPlanningView() {
                                                  <Trash2 className="h-3 w-3" />
                                                </Button>
                                              </div>
+                                             {/* Result text display */}
+                                             {subtask.result_text && (
+                                               <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
+                                                 <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
+                                                 <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
+                                                 {subtask.completed_at && (
+                                                   <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                                     Abgeschlossen: {format(new Date(subtask.completed_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                                                   </p>
+                                                 )}
+                                               </div>
+                                             )}
                                            </div>
                                          ))}
                                          {/* Add new subtask form */}
@@ -2311,6 +2374,56 @@ export function EventPlanningView() {
           </Card>
         </div>
       </div>
+
+      {/* Result Dialog for Subtasks */}
+      <Dialog open={!!completingSubtask} onOpenChange={() => setCompletingSubtask(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unteraufgabe abschließen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Wie wurde die Unteraufgabe gelöst?</Label>
+              <Textarea
+                placeholder="Beschreiben Sie, wie die Unteraufgabe erledigt wurde..."
+                value={completionResult}
+                onChange={(e) => setCompletionResult(e.target.value)}
+                className="mt-2"
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCompletingSubtask(null);
+                  setCompletionResult('');
+                }}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={() => {
+                  if (completingSubtask) {
+                    // Find the parent item for this subtask
+                    const parentItemId = Object.keys(itemSubtasks).find(itemId =>
+                      itemSubtasks[itemId].some(subtask => subtask.id === completingSubtask)
+                    );
+                    if (parentItemId) {
+                      handleSubtaskComplete(completingSubtask, true, completionResult, parentItemId);
+                      setCompletingSubtask(null);
+                      setCompletionResult('');
+                    }
+                  }
+                }}
+                disabled={!completionResult.trim()}
+              >
+                Als erledigt markieren
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
