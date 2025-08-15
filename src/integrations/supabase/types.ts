@@ -1058,6 +1058,7 @@ export type Database = {
           template_items: Json
           updated_at: string
           user_id: string
+          version: number | null
         }
         Insert: {
           created_at?: string
@@ -1067,6 +1068,7 @@ export type Database = {
           template_items?: Json
           updated_at?: string
           user_id: string
+          version?: number | null
         }
         Update: {
           created_at?: string
@@ -1076,6 +1078,7 @@ export type Database = {
           template_items?: Json
           updated_at?: string
           user_id?: string
+          version?: number | null
         }
         Relationships: []
       }
@@ -1227,6 +1230,7 @@ export type Database = {
           template_items: Json
           updated_at: string
           user_id: string
+          version: number | null
         }
         Insert: {
           created_at?: string
@@ -1236,6 +1240,7 @@ export type Database = {
           template_items?: Json
           updated_at?: string
           user_id: string
+          version?: number | null
         }
         Update: {
           created_at?: string
@@ -1245,6 +1250,7 @@ export type Database = {
           template_items?: Json
           updated_at?: string
           user_id?: string
+          version?: number | null
         }
         Relationships: []
       }

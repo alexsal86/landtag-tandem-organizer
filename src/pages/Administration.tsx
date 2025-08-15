@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Edit, Plus, Save, X, Check, Copy } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
 const ROLE_OPTIONS = [
@@ -49,154 +50,144 @@ export default function Administration() {
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
+  const [loadingData, setLoadingData] = useState<boolean>(true);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
-  const [loadingData, setLoadingData] = useState(true);
 
   // Configuration states
   const [appointmentCategories, setAppointmentCategories] = useState<ConfigItem[]>([]);
   const [appointmentStatuses, setAppointmentStatuses] = useState<ConfigItem[]>([]);
   const [taskCategories, setTaskCategories] = useState<ConfigItem[]>([]);
   const [taskStatuses, setTaskStatuses] = useState<ConfigItem[]>([]);
-  const [editingItem, setEditingItem] = useState<{type: string, id: string, value: string, color?: string} | null>(null);
-  const [newItem, setNewItem] = useState<{type: string, value: string, color?: string} | null>(null);
-  
-  // Meeting template states
-  const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-  const [templateItems, setTemplateItems] = useState<any[]>([]);
-  const [editingTemplate, setEditingTemplate] = useState<{id: string, field: string, value: string} | null>(null);
-  const [newTemplateItem, setNewTemplateItem] = useState<{parentIndex?: number, title: string} | null>(null);
-  const [editingTemplateName, setEditingTemplateName] = useState<{ id: string; value: string } | null>(null);
 
-  // Planning template states
+  // Template states
+  const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
   const [planningTemplates, setPlanningTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [selectedPlanningTemplate, setSelectedPlanningTemplate] = useState<any>(null);
+  const [templateItems, setTemplateItems] = useState<any[]>([]);
   const [planningTemplateItems, setPlanningTemplateItems] = useState<any[]>([]);
-  const [editingPlanningTemplate, setEditingPlanningTemplate] = useState<{id: string, field: string, value: string} | null>(null);
-  const [newPlanningTemplateItem, setNewPlanningTemplateItem] = useState<{parentIndex?: number, title: string} | null>(null);
+
+  // Editing states
+  const [editingItem, setEditingItem] = useState<{ type: string; id: string; value: string; color?: string } | null>(null);
+  const [newItem, setNewItem] = useState<{ type: string; value: string; color?: string } | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<{ id: string; field: string; value: string } | null>(null);
+  const [editingPlanningTemplate, setEditingPlanningTemplate] = useState<{ id: string; field: string; value: string } | null>(null);
+  const [newTemplateItem, setNewTemplateItem] = useState<{ title: string; parentIndex?: number } | null>(null);
+  const [newPlanningTemplateItem, setNewPlanningTemplateItem] = useState<{ title: string; parentIndex?: number } | null>(null);
+  const [editingTemplateName, setEditingTemplateName] = useState<{ id: string; value: string } | null>(null);
   const [editingPlanningTemplateName, setEditingPlanningTemplateName] = useState<{ id: string; value: string } | null>(null);
 
-  // SEO basics
-  useEffect(() => {
-    document.title = "Administration | Admin";
-    const link = document.createElement("link");
-    link.setAttribute("rel", "canonical");
-    link.setAttribute("href", window.location.href);
-    document.head.appendChild(link);
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, []);
+  const currentUserRole = useMemo(() => {
+    return roles.find(r => r.user_id === user?.id);
+  }, [roles, user?.id]);
 
-  // Check admin privilege
   useEffect(() => {
+    if (!loading && user) {
+      checkAdminStatus();
+      loadData();
+    }
+  }, [loading, user]);
+
+  const checkAdminStatus = async () => {
     if (!user) return;
     
-    const checkAdminStatus = async () => {
-      const [{ data: isAdminData }, { data: isSuperAdminData }] = await Promise.all([
-        supabase.rpc("has_role", { _user_id: user.id, _role: "bueroleitung" }),
-        supabase.rpc("is_admin", { _user_id: user.id })
+    try {
+      const { data: adminCheck } = await supabase.rpc('is_admin', { _user_id: user.id });
+      setIsAdmin(!!adminCheck);
+      
+      // Check for super admin (abgeordneter role)
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      
+      setIsSuperAdmin(roleData?.role === 'abgeordneter');
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  };
+
+  const loadData = async () => {
+    try {
+      setLoadingData(true);
+      
+      // Load profiles
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .order('display_name');
+      
+      // Load roles
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+      
+      // Load configuration items
+      const [categoriesRes, statusesRes, taskCatRes, taskStatRes, meetingTemplatesRes, planningTemplatesRes] = await Promise.all([
+        supabase.from('appointment_categories').select('*').order('order_index'),
+        supabase.from('appointment_statuses').select('*').order('order_index'),
+        supabase.from('task_categories').select('*').order('order_index'),
+        supabase.from('task_statuses').select('*').order('order_index'),
+        supabase.from('meeting_templates').select('*').order('name'),
+        supabase.from('planning_templates').select('*').order('name')
       ]);
       
-      setIsAdmin(!!(isAdminData || isSuperAdminData));
-      setIsSuperAdmin(!!isSuperAdminData);
-    };
-    
-    checkAdminStatus();
-  }, [user]);
+      setProfiles(profilesData || []);
+      setRoles(rolesData || []);
+      setAppointmentCategories(categoriesRes.data || []);
+      setAppointmentStatuses(statusesRes.data || []);
+      setTaskCategories(taskCatRes.data || []);
+      setTaskStatuses(taskStatRes.data || []);
+      setMeetingTemplates(meetingTemplatesRes.data || []);
+      setPlanningTemplates(planningTemplatesRes.data || []);
+      
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({ title: "Fehler", description: "Daten konnten nicht geladen werden.", variant: "destructive" });
+    } finally {
+      setLoadingData(false);
+    }
+  };
 
-  // Load all data
-  useEffect(() => {
-    const load = async () => {
-      if (!user) return;
-      setLoadingData(true);
+  // Drag & Drop handlers
+  const handleMeetingDragEnd = (result: any) => {
+    if (!result.destination) return;
 
-      try {
-        const [
-          { data: profilesData, error: pErr },
-          { data: rolesData, error: rErr },
-          { data: appointmentCategoriesData, error: acErr },
-          { data: appointmentStatusesData, error: asErr },
-          { data: taskCategoriesData, error: tcErr },
-          { data: taskStatusesData, error: tsErr },
-          { data: meetingTemplatesData, error: mtErr },
-          { data: planningTemplatesData, error: ptErr }
-        ] = await Promise.all([
-          supabase.from("profiles").select("user_id, display_name, avatar_url").order("display_name", { ascending: true, nullsFirst: false }),
-          supabase.from("user_roles").select("user_id, role"),
-          supabase.from("appointment_categories").select("*").order("order_index"),
-          supabase.from("appointment_statuses").select("*").order("order_index"),
-          supabase.from("task_categories").select("*").order("order_index"),
-          supabase.from("task_statuses").select("*").order("order_index"),
-          supabase.from("meeting_templates").select("*").order("name"),
-          supabase.from("planning_templates").select("*").order("name")
-        ]);
+    const items = Array.from(templateItems);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
 
-        if (pErr) console.error(pErr);
-        if (rErr) console.error(rErr);
-        if (acErr) console.error(acErr);
-        if (asErr) console.error(asErr);
-        if (tcErr) console.error(tcErr);
-        if (tsErr) console.error(tsErr);
-        if (mtErr) console.error(mtErr);
-        if (ptErr) console.error(ptErr);
+    // Update order_index for all items
+    const updatedItems = items.map((item, index) => ({
+      ...item,
+      order_index: index
+    }));
 
-        setProfiles(profilesData || []);
-        setRoles((rolesData as UserRole[]) || []);
-        setAppointmentCategories(appointmentCategoriesData || []);
-        setAppointmentStatuses(appointmentStatusesData || []);
-        setTaskCategories(taskCategoriesData || []);
-        setTaskStatuses(taskStatusesData || []);
-        setMeetingTemplates(meetingTemplatesData || []);
-        setPlanningTemplates(planningTemplatesData || []);
-        
-        // Load first template by default
-        if (meetingTemplatesData && meetingTemplatesData.length > 0) {
-          setSelectedTemplate(meetingTemplatesData[0]);
-          const templateItems = Array.isArray(meetingTemplatesData[0].template_items) 
-            ? meetingTemplatesData[0].template_items 
-            : [];
-          setTemplateItems(templateItems);
-        }
+    setTemplateItems(updatedItems);
+    saveTemplateItems(updatedItems);
+  };
 
-        // Load first planning template by default
-        if (planningTemplatesData && planningTemplatesData.length > 0) {
-          setSelectedPlanningTemplate(planningTemplatesData[0]);
-          const planningTemplateItems = Array.isArray(planningTemplatesData[0].template_items) 
-            ? planningTemplatesData[0].template_items 
-            : [];
-          setPlanningTemplateItems(planningTemplateItems);
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoadingData(false);
-      }
-    };
+  const handlePlanningDragEnd = (result: any) => {
+    if (!result.destination) return;
 
-    load();
-  }, [user]);
+    const items = Array.from(planningTemplateItems);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
 
-  const roleByUser = useMemo(() => {
-    const priority: Record<RoleValue, number> = {
-      abgeordneter: 4,
-      bueroleitung: 3,
-      mitarbeiter: 2,
-      praktikant: 1,
-    } as any;
-    const map = new Map<string, RoleValue | undefined>();
-    roles.forEach((r) => {
-      const current = map.get(r.user_id);
-      if (!current) return map.set(r.user_id, r.role);
-      if (priority[r.role] > priority[current]) map.set(r.user_id, r.role);
-    });
-    return map;
-  }, [roles]);
+    // Update order_index for all items
+    const updatedItems = items.map((item, index) => ({
+      ...item,
+      order_index: index
+    }));
 
-  const setRole = async (targetUserId: string, role: RoleValue | "none") => {
-    if (!user) return;
+    setPlanningTemplateItems(updatedItems);
+    savePlanningTemplateItems(updatedItems);
+  };
+
+  const updateUserRole = async (targetUserId: string, role: RoleValue | "none") => {
     try {
       setBusyUserId(targetUserId);
       const { error: delErr } = await supabase.from("user_roles").delete().eq("user_id", targetUserId);
@@ -221,115 +212,17 @@ export default function Administration() {
     }
   };
 
-  const saveConfigItem = async (type: string, id: string, label: string, color?: string) => {
-    try {
-      if (type === 'appointment_categories') {
-        const updateData: any = { label };
-        if (color !== undefined) updateData.color = color;
-        const { error } = await supabase.from('appointment_categories').update(updateData).eq('id', id);
-        if (error) throw error;
-        const { data } = await supabase.from('appointment_categories').select("*").order("order_index");
-        setAppointmentCategories(data || []);
-      } else if (type === 'appointment_statuses') {
-        const { error } = await supabase.from('appointment_statuses').update({ label }).eq('id', id);
-        if (error) throw error;
-        const { data } = await supabase.from('appointment_statuses').select("*").order("order_index");
-        setAppointmentStatuses(data || []);
-      } else if (type === 'task_categories') {
-        const { error } = await supabase.from('task_categories').update({ label }).eq('id', id);
-        if (error) throw error;
-        const { data } = await supabase.from('task_categories').select("*").order("order_index");
-        setTaskCategories(data || []);
-      } else if (type === 'task_statuses') {
-        const { error } = await supabase.from('task_statuses').update({ label }).eq('id', id);
-        if (error) throw error;
-        const { data } = await supabase.from('task_statuses').select("*").order("order_index");
-        setTaskStatuses(data || []);
-      }
-      
-      setEditingItem(null);
-      toast({ title: "Gespeichert", description: "Eintrag erfolgreich aktualisiert." });
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
-    }
-  };
-
-  const addConfigItem = async (type: string, label: string, color?: string) => {
-    try {
-      const name = label.toLowerCase().replace(/\s+/g, '_').replace(/[äöüß]/g, (char) => {
-        const map: Record<string, string> = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss' };
-        return map[char] || char;
-      });
-      
-      if (type === 'appointment_categories') {
-        const insertData: any = { name, label, order_index: 999 };
-        if (color) insertData.color = color;
-        const { error } = await supabase.from('appointment_categories').insert(insertData);
-        if (error) throw error;
-        const { data } = await supabase.from('appointment_categories').select("*").order("order_index");
-        setAppointmentCategories(data || []);
-      } else if (type === 'appointment_statuses') {
-        const { error } = await supabase.from('appointment_statuses').insert({ name, label, order_index: 999 });
-        if (error) throw error;
-        const { data } = await supabase.from('appointment_statuses').select("*").order("order_index");
-        setAppointmentStatuses(data || []);
-      } else if (type === 'task_categories') {
-        const { error } = await supabase.from('task_categories').insert({ name, label, order_index: 999 });
-        if (error) throw error;
-        const { data } = await supabase.from('task_categories').select("*").order("order_index");
-        setTaskCategories(data || []);
-      } else if (type === 'task_statuses') {
-        const { error } = await supabase.from('task_statuses').insert({ name, label, order_index: 999 });
-        if (error) throw error;
-        const { data } = await supabase.from('task_statuses').select("*").order("order_index");
-        setTaskStatuses(data || []);
-      }
-      
-      setNewItem(null);
-      toast({ title: "Hinzugefügt", description: "Neuer Eintrag erfolgreich erstellt." });
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Hinzufügen.", variant: "destructive" });
-    }
-  };
-
-  const deleteConfigItem = async (type: string, id: string) => {
-    try {
-      if (type === 'appointment_categories') {
-        const { error } = await supabase.from('appointment_categories').delete().eq('id', id);
-        if (error) throw error;
-        const { data } = await supabase.from('appointment_categories').select("*").order("order_index");
-        setAppointmentCategories(data || []);
-      } else if (type === 'appointment_statuses') {
-        const { error } = await supabase.from('appointment_statuses').delete().eq('id', id);
-        if (error) throw error;
-        const { data } = await supabase.from('appointment_statuses').select("*").order("order_index");
-        setAppointmentStatuses(data || []);
-      } else if (type === 'task_categories') {
-        const { error } = await supabase.from('task_categories').delete().eq('id', id);
-        if (error) throw error;
-        const { data } = await supabase.from('task_categories').select("*").order("order_index");
-        setTaskCategories(data || []);
-      } else if (type === 'task_statuses') {
-        const { error } = await supabase.from('task_statuses').delete().eq('id', id);
-        if (error) throw error;
-        const { data } = await supabase.from('task_statuses').select("*").order("order_index");
-        setTaskStatuses(data || []);
-      }
-      
-      toast({ title: "Gelöscht", description: "Eintrag erfolgreich gelöscht." });
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Löschen.", variant: "destructive" });
-    }
-  };
-
-  // Meeting template functions
+  // Template functions
   const loadTemplate = (template: any) => {
     setSelectedTemplate(template);
     const templateItems = Array.isArray(template.template_items) ? template.template_items : [];
     setTemplateItems(templateItems);
+  };
+
+  const loadPlanningTemplate = (template: any) => {
+    setSelectedPlanningTemplate(template);
+    const templateItems = Array.isArray(template.template_items) ? template.template_items : [];
+    setPlanningTemplateItems(templateItems);
   };
 
   const saveTemplateItems = async (items = templateItems) => {
@@ -343,7 +236,6 @@ export default function Administration() {
         
       if (error) throw error;
       
-      // Nur bei manuellem Speichern eine Toast-Nachricht zeigen
       if (items === templateItems) {
         toast({ title: "Gespeichert", description: "Template erfolgreich aktualisiert." });
       }
@@ -351,163 +243,6 @@ export default function Administration() {
       console.error(error);
       toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
     }
-  };
-
-  const saveTemplateName = async (templateId: string, newName: string) => {
-    try {
-      const { error } = await supabase
-        .from('meeting_templates')
-        .update({ name: newName })
-        .eq('id', templateId);
-        
-      if (error) throw error;
-      
-      // Update local state
-      setMeetingTemplates(prev => prev.map(t => 
-        t.id === templateId ? { ...t, name: newName } : t
-      ));
-      
-      if (selectedTemplate?.id === templateId) {
-        setSelectedTemplate({ ...selectedTemplate, name: newName });
-      }
-      
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Speichern des Namens.", variant: "destructive" });
-    }
-  };
-
-  const deleteTemplate = async (templateId: string) => {
-    try {
-      const { error } = await supabase
-        .from('meeting_templates')
-        .delete()
-        .eq('id', templateId);
-        
-      if (error) throw error;
-      
-      // Update local state
-      setMeetingTemplates(prev => prev.filter(t => t.id !== templateId));
-      
-      if (selectedTemplate?.id === templateId) {
-        setSelectedTemplate(null);
-        setTemplateItems([]);
-      }
-      
-      toast({ title: "Gelöscht", description: "Template erfolgreich gelöscht." });
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Löschen.", variant: "destructive" });
-    }
-  };
-
-  const duplicateTemplate = async (template: any) => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('meeting_templates')
-        .insert({
-          name: `${template.name} (Kopie)`,
-          description: template.description,
-          template_items: template.template_items,
-          user_id: user.id
-        })
-        .select()
-        .single();
-        
-      if (error) throw error;
-      
-      // Update local state
-      setMeetingTemplates(prev => [...prev, data]);
-      
-      toast({ title: "Dupliziert", description: "Template erfolgreich dupliziert." });
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Duplizieren.", variant: "destructive" });
-    }
-  };
-
-  const updateTemplateItem = (index: number, field: string, value: string) => {
-    const updated = [...templateItems];
-    updated[index] = { ...updated[index], [field]: value };
-    setTemplateItems(updated);
-    
-    // Auto-save
-    saveTemplateItems(updated);
-  };
-
-  const updateSubItem = (parentIndex: number, subIndex: number, field: string, value: string) => {
-    const updated = [...templateItems];
-    if (!updated[parentIndex].children) updated[parentIndex].children = [];
-    updated[parentIndex].children[subIndex] = { 
-      ...updated[parentIndex].children[subIndex], 
-      [field]: value 
-    };
-    setTemplateItems(updated);
-    
-    // Auto-save
-    saveTemplateItems(updated);
-  };
-
-  const addTemplateItem = (title: string, parentIndex?: number) => {
-    const updated = [...templateItems];
-    
-    if (parentIndex !== undefined) {
-      // Add as sub-item
-      if (!updated[parentIndex].children) updated[parentIndex].children = [];
-      updated[parentIndex].children.push({
-        title,
-        description: null,
-        order_index: updated[parentIndex].children.length
-      });
-    } else {
-      // Add as main item
-      updated.push({
-        title,
-        description: null,
-        order_index: updated.length,
-        children: []
-      });
-    }
-    
-    setTemplateItems(updated);
-    setNewTemplateItem(null);
-    
-    // Auto-save
-    saveTemplateItems(updated);
-  };
-
-  const deleteTemplateItem = (index: number, subIndex?: number) => {
-    const updated = [...templateItems];
-    
-    if (subIndex !== undefined) {
-      // Delete sub-item
-      updated[index].children.splice(subIndex, 1);
-      // Reorder remaining sub-items
-      updated[index].children.forEach((child: any, i: number) => {
-        child.order_index = i;
-      });
-    } else {
-      // Delete main item
-      updated.splice(index, 1);
-      // Reorder remaining main items
-      updated.forEach((item, i) => {
-        item.order_index = i;
-      });
-    }
-    
-    setTemplateItems(updated);
-    
-    // Auto-save
-    saveTemplateItems(updated);
-  };
-
-  // Planning template functions
-  const loadPlanningTemplate = (template: any) => {
-    setSelectedPlanningTemplate(template);
-    const templateItems = Array.isArray(template.template_items) ? template.template_items : [];
-    setPlanningTemplateItems(templateItems);
   };
 
   const savePlanningTemplateItems = async (items = planningTemplateItems) => {
@@ -521,7 +256,6 @@ export default function Administration() {
         
       if (error) throw error;
       
-      // Nur bei manuellem Speichern eine Toast-Nachricht zeigen
       if (items === planningTemplateItems) {
         toast({ title: "Gespeichert", description: "Template erfolgreich aktualisiert." });
       }
@@ -531,309 +265,114 @@ export default function Administration() {
     }
   };
 
-  const savePlanningTemplateName = async (templateId: string, newName: string) => {
-    try {
-      const { error } = await supabase
-        .from('planning_templates')
-        .update({ name: newName })
-        .eq('id', templateId);
-        
-      if (error) throw error;
-      
-      // Update local state
-      setPlanningTemplates(prev => prev.map(t => 
-        t.id === templateId ? { ...t, name: newName } : t
-      ));
-      
-      if (selectedPlanningTemplate?.id === templateId) {
-        setSelectedPlanningTemplate({ ...selectedPlanningTemplate, name: newName });
+  const addTemplateItem = (title: string, parentIndex?: number) => {
+    if (selectedTemplate) {
+      const newItems = [...templateItems];
+      if (parentIndex !== undefined) {
+        // Add sub-item
+        if (!newItems[parentIndex].children) {
+          newItems[parentIndex].children = [];
+        }
+        newItems[parentIndex].children.push({ title, order_index: newItems[parentIndex].children.length });
+      } else {
+        // Add main item or separator
+        const itemType = title.startsWith('---') ? 'separator' : 'item';
+        newItems.push({ 
+          title: itemType === 'separator' ? title.replace(/^---\s*/, '') : title, 
+          type: itemType,
+          order_index: newItems.length 
+        });
       }
-      
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Speichern des Namens.", variant: "destructive" });
+      setTemplateItems(newItems);
+      saveTemplateItems(newItems);
+      setNewTemplateItem(null);
     }
-  };
-
-  const deletePlanningTemplate = async (templateId: string) => {
-    try {
-      const { error } = await supabase
-        .from('planning_templates')
-        .delete()
-        .eq('id', templateId);
-        
-      if (error) throw error;
-      
-      // Update local state
-      setPlanningTemplates(prev => prev.filter(t => t.id !== templateId));
-      
-      if (selectedPlanningTemplate?.id === templateId) {
-        setSelectedPlanningTemplate(null);
-        setPlanningTemplateItems([]);
-      }
-      
-      toast({ title: "Gelöscht", description: "Template erfolgreich gelöscht." });
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Löschen.", variant: "destructive" });
-    }
-  };
-
-  const duplicatePlanningTemplate = async (template: any) => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('planning_templates')
-        .insert({
-          name: `${template.name} (Kopie)`,
-          description: template.description,
-          template_items: template.template_items,
-          user_id: user.id
-        })
-        .select()
-        .single();
-        
-      if (error) throw error;
-      
-      // Update local state
-      setPlanningTemplates(prev => [...prev, data]);
-      
-      toast({ title: "Dupliziert", description: "Template erfolgreich dupliziert." });
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Duplizieren.", variant: "destructive" });
-    }
-  };
-
-  const updatePlanningTemplateItem = (index: number, field: string, value: string) => {
-    const updated = [...planningTemplateItems];
-    updated[index] = { ...updated[index], [field]: value };
-    setPlanningTemplateItems(updated);
-    
-    // Auto-save
-    savePlanningTemplateItems(updated);
-  };
-
-  const updatePlanningSubItem = (parentIndex: number, subIndex: number, field: string, value: string) => {
-    const updated = [...planningTemplateItems];
-    if (!updated[parentIndex].sub_items) updated[parentIndex].sub_items = [];
-    updated[parentIndex].sub_items[subIndex] = { 
-      ...updated[parentIndex].sub_items[subIndex], 
-      [field]: value 
-    };
-    setPlanningTemplateItems(updated);
-    
-    // Auto-save
-    savePlanningTemplateItems(updated);
   };
 
   const addPlanningTemplateItem = (title: string, parentIndex?: number) => {
-    const updated = [...planningTemplateItems];
-    
-    if (parentIndex !== undefined) {
-      // Add as sub-item
-      if (!updated[parentIndex].sub_items) updated[parentIndex].sub_items = [];
-      updated[parentIndex].sub_items.push({
-        title,
-        description: null,
-        order_index: updated[parentIndex].sub_items.length
-      });
-    } else {
-      // Add as main item
-      updated.push({
-        title,
-        description: null,
-        order_index: updated.length,
-        sub_items: []
-      });
+    if (selectedPlanningTemplate) {
+      const newItems = [...planningTemplateItems];
+      if (parentIndex !== undefined) {
+        // Add sub-item
+        if (!newItems[parentIndex].sub_items) {
+          newItems[parentIndex].sub_items = [];
+        }
+        newItems[parentIndex].sub_items.push({ title, order_index: newItems[parentIndex].sub_items.length });
+      } else {
+        // Add main item or separator
+        const itemType = title.startsWith('---') ? 'separator' : 'item';
+        newItems.push({ 
+          title: itemType === 'separator' ? title.replace(/^---\s*/, '') : title, 
+          type: itemType,
+          order_index: newItems.length 
+        });
+      }
+      setPlanningTemplateItems(newItems);
+      savePlanningTemplateItems(newItems);
+      setNewPlanningTemplateItem(null);
     }
-    
-    setPlanningTemplateItems(updated);
-    setNewPlanningTemplateItem(null);
-    
-    // Auto-save
-    savePlanningTemplateItems(updated);
+  };
+
+  const addSeparator = () => {
+    if (selectedTemplate) {
+      const newItems = [...templateItems];
+      newItems.push({ 
+        title: '', 
+        type: 'separator',
+        order_index: newItems.length 
+      });
+      setTemplateItems(newItems);
+      saveTemplateItems(newItems);
+    }
+  };
+
+  const addPlanningSeparator = () => {
+    if (selectedPlanningTemplate) {
+      const newItems = [...planningTemplateItems];
+      newItems.push({ 
+        title: '', 
+        type: 'separator',
+        order_index: newItems.length 
+      });
+      setPlanningTemplateItems(newItems);
+      savePlanningTemplateItems(newItems);
+    }
+  };
+
+  const updateTemplateItem = (index: number, field: string, value: string) => {
+    const newItems = [...templateItems];
+    newItems[index][field] = value;
+    setTemplateItems(newItems);
+    saveTemplateItems(newItems);
+  };
+
+  const updatePlanningTemplateItem = (index: number, field: string, value: string) => {
+    const newItems = [...planningTemplateItems];
+    newItems[index][field] = value;
+    setPlanningTemplateItems(newItems);
+    savePlanningTemplateItems(newItems);
+  };
+
+  const deleteTemplateItem = (index: number, subIndex?: number) => {
+    const newItems = [...templateItems];
+    if (subIndex !== undefined) {
+      newItems[index].children.splice(subIndex, 1);
+    } else {
+      newItems.splice(index, 1);
+    }
+    setTemplateItems(newItems);
+    saveTemplateItems(newItems);
   };
 
   const deletePlanningTemplateItem = (index: number, subIndex?: number) => {
-    const updated = [...planningTemplateItems];
-    
+    const newItems = [...planningTemplateItems];
     if (subIndex !== undefined) {
-      // Delete sub-item
-      updated[index].sub_items.splice(subIndex, 1);
-      // Reorder remaining sub-items
-      updated[index].sub_items.forEach((child: any, i: number) => {
-        child.order_index = i;
-      });
+      newItems[index].sub_items.splice(subIndex, 1);
     } else {
-      // Delete main item
-      updated.splice(index, 1);
-      // Reorder remaining main items
-      updated.forEach((item, i) => {
-        item.order_index = i;
-      });
+      newItems.splice(index, 1);
     }
-    
-    setPlanningTemplateItems(updated);
-    
-    // Auto-save
-    savePlanningTemplateItems(updated);
-  };
-
-  const ConfigTable = ({ title, items, type }: { title: string, items: ConfigItem[], type: string }) => {
-    const showColorColumn = type === 'appointment_categories';
-    
-    return (
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>{title}</CardTitle>
-            <Button 
-              onClick={() => setNewItem({ type, value: '', color: showColorColumn ? '#3b82f6' : undefined })}
-              disabled={!!newItem || !!editingItem}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Hinzufügen
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Bezeichnung</TableHead>
-                {showColorColumn && <TableHead>Farbe</TableHead>}
-                <TableHead className="text-right">Aktionen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    {editingItem?.type === type && editingItem?.id === item.id ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={editingItem.value}
-                          onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
-                          className="flex-1"
-                        />
-                        {showColorColumn && (
-                          <input
-                            type="color"
-                            value={editingItem.color || item.color || '#3b82f6'}
-                            onChange={(e) => setEditingItem({ ...editingItem, color: e.target.value })}
-                            className="w-12 h-9 rounded border border-input cursor-pointer"
-                          />
-                        )}
-                        <Button 
-                          size="sm" 
-                          onClick={() => saveConfigItem(type, item.id, editingItem.value, editingItem.color)}
-                          className="gap-1"
-                        >
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => setEditingItem(null)}
-                          className="gap-1"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {showColorColumn && (
-                          <div 
-                            className="w-4 h-4 rounded border border-border"
-                            style={{ backgroundColor: item.color || '#3b82f6' }}
-                          />
-                        )}
-                        <span>{item.label}</span>
-                      </div>
-                    )}
-                  </TableCell>
-                  {showColorColumn && !editingItem && (
-                    <TableCell>
-                      <div 
-                        className="w-8 h-6 rounded border border-border"
-                        style={{ backgroundColor: item.color || '#3b82f6' }}
-                      />
-                    </TableCell>
-                  )}
-                  <TableCell className="text-right">
-                    {!(editingItem?.type === type && editingItem?.id === item.id) && (
-                      <div className="flex gap-2 justify-end">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => setEditingItem({ type, id: item.id, value: item.label, color: item.color })}
-                          disabled={!!editingItem || !!newItem}
-                          className="gap-1"
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive"
-                          onClick={() => deleteConfigItem(type, item.id)}
-                          disabled={!!editingItem || !!newItem}
-                          className="gap-1"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {newItem?.type === type && (
-                <TableRow>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newItem.value}
-                        onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
-                        placeholder="Neue Bezeichnung eingeben..."
-                        className="flex-1"
-                      />
-                      {showColorColumn && (
-                        <input
-                          type="color"
-                          value={newItem.color || '#3b82f6'}
-                          onChange={(e) => setNewItem({ ...newItem, color: e.target.value })}
-                          className="w-12 h-9 rounded border border-input cursor-pointer"
-                        />
-                      )}
-                      <Button 
-                        size="sm" 
-                        onClick={() => addConfigItem(type, newItem.value, newItem.color)}
-                        disabled={!newItem.value.trim()}
-                        className="gap-1"
-                      >
-                        <Save className="h-3 w-3" />
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => setNewItem(null)}
-                        className="gap-1"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  {showColorColumn && <TableCell></TableCell>}
-                  <TableCell></TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    );
+    setPlanningTemplateItems(newItems);
+    savePlanningTemplateItems(newItems);
   };
 
   if (loading) return null;
@@ -870,330 +409,155 @@ export default function Administration() {
           <GeneralSettings />
         </TabsContent>
 
-        <TabsContent value="appointments" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ConfigTable 
-              title="Termin-Kategorien" 
-              items={appointmentCategories} 
-              type="appointment_categories" 
-            />
-            <ConfigTable 
-              title="Termin-Status" 
-              items={appointmentStatuses} 
-              type="appointment_statuses" 
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="tasks" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ConfigTable 
-              title="Aufgaben-Kategorien" 
-              items={taskCategories} 
-              type="task_categories" 
-            />
-            <ConfigTable 
-              title="Aufgaben-Status" 
-              items={taskStatuses} 
-              type="task_statuses" 
-            />
-          </div>
-        </TabsContent>
-
         <TabsContent value="meetings" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Meeting Templates</CardTitle>
               </CardHeader>
               <CardContent>
-                {meetingTemplates.map((template) => (
-                  <div key={template.id} className="mb-2">
-                    <div className="flex items-center gap-2">
-                      {editingTemplateName?.id === template.id ? (
-                        <div className="flex gap-2 flex-1">
-                          <Input
-                            value={editingTemplateName.value}
-                            onChange={(e) => setEditingTemplateName({ ...editingTemplateName, value: e.target.value })}
-                            className="flex-1"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                saveTemplateName(template.id, editingTemplateName.value);
-                                setEditingTemplateName(null);
-                              } else if (e.key === 'Escape') {
-                                setEditingTemplateName(null);
-                              }
-                            }}
-                            autoFocus
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              saveTemplateName(template.id, editingTemplateName.value);
-                              setEditingTemplateName(null);
-                            }}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingTemplateName(null)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <Button
-                            variant={selectedTemplate?.id === template.id ? "default" : "outline"}
-                            className="flex-1 justify-start"
-                            onClick={() => loadTemplate(template)}
-                          >
-                            {template.name}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingTemplateName({ id: template.id, value: template.name })}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => duplicateTemplate(template)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Template löschen</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Sind Sie sicher, dass Sie das Template "{template.name}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteTemplate(template.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Löschen
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                <div className="flex flex-wrap gap-2">
+                  {meetingTemplates.map((template) => (
+                    <Button
+                      key={template.id}
+                      variant={selectedTemplate?.id === template.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => loadTemplate(template)}
+                    >
+                      {template.name}
+                    </Button>
+                  ))}
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="lg:col-span-2">
+            <Card>
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle>
                     {selectedTemplate ? `${selectedTemplate.name} - Agenda-Punkte` : 'Kein Template ausgewählt'}
                   </CardTitle>
                   {selectedTemplate && (
-                    <div className="text-sm text-muted-foreground">
-                      Änderungen werden automatisch gespeichert
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={addSeparator}
+                      >
+                        <Minus className="h-4 w-4 mr-1" />
+                        Trenner hinzufügen
+                      </Button>
                     </div>
                   )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {selectedTemplate ? (
-                  <>
-                    {templateItems.map((item, index) => (
-                      <div key={index} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-center gap-2">
-                          {editingTemplate?.id === `${index}` && editingTemplate?.field === 'title' ? (
-                            <div className="flex gap-2 flex-1">
+                  <DragDropContext onDragEnd={handleMeetingDragEnd}>
+                    <Droppable droppableId="meeting-items">
+                      {(provided) => (
+                        <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
+                          {templateItems.map((item, index) => (
+                            <Draggable key={`item-${index}`} draggableId={`item-${index}`} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  className={`border rounded-lg p-4 space-y-3 ${snapshot.isDragging ? 'bg-accent' : ''}`}
+                                >
+                                  {item.type === 'separator' ? (
+                                    <div className="flex items-center gap-2">
+                                      <div {...provided.dragHandleProps}>
+                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                      </div>
+                                      <div className="flex-1 flex items-center gap-2">
+                                        <Minus className="h-4 w-4 text-muted-foreground" />
+                                        <div className="flex-1 border-t border-dashed"></div>
+                                        <span className="text-muted-foreground italic text-sm">{item.title || 'Trenner'}</span>
+                                        <div className="flex-1 border-t border-dashed"></div>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setEditingTemplate({ id: `${index}`, field: 'title', value: item.title || '' })}
+                                        >
+                                          <Edit className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => deleteTemplateItem(index)}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <div {...provided.dragHandleProps}>
+                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                      </div>
+                                      <span className="font-medium flex-1">{item.title}</span>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setEditingTemplate({ id: `${index}`, field: 'title', value: item.title })}
+                                      >
+                                        <Edit className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => deleteTemplateItem(index)}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                          
+                          {/* Add new item */}
+                          {newTemplateItem && newTemplateItem.parentIndex === undefined ? (
+                            <div className="flex gap-2">
                               <Input
-                                value={editingTemplate.value}
-                                onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })}
+                                value={newTemplateItem.title}
+                                onChange={(e) => setNewTemplateItem({ ...newTemplateItem, title: e.target.value })}
+                                placeholder="Punkt eingeben (--- für Trenner)..."
                                 className="flex-1"
                               />
                               <Button 
                                 size="sm" 
-                                onClick={() => {
-                                  updateTemplateItem(index, 'title', editingTemplate.value);
-                                  setEditingTemplate(null);
-                                }}
+                                onClick={() => addTemplateItem(newTemplateItem.title)}
+                                disabled={!newTemplateItem.title.trim()}
                               >
                                 <Save className="h-3 w-3" />
                               </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                onClick={() => setEditingTemplate(null)}
+                                onClick={() => setNewTemplateItem(null)}
                               >
                                 <X className="h-3 w-3" />
                               </Button>
                             </div>
                           ) : (
-                            <>
-                              <span className="font-medium flex-1">{item.title}</span>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setEditingTemplate({ id: `${index}`, field: 'title', value: item.title })}
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => deleteTemplateItem(index)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => setNewTemplateItem({ title: '' })}
+                              disabled={!!editingTemplate || !!newTemplateItem}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Punkt hinzufügen
+                            </Button>
                           )}
                         </div>
-
-                        {/* Sub-items */}
-                        {item.children && item.children.length > 0 && (
-                          <div className="ml-6 space-y-2">
-                            {item.children.map((subItem: any, subIndex: number) => (
-                              <div key={subIndex} className="flex items-center gap-2">
-                                {editingTemplate?.id === `${index}-${subIndex}` && editingTemplate?.field === 'title' ? (
-                                  <div className="flex gap-2 flex-1">
-                                    <Input
-                                      value={editingTemplate.value}
-                                      onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })}
-                                      className="flex-1"
-                                    />
-                                    <Button 
-                                      size="sm" 
-                                      onClick={() => {
-                                        updateSubItem(index, subIndex, 'title', editingTemplate.value);
-                                        setEditingTemplate(null);
-                                      }}
-                                    >
-                                      <Save className="h-3 w-3" />
-                                    </Button>
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline" 
-                                      onClick={() => setEditingTemplate(null)}
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <span className="text-sm flex-1">• {subItem.title}</span>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => setEditingTemplate({ id: `${index}-${subIndex}`, field: 'title', value: subItem.title })}
-                                    >
-                                      <Edit className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => deleteTemplateItem(index, subIndex)}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Add sub-item button */}
-                        {newTemplateItem?.parentIndex === index ? (
-                          <div className="ml-6 flex gap-2">
-                            <Input
-                              value={newTemplateItem.title}
-                              onChange={(e) => setNewTemplateItem({ ...newTemplateItem, title: e.target.value })}
-                              placeholder="Unterpunkt eingeben..."
-                              className="flex-1"
-                            />
-                            <Button 
-                              size="sm" 
-                              onClick={() => addTemplateItem(newTemplateItem.title, index)}
-                              disabled={!newTemplateItem.title.trim()}
-                            >
-                              <Save className="h-3 w-3" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => setNewTemplateItem(null)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="ml-6"
-                            onClick={() => setNewTemplateItem({ parentIndex: index, title: '' })}
-                            disabled={!!editingTemplate || !!newTemplateItem}
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Unterpunkt hinzufügen
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-
-                    {/* Add main item */}
-                    {newTemplateItem && newTemplateItem.parentIndex === undefined ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={newTemplateItem.title}
-                          onChange={(e) => setNewTemplateItem({ ...newTemplateItem, title: e.target.value })}
-                          placeholder="Hauptpunkt eingeben..."
-                          className="flex-1"
-                        />
-                        <Button 
-                          size="sm" 
-                          onClick={() => addTemplateItem(newTemplateItem.title)}
-                          disabled={!newTemplateItem.title.trim()}
-                        >
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => setNewTemplateItem(null)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setNewTemplateItem({ title: '' })}
-                        disabled={!!editingTemplate || !!newTemplateItem}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Hauptpunkt hinzufügen
-                      </Button>
-                    )}
-                  </>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
                 ) : (
                   <p className="text-muted-foreground">Wählen Sie ein Template aus, um die Agenda-Punkte zu bearbeiten.</p>
                 )}
@@ -1203,299 +567,154 @@ export default function Administration() {
         </TabsContent>
 
         <TabsContent value="plannings" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Planungs-Templates</CardTitle>
               </CardHeader>
               <CardContent>
-                {planningTemplates.map((template) => (
-                  <div key={template.id} className="mb-2">
-                    <div className="flex items-center gap-2">
-                      {editingPlanningTemplateName?.id === template.id ? (
-                        <div className="flex gap-2 flex-1">
-                          <Input
-                            value={editingPlanningTemplateName.value}
-                            onChange={(e) => setEditingPlanningTemplateName({ ...editingPlanningTemplateName, value: e.target.value })}
-                            className="flex-1"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                savePlanningTemplateName(template.id, editingPlanningTemplateName.value);
-                                setEditingPlanningTemplateName(null);
-                              } else if (e.key === 'Escape') {
-                                setEditingPlanningTemplateName(null);
-                              }
-                            }}
-                            autoFocus
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              savePlanningTemplateName(template.id, editingPlanningTemplateName.value);
-                              setEditingPlanningTemplateName(null);
-                            }}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingPlanningTemplateName(null)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <Button
-                            variant={selectedPlanningTemplate?.id === template.id ? "default" : "outline"}
-                            className="flex-1 justify-start"
-                            onClick={() => loadPlanningTemplate(template)}
-                          >
-                            {template.name}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingPlanningTemplateName({ id: template.id, value: template.name })}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => duplicatePlanningTemplate(template)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Template löschen</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Sind Sie sicher, dass Sie das Template "{template.name}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deletePlanningTemplate(template.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Löschen
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                <div className="flex flex-wrap gap-2">
+                  {planningTemplates.map((template) => (
+                    <Button
+                      key={template.id}
+                      variant={selectedPlanningTemplate?.id === template.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => loadPlanningTemplate(template)}
+                    >
+                      {template.name}
+                    </Button>
+                  ))}
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="lg:col-span-2">
+            <Card>
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle>
                     {selectedPlanningTemplate ? `${selectedPlanningTemplate.name} - Checklisten-Punkte` : 'Kein Template ausgewählt'}
                   </CardTitle>
                   {selectedPlanningTemplate && (
-                    <div className="text-sm text-muted-foreground">
-                      Änderungen werden automatisch gespeichert
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={addPlanningSeparator}
+                      >
+                        <Minus className="h-4 w-4 mr-1" />
+                        Trenner hinzufügen
+                      </Button>
                     </div>
                   )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {selectedPlanningTemplate ? (
-                  <>
-                    {planningTemplateItems.map((item, index) => (
-                      <div key={index} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-center gap-2">
-                          {editingPlanningTemplate?.id === `${index}` && editingPlanningTemplate?.field === 'title' ? (
-                            <div className="flex gap-2 flex-1">
+                  <DragDropContext onDragEnd={handlePlanningDragEnd}>
+                    <Droppable droppableId="planning-items">
+                      {(provided) => (
+                        <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
+                          {planningTemplateItems.map((item, index) => (
+                            <Draggable key={`item-${index}`} draggableId={`item-${index}`} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  className={`border rounded-lg p-4 space-y-3 ${snapshot.isDragging ? 'bg-accent' : ''}`}
+                                >
+                                  {item.type === 'separator' ? (
+                                    <div className="flex items-center gap-2">
+                                      <div {...provided.dragHandleProps}>
+                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                      </div>
+                                      <div className="flex-1 flex items-center gap-2">
+                                        <Minus className="h-4 w-4 text-muted-foreground" />
+                                        <div className="flex-1 border-t border-dashed"></div>
+                                        <span className="text-muted-foreground italic text-sm">{item.title || 'Trenner'}</span>
+                                        <div className="flex-1 border-t border-dashed"></div>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setEditingPlanningTemplate({ id: `${index}`, field: 'title', value: item.title || '' })}
+                                        >
+                                          <Edit className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => deletePlanningTemplateItem(index)}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <div {...provided.dragHandleProps}>
+                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                      </div>
+                                      <span className="font-medium flex-1">{item.title}</span>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setEditingPlanningTemplate({ id: `${index}`, field: 'title', value: item.title })}
+                                      >
+                                        <Edit className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => deletePlanningTemplateItem(index)}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                          
+                          {/* Add new item */}
+                          {newPlanningTemplateItem && newPlanningTemplateItem.parentIndex === undefined ? (
+                            <div className="flex gap-2">
                               <Input
-                                value={editingPlanningTemplate.value}
-                                onChange={(e) => setEditingPlanningTemplate({ ...editingPlanningTemplate, value: e.target.value })}
+                                value={newPlanningTemplateItem.title}
+                                onChange={(e) => setNewPlanningTemplateItem({ ...newPlanningTemplateItem, title: e.target.value })}
+                                placeholder="Punkt eingeben (--- für Trenner)..."
                                 className="flex-1"
                               />
                               <Button 
                                 size="sm" 
-                                onClick={() => {
-                                  updatePlanningTemplateItem(index, 'title', editingPlanningTemplate.value);
-                                  setEditingPlanningTemplate(null);
-                                }}
+                                onClick={() => addPlanningTemplateItem(newPlanningTemplateItem.title)}
+                                disabled={!newPlanningTemplateItem.title.trim()}
                               >
                                 <Save className="h-3 w-3" />
                               </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                onClick={() => setEditingPlanningTemplate(null)}
+                                onClick={() => setNewPlanningTemplateItem(null)}
                               >
                                 <X className="h-3 w-3" />
                               </Button>
                             </div>
                           ) : (
-                            <>
-                              <span className="font-medium flex-1">{item.title}</span>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setEditingPlanningTemplate({ id: `${index}`, field: 'title', value: item.title })}
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => deletePlanningTemplateItem(index)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => setNewPlanningTemplateItem({ title: '' })}
+                              disabled={!!editingPlanningTemplate || !!newPlanningTemplateItem}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Punkt hinzufügen
+                            </Button>
                           )}
                         </div>
-
-                        {/* Sub-items */}
-                        {item.sub_items && item.sub_items.length > 0 && (
-                          <div className="ml-6 space-y-2">
-                            {item.sub_items.map((subItem: any, subIndex: number) => (
-                              <div key={subIndex} className="flex items-center gap-2">
-                                {editingPlanningTemplate?.id === `${index}-${subIndex}` && editingPlanningTemplate?.field === 'title' ? (
-                                  <div className="flex gap-2 flex-1">
-                                    <Input
-                                      value={editingPlanningTemplate.value}
-                                      onChange={(e) => setEditingPlanningTemplate({ ...editingPlanningTemplate, value: e.target.value })}
-                                      className="flex-1"
-                                    />
-                                    <Button 
-                                      size="sm" 
-                                      onClick={() => {
-                                        updatePlanningSubItem(index, subIndex, 'title', editingPlanningTemplate.value);
-                                        setEditingPlanningTemplate(null);
-                                      }}
-                                    >
-                                      <Save className="h-3 w-3" />
-                                    </Button>
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline" 
-                                      onClick={() => setEditingPlanningTemplate(null)}
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <span className="text-sm flex-1">• {subItem.title}</span>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => setEditingPlanningTemplate({ id: `${index}-${subIndex}`, field: 'title', value: subItem.title })}
-                                    >
-                                      <Edit className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => deletePlanningTemplateItem(index, subIndex)}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Add sub-item button */}
-                        {newPlanningTemplateItem?.parentIndex === index ? (
-                          <div className="ml-6 flex gap-2">
-                            <Input
-                              value={newPlanningTemplateItem.title}
-                              onChange={(e) => setNewPlanningTemplateItem({ ...newPlanningTemplateItem, title: e.target.value })}
-                              placeholder="Unterpunkt eingeben..."
-                              className="flex-1"
-                            />
-                            <Button 
-                              size="sm" 
-                              onClick={() => addPlanningTemplateItem(newPlanningTemplateItem.title, index)}
-                              disabled={!newPlanningTemplateItem.title.trim()}
-                            >
-                              <Save className="h-3 w-3" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => setNewPlanningTemplateItem(null)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="ml-6"
-                            onClick={() => setNewPlanningTemplateItem({ parentIndex: index, title: '' })}
-                            disabled={!!editingPlanningTemplate || !!newPlanningTemplateItem}
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Unterpunkt hinzufügen
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-
-                    {/* Add main item */}
-                    {newPlanningTemplateItem && newPlanningTemplateItem.parentIndex === undefined ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={newPlanningTemplateItem.title}
-                          onChange={(e) => setNewPlanningTemplateItem({ ...newPlanningTemplateItem, title: e.target.value })}
-                          placeholder="Hauptpunkt eingeben..."
-                          className="flex-1"
-                        />
-                        <Button 
-                          size="sm" 
-                          onClick={() => addPlanningTemplateItem(newPlanningTemplateItem.title)}
-                          disabled={!newPlanningTemplateItem.title.trim()}
-                        >
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => setNewPlanningTemplateItem(null)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setNewPlanningTemplateItem({ title: '' })}
-                        disabled={!!editingPlanningTemplate || !!newPlanningTemplateItem}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Hauptpunkt hinzufügen
-                      </Button>
-                    )}
-                  </>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
                 ) : (
                   <p className="text-muted-foreground">Wählen Sie ein Template aus, um die Checklisten-Punkte zu bearbeiten.</p>
                 )}
@@ -1548,18 +767,18 @@ export default function Administration() {
                           </TableCell>
                           <TableCell className="text-right">
                             <Select
-                              value={roleByUser.get(p.user_id) ?? "none"}
-                              onValueChange={(val) => setRole(p.user_id, val as RoleValue | "none")}
+                              value={roles.find(r => r.user_id === p.user_id)?.role ?? "none"}
+                              onValueChange={(val) => updateUserRole(p.user_id, val as RoleValue | "none")}
                               disabled={busyUserId === p.user_id}
                             >
-                              <SelectTrigger className="w-56 ml-auto">
-                                <SelectValue placeholder="Rolle wählen" />
+                              <SelectTrigger className="w-56">
+                                <SelectValue />
                               </SelectTrigger>
-                              <SelectContent align="end">
+                              <SelectContent>
                                 <SelectItem value="none">Keine Rolle</SelectItem>
-                                {ROLE_OPTIONS.map((r) => (
-                                  <SelectItem key={r.value} value={r.value}>
-                                    {r.label}
+                                {ROLE_OPTIONS.map(role => (
+                                  <SelectItem key={role.value} value={role.value}>
+                                    {role.label}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
