@@ -1171,7 +1171,7 @@ export function EventPlanningView() {
       const filePath = `planning-items/${user.id}/${itemId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('documents')
+        .from('planning-documents')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
@@ -1212,7 +1212,7 @@ export function EventPlanningView() {
   const deleteItemDocument = async (doc: PlanningDocument) => {
     try {
       const { error: storageError } = await supabase.storage
-        .from('documents')
+        .from('planning-documents')
         .remove([doc.file_path]);
 
       if (storageError) throw storageError;
@@ -1244,7 +1244,7 @@ export function EventPlanningView() {
   const downloadItemDocument = async (doc: PlanningDocument) => {
     try {
       const { data, error } = await supabase.storage
-        .from('documents')
+        .from('planning-documents')
         .download(doc.file_path);
 
       if (error) throw error;
