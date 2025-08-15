@@ -72,7 +72,6 @@ export function MeetingsView() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [taskDocuments, setTaskDocuments] = useState<Record<string, any[]>>({});
-  const [allDocuments, setAllDocuments] = useState<Record<string, any[]>>({});
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
@@ -139,6 +138,7 @@ export function MeetingsView() {
               
               // Only update if there are actual changes
               if (Object.keys(updates).length > 0) {
+                console.log('Updating agenda item:', agendaItem.id, 'with:', updates);
                 await supabase
                   .from('meeting_agenda_items')
                   .update(updates)
@@ -263,47 +263,6 @@ export function MeetingsView() {
     }
   };
 
-  const loadAllDocuments = async (meetingId: string) => {
-    try {
-      // First get all agenda item IDs for this meeting
-      const { data: agendaItems, error: agendaError } = await supabase
-        .from('meeting_agenda_items')
-        .select('id')
-        .eq('meeting_id', meetingId);
-
-      if (agendaError) throw agendaError;
-      
-      const agendaItemIds = agendaItems?.map(item => item.id) || [];
-      
-      if (agendaItemIds.length === 0) {
-        setAllDocuments({});
-        return;
-      }
-
-      // Then get all documents for these agenda items
-      const { data, error } = await supabase
-        .from('meeting_agenda_documents')
-        .select('*')
-        .in('agenda_item_id', agendaItemIds);
-
-      if (error) throw error;
-      
-      // Group documents by agenda_item_id
-      const docsByItemId: Record<string, any[]> = {};
-      (data || []).forEach((doc) => {
-        if (!docsByItemId[doc.agenda_item_id]) {
-          docsByItemId[doc.agenda_item_id] = [];
-        }
-        docsByItemId[doc.agenda_item_id].push(doc);
-      });
-      
-      console.log('Loaded documents for meeting:', meetingId, docsByItemId);
-      setAllDocuments(docsByItemId);
-    } catch (error) {
-      console.error('Error loading documents:', error);
-    }
-  };
-
   const loadAgendaItems = async (meetingId: string) => {
     try {
       const { data, error } = await supabase
@@ -383,7 +342,6 @@ export function MeetingsView() {
       // Wait a moment for the trigger to complete, then load the items
       setTimeout(async () => {
         await loadAgendaItems(data.id);
-        await loadAllDocuments(data.id);
       }, 500);
       
       setIsNewMeetingOpen(false);
@@ -444,7 +402,6 @@ export function MeetingsView() {
     setActiveMeeting(meeting);
     if (meeting.id) {
       await loadAgendaItems(meeting.id);
-      await loadAllDocuments(meeting.id);
     }
   };
 
@@ -1125,7 +1082,6 @@ export function MeetingsView() {
                     if (meeting.id) {
                       setAgendaItems([]);
                       loadAgendaItems(meeting.id as string);
-                      loadAllDocuments(meeting.id as string);
                     }
                   }}>
                     {editingMeeting?.id === meeting.id ? (
@@ -1661,6 +1617,16 @@ export function MeetingsView() {
 
                                             <div>
                                               {/* Display uploaded files */}
+                                              {(() => {
+                                                console.log('File display check:', {
+                                                  itemId: item.id || item.localKey,
+                                                  itemTitle: item.title,
+                                                  file_path: item.file_path,
+                                                  task_id: item.task_id,
+                                                  taskDocuments: taskDocuments[item.task_id] || 'none'
+                                                });
+                                                return null;
+                                              })()}
                                               {item.file_path && (
                                                <div className="mb-4 bg-muted/30 p-3 rounded-lg border">
                                                  <h4 className="text-sm font-medium mb-2">Angehängte Dateien:</h4>
@@ -1762,305 +1728,79 @@ export function MeetingsView() {
                                                </div>
                                              )}
                                             
-                                             {/* Show regular file upload only for non-task items */}
-                                             {!item.task_id && (
-                                               <>
-                                                 <label className="text-sm font-medium">Datei anhängen</label>
-                                                 <div className="flex items-center gap-2">
-                                                   <Button 
-                                                     variant="outline" 
-                                                     size="sm" 
-                                                     className="flex-1"
-                                                      onClick={async () => {
-                                                        const fileInput = document.createElement('input');
-                                                        fileInput.type = 'file';
-                                                        fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
-                                                        fileInput.onchange = async (e) => {
-                                                          const file = (e.target as HTMLInputElement).files?.[0];
-                                                          if (file && selectedMeeting?.id) {
-                                                            try {
-                                                              // If item doesn't have an ID yet, save it first
-                                                              let itemId = item.id;
-                                                              if (!itemId) {
-                                                                const { data: savedItem, error: saveError } = await supabase
-                                                                  .from('meeting_agenda_items')
-                                                                  .insert({
-                                                                    meeting_id: selectedMeeting.id,
-                                                                    title: item.title || 'Unterpunkt',
-                                                                    description: item.description || '',
-                                                                    notes: item.notes || '',
-                                                                    parent_id: item.parent_id || null,
-                                                                    order_index: item.order_index,
-                                                                    is_completed: false,
-                                                                    is_recurring: false,
-                                                                  })
-                                                                  .select()
-                                                                  .single();
-                                                                
-                                                                if (saveError) throw saveError;
-                                                                itemId = savedItem.id;
-                                                                
-                                                                // Update local state with the new ID
-                                                                const updatedItems = [...agendaItems];
-                                                                updatedItems[index] = { ...item, id: itemId };
-                                                                setAgendaItems(updatedItems);
-                                                                
-                                                                // Reload documents to ensure they're properly mapped
-                                                                if (selectedMeeting?.id) {
-                                                                  setTimeout(() => loadAllDocuments(selectedMeeting.id!), 100);
-                                                                }
-                                                              }
-                                                              
-                                                               const filePath = `${user?.id}/${itemId}/${Date.now()}_${file.name}`;
-                                                               const { error: uploadError } = await supabase.storage
-                                                                 .from('documents')
-                                                                 .upload(filePath, file);
-                                                              
-                                                              if (uploadError) throw uploadError;
-                                                              
-                                                              // Save to meeting_agenda_documents as regular file
-                                                              const { data: docData, error: docError } = await supabase
-                                                                .from('meeting_agenda_documents')
-                                                                .insert({
-                                                                  agenda_item_id: itemId,
-                                                                  user_id: user?.id,
-                                                                  file_name: file.name,
-                                                                  file_path: filePath,
-                                                                  file_type: file.type,
-                                                                  file_size: file.size,
-                                                                  document_type: 'regular'
-                                                                })
-                                                                .select()
-                                                                .single();
-                                                              
-                                                              if (docError) throw docError;
-                                                              
-                                                              // Update local state and reload documents
-                                                              const updatedDocs = { ...allDocuments };
-                                                              if (!updatedDocs[itemId]) {
-                                                                updatedDocs[itemId] = [];
-                                                              }
-                                                              updatedDocs[itemId].push(docData);
-                                                              setAllDocuments(updatedDocs);
-                                                              
-                                                              toast({
-                                                                title: "Datei hochgeladen",
-                                                                description: `${file.name} wurde erfolgreich angehängt.`,
-                                                              });
-                                                            } catch (error) {
-                                                              console.error('Upload error:', error);
-                                                              toast({
-                                                                title: "Upload-Fehler",
-                                                                description: error.message || "Die Datei konnte nicht hochgeladen werden.",
-                                                                variant: "destructive",
-                                                              });
-                                                            }
-                                                          }
-                                                        };
-                                                        fileInput.click();
-                                                      }}
-                                                   >
-                                                     <Upload className="h-4 w-4 mr-2" />
-                                                     Datei auswählen
-                                                   </Button>
-                                                  </div>
-                                               </>
-                                             )}
-                                             
-                                               {/* All documents for this item - only show for saved items with real IDs */}
-                                               {item.id && allDocuments[item.id] && allDocuments[item.id].length > 0 && (
-                                                 <div className="mt-4">
-                                                   <h4 className="text-sm font-medium mb-2">Dateien:</h4>
-                                                   {allDocuments[item.id].map((doc, docIndex) => (
-                                                    <div key={doc.id} className="flex items-center justify-between p-2 bg-background rounded border mb-2">
-                                                      <div className="flex items-center gap-2">
-                                                        <FileText className={`h-4 w-4 ${doc.document_type === 'additional' ? 'text-green-600' : 'text-blue-600'}`} />
-                                                        <span className="text-sm">{doc.file_name}</span>
-                                                        <Badge variant={doc.document_type === 'additional' ? 'secondary' : 'outline'} className="text-xs">
-                                                          {doc.document_type === 'additional' ? 'Zusätzlich' : 'Standard'}
-                                                        </Badge>
-                                                      </div>
-                                                     <div className="flex gap-1">
-                                                       <Button 
-                                                         variant="ghost" 
-                                                         size="sm"
-                                                         onClick={async () => {
-                                                           try {
-                                                             const { data, error } = await supabase.storage
-                                                               .from('documents')
-                                                               .download(doc.file_path);
-                                                             
-                                                             if (error) throw error;
-                                                             
-                                                             const url = URL.createObjectURL(data);
-                                                             const a = document.createElement('a');
-                                                             a.href = url;
-                                                             a.download = doc.file_name;
-                                                             a.click();
-                                                             URL.revokeObjectURL(url);
-                                                           } catch (error) {
-                                                             console.error('Download error:', error);
-                                                             toast({
-                                                               title: "Download-Fehler",
-                                                               description: "Datei konnte nicht heruntergeladen werden.",
-                                                               variant: "destructive",
-                                                             });
-                                                           }
-                                                         }}
-                                                       >
-                                                         <Download className="h-4 w-4" />
-                                                       </Button>
-                                                       <Button 
-                                                         variant="ghost" 
-                                                         size="sm"
-                                                         onClick={async () => {
-                                                           try {
-                                                             // Remove file from storage
-                                                             await supabase.storage
-                                                               .from('documents')
-                                                               .remove([doc.file_path]);
-                                                             
-                                                             // Remove from database
-                                                             await supabase
-                                                               .from('meeting_agenda_documents')
-                                                               .delete()
-                                                               .eq('id', doc.id);
-                                                             
-                                                              // Update local state
-                                                               const updatedDocs = { ...allDocuments };
-                                                               if (item.id && updatedDocs[item.id]) {
-                                                                 updatedDocs[item.id] = updatedDocs[item.id].filter(d => d.id !== doc.id);
-                                                               }
-                                                               setAllDocuments(updatedDocs);
-                                                             
-                                                             toast({
-                                                               title: "Datei entfernt",
-                                                               description: "Die Datei wurde erfolgreich entfernt.",
-                                                             });
-                                                           } catch (error) {
-                                                             console.error('Remove error:', error);
-                                                             toast({
-                                                               title: "Fehler",
-                                                               description: "Datei konnte nicht entfernt werden.",
-                                                               variant: "destructive",
-                                                             });
-                                                           }
-                                                         }}
-                                                       >
-                                                         <X className="h-4 w-4" />
-                                                       </Button>
-                                                     </div>
-                                                   </div>
-                                                 ))}
-                                               </div>
-                                             )}
-                                             
-                                              {/* Show additional file upload only for task items */}
-                                              {item.task_id && (
-                                                <div className="mt-4">
-                                                  <label className="text-sm font-medium">Zusätzliche Datei anhängen</label>
-                                                  <div className="flex items-center gap-2 mt-2">
-                                                    <Button 
-                                                      variant="outline" 
-                                                      size="sm" 
-                                                      className="flex-1"
-                                                      onClick={async () => {
-                                                        const fileInput = document.createElement('input');
-                                                        fileInput.type = 'file';
-                                                        fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
-                                                        fileInput.onchange = async (e) => {
-                                                          const file = (e.target as HTMLInputElement).files?.[0];
-                                                          if (file && selectedMeeting?.id) {
-                                                            try {
-                                                              // If item doesn't have an ID yet, save it first
-                                                              let itemId = item.id;
-                                                              if (!itemId) {
-                                                                const { data: savedItem, error: saveError } = await supabase
-                                                                  .from('meeting_agenda_items')
-                                                                  .insert({
-                                                                    meeting_id: selectedMeeting.id,
-                                                                    title: item.title || 'Unterpunkt',
-                                                                    description: item.description || '',
-                                                                    notes: item.notes || '',
-                                                                    parent_id: item.parent_id || null,
-                                                                    order_index: item.order_index,
-                                                                    is_completed: false,
-                                                                    is_recurring: false,
-                                                                  })
-                                                                  .select()
-                                                                  .single();
-                                                                
-                                                                if (saveError) throw saveError;
-                                                                itemId = savedItem.id;
-                                                                
-                                                                // Update local state with the new ID
-                                                                const updatedItems = [...agendaItems];
-                                                                updatedItems[index] = { ...item, id: itemId };
-                                                                setAgendaItems(updatedItems);
-                                                                
-                                                                // Reload documents to ensure they're properly mapped
-                                                                if (selectedMeeting?.id) {
-                                                                  setTimeout(() => loadAllDocuments(selectedMeeting.id!), 100);
-                                                                }
-                                                              }
-                                                              
-                                                              // Upload file
-                                                              const filePath = `${user?.id}/${itemId}/${Date.now()}_${file.name}`;
-                                                              const { error: uploadError } = await supabase.storage
-                                                                .from('documents')
-                                                                .upload(filePath, file);
-                                                              
-                                                              if (uploadError) throw uploadError;
-                                                              
-                                                              // Save to meeting_agenda_documents
-                                                              const { data: docData, error: docError } = await supabase
-                                                                .from('meeting_agenda_documents')
-                                                                .insert({
-                                                                  agenda_item_id: itemId,
-                                                                  user_id: user?.id,
-                                                                  file_name: file.name,
-                                                                  file_path: filePath,
-                                                                  file_type: file.type,
-                                                                  file_size: file.size,
-                                                                  document_type: 'additional'
-                                                                })
-                                                                .select()
-                                                                .single();
-                                                              
-                                                              if (docError) throw docError;
-                                                              
-                                                              // Update local state
-                                                              const updatedDocs = { ...allDocuments };
-                                                              if (!updatedDocs[itemId]) {
-                                                                updatedDocs[itemId] = [];
-                                                              }
-                                                              updatedDocs[itemId].push(docData);
-                                                              setAllDocuments(updatedDocs);
-                                                              
-                                                              toast({
-                                                                title: "Datei hochgeladen",
-                                                                description: "Die Datei wurde erfolgreich angehängt.",
-                                                              });
-                                                            } catch (error) {
-                                                              console.error('Upload error:', error);
-                                                              toast({
-                                                                title: "Upload-Fehler",
-                                                                description: "Die Datei konnte nicht hochgeladen werden.",
-                                                                variant: "destructive",
-                                                              });
-                                                            }
-                                                          }
-                                                        };
-                                                        fileInput.click();
-                                                      }}
-                                                    >
-                                                      <Upload className="h-4 w-4 mr-2" />
-                                                      Zusätzliche Datei
-                                                    </Button>
-                                                  </div>
-                                                </div>
-                                              )}
-                                           </div>
+                                            <label className="text-sm font-medium">Datei anhängen</label>
+                                            <div className="flex items-center gap-2">
+                                              <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="flex-1"
+                                                 onClick={async () => {
+                                                   const fileInput = document.createElement('input');
+                                                   fileInput.type = 'file';
+                                                   fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
+                                                   fileInput.onchange = async (e) => {
+                                                     const file = (e.target as HTMLInputElement).files?.[0];
+                                                     if (file && selectedMeeting?.id) {
+                                                       try {
+                                                         // If item doesn't have an ID yet, save it first
+                                                         let itemId = item.id;
+                                                         if (!itemId) {
+                                                           const { data: savedItem, error: saveError } = await supabase
+                                                             .from('meeting_agenda_items')
+                                                             .insert({
+                                                               meeting_id: selectedMeeting.id,
+                                                               title: item.title || 'Unterpunkt',
+                                                               description: item.description || '',
+                                                               notes: item.notes || '',
+                                                               parent_id: item.parent_id || null,
+                                                               order_index: item.order_index,
+                                                               is_completed: false,
+                                                               is_recurring: false,
+                                                             })
+                                                             .select()
+                                                             .single();
+                                                           
+                                                           if (saveError) throw saveError;
+                                                           itemId = savedItem.id;
+                                                           
+                                                           // Update local state with the new ID
+                                                           const updatedItems = [...agendaItems];
+                                                           updatedItems[index] = { ...item, id: itemId };
+                                                           setAgendaItems(updatedItems);
+                                                         }
+                                                         
+                                                          const fileName = `${user?.id}/${itemId}_${Date.now()}_${file.name}`;
+                                                          const { error: uploadError } = await supabase.storage
+                                                            .from('documents')
+                                                            .upload(fileName, file);
+                                                         
+                                                         if (uploadError) throw uploadError;
+                                                         
+                                                         // Update the agenda item with file path
+                                                         await updateAgendaItem(index, 'file_path', fileName);
+                                                         
+                                                         toast({
+                                                           title: "Datei hochgeladen",
+                                                           description: `${file.name} wurde erfolgreich angehängt.`,
+                                                         });
+                                                       } catch (error) {
+                                                         console.error('Upload error:', error);
+                                                         toast({
+                                                           title: "Upload-Fehler",
+                                                           description: error.message || "Die Datei konnte nicht hochgeladen werden.",
+                                                           variant: "destructive",
+                                                         });
+                                                       }
+                                                     }
+                                                   };
+                                                   fileInput.click();
+                                                 }}
+                                              >
+                                                <Upload className="h-4 w-4 mr-2" />
+                                                Datei auswählen
+                                              </Button>
+                                            </div>
+                                          </div>
                                        </>
                                      )}
                                   </div>
