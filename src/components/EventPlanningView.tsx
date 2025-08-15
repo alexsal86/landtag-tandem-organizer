@@ -141,7 +141,7 @@ export function EventPlanningView() {
   const [itemSubtasks, setItemSubtasks] = useState<{ [itemId: string]: PlanningSubtask[] }>({});
   const [itemDocuments, setItemDocuments] = useState<{ [itemId: string]: PlanningDocument[] }>({});
   const [newComment, setNewComment] = useState("");
-  const [newSubtask, setNewSubtask] = useState({ description: '', assigned_to: '', due_date: '' });
+  const [newSubtask, setNewSubtask] = useState({ description: '', assigned_to: 'unassigned', due_date: '' });
   const [uploading, setUploading] = useState(false);
   const [editingComment, setEditingComment] = useState<{ [commentId: string]: string }>({});
   const [editingSubtask, setEditingSubtask] = useState<{ [id: string]: Partial<PlanningSubtask> }>({});
@@ -1018,14 +1018,14 @@ export function EventPlanningView() {
           planning_item_id: selectedItemId,
           user_id: user.id,
           description: newSubtask.description.trim(),
-          assigned_to: newSubtask.assigned_to || null,
+          assigned_to: newSubtask.assigned_to === 'unassigned' ? null : newSubtask.assigned_to,
           due_date: newSubtask.due_date || null,
           order_index: nextOrderIndex,
         });
 
       if (error) throw error;
 
-      setNewSubtask({ description: '', assigned_to: '', due_date: '' });
+      setNewSubtask({ description: '', assigned_to: 'unassigned', due_date: '' });
       loadItemSubtasks(selectedItemId);
 
       toast({
@@ -1829,12 +1829,12 @@ export function EventPlanningView() {
                                 className="text-sm"
                               />
                               <div className="flex space-x-2">
-                                <Select value={newSubtask.assigned_to} onValueChange={(value) => setNewSubtask({ ...newSubtask, assigned_to: value })}>
+                                <Select value={newSubtask.assigned_to} onValueChange={(value) => setNewSubtask({ ...newSubtask, assigned_to: value === "unassigned" ? "" : value })}>
                                   <SelectTrigger className="text-sm">
                                     <SelectValue placeholder="Zuweisen..." />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="">Niemand</SelectItem>
+                                    <SelectItem value="unassigned">Niemand</SelectItem>
                                     {allProfiles.map((profile) => (
                                       <SelectItem key={profile.user_id} value={profile.user_id}>
                                         {profile.display_name || 'Unbekannt'}
