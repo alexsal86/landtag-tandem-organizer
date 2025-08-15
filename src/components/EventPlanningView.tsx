@@ -578,13 +578,18 @@ export function EventPlanningView() {
     if (!selectedPlanning || !newChecklistItem.trim()) return;
 
     const maxOrder = Math.max(...checklistItems.map(item => item.order_index), -1);
+    
+    // Determine if it's a separator (starts with ---)
+    const itemType = newChecklistItem.startsWith('---') ? 'separator' : 'item';
+    const title = itemType === 'separator' ? newChecklistItem.replace(/^---\s*/, '') : newChecklistItem;
 
     const { data, error } = await supabase
       .from("event_planning_checklist_items")
       .insert({
         event_planning_id: selectedPlanning.id,
-        title: newChecklistItem,
+        title: title,
         order_index: maxOrder + 1,
+        type: itemType,
       })
       .select()
       .single();
@@ -1194,7 +1199,7 @@ export function EventPlanningView() {
                   <Input
                     value={newChecklistItem}
                     onChange={(e) => setNewChecklistItem(e.target.value)}
-                    placeholder="Neuen Punkt hinzufügen..."
+                    placeholder="Neuen Punkt hinzufügen (--- für Trenner)..."
                     onKeyPress={(e) => e.key === "Enter" && addChecklistItem()}
                   />
                   <Button onClick={addChecklistItem}>
