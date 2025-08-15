@@ -145,6 +145,10 @@ export function EventPlanningView() {
   const [uploading, setUploading] = useState(false);
   const [editingComment, setEditingComment] = useState<{ [commentId: string]: string }>({});
   const [editingSubtask, setEditingSubtask] = useState<{ [id: string]: Partial<PlanningSubtask> }>({});
+  const [expandedItems, setExpandedItems] = useState<{ [itemId: string]: { subtasks: boolean; comments: boolean; documents: boolean } }>({});
+  const [showItemSubtasks, setShowItemSubtasks] = useState<{ [itemId: string]: boolean }>({});
+  const [showItemComments, setShowItemComments] = useState<{ [itemId: string]: boolean }>({});
+  const [showItemDocuments, setShowItemDocuments] = useState<{ [itemId: string]: boolean }>({});
 
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user);
@@ -172,6 +176,7 @@ export function EventPlanningView() {
   useEffect(() => {
     if (selectedPlanning) {
       fetchPlanningDetails(selectedPlanning.id);
+      loadAllItemCounts(); // Load counts for all items
     }
   }, [selectedPlanning]);
 
@@ -287,6 +292,7 @@ export function EventPlanningView() {
                  (item.sub_items ? JSON.parse(item.sub_items as string) : [])
     }));
     setChecklistItems(transformedChecklist);
+    loadAllItemCounts(); // Load counts after checklist is loaded
 
     // Fetch collaborators
     const { data: collabs } = await supabase
@@ -990,6 +996,7 @@ export function EventPlanningView() {
 
       setNewComment('');
       loadItemComments(selectedItemId);
+      loadAllItemCounts(); // Refresh counts
 
       toast({
         title: "Kommentar hinzugefügt",
@@ -1027,6 +1034,7 @@ export function EventPlanningView() {
 
       setNewSubtask({ description: '', assigned_to: 'unassigned', due_date: '' });
       loadItemSubtasks(selectedItemId);
+      loadAllItemCounts(); // Refresh counts
 
       toast({
         title: "Unteraufgabe hinzugefügt",
@@ -1042,15 +1050,124 @@ export function EventPlanningView() {
     }
   };
 
-  const handleItemFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const addItemCommentForItem = async (itemId: string, comment: string) => {
+    if (!comment.trim() || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('planning_item_comments')
+        .insert({
+          planning_item_id: itemId,
+          user_id: user.id,
+          content: comment.trim(),
+        });
+
+      if (error) throw error;
+
+      loadItemComments(itemId);
+      loadAllItemCounts(); // Refresh counts
+
+      toast({
+        title: "Kommentar hinzugefügt",
+        description: "Ihr Kommentar wurde erfolgreich hinzugefügt.",
+      });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Load counts for all items
+  const loadAllItemCounts = async () => {
+    if (!selectedPlanning) return;
+
+    try {
+      // Get all item IDs
+      const itemIds = checklistItems.map(item => item.id);
+      if (itemIds.length === 0) return;
+
+      // Load subtasks counts
+      const { data: subtasksData } = await supabase
+        .from('planning_item_subtasks')
+        .select('planning_item_id, id, description, is_completed, assigned_to, due_date, order_index, created_at, updated_at, result_text, completed_at, user_id')
+        .in('planning_item_id', itemIds);
+
+      const subtasksMap: { [itemId: string]: PlanningSubtask[] } = {};
+      (subtasksData || []).forEach(subtask => {
+        if (!subtasksMap[subtask.planning_item_id]) {
+          subtasksMap[subtask.planning_item_id] = [];
+        }
+        subtasksMap[subtask.planning_item_id].push({
+          ...subtask,
+          user_id: subtask.user_id || user?.id || ''
+        });
+      });
+      setItemSubtasks(subtasksMap);
+
+      // Load comments counts
+      const { data: commentsData } = await supabase
+        .from('planning_item_comments')
+        .select('planning_item_id, id, content, user_id, created_at')
+        .in('planning_item_id', itemIds);
+
+      // Get profile data for comments
+      const userIds = [...new Set(commentsData?.map(c => c.user_id) || [])];
+      let profiles: any[] = [];
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', userIds);
+        profiles = profilesData || [];
+      }
+
+      const commentsMap: { [itemId: string]: PlanningComment[] } = {};
+      (commentsData || []).forEach(comment => {
+        if (!commentsMap[comment.planning_item_id]) {
+          commentsMap[comment.planning_item_id] = [];
+        }
+        commentsMap[comment.planning_item_id].push({
+          ...comment,
+          profile: profiles.find(p => p.user_id === comment.user_id) || null,
+        });
+      });
+      setItemComments(commentsMap);
+
+      // Load documents counts
+      const { data: documentsData } = await supabase
+        .from('planning_item_documents')
+        .select('planning_item_id, id, file_name, file_path, file_size, file_type, created_at, user_id')
+        .in('planning_item_id', itemIds);
+
+      const documentsMap: { [itemId: string]: PlanningDocument[] } = {};
+      (documentsData || []).forEach(doc => {
+        if (!documentsMap[doc.planning_item_id]) {
+          documentsMap[doc.planning_item_id] = [];
+        }
+        documentsMap[doc.planning_item_id].push({
+          ...doc,
+          user_id: doc.user_id || user?.id || ''
+        });
+      });
+      setItemDocuments(documentsMap);
+    } catch (error) {
+      console.error('Error loading item counts:', error);
+    }
+  };
+
+  const handleItemFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
     const file = event.target.files?.[0];
-    if (!file || !selectedItemId || !user) return;
+    if (!file || !user) return;
 
     setUploading(true);
     try {
       const fileExtension = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExtension}`;
-      const filePath = `planning-items/${user.id}/${selectedItemId}/${fileName}`;
+      const filePath = `planning-items/${user.id}/${itemId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('documents')
@@ -1061,7 +1178,7 @@ export function EventPlanningView() {
       const { error: dbError } = await supabase
         .from('planning_item_documents')
         .insert({
-          planning_item_id: selectedItemId,
+          planning_item_id: itemId,
           user_id: user.id,
           file_name: file.name,
           file_path: filePath,
@@ -1071,7 +1188,8 @@ export function EventPlanningView() {
 
       if (dbError) throw dbError;
 
-      loadItemDocuments(selectedItemId);
+      loadItemDocuments(itemId);
+      loadAllItemCounts(); // Refresh counts
       
       toast({
         title: "Dokument hochgeladen",
@@ -1106,6 +1224,7 @@ export function EventPlanningView() {
       if (dbError) throw dbError;
 
       loadItemDocuments(selectedItemId!);
+      loadAllItemCounts(); // Refresh counts
       
       toast({
         title: "Dokument gelöscht",
@@ -1629,308 +1748,335 @@ export function EventPlanningView() {
               <CardTitle>Checkliste</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6 lg:grid-cols-3">
-                {/* Checklist Items */}
-                <div className="lg:col-span-2 space-y-2">
-                  <DragDropContext onDragEnd={onDragEnd}>
-                    <Droppable droppableId="checklist">
-                      {(provided) => (
-                        <div
-                          {...provided.droppableProps}
-                          ref={provided.innerRef}
-                          className="space-y-2"
-                        >
-                          {checklistItems.map((item: any, index: number) => (
-                            <Draggable key={item.id} draggableId={item.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  className={cn(
-                                    "group",
-                                    snapshot.isDragging && "z-50"
-                                  )}
-                                >
-                                  {item.type === 'separator' ? (
-                                    <div className="flex items-center gap-2 py-3">
-                                      <div {...provided.dragHandleProps} className="text-muted-foreground">
+              <div className="space-y-2">
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="checklist">
+                    {(provided) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className="space-y-2"
+                      >
+                        {checklistItems.map((item: any, index: number) => (
+                          <Draggable key={item.id} draggableId={item.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={cn(
+                                  "group",
+                                  snapshot.isDragging && "z-50"
+                                )}
+                              >
+                                {item.type === 'separator' ? (
+                                  <div className="flex items-center gap-2 py-3">
+                                    <div {...provided.dragHandleProps} className="text-muted-foreground">
+                                      <GripVertical className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex-1 border-t border-dashed border-border"></div>
+                                    <Input
+                                      value={item.title || 'Trenner'}
+                                      onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
+                                      className="text-muted-foreground italic text-sm px-2 border-none bg-transparent text-center w-32"
+                                      placeholder="Trenner-Text eingeben..."
+                                    />
+                                    <div className="flex-1 border-t border-dashed border-border"></div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <div className="flex items-center space-x-2 p-3 border border-border rounded-md bg-background hover:bg-muted/50 transition-colors">
+                                      <div {...provided.dragHandleProps} className="text-muted-foreground hover:text-foreground">
                                         <GripVertical className="h-4 w-4" />
                                       </div>
-                                      <div className="flex-1 border-t border-dashed border-border"></div>
-                                      <Input
-                                        value={item.title || 'Trenner'}
-                                        onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
-                                        className="text-muted-foreground italic text-sm px-2 border-none bg-transparent text-center w-32"
-                                        placeholder="Trenner-Text eingeben..."
+                                      <Checkbox
+                                        checked={item.is_completed}
+                                        onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)}
                                       />
-                                      <div className="flex-1 border-t border-dashed border-border"></div>
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-2">
-                                      <div className="flex items-center space-x-2 p-3 border border-border rounded-md bg-background hover:bg-muted/50 transition-colors">
-                                        <div {...provided.dragHandleProps} className="text-muted-foreground hover:text-foreground">
-                                          <GripVertical className="h-4 w-4" />
-                                        </div>
-                                        <Checkbox
-                                          checked={item.is_completed}
-                                          onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)}
-                                        />
-                                        <Input
-                                          value={item.title}
-                                          onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
-                                          className={cn(
-                                            "flex-1 border-none bg-transparent focus:bg-background",
-                                            item.is_completed && "line-through text-muted-foreground"
-                                          )}
-                                        />
-                                        <div className="flex items-center space-x-1">
-                                          {/* Indicators for subtasks, comments, documents */}
-                                          {itemSubtasks[item.id]?.length > 0 && (
+                                      <Input
+                                        value={item.title}
+                                        onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
+                                        className={cn(
+                                          "flex-1 border-none bg-transparent focus:bg-background",
+                                          item.is_completed && "line-through text-muted-foreground"
+                                        )}
+                                      />
+                                      <div className="flex items-center space-x-1">
+                                        {/* Clickable badges to expand sections */}
+                                        {(itemSubtasks[item.id]?.length || 0) > 0 && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                            className="h-auto p-1"
+                                          >
                                             <Badge variant="secondary" className="text-xs">
                                               <ListTodo className="h-3 w-3 mr-1" />
                                               {itemSubtasks[item.id].length}
                                             </Badge>
-                                          )}
-                                          {itemComments[item.id]?.length > 0 && (
+                                          </Button>
+                                        )}
+                                        {(itemComments[item.id]?.length || 0) > 0 && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowItemComments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                            className="h-auto p-1"
+                                          >
                                             <Badge variant="secondary" className="text-xs">
                                               <MessageCircle className="h-3 w-3 mr-1" />
                                               {itemComments[item.id].length}
                                             </Badge>
-                                          )}
-                                          {itemDocuments[item.id]?.length > 0 && (
+                                          </Button>
+                                        )}
+                                        {(itemDocuments[item.id]?.length || 0) > 0 && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowItemDocuments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                            className="h-auto p-1"
+                                          >
                                             <Badge variant="secondary" className="text-xs">
                                               <Paperclip className="h-3 w-3 mr-1" />
                                               {itemDocuments[item.id].length}
                                             </Badge>
-                                          )}
-                                          <Button 
-                                            variant="ghost" 
-                                            size="sm"
-                                            onClick={() => setSelectedItemId(selectedItemId === item.id ? null : item.id)}
-                                            className={cn(
-                                              "text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity",
-                                              selectedItemId === item.id && "opacity-100 text-primary"
-                                            )}
-                                          >
-                                            <Edit2 className="h-3 w-3" />
                                           </Button>
+                                        )}
+                                        
+                                        {/* Add new subtask/comment/document buttons */}
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                          className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                                          title="Unteraufgabe hinzufügen"
+                                        >
+                                          <ListTodo className="h-3 w-3" />
+                                        </Button>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={() => setShowItemComments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                          className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                                          title="Kommentar hinzufügen"
+                                        >
+                                          <MessageCircle className="h-3 w-3" />
+                                        </Button>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={() => setShowItemDocuments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                          className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                                          title="Dokument hinzufügen"
+                                        >
+                                          <Paperclip className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+
+                                    {/* Expanded Subtasks */}
+                                    {showItemSubtasks[item.id] && (
+                                      <div className="ml-8 space-y-2 border-l-2 border-border pl-4">
+                                        <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+                                          <ListTodo className="h-4 w-4" />
+                                          Unteraufgaben
+                                        </div>
+                                        {itemSubtasks[item.id]?.map((subtask) => (
+                                          <div key={subtask.id} className="flex items-center space-x-2 p-2 border border-border rounded bg-muted/30">
+                                            <Checkbox
+                                              checked={subtask.is_completed}
+                                              onCheckedChange={() => {
+                                                supabase
+                                                  .from('planning_item_subtasks')
+                                                  .update({ 
+                                                    is_completed: !subtask.is_completed,
+                                                    completed_at: !subtask.is_completed ? new Date().toISOString() : null
+                                                  })
+                                                  .eq('id', subtask.id)
+                                                  .then(() => {
+                                                    loadItemSubtasks(item.id);
+                                                    loadAllItemCounts();
+                                                  });
+                                              }}
+                                            />
+                                            <span className={cn(
+                                              "text-sm flex-1",
+                                              subtask.is_completed && "line-through text-muted-foreground"
+                                            )}>
+                                              {subtask.description}
+                                            </span>
+                                            {subtask.assigned_to && (
+                                              <Badge variant="outline" className="text-xs">
+                                                {allProfiles.find(p => p.user_id === subtask.assigned_to)?.display_name || 'Unbekannt'}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        ))}
+                                        {/* Add new subtask form */}
+                                        <div className="space-y-2 pt-2">
+                                          <Input
+                                            placeholder="Neue Unteraufgabe..."
+                                            className="text-sm"
+                                            onKeyPress={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const input = e.target as HTMLInputElement;
+                                                if (input.value.trim() && user) {
+                                                  supabase
+                                                    .from('planning_item_subtasks')
+                                                    .insert({
+                                                      planning_item_id: item.id,
+                                                      user_id: user.id,
+                                                      description: input.value.trim(),
+                                                      order_index: (itemSubtasks[item.id]?.length || 0),
+                                                    })
+                                                    .then(() => {
+                                                      input.value = '';
+                                                      loadItemSubtasks(item.id);
+                                                      loadAllItemCounts();
+                                                    });
+                                                }
+                                              }
+                                            }}
+                                          />
                                         </div>
                                       </div>
-                                      {/* Legacy sub-items (will be migrated to new system) */}
-                                      {item.sub_items && Array.isArray(item.sub_items) && item.sub_items.length > 0 && (
-                                        <div className="ml-12 space-y-1">
-                                          {item.sub_items.map((subItem: any, index: number) => (
-                                            <div key={index} className="flex items-center space-x-2">
-                                              <Checkbox
-                                                checked={subItem.is_completed || false}
-                                                onCheckedChange={() => toggleSubItem(item.id, index, subItem.is_completed || false)}
-                                              />
-                                              <Input
-                                                value={subItem.title || ''}
-                                                onChange={(e) => updateSubItemTitle(item.id, index, e.target.value)}
-                                                className={cn(
-                                                  "flex-1 text-sm",
-                                                  subItem.is_completed && "line-through text-muted-foreground"
-                                                )}
-                                                placeholder="Unterpunkt..."
-                                              />
+                                    )}
+
+                                    {/* Expanded Comments */}
+                                    {showItemComments[item.id] && (
+                                      <div className="ml-8 space-y-2 border-l-2 border-border pl-4">
+                                        <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+                                          <MessageCircle className="h-4 w-4" />
+                                          Kommentare
+                                        </div>
+                                        {itemComments[item.id]?.map((comment) => (
+                                          <div key={comment.id} className="p-2 border border-border rounded bg-muted/30">
+                                            <div className="flex items-center space-x-2 mb-1">
+                                              <span className="text-xs font-medium">
+                                                {comment.profile?.display_name || 'Unbekannt'}
+                                              </span>
+                                              <span className="text-xs text-muted-foreground">
+                                                {format(new Date(comment.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                                              </span>
+                                            </div>
+                                            <p className="text-sm">{comment.content}</p>
+                                          </div>
+                                        ))}
+                                        {/* Add new comment form */}
+                                        <div className="pt-2">
+                                          <Input
+                                            placeholder="Kommentar hinzufügen..."
+                                            className="text-sm"
+                                            onKeyPress={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const input = e.target as HTMLInputElement;
+                                                if (input.value.trim()) {
+                                                  addItemCommentForItem(item.id, input.value);
+                                                  input.value = '';
+                                                }
+                                              }
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Expanded Documents */}
+                                    {showItemDocuments[item.id] && (
+                                      <div className="ml-8 space-y-2 border-l-2 border-border pl-4">
+                                        <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+                                          <Paperclip className="h-4 w-4" />
+                                          Dokumente
+                                        </div>
+                                        {itemDocuments[item.id]?.map((doc) => (
+                                          <div key={doc.id} className="flex items-center justify-between p-2 border border-border rounded bg-muted/30">
+                                            <div className="flex items-center space-x-2">
+                                              <Paperclip className="h-3 w-3" />
+                                              <span className="text-sm truncate">{doc.file_name}</span>
+                                            </div>
+                                            <div className="flex space-x-1">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => removeSubItem(item.id, index)}
-                                                className="text-muted-foreground hover:text-destructive"
+                                                onClick={() => downloadItemDocument(doc)}
                                               >
-                                                <X className="h-3 w-3" />
+                                                <Download className="h-3 w-3" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => deleteItemDocument(doc)}
+                                                className="text-destructive hover:text-destructive"
+                                              >
+                                                <Trash2 className="h-3 w-3" />
                                               </Button>
                                             </div>
-                                          ))}
+                                          </div>
+                                        ))}
+                                        {/* Add new document form */}
+                                        <div className="pt-2">
+                                          <Input
+                                            type="file"
+                                            onChange={(e) => handleItemFileUpload(e, item.id)}
+                                            className="text-sm"
+                                            disabled={uploading}
+                                          />
                                         </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </DragDropContext>
-                  
-                  <div className="flex items-center space-x-2 mt-4">
-                    <Input
-                      value={newChecklistItem}
-                      onChange={(e) => setNewChecklistItem(e.target.value)}
-                      placeholder="Neuen Punkt hinzufügen (--- für Trenner)..."
-                      onKeyPress={(e) => e.key === "Enter" && addChecklistItem()}
-                    />
-                    <Button onClick={addChecklistItem}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
+                                      </div>
+                                    )}
+
+                                    {/* Legacy sub-items (will be migrated to new system) */}
+                                    {item.sub_items && Array.isArray(item.sub_items) && item.sub_items.length > 0 && (
+                                      <div className="ml-12 space-y-1">
+                                        {item.sub_items.map((subItem: any, index: number) => (
+                                          <div key={index} className="flex items-center space-x-2">
+                                            <Checkbox
+                                              checked={subItem.is_completed || false}
+                                              onCheckedChange={() => toggleSubItem(item.id, index, subItem.is_completed || false)}
+                                            />
+                                            <Input
+                                              value={subItem.title || ''}
+                                              onChange={(e) => updateSubItemTitle(item.id, index, e.target.value)}
+                                              className={cn(
+                                                "flex-1 text-sm",
+                                                subItem.is_completed && "line-through text-muted-foreground"
+                                              )}
+                                              placeholder="Unterpunkt..."
+                                            />
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => removeSubItem(item.id, index)}
+                                              className="text-muted-foreground hover:text-destructive"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+                
+                <div className="flex items-center space-x-2 mt-4">
+                  <Input
+                    value={newChecklistItem}
+                    onChange={(e) => setNewChecklistItem(e.target.value)}
+                    placeholder="Neuen Punkt hinzufügen (--- für Trenner)..."
+                    onKeyPress={(e) => e.key === "Enter" && addChecklistItem()}
+                  />
+                  <Button onClick={addChecklistItem}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                {/* Item Details Panel */}
-                {selectedItemId && (
-                  <div className="lg:col-span-1 space-y-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg flex items-center justify-between">
-                          {checklistItems.find(item => item.id === selectedItemId)?.title}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedItemId(null)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {/* Subtasks */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <Label className="text-sm font-medium">Unteraufgaben</Label>
-                            <Badge variant="secondary">{itemSubtasks[selectedItemId]?.length || 0}</Badge>
-                          </div>
-                          <div className="space-y-2">
-                            {itemSubtasks[selectedItemId]?.map((subtask) => (
-                              <div key={subtask.id} className="flex items-center space-x-2 p-2 border border-border rounded">
-                                <Checkbox
-                                  checked={subtask.is_completed}
-                                  onCheckedChange={() => {
-                                    // Update subtask completion
-                                    supabase
-                                      .from('planning_item_subtasks')
-                                      .update({ 
-                                        is_completed: !subtask.is_completed,
-                                        completed_at: !subtask.is_completed ? new Date().toISOString() : null
-                                      })
-                                      .eq('id', subtask.id)
-                                      .then(() => loadItemSubtasks(selectedItemId));
-                                  }}
-                                />
-                                <span className={cn(
-                                  "text-sm flex-1",
-                                  subtask.is_completed && "line-through text-muted-foreground"
-                                )}>
-                                  {subtask.description}
-                                </span>
-                              </div>
-                            ))}
-                            
-                            {/* Add new subtask */}
-                            <div className="space-y-2 pt-2 border-t">
-                              <Input
-                                value={newSubtask.description}
-                                onChange={(e) => setNewSubtask({ ...newSubtask, description: e.target.value })}
-                                placeholder="Neue Unteraufgabe..."
-                                className="text-sm"
-                              />
-                              <div className="flex space-x-2">
-                                <Select value={newSubtask.assigned_to} onValueChange={(value) => setNewSubtask({ ...newSubtask, assigned_to: value === "unassigned" ? "" : value })}>
-                                  <SelectTrigger className="text-sm">
-                                    <SelectValue placeholder="Zuweisen..." />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="unassigned">Niemand</SelectItem>
-                                    {allProfiles.map((profile) => (
-                                      <SelectItem key={profile.user_id} value={profile.user_id}>
-                                        {profile.display_name || 'Unbekannt'}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Button size="sm" onClick={addItemSubtask}>
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Comments */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <Label className="text-sm font-medium">Kommentare</Label>
-                            <Badge variant="secondary">{itemComments[selectedItemId]?.length || 0}</Badge>
-                          </div>
-                          <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {itemComments[selectedItemId]?.map((comment) => (
-                              <div key={comment.id} className="p-2 border border-border rounded">
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <span className="text-xs font-medium">
-                                    {comment.profile?.display_name || 'Unbekannt'}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {format(new Date(comment.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
-                                  </span>
-                                </div>
-                                <p className="text-sm">{comment.content}</p>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="flex space-x-2 mt-2">
-                            <Input
-                              value={newComment}
-                              onChange={(e) => setNewComment(e.target.value)}
-                              placeholder="Kommentar hinzufügen..."
-                              className="text-sm"
-                              onKeyPress={(e) => e.key === "Enter" && addItemComment()}
-                            />
-                            <Button size="sm" onClick={addItemComment}>
-                              <Send className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Documents */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <Label className="text-sm font-medium">Dokumente</Label>
-                            <Badge variant="secondary">{itemDocuments[selectedItemId]?.length || 0}</Badge>
-                          </div>
-                          <div className="space-y-2">
-                            {itemDocuments[selectedItemId]?.map((doc) => (
-                              <div key={doc.id} className="flex items-center justify-between p-2 border border-border rounded">
-                                <div className="flex items-center space-x-2">
-                                  <Paperclip className="h-3 w-3" />
-                                  <span className="text-sm truncate">{doc.file_name}</span>
-                                </div>
-                                <div className="flex space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => downloadItemDocument(doc)}
-                                  >
-                                    <Download className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => deleteItemDocument(doc)}
-                                    className="text-destructive hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                            <div className="pt-2 border-t">
-                              <Input
-                                type="file"
-                                onChange={handleItemFileUpload}
-                                className="text-sm"
-                                disabled={uploading}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
