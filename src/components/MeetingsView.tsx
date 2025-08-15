@@ -71,6 +71,7 @@ export function MeetingsView() {
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [taskDocuments, setTaskDocuments] = useState<Record<string, any[]>>({});
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
@@ -99,6 +100,61 @@ export function MeetingsView() {
       console.log('No user found, skipping data load');
     }
   }, [user]);
+
+  // Sync task changes to meeting agenda items
+  useEffect(() => {
+    const syncTaskChanges = async () => {
+      if (!tasks || tasks.length === 0) return;
+      
+      try {
+        // Get all meeting agenda items that reference tasks
+        const { data: agendaItemsWithTasks, error } = await supabase
+          .from('meeting_agenda_items')
+          .select('*')
+          .not('task_id', 'is', null);
+        
+        if (error) throw error;
+        
+        if (agendaItemsWithTasks && agendaItemsWithTasks.length > 0) {
+          // Update agenda items with current task data
+          for (const agendaItem of agendaItemsWithTasks) {
+            const correspondingTask = tasks.find(task => task.id === agendaItem.task_id);
+            if (correspondingTask) {
+              // Get task documents
+              const taskDocs = taskDocuments[correspondingTask.id] || [];
+              const documentPath = taskDocs.length > 0 ? taskDocs[0].file_path : null;
+              
+              // Update if task title, description, or documents have changed
+              const updates: any = {};
+              if (agendaItem.title !== correspondingTask.title) {
+                updates.title = correspondingTask.title;
+              }
+              if (agendaItem.description !== correspondingTask.description) {
+                updates.description = correspondingTask.description;
+              }
+              if (agendaItem.file_path !== documentPath) {
+                updates.file_path = documentPath;
+              }
+              
+              // Only update if there are actual changes
+              if (Object.keys(updates).length > 0) {
+                await supabase
+                  .from('meeting_agenda_items')
+                  .update(updates)
+                  .eq('id', agendaItem.id);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error syncing task changes:', error);
+      }
+    };
+    
+    if (tasks.length > 0 && Object.keys(taskDocuments).length >= 0) {
+      syncTaskChanges();
+    }
+  }, [tasks, taskDocuments]);
 
   const loadMeetings = async () => {
     try {
@@ -153,8 +209,37 @@ export function MeetingsView() {
 
       if (error) throw error;
       setTasks(data || []);
+      
+      // Load task documents for all tasks
+      if (data && data.length > 0) {
+        await loadTaskDocuments(data.map(task => task.id));
+      }
     } catch (error) {
       console.error('Error loading tasks:', error);
+    }
+  };
+
+  const loadTaskDocuments = async (taskIds: string[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('task_documents')
+        .select('*')
+        .in('task_id', taskIds);
+
+      if (error) throw error;
+      
+      // Group documents by task_id
+      const docsByTaskId: Record<string, any[]> = {};
+      data?.forEach(doc => {
+        if (!docsByTaskId[doc.task_id]) {
+          docsByTaskId[doc.task_id] = [];
+        }
+        docsByTaskId[doc.task_id].push(doc);
+      });
+      
+      setTaskDocuments(docsByTaskId);
+    } catch (error) {
+      console.error('Error loading task documents:', error);
     }
   };
 
@@ -483,6 +568,15 @@ export function MeetingsView() {
       // Calculate the correct order index for the sub-item (right after parent)
       const subItemOrderIndex = parentIndex + 1;
       
+      // Get task documents for this task
+      const taskDocs = taskDocuments[task.id] || [];
+      let documentPath = null;
+      
+      // If task has documents, we'll reference the first one (or could concatenate all)
+      if (taskDocs.length > 0) {
+        documentPath = taskDocs[0].file_path;
+      }
+
       // Insert the task as a sub-item with correct parent_id
       const { data: taskData, error: taskError } = await supabase
         .from('meeting_agenda_items')
@@ -495,6 +589,7 @@ export function MeetingsView() {
           order_index: subItemOrderIndex,
           is_completed: false,
           is_recurring: false,
+          file_path: documentPath,
         })
         .select()
         .single();
