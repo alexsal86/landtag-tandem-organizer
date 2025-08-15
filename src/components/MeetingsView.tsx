@@ -1718,78 +1718,83 @@ export function MeetingsView() {
                                                </div>
                                              )}
                                             
-                                            <label className="text-sm font-medium">Datei anhängen</label>
-                                            <div className="flex items-center gap-2">
-                                              <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="flex-1"
-                                                 onClick={async () => {
-                                                   const fileInput = document.createElement('input');
-                                                   fileInput.type = 'file';
-                                                   fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
-                                                   fileInput.onchange = async (e) => {
-                                                     const file = (e.target as HTMLInputElement).files?.[0];
-                                                     if (file && selectedMeeting?.id) {
-                                                       try {
-                                                         // If item doesn't have an ID yet, save it first
-                                                         let itemId = item.id;
-                                                         if (!itemId) {
-                                                           const { data: savedItem, error: saveError } = await supabase
-                                                             .from('meeting_agenda_items')
-                                                             .insert({
-                                                               meeting_id: selectedMeeting.id,
-                                                               title: item.title || 'Unterpunkt',
-                                                               description: item.description || '',
-                                                               notes: item.notes || '',
-                                                               parent_id: item.parent_id || null,
-                                                               order_index: item.order_index,
-                                                               is_completed: false,
-                                                               is_recurring: false,
-                                                             })
-                                                             .select()
-                                                             .single();
-                                                           
-                                                           if (saveError) throw saveError;
-                                                           itemId = savedItem.id;
-                                                           
-                                                           // Update local state with the new ID
-                                                           const updatedItems = [...agendaItems];
-                                                           updatedItems[index] = { ...item, id: itemId };
-                                                           setAgendaItems(updatedItems);
-                                                         }
-                                                         
-                                                          const fileName = `${user?.id}/${itemId}_${Date.now()}_${file.name}`;
-                                                          const { error: uploadError } = await supabase.storage
-                                                            .from('documents')
-                                                            .upload(fileName, file);
-                                                         
-                                                         if (uploadError) throw uploadError;
-                                                         
-                                                         // Update the agenda item with file path
-                                                         await updateAgendaItem(index, 'file_path', fileName);
-                                                         
-                                                         toast({
-                                                           title: "Datei hochgeladen",
-                                                           description: `${file.name} wurde erfolgreich angehängt.`,
-                                                         });
-                                                       } catch (error) {
-                                                         console.error('Upload error:', error);
-                                                         toast({
-                                                           title: "Upload-Fehler",
-                                                           description: error.message || "Die Datei konnte nicht hochgeladen werden.",
-                                                           variant: "destructive",
-                                                         });
-                                                       }
-                                                     }
-                                                   };
-                                                   fileInput.click();
-                                                 }}
-                                              >
-                                                <Upload className="h-4 w-4 mr-2" />
-                                                Datei auswählen
-                                              </Button>
-                                             </div>
+                                             {/* Show regular file upload only for non-task items */}
+                                             {!item.task_id && (
+                                               <>
+                                                 <label className="text-sm font-medium">Datei anhängen</label>
+                                                 <div className="flex items-center gap-2">
+                                                   <Button 
+                                                     variant="outline" 
+                                                     size="sm" 
+                                                     className="flex-1"
+                                                      onClick={async () => {
+                                                        const fileInput = document.createElement('input');
+                                                        fileInput.type = 'file';
+                                                        fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
+                                                        fileInput.onchange = async (e) => {
+                                                          const file = (e.target as HTMLInputElement).files?.[0];
+                                                          if (file && selectedMeeting?.id) {
+                                                            try {
+                                                              // If item doesn't have an ID yet, save it first
+                                                              let itemId = item.id;
+                                                              if (!itemId) {
+                                                                const { data: savedItem, error: saveError } = await supabase
+                                                                  .from('meeting_agenda_items')
+                                                                  .insert({
+                                                                    meeting_id: selectedMeeting.id,
+                                                                    title: item.title || 'Unterpunkt',
+                                                                    description: item.description || '',
+                                                                    notes: item.notes || '',
+                                                                    parent_id: item.parent_id || null,
+                                                                    order_index: item.order_index,
+                                                                    is_completed: false,
+                                                                    is_recurring: false,
+                                                                  })
+                                                                  .select()
+                                                                  .single();
+                                                                
+                                                                if (saveError) throw saveError;
+                                                                itemId = savedItem.id;
+                                                                
+                                                                // Update local state with the new ID
+                                                                const updatedItems = [...agendaItems];
+                                                                updatedItems[index] = { ...item, id: itemId };
+                                                                setAgendaItems(updatedItems);
+                                                              }
+                                                              
+                                                               const fileName = `${user?.id}/${itemId}_${Date.now()}_${file.name}`;
+                                                               const { error: uploadError } = await supabase.storage
+                                                                 .from('documents')
+                                                                 .upload(fileName, file);
+                                                              
+                                                              if (uploadError) throw uploadError;
+                                                              
+                                                              // Update the agenda item with file path
+                                                              await updateAgendaItem(index, 'file_path', fileName);
+                                                              
+                                                              toast({
+                                                                title: "Datei hochgeladen",
+                                                                description: `${file.name} wurde erfolgreich angehängt.`,
+                                                              });
+                                                            } catch (error) {
+                                                              console.error('Upload error:', error);
+                                                              toast({
+                                                                title: "Upload-Fehler",
+                                                                description: error.message || "Die Datei konnte nicht hochgeladen werden.",
+                                                                variant: "destructive",
+                                                              });
+                                                            }
+                                                          }
+                                                        };
+                                                        fileInput.click();
+                                                      }}
+                                                   >
+                                                     <Upload className="h-4 w-4 mr-2" />
+                                                     Datei auswählen
+                                                   </Button>
+                                                  </div>
+                                               </>
+                                             )}
                                              
                                              {/* Additional agenda documents */}
                                              {agendaDocuments[item.id || item.localKey] && agendaDocuments[item.id || item.localKey].length > 0 && (
@@ -1874,103 +1879,106 @@ export function MeetingsView() {
                                                </div>
                                              )}
                                              
-                                             <div className="mt-4">
-                                               <label className="text-sm font-medium">Zusätzliche Datei anhängen</label>
-                                               <div className="flex items-center gap-2 mt-2">
-                                                 <Button 
-                                                   variant="outline" 
-                                                   size="sm" 
-                                                   className="flex-1"
-                                                   onClick={async () => {
-                                                     const fileInput = document.createElement('input');
-                                                     fileInput.type = 'file';
-                                                     fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
-                                                     fileInput.onchange = async (e) => {
-                                                       const file = (e.target as HTMLInputElement).files?.[0];
-                                                       if (file && selectedMeeting?.id) {
-                                                         try {
-                                                           // If item doesn't have an ID yet, save it first
-                                                           let itemId = item.id;
-                                                           if (!itemId) {
-                                                             const { data: savedItem, error: saveError } = await supabase
-                                                               .from('meeting_agenda_items')
-                                                               .insert({
-                                                                 meeting_id: selectedMeeting.id,
-                                                                 title: item.title || 'Unterpunkt',
-                                                                 description: item.description || '',
-                                                                 notes: item.notes || '',
-                                                                 parent_id: item.parent_id || null,
-                                                                 order_index: item.order_index,
-                                                                 is_completed: false,
-                                                                 is_recurring: false,
-                                                               })
-                                                               .select()
-                                                               .single();
-                                                             
-                                                             if (saveError) throw saveError;
-                                                             itemId = savedItem.id;
-                                                             
-                                                             // Update local state with the new ID
-                                                             const updatedItems = [...agendaItems];
-                                                             updatedItems[index] = { ...item, id: itemId };
-                                                             setAgendaItems(updatedItems);
-                                                           }
-                                                           
-                                                           // Upload file
-                                                           const filePath = `${user?.id}/${itemId}/${Date.now()}_${file.name}`;
-                                                           const { error: uploadError } = await supabase.storage
-                                                             .from('documents')
-                                                             .upload(filePath, file);
-                                                           
-                                                           if (uploadError) throw uploadError;
-                                                           
-                                                           // Save to meeting_agenda_documents
-                                                           const { data: docData, error: docError } = await supabase
-                                                             .from('meeting_agenda_documents')
-                                                             .insert({
-                                                               meeting_id: selectedMeeting.id,
-                                                               agenda_item_id: itemId,
-                                                               user_id: user?.id,
-                                                               file_name: file.name,
-                                                               file_path: filePath,
-                                                               file_type: file.type,
-                                                               file_size: file.size
-                                                             })
-                                                             .select()
-                                                             .single();
-                                                           
-                                                           if (docError) throw docError;
-                                                           
-                                                           // Update local state
-                                                           const updatedDocs = { ...agendaDocuments };
-                                                           if (!updatedDocs[itemId]) {
-                                                             updatedDocs[itemId] = [];
-                                                           }
-                                                           updatedDocs[itemId].push(docData);
-                                                           setAgendaDocuments(updatedDocs);
-                                                           
-                                                           toast({
-                                                             title: "Datei hochgeladen",
-                                                             description: "Die Datei wurde erfolgreich angehängt.",
-                                                           });
-                                                         } catch (error) {
-                                                           console.error('Upload error:', error);
-                                                           toast({
-                                                             title: "Upload-Fehler",
-                                                             description: "Die Datei konnte nicht hochgeladen werden.",
-                                                             variant: "destructive",
-                                                           });
-                                                         }
-                                                       }
-                                                     };
-                                                     fileInput.click();
-                                                   }}
-                                                 >
-                                                   <Upload className="h-4 w-4 mr-2" />
-                                                   Zusätzliche Datei
-                                                 </Button>
-                                               </div>
-                                             </div>
+                                              {/* Show additional file upload only for task items */}
+                                              {item.task_id && (
+                                                <div className="mt-4">
+                                                  <label className="text-sm font-medium">Zusätzliche Datei anhängen</label>
+                                                  <div className="flex items-center gap-2 mt-2">
+                                                    <Button 
+                                                      variant="outline" 
+                                                      size="sm" 
+                                                      className="flex-1"
+                                                      onClick={async () => {
+                                                        const fileInput = document.createElement('input');
+                                                        fileInput.type = 'file';
+                                                        fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
+                                                        fileInput.onchange = async (e) => {
+                                                          const file = (e.target as HTMLInputElement).files?.[0];
+                                                          if (file && selectedMeeting?.id) {
+                                                            try {
+                                                              // If item doesn't have an ID yet, save it first
+                                                              let itemId = item.id;
+                                                              if (!itemId) {
+                                                                const { data: savedItem, error: saveError } = await supabase
+                                                                  .from('meeting_agenda_items')
+                                                                  .insert({
+                                                                    meeting_id: selectedMeeting.id,
+                                                                    title: item.title || 'Unterpunkt',
+                                                                    description: item.description || '',
+                                                                    notes: item.notes || '',
+                                                                    parent_id: item.parent_id || null,
+                                                                    order_index: item.order_index,
+                                                                    is_completed: false,
+                                                                    is_recurring: false,
+                                                                  })
+                                                                  .select()
+                                                                  .single();
+                                                                
+                                                                if (saveError) throw saveError;
+                                                                itemId = savedItem.id;
+                                                                
+                                                                // Update local state with the new ID
+                                                                const updatedItems = [...agendaItems];
+                                                                updatedItems[index] = { ...item, id: itemId };
+                                                                setAgendaItems(updatedItems);
+                                                              }
+                                                              
+                                                              // Upload file
+                                                              const filePath = `${user?.id}/${itemId}/${Date.now()}_${file.name}`;
+                                                              const { error: uploadError } = await supabase.storage
+                                                                .from('documents')
+                                                                .upload(filePath, file);
+                                                              
+                                                              if (uploadError) throw uploadError;
+                                                              
+                                                              // Save to meeting_agenda_documents
+                                                              const { data: docData, error: docError } = await supabase
+                                                                .from('meeting_agenda_documents')
+                                                                .insert({
+                                                                  meeting_id: selectedMeeting.id,
+                                                                  agenda_item_id: itemId,
+                                                                  user_id: user?.id,
+                                                                  file_name: file.name,
+                                                                  file_path: filePath,
+                                                                  file_type: file.type,
+                                                                  file_size: file.size
+                                                                })
+                                                                .select()
+                                                                .single();
+                                                              
+                                                              if (docError) throw docError;
+                                                              
+                                                              // Update local state
+                                                              const updatedDocs = { ...agendaDocuments };
+                                                              if (!updatedDocs[itemId]) {
+                                                                updatedDocs[itemId] = [];
+                                                              }
+                                                              updatedDocs[itemId].push(docData);
+                                                              setAgendaDocuments(updatedDocs);
+                                                              
+                                                              toast({
+                                                                title: "Datei hochgeladen",
+                                                                description: "Die Datei wurde erfolgreich angehängt.",
+                                                              });
+                                                            } catch (error) {
+                                                              console.error('Upload error:', error);
+                                                              toast({
+                                                                title: "Upload-Fehler",
+                                                                description: "Die Datei konnte nicht hochgeladen werden.",
+                                                                variant: "destructive",
+                                                              });
+                                                            }
+                                                          }
+                                                        };
+                                                        fileInput.click();
+                                                      }}
+                                                    >
+                                                      <Upload className="h-4 w-4 mr-2" />
+                                                      Zusätzliche Datei
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              )}
                                            </div>
                                        </>
                                      )}
