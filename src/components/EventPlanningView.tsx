@@ -1946,43 +1946,96 @@ export function EventPlanningView() {
                                           Unteraufgaben
                                         </div>
                                          {itemSubtasks[item.id]?.map((subtask) => (
-                                           <div key={subtask.id} className="flex items-center space-x-2 p-2 border border-border rounded bg-muted/30">
-                                             <Checkbox
-                                               checked={subtask.is_completed}
-                                               onCheckedChange={() => {
-                                                 supabase
-                                                   .from('planning_item_subtasks')
-                                                   .update({ 
-                                                     is_completed: !subtask.is_completed,
-                                                     completed_at: !subtask.is_completed ? new Date().toISOString() : null
-                                                   })
-                                                   .eq('id', subtask.id)
-                                                   .then(() => {
-                                                     loadItemSubtasks(item.id);
-                                                     loadAllItemCounts();
-                                                   });
-                                               }}
-                                             />
-                                             <div className="flex-1">
-                                               <div className={cn(
-                                                 "text-sm",
-                                                 subtask.is_completed && "line-through text-muted-foreground"
-                                               )}>
-                                                 {subtask.description}
-                                               </div>
-                                               <div className="flex items-center gap-2 mt-1">
-                                                 {subtask.assigned_to && (
-                                                   <Badge variant="outline" className="text-xs">
-                                                     {allProfiles.find(p => p.user_id === subtask.assigned_to)?.display_name || 'Unbekannt'}
-                                                   </Badge>
+                                           <div key={subtask.id} className="space-y-2 p-2 border border-border rounded bg-muted/30">
+                                             <div className="flex items-center space-x-2">
+                                               <Checkbox
+                                                 checked={subtask.is_completed}
+                                                 onCheckedChange={() => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .update({ 
+                                                       is_completed: !subtask.is_completed,
+                                                       completed_at: !subtask.is_completed ? new Date().toISOString() : null
+                                                     })
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                       loadAllItemCounts();
+                                                     });
+                                                 }}
+                                               />
+                                               <Input
+                                                 value={subtask.description}
+                                                 onChange={(e) => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .update({ description: e.target.value })
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                     });
+                                                 }}
+                                                 className={cn(
+                                                   "flex-1 text-sm border-none bg-transparent focus:bg-background",
+                                                   subtask.is_completed && "line-through text-muted-foreground"
                                                  )}
-                                                 {subtask.due_date && (
-                                                   <Badge variant="secondary" className="text-xs">
-                                                     <Calendar className="h-3 w-3 mr-1" />
-                                                     {format(new Date(subtask.due_date), "dd.MM.yyyy", { locale: de })}
-                                                   </Badge>
-                                                 )}
-                                               </div>
+                                               />
+                                               <Select
+                                                 value={subtask.assigned_to || 'unassigned'}
+                                                 onValueChange={(value) => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .update({ assigned_to: value === 'unassigned' ? null : value })
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                     });
+                                                 }}
+                                               >
+                                                 <SelectTrigger className="w-[140px] h-8 text-xs">
+                                                   <SelectValue placeholder="Zuweisen..." />
+                                                 </SelectTrigger>
+                                                 <SelectContent>
+                                                   <SelectItem value="unassigned">Niemand</SelectItem>
+                                                   {allProfiles.map((profile) => (
+                                                     <SelectItem key={profile.user_id} value={profile.user_id}>
+                                                       {profile.display_name || 'Unbekannt'}
+                                                     </SelectItem>
+                                                   ))}
+                                                 </SelectContent>
+                                               </Select>
+                                               <Input
+                                                 type="date"
+                                                 value={subtask.due_date ? format(new Date(subtask.due_date), "yyyy-MM-dd") : ''}
+                                                 onChange={(e) => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .update({ due_date: e.target.value || null })
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                     });
+                                                 }}
+                                                 className="w-[130px] h-8 text-xs"
+                                                 placeholder="Frist..."
+                                               />
+                                               <Button
+                                                 variant="ghost"
+                                                 size="sm"
+                                                 onClick={() => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .delete()
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                       loadAllItemCounts();
+                                                     });
+                                                 }}
+                                                 className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                               >
+                                                 <Trash2 className="h-3 w-3" />
+                                               </Button>
                                              </div>
                                            </div>
                                          ))}
