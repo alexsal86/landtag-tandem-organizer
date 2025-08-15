@@ -138,10 +138,16 @@ export function MeetingsView() {
               
               // Only update if there are actual changes
               if (Object.keys(updates).length > 0) {
+                console.log('Updating agenda item:', agendaItem.id, 'with:', updates);
                 await supabase
                   .from('meeting_agenda_items')
                   .update(updates)
                   .eq('id', agendaItem.id);
+                
+                // Reload agenda items for the selected meeting to reflect changes
+                if (selectedMeeting?.id === agendaItem.meeting_id) {
+                  await loadAgendaItems(selectedMeeting.id);
+                }
               }
             }
           }
@@ -1609,9 +1615,19 @@ export function MeetingsView() {
                                            />
                                          </div>
 
-                                           <div>
-                                             {/* Display uploaded files */}
-                                             {item.file_path && (
+                                            <div>
+                                              {/* Display uploaded files */}
+                                              {(() => {
+                                                console.log('File display check:', {
+                                                  itemId: item.id || item.localKey,
+                                                  itemTitle: item.title,
+                                                  file_path: item.file_path,
+                                                  task_id: item.task_id,
+                                                  taskDocuments: taskDocuments[item.task_id] || 'none'
+                                                });
+                                                return null;
+                                              })()}
+                                              {item.file_path && (
                                                <div className="mb-4 bg-muted/30 p-3 rounded-lg border">
                                                  <h4 className="text-sm font-medium mb-2">Angehängte Dateien:</h4>
                                                  <div className="flex items-center justify-between p-2 bg-background rounded border">
