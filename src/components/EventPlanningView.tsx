@@ -1267,6 +1267,70 @@ export function EventPlanningView() {
     }
   };
 
+  const deleteItemComment = async (comment: PlanningComment) => {
+    if (!user || comment.user_id !== user.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('planning_item_comments')
+        .delete()
+        .eq('id', comment.id);
+
+      if (error) throw error;
+
+      loadItemComments(comment.planning_item_id);
+      loadAllItemCounts();
+
+      toast({
+        title: "Kommentar gelöscht",
+        description: "Der Kommentar wurde erfolgreich entfernt.",
+      });
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateItemComment = async (commentId: string, newContent: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('planning_item_comments')
+        .update({ content: newContent, updated_at: new Date().toISOString() })
+        .eq('id', commentId)
+        .eq('user_id', user.id); // Ensure user can only edit their own comments
+
+      if (error) throw error;
+
+      // Find the comment to get the planning_item_id
+      const comment = Object.values(itemComments).flat().find(c => c.id === commentId);
+      if (comment) {
+        loadItemComments(comment.planning_item_id);
+        loadAllItemCounts();
+      }
+
+      setEditingComment(prev => ({ ...prev, [commentId]: '' }));
+
+      toast({
+        title: "Kommentar aktualisiert",
+        description: "Der Kommentar wurde erfolgreich bearbeitet.",
+      });
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht bearbeitet werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   if (!selectedPlanning) {
     return (
       <div className="min-h-screen bg-gradient-subtle p-6">
@@ -1881,64 +1945,100 @@ export function EventPlanningView() {
                                           <ListTodo className="h-4 w-4" />
                                           Unteraufgaben
                                         </div>
-                                        {itemSubtasks[item.id]?.map((subtask) => (
-                                          <div key={subtask.id} className="flex items-center space-x-2 p-2 border border-border rounded bg-muted/30">
-                                            <Checkbox
-                                              checked={subtask.is_completed}
-                                              onCheckedChange={() => {
-                                                supabase
-                                                  .from('planning_item_subtasks')
-                                                  .update({ 
-                                                    is_completed: !subtask.is_completed,
-                                                    completed_at: !subtask.is_completed ? new Date().toISOString() : null
-                                                  })
-                                                  .eq('id', subtask.id)
-                                                  .then(() => {
-                                                    loadItemSubtasks(item.id);
-                                                    loadAllItemCounts();
-                                                  });
-                                              }}
-                                            />
-                                            <span className={cn(
-                                              "text-sm flex-1",
-                                              subtask.is_completed && "line-through text-muted-foreground"
-                                            )}>
-                                              {subtask.description}
-                                            </span>
-                                            {subtask.assigned_to && (
-                                              <Badge variant="outline" className="text-xs">
-                                                {allProfiles.find(p => p.user_id === subtask.assigned_to)?.display_name || 'Unbekannt'}
-                                              </Badge>
-                                            )}
-                                          </div>
-                                        ))}
-                                        {/* Add new subtask form */}
-                                        <div className="space-y-2 pt-2">
-                                          <Input
-                                            placeholder="Neue Unteraufgabe..."
-                                            className="text-sm"
-                                            onKeyPress={(e) => {
-                                              if (e.key === 'Enter') {
-                                                const input = e.target as HTMLInputElement;
-                                                if (input.value.trim() && user) {
-                                                  supabase
-                                                    .from('planning_item_subtasks')
-                                                    .insert({
-                                                      planning_item_id: item.id,
-                                                      user_id: user.id,
-                                                      description: input.value.trim(),
-                                                      order_index: (itemSubtasks[item.id]?.length || 0),
-                                                    })
-                                                    .then(() => {
-                                                      input.value = '';
-                                                      loadItemSubtasks(item.id);
-                                                      loadAllItemCounts();
-                                                    });
-                                                }
-                                              }
-                                            }}
-                                          />
-                                        </div>
+                                         {itemSubtasks[item.id]?.map((subtask) => (
+                                           <div key={subtask.id} className="flex items-center space-x-2 p-2 border border-border rounded bg-muted/30">
+                                             <Checkbox
+                                               checked={subtask.is_completed}
+                                               onCheckedChange={() => {
+                                                 supabase
+                                                   .from('planning_item_subtasks')
+                                                   .update({ 
+                                                     is_completed: !subtask.is_completed,
+                                                     completed_at: !subtask.is_completed ? new Date().toISOString() : null
+                                                   })
+                                                   .eq('id', subtask.id)
+                                                   .then(() => {
+                                                     loadItemSubtasks(item.id);
+                                                     loadAllItemCounts();
+                                                   });
+                                               }}
+                                             />
+                                             <div className="flex-1">
+                                               <div className={cn(
+                                                 "text-sm",
+                                                 subtask.is_completed && "line-through text-muted-foreground"
+                                               )}>
+                                                 {subtask.description}
+                                               </div>
+                                               <div className="flex items-center gap-2 mt-1">
+                                                 {subtask.assigned_to && (
+                                                   <Badge variant="outline" className="text-xs">
+                                                     {allProfiles.find(p => p.user_id === subtask.assigned_to)?.display_name || 'Unbekannt'}
+                                                   </Badge>
+                                                 )}
+                                                 {subtask.due_date && (
+                                                   <Badge variant="secondary" className="text-xs">
+                                                     <Calendar className="h-3 w-3 mr-1" />
+                                                     {format(new Date(subtask.due_date), "dd.MM.yyyy", { locale: de })}
+                                                   </Badge>
+                                                 )}
+                                               </div>
+                                             </div>
+                                           </div>
+                                         ))}
+                                         {/* Add new subtask form */}
+                                         <div className="space-y-2 pt-2">
+                                           <Input
+                                             placeholder="Neue Unteraufgabe..."
+                                             className="text-sm"
+                                             onKeyPress={(e) => {
+                                               if (e.key === 'Enter') {
+                                                 const input = e.target as HTMLInputElement;
+                                                 if (input.value.trim() && user) {
+                                                   setNewSubtask({ 
+                                                     description: input.value.trim(), 
+                                                     assigned_to: 'unassigned', 
+                                                     due_date: '' 
+                                                   });
+                                                   setSelectedItemId(item.id);
+                                                    addItemSubtask();
+                                                   input.value = '';
+                                                 }
+                                               }
+                                             }}
+                                           />
+                                           {/* Quick assignment dropdown */}
+                                           <div className="flex gap-2">
+                                             <Select
+                                               value=""
+                                               onValueChange={(value) => {
+                                                 const description = (document.querySelector(`input[placeholder="Neue Unteraufgabe..."]`) as HTMLInputElement)?.value;
+                                                 if (description?.trim() && user) {
+                                                   setNewSubtask({ 
+                                                     description: description.trim(), 
+                                                     assigned_to: value === 'unassigned' ? '' : value, 
+                                                     due_date: '' 
+                                                   });
+                                                   setSelectedItemId(item.id);
+                                                   addItemSubtask();
+                                                   (document.querySelector(`input[placeholder="Neue Unteraufgabe..."]`) as HTMLInputElement).value = '';
+                                                 }
+                                               }}
+                                             >
+                                               <SelectTrigger className="w-[200px] h-8 text-xs">
+                                                 <SelectValue placeholder="Schnell zuweisen..." />
+                                               </SelectTrigger>
+                                               <SelectContent>
+                                                 <SelectItem value="unassigned">Niemand</SelectItem>
+                                                 {allProfiles.map((profile) => (
+                                                   <SelectItem key={profile.user_id} value={profile.user_id}>
+                                                     {profile.display_name || 'Unbekannt'}
+                                                   </SelectItem>
+                                                 ))}
+                                               </SelectContent>
+                                             </Select>
+                                           </div>
+                                         </div>
                                       </div>
                                     )}
 
@@ -1949,19 +2049,94 @@ export function EventPlanningView() {
                                           <MessageCircle className="h-4 w-4" />
                                           Kommentare
                                         </div>
-                                        {itemComments[item.id]?.map((comment) => (
-                                          <div key={comment.id} className="p-2 border border-border rounded bg-muted/30">
-                                            <div className="flex items-center space-x-2 mb-1">
-                                              <span className="text-xs font-medium">
-                                                {comment.profile?.display_name || 'Unbekannt'}
-                                              </span>
-                                              <span className="text-xs text-muted-foreground">
-                                                {format(new Date(comment.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
-                                              </span>
-                                            </div>
-                                            <p className="text-sm">{comment.content}</p>
-                                          </div>
-                                        ))}
+                                         {itemComments[item.id]?.map((comment) => (
+                                           <div key={comment.id} className="p-2 border border-border rounded bg-muted/30">
+                                             <div className="flex items-center justify-between mb-1">
+                                               <div className="flex items-center space-x-2">
+                                                 <span className="text-xs font-medium">
+                                                   {comment.profile?.display_name || 'Unbekannt'}
+                                                 </span>
+                                                 <span className="text-xs text-muted-foreground">
+                                                   {format(new Date(comment.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                                                 </span>
+                                               </div>
+                                               {comment.user_id === user?.id && (
+                                                 <div className="flex space-x-1">
+                                                   <Button
+                                                     variant="ghost"
+                                                     size="sm"
+                                                     onClick={() => {
+                                                       setEditingComment(prev => ({ 
+                                                         ...prev, 
+                                                         [comment.id]: comment.content 
+                                                       }));
+                                                     }}
+                                                     className="h-6 w-6 p-0"
+                                                   >
+                                                     <Edit2 className="h-3 w-3" />
+                                                   </Button>
+                                                   <Button
+                                                     variant="ghost"
+                                                     size="sm"
+                                                     onClick={() => deleteItemComment(comment)}
+                                                     className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                                   >
+                                                     <Trash2 className="h-3 w-3" />
+                                                   </Button>
+                                                 </div>
+                                               )}
+                                             </div>
+                                             {editingComment[comment.id] !== undefined ? (
+                                               <div className="space-y-2">
+                                                 <Input
+                                                   value={editingComment[comment.id]}
+                                                   onChange={(e) => setEditingComment(prev => ({
+                                                     ...prev,
+                                                     [comment.id]: e.target.value
+                                                   }))}
+                                                   className="text-sm"
+                                                   onKeyPress={(e) => {
+                                                     if (e.key === 'Enter') {
+                                                       updateItemComment(comment.id, editingComment[comment.id]);
+                                                     }
+                                                     if (e.key === 'Escape') {
+                                                       setEditingComment(prev => {
+                                                         const newState = { ...prev };
+                                                         delete newState[comment.id];
+                                                         return newState;
+                                                       });
+                                                     }
+                                                   }}
+                                                 />
+                                                 <div className="flex space-x-2">
+                                                   <Button
+                                                     size="sm"
+                                                     onClick={() => updateItemComment(comment.id, editingComment[comment.id])}
+                                                     className="h-6 text-xs"
+                                                   >
+                                                     Speichern
+                                                   </Button>
+                                                   <Button
+                                                     size="sm"
+                                                     variant="outline"
+                                                     onClick={() => {
+                                                       setEditingComment(prev => {
+                                                         const newState = { ...prev };
+                                                         delete newState[comment.id];
+                                                         return newState;
+                                                       });
+                                                     }}
+                                                     className="h-6 text-xs"
+                                                   >
+                                                     Abbrechen
+                                                   </Button>
+                                                 </div>
+                                               </div>
+                                             ) : (
+                                               <p className="text-sm">{comment.content}</p>
+                                             )}
+                                           </div>
+                                         ))}
                                         {/* Add new comment form */}
                                         <div className="pt-2">
                                           <Input
