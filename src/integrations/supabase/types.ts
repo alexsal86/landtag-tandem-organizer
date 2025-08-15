@@ -991,6 +991,7 @@ export type Database = {
         Row: {
           agenda_item_id: string
           created_at: string
+          document_type: string
           file_name: string
           file_path: string
           file_size: number | null
@@ -1002,6 +1003,7 @@ export type Database = {
         Insert: {
           agenda_item_id: string
           created_at?: string
+          document_type?: string
           file_name: string
           file_path: string
           file_size?: number | null
@@ -1013,6 +1015,7 @@ export type Database = {
         Update: {
           agenda_item_id?: string
           created_at?: string
+          document_type?: string
           file_name?: string
           file_path?: string
           file_size?: number | null

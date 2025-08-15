@@ -72,7 +72,7 @@ export function MeetingsView() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [taskDocuments, setTaskDocuments] = useState<Record<string, any[]>>({});
-  const [agendaDocuments, setAgendaDocuments] = useState({});
+  const [allDocuments, setAllDocuments] = useState<Record<string, any[]>>({});
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
@@ -263,6 +263,36 @@ export function MeetingsView() {
     }
   };
 
+  const loadAllDocuments = async (meetingId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('meeting_agenda_documents')
+        .select('*')
+        .in('agenda_item_id', 
+          (await supabase
+            .from('meeting_agenda_items')
+            .select('id')
+            .eq('meeting_id', meetingId)
+          ).data?.map(item => item.id) || []
+        );
+
+      if (error) throw error;
+      
+      // Group documents by agenda_item_id
+      const docsByItemId: Record<string, any[]> = {};
+      (data || []).forEach((doc) => {
+        if (!docsByItemId[doc.agenda_item_id]) {
+          docsByItemId[doc.agenda_item_id] = [];
+        }
+        docsByItemId[doc.agenda_item_id].push(doc);
+      });
+      
+      setAllDocuments(docsByItemId);
+    } catch (error) {
+      console.error('Error loading documents:', error);
+    }
+  };
+
   const loadAgendaItems = async (meetingId: string) => {
     try {
       const { data, error } = await supabase
@@ -342,6 +372,7 @@ export function MeetingsView() {
       // Wait a moment for the trigger to complete, then load the items
       setTimeout(async () => {
         await loadAgendaItems(data.id);
+        await loadAllDocuments(data.id);
       }, 500);
       
       setIsNewMeetingOpen(false);
@@ -402,6 +433,7 @@ export function MeetingsView() {
     setActiveMeeting(meeting);
     if (meeting.id) {
       await loadAgendaItems(meeting.id);
+      await loadAllDocuments(meeting.id);
     }
   };
 
@@ -1082,6 +1114,7 @@ export function MeetingsView() {
                     if (meeting.id) {
                       setAgendaItems([]);
                       loadAgendaItems(meeting.id as string);
+                      loadAllDocuments(meeting.id as string);
                     }
                   }}>
                     {editingMeeting?.id === meeting.id ? (
@@ -1762,15 +1795,37 @@ export function MeetingsView() {
                                                                 setAgendaItems(updatedItems);
                                                               }
                                                               
-                                                               const fileName = `${user?.id}/${itemId}_${Date.now()}_${file.name}`;
+                                                               const filePath = `${user?.id}/${itemId}/${Date.now()}_${file.name}`;
                                                                const { error: uploadError } = await supabase.storage
                                                                  .from('documents')
-                                                                 .upload(fileName, file);
+                                                                 .upload(filePath, file);
                                                               
                                                               if (uploadError) throw uploadError;
                                                               
-                                                              // Update the agenda item with file path
-                                                              await updateAgendaItem(index, 'file_path', fileName);
+                                                              // Save to meeting_agenda_documents as regular file
+                                                              const { data: docData, error: docError } = await supabase
+                                                                .from('meeting_agenda_documents')
+                                                                .insert({
+                                                                  agenda_item_id: itemId,
+                                                                  user_id: user?.id,
+                                                                  file_name: file.name,
+                                                                  file_path: filePath,
+                                                                  file_type: file.type,
+                                                                  file_size: file.size,
+                                                                  document_type: 'regular'
+                                                                })
+                                                                .select()
+                                                                .single();
+                                                              
+                                                              if (docError) throw docError;
+                                                              
+                                                              // Update local state
+                                                              const updatedDocs = { ...allDocuments };
+                                                              if (!updatedDocs[itemId]) {
+                                                                updatedDocs[itemId] = [];
+                                                              }
+                                                              updatedDocs[itemId].push(docData);
+                                                              setAllDocuments(updatedDocs);
                                                               
                                                               toast({
                                                                 title: "Datei hochgeladen",
@@ -1796,16 +1851,19 @@ export function MeetingsView() {
                                                </>
                                              )}
                                              
-                                             {/* Additional agenda documents */}
-                                             {agendaDocuments[item.id || item.localKey] && agendaDocuments[item.id || item.localKey].length > 0 && (
-                                               <div className="mt-4">
-                                                 <h4 className="text-sm font-medium mb-2">Zusätzliche Dateien:</h4>
-                                                 {agendaDocuments[item.id || item.localKey].map((doc, docIndex) => (
-                                                   <div key={doc.id} className="flex items-center justify-between p-2 bg-background rounded border mb-2">
-                                                     <div className="flex items-center gap-2">
-                                                       <FileText className="h-4 w-4 text-green-600" />
-                                                       <span className="text-sm">{doc.file_name}</span>
-                                                     </div>
+                                              {/* All documents for this item */}
+                                              {allDocuments[item.id || item.localKey] && allDocuments[item.id || item.localKey].length > 0 && (
+                                                <div className="mt-4">
+                                                  <h4 className="text-sm font-medium mb-2">Dateien:</h4>
+                                                  {allDocuments[item.id || item.localKey].map((doc, docIndex) => (
+                                                    <div key={doc.id} className="flex items-center justify-between p-2 bg-background rounded border mb-2">
+                                                      <div className="flex items-center gap-2">
+                                                        <FileText className={`h-4 w-4 ${doc.document_type === 'additional' ? 'text-green-600' : 'text-blue-600'}`} />
+                                                        <span className="text-sm">{doc.file_name}</span>
+                                                        <Badge variant={doc.document_type === 'additional' ? 'secondary' : 'outline'} className="text-xs">
+                                                          {doc.document_type === 'additional' ? 'Zusätzlich' : 'Standard'}
+                                                        </Badge>
+                                                      </div>
                                                      <div className="flex gap-1">
                                                        <Button 
                                                          variant="ghost" 
@@ -1853,9 +1911,9 @@ export function MeetingsView() {
                                                                .eq('id', doc.id);
                                                              
                                                              // Update local state
-                                                             const updatedDocs = { ...agendaDocuments };
-                                                             updatedDocs[item.id || item.localKey] = updatedDocs[item.id || item.localKey].filter(d => d.id !== doc.id);
-                                                             setAgendaDocuments(updatedDocs);
+                                                              const updatedDocs = { ...allDocuments };
+                                                              updatedDocs[item.id || item.localKey] = updatedDocs[item.id || item.localKey].filter(d => d.id !== doc.id);
+                                                              setAllDocuments(updatedDocs);
                                                              
                                                              toast({
                                                                title: "Datei entfernt",
@@ -1935,13 +1993,13 @@ export function MeetingsView() {
                                                               const { data: docData, error: docError } = await supabase
                                                                 .from('meeting_agenda_documents')
                                                                 .insert({
-                                                                  meeting_id: selectedMeeting.id,
                                                                   agenda_item_id: itemId,
                                                                   user_id: user?.id,
                                                                   file_name: file.name,
                                                                   file_path: filePath,
                                                                   file_type: file.type,
-                                                                  file_size: file.size
+                                                                  file_size: file.size,
+                                                                  document_type: 'additional'
                                                                 })
                                                                 .select()
                                                                 .single();
@@ -1949,12 +2007,12 @@ export function MeetingsView() {
                                                               if (docError) throw docError;
                                                               
                                                               // Update local state
-                                                              const updatedDocs = { ...agendaDocuments };
+                                                              const updatedDocs = { ...allDocuments };
                                                               if (!updatedDocs[itemId]) {
                                                                 updatedDocs[itemId] = [];
                                                               }
                                                               updatedDocs[itemId].push(docData);
-                                                              setAgendaDocuments(updatedDocs);
+                                                              setAllDocuments(updatedDocs);
                                                               
                                                               toast({
                                                                 title: "Datei hochgeladen",
