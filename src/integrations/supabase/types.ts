@@ -987,6 +987,42 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_agenda_documents: {
+        Row: {
+          agenda_item_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agenda_item_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agenda_item_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meeting_agenda_items: {
         Row: {
           assigned_to: string | null
