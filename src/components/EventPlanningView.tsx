@@ -50,6 +50,11 @@ interface ChecklistItem {
   title: string;
   is_completed: boolean;
   order_index: number;
+  type?: string;
+  sub_items?: Array<{
+    title: string;
+    is_completed: boolean;
+  }>;
 }
 
 interface Collaborator {
@@ -227,7 +232,13 @@ export function EventPlanningView() {
       .eq("event_planning_id", planningId)
       .order("order_index");
 
-    setChecklistItems(checklist || []);
+    // Transform the data to match our interface
+    const transformedChecklist = (checklist || []).map((item: any) => ({
+      ...item,
+      sub_items: Array.isArray(item.sub_items) ? item.sub_items : 
+                 (item.sub_items ? JSON.parse(item.sub_items as string) : [])
+    }));
+    setChecklistItems(transformedChecklist);
 
     // Fetch collaborators
     const { data: collabs } = await supabase
@@ -603,7 +614,13 @@ export function EventPlanningView() {
       return;
     }
 
-    setChecklistItems([...checklistItems, data]);
+    // Transform the new data to match our interface
+    const transformedData = {
+      ...data,
+      sub_items: Array.isArray(data.sub_items) ? data.sub_items : 
+                 (data.sub_items ? JSON.parse(data.sub_items as string) : [])
+    };
+    setChecklistItems([...checklistItems, transformedData]);
     setNewChecklistItem("");
   };
 
@@ -682,6 +699,119 @@ export function EventPlanningView() {
       title: "Erfolg",
       description: "Mitarbeiter wurde entfernt.",
     });
+  };
+
+  const addSubItem = async (itemId: string) => {
+    const currentItem = checklistItems.find(item => item.id === itemId);
+    if (!currentItem) return;
+
+    const currentSubItems = currentItem.sub_items || [];
+    const newSubItems = [...currentSubItems, { title: '', is_completed: false }];
+
+    const { error } = await supabase
+      .from("event_planning_checklist_items")
+      .update({ sub_items: newSubItems })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Unterpunkt konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChecklistItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, sub_items: newSubItems } : item
+      )
+    );
+  };
+
+  const toggleSubItem = async (itemId: string, subItemIndex: number, isCompleted: boolean) => {
+    const currentItem = checklistItems.find(item => item.id === itemId);
+    if (!currentItem || !currentItem.sub_items) return;
+
+    const updatedSubItems = currentItem.sub_items.map((subItem: any, index: number) =>
+      index === subItemIndex ? { ...subItem, is_completed: !isCompleted } : subItem
+    );
+
+    const { error } = await supabase
+      .from("event_planning_checklist_items")
+      .update({ sub_items: updatedSubItems })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Unterpunkt konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChecklistItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, sub_items: updatedSubItems } : item
+      )
+    );
+  };
+
+  const updateSubItemTitle = async (itemId: string, subItemIndex: number, title: string) => {
+    const currentItem = checklistItems.find(item => item.id === itemId);
+    if (!currentItem || !currentItem.sub_items) return;
+
+    const updatedSubItems = currentItem.sub_items.map((subItem: any, index: number) =>
+      index === subItemIndex ? { ...subItem, title } : subItem
+    );
+
+    const { error } = await supabase
+      .from("event_planning_checklist_items")
+      .update({ sub_items: updatedSubItems })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Unterpunkt konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChecklistItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, sub_items: updatedSubItems } : item
+      )
+    );
+  };
+
+  const removeSubItem = async (itemId: string, subItemIndex: number) => {
+    const currentItem = checklistItems.find(item => item.id === itemId);
+    if (!currentItem || !currentItem.sub_items) return;
+
+    const updatedSubItems = currentItem.sub_items.filter((_: any, index: number) => index !== subItemIndex);
+
+    const { error } = await supabase
+      .from("event_planning_checklist_items")
+      .update({ sub_items: updatedSubItems })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Unterpunkt konnte nicht entfernt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChecklistItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, sub_items: updatedSubItems } : item
+      )
+    );
   };
 
   if (!selectedPlanning) {
@@ -1172,25 +1302,68 @@ export function EventPlanningView() {
                     {item.type === 'separator' ? (
                       <div className="flex items-center gap-2 py-3">
                         <div className="flex-1 border-t border-dashed border-border"></div>
-                        <span className="text-muted-foreground italic text-sm px-2">
-                          {item.title || 'Trenner'}
-                        </span>
+                        <Input
+                          value={item.title || 'Trenner'}
+                          onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
+                          className="text-muted-foreground italic text-sm px-2 border-none bg-transparent text-center"
+                          placeholder="Trenner-Text eingeben..."
+                        />
                         <div className="flex-1 border-t border-dashed border-border"></div>
                       </div>
                     ) : (
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={item.is_completed}
-                          onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)}
-                        />
-                        <Input
-                          value={item.title}
-                          onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
-                          className={cn(
-                            "flex-1",
-                            item.is_completed && "line-through text-muted-foreground"
-                          )}
-                        />
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={item.is_completed}
+                            onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)}
+                          />
+                          <Input
+                            value={item.title}
+                            onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
+                            className={cn(
+                              "flex-1",
+                              item.is_completed && "line-through text-muted-foreground"
+                            )}
+                          />
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => addSubItem(item.id)}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        {/* Sub-items */}
+                        {item.sub_items && Array.isArray(item.sub_items) && item.sub_items.length > 0 && (
+                          <div className="ml-6 space-y-1">
+                            {item.sub_items.map((subItem: any, index: number) => (
+                              <div key={index} className="flex items-center space-x-2">
+                                <Checkbox
+                                  checked={subItem.is_completed || false}
+                                  onCheckedChange={() => toggleSubItem(item.id, index, subItem.is_completed || false)}
+                                />
+                                <Input
+                                  value={subItem.title || ''}
+                                  onChange={(e) => updateSubItemTitle(item.id, index, e.target.value)}
+                                  className={cn(
+                                    "flex-1 text-sm",
+                                    subItem.is_completed && "line-through text-muted-foreground"
+                                  )}
+                                  placeholder="Unterpunkt..."
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeSubItem(item.id, index)}
+                                  className="text-muted-foreground hover:text-destructive"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
