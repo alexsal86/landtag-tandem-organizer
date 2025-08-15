@@ -265,16 +265,26 @@ export function MeetingsView() {
 
   const loadAllDocuments = async (meetingId: string) => {
     try {
+      // First get all agenda item IDs for this meeting
+      const { data: agendaItems, error: agendaError } = await supabase
+        .from('meeting_agenda_items')
+        .select('id')
+        .eq('meeting_id', meetingId);
+
+      if (agendaError) throw agendaError;
+      
+      const agendaItemIds = agendaItems?.map(item => item.id) || [];
+      
+      if (agendaItemIds.length === 0) {
+        setAllDocuments({});
+        return;
+      }
+
+      // Then get all documents for these agenda items
       const { data, error } = await supabase
         .from('meeting_agenda_documents')
         .select('*')
-        .in('agenda_item_id', 
-          (await supabase
-            .from('meeting_agenda_items')
-            .select('id')
-            .eq('meeting_id', meetingId)
-          ).data?.map(item => item.id) || []
-        );
+        .in('agenda_item_id', agendaItemIds);
 
       if (error) throw error;
       
@@ -287,6 +297,7 @@ export function MeetingsView() {
         docsByItemId[doc.agenda_item_id].push(doc);
       });
       
+      console.log('Loaded documents for meeting:', meetingId, docsByItemId);
       setAllDocuments(docsByItemId);
     } catch (error) {
       console.error('Error loading documents:', error);
@@ -1793,6 +1804,11 @@ export function MeetingsView() {
                                                                 const updatedItems = [...agendaItems];
                                                                 updatedItems[index] = { ...item, id: itemId };
                                                                 setAgendaItems(updatedItems);
+                                                                
+                                                                // Reload documents to ensure they're properly mapped
+                                                                if (selectedMeeting?.id) {
+                                                                  setTimeout(() => loadAllDocuments(selectedMeeting.id!), 100);
+                                                                }
                                                               }
                                                               
                                                                const filePath = `${user?.id}/${itemId}/${Date.now()}_${file.name}`;
@@ -1819,7 +1835,7 @@ export function MeetingsView() {
                                                               
                                                               if (docError) throw docError;
                                                               
-                                                              // Update local state
+                                                              // Update local state and reload documents
                                                               const updatedDocs = { ...allDocuments };
                                                               if (!updatedDocs[itemId]) {
                                                                 updatedDocs[itemId] = [];
@@ -1851,11 +1867,11 @@ export function MeetingsView() {
                                                </>
                                              )}
                                              
-                                              {/* All documents for this item */}
-                                              {allDocuments[item.id || item.localKey] && allDocuments[item.id || item.localKey].length > 0 && (
-                                                <div className="mt-4">
-                                                  <h4 className="text-sm font-medium mb-2">Dateien:</h4>
-                                                  {allDocuments[item.id || item.localKey].map((doc, docIndex) => (
+                                               {/* All documents for this item - only show for saved items with real IDs */}
+                                               {item.id && allDocuments[item.id] && allDocuments[item.id].length > 0 && (
+                                                 <div className="mt-4">
+                                                   <h4 className="text-sm font-medium mb-2">Dateien:</h4>
+                                                   {allDocuments[item.id].map((doc, docIndex) => (
                                                     <div key={doc.id} className="flex items-center justify-between p-2 bg-background rounded border mb-2">
                                                       <div className="flex items-center gap-2">
                                                         <FileText className={`h-4 w-4 ${doc.document_type === 'additional' ? 'text-green-600' : 'text-blue-600'}`} />
@@ -1910,10 +1926,12 @@ export function MeetingsView() {
                                                                .delete()
                                                                .eq('id', doc.id);
                                                              
-                                                             // Update local state
-                                                              const updatedDocs = { ...allDocuments };
-                                                              updatedDocs[item.id || item.localKey] = updatedDocs[item.id || item.localKey].filter(d => d.id !== doc.id);
-                                                              setAllDocuments(updatedDocs);
+                                                              // Update local state
+                                                               const updatedDocs = { ...allDocuments };
+                                                               if (item.id && updatedDocs[item.id]) {
+                                                                 updatedDocs[item.id] = updatedDocs[item.id].filter(d => d.id !== doc.id);
+                                                               }
+                                                               setAllDocuments(updatedDocs);
                                                              
                                                              toast({
                                                                title: "Datei entfernt",
@@ -1979,6 +1997,11 @@ export function MeetingsView() {
                                                                 const updatedItems = [...agendaItems];
                                                                 updatedItems[index] = { ...item, id: itemId };
                                                                 setAgendaItems(updatedItems);
+                                                                
+                                                                // Reload documents to ensure they're properly mapped
+                                                                if (selectedMeeting?.id) {
+                                                                  setTimeout(() => loadAllDocuments(selectedMeeting.id!), 100);
+                                                                }
                                                               }
                                                               
                                                               // Upload file
