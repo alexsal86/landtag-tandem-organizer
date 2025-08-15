@@ -718,6 +718,7 @@ export type Database = {
           order_index: number
           sub_items: Json | null
           title: string
+          type: string | null
           updated_at: string
         }
         Insert: {
@@ -728,6 +729,7 @@ export type Database = {
           order_index?: number
           sub_items?: Json | null
           title: string
+          type?: string | null
           updated_at?: string
         }
         Update: {
@@ -738,6 +740,7 @@ export type Database = {
           order_index?: number
           sub_items?: Json | null
           title?: string
+          type?: string | null
           updated_at?: string
         }
         Relationships: [
