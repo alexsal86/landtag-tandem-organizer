@@ -72,6 +72,7 @@ export function MeetingsView() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [taskDocuments, setTaskDocuments] = useState<Record<string, any[]>>({});
+  const [agendaDocuments, setAgendaDocuments] = useState<Record<string, any[]>>({});
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
@@ -120,20 +121,13 @@ export function MeetingsView() {
           for (const agendaItem of agendaItemsWithTasks) {
             const correspondingTask = tasks.find(task => task.id === agendaItem.task_id);
             if (correspondingTask) {
-              // Get task documents
-              const taskDocs = taskDocuments[correspondingTask.id] || [];
-              const documentPath = taskDocs.length > 0 ? taskDocs[0].file_path : null;
-              
-              // Update if task title, description, or documents have changed
+              // Update only title and description, preserve other fields like file_path from meeting-specific documents
               const updates: any = {};
               if (agendaItem.title !== correspondingTask.title) {
                 updates.title = correspondingTask.title;
               }
               if (agendaItem.description !== correspondingTask.description) {
                 updates.description = correspondingTask.description;
-              }
-              if (agendaItem.file_path !== documentPath) {
-                updates.file_path = documentPath;
               }
               
               // Only update if there are actual changes
@@ -151,10 +145,10 @@ export function MeetingsView() {
       }
     };
     
-    if (tasks.length > 0 && Object.keys(taskDocuments).length >= 0) {
+    if (tasks.length > 0) {
       syncTaskChanges();
     }
-  }, [tasks, taskDocuments]);
+  }, [tasks]);
 
   const loadMeetings = async () => {
     try {
@@ -272,12 +266,41 @@ export function MeetingsView() {
         parentLocalKey: item.parent_id || undefined,
       }));
       setAgendaItems(items);
+      
+      // Load documents for agenda items
+      if (items.length > 0) {
+        await loadAgendaDocuments(items.map(item => item.id).filter(Boolean));
+      }
     } catch (error) {
       toast({
         title: "Fehler beim Laden der Agenda",
         description: "Die Agenda-Punkte konnten nicht geladen werden.",
         variant: "destructive",
       });
+    }
+  };
+
+  const loadAgendaDocuments = async (agendaItemIds: string[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('meeting_agenda_documents')
+        .select('*')
+        .in('agenda_item_id', agendaItemIds);
+
+      if (error) throw error;
+      
+      // Group documents by agenda_item_id
+      const docsByItemId: Record<string, any[]> = {};
+      data?.forEach(doc => {
+        if (!docsByItemId[doc.agenda_item_id]) {
+          docsByItemId[doc.agenda_item_id] = [];
+        }
+        docsByItemId[doc.agenda_item_id].push(doc);
+      });
+      
+      setAgendaDocuments(docsByItemId);
+    } catch (error) {
+      console.error('Error loading agenda documents:', error);
     }
   };
   const createMeeting = async () => {
@@ -568,15 +591,9 @@ export function MeetingsView() {
       // Calculate the correct order index for the sub-item (right after parent)
       const subItemOrderIndex = parentIndex + 1;
       
-      // Get task documents for this task
+      // Get task documents for this task and copy them to meeting agenda documents
       const taskDocs = taskDocuments[task.id] || [];
-      let documentPath = null;
       
-      // If task has documents, we'll reference the first one (or could concatenate all)
-      if (taskDocs.length > 0) {
-        documentPath = taskDocs[0].file_path;
-      }
-
       // Insert the task as a sub-item with correct parent_id
       const { data: taskData, error: taskError } = await supabase
         .from('meeting_agenda_items')
@@ -589,10 +606,27 @@ export function MeetingsView() {
           order_index: subItemOrderIndex,
           is_completed: false,
           is_recurring: false,
-          file_path: documentPath,
         })
         .select()
         .single();
+
+      if (taskError) throw taskError;
+      
+      // Copy task documents as meeting agenda documents
+      if (taskDocs.length > 0 && taskData.id && user) {
+        const agendaDocumentInserts = taskDocs.map(doc => ({
+          agenda_item_id: taskData.id,
+          user_id: user.id,
+          file_name: doc.file_name,
+          file_path: doc.file_path,
+          file_type: doc.file_type,
+          file_size: doc.file_size,
+        }));
+        
+        await supabase
+          .from('meeting_agenda_documents')
+          .insert(agendaDocumentInserts);
+      }
 
       if (taskError) throw taskError;
       
@@ -664,7 +698,104 @@ export function MeetingsView() {
     ],
   };
 
-  const makeLocalKey = () => `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  
+  const uploadAgendaDocument = async (agendaItemId: string, file: File) => {
+    if (!user || !selectedMeeting?.id) return;
+    
+    try {
+      // Upload file to storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+      const filePath = `meetings/${selectedMeeting.id}/agenda-items/${agendaItemId}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, file);
+      
+      if (uploadError) throw uploadError;
+      
+      // Save document reference to database
+      const { error: dbError } = await supabase
+        .from('meeting_agenda_documents')
+        .insert({
+          agenda_item_id: agendaItemId,
+          user_id: user.id,
+          file_name: file.name,
+          file_path: filePath,
+          file_type: file.type,
+          file_size: file.size,
+        });
+      
+      if (dbError) throw dbError;
+      
+      // Reload agenda documents
+      await loadAgendaDocuments([agendaItemId]);
+      
+      toast({
+        title: "Dokument hochgeladen",
+        description: `"${file.name}" wurde erfolgreich hinzugefügt.`,
+      });
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      toast({
+        title: "Upload-Fehler",
+        description: "Das Dokument konnte nicht hochgeladen werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteAgendaDocument = async (documentId: string, agendaItemId: string) => {
+    try {
+      const { error } = await supabase
+        .from('meeting_agenda_documents')
+        .delete()
+        .eq('id', documentId);
+      
+      if (error) throw error;
+      
+      // Reload agenda documents
+      await loadAgendaDocuments([agendaItemId]);
+      
+      toast({
+        title: "Dokument gelöscht",
+        description: "Das Dokument wurde entfernt.",
+      });
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: "Lösch-Fehler",
+        description: "Das Dokument konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadDocument = async (filePath: string, fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .download(filePath);
+      
+      if (error) throw error;
+      
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast({
+        title: "Download-Fehler",
+        description: "Das Dokument konnte nicht heruntergeladen werden.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const addSubItem = async (parent: AgendaItem, title: string) => {
     if (!selectedMeeting?.id) return;
@@ -1607,82 +1738,112 @@ export function MeetingsView() {
                                              placeholder="Notizen und Hinweise"
                                              className="min-h-[80px]"
                                            />
-                                         </div>
+                                          </div>
 
+                                          {/* Meeting-specific documents section */}
                                           <div>
-                                            {/* Display uploaded files */}
-                                            {item.file_path && (
-                                              <div className="mb-4 bg-muted/30 p-3 rounded-lg border">
-                                                <h4 className="text-sm font-medium mb-2">Angehängte Dateien:</h4>
-                                                <div className="flex items-center justify-between p-2 bg-background rounded border">
-                                                  <div className="flex items-center gap-2">
-                                                    <FileText className="h-4 w-4 text-blue-600" />
-                                                    <span className="text-sm">
-                                                      {item.file_path.split('/').pop()?.split('_').slice(2).join('_') || 'Datei'}
-                                                    </span>
+                                            <label className="text-sm font-medium mb-2 block">Dokumente</label>
+                                            
+                                            {/* Display existing documents */}
+                                            {item.id && agendaDocuments[item.id] && agendaDocuments[item.id].length > 0 && (
+                                              <div className="mb-3 space-y-2">
+                                                {agendaDocuments[item.id].map((doc) => (
+                                                  <div key={doc.id} className="flex items-center justify-between p-2 bg-muted/30 rounded border">
+                                                    <div className="flex items-center gap-2">
+                                                      <FileText className="h-4 w-4 text-blue-600" />
+                                                      <span className="text-sm">{doc.file_name}</span>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                      <Button 
+                                                        variant="ghost" 
+                                                        size="sm"
+                                                        onClick={() => downloadDocument(doc.file_path, doc.file_name)}
+                                                      >
+                                                        <Download className="h-3 w-3" />
+                                                      </Button>
+                                                      <Button 
+                                                        variant="ghost" 
+                                                        size="sm"
+                                                        onClick={() => deleteAgendaDocument(doc.id, item.id!)}
+                                                        className="text-destructive hover:text-destructive"
+                                                      >
+                                                        <X className="h-3 w-3" />
+                                                      </Button>
+                                                    </div>
                                                   </div>
-                                                  <div className="flex gap-1">
-                                                    <Button 
-                                                      variant="ghost" 
-                                                      size="sm"
-                                                      onClick={async () => {
-                                                        try {
-                                                          const { data, error } = await supabase.storage
-                                                            .from('documents')
-                                                            .download(item.file_path!);
-                                                          
-                                                          if (error) throw error;
-                                                          
-                                                          const fileName = item.file_path!.split('/').pop()?.split('_').slice(2).join('_') || 'download';
-                                                          const url = URL.createObjectURL(data);
-                                                          const a = document.createElement('a');
-                                                          a.href = url;
-                                                          a.download = fileName;
-                                                          a.click();
-                                                          URL.revokeObjectURL(url);
-                                                        } catch (error) {
-                                                          toast({
-                                                            title: "Download-Fehler",
-                                                            description: "Datei konnte nicht heruntergeladen werden.",
-                                                            variant: "destructive",
-                                                          });
-                                                        }
-                                                      }}
-                                                    >
-                                                      <Download className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button 
-                                                      variant="ghost" 
-                                                      size="sm"
-                                                      onClick={async () => {
-                                                        try {
-                                                          // Remove file from storage
-                                                          await supabase.storage
-                                                            .from('documents')
-                                                            .remove([item.file_path!]);
-                                                          
-                                                          // Update agenda item
-                                                          await updateAgendaItem(index, 'file_path', null);
-                                                          
-                                                          toast({
-                                                            title: "Datei entfernt",
-                                                            description: "Die Datei wurde erfolgreich entfernt.",
-                                                          });
-                                                        } catch (error) {
-                                                          toast({
-                                                            title: "Fehler",
-                                                            description: "Datei konnte nicht entfernt werden.",
-                                                            variant: "destructive",
-                                                          });
-                                                        }
-                                                      }}
-                                                    >
-                                                      <X className="h-4 w-4" />
-                                                    </Button>
-                                                  </div>
-                                                </div>
+                                                ))}
                                               </div>
                                             )}
+                                            
+                                            {/* Upload new document */}
+                                            {item.id && (
+                                              <div>
+                                                <Input
+                                                  type="file"
+                                                  accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                                                  onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file && item.id) {
+                                                      await uploadAgendaDocument(item.id, file);
+                                                      e.target.value = ''; // Reset file input
+                                                    }
+                                                  }}
+                                                  className="text-sm"
+                                                />
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                  PDF, Word, Text oder Bilder hochladen
+                                                </p>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                           <div>
+                                             {/* Display task-linked files (read-only) */}
+                                             {item.file_path && (
+                                               <div className="mb-4 bg-muted/30 p-3 rounded-lg border">
+                                                 <h4 className="text-sm font-medium mb-2">Aus Aufgabe übernommen:</h4>
+                                                 <div className="flex items-center justify-between p-2 bg-background rounded border">
+                                                   <div className="flex items-center gap-2">
+                                                     <FileText className="h-4 w-4 text-blue-600" />
+                                                     <span className="text-sm">
+                                                       {item.file_path.split('/').pop()?.split('_').slice(2).join('_') || 'Datei'}
+                                                     </span>
+                                                   </div>
+                                                   <div className="flex gap-1">
+                                                     <Button 
+                                                       variant="ghost" 
+                                                       size="sm"
+                                                       onClick={async () => {
+                                                         try {
+                                                           const { data, error } = await supabase.storage
+                                                             .from('task-documents')
+                                                             .download(item.file_path!);
+                                                           
+                                                           if (error) throw error;
+                                                           
+                                                           const fileName = item.file_path!.split('/').pop()?.split('_').slice(2).join('_') || 'download';
+                                                           const url = URL.createObjectURL(data);
+                                                           const a = document.createElement('a');
+                                                           a.href = url;
+                                                           a.download = fileName;
+                                                           a.click();
+                                                           URL.revokeObjectURL(url);
+                                                         } catch (error) {
+                                                           toast({
+                                                             title: "Download-Fehler",
+                                                             description: "Datei konnte nicht heruntergeladen werden.",
+                                                             variant: "destructive",
+                                                           });
+                                                         }
+                                                       }}
+                                                     >
+                                                       <Download className="h-3 w-3" />
+                                                     </Button>
+                                                   </div>
+                                                 </div>
+                                               </div>
+                                             )}
+                                           </div>
                                             
                                             <label className="text-sm font-medium">Datei anhängen</label>
                                             <div className="flex items-center gap-2">
