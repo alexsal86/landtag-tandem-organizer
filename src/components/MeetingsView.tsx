@@ -1639,14 +1639,14 @@ export function MeetingsView() {
                               )}
                             > 
                               <CardContent className="p-4">
-                                <div className="flex items-start gap-3">
-                                  <div 
-                                    {...provided.dragHandleProps}
-                                    className="cursor-grab active:cursor-grabbing"
-                                  >
-                                    <GripVertical className="h-4 w-4 text-muted-foreground mt-1" />
-                                  </div>
-                                  
+                                 <div className="flex items-start gap-3">
+                                   <div 
+                                     {...provided.dragHandleProps}
+                                     className="cursor-grab active:cursor-grabbing"
+                                   >
+                                     <GripVertical className="h-4 w-4 text-muted-foreground mt-1" />
+                                   </div>
+                                   
                                    <div className="flex-1 space-y-3">
                                      <div className="flex items-center gap-2">
                                        <Input
