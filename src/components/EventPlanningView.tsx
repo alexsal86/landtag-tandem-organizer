@@ -292,7 +292,7 @@ export function EventPlanningView() {
                  (item.sub_items ? JSON.parse(item.sub_items as string) : [])
     }));
     setChecklistItems(transformedChecklist);
-    loadAllItemCounts(); // Load counts after checklist is loaded
+    loadAllItemCounts(transformedChecklist); // Load counts after checklist is loaded
 
     // Fetch collaborators
     const { data: collabs } = await supabase
@@ -1082,12 +1082,13 @@ export function EventPlanningView() {
   };
 
   // Load counts for all items
-  const loadAllItemCounts = async () => {
+  const loadAllItemCounts = async (items?: ChecklistItem[]) => {
     if (!selectedPlanning) return;
 
     try {
-      // Get all item IDs
-      const itemIds = checklistItems.map(item => item.id);
+      // Get all item IDs - use provided items or current state
+      const currentItems = items || checklistItems;
+      const itemIds = currentItems.map(item => item.id);
       if (itemIds.length === 0) return;
 
       // Load subtasks counts
@@ -1842,32 +1843,32 @@ export function EventPlanningView() {
                                           </Button>
                                         )}
                                         
-                                        {/* Add new subtask/comment/document buttons */}
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm"
-                                          onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
-                                          className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                                          title="Unteraufgabe hinzufügen"
-                                        >
-                                          <ListTodo className="h-3 w-3" />
-                                        </Button>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm"
-                                          onClick={() => setShowItemComments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
-                                          className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                                          title="Kommentar hinzufügen"
-                                        >
-                                          <MessageCircle className="h-3 w-3" />
-                                        </Button>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm"
-                                          onClick={() => setShowItemDocuments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
-                                          className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                                          title="Dokument hinzufügen"
-                                        >
+                                         {/* Add new subtask/comment/document buttons - always visible when there are items */}
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                           className="text-muted-foreground hover:text-foreground transition-opacity"
+                                           title="Unteraufgabe hinzufügen"
+                                         >
+                                           <ListTodo className="h-3 w-3" />
+                                         </Button>
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => setShowItemComments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                           className="text-muted-foreground hover:text-foreground transition-opacity"
+                                           title="Kommentar hinzufügen"
+                                         >
+                                           <MessageCircle className="h-3 w-3" />
+                                         </Button>
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => setShowItemDocuments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                           className="text-muted-foreground hover:text-foreground transition-opacity"
+                                           title="Dokument hinzufügen"
+                                         >
                                           <Paperclip className="h-3 w-3" />
                                         </Button>
                                       </div>
