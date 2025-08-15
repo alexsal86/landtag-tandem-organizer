@@ -54,6 +54,10 @@ interface Subtask {
   updated_at: string;
   result_text?: string;
   completed_at?: string;
+  // Extended properties for planning subtasks
+  source_type?: 'task' | 'planning';
+  checklist_item_title?: string;
+  planning_item_id?: string;
 }
 
 export function TasksView() {
@@ -264,7 +268,7 @@ export function TasksView() {
     console.log('Loading assigned subtasks for user:', user.id);
     
     try {
-      // Get subtasks assigned to this user (using user_id, not display_name)
+      // Get regular subtasks assigned to this user
       const { data: subtasksData, error } = await supabase
         .from('subtasks')
         .select('*, result_text, completed_at')
@@ -273,30 +277,80 @@ export function TasksView() {
 
       if (error) throw error;
 
-      console.log('Found subtasks:', subtasksData);
+      // Get planning subtasks assigned to this user
+      const { data: planningSubtasksData, error: planningError } = await supabase
+        .from('planning_item_subtasks')
+        .select('*, result_text, completed_at')
+        .eq('assigned_to', user.id)
+        .eq('is_completed', false);
 
-      if (!subtasksData || subtasksData.length === 0) {
-        setAssignedSubtasks([]);
-        return;
+      if (planningError) throw planningError;
+
+      console.log('Found regular subtasks:', subtasksData);
+      console.log('Found planning subtasks:', planningSubtasksData);
+
+      let allSubtasks = [];
+
+      // Process regular subtasks
+      if (subtasksData && subtasksData.length > 0) {
+        const taskIds = [...new Set(subtasksData.map(s => s.task_id))];
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select('id, title')
+          .in('id', taskIds);
+
+        if (tasksError) throw tasksError;
+
+        const subtasksWithTitles = subtasksData.map(subtask => ({
+          ...subtask,
+          task_title: tasksData?.find(t => t.id === subtask.task_id)?.title || 'Unbekannte Aufgabe',
+          source_type: 'task' as const
+        }));
+
+        allSubtasks.push(...subtasksWithTitles);
       }
 
-      // Get task titles for these subtasks
-      const taskIds = [...new Set(subtasksData.map(s => s.task_id))];
-      const { data: tasksData, error: tasksError } = await supabase
-        .from('tasks')
-        .select('id, title')
-        .in('id', taskIds);
+      // Process planning subtasks
+      if (planningSubtasksData && planningSubtasksData.length > 0) {
+        // Get planning item IDs to fetch planning details
+        const planningItemIds = [...new Set(planningSubtasksData.map(s => s.planning_item_id))];
+        
+        // Get checklist items to get planning IDs
+        const { data: checklistItemsData, error: checklistError } = await supabase
+          .from('event_planning_checklist_items')
+          .select('id, event_planning_id, title')
+          .in('id', planningItemIds);
 
-      if (tasksError) throw tasksError;
+        if (checklistError) throw checklistError;
 
-      // Combine subtasks with task titles
-      const subtasksWithTitles = subtasksData.map(subtask => ({
-        ...subtask,
-        task_title: tasksData?.find(t => t.id === subtask.task_id)?.title || 'Unbekannte Aufgabe'
-      }));
+        // Get planning details
+        const planningIds = [...new Set(checklistItemsData?.map(item => item.event_planning_id) || [])];
+        const { data: planningsData, error: planningsError } = await supabase
+          .from('event_plannings')
+          .select('id, title')
+          .in('id', planningIds);
 
-      // Sort subtasks: non-snoozed first, then snoozed ones at the end
-      const sortedSubtasks = subtasksWithTitles.sort((a, b) => {
+        if (planningsError) throw planningsError;
+
+        const planningSubtasksWithTitles = planningSubtasksData.map(subtask => {
+          const checklistItem = checklistItemsData?.find(item => item.id === subtask.planning_item_id);
+          const planning = planningsData?.find(p => p.id === checklistItem?.event_planning_id);
+          
+          return {
+            ...subtask,
+            task_title: planning?.title || 'Unbekannte Veranstaltung',
+            checklist_item_title: checklistItem?.title || 'Unbekanntes Item',
+            source_type: 'planning' as const,
+            // Rename task_id to avoid conflicts but keep for compatibility
+            task_id: subtask.planning_item_id
+          };
+        });
+
+        allSubtasks.push(...planningSubtasksWithTitles);
+      }
+
+      // Sort all subtasks: non-snoozed first, then snoozed ones at the end
+      const sortedSubtasks = allSubtasks.sort((a, b) => {
         const aIsSnoozed = subtaskSnoozes[a.id] ? 1 : 0;
         const bIsSnoozed = subtaskSnoozes[b.id] ? 1 : 0;
         
@@ -309,7 +363,7 @@ export function TasksView() {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
-      console.log('Subtasks with titles:', sortedSubtasks);
+      console.log('All subtasks with titles:', sortedSubtasks);
 
       setAssignedSubtasks(sortedSubtasks);
     } catch (error) {
@@ -605,6 +659,9 @@ export function TasksView() {
 
   const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string) => {
     try {
+      // Find the subtask to determine its source type
+      const subtask = assignedSubtasks.find(s => s.id === subtaskId);
+      
       const updateData = isCompleted 
         ? { 
             is_completed: true, 
@@ -617,8 +674,11 @@ export function TasksView() {
             completed_at: null
           };
 
+      // Update the appropriate table based on source type
+      const tableName = subtask?.source_type === 'planning' ? 'planning_item_subtasks' : 'subtasks';
+      
       const { error } = await supabase
-        .from('subtasks')
+        .from(tableName)
         .update(updateData)
         .eq('id', subtaskId);
 
@@ -1043,7 +1103,12 @@ export function TasksView() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-muted-foreground">{subtask.task_title}</span>
+                        <span className="text-muted-foreground">
+                          {subtask.source_type === 'planning' 
+                            ? `${subtask.task_title} | ${subtask.checklist_item_title}`
+                            : `${subtask.task_title} | ${subtask.description}`
+                          }
+                        </span>
                       </TableCell>
                       <TableCell>
                         {subtask.due_date ? (
@@ -1073,12 +1138,19 @@ export function TasksView() {
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              const parentTask = tasks.find(t => t.id === subtask.task_id);
-                              if (parentTask) {
-                                handleTaskClick(parentTask);
+                              if (subtask.source_type === 'planning') {
+                                // Navigate to event planning page
+                                window.location.href = '/eventplanning';
+                              } else {
+                                // Open task sidebar for regular tasks
+                                const parentTask = tasks.find(t => t.id === subtask.task_id);
+                                if (parentTask) {
+                                  handleTaskClick(parentTask);
+                                }
                               }
                             }}
                             className="h-8 w-8 p-0"
+                            title={subtask.source_type === 'planning' ? 'Zur Eventplanung' : 'Zur Aufgabe'}
                           >
                             <ChevronRight className="h-4 w-4" />
                           </Button>
