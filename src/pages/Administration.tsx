@@ -810,39 +810,91 @@ export default function Administration() {
                                   {...provided.draggableProps}
                                   className={`border rounded-lg p-4 space-y-3 ${snapshot.isDragging ? 'bg-accent' : ''}`}
                                 >
-                                  {item.type === 'separator' ? (
-                                    <div className="flex items-center gap-2">
-                                      <div {...provided.dragHandleProps}>
-                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                      </div>
-                                      <div className="flex-1 flex items-center gap-2">
-                                        <Minus className="h-4 w-4 text-muted-foreground" />
-                                        <div className="flex-1 border-t border-dashed"></div>
-                                        <span className="text-muted-foreground italic text-sm">{item.title || 'Trenner'}</span>
-                                        <div className="flex-1 border-t border-dashed"></div>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => setEditingTemplate({ id: `${index}`, field: 'title', value: item.title || '' })}
-                                        >
-                                          <Edit className="h-3 w-3" />
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="destructive"
-                                          onClick={() => deleteTemplateItem(index)}
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
+                                   {item.type === 'separator' ? (
+                                     <div className="flex items-center gap-2">
+                                       <div {...provided.dragHandleProps}>
+                                         <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                       </div>
+                                       <div className="flex-1 flex items-center gap-2">
+                                         <Minus className="h-4 w-4 text-muted-foreground" />
+                                         <div className="flex-1 border-t border-dashed"></div>
+                                         {editingTemplate?.id === `${index}` ? (
+                                           <div className="flex gap-2">
+                                             <Input
+                                               value={editingTemplate.value}
+                                               onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })}
+                                               placeholder="Trenner-Beschriftung..."
+                                               className="w-32"
+                                               onBlur={() => {
+                                                 updateTemplateItem(index, 'title', editingTemplate.value);
+                                                 setEditingTemplate(null);
+                                               }}
+                                               onKeyDown={(e) => {
+                                                 if (e.key === 'Enter') {
+                                                   updateTemplateItem(index, 'title', editingTemplate.value);
+                                                   setEditingTemplate(null);
+                                                 }
+                                                 if (e.key === 'Escape') {
+                                                   setEditingTemplate(null);
+                                                 }
+                                               }}
+                                               autoFocus
+                                             />
+                                           </div>
+                                         ) : (
+                                           <span 
+                                             className="text-muted-foreground italic text-sm cursor-pointer hover:text-foreground"
+                                             onClick={() => setEditingTemplate({ id: `${index}`, field: 'title', value: item.title || '' })}
+                                           >
+                                             {item.title || 'Klicken zum Bearbeiten'}
+                                           </span>
+                                         )}
+                                         <div className="flex-1 border-t border-dashed"></div>
+                                         <Button
+                                           size="sm"
+                                           variant="destructive"
+                                           onClick={() => deleteTemplateItem(index)}
+                                         >
+                                           <Trash2 className="h-3 w-3" />
+                                         </Button>
+                                       </div>
+                                     </div>
                                   ) : (
                                      <div className="space-y-2">
                                        <div className="flex items-center gap-2">
                                          <div {...provided.dragHandleProps}>
                                            <GripVertical className="h-4 w-4 text-muted-foreground" />
                                          </div>
-                                         <span className="font-medium flex-1">{item.title}</span>
+                                         {editingTemplate?.id === `${index}` ? (
+                                           <div className="flex gap-2 flex-1">
+                                             <Input
+                                               value={editingTemplate.value}
+                                               onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })}
+                                               className="flex-1"
+                                               onBlur={() => {
+                                                 updateTemplateItem(index, 'title', editingTemplate.value);
+                                                 setEditingTemplate(null);
+                                               }}
+                                               onKeyDown={(e) => {
+                                                 if (e.key === 'Enter') {
+                                                   updateTemplateItem(index, 'title', editingTemplate.value);
+                                                   setEditingTemplate(null);
+                                                 }
+                                                 if (e.key === 'Escape') {
+                                                   setEditingTemplate(null);
+                                                 }
+                                               }}
+                                               autoFocus
+                                             />
+                                           </div>
+                                         ) : (
+                                           <span 
+                                             className="font-medium flex-1 cursor-pointer hover:bg-muted/50 px-2 py-1 rounded"
+                                             onClick={() => setEditingTemplate({ id: `${index}`, field: 'title', value: item.title })}
+                                           >
+                                             {item.title}
+                                           </span>
+                                         )}
                                          <Button
                                            size="sm"
                                            variant="outline"
@@ -850,13 +902,6 @@ export default function Administration() {
                                          >
                                            <Plus className="h-3 w-3 mr-1" />
                                            Unterpunkt
-                                         </Button>
-                                         <Button
-                                           size="sm"
-                                           variant="outline"
-                                           onClick={() => setEditingTemplate({ id: `${index}`, field: 'title', value: item.title })}
-                                         >
-                                           <Edit className="h-3 w-3" />
                                          </Button>
                                          <Button
                                            size="sm"
@@ -995,39 +1040,91 @@ export default function Administration() {
                                   {...provided.draggableProps}
                                   className={`border rounded-lg p-4 space-y-3 ${snapshot.isDragging ? 'bg-accent' : ''}`}
                                 >
-                                  {item.type === 'separator' ? (
-                                    <div className="flex items-center gap-2">
-                                      <div {...provided.dragHandleProps}>
-                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                      </div>
-                                      <div className="flex-1 flex items-center gap-2">
-                                        <Minus className="h-4 w-4 text-muted-foreground" />
-                                        <div className="flex-1 border-t border-dashed"></div>
-                                        <span className="text-muted-foreground italic text-sm">{item.title || 'Trenner'}</span>
-                                        <div className="flex-1 border-t border-dashed"></div>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => setEditingPlanningTemplate({ id: `${index}`, field: 'title', value: item.title || '' })}
-                                        >
-                                          <Edit className="h-3 w-3" />
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="destructive"
-                                          onClick={() => deletePlanningTemplateItem(index)}
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
+                                   {item.type === 'separator' ? (
+                                     <div className="flex items-center gap-2">
+                                       <div {...provided.dragHandleProps}>
+                                         <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                       </div>
+                                       <div className="flex-1 flex items-center gap-2">
+                                         <Minus className="h-4 w-4 text-muted-foreground" />
+                                         <div className="flex-1 border-t border-dashed"></div>
+                                         {editingPlanningTemplate?.id === `${index}` ? (
+                                           <div className="flex gap-2">
+                                             <Input
+                                               value={editingPlanningTemplate.value}
+                                               onChange={(e) => setEditingPlanningTemplate({ ...editingPlanningTemplate, value: e.target.value })}
+                                               placeholder="Trenner-Beschriftung..."
+                                               className="w-32"
+                                               onBlur={() => {
+                                                 updatePlanningTemplateItem(index, 'title', editingPlanningTemplate.value);
+                                                 setEditingPlanningTemplate(null);
+                                               }}
+                                               onKeyDown={(e) => {
+                                                 if (e.key === 'Enter') {
+                                                   updatePlanningTemplateItem(index, 'title', editingPlanningTemplate.value);
+                                                   setEditingPlanningTemplate(null);
+                                                 }
+                                                 if (e.key === 'Escape') {
+                                                   setEditingPlanningTemplate(null);
+                                                 }
+                                               }}
+                                               autoFocus
+                                             />
+                                           </div>
+                                         ) : (
+                                           <span 
+                                             className="text-muted-foreground italic text-sm cursor-pointer hover:text-foreground"
+                                             onClick={() => setEditingPlanningTemplate({ id: `${index}`, field: 'title', value: item.title || '' })}
+                                           >
+                                             {item.title || 'Klicken zum Bearbeiten'}
+                                           </span>
+                                         )}
+                                         <div className="flex-1 border-t border-dashed"></div>
+                                         <Button
+                                           size="sm"
+                                           variant="destructive"
+                                           onClick={() => deletePlanningTemplateItem(index)}
+                                         >
+                                           <Trash2 className="h-3 w-3" />
+                                         </Button>
+                                       </div>
+                                     </div>
                                   ) : (
                                      <div className="space-y-2">
                                        <div className="flex items-center gap-2">
                                          <div {...provided.dragHandleProps}>
                                            <GripVertical className="h-4 w-4 text-muted-foreground" />
                                          </div>
-                                         <span className="font-medium flex-1">{item.title}</span>
+                                         {editingPlanningTemplate?.id === `${index}` ? (
+                                           <div className="flex gap-2 flex-1">
+                                             <Input
+                                               value={editingPlanningTemplate.value}
+                                               onChange={(e) => setEditingPlanningTemplate({ ...editingPlanningTemplate, value: e.target.value })}
+                                               className="flex-1"
+                                               onBlur={() => {
+                                                 updatePlanningTemplateItem(index, 'title', editingPlanningTemplate.value);
+                                                 setEditingPlanningTemplate(null);
+                                               }}
+                                               onKeyDown={(e) => {
+                                                 if (e.key === 'Enter') {
+                                                   updatePlanningTemplateItem(index, 'title', editingPlanningTemplate.value);
+                                                   setEditingPlanningTemplate(null);
+                                                 }
+                                                 if (e.key === 'Escape') {
+                                                   setEditingPlanningTemplate(null);
+                                                 }
+                                               }}
+                                               autoFocus
+                                             />
+                                           </div>
+                                         ) : (
+                                           <span 
+                                             className="font-medium flex-1 cursor-pointer hover:bg-muted/50 px-2 py-1 rounded"
+                                             onClick={() => setEditingPlanningTemplate({ id: `${index}`, field: 'title', value: item.title })}
+                                           >
+                                             {item.title}
+                                           </span>
+                                         )}
                                          <Button
                                            size="sm"
                                            variant="outline"
@@ -1035,13 +1132,6 @@ export default function Administration() {
                                          >
                                            <Plus className="h-3 w-3 mr-1" />
                                            Unterpunkt
-                                         </Button>
-                                         <Button
-                                           size="sm"
-                                           variant="outline"
-                                           onClick={() => setEditingPlanningTemplate({ id: `${index}`, field: 'title', value: item.title })}
-                                         >
-                                           <Edit className="h-3 w-3" />
                                          </Button>
                                          <Button
                                            size="sm"

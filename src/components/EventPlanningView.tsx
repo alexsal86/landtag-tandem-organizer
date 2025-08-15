@@ -1162,20 +1162,32 @@ export function EventPlanningView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {checklistItems.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      checked={item.is_completed}
-                      onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)}
-                    />
-                    <Input
-                      value={item.title}
-                      onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
-                      className={cn(
-                        "flex-1",
-                        item.is_completed && "line-through text-muted-foreground"
-                      )}
-                    />
+                {checklistItems.map((item: any) => (
+                  <div key={item.id}>
+                    {item.type === 'separator' ? (
+                      <div className="flex items-center gap-2 py-3">
+                        <div className="flex-1 border-t border-dashed border-border"></div>
+                        <span className="text-muted-foreground italic text-sm px-2">
+                          {item.title || 'Trenner'}
+                        </span>
+                        <div className="flex-1 border-t border-dashed border-border"></div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={item.is_completed}
+                          onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)}
+                        />
+                        <Input
+                          value={item.title}
+                          onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
+                          className={cn(
+                            "flex-1",
+                            item.is_completed && "line-through text-muted-foreground"
+                          )}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div className="flex items-center space-x-2 mt-4">
