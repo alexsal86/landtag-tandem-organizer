@@ -84,6 +84,8 @@ export function EventPlanningView() {
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
   const [newPlanningTitle, setNewPlanningTitle] = useState("");
   const [newPlanningIsPrivate, setNewPlanningIsPrivate] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("none");
+  const [planningTemplates, setPlanningTemplates] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("10:00");
   const [newChecklistItem, setNewChecklistItem] = useState("");
@@ -95,7 +97,24 @@ export function EventPlanningView() {
     console.log('EventPlanningView mounted, user:', user);
     fetchPlannings();
     fetchAllProfiles();
+    fetchPlanningTemplates();
   }, [user]);
+
+  const fetchPlanningTemplates = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("planning_templates")
+      .select("*")
+      .order("name");
+
+    if (error) {
+      console.error("Error fetching planning templates:", error);
+      return;
+    }
+
+    setPlanningTemplates(data || []);
+  };
 
   useEffect(() => {
     if (selectedPlanning) {
@@ -300,13 +319,16 @@ export function EventPlanningView() {
       return;
     }
 
-    // Create default checklist items
+    // Create checklist items based on selected template
+    const templateParam = selectedTemplateId === "none" ? null : selectedTemplateId;
     await supabase.rpc("create_default_checklist_items", {
       planning_id: data.id,
+      template_id_param: templateParam,
     });
 
     setNewPlanningTitle("");
     setNewPlanningIsPrivate(false);
+    setSelectedTemplateId("none");
     setIsCreateDialogOpen(false);
     fetchPlannings();
     setSelectedPlanning(data);
@@ -683,6 +705,22 @@ export function EventPlanningView() {
                       onChange={(e) => setNewPlanningTitle(e.target.value)}
                       placeholder="Veranstaltungstitel eingeben..."
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="template">Template</Label>
+                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Template auswählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Kein Template</SelectItem>
+                        {planningTemplates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Switch

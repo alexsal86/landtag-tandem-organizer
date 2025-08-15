@@ -716,6 +716,7 @@ export type Database = {
           id: string
           is_completed: boolean
           order_index: number
+          sub_items: Json | null
           title: string
           updated_at: string
         }
@@ -725,6 +726,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           order_index?: number
+          sub_items?: Json | null
           title: string
           updated_at?: string
         }
@@ -734,6 +736,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           order_index?: number
+          sub_items?: Json | null
           title?: string
           updated_at?: string
         }
@@ -831,6 +834,7 @@ export type Database = {
           id: string
           is_private: boolean
           location: string | null
+          template_id: string | null
           title: string
           updated_at: string
           user_id: string
@@ -844,6 +848,7 @@ export type Database = {
           id?: string
           is_private?: boolean
           location?: string | null
+          template_id?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -857,11 +862,20 @@ export type Database = {
           id?: string
           is_private?: boolean
           location?: string | null
+          template_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "event_plannings_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "planning_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       knowledge_document_permissions: {
         Row: {
@@ -1201,6 +1215,36 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      planning_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          template_items: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          template_items?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          template_items?: Json
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1640,7 +1684,9 @@ export type Database = {
         Returns: boolean
       }
       create_default_checklist_items: {
-        Args: { planning_id: string }
+        Args:
+          | { planning_id: string }
+          | { planning_id: string; template_id_param?: string }
         Returns: undefined
       }
       get_authored_messages: {
