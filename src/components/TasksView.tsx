@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo, AlarmClock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -887,10 +888,19 @@ export function TasksView() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "high": return "bg-red-100 text-red-800 border-red-200";
-      case "medium": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "low": return "bg-green-100 text-green-800 border-green-200";
-      default: return "bg-gray-100 text-gray-800 border-gray-200";
+      case "high": return "bg-red-500";
+      case "medium": return "bg-yellow-500";
+      case "low": return "bg-green-500";
+      default: return "bg-gray-500";
+    }
+  };
+
+  const getPriorityText = (priority: string) => {
+    switch (priority) {
+      case "high": return "Hoch";
+      case "medium": return "Mittel";
+      case "low": return "Niedrig";
+      default: return "Unbekannt";
     }
   };
 
@@ -1198,7 +1208,7 @@ export function TasksView() {
                       }`}>
                         {task.title}
                       </h3>
-                      <div className="flex gap-2 ml-4">
+                      <div className="flex gap-2 ml-4 items-center">
                         <Badge className={getCategoryColor(task.category)}>
                           {task.category === "legislation" && "Gesetzgebung"}
                           {task.category === "committee" && "Ausschuss"}
@@ -1206,18 +1216,28 @@ export function TasksView() {
                           {task.category === "personal" && "Persönlich"}
                         </Badge>
                         
-                        <Badge className={getStatusColor(task.status)}>
-                          {task.status === "todo" && "Zu erledigen"}
-                          {task.status === "in-progress" && "In Bearbeitung"}
-                          {task.status === "completed" && "Erledigt"}
-                        </Badge>
+                        {task.status === "in-progress" && (
+                          <Badge className={getStatusColor(task.status)}>
+                            In Bearbeitung
+                          </Badge>
+                        )}
+                        
+                        {task.status === "completed" && (
+                          <Badge className={getStatusColor(task.status)}>
+                            Erledigt
+                          </Badge>
+                        )}
 
-                        <Badge className={getPriorityColor(task.priority)}>
-                          <Flag className="h-3 w-3 mr-1" />
-                          {task.priority === "high" && "Hoch"}
-                          {task.priority === "medium" && "Mittel"}
-                          {task.priority === "low" && "Niedrig"}
-                        </Badge>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)} cursor-help`} />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Priorität: {getPriorityText(task.priority)}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </div>
 
@@ -1314,7 +1334,7 @@ export function TasksView() {
                      </div>
 
                       {/* Progress Bar */}
-                      {task.progress !== undefined && task.status !== "completed" && (
+                      {task.progress !== undefined && task.progress !== null && task.progress > 0 && task.status !== "completed" && (
                         <div className="mt-3">
                           <div className="flex justify-between text-sm mb-1">
                             <span className="text-muted-foreground">Fortschritt</span>
