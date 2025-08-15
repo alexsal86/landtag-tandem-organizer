@@ -538,6 +538,72 @@ export type Database = {
         }
         Relationships: []
       }
+      distribution_list_members: {
+        Row: {
+          added_at: string
+          contact_id: string
+          distribution_list_id: string
+          id: string
+        }
+        Insert: {
+          added_at?: string
+          contact_id: string
+          distribution_list_id: string
+          id?: string
+        }
+        Update: {
+          added_at?: string
+          contact_id?: string
+          distribution_list_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distribution_list_members_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "distribution_list_members_distribution_list_id_fkey"
+            columns: ["distribution_list_id"]
+            isOneToOne: false
+            referencedRelation: "distribution_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      distribution_lists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          topic: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          topic?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          topic?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           category: string | null

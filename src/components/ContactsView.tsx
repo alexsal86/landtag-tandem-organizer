@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,15 +43,28 @@ interface Contact {
   business_description?: string;
 }
 
+interface DistributionList {
+  id: string;
+  name: string;
+  description?: string;
+  topic?: string;
+  created_at: string;
+  member_count: number;
+  members: Contact[];
+}
+
 export function ContactsView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [distributionLists, setDistributionLists] = useState<DistributionList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [distributionListsLoading, setDistributionListsLoading] = useState(true);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [activeTab, setActiveTab] = useState<"contacts" | "distribution-lists">("contacts");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -59,6 +72,7 @@ export function ContactsView() {
   useEffect(() => {
     if (user) {
       fetchContacts();
+      fetchDistributionLists();
     }
   }, [user]);
 
@@ -144,6 +158,69 @@ export function ContactsView() {
     }
   };
 
+  const fetchDistributionLists = async () => {
+    try {
+      setDistributionListsLoading(true);
+      const { data, error } = await supabase
+        .from('distribution_lists')
+        .select(`
+          *,
+          distribution_list_members(
+            contacts(id, name, email, organization, avatar_url, category)
+          )
+        `)
+        .order('name');
+
+      if (error) throw error;
+
+      const formattedLists = data?.map(list => ({
+        id: list.id,
+        name: list.name,
+        description: list.description,
+        topic: list.topic,
+        created_at: list.created_at,
+        member_count: list.distribution_list_members?.length || 0,
+        members: list.distribution_list_members?.map((member: any) => member.contacts) || [],
+      })) || [];
+
+      setDistributionLists(formattedLists);
+    } catch (error) {
+      console.error('Error fetching distribution lists:', error);
+      toast({
+        title: "Fehler",
+        description: "Verteiler konnten nicht geladen werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setDistributionListsLoading(false);
+    }
+  };
+
+  const deleteDistributionList = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('distribution_lists')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Erfolg",
+        description: "Verteiler wurde erfolgreich gelöscht.",
+      });
+
+      fetchDistributionLists();
+    } catch (error) {
+      console.error('Error deleting distribution list:', error);
+      toast({
+        title: "Fehler",
+        description: "Verteiler konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const categories = [
     { value: "all", label: "Alle Kontakte", count: contacts.length },
     { value: "citizen", label: "Bürger", count: contacts.filter(c => c.category === "citizen").length },
@@ -222,12 +299,42 @@ export function ContactsView() {
               Verwalten Sie Ihre wichtigsten Kontakte, Organisationen und Beziehungen
             </p>
           </div>
-          <Link to="/contacts/new">
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Neuer Kontakt
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link to="/contacts/new">
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Neuer Kontakt
+              </Button>
+            </Link>
+            <Link to="/distribution-lists/new">
+              <Button variant="outline" className="gap-2">
+                <Users className="h-4 w-4" />
+                Neuer Verteiler
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6">
+          <Button
+            variant={activeTab === "contacts" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab("contacts")}
+            className="gap-2"
+          >
+            <User className="h-4 w-4" />
+            Kontakte ({contacts.length})
+          </Button>
+          <Button
+            variant={activeTab === "distribution-lists" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab("distribution-lists")}
+            className="gap-2"
+          >
+            <Users className="h-4 w-4" />
+            Verteiler ({distributionLists.length})
+          </Button>
         </div>
 
         {/* Search and Filter */}
@@ -267,7 +374,8 @@ export function ContactsView() {
           </div>
         </div>
 
-        {/* Type Filter */}
+        {/* Type Filter - Only show for contacts tab */}
+        {activeTab === "contacts" && (
         <div className="flex gap-2 mb-4 overflow-x-auto">
           <Button
             variant={selectedType === "all" ? "default" : "outline"}
@@ -294,8 +402,10 @@ export function ContactsView() {
             Organisationen ({contacts.filter(c => c.contact_type === "organization").length})
           </Button>
         </div>
+        )}
 
-        {/* Category Tabs */}
+        {/* Category Tabs - Only show for contacts tab */}
+        {activeTab === "contacts" && (
         <div className="flex gap-2 overflow-x-auto">
           {categories.map((category) => (
             <Button
@@ -309,10 +419,12 @@ export function ContactsView() {
             </Button>
           ))}
         </div>
+        )}
       </div>
 
-      {/* Contacts Display */}
-      {viewMode === "grid" ? (
+      {/* Content Display */}
+      {activeTab === "contacts" ? (
+        viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredContacts.map((contact) => (
             <Card
@@ -500,9 +612,104 @@ export function ContactsView() {
             </TableBody>
           </Table>
         </Card>
+        )
+      ) : (
+        // Distribution Lists Display
+        <div className="space-y-6">
+          {distributionListsLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Verteiler werden geladen...</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {distributionLists.map((list) => (
+                <Card key={list.id} className="bg-card shadow-card border-border">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{list.name}</CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            {list.member_count} Kontakte{list.topic && ` • ${list.topic}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Link to={`/distribution-lists/${list.id}/edit`}>
+                          <Button variant="outline" size="sm" className="gap-1">
+                            <Edit className="h-4 w-4" />
+                            Bearbeiten
+                          </Button>
+                        </Link>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-1 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            if (confirm(`Sind Sie sicher, dass Sie den Verteiler "${list.name}" löschen möchten?`)) {
+                              deleteDistributionList(list.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Löschen
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  {list.description && (
+                    <CardContent className="pt-0">
+                      <p className="text-sm text-muted-foreground mb-4">{list.description}</p>
+                      {list.members.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium mb-2">Mitglieder:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {list.members.slice(0, 5).map((member) => (
+                              <Badge key={member.id} variant="secondary" className="text-xs">
+                                {member.name}
+                              </Badge>
+                            ))}
+                            {list.members.length > 5 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{list.members.length - 5} weitere
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  )}
+                </Card>
+              ))}
+              
+              {distributionLists.length === 0 && (
+                <Card className="bg-card shadow-card border-border">
+                  <CardContent className="text-center py-12">
+                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Keine Verteiler vorhanden</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Erstellen Sie Ihren ersten Verteiler, um Kontakte zu organisieren.
+                    </p>
+                    <Link to="/distribution-lists/new">
+                      <Button className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Ersten Verteiler erstellen
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
-      {filteredContacts.length === 0 && (
+      {/* No contacts message */}
+      {activeTab === "contacts" && filteredContacts.length === 0 && (
         <Card className="bg-card shadow-card border-border">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <User className="h-12 w-12 text-muted-foreground mb-4" />

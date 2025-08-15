@@ -11,6 +11,8 @@ import CreateTask from "./pages/CreateTask";
 import ContactDetail from "./pages/ContactDetail";
 import EditContact from "./pages/EditContact";
 import EditProfile from "./pages/EditProfile";
+import CreateDistributionList from "./pages/CreateDistributionList";
+import EditDistributionList from "./pages/EditDistributionList";
 
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import Auth from "./pages/Auth";
@@ -46,6 +48,8 @@ const App = () => (
             
             <Route path="/contacts/:id" element={<ContactDetail />} />
             <Route path="/contacts/:id/edit" element={<EditContact />} />
+            <Route path="/distribution-lists/new" element={<CreateDistributionList />} />
+            <Route path="/distribution-lists/:id/edit" element={<EditDistributionList />} />
             <Route path="/profile/edit" element={<EditProfile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             
