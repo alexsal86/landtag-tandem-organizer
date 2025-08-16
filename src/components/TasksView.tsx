@@ -910,42 +910,43 @@ export function TasksView() {
                 Verwalten Sie Ihre Aufgaben und To-Dos effizient
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button className="gap-2" onClick={() => window.location.href = '/tasks/new'}>
-                <Plus className="h-4 w-4" />
-                Neue Aufgabe
-              </Button>
-              <Button 
-                variant="outline"
-                className="gap-2"
-                onClick={() => setTodoCreateOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-                Neues ToDo
-              </Button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Button className="gap-2" onClick={() => window.location.href = '/tasks/new'}>
+                  <Plus className="h-4 w-4" />
+                  Neue Aufgabe
+                </Button>
+                <Button 
+                  className="gap-2"
+                  onClick={() => setTodoCreateOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Neues ToDo
+                </Button>
+              </div>
+              
+              {/* Secondary actions row directly under main buttons */}
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setArchiveModalOpen(true)}
+                >
+                  <Archive className="h-4 w-4" />
+                  Aufgaben-Archiv
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setSnoozeManagementOpen(true)}
+                >
+                  <AlarmClock className="h-4 w-4" />
+                  Wiedervorlagen
+                </Button>
+              </div>
             </div>
-          </div>
-          
-          {/* Secondary actions row */}
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="gap-2"
-              onClick={() => setArchiveModalOpen(true)}
-            >
-              <Archive className="h-4 w-4" />
-              Aufgaben-Archiv
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="gap-2"
-              onClick={() => setSnoozeManagementOpen(true)}
-            >
-              <AlarmClock className="h-4 w-4" />
-              Wiedervorlagen
-            </Button>
           </div>
 
           {/* Advanced Filters */}
