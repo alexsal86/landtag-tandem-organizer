@@ -1805,7 +1805,16 @@ export function MeetingsView() {
                           <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
                             {index + 1}
                         </div>
-                        <h3 className="font-medium text-lg flex-1">{item.title}</h3>
+                         <Input
+                           value={item.title}
+                           onChange={(e) => updateAgendaItem(
+                             agendaItems.findIndex(i => i.id === item.id),
+                             'title',
+                             e.target.value
+                           )}
+                           className="font-medium text-lg flex-1 border-none shadow-none p-0 h-auto bg-transparent"
+                           placeholder="Agenda-Punkt Titel"
+                         />
                         <div className="flex items-center gap-2">
                           <Select
                             value={item.assigned_to || 'unassigned'}
