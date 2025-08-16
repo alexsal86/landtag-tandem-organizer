@@ -785,6 +785,8 @@ export function MeetingsView() {
   };
 
   const updateAgendaItem = async (index: number, field: keyof AgendaItem, value: any) => {
+    console.log('🔧 UPDATE AGENDA ITEM:', { index, field, value });
+    
     const updated = [...agendaItems];
     updated[index] = { ...updated[index], [field]: value };
     setAgendaItems(updated);
@@ -792,10 +794,21 @@ export function MeetingsView() {
     // Auto-save if item has an ID and we have a selected meeting
     if (updated[index].id && selectedMeeting?.id) {
       try {
+        console.log('💾 Auto-saving agenda item change to database');
         await supabase
           .from('meeting_agenda_items')
           .update({ [field]: value })
           .eq('id', updated[index].id);
+          
+        console.log('✅ Auto-save successful');
+        
+        // If this is the active meeting, force a reload to show changes
+        if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
+          console.log('🔄 This is an active meeting - reloading agenda items');
+          setTimeout(() => {
+            loadAgendaItems(selectedMeeting.id);
+          }, 100); // Small delay to ensure database update is complete
+        }
       } catch (error) {
         console.error('Auto-save error:', error);
       }
