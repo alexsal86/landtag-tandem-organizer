@@ -1223,21 +1223,33 @@ export function MeetingsView() {
     // Update the state
     setAgendaItems(reorderedItems);
 
-      // Save the new order to database immediately for items that already exist
+    // Save the new order to database immediately for ALL items that already exist
       if (selectedMeeting?.id) {
         try {
-          for (const item of reorderedItems) {
-            if (item.id) {
-              await supabase
-                .from('meeting_agenda_items')
-                .update({ order_index: item.order_index })
-                .eq('id', item.id);
-            }
+          console.log('🔄 Batch updating order_index for all items in database...');
+          
+          // Batch update all existing items at once
+          const existingItems = reorderedItems.filter(item => item.id);
+          if (existingItems.length > 0) {
+            const { error } = await supabase
+              .from('meeting_agenda_items')
+              .upsert(
+                existingItems.map(item => ({
+                  id: item.id,
+                  order_index: item.order_index,
+                  meeting_id: selectedMeeting.id,
+                  title: item.title,
+                  description: item.description || '',
+                  assigned_to: item.assigned_to || 'unassigned',
+                  parent_id: item.parent_id
+                })),
+                { onConflict: 'id' }
+              );
+
+            if (error) throw error;
           }
           
-          // If this is the active meeting, no need to reload - the state is already updated correctly
-          // Reloading would overwrite our local changes with potentially stale data
-          console.log('Drag & drop completed for active meeting - using updated local state');
+          console.log('✅ Drag & drop completed - all order_index values updated in database');
         } catch (error) {
           console.error('Error updating order:', error);
           toast({
