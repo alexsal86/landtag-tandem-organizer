@@ -101,7 +101,7 @@ export function MeetingsView() {
     }
   }, [user]);
 
-  // Sync task changes to meeting agenda items
+  // Sync task changes to meeting agenda items (only title and description, not files)
   useEffect(() => {
     const syncTaskChanges = async () => {
       if (!tasks || tasks.length === 0) return;
@@ -116,24 +116,17 @@ export function MeetingsView() {
         if (error) throw error;
         
         if (agendaItemsWithTasks && agendaItemsWithTasks.length > 0) {
-          // Update agenda items with current task data
+          // Update agenda items with current task data (but not files)
           for (const agendaItem of agendaItemsWithTasks) {
             const correspondingTask = tasks.find(task => task.id === agendaItem.task_id);
             if (correspondingTask) {
-              // Get task documents
-              const taskDocs = taskDocuments[correspondingTask.id] || [];
-              const documentPath = taskDocs.length > 0 ? taskDocs[0].file_path : null;
-              
-              // Update if task title, description, or documents have changed
+              // Update only title and description, not files
               const updates: any = {};
               if (agendaItem.title !== correspondingTask.title) {
                 updates.title = correspondingTask.title;
               }
               if (agendaItem.description !== correspondingTask.description) {
                 updates.description = correspondingTask.description;
-              }
-              if (agendaItem.file_path !== documentPath) {
-                updates.file_path = documentPath;
               }
               
               // Only update if there are actual changes
@@ -151,10 +144,10 @@ export function MeetingsView() {
       }
     };
     
-    if (tasks.length > 0 && Object.keys(taskDocuments).length >= 0) {
+    if (tasks.length > 0) {
       syncTaskChanges();
     }
-  }, [tasks, taskDocuments]);
+  }, [tasks]);
 
   const loadMeetings = async () => {
     try {
@@ -1599,105 +1592,128 @@ export function MeetingsView() {
                                            className="min-h-[60px]"
                                          />
 
-                                         <div>
-                                           <label className="text-sm font-medium">Notizen</label>
-                                           <Textarea
-                                             value={item.notes || ''}
-                                             onChange={(e) => updateAgendaItem(index, 'notes', e.target.value)}
-                                             placeholder="Notizen und Hinweise"
-                                             className="min-h-[80px]"
-                                           />
-                                         </div>
+                                          <div>
+                                            <label className="text-sm font-medium">Notizen</label>
+                                            <Textarea
+                                              value={item.notes || ''}
+                                              onChange={(e) => updateAgendaItem(index, 'notes', e.target.value)}
+                                              placeholder="Notizen und Hinweise"
+                                              className="min-h-[80px]"
+                                            />
+                                            
+                                            {/* Display task documents as part of task notes */}
+                                            {item.task_id && taskDocuments[item.task_id] && taskDocuments[item.task_id].length > 0 && (
+                                              <div className="mt-3 p-3 bg-blue-50/50 border border-blue-200 rounded-lg">
+                                                <h5 className="text-sm font-medium text-blue-800 mb-2">
+                                                  Aufgaben-Dokumente:
+                                                </h5>
+                                                <div className="space-y-2">
+                                                  {taskDocuments[item.task_id].map((doc, docIndex) => (
+                                                    <div key={docIndex} className="flex items-center justify-between p-2 bg-white rounded border">
+                                                      <div className="flex items-center gap-2">
+                                                        <FileText className="h-4 w-4 text-blue-600" />
+                                                        <span className="text-sm text-blue-700">
+                                                          {doc.file_name || 'Dokument'}
+                                                        </span>
+                                                      </div>
+                                                      <Button 
+                                                        variant="ghost" 
+                                                        size="sm"
+                                                        onClick={async () => {
+                                                          try {
+                                                            const { data, error } = await supabase.storage
+                                                              .from('task-documents')
+                                                              .download(doc.file_path);
+                                                            
+                                                            if (error) throw error;
+                                                            
+                                                            const url = URL.createObjectURL(data);
+                                                            const a = document.createElement('a');
+                                                            a.href = url;
+                                                            a.download = doc.file_name || 'download';
+                                                            a.click();
+                                                            URL.revokeObjectURL(url);
+                                                          } catch (error) {
+                                                            console.error('Download error:', error);
+                                                            toast({
+                                                              title: "Download-Fehler",
+                                                              description: "Datei konnte nicht heruntergeladen werden.",
+                                                              variant: "destructive",
+                                                            });
+                                                          }
+                                                        }}
+                                                      >
+                                                        <Download className="h-4 w-4" />
+                                                      </Button>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
 
-                                           <div>
-                                             {/* Display uploaded files */}
-                                             {item.file_path && (
-                                               <div className="mb-4 bg-muted/30 p-3 rounded-lg border">
-                                                 <h4 className="text-sm font-medium mb-2">Angehängte Dateien:</h4>
-                                                 <div className="flex items-center justify-between p-2 bg-background rounded border">
-                                                   <div className="flex items-center gap-2">
-                                                     <FileText className="h-4 w-4 text-blue-600" />
-                                                     <span className="text-sm">
-                                                       {(() => {
-                                                         if (item.task_id && taskDocuments[item.task_id] && taskDocuments[item.task_id].length > 0) {
-                                                           const taskDoc = taskDocuments[item.task_id].find(doc => doc.file_path === item.file_path);
-                                                           return taskDoc?.file_name || 'Datei';
-                                                         }
-                                                         return item.file_path.split('/').pop() || 'Datei';
-                                                       })()}
-                                                     </span>
-                                                   </div>
-                                                   <div className="flex gap-1">
-                                                     <Button 
-                                                       variant="ghost" 
-                                                       size="sm"
-                                                       onClick={async () => {
-                                                         try {
-                                                           // Determine the correct bucket and filename
-                                                           let bucket = 'documents';
-                                                           let fileName = 'download';
-                                                           
-                                                           if (item.task_id && taskDocuments[item.task_id] && taskDocuments[item.task_id].length > 0) {
-                                                             const taskDoc = taskDocuments[item.task_id].find(doc => doc.file_path === item.file_path);
-                                                             if (taskDoc) {
-                                                               bucket = 'task-documents';
-                                                               fileName = taskDoc.file_name;
-                                                             }
-                                                           }
-                                                           
-                                                           const { data, error } = await supabase.storage
-                                                             .from(bucket)
-                                                             .download(item.file_path!);
-                                                           
-                                                           if (error) throw error;
-                                                           
-                                                           const url = URL.createObjectURL(data);
-                                                           const a = document.createElement('a');
-                                                           a.href = url;
-                                                           a.download = fileName;
-                                                           a.click();
-                                                           URL.revokeObjectURL(url);
-                                                         } catch (error) {
-                                                           console.error('Download error:', error);
-                                                           toast({
-                                                             title: "Download-Fehler",
-                                                             description: "Datei konnte nicht heruntergeladen werden.",
-                                                             variant: "destructive",
-                                                           });
-                                                         }
-                                                       }}
-                                                     >
-                                                       <Download className="h-4 w-4" />
-                                                     </Button>
-                                                     <Button 
-                                                       variant="ghost" 
-                                                       size="sm"
-                                                       onClick={async () => {
-                                                         try {
-                                                           // Determine the correct bucket
-                                                           let bucket = 'documents';
-                                                           if (item.task_id && taskDocuments[item.task_id] && taskDocuments[item.task_id].length > 0) {
-                                                             const taskDoc = taskDocuments[item.task_id].find(doc => doc.file_path === item.file_path);
-                                                             if (taskDoc) {
-                                                               bucket = 'task-documents';
-                                                             }
-                                                           }
-                                                           
-                                                           // Remove file from storage
-                                                           await supabase.storage
-                                                             .from(bucket)
-                                                             .remove([item.file_path!]);
-                                                           
-                                                           // Update agenda item
-                                                           await updateAgendaItem(index, 'file_path', null);
-                                                           
-                                                           toast({
-                                                             title: "Datei entfernt",
-                                                             description: "Die Datei wurde erfolgreich entfernt.",
-                                                           });
-                                                         } catch (error) {
-                                                           console.error('Remove error:', error);
-                                                           toast({
+                                            <div>
+                                              {/* Display agenda files (only non-task files) */}
+                                              {item.file_path && !item.task_id && (
+                                                <div className="mb-4 bg-muted/30 p-3 rounded-lg border">
+                                                  <h4 className="text-sm font-medium mb-2">Angehängte Dateien:</h4>
+                                                  <div className="flex items-center justify-between p-2 bg-background rounded border">
+                                                    <div className="flex items-center gap-2">
+                                                      <FileText className="h-4 w-4 text-blue-600" />
+                                                      <span className="text-sm">
+                                                        {item.file_path.split('/').pop() || 'Datei'}
+                                                      </span>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                      <Button 
+                                                        variant="ghost" 
+                                                        size="sm"
+                                                        onClick={async () => {
+                                                          try {
+                                                            const { data, error } = await supabase.storage
+                                                              .from('documents')
+                                                              .download(item.file_path!);
+                                                            
+                                                            if (error) throw error;
+                                                            
+                                                            const url = URL.createObjectURL(data);
+                                                            const a = document.createElement('a');
+                                                            a.href = url;
+                                                            a.download = item.file_path.split('/').pop() || 'download';
+                                                            a.click();
+                                                            URL.revokeObjectURL(url);
+                                                          } catch (error) {
+                                                            console.error('Download error:', error);
+                                                            toast({
+                                                              title: "Download-Fehler",
+                                                              description: "Datei konnte nicht heruntergeladen werden.",
+                                                              variant: "destructive",
+                                                            });
+                                                          }
+                                                        }}
+                                                      >
+                                                        <Download className="h-4 w-4" />
+                                                      </Button>
+                                                      <Button 
+                                                        variant="ghost" 
+                                                        size="sm"
+                                                        onClick={async () => {
+                                                          try {
+                                                            // Remove file from storage
+                                                            await supabase.storage
+                                                              .from('documents')
+                                                              .remove([item.file_path!]);
+                                                            
+                                                            // Update agenda item
+                                                            await updateAgendaItem(index, 'file_path', null);
+                                                            
+                                                            toast({
+                                                              title: "Datei entfernt",
+                                                              description: "Die Datei wurde erfolgreich entfernt.",
+                                                            });
+                                                          } catch (error) {
+                                                            console.error('Remove error:', error);
+                                                            toast({
                                                              title: "Fehler",
                                                              description: "Datei konnte nicht entfernt werden.",
                                                              variant: "destructive",
