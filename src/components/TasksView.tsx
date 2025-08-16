@@ -29,37 +29,34 @@ interface Task {
   category: "legislation" | "constituency" | "committee" | "personal";
   assignedTo?: string;
   progress?: number;
+  created_at?: string;
+  updated_at?: string;
+  user_id?: string;
 }
 
 interface TaskComment {
   id: string;
-  task_id: string;
-  user_id: string;
+  taskId: string;
   content: string;
-  created_at: string;
-  profile?: {
-    display_name?: string;
-    avatar_url?: string;
-  };
+  userId: string;
+  userName?: string;
+  createdAt: string;
 }
 
 interface Subtask {
   id: string;
   task_id: string;
-  user_id: string;
-  description: string;
+  title: string;
+  description?: string;
+  is_completed: boolean;
   assigned_to?: string;
   due_date?: string;
-  is_completed: boolean;
   order_index: number;
-  created_at: string;
-  updated_at: string;
-  result_text?: string;
   completed_at?: string;
-  // Extended properties for planning subtasks
+  result_text?: string;
+  planning_item_id?: string;
   source_type?: 'task' | 'planning';
   checklist_item_title?: string;
-  planning_item_id?: string;
 }
 
 export function TasksView() {
@@ -119,6 +116,7 @@ export function TasksView() {
     due_date: string | null;
     is_completed: boolean;
   }>>([]);
+  
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -146,43 +144,46 @@ export function TasksView() {
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
+      // Load task snoozes
+      const { data: taskSnoozes, error: taskError } = await supabase
         .from('task_snoozes')
-        .select('*')
+        .select('id, task_id, snoozed_until')
         .eq('user_id', user.id)
-        .order('snoozed_until', { ascending: true });
+        .not('task_id', 'is', null);
 
-      if (error) throw error;
+      if (taskError) throw taskError;
 
-      // Get task and subtask details
-      const snoozesWithDetails = await Promise.all((data || []).map(async (snooze) => {
-        if (snooze.task_id) {
-          const { data: taskData } = await supabase
-            .from('tasks')
-            .select('title')
-            .eq('id', snooze.task_id)
-            .single();
-          
-          return {
-            ...snooze,
-            task_title: taskData?.title || 'Unbekannte Aufgabe'
-          };
-        } else if (snooze.subtask_id) {
-          const { data: subtaskData } = await supabase
-            .from('subtasks')
-            .select('description')
-            .eq('id', snooze.subtask_id)
-            .single();
-          
-          return {
-            ...snooze,
-            subtask_description: subtaskData?.description || 'Unbekannte Unteraufgabe'
-          };
-        }
-        return snooze;
-      }));
+      // Load subtask snoozes
+      const { data: subtaskSnoozes, error: subtaskError } = await supabase
+        .from('task_snoozes')
+        .select(`
+          id,
+          subtask_id,
+          snoozed_until,
+          subtasks(title, tasks(title))
+        `)
+        .eq('user_id', user.id)
+        .not('subtask_id', 'is', null);
 
-      setAllSnoozes(snoozesWithDetails);
+      if (subtaskError) throw subtaskError;
+
+      const allSnoozes = [
+        ...(taskSnoozes || []).map(snooze => ({
+          id: snooze.id,
+          task_id: snooze.task_id,
+          snoozed_until: snooze.snoozed_until,
+          task_title: snooze.tasks?.title || 'Unbekannte Aufgabe',
+        })),
+        ...(subtaskSnoozes || []).map(snooze => ({
+          id: snooze.id,
+          subtask_id: snooze.subtask_id,
+          snoozed_until: snooze.snoozed_until,
+          subtask_description: snooze.subtasks?.title || 'Unbekannte Unteraufgabe',
+          task_title: snooze.subtasks?.tasks?.title || 'Unbekannte Aufgabe',
+        }))
+      ];
+
+      setAllSnoozes(allSnoozes);
     } catch (error) {
       console.error('Error loading all snoozes:', error);
     }
@@ -197,13 +198,12 @@ export function TasksView() {
 
       if (error) throw error;
 
-      await loadAllSnoozes();
-      await loadTaskSnoozes();
-      await loadAssignedSubtasks();
+      loadAllSnoozes();
+      loadTaskSnoozes();
       
       toast({
-        title: "Wiedervorlage aktualisiert",
-        description: `Neues Datum: ${new Date(newDate).toLocaleDateString('de-DE')}`
+        title: "Erfolgreich",
+        description: "Wiedervorlage wurde aktualisiert.",
       });
     } catch (error) {
       console.error('Error updating snooze:', error);
@@ -224,13 +224,12 @@ export function TasksView() {
 
       if (error) throw error;
 
-      await loadAllSnoozes();
-      await loadTaskSnoozes();
-      await loadAssignedSubtasks();
+      loadAllSnoozes();
+      loadTaskSnoozes();
       
       toast({
-        title: "Wiedervorlage gelöscht",
-        description: "Die Wiedervorlage wurde erfolgreich entfernt."
+        title: "Erfolgreich",
+        description: "Wiedervorlage wurde gelöscht.",
       });
     } catch (error) {
       console.error('Error deleting snooze:', error);
@@ -334,187 +333,64 @@ export function TasksView() {
 
       if (planningError) throw planningError;
 
-      console.log('Found regular subtasks:', subtasksData);
-      console.log('Found planning subtasks:', planningSubtasksData);
+      console.log('Regular subtasks:', subtasksData);
+      console.log('Planning subtasks:', planningSubtasksData);
 
-      let allSubtasks = [];
+      // Combine subtasks with task titles
+      const allSubtasks = [];
 
       // Process regular subtasks
-      if (subtasksData && subtasksData.length > 0) {
-        const taskIds = [...new Set(subtasksData.map(s => s.task_id))];
-        const { data: tasksData, error: tasksError } = await supabase
-          .from('tasks')
-          .select('id, title')
-          .in('id', taskIds);
+      if (subtasksData) {
+        for (const subtask of subtasksData) {
+          const { data: taskData } = await supabase
+            .from('tasks')
+            .select('title')
+            .eq('id', subtask.task_id)
+            .single();
 
-        if (tasksError) throw tasksError;
-
-        const subtasksWithTitles = subtasksData.map(subtask => ({
-          ...subtask,
-          task_title: tasksData?.find(t => t.id === subtask.task_id)?.title || 'Unbekannte Aufgabe',
-          source_type: 'task' as const
-        }));
-
-        allSubtasks.push(...subtasksWithTitles);
+          allSubtasks.push({
+            ...subtask,
+            task_title: taskData?.title || 'Unbekannte Aufgabe',
+            source_type: 'task' as const
+          });
+        }
       }
 
       // Process planning subtasks
-      if (planningSubtasksData && planningSubtasksData.length > 0) {
-        // Get planning item IDs to fetch planning details
-        const planningItemIds = [...new Set(planningSubtasksData.map(s => s.planning_item_id))];
-        
-        // Get checklist items to get planning IDs
-        const { data: checklistItemsData, error: checklistError } = await supabase
-          .from('event_planning_checklist_items')
-          .select('id, event_planning_id, title')
-          .in('id', planningItemIds);
+      if (planningSubtasksData) {
+        for (const subtask of planningSubtasksData) {
+          const { data: checklistItemData } = await supabase
+            .from('event_planning_checklist_items')
+            .select('title, event_planning_id')
+            .eq('id', subtask.planning_item_id)
+            .single();
 
-        if (checklistError) throw checklistError;
+          let planningTitle = 'Unbekannte Planung';
+          if (checklistItemData) {
+            const { data: planningData } = await supabase
+              .from('event_plannings')
+              .select('title')
+              .eq('id', checklistItemData.event_planning_id)
+              .single();
+            
+            planningTitle = planningData?.title || 'Unbekannte Planung';
+          }
 
-        // Get planning details
-        const planningIds = [...new Set(checklistItemsData?.map(item => item.event_planning_id) || [])];
-        const { data: planningsData, error: planningsError } = await supabase
-          .from('event_plannings')
-          .select('id, title')
-          .in('id', planningIds);
-
-        if (planningsError) throw planningsError;
-
-        const planningSubtasksWithTitles = planningSubtasksData.map(subtask => {
-          const checklistItem = checklistItemsData?.find(item => item.id === subtask.planning_item_id);
-          const planning = planningsData?.find(p => p.id === checklistItem?.event_planning_id);
-          
-          return {
+          allSubtasks.push({
             ...subtask,
-            task_title: planning?.title || 'Unbekannte Veranstaltung',
-            checklist_item_title: checklistItem?.title || 'Unbekanntes Item',
+            task_title: planningTitle,
             source_type: 'planning' as const,
-            // Rename task_id to avoid conflicts but keep for compatibility
-            task_id: subtask.planning_item_id
-          };
-        });
-
-        allSubtasks.push(...planningSubtasksWithTitles);
+            checklist_item_title: checklistItemData?.title,
+            planning_item_id: subtask.planning_item_id
+          });
+        }
       }
 
-      // Sort all subtasks: non-snoozed first, then snoozed ones at the end
-      const sortedSubtasks = allSubtasks.sort((a, b) => {
-        const aIsSnoozed = subtaskSnoozes[a.id] ? 1 : 0;
-        const bIsSnoozed = subtaskSnoozes[b.id] ? 1 : 0;
-        
-        // If snooze status is different, sort by snooze status (non-snoozed first)
-        if (aIsSnoozed !== bIsSnoozed) {
-          return aIsSnoozed - bIsSnoozed;
-        }
-        
-        // If both have same snooze status, sort by created_at (newest first)
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-
-      console.log('All subtasks with titles:', sortedSubtasks);
-
-      setAssignedSubtasks(sortedSubtasks);
+      console.log('All assigned subtasks:', allSubtasks);
+      setAssignedSubtasks(allSubtasks);
     } catch (error) {
       console.error('Error loading assigned subtasks:', error);
     }
-  };
-
-  const loadSubtaskCounts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('subtasks')
-        .select('task_id, id, description, assigned_to, due_date, is_completed, order_index, created_at, updated_at, user_id, result_text, completed_at');
-
-      if (error) throw error;
-
-      // Group subtasks by task_id and count them
-      const counts: { [taskId: string]: number } = {};
-      const details: { [taskId: string]: Subtask[] } = {};
-      
-      (data || []).forEach(subtask => {
-        if (!counts[subtask.task_id]) {
-          counts[subtask.task_id] = 0;
-          details[subtask.task_id] = [];
-        }
-        counts[subtask.task_id]++;
-        details[subtask.task_id].push(subtask);
-      });
-
-      // Sort subtasks by order_index
-      Object.keys(details).forEach(taskId => {
-        details[taskId].sort((a, b) => a.order_index - b.order_index);
-        console.log(`Subtasks for task ${taskId}:`, details[taskId]);
-      });
-
-      setSubtaskCounts(counts);
-      setSubtasks(details);
-    } catch (error) {
-      console.error('Error loading subtask counts:', error);
-    }
-  };
-
-  const loadTaskDocumentCounts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('task_documents')
-        .select('task_id, id, file_name, file_path, file_size, created_at');
-
-      if (error) throw error;
-
-      // Group documents by task_id and count them
-      const counts: { [taskId: string]: number } = {};
-      const details: { [taskId: string]: any[] } = {};
-      
-      (data || []).forEach(doc => {
-        if (!counts[doc.task_id]) {
-          counts[doc.task_id] = 0;
-          details[doc.task_id] = [];
-        }
-        counts[doc.task_id]++;
-        details[doc.task_id].push(doc);
-      });
-
-      setTaskDocuments(counts);
-      setTaskDocumentDetails(details);
-    } catch (error) {
-      console.error('Error loading task documents:', error);
-    }
-  };
-
-  const loadUsers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_id, display_name');
-
-      if (error) throw error;
-
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Error loading users:', error);
-    }
-  };
-
-  const loadTaskConfiguration = async () => {
-    try {
-      const [categoriesResponse, statusesResponse] = await Promise.all([
-        supabase.from('task_categories').select('name, label').eq('is_active', true).order('order_index'),
-        supabase.from('appointment_statuses').select('name, label').eq('is_active', true).order('order_index')
-      ]);
-
-      if (categoriesResponse.error) throw categoriesResponse.error;
-      if (statusesResponse.error) throw statusesResponse.error;
-
-      setTaskCategories(categoriesResponse.data || []);
-      setTaskStatuses(statusesResponse.data || []);
-    } catch (error) {
-      console.error('Error loading task configuration:', error);
-    }
-  };
-
-  const loadRecentActivities = async () => {
-    // This is a simplified version - in a real app you'd have an activities table
-    setRecentActivities([]);
   };
 
   const loadTasks = async () => {
@@ -536,156 +412,249 @@ export function TasksView() {
         dueDate: task.due_date,
         category: task.category as "legislation" | "constituency" | "committee" | "personal",
         assignedTo: task.assigned_to,
-        progress: task.progress
+        progress: task.progress,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        user_id: task.user_id
       }));
 
       setTasks(transformedTasks);
-
-      // Auto-create sample data if no tasks exist
-      if (transformedTasks.length === 0) {
-        await createSampleTasks();
-      }
+      setLoading(false);
+      loadTaskComments();
     } catch (error) {
       console.error('Error loading tasks:', error);
-    } finally {
       setLoading(false);
     }
   };
 
-  const createSampleTasks = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const sampleTasks = [
-      {
-        user_id: user.id,
-        title: "Bürgersprechstunde vorbereiten",
-        description: "Termine koordinieren und Räumlichkeiten reservieren",
-        priority: "high",
-        status: "todo",
-        category: "constituency",
-        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        progress: 25
-      },
-      {
-        user_id: user.id,
-        title: "Gesetzentwurf analysieren",
-        description: "Neuen Entwurf zur Digitalisierung prüfen",
-        priority: "medium",
-        status: "in-progress",
-        category: "legislation",
-        due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-        progress: 60
-      }
-    ];
-
+  const loadTaskConfiguration = async () => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .insert(sampleTasks);
+      const [categoriesRes, statusesRes] = await Promise.all([
+        supabase.from('task_categories').select('name, label').eq('is_active', true).order('order_index'),
+        supabase.from('task_statuses').select('name, label').eq('is_active', true).order('order_index')
+      ]);
 
-      if (error) throw error;
-
-      loadTasks();
+      if (categoriesRes.data) {
+        setTaskCategories(categoriesRes.data);
+      }
+      if (statusesRes.data) {
+        setTaskStatuses(statusesRes.data);
+      }
     } catch (error) {
-      console.error('Error creating sample tasks:', error);
+      console.error('Error loading task configuration:', error);
     }
   };
 
-  const toggleTaskStatus = async (taskId: string) => {
-    try {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
+  const loadRecentActivities = async () => {
+    // This is a simplified version - in a real app you'd have an activities table
+    setRecentActivities([]);
+  };
 
-      const newStatus = task.status === "completed" ? "todo" : "completed";
-      
+  const loadUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .order('display_name');
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
+
+  const loadTaskComments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('task_comments')
+        .select(`
+          id,
+          task_id,
+          content,
+          user_id,
+          created_at,
+          profiles!inner(display_name)
+        `)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const commentsMap: { [taskId: string]: TaskComment[] } = {};
+      (data || []).forEach(comment => {
+        if (!commentsMap[comment.task_id]) {
+          commentsMap[comment.task_id] = [];
+        }
+        commentsMap[comment.task_id].push({
+          id: comment.id,
+          taskId: comment.task_id,
+          content: comment.content,
+          userId: comment.user_id,
+          userName: comment.profiles?.display_name || 'Unbekannter Benutzer',
+          createdAt: comment.created_at
+        });
+      });
+
+      setTaskComments(commentsMap);
+    } catch (error) {
+      console.error('Error loading task comments:', error);
+    }
+  };
+
+  const loadTaskDocuments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('task_documents')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const detailsMap: { [taskId: string]: any[] } = {};
+      (data || []).forEach(doc => {
+        if (!detailsMap[doc.task_id]) {
+          detailsMap[doc.task_id] = [];
+        }
+        detailsMap[doc.task_id].push(doc);
+      });
+
+      setTaskDocumentDetails(detailsMap);
+    } catch (error) {
+      console.error('Error loading task documents:', error);
+    }
+  };
+
+  const loadTaskDocumentCounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('task_documents')
+        .select('task_id, id');
+
+      if (error) throw error;
+
+      const counts: { [taskId: string]: number } = {};
+      (data || []).forEach(doc => {
+        counts[doc.task_id] = (counts[doc.task_id] || 0) + 1;
+      });
+
+      setTaskDocuments(counts);
+    } catch (error) {
+      console.error('Error loading task document counts:', error);
+    }
+  };
+
+  const loadSubtaskCounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subtasks')
+        .select('task_id, id');
+
+      if (error) throw error;
+
+      const counts: { [taskId: string]: number } = {};
+      (data || []).forEach(subtask => {
+        counts[subtask.task_id] = (counts[subtask.task_id] || 0) + 1;
+      });
+
+      setSubtaskCounts(counts);
+    } catch (error) {
+      console.error('Error loading subtask counts:', error);
+    }
+  };
+
+  const loadSubtasksForTask = async (taskId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('subtasks')
+        .select('*')
+        .eq('task_id', taskId)
+        .eq('is_completed', false)
+        .order('order_index');
+
+      if (error) throw error;
+
+      setSubtasks(prev => ({
+        ...prev,
+        [taskId]: data || []
+      }));
+    } catch (error) {
+      console.error('Error loading subtasks:', error);
+    }
+  };
+
+  const isOverdue = (dueDate: string) => {
+    return new Date(dueDate) < new Date();
+  };
+
+  const toggleTaskStatus = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newStatus = task.status === "completed" ? "todo" : "completed";
+    
+    try {
+      const updateData: any = { 
+        status: newStatus,
+        progress: newStatus === "completed" ? 100 : task.progress || 0
+      };
+
+      if (newStatus === "completed" && !user) {
+        console.error('No user available for archiving');
+        return;
+      }
+
       const { error } = await supabase
         .from('tasks')
-        .update({ 
-          status: newStatus,
-          progress: newStatus === "completed" ? 100 : task.progress
-        })
+        .update(updateData)
         .eq('id', taskId);
 
       if (error) throw error;
 
+      // If task is completed, archive it
       if (newStatus === "completed") {
-        // Archive the task
-        await archiveTask(task);
-      } else {
-        // Update local state
-        setTasks(prev => prev.map(t => 
-          t.id === taskId 
-            ? { ...t, status: newStatus as "todo" | "in-progress" | "completed" }
-            : t
-        ));
+        const { error: archiveError } = await supabase
+          .from('archived_tasks')
+          .insert({
+            task_id: taskId,
+            user_id: user?.id,
+            title: task.title,
+            description: task.description,
+            priority: task.priority,
+            category: task.category,
+            assigned_to: task.assignedTo,
+            progress: 100,
+            due_date: task.dueDate,
+            completed_at: new Date().toISOString()
+          });
+
+        if (archiveError) {
+          console.error('Error archiving task:', archiveError);
+        }
+
+        // Delete the task from the tasks table
+        const { error: deleteError } = await supabase
+          .from('tasks')
+          .delete()
+          .eq('id', taskId);
+
+        if (deleteError) {
+          console.error('Error deleting completed task:', deleteError);
+        }
       }
 
+      loadTasks();
       toast({
-        title: "Aufgabe aktualisiert",
-        description: `Status auf "${newStatus === "completed" ? "Erledigt und archiviert" : "Zu erledigen"}" geändert.`,
+        title: "Status aktualisiert",
+        description: newStatus === "completed" 
+          ? "Aufgabe wurde als erledigt markiert und archiviert."
+          : "Aufgabe wurde als offen markiert."
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating task:', error);
       toast({
         title: "Fehler",
-        description: "Aufgabe konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const archiveTask = async (task: Task) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Get archive settings for auto-delete duration
-      const { data: archiveSettings } = await supabase
-        .from('task_archive_settings')
-        .select('auto_delete_after_days')
-        .eq('user_id', user.id)
-        .single();
-
-      // Insert into archived_tasks
-      const { error: archiveError } = await supabase
-        .from('archived_tasks')
-        .insert({
-          task_id: task.id,
-          user_id: user.id,
-          title: task.title,
-          description: task.description,
-          priority: task.priority,
-          category: task.category,
-          assigned_to: task.assignedTo,
-          progress: task.progress,
-          due_date: task.dueDate,
-          auto_delete_after_days: archiveSettings?.auto_delete_after_days,
-        });
-
-      if (archiveError) throw archiveError;
-
-      // Delete the task from the tasks table completely
-      const { error: deleteError } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', task.id);
-
-      if (deleteError) throw deleteError;
-
-      // Remove from local tasks (since it's now deleted)
-      setTasks(prev => prev.filter(t => t.id !== task.id));
-
-      toast({
-        title: "Aufgabe archiviert",
-        description: "Die erledigte Aufgabe wurde archiviert.",
-      });
-    } catch (error) {
-      console.error('Error archiving task:', error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht archiviert werden.",
-        variant: "destructive",
+        description: "Status konnte nicht aktualisiert werden.",
+        variant: "destructive"
       });
     }
   };
@@ -695,99 +664,88 @@ export function TasksView() {
     setSidebarOpen(true);
   };
 
+  const addComment = async (taskId: string) => {
+    const content = newComment[taskId]?.trim();
+    if (!content || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('task_comments')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          content: content
+        });
+
+      if (error) throw error;
+
+      setNewComment(prev => ({ ...prev, [taskId]: '' }));
+      loadTaskComments();
+      toast({ title: "Kommentar hinzugefügt" });
+    } catch (error: any) {
+      console.error('Error adding comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht hinzugefügt werden.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleTaskUpdate = (updatedTask: Task) => {
     setTasks(prev => prev.map(task => 
       task.id === updatedTask.id ? updatedTask : task
     ));
   };
 
-  const handleTaskRestored = (restoredTask: Task) => {
-    setTasks(prev => [restoredTask, ...prev]);
-  };
-
-  const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string) => {
-    try {
-      // Find the subtask to determine its source type
-      const subtask = assignedSubtasks.find(s => s.id === subtaskId);
-      
-      const updateData = isCompleted 
-        ? { 
-            is_completed: true, 
-            result_text: result || null,
-            completed_at: new Date().toISOString()
-          }
-        : { 
-            is_completed: false, 
-            result_text: null,
-            completed_at: null
-          };
-
-      // Update the appropriate table based on source type
-      const tableName = subtask?.source_type === 'planning' ? 'planning_item_subtasks' : 'subtasks';
-      
-      const { error } = await supabase
-        .from(tableName)
-        .update(updateData)
-        .eq('id', subtaskId);
-
-      if (error) throw error;
-
-      // Update local assigned subtasks
-      if (isCompleted) {
-        setAssignedSubtasks(prev => prev.filter(s => s.id !== subtaskId));
-      }
-      
-      // Refresh subtasks for the expanded task view
-      loadSubtaskCounts();
-      
-      toast({
-        title: "Unteraufgabe aktualisiert",
-        description: isCompleted ? "Unteraufgabe als erledigt markiert" : "Unteraufgabe als offen markiert",
-      });
-    } catch (error) {
-      console.error('Error updating subtask:', error);
-      toast({
-        title: "Fehler",
-        description: "Unteraufgabe konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
-    }
+  const handleTaskRestored = () => {
+    loadTasks();
   };
 
   const snoozeTask = async (taskId: string, snoozeUntil: string) => {
     if (!user) return;
 
     try {
-      // Delete existing snooze if any
-      await supabase
+      // Check if there's already a snooze for this task
+      const { data: existingSnooze } = await supabase
         .from('task_snoozes')
-        .delete()
+        .select('id')
+        .eq('task_id', taskId)
         .eq('user_id', user.id)
-        .eq('task_id', taskId);
+        .single();
 
-      // Insert new snooze
-      const { error } = await supabase
-        .from('task_snoozes')
-        .insert({
-          user_id: user.id,
-          task_id: taskId,
-          snoozed_until: snoozeUntil
-        });
+      if (existingSnooze) {
+        // Update existing snooze
+        const { error } = await supabase
+          .from('task_snoozes')
+          .update({ snoozed_until: snoozeUntil })
+          .eq('id', existingSnooze.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Create new snooze
+        const { error } = await supabase
+          .from('task_snoozes')
+          .insert({
+            user_id: user.id,
+            task_id: taskId,
+            snoozed_until: snoozeUntil
+          });
 
-      await loadTaskSnoozes();
-      
+        if (error) throw error;
+      }
+
+      loadTaskSnoozes();
       toast({
-        title: "Aufgabe auf Wiedervorlage gesetzt",
-        description: `Die Aufgabe erscheint wieder am ${new Date(snoozeUntil).toLocaleDateString('de-DE')}`
+        title: "Wiedervorlage gesetzt",
+        description: `Aufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString('de-DE')} ausgeblendet.`
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error snoozing task:', error);
       toast({
         title: "Fehler",
         description: "Wiedervorlage konnte nicht gesetzt werden.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
@@ -796,37 +754,87 @@ export function TasksView() {
     if (!user) return;
 
     try {
-      // Delete existing snooze if any
-      await supabase
+      // Check if there's already a snooze for this subtask
+      const { data: existingSnooze } = await supabase
         .from('task_snoozes')
-        .delete()
+        .select('id')
+        .eq('subtask_id', subtaskId)
         .eq('user_id', user.id)
-        .eq('subtask_id', subtaskId);
+        .single();
 
-      // Insert new snooze
-      const { error } = await supabase
-        .from('task_snoozes')
-        .insert({
-          user_id: user.id,
-          subtask_id: subtaskId,
-          snoozed_until: snoozeUntil
-        });
+      if (existingSnooze) {
+        // Update existing snooze
+        const { error } = await supabase
+          .from('task_snoozes')
+          .update({ snoozed_until: snoozeUntil })
+          .eq('id', existingSnooze.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Create new snooze
+        const { error } = await supabase
+          .from('task_snoozes')
+          .insert({
+            user_id: user.id,
+            subtask_id: subtaskId,
+            snoozed_until: snoozeUntil
+          });
 
-      await loadTaskSnoozes();
-      await loadAssignedSubtasks();
-      
+        if (error) throw error;
+      }
+
+      loadTaskSnoozes();
+      loadAssignedSubtasks();
       toast({
-        title: "Unteraufgabe auf Wiedervorlage gesetzt",
-        description: `Die Unteraufgabe erscheint wieder am ${new Date(snoozeUntil).toLocaleDateString('de-DE')}`
+        title: "Wiedervorlage gesetzt",
+        description: `Unteraufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString('de-DE')} ausgeblendet.`
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error snoozing subtask:', error);
       toast({
         title: "Fehler",
         description: "Wiedervorlage konnte nicht gesetzt werden.",
-        variant: "destructive",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string = '') => {
+    try {
+      // Determine if this is a regular subtask or planning subtask
+      const subtask = assignedSubtasks.find(s => s.id === subtaskId);
+      const tableName = subtask?.source_type === 'planning' ? 'planning_item_subtasks' : 'subtasks';
+      
+      const updateData: any = {
+        is_completed: isCompleted,
+        completed_at: isCompleted ? new Date().toISOString() : null
+      };
+
+      if (result) {
+        updateData.result_text = result;
+      }
+
+      const { error } = await supabase
+        .from(tableName)
+        .update(updateData)
+        .eq('id', subtaskId);
+
+      if (error) throw error;
+
+      loadAssignedSubtasks();
+      setCompletingSubtask(null);
+      setCompletionResult('');
+      
+      toast({
+        title: isCompleted ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet",
+        description: isCompleted ? "Die Unteraufgabe wurde als erledigt markiert." : "Die Unteraufgabe wurde wieder geöffnet."
+      });
+    } catch (error: any) {
+      console.error('Error updating subtask:', error);
+      toast({
+        title: "Fehler",
+        description: "Unteraufgabe konnte nicht aktualisiert werden.",
+        variant: "destructive"
       });
     }
   };
@@ -846,131 +854,7 @@ export function TasksView() {
     setSnoozeDate('');
   };
 
-  const toggleSubtasks = (taskId: string) => {
-    setShowSubtasksFor(prev => prev === taskId ? null : taskId);
-  };
-
-  const toggleDocuments = (taskId: string) => {
-    setShowDocumentsFor(prev => prev === taskId ? null : taskId);
-  };
-
-  const toggleComments = (taskId: string) => {
-    setShowCommentsFor(prev => prev === taskId ? null : taskId);
-    if (!taskComments[taskId]) {
-      loadTaskComments(taskId);
-    }
-  };
-
-  const loadTaskComments = async (taskId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('task_comments')
-        .select(`
-          *,
-          profiles:user_id (
-            display_name,
-            avatar_url
-          )
-        `)
-        .eq('task_id', taskId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      setTaskComments(prev => ({
-        ...prev,
-        [taskId]: (data || []).map(comment => ({
-          ...comment,
-          profile: comment.profiles as any
-        }))
-      }));
-    } catch (error) {
-      console.error('Error loading task comments:', error);
-    }
-  };
-
-  const addComment = async (taskId: string) => {
-    if (!newComment[taskId]?.trim() || !user) return;
-
-    try {
-      const { error } = await supabase
-        .from('task_comments')
-        .insert({
-          task_id: taskId,
-          user_id: user.id,
-          content: newComment[taskId].trim()
-        });
-
-      if (error) throw error;
-
-      setNewComment(prev => ({ ...prev, [taskId]: '' }));
-      loadTaskComments(taskId);
-      
-      toast({
-        title: "Kommentar hinzugefügt",
-        description: "Ihr Kommentar wurde erfolgreich hinzugefügt.",
-      });
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentar konnte nicht hinzugefügt werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Utility functions
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
-  const isOverdue = (dueDate: string) => {
-    return new Date(dueDate) < new Date();
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high": return "bg-red-500";
-      case "medium": return "bg-yellow-500";
-      case "low": return "bg-green-500";
-      default: return "bg-gray-500";
-    }
-  };
-
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case "high": return "Hoch";
-      case "medium": return "Mittel";
-      case "low": return "Niedrig";
-      default: return "Unbekannt";
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed": return "bg-green-100 text-green-800 border-green-200";
-      case "in-progress": return "bg-blue-100 text-blue-800 border-blue-200";
-      case "todo": return "bg-gray-100 text-gray-800 border-gray-200";
-      default: return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "legislation": return "bg-purple-100 text-purple-800 border-purple-200";
-      case "committee": return "bg-orange-100 text-orange-800 border-orange-200";
-      case "constituency": return "bg-blue-100 text-blue-800 border-blue-200";
-      case "personal": return "bg-pink-100 text-pink-800 border-pink-200";
-      default: return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  // Filter tasks
+  // Filter logic
   const filteredTasks = tasks.filter(task => {
     if (filter === "all") return true;
     if (filter === "pending") return task.status === "todo" || task.status === "in-progress";
@@ -990,8 +874,10 @@ export function TasksView() {
   });
 
   const filteredAssignedSubtasks = assignedSubtasks.filter(subtask => {
-    const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
-    return hideSnoozeSubtasks ? !isSnoozed : true;
+    if (hideSnoozeSubtasks) {
+      return !subtaskSnoozes[subtask.id] || new Date(subtaskSnoozes[subtask.id]) <= new Date();
+    }
+    return true;
   });
 
   const taskCounts = {
@@ -1001,15 +887,6 @@ export function TasksView() {
     completed: filteredTasksWithSnooze.filter(t => t.status === "completed").length,
     overdue: filteredTasksWithSnooze.filter(t => isOverdue(t.dueDate)).length,
   };
-
-  const filters = [
-    { value: "all", label: "Alle Aufgaben", count: taskCounts.all },
-    { value: "pending", label: "Offen", count: taskCounts.todo + taskCounts.inProgress },
-    { value: "todo", label: "Zu erledigen", count: taskCounts.todo },
-    { value: "in-progress", label: "In Bearbeitung", count: taskCounts.inProgress },
-    { value: "completed", label: "Erledigt", count: taskCounts.completed },
-    { value: "overdue", label: "Überfällig", count: taskCounts.overdue },
-  ];
 
   return (
     <>
@@ -1060,528 +937,313 @@ export function TasksView() {
               Wiedervorlagen
             </Button>
           </div>
+
+          {/* Advanced Filters */}
+          <div className="flex gap-4 items-center mt-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              <span className="text-sm font-medium">Zusätzliche Filter:</span>
+            </div>
+            
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Kategorie" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Kategorien</SelectItem>
+                <SelectItem value="legislation">Gesetzgebung</SelectItem>
+                <SelectItem value="committee">Ausschuss</SelectItem>
+                <SelectItem value="constituency">Wahlkreis</SelectItem>
+                <SelectItem value="personal">Persönlich</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Priorität" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Prioritäten</SelectItem>
+                <SelectItem value="high">Hoch</SelectItem>
+                <SelectItem value="medium">Mittel</SelectItem>
+                <SelectItem value="low">Niedrig</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-
-
-        {/* Advanced Filters */}
-        <div className="flex gap-4 items-center">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            <span className="text-sm font-medium">Zusätzliche Filter:</span>
-          </div>
-          
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Kategorie" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Kategorien</SelectItem>
-              <SelectItem value="legislation">Gesetzgebung</SelectItem>
-              <SelectItem value="committee">Ausschuss</SelectItem>
-              <SelectItem value="constituency">Wahlkreis</SelectItem>
-              <SelectItem value="personal">Persönlich</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Priorität" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Prioritäten</SelectItem>
-              <SelectItem value="high">Hoch</SelectItem>
-              <SelectItem value="medium">Mittel</SelectItem>
-              <SelectItem value="low">Niedrig</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
-      </div>
 
-      {/* Assigned Subtasks and ToDos Table */}
-      {(assignedSubtasks.length > 0 || todos.length > 0) && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ListTodo className="h-5 w-5" />
-              Mir zugewiesene Unteraufgaben & ToDos ({assignedSubtasks.length + todos.length})
-              {hideSnoozeSubtasks && assignedSubtasks.length !== filteredAssignedSubtasks.length && (
-                <span className="text-sm text-muted-foreground">
-                  ({filteredAssignedSubtasks.length + todos.length} sichtbar)
-                </span>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Unteraufgabe</TableHead>
-                  <TableHead>Übergeordnete Aufgabe</TableHead>
-                  <TableHead>Fälligkeitsdatum</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {/* Show subtasks based on visibility setting */}
-                {filteredAssignedSubtasks.map((subtask) => {
-                  const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
-                  return (
-                    <TableRow key={subtask.id} className={isSnoozed ? "opacity-50" : ""}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            checked={subtask.is_completed}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setCompletingSubtask(subtask.id);
-                                setCompletionResult('');
-                              } else {
-                                handleSubtaskComplete(subtask.id, false, '');
-                              }
-                            }}
-                            disabled={isSnoozed}
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{subtask.description}</span>
-                              {isSnoozed && (
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <AlarmClock className="h-3 w-3" />
-                                  <span>bis {new Date(subtaskSnoozes[subtask.id]).toLocaleDateString('de-DE')}</span>
-                                </div>
-                              )}
-                            </div>
-                            {subtask.result_text && (
-                              <div className="mt-1 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-500">
-                                <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
-                                <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-muted-foreground">
-                          {subtask.source_type === 'planning' 
-                            ? `${subtask.task_title} | ${subtask.checklist_item_title}`
-                            : `${subtask.task_title} | ${subtask.description}`
-                          }
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {subtask.due_date ? (
-                          <span className={new Date(subtask.due_date) < new Date() ? "text-destructive font-medium" : "text-muted-foreground"}>
-                            {formatDate(subtask.due_date)}
-                            {new Date(subtask.due_date) < new Date() && " (Überfällig)"}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">Keine Frist</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSnoozeDialogOpen({ type: 'subtask', id: subtask.id });
-                              setSnoozeDate('');
-                            }}
-                            className="h-8 w-8 p-0"
-                            title="Auf Wiedervorlage setzen"
-                          >
-                            <AlarmClock className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (subtask.source_type === 'planning') {
-                                // Navigate to event planning page
-                                window.location.href = '/eventplanning';
-                              } else {
-                                // Open task sidebar for regular tasks
-                                const parentTask = tasks.find(t => t.id === subtask.task_id);
-                                if (parentTask) {
-                                  handleTaskClick(parentTask);
-                                }
-                              }
-                            }}
-                            className="h-8 w-8 p-0"
-                            title={subtask.source_type === 'planning' ? 'Zur Eventplanung' : 'Zur Aufgabe'}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Main Task List - Full Width */}
-        <div className="space-y-4">
-          {filteredTasksWithSnooze.map((task) => (
-            <Card
-              key={task.id}
-              className="bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer"
-              onClick={() => handleTaskClick(task)}
-            >
-              <CardContent className="p-6"
-                onClick={(e) => {
-                  // Prevent card click when interacting with form elements
-                  if ((e.target as HTMLElement).closest('button, input, select, textarea, .checkbox')) {
-                    e.stopPropagation();
-                  }
-                }}
-              >
-                <div className="flex items-start gap-4">
-                  {/* Checkbox */}
-                  <div className="pt-1">
-                    <Checkbox
-                      checked={task.status === "completed"}
-                      onCheckedChange={() => toggleTaskStatus(task.id)}
-                    />
-                  </div>
-
-                  {/* Task Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className={`font-semibold text-lg ${
-                        task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
-                      }`}>
-                        {task.title}
-                      </h3>
-                      <div className="flex gap-2 ml-4 items-center">
-                        <Badge className={getCategoryColor(task.category)}>
-                          {task.category === "legislation" && "Gesetzgebung"}
-                          {task.category === "committee" && "Ausschuss"}
-                          {task.category === "constituency" && "Wahlkreis"}
-                          {task.category === "personal" && "Persönlich"}
-                        </Badge>
-                        
-                        {task.status === "in-progress" && (
-                          <Badge className={getStatusColor(task.status)}>
-                            In Bearbeitung
-                          </Badge>
-                        )}
-                        
-                        {task.status === "completed" && (
-                          <Badge className={getStatusColor(task.status)}>
-                            Erledigt
-                          </Badge>
-                        )}
-
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)} cursor-help`} />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Priorität: {getPriorityText(task.priority)}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </div>
-
-                    <p className={`text-sm mb-3 ${
-                      task.status === "completed" ? "line-through text-muted-foreground" : "text-muted-foreground"
-                    }`}>
-                      {task.description}
-                    </p>
-
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span className={isOverdue(task.dueDate) && task.status !== "completed" ? "text-destructive font-medium" : ""}>
-                          {formatDate(task.dueDate)}
-                          {isOverdue(task.dueDate) && task.status !== "completed" && " (Überfällig)"}
-                        </span>
-                      </div>
-
-                        {/* Subtask count indicator */}
-                        {subtaskCounts[task.id] > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleSubtasks(task.id);
-                            }}
-                            className="gap-1 h-6 px-2 text-xs"
-                          >
-                            {showSubtasksFor === task.id ? (
-                              <ChevronDown className="h-3 w-3" />
-                            ) : (
-                              <ChevronRight className="h-3 w-3" />
-                            )}
-                            <ListTodo className="h-3 w-3" />
-                            <span>{subtaskCounts[task.id]} Unteraufgabe{subtaskCounts[task.id] !== 1 ? 'n' : ''}</span>
-                          </Button>
-                        )}
-
-                        {/* Document count indicator */}
-                        {taskDocuments[task.id] > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleDocuments(task.id);
-                            }}
-                            className="gap-1 h-6 px-2 text-xs"
-                          >
-                            <Paperclip className="h-3 w-3" />
-                            <span>{taskDocuments[task.id]} Dokument{taskDocuments[task.id] !== 1 ? 'e' : ''}</span>
-                          </Button>
-                        )}
-
-                        {/* Snooze Button */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSnoozeDialogOpen({ type: 'task', id: task.id });
-                            setSnoozeDate('');
-                          }}
-                          className="gap-1 h-6 px-2 text-xs"
-                          title="Auf Wiedervorlage setzen"
-                        >
-                          <AlarmClock className="h-3 w-3" />
-                          <span>Wiedervorlage</span>
-                        </Button>
-
-                        {task.assignedTo && (
-                           <div className="flex items-center gap-2">
-                             <div className="flex items-center gap-1">
-                               <User className="h-4 w-4" />
-                                <span className="text-muted-foreground">
-                                  {users.find(u => u.user_id === task.assignedTo)?.display_name || 'Unbekannter Benutzer'}
-                                </span>
-                             </div>
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={(e) => {
-                                 e.stopPropagation();
-                                 toggleComments(task.id);
-                               }}
-                               className="gap-1 h-6 px-2 text-xs"
-                             >
-                               <MessageCircle className="h-3 w-3" />
-                               <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
-                             </Button>
-                           </div>
-                        )}
-                     </div>
-
-                      {/* Progress Bar */}
-                      {task.progress !== undefined && task.progress !== null && task.progress > 0 && task.status !== "completed" && (
-                        <div className="mt-3">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-muted-foreground">Fortschritt</span>
-                            <span className="text-muted-foreground">{task.progress}%</span>
-                          </div>
-                          <div className="w-full bg-secondary rounded-full h-2">
-                            <div
-                              className="bg-primary h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${task.progress}%` }}
-                            ></div>
-                          </div>
-                         </div>
-                       )}
-
-                       {/* Inline Subtasks */}
-                       {showSubtasksFor === task.id && (
-                         <div className="mt-4 pt-4 border-t space-y-3">
-                           <h4 className="text-sm font-medium text-foreground mb-3">Unteraufgaben ({subtasks[task.id]?.length || 0})</h4>
-                           {subtasks[task.id]?.map((subtask) => (
-                             <div key={subtask.id} className="bg-muted/50 rounded-lg p-3">
-                               <div className="flex items-start gap-3">
-                                 <Checkbox
-                                   checked={subtask.is_completed}
-                                   className="mt-0.5"
-                                 />
-                                   <div className="flex-1">
-                                     {subtask.checklist_item_title ? (
-                                       <div>
-                                         <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                                           {subtask.description}
-                                         </p>
-                                         {subtask.result_text && (
-                                           <p className="text-sm text-muted-foreground mt-1">
-                                             <span className="font-medium">Ergebnis:</span> {subtask.result_text}
-                                           </p>
-                                         )}
-                                       </div>
-                                     ) : (
-                                       <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                                         {subtask.description}
-                                       </p>
-                                     )}
-                                     {(() => {
-                                       console.log('Subtask debug:', {
-                                         id: subtask.id,
-                                         is_completed: subtask.is_completed,
-                                         result_text: subtask.result_text,
-                                         completed_at: subtask.completed_at
-                                       });
-                                       return subtask.is_completed && subtask.result_text;
-                                     })() && (
-                                       <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
-                                         <p className="text-sm text-green-800 dark:text-green-200 mb-2">
-                                           <span className="font-medium">{subtask.checklist_item_title || 'Unterpunkt'}:</span> {subtask.description}
-                                         </p>
-                                         <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
-                                         <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
-                                        {subtask.completed_at && (
-                                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                                            Erledigt am: {new Date(subtask.completed_at).toLocaleDateString('de-DE', {
-                                              day: '2-digit',
-                                              month: '2-digit',
-                                              year: 'numeric',
-                                              hour: '2-digit',
-                                              minute: '2-digit'
-                                            })}
-                                          </p>
-                                        )}
-                                      </div>
-                                    )}
-                                    <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                                      {subtask.assigned_to && (
-                                        <span>Zuständig: {users.find(u => u.user_id === subtask.assigned_to)?.display_name || subtask.assigned_to}</span>
-                                      )}
-                                      {subtask.due_date && (
-                                        <span>Fällig: {formatDate(subtask.due_date)}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                               </div>
-                             </div>
-                           ))}
-                         </div>
-                       )}
-
-                       {/* Inline Comments */}
-                       {showCommentsFor === task.id && (
-                         <div className="mt-4 pt-4 border-t space-y-3">
-                           <h4 className="text-sm font-medium text-foreground mb-3">Kommentare ({taskComments[task.id]?.length || 0})</h4>
-                           {taskComments[task.id]?.map((comment) => (
-                             <div key={comment.id} className="bg-muted/50 rounded-lg p-3">
-                               <div className="flex items-start gap-3">
-                                 <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
-                                   <User className="h-4 w-4 text-primary" />
-                                 </div>
-                                 <div className="flex-1">
-                                   <div className="flex items-center gap-2 mb-1">
-                                     <span className="font-medium text-sm">
-                                       {comment.profile?.display_name || 'Unbekannter Benutzer'}
-                                     </span>
-                                     <span className="text-xs text-muted-foreground">
-                                       {new Date(comment.created_at).toLocaleDateString('de-DE')}
-                                     </span>
-                                   </div>
-                                   <p className="text-sm">{comment.content}</p>
-                                 </div>
-                               </div>
-                             </div>
-                           ))}
-                          
-                          {/* Add Comment Input */}
-                          <div className="flex gap-2 mt-3">
-                            <Input
-                              placeholder="Kommentar hinzufügen..."
-                              value={newComment[task.id] || ''}
-                              onChange={(e) => setNewComment(prev => ({ ...prev, [task.id]: e.target.value }))}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  addComment(task.id);
+        {/* Assigned Subtasks and ToDos Table */}
+        {(assignedSubtasks.length > 0 || todos.length > 0) && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ListTodo className="h-5 w-5" />
+                Mir zugewiesene Unteraufgaben & ToDos ({assignedSubtasks.length + todos.length})
+                {hideSnoozeSubtasks && assignedSubtasks.length !== filteredAssignedSubtasks.length && (
+                  <span className="text-sm text-muted-foreground">
+                    ({filteredAssignedSubtasks.length + todos.length} sichtbar)
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead>Aufgabe/ToDo</TableHead>
+                    <TableHead>Übergeordnete Aufgabe/Kategorie</TableHead>
+                    <TableHead>Fälligkeitsdatum</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {/* Show subtasks based on visibility setting */}
+                  {filteredAssignedSubtasks.map((subtask) => {
+                    const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
+                    return (
+                      <TableRow key={subtask.id} className={isSnoozed ? "opacity-50" : ""}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Checkbox
+                              checked={subtask.is_completed}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setCompletingSubtask(subtask.id);
+                                  setCompletionResult('');
+                                } else {
+                                  handleSubtaskComplete(subtask.id, false);
                                 }
                               }}
                             />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">{subtask.title}</div>
+                            {subtask.description && (
+                              <div className="text-sm text-muted-foreground">{subtask.description}</div>
+                            )}
+                            {isSnoozed && (
+                              <Badge variant="secondary" className="text-xs">
+                                Wiedervorlage: {new Date(subtaskSnoozes[subtask.id]).toLocaleDateString('de-DE')}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{subtask.task_title}</TableCell>
+                        <TableCell>
+                          {subtask.due_date && (
+                            <div className={`text-sm ${isOverdue(subtask.due_date) ? 'text-red-600' : ''}`}>
+                              {new Date(subtask.due_date).toLocaleDateString('de-DE')}
+                              {isOverdue(subtask.due_date) && ' (überfällig)'}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
                             <Button
+                              variant="ghost"
                               size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addComment(task.id);
+                              onClick={() => {
+                                setSnoozeDialogOpen({ type: 'subtask', id: subtask.id });
+                                setSnoozeDate('');
                               }}
-                              disabled={!newComment[task.id]?.trim()}
+                              className="h-8 w-8 p-0"
+                              title="Auf Wiedervorlage setzen"
                             >
-                              <Send className="h-4 w-4" />
+                              <AlarmClock className="h-4 w-4" />
                             </Button>
                           </div>
-                         </div>
-                       )}
-
-                       {/* Inline Documents */}
-                       {showDocumentsFor === task.id && (
-                         <div className="mt-4 pt-4 border-t space-y-3">
-                           <h4 className="text-sm font-medium text-foreground mb-3">Dokumente ({taskDocumentDetails[task.id]?.length || 0})</h4>
-                           {taskDocumentDetails[task.id]?.map((doc) => (
-                             <div key={doc.id} className="bg-muted/50 rounded-lg p-3 flex items-center justify-between">
-                               <div className="flex items-center gap-3 flex-1 min-w-0">
-                                 <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                 <div className="min-w-0 flex-1">
-                                   <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                                   <p className="text-xs text-muted-foreground">
-                                     {(doc.file_size / 1024).toFixed(1)} KB • {new Date(doc.created_at).toLocaleDateString('de-DE')}
-                                   </p>
-                                 </div>
-                               </div>
-                               <div className="flex gap-1 ml-2">
-                                 <Button
-                                   variant="ghost"
-                                   size="sm"
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     // Download logic would go here
-                                   }}
-                                   className="h-8 w-8 p-0"
-                                 >
-                                   <Download className="h-3 w-3" />
-                                 </Button>
-                               </div>
-                             </div>
-                           ))}
-                           {(!taskDocumentDetails[task.id] || taskDocumentDetails[task.id].length === 0) && (
-                             <div className="text-center py-4 text-muted-foreground text-sm">
-                               Keine Dokumente vorhanden
-                             </div>
-                           )}
-                         </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  
+                  {/* Show todos */}
+                  {todos.map((todo) => (
+                    <TableRow key={`todo-${todo.id}`}>
+                      <TableCell>
+                        <Checkbox
+                          checked={todo.is_completed}
+                          onCheckedChange={async (checked) => {
+                            if (checked) {
+                              try {
+                                const { error } = await supabase
+                                  .from('todos')
+                                  .update({ 
+                                    is_completed: true,
+                                    completed_at: new Date().toISOString()
+                                  })
+                                  .eq('id', todo.id);
+                                
+                                if (error) throw error;
+                                loadTodos();
+                                
+                                toast({
+                                  title: "ToDo erledigt",
+                                  description: "Das ToDo wurde als erledigt markiert."
+                                });
+                              } catch (error) {
+                                console.error('Error completing todo:', error);
+                                toast({
+                                  title: "Fehler",
+                                  description: "ToDo konnte nicht als erledigt markiert werden.",
+                                  variant: "destructive"
+                                });
+                              }
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{todo.title}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: todo.category_color }}
+                          />
+                          {todo.category_label}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {todo.due_date && (
+                          <div className={`text-sm ${isOverdue(todo.due_date) ? 'text-red-600' : ''}`}>
+                            {new Date(todo.due_date).toLocaleDateString('de-DE')}
+                            {isOverdue(todo.due_date) && ' (überfällig)'}
+                          </div>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        {/* ToDo actions could go here */}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
 
-                     </div>
-                   </div>
-                 </CardContent>
-               </Card>
-             ))}
-
-          {filteredTasksWithSnooze.length === 0 && (
-            <Card className="bg-card shadow-card border-border">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <CheckSquare className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Keine Aufgaben gefunden</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  Es wurden keine Aufgaben gefunden, die Ihren Filterkriterien entsprechen.
-                </p>
+        {/* Main Tasks List */}
+        <div className="space-y-4">
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="text-muted-foreground">Lade Aufgaben...</div>
+            </div>
+          ) : filteredTasksWithSnooze.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <div className="text-muted-foreground mb-4">
+                  Keine Aufgaben vorhanden
+                </div>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Erste Aufgabe hinzufügen
                 </Button>
               </CardContent>
             </Card>
+          ) : (
+            filteredTasksWithSnooze.map((task) => (
+              <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleTaskClick(task)}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1">
+                      <Checkbox
+                        checked={task.status === "completed"}
+                        onCheckedChange={() => {
+                          toggleTaskStatus(task.id);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      
+                      <div className="flex-1">
+                        <h3 className="font-medium text-foreground">{task.title}</h3>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+                        )}
+                        
+                        <div className="flex items-center gap-4 mt-2">
+                          <Badge variant={
+                            task.priority === "high" ? "destructive" :
+                            task.priority === "medium" ? "default" : "secondary"
+                          }>
+                            {task.priority === "high" ? "Hoch" : 
+                             task.priority === "medium" ? "Mittel" : "Niedrig"}
+                          </Badge>
+                          
+                          <Badge variant="outline">
+                            {task.category === "legislation" ? "Gesetzgebung" :
+                             task.category === "committee" ? "Ausschuss" :
+                             task.category === "constituency" ? "Wahlkreis" : "Persönlich"}
+                          </Badge>
+                          
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            <span className={isOverdue(task.dueDate) ? "text-red-600" : ""}>
+                              {new Date(task.dueDate).toLocaleDateString('de-DE')}
+                              {isOverdue(task.dueDate) && " (überfällig)"}
+                            </span>
+                          </div>
+                          
+                          {task.assignedTo && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <User className="h-4 w-4" />
+                              <span>{task.assignedTo}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      {(taskComments[task.id]?.length || 0) > 0 && (
+                        <Badge variant="secondary" className="gap-1">
+                          <MessageCircle className="h-3 w-3" />
+                          {taskComments[task.id]?.length || 0}
+                        </Badge>
+                      )}
+                      
+                      {(taskDocuments[task.id] || 0) > 0 && (
+                        <Badge variant="secondary" className="gap-1">
+                          <Paperclip className="h-3 w-3" />
+                          {taskDocuments[task.id] || 0}
+                        </Badge>
+                      )}
+                      
+                      {(subtaskCounts[task.id] || 0) > 0 && (
+                        <Badge variant="secondary" className="gap-1">
+                          <ListTodo className="h-3 w-3" />
+                          {subtaskCounts[task.id] || 0}
+                        </Badge>
+                      )}
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSnoozeDialogOpen({ type: 'task', id: task.id });
+                          setSnoozeDate('');
+                        }}
+                        className="gap-1 h-6 px-2 text-xs"
+                        title="Auf Wiedervorlage setzen"
+                      >
+                        <AlarmClock className="h-3 w-3" />
+                        <span>Wiedervorlage</span>
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
           )}
         </div>
       </div>
 
+      {/* Modals and Dialogs */}
       <TaskArchiveModal
         isOpen={archiveModalOpen}
         onClose={() => setArchiveModalOpen(false)}
@@ -1608,20 +1270,20 @@ export function TasksView() {
             <div>
               <Label>Wie wurde die Aufgabe gelöst?</Label>
               <Textarea
-                placeholder="Beschreiben Sie, wie die Unteraufgabe erledigt wurde..."
                 value={completionResult}
                 onChange={(e) => setCompletionResult(e.target.value)}
+                placeholder="Beschreiben Sie kurz, wie die Aufgabe erledigt wurde..."
                 className="mt-2"
-                rows={4}
               />
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 onClick={() => {
                   setCompletingSubtask(null);
                   setCompletionResult('');
                 }}
+                className="flex-1"
               >
                 Abbrechen
               </Button>
@@ -1629,11 +1291,9 @@ export function TasksView() {
                 onClick={() => {
                   if (completingSubtask) {
                     handleSubtaskComplete(completingSubtask, true, completionResult);
-                    setCompletingSubtask(null);
-                    setCompletionResult('');
                   }
                 }}
-                disabled={!completionResult.trim()}
+                className="flex-1"
               >
                 Als erledigt markieren
               </Button>
@@ -1657,20 +1317,17 @@ export function TasksView() {
                 type="datetime-local"
                 value={snoozeDate}
                 onChange={(e) => setSnoozeDate(e.target.value)}
-                min={new Date().toISOString().slice(0, 16)}
                 className="mt-2"
               />
-              <p className="text-sm text-muted-foreground mt-1">
-                Die {snoozeDialogOpen?.type === 'task' ? 'Aufgabe' : 'Unteraufgabe'} wird bis zu diesem Datum ausgeblendet.
-              </p>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 onClick={() => {
                   setSnoozeDialogOpen(null);
                   setSnoozeDate('');
                 }}
+                className="flex-1"
               >
                 Abbrechen
               </Button>
