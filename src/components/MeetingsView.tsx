@@ -915,6 +915,16 @@ export function MeetingsView() {
       }));
       
       setAgendaItems(reindexedItems);
+
+      // Update order_index in database for all existing items
+      for (const item of reindexedItems) {
+        if (item.id && item.id !== taskData.id) { // Don't update the newly created item
+          await supabase
+            .from('meeting_agenda_items')
+            .update({ order_index: item.order_index })
+            .eq('id', item.id);
+        }
+      }
       
       toast({
         title: "Aufgabe hinzugefügt",
@@ -1037,6 +1047,16 @@ export function MeetingsView() {
       
       setAgendaItems(reindexedItems);
 
+      // Update order_index in database for all existing items
+      for (const item of reindexedItems) {
+        if (item.id && item.id !== subItemData.id) { // Don't update the newly created item
+          await supabase
+            .from('meeting_agenda_items')
+            .update({ order_index: item.order_index })
+            .eq('id', item.id);
+        }
+      }
+
       toast({
         title: "Unterpunkt hinzugefügt",
         description: `Unterpunkt wurde zu "${parent.title}" hinzugefügt.`,
@@ -1095,7 +1115,7 @@ export function MeetingsView() {
     }
   };
 
-  const onDragEnd = (result: DropResult) => {
+  const onDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
     const { source, destination } = result;
@@ -1106,9 +1126,11 @@ export function MeetingsView() {
     newItems.splice(source.index, 1);
 
     // If moving a parent item, also move all its children
-    if (!draggedItem.parentLocalKey) {
+    if (!draggedItem.parentLocalKey && !draggedItem.parent_id) {
       const draggedKey = draggedItem.localKey || draggedItem.id;
-      const children = newItems.filter(item => item.parentLocalKey === draggedKey);
+      const children = newItems.filter(item => 
+        item.parentLocalKey === draggedKey || item.parent_id === draggedItem.id
+      );
       
       // Remove children from their current positions
       children.forEach(child => {
@@ -1139,6 +1161,27 @@ export function MeetingsView() {
     }));
 
     setAgendaItems(reorderedItems);
+
+    // Save the new order to database immediately for items that already exist
+    if (selectedMeeting?.id) {
+      try {
+        for (const item of reorderedItems) {
+          if (item.id) {
+            await supabase
+              .from('meeting_agenda_items')
+              .update({ order_index: item.order_index })
+              .eq('id', item.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error updating order:', error);
+        toast({
+          title: "Fehler",
+          description: "Die neue Reihenfolge konnte nicht gespeichert werden.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   // Helper functions for meeting management
