@@ -1546,8 +1546,8 @@ export function MeetingsView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {agendaItems.filter(item => !item.parent_id).map((item, index) => {
-                  const subItems = agendaItems.filter(subItem => subItem.parent_id === item.id);
+                {agendaItems.filter(item => !item.parent_id && !item.parentLocalKey).map((item, index) => {
+                  const subItems = agendaItems.filter(subItem => subItem.parent_id === item.id || subItem.parentLocalKey === (item.localKey || item.id));
                   return (
                     <div key={item.id} className="border rounded-lg p-4">
                       <div className="flex items-center gap-4 mb-3">
