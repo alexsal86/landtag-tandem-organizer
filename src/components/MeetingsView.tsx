@@ -1279,6 +1279,12 @@ export function MeetingsView() {
             if (error) throw error;
           }
           
+          // If this is the active meeting, reload the agenda to reflect changes
+          if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
+            console.log('🔄 Reloading agenda items for active meeting after drag & drop');
+            await loadAgendaItems(selectedMeeting.id);
+          }
+          
           console.log('✅ Drag & drop completed - all order_index values updated in database');
         } catch (error) {
           console.error('Error updating order:', error);
