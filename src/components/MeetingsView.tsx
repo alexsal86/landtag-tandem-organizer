@@ -661,9 +661,18 @@ export function MeetingsView() {
     } catch (error) {
       console.error('=== ARCHIVE MEETING ERROR ===');
       console.error('Error details:', error);
+      console.error('Error message:', error?.message);
+      console.error('Error stack:', error?.stack);
+      
+      // Mehr Debug-Informationen
+      console.log('Meeting object:', meeting);
+      console.log('User object:', user);
+      
+      const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error));
+      
       toast({
         title: "Fehler",
-        description: `Die Besprechung konnte nicht archiviert werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        description: `Die Besprechung konnte nicht archiviert werden: ${errorMessage}`,
         variant: "destructive"
       });
     }
