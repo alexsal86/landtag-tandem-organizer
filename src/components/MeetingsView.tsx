@@ -1201,7 +1201,15 @@ export function MeetingsView() {
           
           // If this is the active meeting, reload the agenda to reflect changes
           if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
+            console.log('🔄 RELOADING ACTIVE MEETING after drag & drop...');
+            console.log('Before reload, current agendaItems:', agendaItems.map(item => ({
+              id: item.id,
+              title: item.title,
+              order_index: item.order_index,
+              parent_id: item.parent_id
+            })));
             await loadAgendaItems(selectedMeeting.id);
+            console.log('After reload completed');
           }
         } catch (error) {
           console.error('Error updating order:', error);
@@ -1645,24 +1653,29 @@ export function MeetingsView() {
                       // This is a main item
                       const subItems: any[] = [];
                       
-                      // Find sub-items that belong to this main item, maintaining global sort order
-                      for (let i = globalIndex + 1; i < allItemsSorted.length; i++) {
-                        const nextItem = allItemsSorted[i];
-                        if (nextItem.parent_id === item.id) {
-                          subItems.push(nextItem);
-                          usedSubItems.add(nextItem.id);
-                        } else if (!nextItem.parent_id) {
-                          // We've reached the next main item
-                          break;
+                      // Find ALL sub-items that belong to this main item from anywhere in the array
+                      allItemsSorted.forEach(potentialSub => {
+                        if (potentialSub.parent_id === item.id && !usedSubItems.has(potentialSub.id)) {
+                          subItems.push(potentialSub);
+                          usedSubItems.add(potentialSub.id);
                         }
-                      }
+                      });
+                      
+                      // Sort sub-items by their order_index to maintain correct order
+                      subItems.sort((a, b) => a.order_index - b.order_index);
                       
                       console.log(`Main item: ${item.title} (order: ${item.order_index}) with ${subItems.length} sub-items:`, 
-                        subItems.map(sub => ({ title: sub.title, order_index: sub.order_index })));
+                        subItems.map(sub => ({ title: sub.title, order_index: sub.order_index, parent_id: sub.parent_id })));
                       
                       processedItems.push({ item, subItems });
                     }
                   });
+
+                  console.log('Final processed items for active meeting:', processedItems.map(proc => ({
+                    mainTitle: proc.item.title,
+                    subItemsCount: proc.subItems.length,
+                    subItems: proc.subItems.map(sub => ({ title: sub.title, order_index: sub.order_index }))
+                  })));
 
                   return processedItems.map(({ item, subItems: sortedSubItems }, index) => {
                     
