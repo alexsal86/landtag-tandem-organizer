@@ -1221,7 +1221,28 @@ export function MeetingsView() {
     })));
 
     // Update the state
+    console.log('🔴 BEFORE setAgendaItems - Current agendaItems:', agendaItems.map(item => ({
+      title: item.title,
+      order_index: item.order_index,
+      parent_id: item.parent_id
+    })));
+    
+    console.log('🟢 AFTER drag & drop - Setting new agendaItems:', reorderedItems.map(item => ({
+      title: item.title,
+      order_index: item.order_index,
+      parent_id: item.parent_id
+    })));
+    
     setAgendaItems(reorderedItems);
+    
+    console.log('🔵 Active meeting should now re-render with new order');
+    
+    // Force re-render if this is an active meeting
+    if (activeMeeting?.id === selectedMeeting?.id) {
+      console.log('🚀 This is the active meeting - forcing re-render');
+      // This will trigger a re-render of the active meeting section
+      setActiveMeeting({...activeMeeting});
+    }
 
     // Save the new order to database immediately for ALL items that already exist
       if (selectedMeeting?.id) {
@@ -1667,6 +1688,13 @@ export function MeetingsView() {
             <CardContent>
               <div className="space-y-4">
                 {(() => {
+                  console.log('🎯 ACTIVE MEETING RENDER - agendaItems at render time:', agendaItems.map(item => ({
+                    title: item.title,
+                    order_index: item.order_index,
+                    parent_id: item.parent_id,
+                    isMainItem: !item.parent_id && !item.parentLocalKey
+                  })));
+                  
                   console.log('=== ACTIVE MEETING RENDERING ===');
                   console.log('All agenda items before processing:', agendaItems.map(item => ({
                     id: item.id,
