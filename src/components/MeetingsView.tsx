@@ -1448,43 +1448,130 @@ export function MeetingsView() {
                                     <span className="text-xs">{subItem.notes}</span>
                                   </div>
                                 )}
-                                {subItem.file_path && (
+                                {/* Show all documents: agenda documents + task documents + legacy file_path */}
+                                {(
+                                  (agendaDocuments[subItem.id!] && agendaDocuments[subItem.id!].length > 0) ||
+                                  (subItem.task_id && taskDocuments[subItem.task_id] && taskDocuments[subItem.task_id].length > 0) ||
+                                  subItem.file_path
+                                ) && (
                                   <div className="mb-2">
-                                    <div className="flex items-center gap-1">
-                                      <FileText className="h-3 w-3 text-blue-600" />
-                                      <span className="text-xs">
-                                        {subItem.file_path.split('/').pop()?.split('_').slice(2).join('_') || 'Datei'}
-                                      </span>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm"
-                                        className="h-4 w-4 p-0"
-                                        onClick={async () => {
-                                          try {
-                                            const { data, error } = await supabase.storage
-                                              .from('documents')
-                                              .download(subItem.file_path!);
-                                            
-                                            if (error) throw error;
-                                            
-                                            const fileName = subItem.file_path!.split('/').pop()?.split('_').slice(2).join('_') || 'download';
-                                            const url = URL.createObjectURL(data);
-                                            const a = document.createElement('a');
-                                            a.href = url;
-                                            a.download = fileName;
-                                            a.click();
-                                            URL.revokeObjectURL(url);
-                                          } catch (error) {
-                                            toast({
-                                              title: "Download-Fehler",
-                                              description: "Datei konnte nicht heruntergeladen werden.",
-                                              variant: "destructive",
-                                            });
-                                          }
-                                        }}
-                                      >
-                                        <Download className="h-3 w-3" />
-                                      </Button>
+                                    <div className="text-xs font-medium text-muted-foreground mb-1">Dokumente:</div>
+                                    <div className="space-y-1">
+                                      {/* Agenda documents */}
+                                      {agendaDocuments[subItem.id!] && agendaDocuments[subItem.id!].map((doc, docIndex) => (
+                                        <div key={`agenda-${docIndex}`} className="flex items-center gap-1">
+                                          <FileText className="h-3 w-3 text-blue-600" />
+                                          <span className="text-xs text-blue-700">{doc.file_name}</span>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm"
+                                            className="h-4 w-4 p-0"
+                                            onClick={async () => {
+                                              try {
+                                                const { data, error } = await supabase.storage
+                                                  .from('documents')
+                                                  .download(doc.file_path);
+                                                
+                                                if (error) throw error;
+                                                
+                                                const url = URL.createObjectURL(data);
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = doc.file_name;
+                                                a.click();
+                                                URL.revokeObjectURL(url);
+                                              } catch (error) {
+                                                console.error('Download error:', error);
+                                                toast({
+                                                  title: "Download-Fehler",
+                                                  description: "Datei konnte nicht heruntergeladen werden.",
+                                                  variant: "destructive",
+                                                });
+                                              }
+                                            }}
+                                          >
+                                            <Download className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                      
+                                      {/* Task documents */}
+                                      {subItem.task_id && taskDocuments[subItem.task_id] && taskDocuments[subItem.task_id].map((doc, docIndex) => (
+                                        <div key={`task-${docIndex}`} className="flex items-center gap-1">
+                                          <FileText className="h-3 w-3 text-green-600" />
+                                          <span className="text-xs text-green-700">{doc.file_name}</span>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm"
+                                            className="h-4 w-4 p-0"
+                                            onClick={async () => {
+                                              try {
+                                                const { data, error } = await supabase.storage
+                                                  .from('task-documents')
+                                                  .download(doc.file_path);
+                                                
+                                                if (error) throw error;
+                                                
+                                                const url = URL.createObjectURL(data);
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = doc.file_name;
+                                                a.click();
+                                                URL.revokeObjectURL(url);
+                                              } catch (error) {
+                                                console.error('Download error:', error);
+                                                toast({
+                                                  title: "Download-Fehler",
+                                                  description: "Datei konnte nicht heruntergeladen werden.",
+                                                  variant: "destructive",
+                                                });
+                                              }
+                                            }}
+                                          >
+                                            <Download className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                      
+                                      {/* Legacy file_path documents */}
+                                      {subItem.file_path && !subItem.task_id && (
+                                        <div className="flex items-center gap-1">
+                                          <FileText className="h-3 w-3 text-blue-600" />
+                                          <span className="text-xs">
+                                            {subItem.file_path.split('/').pop()?.split('_').slice(2).join('_') || 'Datei'}
+                                          </span>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm"
+                                            className="h-4 w-4 p-0"
+                                            onClick={async () => {
+                                              try {
+                                                const { data, error } = await supabase.storage
+                                                  .from('documents')
+                                                  .download(subItem.file_path!);
+                                                
+                                                if (error) throw error;
+                                                
+                                                const fileName = subItem.file_path!.split('/').pop()?.split('_').slice(2).join('_') || 'download';
+                                                const url = URL.createObjectURL(data);
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = fileName;
+                                                a.click();
+                                                URL.revokeObjectURL(url);
+                                              } catch (error) {
+                                                toast({
+                                                  title: "Download-Fehler",
+                                                  description: "Datei konnte nicht heruntergeladen werden.",
+                                                  variant: "destructive",
+                                                });
+                                              }
+                                            }}
+                                          >
+                                            <Download className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 )}
