@@ -626,8 +626,8 @@ export function MeetingsView() {
 
       if (taskError) throw taskError;
 
-      console.log('Step 3: Processing agenda items...');
-      // Process agenda items for task updates and creation
+      console.log('Step 3: Processing agenda items for tasks and subtasks...');
+      // Process agenda items for task updates and subtask creation
       const subtasksToCreate = [];
       
       if (agendaItemsData) {
@@ -660,29 +660,74 @@ export function MeetingsView() {
               const assignedUserId = item.assigned_to || user.id;
               subtasksToCreate.push({
                 task_id: followUpTask.id,
-                title: item.title,
+                user_id: user.id,
                 description: `Ergebnis: ${item.result_text}`,
                 assigned_to: assignedUserId,
-                completed: false,
-                order_index: subtasksToCreate.length
+                is_completed: false,
+                order_index: subtasksToCreate.length,
+                due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
               });
             }
           }
         }
       }
 
+      console.log('Step 4: Creating subtasks...');
       if (subtasksToCreate.length > 0) {
         console.log(`Creating ${subtasksToCreate.length} new subtasks`);
-        const { error: subtaskError } = await supabase
+        const { data: createdSubtasks, error: subtaskError } = await supabase
           .from('subtasks')
-          .insert(subtasksToCreate);
+          .insert(subtasksToCreate)
+          .select();
 
         if (subtaskError) {
           console.error('Error creating subtasks:', subtaskError);
+          throw subtaskError;
+        }
+
+        // Copy documents from agenda items to subtasks
+        console.log('Step 5: Copying documents to subtasks...');
+        for (let i = 0; i < agendaItemsData.length; i++) {
+          const item = agendaItemsData[i];
+          if (item.result_text && item.result_text.trim() && !item.task_id) {
+            const subtaskIndex = subtasksToCreate.findIndex(st => 
+              st.description.includes(item.result_text)
+            );
+            
+            if (subtaskIndex !== -1 && createdSubtasks[subtaskIndex]) {
+              const subtaskId = createdSubtasks[subtaskIndex].id;
+              
+              // Get documents attached to this agenda item
+              const { data: agendaDocuments } = await supabase
+                .from('meeting_agenda_documents')
+                .select('*')
+                .eq('meeting_agenda_item_id', item.id);
+
+              if (agendaDocuments && agendaDocuments.length > 0) {
+                // Copy documents to task_documents for the new subtask
+                const taskDocuments = agendaDocuments.map(doc => ({
+                  task_id: followUpTask.id, // Link to main task, not subtask directly
+                  user_id: user.id,
+                  file_name: doc.file_name,
+                  file_path: doc.file_path,
+                  file_type: doc.file_type,
+                  file_size: doc.file_size
+                }));
+
+                const { error: docError } = await supabase
+                  .from('task_documents')
+                  .insert(taskDocuments);
+
+                if (docError) {
+                  console.error('Error copying documents:', docError);
+                }
+              }
+            }
+          }
         }
       }
 
-      console.log('Step 4: Archiving meeting...');
+      console.log('Step 6: Archiving meeting...');
       // Archive the meeting
       const { data: archiveData, error: archiveError } = await supabase
         .from('meetings')
@@ -694,30 +739,6 @@ export function MeetingsView() {
       console.log('Archive error:', archiveError);
       
       if (archiveError) throw archiveError;
-
-      // Process agenda items for task updates and creation
-      if (agendaItemsData && agendaItemsData.length > 0) {
-        for (const item of agendaItemsData) {
-          // Update existing tasks with results
-          if (item.task_id && item.result_text) {
-            const { data: existingTask, error: taskError } = await supabase
-              .from('tasks')
-              .select('description')
-              .eq('id', item.task_id)
-              .single();
-
-            if (!taskError && existingTask) {
-              const currentDescription = existingTask.description || '';
-              const meetingResult = `\n\n--- Ergänzung aus Besprechung "${meeting.title}": ---\n${item.result_text}`;
-              
-              await supabase
-                .from('tasks')
-                .update({
-                  description: currentDescription + meetingResult,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', item.task_id);
-            }
           }
 
           // Create new tasks for items with results and assignments (but no existing task)
