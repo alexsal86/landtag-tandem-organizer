@@ -1667,44 +1667,36 @@ export function MeetingsView() {
             <CardContent>
               <div className="space-y-4">
                 {(() => {
-                  const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
-                  const sortedMainItems = mainItems.sort((a, b) => a.order_index - b.order_index);
-                  
                   console.log('=== ACTIVE MEETING RENDERING ===');
-                  console.log('All agenda items:', agendaItems);
-                  console.log('Main items (no parent):', mainItems);
-                  console.log('Sorted main items:', sortedMainItems);
-                  
-                  // Sort all items globally first, then process hierarchically  
-                  const allItemsSorted = [...agendaItems].sort((a, b) => a.order_index - b.order_index);
-                  console.log('All items sorted by order_index for active meeting:', allItemsSorted.map(item => ({
+                  console.log('All agenda items before processing:', agendaItems.map(item => ({
                     id: item.id,
                     title: item.title,
                     order_index: item.order_index,
-                    parent_id: item.parent_id
+                    parent_id: item.parent_id,
+                    parentLocalKey: item.parentLocalKey
+                  })));
+                  
+                  // Sort ALL items by order_index first - this is the order from drag & drop
+                  const allItemsSorted = [...agendaItems].sort((a, b) => a.order_index - b.order_index);
+                  console.log('All items sorted by order_index:', allItemsSorted.map(item => ({
+                    title: item.title,
+                    order_index: item.order_index,
+                    hasParent: !!(item.parent_id || item.parentLocalKey)
                   })));
                   
                   const processedItems: any[] = [];
-                  const usedSubItems = new Set<string>();
 
-                  allItemsSorted.forEach((item, globalIndex) => {
-                    if (!item.parent_id && !usedSubItems.has(item.id)) {
-                      // This is a main item
-                      const subItems: any[] = [];
-                      
-                      // Find ALL sub-items that belong to this main item from anywhere in the array
-                      allItemsSorted.forEach(potentialSub => {
-                        if (potentialSub.parent_id === item.id && !usedSubItems.has(potentialSub.id)) {
-                          subItems.push(potentialSub);
-                          usedSubItems.add(potentialSub.id);
-                        }
-                      });
-                      
-                      // Sort sub-items by their order_index to maintain correct order
-                      subItems.sort((a, b) => a.order_index - b.order_index);
+                  // Process items in their order_index sequence to maintain drag & drop order
+                  allItemsSorted.forEach((item) => {
+                    // Only process main items (no parent)
+                    if (!item.parent_id && !item.parentLocalKey) {
+                      // Find ALL sub-items that belong to this main item
+                      const subItems = allItemsSorted.filter(subItem => 
+                        subItem.parent_id === item.id || subItem.parentLocalKey === item.id || subItem.parentLocalKey === item.localKey
+                      );
                       
                       console.log(`Main item: ${item.title} (order: ${item.order_index}) with ${subItems.length} sub-items:`, 
-                        subItems.map(sub => ({ title: sub.title, order_index: sub.order_index, parent_id: sub.parent_id })));
+                        subItems.map(sub => ({ title: sub.title, order_index: sub.order_index })));
                       
                       processedItems.push({ item, subItems });
                     }
@@ -1712,8 +1704,8 @@ export function MeetingsView() {
 
                   console.log('Final processed items for active meeting:', processedItems.map(proc => ({
                     mainTitle: proc.item.title,
-                    subItemsCount: proc.subItems.length,
-                    subItems: proc.subItems.map(sub => ({ title: sub.title, order_index: sub.order_index }))
+                    order: proc.item.order_index,
+                    subItemsCount: proc.subItems.length
                   })));
 
                   return processedItems.map(({ item, subItems: sortedSubItems }, index) => {
