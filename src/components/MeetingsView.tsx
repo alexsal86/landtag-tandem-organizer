@@ -309,12 +309,11 @@ export function MeetingsView() {
 
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `agenda-documents/${fileName}`;
+      const fileName = `${user.id}/${agendaItemId}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(filePath, file);
+        .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
@@ -325,7 +324,7 @@ export function MeetingsView() {
           meeting_agenda_item_id: agendaItemId,
           user_id: user.id,
           file_name: file.name,
-          file_path: filePath,
+          file_path: fileName,
           file_type: file.type,
           file_size: file.size,
         })
