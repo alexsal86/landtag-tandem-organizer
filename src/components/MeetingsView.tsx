@@ -157,6 +157,7 @@ export function MeetingsView() {
       const { data, error } = await supabase
         .from('meetings')
         .select('*')
+        .eq('user_id', user?.id) // Filter by user
         .neq('status', 'archived') // Exclude archived meetings
         .order('meeting_date', { ascending: false });
 
