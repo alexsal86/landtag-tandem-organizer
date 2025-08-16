@@ -741,7 +741,10 @@ export function MeetingsView() {
       
       if (archiveError) throw archiveError;
       
-      console.log('Step 7: Reloading meetings...');
+      console.log('Step 7: Setting active meeting to null...');
+      setActiveMeeting(null);
+      
+      console.log('Step 8: Reloading meetings...');
       await loadMeetings(); // Reload to update UI
       
       console.log('=== ARCHIVE MEETING COMPLETED SUCCESSFULLY ===');
