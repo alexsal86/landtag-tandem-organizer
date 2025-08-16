@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -89,6 +89,7 @@ export function MeetingsView() {
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [activeMeeting, setActiveMeeting] = useState<Meeting | null>(null);
   const [showArchive, setShowArchive] = useState(false);
+  const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Load data on component mount
   useEffect(() => {
@@ -769,25 +770,52 @@ export function MeetingsView() {
   };
 
   const updateAgendaItemResult = async (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => {
-    try {
-      await supabase
-        .from('meeting_agenda_items')
-        .update({ [field]: value })
-        .eq('id', itemId);
+    // Update local state immediately for responsive UI
+    setAgendaItems(items => 
+      items.map(item => 
+        item.id === itemId ? { ...item, [field]: value } : item
+      )
+    );
+    
+    // Debounce database updates for result_text to avoid conflicts during typing
+    if (field === 'result_text') {
+      // Clear any existing timeout for this item and field
+      const timeoutKey = `${itemId}-${field}`;
+      if (updateTimeouts.current[timeoutKey]) {
+        clearTimeout(updateTimeouts.current[timeoutKey]);
+      }
       
-      // Update local state
-      setAgendaItems(items => 
-        items.map(item => 
-          item.id === itemId ? { ...item, [field]: value } : item
-        )
-      );
-    } catch (error) {
-      console.error('Error updating agenda item:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Änderung konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      // Set new timeout for database update
+      updateTimeouts.current[timeoutKey] = setTimeout(async () => {
+        try {
+          await supabase
+            .from('meeting_agenda_items')
+            .update({ [field]: value })
+            .eq('id', itemId);
+        } catch (error) {
+          console.error('Error updating agenda item:', error);
+          toast({
+            title: "Fehler",
+            description: "Die Änderung konnte nicht gespeichert werden.",
+            variant: "destructive",
+          });
+        }
+      }, 500); // 500ms delay
+    } else {
+      // For non-text fields (like checkboxes), update immediately
+      try {
+        await supabase
+          .from('meeting_agenda_items')
+          .update({ [field]: value })
+          .eq('id', itemId);
+      } catch (error) {
+        console.error('Error updating agenda item:', error);
+        toast({
+          title: "Fehler",
+          description: "Die Änderung konnte nicht gespeichert werden.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
