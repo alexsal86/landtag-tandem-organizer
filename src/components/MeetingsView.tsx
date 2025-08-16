@@ -1144,54 +1144,83 @@ export function MeetingsView() {
     if (!result.destination) return;
 
     const { source, destination } = result;
-    const newItems = Array.from(agendaItems);
-    const draggedItem = newItems[source.index];
+    
+    console.log('🚀 DRAG & DROP START');
+    console.log('Source:', source.index, 'Destination:', destination.index);
+    console.log('Current agendaItems before drag:', agendaItems.map(item => ({
+      id: item.id,
+      title: item.title,
+      order_index: item.order_index,
+      parent_id: item.parent_id,
+      localKey: item.localKey,
+      parentLocalKey: item.parentLocalKey
+    })));
 
-    // Remove the dragged item from its original position
-    newItems.splice(source.index, 1);
+    // Create a copy of all items
+    const allItems = [...agendaItems];
+    
+    // Get the dragged item
+    const draggedItem = allItems[source.index];
+    
+    console.log('Dragged item:', {
+      title: draggedItem.title,
+      parent_id: draggedItem.parent_id,
+      parentLocalKey: draggedItem.parentLocalKey,
+      isMainItem: !draggedItem.parent_id && !draggedItem.parentLocalKey
+    });
 
-    // If moving a parent item, also move all its children
-    if (!draggedItem.parentLocalKey && !draggedItem.parent_id) {
-      const draggedKey = draggedItem.localKey || draggedItem.id;
-      const children = newItems.filter(item => 
-        item.parentLocalKey === draggedKey || item.parent_id === draggedItem.id
+    // Remove the dragged item from its current position
+    allItems.splice(source.index, 1);
+
+    // If this is a main item (no parent), move it with all its children
+    if (!draggedItem.parent_id && !draggedItem.parentLocalKey) {
+      const draggedKey = draggedItem.id || draggedItem.localKey;
+      
+      // Find all children of this main item
+      const children = allItems.filter(item => 
+        item.parent_id === draggedItem.id || item.parentLocalKey === draggedKey
       );
       
-      // Remove children from their current positions
-      children.forEach(child => {
-        const childIndex = newItems.findIndex(item => 
-          (item.localKey || item.id) === (child.localKey || child.id)
+      console.log('Found children for main item:', children.map(c => c.title));
+      
+      // Remove children from their current positions (in reverse order)
+      children.reverse().forEach(child => {
+        const childIndex = allItems.findIndex(item => 
+          item.id === child.id || item.localKey === child.localKey
         );
         if (childIndex !== -1) {
-          newItems.splice(childIndex, 1);
+          allItems.splice(childIndex, 1);
         }
       });
 
-      // Insert parent at new position
-      newItems.splice(destination.index, 0, draggedItem);
+      // Insert the main item at the new position
+      allItems.splice(destination.index, 0, draggedItem);
 
-      // Insert children right after parent
-      children.forEach((child, index) => {
-        newItems.splice(destination.index + 1 + index, 0, child);
+      // Insert all children right after the main item
+      children.reverse().forEach((child, index) => {
+        allItems.splice(destination.index + 1 + index, 0, child);
       });
     } else {
-      // For child items, just move them normally
-      newItems.splice(destination.index, 0, draggedItem);
+      // For sub-items, just move them normally
+      allItems.splice(destination.index, 0, draggedItem);
     }
 
-    // Update order indices
-    const reorderedItems = newItems.map((item, index) => ({
+    // Update order indices for all items
+    const reorderedItems = allItems.map((item, index) => ({
       ...item,
       order_index: index
     }));
 
-    console.log('🎯 Setting new agendaItems after drag & drop:', reorderedItems.map(item => ({
+    console.log('🎯 Final reordered items:', reorderedItems.map(item => ({
       id: item.id,
       title: item.title,
       order_index: item.order_index,
-      parent_id: item.parent_id
+      parent_id: item.parent_id,
+      parentLocalKey: item.parentLocalKey,
+      type: (item.parent_id || item.parentLocalKey) ? 'sub-item' : 'main-item'
     })));
 
+    // Update the state
     setAgendaItems(reorderedItems);
 
       // Save the new order to database immediately for items that already exist
