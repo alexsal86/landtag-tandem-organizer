@@ -155,10 +155,15 @@ export function MeetingsView() {
 
   // Update activeMeetingItems when agendaItems or activeMeeting changes
   useEffect(() => {
+    console.log('🔄 useEffect [agendaItems, activeMeeting] triggered');
+    console.log('- activeMeeting:', activeMeeting?.id);
+    console.log('- agendaItems length:', agendaItems.length);
     if (activeMeeting) {
       console.log('🔄 Updating activeMeetingItems due to agendaItems or activeMeeting change');
+      console.log('- Setting activeMeetingItems to:', agendaItems.map(item => ({ id: item.id, title: item.title, order_index: item.order_index })));
       setActiveMeetingItems([...agendaItems]);
     } else {
+      console.log('🔄 No active meeting, clearing activeMeetingItems');
       setActiveMeetingItems([]);
     }
   }, [agendaItems, activeMeeting]);
