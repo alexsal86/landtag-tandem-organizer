@@ -1773,10 +1773,10 @@ export function MeetingsView() {
                   allItemsSorted.forEach((item) => {
                     // Only process main items (no parent)
                     if (!item.parent_id && !item.parentLocalKey) {
-                      // Find ALL sub-items that belong to this main item
+                      // Find ALL sub-items that belong to this main item and sort by order_index
                       const subItems = allItemsSorted.filter(subItem => 
                         subItem.parent_id === item.id || subItem.parentLocalKey === item.id || subItem.parentLocalKey === item.localKey
-                      );
+                      ).sort((a, b) => a.order_index - b.order_index); // Sort sub-items by order_index
                       
                       console.log(`Main item: ${item.title} (order: ${item.order_index}) with ${subItems.length} sub-items:`, 
                         subItems.map(sub => ({ title: sub.title, order_index: sub.order_index })));
