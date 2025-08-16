@@ -1589,13 +1589,16 @@ export function MeetingsView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {agendaItems.filter(item => !item.parent_id && !item.parentLocalKey).map((item, index) => {
-                  const subItems = agendaItems.filter(subItem => subItem.parent_id === item.id || subItem.parentLocalKey === (item.localKey || item.id));
-                  return (
-                    <div key={item.id} className="border rounded-lg p-4">
-                      <div className="flex items-center gap-4 mb-3">
-                        <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
-                          {index + 1}
+                {agendaItems
+                  .filter(item => !item.parent_id && !item.parentLocalKey)
+                  .sort((a, b) => a.order_index - b.order_index)
+                  .map((item, index) => {
+                   const subItems = agendaItems.filter(subItem => subItem.parent_id === item.id || subItem.parentLocalKey === (item.localKey || item.id));
+                   return (
+                     <div key={item.id} className="border rounded-lg p-4">
+                       <div className="flex items-center gap-4 mb-3">
+                         <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
+                           {item.order_index + 1}
                         </div>
                         <h3 className="font-medium text-lg flex-1">{item.title}</h3>
                         <div className="flex items-center gap-2">
@@ -1683,11 +1686,13 @@ export function MeetingsView() {
                         <div className="ml-12 mb-3">
                           <label className="text-sm font-medium mb-2 block">Unterpunkte</label>
                           <div className="space-y-2">
-                            {subItems.map((subItem, subIndex) => (
-                              <div key={subItem.id} className="pl-4 border-l-2 border-muted">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-medium text-muted-foreground">
-                                    {index + 1}.{subIndex + 1}
+                             {subItems
+                               .sort((a, b) => a.order_index - b.order_index)
+                               .map((subItem, subIndex) => (
+                               <div key={subItem.id} className="pl-4 border-l-2 border-muted">
+                                 <div className="flex items-center gap-2 mb-1">
+                                   <span className="text-xs font-medium text-muted-foreground">
+                                     {item.order_index + 1}.{subItem.order_index - item.order_index}
                                   </span>
                                   <span className="text-sm font-medium">{subItem.title}</span>
                                   {subItem.assigned_to && (
