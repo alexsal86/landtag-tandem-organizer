@@ -1264,7 +1264,35 @@ export function MeetingsView() {
         allItems.splice(destination.index + 1 + index, 0, child);
       });
     } else {
-      // For sub-items, just move them normally
+      // For sub-items, we need to check if they're being moved under a different parent
+      // Find the new parent by looking at the item before the destination
+      let newParentItem = null;
+      let newParentKey = null;
+      
+      // Look backwards from destination to find the main item this sub-item should belong to
+      for (let i = destination.index - 1; i >= 0; i--) {
+        const potentialParent = allItems[i];
+        // If we find a main item (no parent), this is our new parent
+        if (!potentialParent.parent_id && !potentialParent.parentLocalKey) {
+          newParentItem = potentialParent;
+          newParentKey = potentialParent.id || potentialParent.localKey;
+          break;
+        }
+      }
+      
+      console.log('🔄 Sub-item being moved. New parent:', newParentItem?.title);
+      
+      // Update the dragged item's parent
+      if (newParentItem) {
+        draggedItem.parent_id = newParentItem.id || null;
+        draggedItem.parentLocalKey = newParentKey;
+      } else {
+        // If no parent found, make it a main item
+        draggedItem.parent_id = null;
+        draggedItem.parentLocalKey = undefined;
+      }
+      
+      // Insert at the new position
       allItems.splice(destination.index, 0, draggedItem);
     }
 
@@ -1324,8 +1352,9 @@ export function MeetingsView() {
                   meeting_id: selectedMeeting.id,
                   title: item.title,
                   description: item.description || '',
-                  assigned_to: item.assigned_to || 'unassigned',
-                  parent_id: item.parent_id
+                   assigned_to: item.assigned_to || 'unassigned',
+                   parent_id: item.parent_id,
+                   updated_at: new Date().toISOString()
                 })),
                 { onConflict: 'id' }
               );
