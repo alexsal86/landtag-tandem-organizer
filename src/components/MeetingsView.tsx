@@ -659,10 +659,22 @@ export function MeetingsView() {
               // Create new subtask for items without existing task
               console.log(`Creating new subtask for agenda item: ${item.title}`);
               const assignedUserId = item.assigned_to || user.id;
+              
+              // Prepare description with title and content
+              let description = item.title;
+              if (item.description && item.description.trim()) {
+                description += `: ${item.description}`;
+              }
+              if (item.notes && item.notes.trim()) {
+                description += (item.description ? ' - ' : ': ') + item.notes;
+              }
+              
               subtasksToCreate.push({
                 task_id: followUpTask.id,
                 user_id: user.id,
-                description: `Ergebnis: ${item.result_text}`,
+                description: description,
+                result_text: item.result_text || '',
+                checklist_item_title: item.title,
                 assigned_to: assignedUserId,
                 is_completed: false,
                 order_index: subtasksToCreate.length,

@@ -1360,10 +1360,23 @@ export function TasksView() {
                                    checked={subtask.is_completed}
                                    className="mt-0.5"
                                  />
-                                  <div className="flex-1">
-                                    <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                                      {subtask.description}
-                                    </p>
+                                   <div className="flex-1">
+                                     {subtask.checklist_item_title ? (
+                                       <div>
+                                         <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
+                                           {subtask.description}
+                                         </p>
+                                         {subtask.result_text && (
+                                           <p className="text-sm text-muted-foreground mt-1">
+                                             <span className="font-medium">Ergebnis:</span> {subtask.result_text}
+                                           </p>
+                                         )}
+                                       </div>
+                                     ) : (
+                                       <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
+                                         {subtask.description}
+                                       </p>
+                                     )}
                                      {(() => {
                                        console.log('Subtask debug:', {
                                          id: subtask.id,
