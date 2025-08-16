@@ -152,6 +152,15 @@ export function MeetingsView() {
     }
   }, [tasks]);
 
+  // Update active meeting when agenda items change
+  useEffect(() => {
+    if (activeMeeting && agendaItems.length >= 0) {
+      console.log('🔄 agendaItems changed during active meeting, triggering re-render');
+      // Force re-render by updating the state
+      setActiveMeeting(prev => prev ? {...prev, lastUpdate: Date.now()} : prev);
+    }
+  }, [agendaItems, activeMeeting?.id]);
+
   const loadMeetings = async () => {
     console.log('=== LOAD MEETINGS STARTED ===');
     console.log('Current user:', user?.id);
