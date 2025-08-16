@@ -1479,7 +1479,11 @@ export function MeetingsView() {
               <Button variant="outline" onClick={stopMeeting}>
                 Besprechung unterbrechen
               </Button>
-              <Button variant="default" onClick={() => archiveMeeting(activeMeeting)}>
+              <Button variant="default" onClick={() => {
+                console.log('=== ARCHIVE BUTTON CLICKED ===');
+                console.log('Active Meeting:', activeMeeting);
+                archiveMeeting(activeMeeting);
+              }}>
                 Besprechung beenden und archivieren
               </Button>
             </div>
