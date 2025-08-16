@@ -511,17 +511,108 @@ export function MeetingsView() {
     if (!meeting.id) return;
     
     try {
+      // First, get all agenda items with their results and assignments
+      const { data: agendaItemsData, error: agendaError } = await supabase
+        .from('meeting_agenda_items')
+        .select('*')
+        .eq('meeting_id', meeting.id);
+
+      if (agendaError) throw agendaError;
+
+      // Archive the meeting
       await supabase
         .from('meetings')
         .update({ status: 'archived' })
         .eq('id', meeting.id);
+
+      // Process agenda items for task updates and creation
+      if (agendaItemsData && agendaItemsData.length > 0) {
+        for (const item of agendaItemsData) {
+          // Update existing tasks with results
+          if (item.task_id && item.result_text) {
+            const { data: existingTask, error: taskError } = await supabase
+              .from('tasks')
+              .select('description')
+              .eq('id', item.task_id)
+              .single();
+
+            if (!taskError && existingTask) {
+              const currentDescription = existingTask.description || '';
+              const meetingResult = `\n\n--- Ergänzung aus Besprechung "${meeting.title}": ---\n${item.result_text}`;
+              
+              await supabase
+                .from('tasks')
+                .update({
+                  description: currentDescription + meetingResult,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', item.task_id);
+            }
+          }
+
+          // Create new tasks for items with results and assignments (but no existing task)
+          if (item.result_text && item.assigned_to && !item.task_id) {
+            const { data: newTask, error: newTaskError } = await supabase
+              .from('tasks')
+              .insert({
+                user_id: user?.id,
+                title: item.title,
+                description: item.description || '',
+                priority: 'medium',
+                category: 'meeting',
+                status: 'todo',
+                assigned_to: item.assigned_to,
+                due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+              })
+              .select()
+              .single();
+
+            if (!newTaskError && newTask) {
+              // Create a subtask with the meeting result
+              await supabase
+                .from('tasks')
+                .insert({
+                  user_id: user?.id,
+                  title: `Ergebnis aus Besprechung: ${item.title}`,
+                  description: item.result_text,
+                  priority: 'medium',
+                  category: 'meeting',
+                  status: 'todo',
+                  assigned_to: item.assigned_to,
+                  due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days from now
+                });
+
+              // Copy documents from agenda item to new task
+              const { data: agendaDocuments } = await supabase
+                .from('planning_item_documents')
+                .select('*')
+                .eq('planning_item_id', item.id);
+
+              if (agendaDocuments && agendaDocuments.length > 0) {
+                const taskDocuments = agendaDocuments.map(doc => ({
+                  task_id: newTask.id,
+                  user_id: user?.id,
+                  file_name: doc.file_name,
+                  file_path: doc.file_path,
+                  file_type: doc.file_type,
+                  file_size: doc.file_size
+                }));
+
+                await supabase
+                  .from('task_documents')
+                  .insert(taskDocuments);
+              }
+            }
+          }
+        }
+      }
       
       setActiveMeeting(null);
       await loadMeetings(); // Reload to update UI
       
       toast({
         title: "Besprechung archiviert",
-        description: "Die Besprechung wurde erfolgreich archiviert."
+        description: "Die Besprechung wurde erfolgreich archiviert und Aufgaben wurden aktualisiert."
       });
     } catch (error) {
       console.error('Error archiving meeting:', error);
