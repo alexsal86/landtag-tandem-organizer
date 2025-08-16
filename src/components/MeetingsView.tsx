@@ -170,6 +170,42 @@ export function MeetingsView() {
     }
   }, [agendaItems, activeMeeting?.id]);
 
+  // Real-time subscription for agenda items changes
+  useEffect(() => {
+    if (!selectedMeeting?.id) return;
+
+    console.log('🔔 Setting up realtime subscription for meeting:', selectedMeeting.id);
+    
+    const channel = supabase
+      .channel('agenda-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all changes
+          schema: 'public',
+          table: 'meeting_agenda_items',
+          filter: `meeting_id=eq.${selectedMeeting.id}`
+        },
+        (payload) => {
+          console.log('🔔 Realtime agenda change detected:', payload);
+          console.log('- Event:', payload.eventType);
+          console.log('- Record:', payload.new || payload.old);
+          
+          // Reload agenda items when any change is detected
+          if (selectedMeeting?.id) {
+            console.log('🔄 Reloading agenda items due to realtime change');
+            loadAgendaItems(selectedMeeting.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔔 Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [selectedMeeting?.id]);
+
   const loadMeetings = async () => {
     console.log('=== LOAD MEETINGS STARTED ===');
     console.log('Current user:', user?.id);
