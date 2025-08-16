@@ -1364,18 +1364,21 @@ export function TasksView() {
                                     <p className={`text-sm font-medium ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>
                                       {subtask.description}
                                     </p>
-                                    {(() => {
-                                      console.log('Subtask debug:', {
-                                        id: subtask.id,
-                                        is_completed: subtask.is_completed,
-                                        result_text: subtask.result_text,
-                                        completed_at: subtask.completed_at
-                                      });
-                                      return subtask.is_completed && subtask.result_text;
-                                    })() && (
-                                      <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
-                                        <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
-                                        <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
+                                     {(() => {
+                                       console.log('Subtask debug:', {
+                                         id: subtask.id,
+                                         is_completed: subtask.is_completed,
+                                         result_text: subtask.result_text,
+                                         completed_at: subtask.completed_at
+                                       });
+                                       return subtask.is_completed && subtask.result_text;
+                                     })() && (
+                                       <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
+                                         <p className="text-sm text-green-800 dark:text-green-200 mb-2">
+                                           <span className="font-medium">{subtask.checklist_item_title || 'Unterpunkt'}:</span> {subtask.description}
+                                         </p>
+                                         <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
+                                         <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
                                         {subtask.completed_at && (
                                           <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                                             Erledigt am: {new Date(subtask.completed_at).toLocaleDateString('de-DE', {
