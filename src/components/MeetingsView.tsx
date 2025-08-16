@@ -170,42 +170,6 @@ export function MeetingsView() {
     }
   }, [agendaItems, activeMeeting?.id]);
 
-  // Real-time subscription for agenda items changes
-  useEffect(() => {
-    if (!selectedMeeting?.id) return;
-
-    console.log('🔔 Setting up realtime subscription for meeting:', selectedMeeting.id);
-    
-    const channel = supabase
-      .channel('agenda-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all changes
-          schema: 'public',
-          table: 'meeting_agenda_items',
-          filter: `meeting_id=eq.${selectedMeeting.id}`
-        },
-        (payload) => {
-          console.log('🔔 Realtime agenda change detected:', payload);
-          console.log('- Event:', payload.eventType);
-          console.log('- Record:', payload.new || payload.old);
-          
-          // Reload agenda items when any change is detected
-          if (selectedMeeting?.id) {
-            console.log('🔄 Reloading agenda items due to realtime change');
-            loadAgendaItems(selectedMeeting.id);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('🔔 Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [selectedMeeting?.id]);
-
   const loadMeetings = async () => {
     console.log('=== LOAD MEETINGS STARTED ===');
     console.log('Current user:', user?.id);
@@ -838,12 +802,16 @@ export function MeetingsView() {
           
         console.log('✅ Auto-save successful');
         
-        // If this is the active meeting, force a reload to show changes
+        // If this is the active meeting, force immediate update
         if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
-          console.log('🔄 This is an active meeting - reloading agenda items');
+          console.log('🔄 This is an active meeting - forcing immediate update');
+          // Force immediate re-render
+          setActiveMeeting(prev => prev ? {...prev, lastUpdate: Date.now()} : prev);
+          // Reload agenda items to ensure database consistency
           setTimeout(() => {
+            console.log('🔄 Reloading agenda items after updateAgendaItem');
             loadAgendaItems(selectedMeeting.id);
-          }, 100); // Small delay to ensure database update is complete
+          }, 100);
         }
       } catch (error) {
         console.error('Auto-save error:', error);
@@ -1355,10 +1323,16 @@ export function MeetingsView() {
             if (error) throw error;
           }
           
-          // If this is the active meeting, reload the agenda to reflect changes
+          // If this is the active meeting, force immediate update of the state
           if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
-            console.log('🔄 Reloading agenda items for active meeting after drag & drop');
-            await loadAgendaItems(selectedMeeting.id);
+            console.log('🔄 This is the active meeting - forcing immediate state update after drag & drop');
+            // Force immediate re-render with new agenda items
+            setActiveMeeting(prev => prev ? {...prev, lastUpdate: Date.now()} : prev);
+            // Also reload from database to ensure consistency
+            setTimeout(async () => {
+              console.log('🔄 Reloading agenda items for active meeting after drag & drop');
+              await loadAgendaItems(selectedMeeting.id);
+            }, 100);
           }
           
           console.log('✅ Drag & drop completed - all order_index values updated in database');
