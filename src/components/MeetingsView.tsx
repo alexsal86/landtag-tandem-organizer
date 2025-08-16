@@ -1185,6 +1185,13 @@ export function MeetingsView() {
       order_index: index
     }));
 
+    console.log('🎯 Setting new agendaItems after drag & drop:', reorderedItems.map(item => ({
+      id: item.id,
+      title: item.title,
+      order_index: item.order_index,
+      parent_id: item.parent_id
+    })));
+
     setAgendaItems(reorderedItems);
 
       // Save the new order to database immediately for items that already exist
