@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Calendar, MapPin, Users, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Search, Trash2, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { MeetingProtocolView } from "./MeetingProtocolView";
 
 interface ArchivedMeeting {
   id: string;
@@ -32,6 +33,7 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
   const [archivedMeetings, setArchivedMeetings] = useState<ArchivedMeeting[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -132,6 +134,16 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
     }
   };
 
+  // Show protocol view if a meeting is selected
+  if (selectedMeetingId) {
+    return (
+      <MeetingProtocolView 
+        meetingId={selectedMeetingId} 
+        onBack={() => setSelectedMeetingId(null)} 
+      />
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -187,7 +199,11 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredMeetings.map((meeting) => (
-            <Card key={meeting.id} className="hover:shadow-elegant transition-shadow">
+            <Card 
+              key={meeting.id} 
+              className="hover:shadow-elegant transition-shadow cursor-pointer"
+              onClick={() => setSelectedMeetingId(meeting.id)}
+            >
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -215,14 +231,33 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => restoreMeeting(meeting)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedMeetingId(meeting.id);
+                    }}
+                    className="flex-1"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Protokoll
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      restoreMeeting(meeting);
+                    }}
                     className="flex-1"
                   >
                     Wiederherstellen
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
