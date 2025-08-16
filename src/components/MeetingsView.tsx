@@ -153,6 +153,9 @@ export function MeetingsView() {
   }, [tasks]);
 
   const loadMeetings = async () => {
+    console.log('=== LOAD MEETINGS STARTED ===');
+    console.log('Current user:', user?.id);
+    
     try {
       const { data, error } = await supabase
         .from('meetings')
@@ -161,12 +164,19 @@ export function MeetingsView() {
         .neq('status', 'archived') // Exclude archived meetings
         .order('meeting_date', { ascending: false });
 
+      console.log('Meetings query result:', data);
+      console.log('Meetings query error:', error);
+      console.log('Number of meetings loaded:', data?.length || 0);
+
       if (error) throw error;
       setMeetings((data || []).map(meeting => ({
         ...meeting,
         meeting_date: new Date(meeting.meeting_date)
       })));
+      
+      console.log('=== LOAD MEETINGS COMPLETED ===');
     } catch (error) {
+      console.error('Error in loadMeetings:', error);
       toast({
         title: "Fehler beim Laden der Meetings",
         description: "Die Meetings konnten nicht geladen werden.",
@@ -510,22 +520,40 @@ export function MeetingsView() {
   };
 
   const archiveMeeting = async (meeting: Meeting) => {
-    if (!meeting.id) return;
+    console.log('=== ARCHIVE MEETING STARTED ===');
+    console.log('Meeting to archive:', meeting);
+    console.log('User ID:', user?.id);
+    
+    if (!meeting.id) {
+      console.log('ERROR: No meeting ID provided');
+      return;
+    }
     
     try {
+      console.log('Step 1: Getting agenda items...');
       // First, get all agenda items with their results and assignments
       const { data: agendaItemsData, error: agendaError } = await supabase
         .from('meeting_agenda_items')
         .select('*')
         .eq('meeting_id', meeting.id);
 
+      console.log('Agenda items data:', agendaItemsData);
+      console.log('Agenda error:', agendaError);
+
       if (agendaError) throw agendaError;
 
+      console.log('Step 2: Archiving meeting...');
       // Archive the meeting
-      await supabase
+      const { data: archiveData, error: archiveError } = await supabase
         .from('meetings')
         .update({ status: 'archived' })
-        .eq('id', meeting.id);
+        .eq('id', meeting.id)
+        .select();
+
+      console.log('Archive update result:', archiveData);
+      console.log('Archive error:', archiveError);
+      
+      if (archiveError) throw archiveError;
 
       // Process agenda items for task updates and creation
       if (agendaItemsData && agendaItemsData.length > 0) {
@@ -609,9 +637,13 @@ export function MeetingsView() {
         }
       }
       
+      console.log('Step 3: Setting active meeting to null...');
       setActiveMeeting(null);
+      
+      console.log('Step 4: Reloading meetings...');
       await loadMeetings(); // Reload to update UI
       
+      console.log('=== ARCHIVE MEETING COMPLETED SUCCESSFULLY ===');
       toast({
         title: "Besprechung archiviert",
         description: "Die Besprechung wurde erfolgreich archiviert und Aufgaben wurden aktualisiert."
