@@ -154,6 +154,15 @@ export function MeetingsView() {
 
   // Update active meeting when agenda items change
   useEffect(() => {
+    console.log('🔄 agendaItems useEffect triggered');
+    console.log('- activeMeeting:', activeMeeting?.id);
+    console.log('- agendaItems length:', agendaItems.length);
+    console.log('- agendaItems:', agendaItems.map(item => ({
+      id: item.id,
+      title: item.title,
+      order_index: item.order_index
+    })));
+    
     if (activeMeeting && agendaItems.length >= 0) {
       console.log('🔄 agendaItems changed during active meeting, triggering re-render');
       // Force re-render by updating the state
@@ -298,7 +307,16 @@ export function MeetingsView() {
       console.log('Processed items:', items);
       console.log('Items sorted by order_index:', items.sort((a, b) => a.order_index - b.order_index));
       
+      console.log('🚀 SETTING AGENDA ITEMS - This should trigger the useEffect');
+      console.log('- Setting agendaItems to:', items.map(item => ({
+        id: item.id,
+        title: item.title,
+        order_index: item.order_index
+      })));
+      
       setAgendaItems(items);
+      
+      console.log('✅ setAgendaItems called - useEffect should now trigger');
       
       // Load documents for all agenda items
       if (items.length > 0) {
