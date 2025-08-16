@@ -1199,18 +1199,9 @@ export function MeetingsView() {
             }
           }
           
-          // If this is the active meeting, reload the agenda to reflect changes
-          if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
-            console.log('🔄 RELOADING ACTIVE MEETING after drag & drop...');
-            console.log('Before reload, current agendaItems:', agendaItems.map(item => ({
-              id: item.id,
-              title: item.title,
-              order_index: item.order_index,
-              parent_id: item.parent_id
-            })));
-            await loadAgendaItems(selectedMeeting.id);
-            console.log('After reload completed');
-          }
+          // If this is the active meeting, no need to reload - the state is already updated correctly
+          // Reloading would overwrite our local changes with potentially stale data
+          console.log('Drag & drop completed for active meeting - using updated local state');
         } catch (error) {
           console.error('Error updating order:', error);
           toast({
