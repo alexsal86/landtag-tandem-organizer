@@ -520,16 +520,26 @@ export function MeetingsView() {
   };
 
   const archiveMeeting = async (meeting: Meeting) => {
-    console.log('=== ARCHIVE MEETING STARTED ===');
-    console.log('Meeting to archive:', meeting);
-    console.log('User ID:', user?.id);
-    
-    if (!meeting.id) {
-      console.log('ERROR: No meeting ID provided');
-      return;
-    }
-    
     try {
+      console.log('=== ARCHIVE MEETING STARTED ===');
+      console.log('Meeting to archive:', meeting);
+      console.log('User ID:', user?.id);
+      
+      if (!meeting) {
+        console.log('ERROR: No meeting provided');
+        throw new Error('Kein Meeting angegeben');
+      }
+      
+      if (!meeting.id) {
+        console.log('ERROR: No meeting ID provided');
+        throw new Error('Meeting hat keine ID');
+      }
+      
+      if (!user?.id) {
+        console.log('ERROR: No user ID');
+        throw new Error('Benutzer nicht angemeldet');
+      }
+
       console.log('Step 1: Getting agenda items...');
       // First, get all agenda items with their results and assignments
       const { data: agendaItemsData, error: agendaError } = await supabase
@@ -649,10 +659,11 @@ export function MeetingsView() {
         description: "Die Besprechung wurde erfolgreich archiviert und Aufgaben wurden aktualisiert."
       });
     } catch (error) {
-      console.error('Error archiving meeting:', error);
+      console.error('=== ARCHIVE MEETING ERROR ===');
+      console.error('Error details:', error);
       toast({
         title: "Fehler",
-        description: "Die Besprechung konnte nicht archiviert werden.",
+        description: `Die Besprechung konnte nicht archiviert werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
         variant: "destructive"
       });
     }
