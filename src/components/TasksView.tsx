@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { TaskArchiveModal } from "./TaskArchiveModal";
 import { TaskDetailSidebar } from "./TaskDetailSidebar";
 import { SnoozeManagementSidebar } from "./SnoozeManagementSidebar";
+import { TodoCreateDialog } from "./TodoCreateDialog";
 
 interface Task {
   id: string;
@@ -108,6 +109,16 @@ export function TasksView() {
     task_title?: string;
     subtask_description?: string;
   }>>([]);
+  const [todoCreateOpen, setTodoCreateOpen] = useState(false);
+  const [todos, setTodos] = useState<Array<{
+    id: string;
+    title: string;
+    category_label: string;
+    category_color: string;
+    assigned_to: string | null;
+    due_date: string | null;
+    is_completed: boolean;
+  }>>([]);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -121,6 +132,7 @@ export function TasksView() {
     loadSubtaskCounts();
     loadAssignedSubtasks();
     loadTaskSnoozes();
+    loadTodos();
   }, []);
 
   // Load all snoozes when snooze management is opened
@@ -257,6 +269,41 @@ export function TasksView() {
       setSubtaskSnoozes(subtaskSnoozeMap);
     } catch (error) {
       console.error('Error loading task snoozes:', error);
+    }
+  };
+
+  const loadTodos = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('todos')
+        .select(`
+          id,
+          title,
+          assigned_to,
+          due_date,
+          is_completed,
+          todo_categories!inner(label, color)
+        `)
+        .eq('user_id', user.id)
+        .eq('is_completed', false);
+
+      if (error) throw error;
+
+      const todosWithCategory = (data || []).map(todo => ({
+        id: todo.id,
+        title: todo.title,
+        category_label: todo.todo_categories.label,
+        category_color: todo.todo_categories.color,
+        assigned_to: todo.assigned_to,
+        due_date: todo.due_date,
+        is_completed: todo.is_completed
+      }));
+
+      setTodos(todosWithCategory);
+    } catch (error) {
+      console.error('Error loading todos:', error);
     }
   };
 
@@ -977,43 +1024,44 @@ export function TasksView() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="gap-2"
-                onClick={() => setArchiveModalOpen(true)}
-              >
-                <Archive className="h-4 w-4" />
-                Aufgaben-Archiv
-              </Button>
-              <Button 
-                variant="outline" 
-                className="gap-2"
-                onClick={() => setSnoozeManagementOpen(true)}
-              >
-                <AlarmClock className="h-4 w-4" />
-                Wiedervorlagen
-              </Button>
               <Button className="gap-2" onClick={() => window.location.href = '/tasks/new'}>
                 <Plus className="h-4 w-4" />
                 Neue Aufgabe
               </Button>
+              <Button 
+                variant="outline"
+                className="gap-2"
+                onClick={() => setTodoCreateOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Neues ToDo
+              </Button>
             </div>
           </div>
-
-        {/* Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto mb-4">
-          {filters.map((filterOption) => (
-            <Button
-              key={filterOption.value}
-              variant={filter === filterOption.value ? "default" : "outline"}
+          
+          {/* Secondary actions row */}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
               size="sm"
-              onClick={() => setFilter(filterOption.value)}
-              className="whitespace-nowrap"
+              className="gap-2"
+              onClick={() => setArchiveModalOpen(true)}
             >
-              {filterOption.label} ({filterOption.count})
+              <Archive className="h-4 w-4" />
+              Aufgaben-Archiv
             </Button>
-          ))}
-        </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="gap-2"
+              onClick={() => setSnoozeManagementOpen(true)}
+            >
+              <AlarmClock className="h-4 w-4" />
+              Wiedervorlagen
+            </Button>
+          </div>
+          </div>
+
 
         {/* Advanced Filters */}
         <div className="flex gap-4 items-center">
@@ -1049,16 +1097,16 @@ export function TasksView() {
         </div>
       </div>
 
-      {/* Assigned Subtasks Table - Always show if there are any assigned subtasks */}
-      {assignedSubtasks.length > 0 && (
+      {/* Assigned Subtasks and ToDos Table */}
+      {(assignedSubtasks.length > 0 || todos.length > 0) && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <ListTodo className="h-5 w-5" />
-              Mir zugewiesene Unteraufgaben ({assignedSubtasks.length})
+              Mir zugewiesene Unteraufgaben & ToDos ({assignedSubtasks.length + todos.length})
               {hideSnoozeSubtasks && assignedSubtasks.length !== filteredAssignedSubtasks.length && (
                 <span className="text-sm text-muted-foreground">
-                  ({filteredAssignedSubtasks.length} sichtbar)
+                  ({filteredAssignedSubtasks.length + todos.length} sichtbar)
                 </span>
               )}
             </CardTitle>
@@ -1647,6 +1695,13 @@ export function TasksView() {
         onDeleteSnooze={deleteSnooze}
         hideSnoozeSubtasks={hideSnoozeSubtasks}
         onToggleHideSnoozeSubtasks={setHideSnoozeSubtasks}
+      />
+
+      {/* Todo Create Dialog */}
+      <TodoCreateDialog
+        open={todoCreateOpen}
+        onOpenChange={setTodoCreateOpen}
+        onTodoCreated={loadTodos}
       />
     </>
   );

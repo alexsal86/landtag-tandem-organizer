@@ -60,6 +60,7 @@ export default function Administration() {
   const [appointmentStatuses, setAppointmentStatuses] = useState<ConfigItem[]>([]);
   const [taskCategories, setTaskCategories] = useState<ConfigItem[]>([]);
   const [taskStatuses, setTaskStatuses] = useState<ConfigItem[]>([]);
+  const [todoCategories, setTodoCategories] = useState<ConfigItem[]>([]);
 
   // Template states
   const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
@@ -126,11 +127,12 @@ export default function Administration() {
         .select('user_id, role');
       
       // Load configuration items
-      const [categoriesRes, statusesRes, taskCatRes, taskStatRes, meetingTemplatesRes, planningTemplatesRes] = await Promise.all([
+      const [categoriesRes, statusesRes, taskCatRes, taskStatRes, todoCatRes, meetingTemplatesRes, planningTemplatesRes] = await Promise.all([
         supabase.from('appointment_categories').select('*').order('order_index'),
         supabase.from('appointment_statuses').select('*').order('order_index'),
         supabase.from('task_categories').select('*').order('order_index'),
         supabase.from('task_statuses').select('*').order('order_index'),
+        supabase.from('todo_categories').select('*').order('order_index'),
         supabase.from('meeting_templates').select('*').order('name'),
         supabase.from('planning_templates').select('*').order('name')
       ]);
@@ -141,6 +143,7 @@ export default function Administration() {
       setAppointmentStatuses(statusesRes.data || []);
       setTaskCategories(taskCatRes.data || []);
       setTaskStatuses(taskStatRes.data || []);
+      setTodoCategories(todoCatRes.data || []);
       setMeetingTemplates(meetingTemplatesRes.data || []);
       setPlanningTemplates(planningTemplatesRes.data || []);
       
@@ -464,10 +467,11 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="general">Allgemein</TabsTrigger>
           <TabsTrigger value="appointments">Termine</TabsTrigger>
           <TabsTrigger value="tasks">Aufgaben</TabsTrigger>
+          <TabsTrigger value="todos">ToDos</TabsTrigger>
           <TabsTrigger value="meetings">Meetings</TabsTrigger>
           <TabsTrigger value="plannings">Planungen</TabsTrigger>
           {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
