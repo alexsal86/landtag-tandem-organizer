@@ -864,9 +864,18 @@ export function MeetingsView() {
 
       toast({ title: 'Agenda gespeichert', description: 'Die Agenda wurde erfolgreich gespeichert.' });
       
+      console.log('🔍 SAVE AGENDA - Checking for active meeting');
+      console.log('- activeMeeting:', activeMeeting);
+      console.log('- selectedMeeting:', selectedMeeting);
+      console.log('- activeMeeting.id === selectedMeeting.id:', activeMeeting?.id === selectedMeeting?.id);
+      
       // If this is the active meeting, reload the agenda to reflect changes
       if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
+        console.log('🔄 RELOADING AGENDA for active meeting:', selectedMeeting.id);
         await loadAgendaItems(selectedMeeting.id);
+        console.log('✅ AGENDA RELOADED for active meeting');
+      } else {
+        console.log('❌ NOT reloading agenda - not an active meeting or conditions not met');
       }
     } catch (error) {
       toast({
