@@ -1592,6 +1592,55 @@ export function MeetingsView() {
                                            className="min-h-[60px]"
                                          />
 
+                                          {/* Display task documents above notes field (subtle) */}
+                                          {item.task_id && taskDocuments[item.task_id] && taskDocuments[item.task_id].length > 0 && (
+                                            <div className="mb-3">
+                                              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                                                <FileText className="h-3 w-3" />
+                                                <span>Aufgaben-Dokumente:</span>
+                                              </div>
+                                              <div className="space-y-1">
+                                                {taskDocuments[item.task_id].map((doc, docIndex) => (
+                                                  <div key={docIndex} className="flex items-center justify-between py-1 px-2 hover:bg-muted/30 rounded text-xs">
+                                                    <span className="text-muted-foreground truncate">
+                                                      {doc.file_name || 'Dokument'}
+                                                    </span>
+                                                    <Button 
+                                                      variant="ghost" 
+                                                      size="sm"
+                                                      className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                                      onClick={async () => {
+                                                        try {
+                                                          const { data, error } = await supabase.storage
+                                                            .from('task-documents')
+                                                            .download(doc.file_path);
+                                                          
+                                                          if (error) throw error;
+                                                          
+                                                          const url = URL.createObjectURL(data);
+                                                          const a = document.createElement('a');
+                                                          a.href = url;
+                                                          a.download = doc.file_name || 'download';
+                                                          a.click();
+                                                          URL.revokeObjectURL(url);
+                                                        } catch (error) {
+                                                          console.error('Download error:', error);
+                                                          toast({
+                                                            title: "Download-Fehler",
+                                                            description: "Datei konnte nicht heruntergeladen werden.",
+                                                            variant: "destructive",
+                                                          });
+                                                        }
+                                                      }}
+                                                    >
+                                                      <Download className="h-3 w-3" />
+                                                    </Button>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+
                                           <div>
                                             <label className="text-sm font-medium">Notizen</label>
                                             <Textarea
@@ -1600,56 +1649,6 @@ export function MeetingsView() {
                                               placeholder="Notizen und Hinweise"
                                               className="min-h-[80px]"
                                             />
-                                            
-                                            {/* Display task documents as part of task notes */}
-                                            {item.task_id && taskDocuments[item.task_id] && taskDocuments[item.task_id].length > 0 && (
-                                              <div className="mt-3 p-3 bg-blue-50/50 border border-blue-200 rounded-lg">
-                                                <h5 className="text-sm font-medium text-blue-800 mb-2">
-                                                  Aufgaben-Dokumente:
-                                                </h5>
-                                                <div className="space-y-2">
-                                                  {taskDocuments[item.task_id].map((doc, docIndex) => (
-                                                    <div key={docIndex} className="flex items-center justify-between p-2 bg-white rounded border">
-                                                      <div className="flex items-center gap-2">
-                                                        <FileText className="h-4 w-4 text-blue-600" />
-                                                        <span className="text-sm text-blue-700">
-                                                          {doc.file_name || 'Dokument'}
-                                                        </span>
-                                                      </div>
-                                                      <Button 
-                                                        variant="ghost" 
-                                                        size="sm"
-                                                        onClick={async () => {
-                                                          try {
-                                                            const { data, error } = await supabase.storage
-                                                              .from('task-documents')
-                                                              .download(doc.file_path);
-                                                            
-                                                            if (error) throw error;
-                                                            
-                                                            const url = URL.createObjectURL(data);
-                                                            const a = document.createElement('a');
-                                                            a.href = url;
-                                                            a.download = doc.file_name || 'download';
-                                                            a.click();
-                                                            URL.revokeObjectURL(url);
-                                                          } catch (error) {
-                                                            console.error('Download error:', error);
-                                                            toast({
-                                                              title: "Download-Fehler",
-                                                              description: "Datei konnte nicht heruntergeladen werden.",
-                                                              variant: "destructive",
-                                                            });
-                                                          }
-                                                        }}
-                                                      >
-                                                        <Download className="h-4 w-4" />
-                                                      </Button>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              </div>
-                                            )}
                                           </div>
 
                                             <div>
