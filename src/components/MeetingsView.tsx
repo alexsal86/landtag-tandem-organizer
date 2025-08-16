@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { MeetingArchiveView } from "./MeetingArchiveView";
 
 interface AgendaItem {
   id?: string;
@@ -86,6 +87,7 @@ export function MeetingsView() {
   const [showTaskSelector, setShowTaskSelector] = useState<{itemIndex: number} | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [activeMeeting, setActiveMeeting] = useState<Meeting | null>(null);
+  const [showArchive, setShowArchive] = useState(false);
 
   // Load data on component mount
   useEffect(() => {
@@ -503,6 +505,32 @@ export function MeetingsView() {
 
   const stopMeeting = () => {
     setActiveMeeting(null);
+  };
+
+  const archiveMeeting = async (meeting: Meeting) => {
+    if (!meeting.id) return;
+    
+    try {
+      await supabase
+        .from('meetings')
+        .update({ status: 'archived' })
+        .eq('id', meeting.id);
+      
+      setActiveMeeting(null);
+      await loadMeetings(); // Reload to update UI
+      
+      toast({
+        title: "Besprechung archiviert",
+        description: "Die Besprechung wurde erfolgreich archiviert."
+      });
+    } catch (error) {
+      console.error('Error archiving meeting:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Besprechung konnte nicht archiviert werden.",
+        variant: "destructive"
+      });
+    }
   };
 
   const updateAgendaItemResult = async (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => {
@@ -1053,6 +1081,11 @@ export function MeetingsView() {
     .sort((a, b) => new Date(a.meeting_date as any).getTime() - new Date(b.meeting_date as any).getTime())
     .slice(0, 3);
 
+  // Show archive view if requested
+  if (showArchive) {
+    return <MeetingArchiveView onBack={() => setShowArchive(false)} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="flex justify-between items-center mb-8">
@@ -1166,7 +1199,7 @@ export function MeetingsView() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xl font-semibold">Nächste Besprechungen</h2>
-          <Button variant="link" className="text-primary px-0" onClick={() => toast({ title: 'Archiv', description: 'Archivansicht folgt.' })}>Archiv</Button>
+          <Button variant="link" className="text-primary px-0" onClick={() => setShowArchive(true)}>Archiv</Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {upcomingMeetings.map((meeting) => (
@@ -1317,9 +1350,14 @@ export function MeetingsView() {
             <h2 className="text-2xl font-semibold">
               Aktive Besprechung: {activeMeeting.title}
             </h2>
-            <Button variant="outline" onClick={stopMeeting}>
-              Besprechung beenden
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={stopMeeting}>
+                Besprechung unterbrechen
+              </Button>
+              <Button variant="default" onClick={() => archiveMeeting(activeMeeting)}>
+                Besprechung beenden und archivieren
+              </Button>
+            </div>
           </div>
           
           <Card>
