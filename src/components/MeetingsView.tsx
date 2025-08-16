@@ -606,7 +606,57 @@ export function MeetingsView() {
 
       if (agendaError) throw agendaError;
 
-      console.log('Step 2: Archiving meeting...');
+      console.log('Step 2: Creating follow-up task...');
+      // Create follow-up task
+      const followUpTaskData = {
+        user_id: user.id,
+        title: `Nachbereitung ${meeting.title} vom ${format(new Date(), 'dd.MM.yyyy')}`,
+        description: `Nachbereitung der Besprechung "${meeting.title}"`,
+        priority: 'medium',
+        category: 'administrative',
+        status: 'todo',
+        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+      };
+
+      const { data: followUpTask, error: taskError } = await supabase
+        .from('tasks')
+        .insert(followUpTaskData)
+        .select()
+        .single();
+
+      if (taskError) throw taskError;
+
+      console.log('Step 3: Creating subtasks from agenda results...');
+      // Create subtasks for all agenda items and sub-items with results
+      const subtasksToCreate = [];
+      
+      if (agendaItemsData) {
+        for (const item of agendaItemsData) {
+          if (item.result_text && item.result_text.trim()) {
+            const assignedUserId = item.assigned_to || user.id;
+            subtasksToCreate.push({
+              task_id: followUpTask.id,
+              title: item.title,
+              description: `Ergebnis: ${item.result_text}`,
+              assigned_to: assignedUserId,
+              completed: false,
+              order_index: subtasksToCreate.length
+            });
+          }
+        }
+      }
+
+      if (subtasksToCreate.length > 0) {
+        const { error: subtaskError } = await supabase
+          .from('subtasks')
+          .insert(subtasksToCreate);
+
+        if (subtaskError) {
+          console.error('Error creating subtasks:', subtaskError);
+        }
+      }
+
+      console.log('Step 4: Archiving meeting...');
       // Archive the meeting
       const { data: archiveData, error: archiveError } = await supabase
         .from('meetings')
@@ -1951,22 +2001,40 @@ export function MeetingsView() {
                          <div className="ml-12 mb-3">
                            <label className="text-sm font-medium mb-2 block">Unterpunkte</label>
                            <div className="space-y-2">
-                              {sortedSubItems.map((subItem, subIndex) => (
-                                <div key={subItem.id} className="pl-4 border-l-2 border-muted">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs font-medium text-muted-foreground">
-                                      {index + 1}.{subIndex + 1}
-                                    </span>
-                                  <span className="text-sm font-medium">{subItem.title}</span>
-                                  {subItem.assigned_to && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      {getDisplayName(subItem.assigned_to)}
-                                    </Badge>
-                                  )}
-                                </div>
-                                {subItem.description && (
-                                  <p className="text-xs text-muted-foreground mb-2">{subItem.description}</p>
-                                )}
+                                 {sortedSubItems.map((subItem, subIndex) => (
+                                 <div key={subItem.id} className="pl-4 border-l-2 border-muted">
+                                   <div className="flex items-center gap-2 mb-2">
+                                     <span className="text-xs font-medium text-muted-foreground">
+                                       {index + 1}.{subIndex + 1}
+                                     </span>
+                                     <span className="text-sm font-medium flex-1">{subItem.title}</span>
+                                     <Select
+                                       value={subItem.assigned_to || 'unassigned'}
+                                       onValueChange={(value) => {
+                                         const itemIndex = agendaItems.findIndex(i => i.id === subItem.id);
+                                         if (itemIndex !== -1) {
+                                           updateAgendaItem(itemIndex, 'assigned_to', value === 'unassigned' ? null : value);
+                                         }
+                                       }}
+                                     >
+                                       <SelectTrigger className="w-[140px] h-6 text-xs">
+                                         <SelectValue placeholder="Zuweisen" />
+                                       </SelectTrigger>
+                                       <SelectContent>
+                                         <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                                         {profiles.map((profile) => (
+                                           <SelectItem key={profile.user_id} value={profile.user_id}>
+                                             {profile.display_name || 'Unbekannter Benutzer'}
+                                           </SelectItem>
+                                         ))}
+                                       </SelectContent>
+                                     </Select>
+                                   </div>
+                                   {subItem.description && (
+                                     <div className="mb-2 bg-muted/20 p-2 rounded border-l-2 border-primary/20">
+                                       <p className="text-sm text-foreground whitespace-pre-wrap">{subItem.description}</p>
+                                     </div>
+                                   )}
                                 {subItem.notes && (
                                   <div className="mb-2">
                                     <span className="text-xs font-medium text-muted-foreground">Notizen: </span>
