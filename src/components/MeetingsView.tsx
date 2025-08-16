@@ -626,27 +626,53 @@ export function MeetingsView() {
 
       if (taskError) throw taskError;
 
-      console.log('Step 3: Creating subtasks from agenda results...');
-      // Create subtasks for all agenda items and sub-items with results
+      console.log('Step 3: Processing agenda items...');
+      // Process agenda items for task updates and creation
       const subtasksToCreate = [];
       
       if (agendaItemsData) {
         for (const item of agendaItemsData) {
           if (item.result_text && item.result_text.trim()) {
-            const assignedUserId = item.assigned_to || user.id;
-            subtasksToCreate.push({
-              task_id: followUpTask.id,
-              title: item.title,
-              description: `Ergebnis: ${item.result_text}`,
-              assigned_to: assignedUserId,
-              completed: false,
-              order_index: subtasksToCreate.length
-            });
+            if (item.task_id) {
+              // Update existing task with results
+              console.log(`Updating existing task ${item.task_id} with result`);
+              const { data: existingTask, error: taskError } = await supabase
+                .from('tasks')
+                .select('description')
+                .eq('id', item.task_id)
+                .maybeSingle();
+
+              if (!taskError && existingTask) {
+                const currentDescription = existingTask.description || '';
+                const meetingResult = `\n\n--- Ergänzung aus Besprechung "${meeting.title}": ---\n${item.result_text}`;
+                
+                await supabase
+                  .from('tasks')
+                  .update({
+                    description: currentDescription + meetingResult,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', item.task_id);
+              }
+            } else {
+              // Create new subtask for items without existing task
+              console.log(`Creating new subtask for agenda item: ${item.title}`);
+              const assignedUserId = item.assigned_to || user.id;
+              subtasksToCreate.push({
+                task_id: followUpTask.id,
+                title: item.title,
+                description: `Ergebnis: ${item.result_text}`,
+                assigned_to: assignedUserId,
+                completed: false,
+                order_index: subtasksToCreate.length
+              });
+            }
           }
         }
       }
 
       if (subtasksToCreate.length > 0) {
+        console.log(`Creating ${subtasksToCreate.length} new subtasks`);
         const { error: subtaskError } = await supabase
           .from('subtasks')
           .insert(subtasksToCreate);
