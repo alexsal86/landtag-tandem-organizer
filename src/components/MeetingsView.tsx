@@ -1493,6 +1493,7 @@ export function MeetingsView() {
               <Button variant="default" onClick={() => {
                 console.log('=== ARCHIVE BUTTON CLICKED ===');
                 console.log('Active Meeting:', activeMeeting);
+                alert('Button wurde geklickt!'); // Einfacher Test
                 archiveMeeting(activeMeeting);
               }}>
                 Besprechung beenden und archivieren
