@@ -70,6 +70,7 @@ export function MeetingsView() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
+  const [activeMeetingItems, setActiveMeetingItems] = useState<AgendaItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [taskDocuments, setTaskDocuments] = useState<Record<string, any[]>>({});
@@ -151,6 +152,16 @@ export function MeetingsView() {
       syncTaskChanges();
     }
   }, [tasks]);
+
+  // Update activeMeetingItems when agendaItems or activeMeeting changes
+  useEffect(() => {
+    if (activeMeeting) {
+      console.log('🔄 Updating activeMeetingItems due to agendaItems or activeMeeting change');
+      setActiveMeetingItems([...agendaItems]);
+    } else {
+      setActiveMeetingItems([]);
+    }
+  }, [agendaItems, activeMeeting]);
 
   // Update active meeting when agenda items change
   useEffect(() => {
@@ -1741,7 +1752,7 @@ export function MeetingsView() {
             <CardContent>
               <div className="space-y-4">
                 {(() => {
-                  console.log('🎯 ACTIVE MEETING RENDER - agendaItems at render time:', agendaItems.map(item => ({
+                  console.log('🎯 ACTIVE MEETING RENDER - activeMeetingItems at render time:', activeMeetingItems.map(item => ({
                     title: item.title,
                     order_index: item.order_index,
                     parent_id: item.parent_id,
@@ -1749,7 +1760,7 @@ export function MeetingsView() {
                   })));
                   
                   console.log('=== ACTIVE MEETING RENDERING ===');
-                  console.log('All agenda items before processing:', agendaItems.map(item => ({
+                  console.log('All agenda items before processing:', activeMeetingItems.map(item => ({
                     id: item.id,
                     title: item.title,
                     order_index: item.order_index,
@@ -1758,7 +1769,7 @@ export function MeetingsView() {
                   })));
                   
                   // Sort ALL items by order_index first - this is the order from drag & drop
-                  const allItemsSorted = [...agendaItems].sort((a, b) => a.order_index - b.order_index);
+                  const allItemsSorted = [...activeMeetingItems].sort((a, b) => a.order_index - b.order_index);
                   console.log('All items sorted by order_index:', allItemsSorted.map(item => ({
                     title: item.title,
                     order_index: item.order_index,
@@ -2120,7 +2131,7 @@ export function MeetingsView() {
                   });
                 })()}
                 
-                {agendaItems.filter(item => !item.parent_id && !item.parentLocalKey).length === 0 && (
+                {activeMeetingItems.filter(item => !item.parent_id && !item.parentLocalKey).length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Clock className="h-12 w-12 mx-auto mb-4" />
                     <p>Keine Agenda-Punkte für diese Besprechung gefunden.</p>
