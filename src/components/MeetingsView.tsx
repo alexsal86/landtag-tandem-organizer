@@ -613,7 +613,7 @@ export function MeetingsView() {
         title: `Nachbereitung ${meeting.title} vom ${format(new Date(), 'dd.MM.yyyy')}`,
         description: `Nachbereitung der Besprechung "${meeting.title}"`,
         priority: 'medium',
-        category: 'administrative',
+        category: 'personal',
         status: 'todo',
         due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
       };
