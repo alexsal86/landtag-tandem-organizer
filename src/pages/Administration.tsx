@@ -357,7 +357,7 @@ export default function Administration() {
   };
 
   // Configuration item functions
-  const addConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses', value: string, color?: string) => {
+  const addConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses' | 'todo_categories', value: string, color?: string) => {
     if (!value.trim()) return;
     
     try {
@@ -381,7 +381,7 @@ export default function Administration() {
     }
   };
 
-  const saveConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses', id: string, value: string, color?: string) => {
+  const saveConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses' | 'todo_categories', id: string, value: string, color?: string) => {
     if (!value.trim()) return;
     
     try {
@@ -404,7 +404,7 @@ export default function Administration() {
     }
   };
 
-  const deleteConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses', id: string) => {
+  const deleteConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses' | 'todo_categories', id: string) => {
     try {
       const { error } = await supabase.from(tableName).delete().eq('id', id);
       if (error) throw error;
@@ -417,10 +417,11 @@ export default function Administration() {
     }
   };
 
-  const getNextOrderIndex = (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses') => {
+  const getNextOrderIndex = (tableName: 'appointment_categories' | 'appointment_statuses' | 'task_categories' | 'task_statuses' | 'todo_categories') => {
     const items = tableName === 'appointment_categories' ? appointmentCategories :
                   tableName === 'appointment_statuses' ? appointmentStatuses :
-                  tableName === 'task_categories' ? taskCategories : taskStatuses;
+                  tableName === 'task_categories' ? taskCategories : 
+                  tableName === 'task_statuses' ? taskStatuses : todoCategories;
     return Math.max(...items.map(i => i.order_index), -1) + 1;
   };
 
@@ -751,6 +752,78 @@ export default function Administration() {
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Status hinzufügen
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="todos" className="space-y-6">
+          <div className="grid gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>ToDo - Kategorien</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {todoCategories.map((item, index) => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    {editingItem?.type === 'todo_categories' && editingItem.id === item.id ? (
+                      <>
+                        <Input
+                          value={editingItem.value}
+                          onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Button size="sm" onClick={() => saveConfigItem('todo_categories', item.id, editingItem.value)}>
+                          <Check className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <div 
+                          className="w-4 h-4 rounded" 
+                          style={{ backgroundColor: item.color || '#3b82f6' }}
+                        />
+                        <span className="flex-1">{item.label}</span>
+                        <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'todo_categories', id: item.id, value: item.label })}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('todo_categories', item.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                
+                {newItem?.type === 'todo_categories' ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newItem.value}
+                      onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
+                      placeholder="Neue Kategorie..."
+                      className="flex-1"
+                    />
+                    <Button size="sm" onClick={() => addConfigItem('todo_categories', newItem.value)}>
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setNewItem({ type: 'todo_categories', value: '' })}
+                    disabled={!!editingItem || !!newItem}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Kategorie hinzufügen
                   </Button>
                 )}
               </CardContent>
