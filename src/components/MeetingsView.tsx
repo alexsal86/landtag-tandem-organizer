@@ -1616,8 +1616,8 @@ export function MeetingsView() {
                    return (
                      <div key={item.id} className="border rounded-lg p-4">
                        <div className="flex items-center gap-4 mb-3">
-                         <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
-                           {item.order_index + 1}
+                          <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
+                            {index + 1}
                         </div>
                         <h3 className="font-medium text-lg flex-1">{item.title}</h3>
                         <div className="flex items-center gap-2">
@@ -1711,8 +1711,10 @@ export function MeetingsView() {
                                <div key={subItem.id} className="pl-4 border-l-2 border-muted">
                                  <div className="flex items-center gap-2 mb-1">
                                    <span className="text-xs font-medium text-muted-foreground">
-                                     {item.order_index + 1}.{subItem.order_index - item.order_index}
-                                  </span>
+                                     {index + 1}.{subItems
+                                       .sort((a, b) => a.order_index - b.order_index)
+                                       .findIndex(s => s.id === subItem.id) + 1}
+                                   </span>
                                   <span className="text-sm font-medium">{subItem.title}</span>
                                   {subItem.assigned_to && (
                                     <Badge variant="secondary" className="text-xs">
