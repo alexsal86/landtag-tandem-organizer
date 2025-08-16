@@ -825,6 +825,11 @@ export function MeetingsView() {
       }
 
       toast({ title: 'Agenda gespeichert', description: 'Die Agenda wurde erfolgreich gespeichert.' });
+      
+      // If this is the active meeting, reload the agenda to reflect changes
+      if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
+        await loadAgendaItems(selectedMeeting.id);
+      }
     } catch (error) {
       toast({
         title: 'Fehler beim Speichern',
@@ -926,6 +931,10 @@ export function MeetingsView() {
         }
       }
       
+      // If this is the active meeting, reload the agenda to reflect changes
+      if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
+        await loadAgendaItems(selectedMeeting.id);
+      }
       toast({
         title: "Aufgabe hinzugefügt",
         description: `"${task.title}" wurde als Unterpunkt zu "${parentItem.title}" hinzugefügt.`,
@@ -1057,6 +1066,11 @@ export function MeetingsView() {
         }
       }
 
+      // If this is the active meeting, reload the agenda to reflect changes
+      if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
+        await loadAgendaItems(selectedMeeting.id);
+      }
+
       toast({
         title: "Unterpunkt hinzugefügt",
         description: `Unterpunkt wurde zu "${parent.title}" hinzugefügt.`,
@@ -1162,26 +1176,31 @@ export function MeetingsView() {
 
     setAgendaItems(reorderedItems);
 
-    // Save the new order to database immediately for items that already exist
-    if (selectedMeeting?.id) {
-      try {
-        for (const item of reorderedItems) {
-          if (item.id) {
-            await supabase
-              .from('meeting_agenda_items')
-              .update({ order_index: item.order_index })
-              .eq('id', item.id);
+      // Save the new order to database immediately for items that already exist
+      if (selectedMeeting?.id) {
+        try {
+          for (const item of reorderedItems) {
+            if (item.id) {
+              await supabase
+                .from('meeting_agenda_items')
+                .update({ order_index: item.order_index })
+                .eq('id', item.id);
+            }
           }
+          
+          // If this is the active meeting, reload the agenda to reflect changes
+          if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
+            await loadAgendaItems(selectedMeeting.id);
+          }
+        } catch (error) {
+          console.error('Error updating order:', error);
+          toast({
+            title: "Fehler",
+            description: "Die neue Reihenfolge konnte nicht gespeichert werden.",
+            variant: "destructive",
+          });
         }
-      } catch (error) {
-        console.error('Error updating order:', error);
-        toast({
-          title: "Fehler",
-          description: "Die neue Reihenfolge konnte nicht gespeichert werden.",
-          variant: "destructive",
-        });
       }
-    }
   };
 
   // Helper functions for meeting management
