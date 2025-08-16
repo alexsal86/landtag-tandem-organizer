@@ -802,16 +802,10 @@ export function MeetingsView() {
           
         console.log('✅ Auto-save successful');
         
-        // If this is the active meeting, force immediate update
+        // If this is the active meeting, immediately reload agenda items  
         if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
-          console.log('🔄 This is an active meeting - forcing immediate update');
-          // Force immediate re-render
-          setActiveMeeting(prev => prev ? {...prev, lastUpdate: Date.now()} : prev);
-          // Reload agenda items to ensure database consistency
-          setTimeout(() => {
-            console.log('🔄 Reloading agenda items after updateAgendaItem');
-            loadAgendaItems(selectedMeeting.id);
-          }, 100);
+          console.log('🔄 Active meeting detected - immediately reloading agenda after item update');
+          loadAgendaItems(selectedMeeting.id);
         }
       } catch (error) {
         console.error('Auto-save error:', error);
@@ -1323,16 +1317,10 @@ export function MeetingsView() {
             if (error) throw error;
           }
           
-          // If this is the active meeting, force immediate update of the state
+          // If this is the active meeting, immediately reload agenda items
           if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
-            console.log('🔄 This is the active meeting - forcing immediate state update after drag & drop');
-            // Force immediate re-render with new agenda items
-            setActiveMeeting(prev => prev ? {...prev, lastUpdate: Date.now()} : prev);
-            // Also reload from database to ensure consistency
-            setTimeout(async () => {
-              console.log('🔄 Reloading agenda items for active meeting after drag & drop');
-              await loadAgendaItems(selectedMeeting.id);
-            }, 100);
+            console.log('🔄 Active meeting detected - immediately reloading agenda');
+            loadAgendaItems(selectedMeeting.id);
           }
           
           console.log('✅ Drag & drop completed - all order_index values updated in database');
