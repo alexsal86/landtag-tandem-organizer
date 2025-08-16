@@ -1628,13 +1628,39 @@ export function MeetingsView() {
                   console.log('Main items (no parent):', mainItems);
                   console.log('Sorted main items:', sortedMainItems);
                   
-                  return sortedMainItems.map((item, index) => {
-                    const subItems = agendaItems.filter(subItem => subItem.parent_id === item.id || subItem.parentLocalKey === (item.localKey || item.id));
-                    const sortedSubItems = subItems.sort((a, b) => a.order_index - b.order_index);
+                  // Sort all items globally first, then process hierarchically
+                  const allItemsSorted = [...agendaItems].sort((a, b) => a.order_index - b.order_index);
+                  const processedItems: any[] = [];
+                  const usedSubItems = new Set<string>();
+
+                  allItemsSorted.forEach(item => {
+                    if (!item.parent_id && !usedSubItems.has(item.id)) {
+                      // This is a main item
+                      const subItems: any[] = [];
+                      
+                      // Find all sub-items that come after this main item in the sorted order
+                      const currentIndex = allItemsSorted.findIndex(sortedItem => sortedItem.id === item.id);
+                      
+                      for (let i = currentIndex + 1; i < allItemsSorted.length; i++) {
+                        const nextItem = allItemsSorted[i];
+                        if (nextItem.parent_id === item.id) {
+                          subItems.push(nextItem);
+                          usedSubItems.add(nextItem.id);
+                        } else if (!nextItem.parent_id) {
+                          // We've reached the next main item
+                          break;
+                        }
+                      }
+                      
+                      processedItems.push({ item, subItems });
+                    }
+                  });
+
+                  return processedItems.map(({ item, subItems: sortedSubItems }, index) => {
                     
                     console.log(`Item ${index + 1} (${item.title}):`, {
                       item,
-                      subItems,
+                      subItems: sortedSubItems,
                       sortedSubItems
                     });
                     
