@@ -267,6 +267,9 @@ export function MeetingsView() {
 
   const loadAgendaItems = async (meetingId: string) => {
     try {
+      console.log('=== LOADING AGENDA ITEMS ===');
+      console.log('Meeting ID:', meetingId);
+      
       const { data, error } = await supabase
         .from('meeting_agenda_items')
         .select('*')
@@ -274,11 +277,18 @@ export function MeetingsView() {
         .order('order_index');
 
       if (error) throw error;
+      
+      console.log('Raw data from database:', data);
+      
       const items = (data || []).map((item) => ({
         ...item,
         localKey: item.id,
         parentLocalKey: item.parent_id || undefined,
       }));
+      
+      console.log('Processed items:', items);
+      console.log('Items sorted by order_index:', items.sort((a, b) => a.order_index - b.order_index));
+      
       setAgendaItems(items);
       
       // Load documents for all agenda items
@@ -286,6 +296,7 @@ export function MeetingsView() {
         await loadAgendaDocuments(items.map(item => item.id!).filter(Boolean));
       }
     } catch (error) {
+      console.error('Error loading agenda items:', error);
       toast({
         title: "Fehler beim Laden der Agenda",
         description: "Die Agenda-Punkte konnten nicht geladen werden.",
@@ -1608,14 +1619,28 @@ export function MeetingsView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {agendaItems
-                  .filter(item => !item.parent_id && !item.parentLocalKey)
-                  .sort((a, b) => a.order_index - b.order_index)
-                  .map((item, index) => {
-                   const subItems = agendaItems.filter(subItem => subItem.parent_id === item.id || subItem.parentLocalKey === (item.localKey || item.id));
-                   return (
-                     <div key={item.id} className="border rounded-lg p-4">
-                       <div className="flex items-center gap-4 mb-3">
+                {(() => {
+                  const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
+                  const sortedMainItems = mainItems.sort((a, b) => a.order_index - b.order_index);
+                  
+                  console.log('=== ACTIVE MEETING RENDERING ===');
+                  console.log('All agenda items:', agendaItems);
+                  console.log('Main items (no parent):', mainItems);
+                  console.log('Sorted main items:', sortedMainItems);
+                  
+                  return sortedMainItems.map((item, index) => {
+                    const subItems = agendaItems.filter(subItem => subItem.parent_id === item.id || subItem.parentLocalKey === (item.localKey || item.id));
+                    const sortedSubItems = subItems.sort((a, b) => a.order_index - b.order_index);
+                    
+                    console.log(`Item ${index + 1} (${item.title}):`, {
+                      item,
+                      subItems,
+                      sortedSubItems
+                    });
+                    
+                    return (
+                      <div key={item.id} className="border rounded-lg p-4">
+                        <div className="flex items-center gap-4 mb-3">
                           <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
                             {index + 1}
                         </div>
@@ -1700,21 +1725,17 @@ export function MeetingsView() {
                         </div>
                       )}
 
-                      {/* Display sub-items */}
-                      {subItems.length > 0 && (
-                        <div className="ml-12 mb-3">
-                          <label className="text-sm font-medium mb-2 block">Unterpunkte</label>
-                          <div className="space-y-2">
-                             {subItems
-                               .sort((a, b) => a.order_index - b.order_index)
-                               .map((subItem, subIndex) => (
-                               <div key={subItem.id} className="pl-4 border-l-2 border-muted">
-                                 <div className="flex items-center gap-2 mb-1">
-                                   <span className="text-xs font-medium text-muted-foreground">
-                                     {index + 1}.{subItems
-                                       .sort((a, b) => a.order_index - b.order_index)
-                                       .findIndex(s => s.id === subItem.id) + 1}
-                                   </span>
+                       {/* Display sub-items */}
+                       {sortedSubItems.length > 0 && (
+                         <div className="ml-12 mb-3">
+                           <label className="text-sm font-medium mb-2 block">Unterpunkte</label>
+                           <div className="space-y-2">
+                              {sortedSubItems.map((subItem, subIndex) => (
+                                <div key={subItem.id} className="pl-4 border-l-2 border-muted">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      {index + 1}.{subIndex + 1}
+                                    </span>
                                   <span className="text-sm font-medium">{subItem.title}</span>
                                   {subItem.assigned_to && (
                                     <Badge variant="secondary" className="text-xs">
@@ -1918,11 +1939,12 @@ export function MeetingsView() {
                           </label>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                      </div>
+                    );
+                  });
+                })()}
                 
-                {agendaItems.filter(item => !item.parent_id).length === 0 && (
+                {agendaItems.filter(item => !item.parent_id && !item.parentLocalKey).length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Clock className="h-12 w-12 mx-auto mb-4" />
                     <p>Keine Agenda-Punkte für diese Besprechung gefunden.</p>
