@@ -592,6 +592,32 @@ export function MeetingsView() {
 
           // Create new tasks for items with results and assignments (but no existing task)
           if (item.result_text && item.assigned_to && !item.task_id) {
+            // Determine task category based on agenda item parent or title
+            let taskCategory = 'meeting'; // Default fallback
+            
+            // Map agenda categories to task categories
+            const categoryMapping: { [key: string]: string } = {
+              'Politische Schwerpunktthemen & Projekte': 'political',
+              'Termine & Veranstaltungen': 'events',
+              'Wahlkreisarbeit': 'constituency',
+              'Kommunikation & Öffentlichkeitsarbeit': 'communication',
+              'Organisation & Bürointerna': 'organization',
+              'Verschiedenes': 'personal'
+            };
+
+            // If this is a sub-item, find its parent to determine category
+            if (item.parent_id) {
+              const parentItem = agendaItemsData.find(parent => parent.id === item.parent_id);
+              if (parentItem && categoryMapping[parentItem.title]) {
+                taskCategory = categoryMapping[parentItem.title];
+              }
+            } else {
+              // If this is a main category item, use its title to determine category
+              if (categoryMapping[item.title]) {
+                taskCategory = categoryMapping[item.title];
+              }
+            }
+
             const { data: newTask, error: newTaskError } = await supabase
               .from('tasks')
               .insert({
@@ -599,7 +625,7 @@ export function MeetingsView() {
                 title: item.title,
                 description: item.description || '',
                 priority: 'medium',
-                category: 'meeting',
+                category: taskCategory,
                 status: 'todo',
                 assigned_to: item.assigned_to,
                 due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
@@ -616,7 +642,7 @@ export function MeetingsView() {
                   title: `Ergebnis aus Besprechung: ${item.title}`,
                   description: item.result_text,
                   priority: 'medium',
-                  category: 'meeting',
+                  category: taskCategory,
                   status: 'todo',
                   assigned_to: item.assigned_to,
                   due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days from now
