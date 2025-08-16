@@ -1628,20 +1628,25 @@ export function MeetingsView() {
                   console.log('Main items (no parent):', mainItems);
                   console.log('Sorted main items:', sortedMainItems);
                   
-                  // Sort all items globally first, then process hierarchically
+                  // Sort all items globally first, then process hierarchically  
                   const allItemsSorted = [...agendaItems].sort((a, b) => a.order_index - b.order_index);
+                  console.log('All items sorted by order_index for active meeting:', allItemsSorted.map(item => ({
+                    id: item.id,
+                    title: item.title,
+                    order_index: item.order_index,
+                    parent_id: item.parent_id
+                  })));
+                  
                   const processedItems: any[] = [];
                   const usedSubItems = new Set<string>();
 
-                  allItemsSorted.forEach(item => {
+                  allItemsSorted.forEach((item, globalIndex) => {
                     if (!item.parent_id && !usedSubItems.has(item.id)) {
                       // This is a main item
                       const subItems: any[] = [];
                       
-                      // Find all sub-items that come after this main item in the sorted order
-                      const currentIndex = allItemsSorted.findIndex(sortedItem => sortedItem.id === item.id);
-                      
-                      for (let i = currentIndex + 1; i < allItemsSorted.length; i++) {
+                      // Find sub-items that belong to this main item, maintaining global sort order
+                      for (let i = globalIndex + 1; i < allItemsSorted.length; i++) {
                         const nextItem = allItemsSorted[i];
                         if (nextItem.parent_id === item.id) {
                           subItems.push(nextItem);
@@ -1651,6 +1656,9 @@ export function MeetingsView() {
                           break;
                         }
                       }
+                      
+                      console.log(`Main item: ${item.title} (order: ${item.order_index}) with ${subItems.length} sub-items:`, 
+                        subItems.map(sub => ({ title: sub.title, order_index: sub.order_index })));
                       
                       processedItems.push({ item, subItems });
                     }
