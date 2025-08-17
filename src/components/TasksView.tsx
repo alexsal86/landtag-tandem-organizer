@@ -965,9 +965,15 @@ export function TasksView() {
                 </Button>
                 <Button 
                   className="gap-2"
-                  onClick={() => {
-                    console.log('Clicked "Neues ToDo" button');
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Clicked "Neues ToDo" button, current state:', todoCreateOpen);
                     setTodoCreateOpen(true);
+                    console.log('Set todoCreateOpen to true');
+                    // Force a simple alert as test
+                    alert('Todo button clicked!');
                   }}
                 >
                   <Plus className="h-4 w-4" />
@@ -1912,10 +1918,17 @@ export function TasksView() {
       />
 
       {/* Todo Create Dialog */}
+      {console.log('Rendering TodoCreateDialog with todoCreateOpen:', todoCreateOpen)}
       <TodoCreateDialog
         open={todoCreateOpen}
-        onOpenChange={setTodoCreateOpen}
-        onTodoCreated={loadTodos}
+        onOpenChange={(open) => {
+          console.log('TodoCreateDialog onOpenChange called with:', open);
+          setTodoCreateOpen(open);
+        }}
+        onTodoCreated={() => {
+          console.log('Todo created callback called');
+          loadTodos();
+        }}
       />
     </>
   );
