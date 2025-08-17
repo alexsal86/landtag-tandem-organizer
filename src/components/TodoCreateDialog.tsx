@@ -14,11 +14,6 @@ interface TodoCategory {
   color: string;
 }
 
-interface Profile {
-  user_id: string;
-  display_name: string | null;
-}
-
 interface TodoCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,48 +25,38 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<TodoCategory[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   
   // Form state
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [assignedTo, setAssignedTo] = useState("");
-  const [dueDate, setDueDate] = useState("");
 
-  console.log('TodoCreateDialog rendered with open:', open);
+  console.log('TodoCreateDialog render - open:', open, 'user:', user?.id);
 
   useEffect(() => {
     if (open) {
-      console.log('Dialog opened, loading data...');
-      loadData();
+      console.log('Dialog opened, loading categories...');
+      loadCategories();
     }
   }, [open]);
 
-  const loadData = async () => {
-    console.log('Loading todo dialog data...');
+  const loadCategories = async () => {
     try {
-      const [categoriesRes, profilesRes] = await Promise.all([
-        supabase.from('todo_categories').select('id, label, color').eq('is_active', true).order('order_index'),
-        supabase.from('profiles').select('user_id, display_name').order('display_name')
-      ]);
+      console.log('Loading categories...');
+      const { data, error } = await supabase
+        .from('todo_categories')
+        .select('id, label, color')
+        .eq('is_active', true)
+        .order('order_index');
 
-      console.log('Categories loaded:', categoriesRes.data);
-      console.log('Profiles loaded:', profilesRes.data);
+      console.log('Categories result:', { data, error });
       
-      if (categoriesRes.error) {
-        console.error('Categories error:', categoriesRes.error);
-      }
-      if (profilesRes.error) {
-        console.error('Profiles error:', profilesRes.error);
-      }
-
-      setCategories(categoriesRes.data || []);
-      setProfiles(profilesRes.data || []);
+      if (error) throw error;
+      setCategories(data || []);
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading categories:', error);
       toast({
         title: "Fehler",
-        description: "Daten konnten nicht geladen werden.",
+        description: "Kategorien konnten nicht geladen werden.",
         variant: "destructive"
       });
     }
@@ -79,13 +64,12 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Todo form submitted with:', { title, categoryId, assignedTo, dueDate, user: user?.id });
+    console.log('Form submitted:', { title, categoryId });
     
     if (!title.trim() || !categoryId) {
-      console.log('Validation failed:', { title: title.trim(), categoryId });
       toast({
         title: "Fehler",
-        description: "Bitte füllen Sie alle Pflichtfelder aus.",
+        description: "Bitte Titel und Kategorie eingeben.",
         variant: "destructive"
       });
       return;
@@ -94,40 +78,29 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
     setLoading(true);
     
     try {
-      const todoData = {
+      const { error } = await supabase.from('todos').insert({
         user_id: user?.id,
         category_id: categoryId,
         title: title.trim(),
-        assigned_to: assignedTo || null,
-        due_date: dueDate ? new Date(dueDate).toISOString() : null
-      };
-
-      console.log('Inserting todo data:', todoData);
-      const { error } = await supabase.from('todos').insert(todoData);
+        assigned_to: null,
+        due_date: null
+      });
       
-      if (error) {
-        console.error('Supabase insert error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('Todo created successfully');
       toast({
         title: "Erfolgreich",
         description: "ToDo wurde erstellt."
       });
 
-      // Reset form
       setTitle("");
       setCategoryId("");
-      setAssignedTo("");
-      setDueDate("");
-      
       onTodoCreated();
       onOpenChange(false);
     } catch (error: any) {
       console.error('Error creating todo:', error);
       toast({
-        title: "Fehler",
+        title: "Fehler", 
         description: error.message || "ToDo konnte nicht erstellt werden.",
         variant: "destructive"
       });
@@ -136,8 +109,6 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
     }
   };
 
-  if (!open) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -145,7 +116,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
           <DialogTitle>Neues ToDo erstellen</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">Titel*</Label>
             <Input
@@ -153,13 +124,12 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="ToDo-Titel eingeben..."
-              required
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="category">Kategorie*</Label>
-            <Select value={categoryId} onValueChange={setCategoryId} required>
+            <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger>
                 <SelectValue placeholder="Kategorie auswählen" />
               </SelectTrigger>
@@ -179,33 +149,6 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="assigned-to">Zuständigkeit</Label>
-            <Select value={assignedTo} onValueChange={setAssignedTo}>
-              <SelectTrigger>
-                <SelectValue placeholder="Zuständigkeit auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Keine Zuständigkeit</SelectItem>
-                {profiles.map((profile) => (
-                  <SelectItem key={profile.user_id} value={profile.display_name || profile.user_id}>
-                    {profile.display_name || 'Unbekannter Benutzer'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="due-date">Fälligkeitsdatum</Label>
-            <Input
-              id="due-date"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
-          </div>
-
           <div className="flex gap-2 pt-4">
             <Button
               type="button"
@@ -215,11 +158,15 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
             >
               Abbrechen
             </Button>
-            <Button type="submit" disabled={loading} className="flex-1">
+            <Button 
+              onClick={handleSubmit}
+              disabled={loading || !title.trim() || !categoryId}
+              className="flex-1"
+            >
               {loading ? "Erstelle..." : "Erstellen"}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

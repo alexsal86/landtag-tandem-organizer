@@ -972,8 +972,6 @@ export function TasksView() {
                     console.log('Clicked "Neues ToDo" button, current state:', todoCreateOpen);
                     setTodoCreateOpen(true);
                     console.log('Set todoCreateOpen to true');
-                    // Force a simple alert as test
-                    alert('Todo button clicked!');
                   }}
                 >
                   <Plus className="h-4 w-4" />
