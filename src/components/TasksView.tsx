@@ -487,6 +487,8 @@ export function TasksView() {
 
       if (error) throw error;
 
+      console.log('Loaded task comments:', data); // Debug log
+
       const commentsMap: { [taskId: string]: TaskComment[] } = {};
       (data || []).forEach(comment => {
         if (!commentsMap[comment.task_id]) {
@@ -502,6 +504,7 @@ export function TasksView() {
         });
       });
 
+      console.log('Comments map:', commentsMap); // Debug log
       setTaskComments(commentsMap);
     } catch (error) {
       console.error('Error loading task comments:', error);
@@ -1266,6 +1269,20 @@ export function TasksView() {
                            </div>
                          )}
                          
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           className="h-8 w-8 p-0"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setSnoozeDialogOpen({ type: 'task', id: task.id });
+                             setSnoozeDate('');
+                           }}
+                           title="Auf Wiedervorlage setzen"
+                         >
+                           <AlarmClock className="h-4 w-4" />
+                         </Button>
+                         
                          {task.assignedTo && (
                            <div className="flex items-center gap-1">
                              <User className="h-4 w-4" />
@@ -1297,13 +1314,80 @@ export function TasksView() {
                        {/* Expandable Subtasks */}
                        {showSubtasksFor === task.id && subtasks[task.id] && (
                          <div className="mt-4 space-y-3 animate-fade-in">
+                           {/* Add Subtask Button */}
+                           <div className="border border-dashed border-border rounded-lg p-3">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               className="gap-2 w-full"
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 const title = prompt('Titel der Unteraufgabe:');
+                                 if (title && user) {
+                                   const addSubtask = async () => {
+                                     try {
+                                       const { error } = await supabase
+                                         .from('subtasks')
+                                         .insert({
+                                           task_id: task.id,
+                                           user_id: user.id,
+                                           description: title,
+                                           is_completed: false,
+                                           order_index: subtasks[task.id].length
+                                         });
+                                       
+                                       if (error) throw error;
+                                       loadSubtasksForTask(task.id);
+                                       loadSubtaskCounts();
+                                       toast({ title: "Unteraufgabe hinzugefügt" });
+                                     } catch (error) {
+                                       console.error('Error adding subtask:', error);
+                                       toast({
+                                         title: "Fehler",
+                                         description: "Unteraufgabe konnte nicht hinzugefügt werden.",
+                                         variant: "destructive"
+                                       });
+                                     }
+                                   };
+                                   addSubtask();
+                                 }
+                               }}
+                             >
+                               <Plus className="h-4 w-4" />
+                               Unteraufgabe hinzufügen
+                             </Button>
+                           </div>
+                           
+                           {/* Subtasks List */}
                            {subtasks[task.id].map((subtask) => (
                              <div key={subtask.id} className="border border-border rounded-lg p-4 bg-muted/20">
                                <div className="flex items-start gap-3">
                                  <Checkbox
                                    checked={subtask.is_completed}
-                                   onCheckedChange={(checked) => {
-                                     // Handle subtask completion here if needed
+                                   onCheckedChange={async (checked) => {
+                                     const isChecked = checked === true;
+                                     try {
+                                       const { error } = await supabase
+                                         .from('subtasks')
+                                         .update({ 
+                                           is_completed: isChecked,
+                                           completed_at: isChecked ? new Date().toISOString() : null
+                                         })
+                                         .eq('id', subtask.id);
+                                       
+                                       if (error) throw error;
+                                       loadSubtasksForTask(task.id);
+                                       toast({ 
+                                         title: isChecked ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet"
+                                       });
+                                     } catch (error) {
+                                       console.error('Error updating subtask:', error);
+                                       toast({
+                                         title: "Fehler",
+                                         description: "Unteraufgabe konnte nicht aktualisiert werden.",
+                                         variant: "destructive"
+                                       });
+                                     }
                                    }}
                                    className="mt-1"
                                  />
@@ -1343,6 +1427,73 @@ export function TasksView() {
                                      )}
                                    </div>
                                  </div>
+                                 <div className="flex gap-1">
+                                   <Button
+                                     variant="ghost"
+                                     size="sm"
+                                     className="h-8 w-8 p-0"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       const newTitle = prompt('Neuer Titel:', subtask.title);
+                                       if (newTitle) {
+                                         const updateSubtask = async () => {
+                                           try {
+                                             const { error } = await supabase
+                                               .from('subtasks')
+                                               .update({ description: newTitle })
+                                               .eq('id', subtask.id);
+                                             
+                                             if (error) throw error;
+                                             loadSubtasksForTask(task.id);
+                                             toast({ title: "Unteraufgabe aktualisiert" });
+                                           } catch (error) {
+                                             console.error('Error updating subtask:', error);
+                                             toast({
+                                               title: "Fehler",
+                                               description: "Unteraufgabe konnte nicht aktualisiert werden.",
+                                               variant: "destructive"
+                                             });
+                                           }
+                                         };
+                                         updateSubtask();
+                                       }
+                                     }}
+                                     title="Bearbeiten"
+                                   >
+                                     <Edit2 className="h-4 w-4" />
+                                   </Button>
+                                   <Button
+                                     variant="ghost"
+                                     size="sm"
+                                     className="h-8 w-8 p-0 text-destructive"
+                                     onClick={async (e) => {
+                                       e.stopPropagation();
+                                       if (confirm('Unteraufgabe wirklich löschen?')) {
+                                         try {
+                                           const { error } = await supabase
+                                             .from('subtasks')
+                                             .delete()
+                                             .eq('id', subtask.id);
+                                           
+                                           if (error) throw error;
+                                           loadSubtasksForTask(task.id);
+                                           loadSubtaskCounts();
+                                           toast({ title: "Unteraufgabe gelöscht" });
+                                         } catch (error) {
+                                           console.error('Error deleting subtask:', error);
+                                           toast({
+                                             title: "Fehler",
+                                             description: "Unteraufgabe konnte nicht gelöscht werden.",
+                                             variant: "destructive"
+                                           });
+                                         }
+                                       }
+                                     }}
+                                     title="Löschen"
+                                   >
+                                     <Trash2 className="h-4 w-4" />
+                                   </Button>
+                                 </div>
                                </div>
                              </div>
                            ))}
@@ -1352,21 +1503,103 @@ export function TasksView() {
                        {/* Expandable Documents */}
                        {showDocumentsFor === task.id && taskDocumentDetails[task.id] && (
                          <div className="mt-4 space-y-2 animate-fade-in">
+                           {/* Add Document Button */}
+                           <div className="border border-dashed border-border rounded-lg p-3 text-center">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               className="gap-2"
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 // Handle document upload
+                                 const input = document.createElement('input');
+                                 input.type = 'file';
+                                 input.accept = '.pdf,.doc,.docx,.txt,.jpg,.png';
+                                 input.onchange = async (event) => {
+                                   const file = (event.target as HTMLInputElement).files?.[0];
+                                   if (file && user) {
+                                     try {
+                                       const { error } = await supabase
+                                         .from('task_documents')
+                                         .insert({
+                                           task_id: task.id,
+                                           user_id: user.id,
+                                           file_name: file.name,
+                                           file_path: `tasks/${task.id}/${file.name}`,
+                                           file_type: file.type,
+                                           file_size: file.size
+                                         });
+                                       
+                                       if (error) throw error;
+                                       loadTaskDocuments();
+                                       loadTaskDocumentCounts();
+                                       toast({ title: "Dokument hinzugefügt" });
+                                     } catch (error) {
+                                       console.error('Error adding document:', error);
+                                       toast({
+                                         title: "Fehler",
+                                         description: "Dokument konnte nicht hinzugefügt werden.",
+                                         variant: "destructive"
+                                       });
+                                     }
+                                   }
+                                 };
+                                 input.click();
+                               }}
+                             >
+                               <Plus className="h-4 w-4" />
+                               Dokument hinzufügen
+                             </Button>
+                           </div>
+                           
+                           {/* Documents List */}
                            {taskDocumentDetails[task.id].map((document) => (
                              <div key={document.id} className="flex items-center gap-2 text-sm border border-border rounded p-3">
                                <Paperclip className="h-4 w-4" />
                                <span className="flex-1">{document.file_name}</span>
-                               <Button
-                                 variant="ghost"
-                                 size="sm"
-                                 className="h-8 w-8 p-0"
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   // Handle document download
-                                 }}
-                               >
-                                 <Download className="h-4 w-4" />
-                               </Button>
+                               <div className="flex gap-1">
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   className="h-8 w-8 p-0"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     // Handle document download
+                                   }}
+                                   title="Herunterladen"
+                                 >
+                                   <Download className="h-4 w-4" />
+                                 </Button>
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   className="h-8 w-8 p-0 text-destructive"
+                                   onClick={async (e) => {
+                                     e.stopPropagation();
+                                     try {
+                                       const { error } = await supabase
+                                         .from('task_documents')
+                                         .delete()
+                                         .eq('id', document.id);
+                                       
+                                       if (error) throw error;
+                                       loadTaskDocuments();
+                                       loadTaskDocumentCounts();
+                                       toast({ title: "Dokument gelöscht" });
+                                     } catch (error) {
+                                       console.error('Error deleting document:', error);
+                                       toast({
+                                         title: "Fehler",
+                                         description: "Dokument konnte nicht gelöscht werden.",
+                                         variant: "destructive"
+                                       });
+                                     }
+                                   }}
+                                   title="Löschen"
+                                 >
+                                   <Trash2 className="h-4 w-4" />
+                                 </Button>
+                               </div>
                              </div>
                            ))}
                          </div>
@@ -1375,21 +1608,138 @@ export function TasksView() {
                        {/* Expandable Comments */}
                        {showCommentsFor === task.id && (
                          <div className="mt-4 space-y-3 animate-fade-in">
+                           {/* Add Comment Form */}
+                           <div className="border border-border rounded-lg p-3 bg-muted/10">
+                             <div className="flex gap-2">
+                               <Textarea
+                                 value={newComment[task.id] || ''}
+                                 onChange={(e) => setNewComment(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                 placeholder="Kommentar hinzufügen..."
+                                 className="flex-1 min-h-[60px]"
+                               />
+                               <Button
+                                 onClick={() => addComment(task.id)}
+                                 disabled={!newComment[task.id]?.trim()}
+                                 size="sm"
+                               >
+                                 <Send className="h-4 w-4" />
+                               </Button>
+                             </div>
+                           </div>
+                           
+                           {/* Comments List */}
                            {taskComments[task.id]?.map((comment) => (
                              <div key={comment.id} className="border border-border rounded-lg p-3 bg-muted/20">
                                <div className="flex justify-between items-start mb-2">
                                  <span className="font-medium text-sm">{comment.userName}</span>
-                                 <span className="text-xs text-muted-foreground">
-                                   {new Date(comment.createdAt).toLocaleDateString('de-DE', {
-                                     day: '2-digit',
-                                     month: '2-digit',
-                                     year: 'numeric',
-                                     hour: '2-digit',
-                                     minute: '2-digit'
-                                   })}
-                                 </span>
+                                 <div className="flex items-center gap-2">
+                                   <span className="text-xs text-muted-foreground">
+                                     {new Date(comment.createdAt).toLocaleDateString('de-DE', {
+                                       day: '2-digit',
+                                       month: '2-digit',
+                                       year: 'numeric',
+                                       hour: '2-digit',
+                                       minute: '2-digit'
+                                     })}
+                                   </span>
+                                   {comment.userId === user?.id && (
+                                     <div className="flex gap-1">
+                                       <Button
+                                         variant="ghost"
+                                         size="sm"
+                                         className="h-6 w-6 p-0"
+                                         onClick={() => {
+                                           setEditingComment(prev => ({ ...prev, [comment.id]: comment.content }));
+                                         }}
+                                       >
+                                         <Edit2 className="h-3 w-3" />
+                                       </Button>
+                                       <Button
+                                         variant="ghost"
+                                         size="sm"
+                                         className="h-6 w-6 p-0 text-destructive"
+                                         onClick={async () => {
+                                           try {
+                                             const { error } = await supabase
+                                               .from('task_comments')
+                                               .delete()
+                                               .eq('id', comment.id);
+                                             
+                                             if (error) throw error;
+                                             loadTaskComments();
+                                             toast({ title: "Kommentar gelöscht" });
+                                           } catch (error) {
+                                             console.error('Error deleting comment:', error);
+                                             toast({
+                                               title: "Fehler",
+                                               description: "Kommentar konnte nicht gelöscht werden.",
+                                               variant: "destructive"
+                                             });
+                                           }
+                                         }}
+                                       >
+                                         <Trash2 className="h-3 w-3" />
+                                       </Button>
+                                     </div>
+                                   )}
+                                 </div>
                                </div>
-                               <div className="text-sm">{comment.content}</div>
+                               
+                               {editingComment[comment.id] !== undefined ? (
+                                 <div className="flex gap-2">
+                                   <Textarea
+                                     value={editingComment[comment.id]}
+                                     onChange={(e) => setEditingComment(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                                     className="flex-1 min-h-[60px]"
+                                   />
+                                   <div className="flex flex-col gap-1">
+                                     <Button
+                                       size="sm"
+                                       className="h-8"
+                                       onClick={async () => {
+                                         try {
+                                           const { error } = await supabase
+                                             .from('task_comments')
+                                             .update({ content: editingComment[comment.id] })
+                                             .eq('id', comment.id);
+                                           
+                                           if (error) throw error;
+                                           setEditingComment(prev => {
+                                             const { [comment.id]: _, ...rest } = prev;
+                                             return rest;
+                                           });
+                                           loadTaskComments();
+                                           toast({ title: "Kommentar aktualisiert" });
+                                         } catch (error) {
+                                           console.error('Error updating comment:', error);
+                                           toast({
+                                             title: "Fehler",
+                                             description: "Kommentar konnte nicht aktualisiert werden.",
+                                             variant: "destructive"
+                                           });
+                                         }
+                                       }}
+                                     >
+                                       <Check className="h-3 w-3" />
+                                     </Button>
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       className="h-8"
+                                       onClick={() => {
+                                         setEditingComment(prev => {
+                                           const { [comment.id]: _, ...rest } = prev;
+                                           return rest;
+                                         });
+                                       }}
+                                     >
+                                       <X className="h-3 w-3" />
+                                     </Button>
+                                   </div>
+                                 </div>
+                               ) : (
+                                 <div className="text-sm">{comment.content}</div>
+                               )}
                              </div>
                            )) || (
                              <div className="text-sm text-muted-foreground text-center py-4">
