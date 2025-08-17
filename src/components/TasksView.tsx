@@ -1227,6 +1227,7 @@ export function TasksView() {
                                }
                              }}
                            >
+                             <ListTodo className="h-4 w-4" />
                              {showSubtasksFor === task.id ? (
                                <ChevronDown className="h-4 w-4" />
                              ) : (
@@ -1249,6 +1250,7 @@ export function TasksView() {
                                }
                              }}
                            >
+                             <Paperclip className="h-4 w-4" />
                              {showDocumentsFor === task.id ? (
                                <ChevronDown className="h-4 w-4" />
                              ) : (
@@ -1264,36 +1266,85 @@ export function TasksView() {
                              <span>Wiedervorlage</span>
                            </div>
                          )}
-                        
-                        {task.assignedTo && (
-                          <div className="flex items-center gap-1">
-                            <User className="h-4 w-4" />
-                            <span>{users.find(u => u.user_id === task.assignedTo)?.display_name || task.assignedTo}</span>
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center gap-1">
-                          <MessageCircle className="h-4 w-4" />
+                         
+                         {task.assignedTo && (
+                           <div className="flex items-center gap-1">
+                             <User className="h-4 w-4" />
+                             <span>{users.find(u => u.user_id === task.assignedTo)?.display_name || task.assignedTo}</span>
+                           </div>
+                         )}
+                         
+                         <div 
+                           className="flex items-center gap-1 cursor-pointer hover:text-primary"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             if (showCommentsFor === task.id) {
+                               setShowCommentsFor(null);
+                             } else {
+                               setShowCommentsFor(task.id);
+                             }
+                           }}
+                         >
+                           <MessageCircle className="h-4 w-4" />
+                           {showCommentsFor === task.id ? (
+                             <ChevronDown className="h-4 w-4" />
+                           ) : (
+                             <ChevronRight className="h-4 w-4" />
+                           )}
                            <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
                          </div>
                        </div>
                        
                        {/* Expandable Subtasks */}
                        {showSubtasksFor === task.id && subtasks[task.id] && (
-                         <div className="mt-4 pl-6 border-l-2 border-muted space-y-2">
-                           <h4 className="text-sm font-medium text-muted-foreground">Unteraufgaben:</h4>
+                         <div className="mt-4 space-y-3 animate-fade-in">
                            {subtasks[task.id].map((subtask) => (
-                             <div key={subtask.id} className="flex items-center gap-2 text-sm">
-                               <Checkbox
-                                 checked={subtask.is_completed}
-                                 onCheckedChange={(checked) => {
-                                   // Handle subtask completion here if needed
-                                 }}
-                                 className="h-3 w-3"
-                               />
-                               <span className={subtask.is_completed ? "line-through text-muted-foreground" : ""}>
-                                 {subtask.title}
-                               </span>
+                             <div key={subtask.id} className="border border-border rounded-lg p-4 bg-muted/20">
+                               <div className="flex items-start gap-3">
+                                 <Checkbox
+                                   checked={subtask.is_completed}
+                                   onCheckedChange={(checked) => {
+                                     // Handle subtask completion here if needed
+                                   }}
+                                   className="mt-1"
+                                 />
+                                 <div className="flex-1">
+                                   <div className={`font-medium ${subtask.is_completed ? "line-through text-muted-foreground" : ""}`}>
+                                     {subtask.title}
+                                   </div>
+                                   {subtask.is_completed && subtask.result_text && (
+                                     <div className="mt-2 p-3 bg-emerald-500/10 border-l-4 border-emerald-500 rounded">
+                                       <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400 mb-1">
+                                         Ergebnis:
+                                       </div>
+                                       <div className="text-sm text-emerald-600 dark:text-emerald-300">
+                                         {subtask.result_text}
+                                       </div>
+                                       <div className="text-xs text-emerald-500 dark:text-emerald-400 mt-2">
+                                         Erledigt am: {subtask.completed_at ? new Date(subtask.completed_at).toLocaleDateString('de-DE', {
+                                           day: '2-digit',
+                                           month: '2-digit',
+                                           year: 'numeric',
+                                           hour: '2-digit',
+                                           minute: '2-digit'
+                                         }) : ''}
+                                       </div>
+                                     </div>
+                                   )}
+                                   <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
+                                     {subtask.assigned_to && (
+                                       <div>
+                                         Zuständig: {users.find(u => u.user_id === subtask.assigned_to)?.display_name || subtask.assigned_to}
+                                       </div>
+                                     )}
+                                     {subtask.due_date && (
+                                       <div>
+                                         Fällig: {new Date(subtask.due_date).toLocaleDateString('de-DE')}
+                                       </div>
+                                     )}
+                                   </div>
+                                 </div>
+                               </div>
                              </div>
                            ))}
                          </div>
@@ -1301,25 +1352,51 @@ export function TasksView() {
                        
                        {/* Expandable Documents */}
                        {showDocumentsFor === task.id && taskDocumentDetails[task.id] && (
-                         <div className="mt-4 pl-6 border-l-2 border-muted space-y-2">
-                           <h4 className="text-sm font-medium text-muted-foreground">Dokumente:</h4>
+                         <div className="mt-4 space-y-2 animate-fade-in">
                            {taskDocumentDetails[task.id].map((document) => (
-                             <div key={document.id} className="flex items-center gap-2 text-sm">
-                               <Paperclip className="h-3 w-3" />
-                               <span>{document.file_name}</span>
+                             <div key={document.id} className="flex items-center gap-2 text-sm border border-border rounded p-3">
+                               <Paperclip className="h-4 w-4" />
+                               <span className="flex-1">{document.file_name}</span>
                                <Button
                                  variant="ghost"
                                  size="sm"
-                                 className="h-6 w-6 p-0"
+                                 className="h-8 w-8 p-0"
                                  onClick={(e) => {
                                    e.stopPropagation();
                                    // Handle document download
                                  }}
                                >
-                                 <Download className="h-3 w-3" />
+                                 <Download className="h-4 w-4" />
                                </Button>
                              </div>
                            ))}
+                         </div>
+                       )}
+                       
+                       {/* Expandable Comments */}
+                       {showCommentsFor === task.id && (
+                         <div className="mt-4 space-y-3 animate-fade-in">
+                           {taskComments[task.id]?.map((comment) => (
+                             <div key={comment.id} className="border border-border rounded-lg p-3 bg-muted/20">
+                               <div className="flex justify-between items-start mb-2">
+                                 <span className="font-medium text-sm">{comment.userName}</span>
+                                 <span className="text-xs text-muted-foreground">
+                                   {new Date(comment.createdAt).toLocaleDateString('de-DE', {
+                                     day: '2-digit',
+                                     month: '2-digit',
+                                     year: 'numeric',
+                                     hour: '2-digit',
+                                     minute: '2-digit'
+                                   })}
+                                 </span>
+                               </div>
+                               <div className="text-sm">{comment.content}</div>
+                             </div>
+                           )) || (
+                             <div className="text-sm text-muted-foreground text-center py-4">
+                               Keine Kommentare vorhanden
+                             </div>
+                           )}
                          </div>
                        )}
                      </div>
