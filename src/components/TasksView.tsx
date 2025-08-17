@@ -476,6 +476,7 @@ export function TasksView() {
 
   const loadTaskComments = async () => {
     try {
+      console.log('Loading task comments...');
       const { data, error } = await supabase
         .from('task_comments')
         .select(`
@@ -484,13 +485,16 @@ export function TasksView() {
           content,
           user_id,
           created_at,
-          profiles(display_name)
+          profiles!inner(display_name)
         `)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error from supabase:', error);
+        throw error;
+      }
 
-      console.log('Loaded task comments:', data); // Debug log
+      console.log('Raw comment data:', data);
 
       const commentsMap: { [taskId: string]: TaskComment[] } = {};
       (data || []).forEach(comment => {
@@ -507,10 +511,42 @@ export function TasksView() {
         });
       });
 
-      console.log('Comments map:', commentsMap); // Debug log
+      console.log('Final comments map:', commentsMap);
       setTaskComments(commentsMap);
     } catch (error) {
       console.error('Error loading task comments:', error);
+      
+      // Fallback: Try a simpler query without join
+      try {
+        console.log('Trying fallback query...');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('task_comments')
+          .select('id, task_id, content, user_id, created_at')
+          .order('created_at', { ascending: true });
+
+        if (fallbackError) throw fallbackError;
+
+        console.log('Fallback comment data:', fallbackData);
+        
+        const commentsMap: { [taskId: string]: TaskComment[] } = {};
+        (fallbackData || []).forEach(comment => {
+          if (!commentsMap[comment.task_id]) {
+            commentsMap[comment.task_id] = [];
+          }
+          commentsMap[comment.task_id].push({
+            id: comment.id,
+            taskId: comment.task_id,
+            content: comment.content,
+            userId: comment.user_id,
+            userName: 'Benutzer',
+            createdAt: comment.created_at
+          });
+        });
+
+        setTaskComments(commentsMap);
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+      }
     }
   };
 
@@ -684,6 +720,7 @@ export function TasksView() {
     if (!content || !user) return;
 
     try {
+      console.log('Adding comment for task:', taskId, 'Content:', content);
       const { error } = await supabase
         .from('task_comments')
         .insert({
@@ -692,10 +729,13 @@ export function TasksView() {
           content: content
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error inserting comment:', error);
+        throw error;
+      }
 
       setNewComment(prev => ({ ...prev, [taskId]: '' }));
-      loadTaskComments();
+      await loadTaskComments();
       toast({ title: "Kommentar hinzugefügt" });
     } catch (error: any) {
       console.error('Error adding comment:', error);
@@ -1224,6 +1264,7 @@ export function TasksView() {
                              className="flex items-center gap-1 cursor-pointer hover:text-primary"
                              onClick={(e) => {
                                e.stopPropagation();
+                               console.log('Clicked subtasks for task:', task.id);
                                if (showSubtasksFor === task.id) {
                                  setShowSubtasksFor(null);
                                } else {
@@ -1247,6 +1288,7 @@ export function TasksView() {
                              className="flex items-center gap-1 cursor-pointer hover:text-primary"
                              onClick={(e) => {
                                e.stopPropagation();
+                               console.log('Clicked documents for task:', task.id);
                                if (showDocumentsFor === task.id) {
                                  setShowDocumentsFor(null);
                                } else {
@@ -1289,6 +1331,7 @@ export function TasksView() {
                            className="flex items-center gap-1 cursor-pointer hover:text-primary"
                            onClick={(e) => {
                              e.stopPropagation();
+                             console.log('Clicked comments for task:', task.id, 'Current comments:', taskComments[task.id]);
                              if (showCommentsFor === task.id) {
                                setShowCommentsFor(null);
                              } else {
@@ -1302,7 +1345,7 @@ export function TasksView() {
                              <ChevronRight className="h-4 w-4" />
                            )}
                            <MessageCircle className="h-4 w-4" />
-                           <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
+                           <span>Kommentare ({(taskComments[task.id] || []).length})</span>
                          </div>
                        </div>
                        
