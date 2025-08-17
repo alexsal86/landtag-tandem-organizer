@@ -29,6 +29,8 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
   // Form state
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [assignedTo, setAssignedTo] = useState("");
 
   console.log('TodoCreateDialog render - open:', open, 'user:', user?.id);
 
@@ -82,8 +84,8 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
         user_id: user?.id,
         category_id: categoryId,
         title: title.trim(),
-        assigned_to: null,
-        due_date: null
+        assigned_to: assignedTo || null,
+        due_date: dueDate || null
       });
       
       if (error) throw error;
@@ -95,6 +97,8 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
       setTitle("");
       setCategoryId("");
+      setDueDate("");
+      setAssignedTo("");
       onTodoCreated();
       onOpenChange(false);
     } catch (error: any) {
@@ -147,6 +151,26 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="dueDate">Fälligkeitsdatum (optional)</Label>
+            <Input
+              id="dueDate"
+              type="datetime-local"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="assignedTo">Zuweisung (optional)</Label>
+            <Input
+              id="assignedTo"
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+              placeholder="An wen soll das ToDo zugewiesen werden?"
+            />
           </div>
 
           <div className="flex gap-2 pt-4">
