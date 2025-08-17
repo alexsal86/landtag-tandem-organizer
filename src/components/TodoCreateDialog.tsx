@@ -7,11 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 
 interface TodoCategory {
   id: string;
@@ -41,10 +36,13 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
-  const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [dueDate, setDueDate] = useState("");
+
+  console.log('TodoCreateDialog rendered with open:', open);
 
   useEffect(() => {
     if (open) {
+      console.log('Dialog opened, loading data...');
       loadData();
     }
   }, [open]);
@@ -101,7 +99,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
         category_id: categoryId,
         title: title.trim(),
         assigned_to: assignedTo || null,
-        due_date: dueDate?.toISOString() || null
+        due_date: dueDate ? new Date(dueDate).toISOString() : null
       };
 
       console.log('Inserting todo data:', todoData);
@@ -122,7 +120,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
       setTitle("");
       setCategoryId("");
       setAssignedTo("");
-      setDueDate(undefined);
+      setDueDate("");
       
       onTodoCreated();
       onOpenChange(false);
@@ -137,6 +135,8 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
       setLoading(false);
     }
   };
+
+  if (!open) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -197,30 +197,13 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
           </div>
 
           <div className="space-y-2">
-            <Label>Fälligkeitsdatum</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !dueDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dueDate ? format(dueDate, "dd.MM.yyyy") : "Datum auswählen"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dueDate}
-                  onSelect={setDueDate}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <Label htmlFor="due-date">Fälligkeitsdatum</Label>
+            <Input
+              id="due-date"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
           </div>
 
           <div className="flex gap-2 pt-4">
