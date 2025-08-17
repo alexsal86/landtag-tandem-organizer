@@ -131,6 +131,7 @@ export function TasksView() {
     loadAssignedSubtasks();
     loadTaskSnoozes();
     loadTodos();
+    loadTaskComments(); // Ensure comments are loaded on mount
   }, []);
 
   // Load all snoozes when snooze management is opened
@@ -427,7 +428,9 @@ export function TasksView() {
 
       setTasks(transformedTasks);
       setLoading(false);
-      loadTaskComments();
+      
+      // Load comments after tasks are loaded
+      await loadTaskComments();
     } catch (error) {
       console.error('Error loading tasks:', error);
       setLoading(false);
@@ -1262,17 +1265,8 @@ export function TasksView() {
                            </div>
                          )}
                          
-                         {taskSnoozes[task.id] && (
-                           <div className="flex items-center gap-1">
-                             <AlarmClock className="h-4 w-4" />
-                             <span>Wiedervorlage</span>
-                           </div>
-                         )}
-                         
-                         <Button
-                           variant="ghost"
-                           size="sm"
-                           className="h-8 w-8 p-0"
+                         <div 
+                           className="flex items-center gap-1 cursor-pointer hover:text-primary"
                            onClick={(e) => {
                              e.stopPropagation();
                              setSnoozeDialogOpen({ type: 'task', id: task.id });
@@ -1281,7 +1275,8 @@ export function TasksView() {
                            title="Auf Wiedervorlage setzen"
                          >
                            <AlarmClock className="h-4 w-4" />
-                         </Button>
+                           <span>Wiedervorlage</span>
+                         </div>
                          
                          {task.assignedTo && (
                            <div className="flex items-center gap-1">
