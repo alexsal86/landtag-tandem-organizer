@@ -1160,91 +1160,73 @@ export function TasksView() {
             filteredTasksWithSnooze.map((task) => (
               <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleTaskClick(task)}>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <Checkbox
-                        checked={task.status === "completed"}
-                        onCheckedChange={() => {
-                          toggleTaskStatus(task.id);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      
-                      <div className="flex-1">
-                        <h3 className="font-medium text-foreground">{task.title}</h3>
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
-                        )}
-                        
-                        <div className="flex items-center gap-4 mt-2">
-                          <Badge variant={
-                            task.priority === "high" ? "destructive" :
-                            task.priority === "medium" ? "default" : "secondary"
-                          }>
-                            {task.priority === "high" ? "Hoch" : 
-                             task.priority === "medium" ? "Mittel" : "Niedrig"}
-                          </Badge>
-                          
-                          <Badge variant="outline">
-                            {task.category === "legislation" ? "Gesetzgebung" :
-                             task.category === "committee" ? "Ausschuss" :
-                             task.category === "constituency" ? "Wahlkreis" : "Persönlich"}
-                          </Badge>
-                          
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            <span className={isOverdue(task.dueDate) ? "text-red-600" : ""}>
-                              {new Date(task.dueDate).toLocaleDateString('de-DE')}
-                              {isOverdue(task.dueDate) && " (überfällig)"}
-                            </span>
-                          </div>
-                          
-                          {task.assignedTo && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <User className="h-4 w-4" />
-                              <span>{task.assignedTo}</span>
-                            </div>
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={task.status === "completed"}
+                      onCheckedChange={() => {
+                        toggleTaskStatus(task.id);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1"
+                    />
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-foreground text-lg">{task.title}</h3>
+                          {task.description && (
+                            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{task.description}</p>
                           )}
                         </div>
+                        
+                        <Badge variant="secondary" className="shrink-0">
+                          {task.category === "legislation" ? "Gesetzgebung" :
+                           task.category === "committee" ? "Ausschuss" :
+                           task.category === "constituency" ? "Wahlkreis" : "Persönlich"}
+                        </Badge>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      {(taskComments[task.id]?.length || 0) > 0 && (
-                        <Badge variant="secondary" className="gap-1">
-                          <MessageCircle className="h-3 w-3" />
-                          {taskComments[task.id]?.length || 0}
-                        </Badge>
-                      )}
                       
-                      {(taskDocuments[task.id] || 0) > 0 && (
-                        <Badge variant="secondary" className="gap-1">
-                          <Paperclip className="h-3 w-3" />
-                          {taskDocuments[task.id] || 0}
-                        </Badge>
-                      )}
-                      
-                      {(subtaskCounts[task.id] || 0) > 0 && (
-                        <Badge variant="secondary" className="gap-1">
-                          <ListTodo className="h-3 w-3" />
-                          {subtaskCounts[task.id] || 0}
-                        </Badge>
-                      )}
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSnoozeDialogOpen({ type: 'task', id: task.id });
-                          setSnoozeDate('');
-                        }}
-                        className="gap-1 h-6 px-2 text-xs"
-                        title="Auf Wiedervorlage setzen"
-                      >
-                        <AlarmClock className="h-3 w-3" />
-                        <span>Wiedervorlage</span>
-                      </Button>
+                      <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span className={isOverdue(task.dueDate) ? "text-red-600" : ""}>
+                            {new Date(task.dueDate).toLocaleDateString('de-DE')}
+                          </span>
+                        </div>
+                        
+                        {(subtaskCounts[task.id] || 0) > 0 && (
+                          <div className="flex items-center gap-1">
+                            <ListTodo className="h-4 w-4" />
+                            <span>{subtaskCounts[task.id]} Unteraufgaben</span>
+                          </div>
+                        )}
+                        
+                        {(taskDocuments[task.id] || 0) > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Paperclip className="h-4 w-4" />
+                            <span>{taskDocuments[task.id]} Dokumente</span>
+                          </div>
+                        )}
+                        
+                        {taskSnoozes[task.id] && (
+                          <div className="flex items-center gap-1">
+                            <AlarmClock className="h-4 w-4" />
+                            <span>Wiedervorlage</span>
+                          </div>
+                        )}
+                        
+                        {task.assignedTo && (
+                          <div className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            <span>{users.find(u => u.user_id === task.assignedTo)?.display_name || task.assignedTo}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center gap-1">
+                          <MessageCircle className="h-4 w-4" />
+                          <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
