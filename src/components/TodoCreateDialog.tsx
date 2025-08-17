@@ -50,11 +50,22 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
   }, [open]);
 
   const loadData = async () => {
+    console.log('Loading todo dialog data...');
     try {
       const [categoriesRes, profilesRes] = await Promise.all([
         supabase.from('todo_categories').select('id, label, color').eq('is_active', true).order('order_index'),
         supabase.from('profiles').select('user_id, display_name').order('display_name')
       ]);
+
+      console.log('Categories loaded:', categoriesRes.data);
+      console.log('Profiles loaded:', profilesRes.data);
+      
+      if (categoriesRes.error) {
+        console.error('Categories error:', categoriesRes.error);
+      }
+      if (profilesRes.error) {
+        console.error('Profiles error:', profilesRes.error);
+      }
 
       setCategories(categoriesRes.data || []);
       setProfiles(profilesRes.data || []);
@@ -70,8 +81,10 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Todo form submitted with:', { title, categoryId, assignedTo, dueDate, user: user?.id });
     
     if (!title.trim() || !categoryId) {
+      console.log('Validation failed:', { title: title.trim(), categoryId });
       toast({
         title: "Fehler",
         description: "Bitte füllen Sie alle Pflichtfelder aus.",
@@ -91,10 +104,15 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
         due_date: dueDate?.toISOString() || null
       };
 
+      console.log('Inserting todo data:', todoData);
       const { error } = await supabase.from('todos').insert(todoData);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw error;
+      }
 
+      console.log('Todo created successfully');
       toast({
         title: "Erfolgreich",
         description: "ToDo wurde erstellt."

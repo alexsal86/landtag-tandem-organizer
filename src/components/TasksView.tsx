@@ -117,6 +117,8 @@ export function TasksView() {
     is_completed: boolean;
   }>>([]);
   
+  console.log('TodoCreateOpen state:', todoCreateOpen); // Debug log
+  
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -963,7 +965,10 @@ export function TasksView() {
                 </Button>
                 <Button 
                   className="gap-2"
-                  onClick={() => setTodoCreateOpen(true)}
+                  onClick={() => {
+                    console.log('Clicked "Neues ToDo" button');
+                    setTodoCreateOpen(true);
+                  }}
                 >
                   <Plus className="h-4 w-4" />
                   Neues ToDo
