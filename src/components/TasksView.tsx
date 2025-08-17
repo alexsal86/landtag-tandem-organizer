@@ -1179,11 +1179,31 @@ export function TasksView() {
                           )}
                         </div>
                         
-                        <Badge variant="secondary" className="shrink-0">
-                          {task.category === "legislation" ? "Gesetzgebung" :
-                           task.category === "committee" ? "Ausschuss" :
-                           task.category === "constituency" ? "Wahlkreis" : "Persönlich"}
-                        </Badge>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="secondary">
+                            {task.category === "legislation" ? "Gesetzgebung" :
+                             task.category === "committee" ? "Ausschuss" :
+                             task.category === "constituency" ? "Wahlkreis" : "Persönlich"}
+                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div 
+                                  className={`w-3 h-3 rounded-full ${
+                                    task.priority === "high" ? "bg-red-500" :
+                                    task.priority === "medium" ? "bg-yellow-500" : "bg-green-500"
+                                  }`}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>
+                                  {task.priority === "high" ? "Hoch" :
+                                   task.priority === "medium" ? "Mittel" : "Niedrig"}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </div>
                       
                       <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
@@ -1194,26 +1214,56 @@ export function TasksView() {
                           </span>
                         </div>
                         
-                        {(subtaskCounts[task.id] || 0) > 0 && (
-                          <div className="flex items-center gap-1">
-                            <ListTodo className="h-4 w-4" />
-                            <span>{subtaskCounts[task.id]} Unteraufgaben</span>
-                          </div>
-                        )}
-                        
-                        {(taskDocuments[task.id] || 0) > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Paperclip className="h-4 w-4" />
-                            <span>{taskDocuments[task.id]} Dokumente</span>
-                          </div>
-                        )}
-                        
-                        {taskSnoozes[task.id] && (
-                          <div className="flex items-center gap-1">
-                            <AlarmClock className="h-4 w-4" />
-                            <span>Wiedervorlage</span>
-                          </div>
-                        )}
+                         {(subtaskCounts[task.id] || 0) > 0 && (
+                           <div 
+                             className="flex items-center gap-1 cursor-pointer hover:text-primary"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               if (showSubtasksFor === task.id) {
+                                 setShowSubtasksFor(null);
+                               } else {
+                                 loadSubtasksForTask(task.id);
+                                 setShowSubtasksFor(task.id);
+                               }
+                             }}
+                           >
+                             {showSubtasksFor === task.id ? (
+                               <ChevronDown className="h-4 w-4" />
+                             ) : (
+                               <ChevronRight className="h-4 w-4" />
+                             )}
+                             <span>{subtaskCounts[task.id]} Unteraufgaben</span>
+                           </div>
+                         )}
+                         
+                         {(taskDocuments[task.id] || 0) > 0 && (
+                           <div 
+                             className="flex items-center gap-1 cursor-pointer hover:text-primary"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               if (showDocumentsFor === task.id) {
+                                 setShowDocumentsFor(null);
+                               } else {
+                                 loadTaskDocuments();
+                                 setShowDocumentsFor(task.id);
+                               }
+                             }}
+                           >
+                             {showDocumentsFor === task.id ? (
+                               <ChevronDown className="h-4 w-4" />
+                             ) : (
+                               <ChevronRight className="h-4 w-4" />
+                             )}
+                             <span>{taskDocuments[task.id]} Dokumente</span>
+                           </div>
+                         )}
+                         
+                         {taskSnoozes[task.id] && (
+                           <div className="flex items-center gap-1">
+                             <AlarmClock className="h-4 w-4" />
+                             <span>Wiedervorlage</span>
+                           </div>
+                         )}
                         
                         {task.assignedTo && (
                           <div className="flex items-center gap-1">
@@ -1224,13 +1274,58 @@ export function TasksView() {
                         
                         <div className="flex items-center gap-1">
                           <MessageCircle className="h-4 w-4" />
-                          <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                           <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
+                         </div>
+                       </div>
+                       
+                       {/* Expandable Subtasks */}
+                       {showSubtasksFor === task.id && subtasks[task.id] && (
+                         <div className="mt-4 pl-6 border-l-2 border-muted space-y-2">
+                           <h4 className="text-sm font-medium text-muted-foreground">Unteraufgaben:</h4>
+                           {subtasks[task.id].map((subtask) => (
+                             <div key={subtask.id} className="flex items-center gap-2 text-sm">
+                               <Checkbox
+                                 checked={subtask.is_completed}
+                                 onCheckedChange={(checked) => {
+                                   // Handle subtask completion here if needed
+                                 }}
+                                 className="h-3 w-3"
+                               />
+                               <span className={subtask.is_completed ? "line-through text-muted-foreground" : ""}>
+                                 {subtask.title}
+                               </span>
+                             </div>
+                           ))}
+                         </div>
+                       )}
+                       
+                       {/* Expandable Documents */}
+                       {showDocumentsFor === task.id && taskDocumentDetails[task.id] && (
+                         <div className="mt-4 pl-6 border-l-2 border-muted space-y-2">
+                           <h4 className="text-sm font-medium text-muted-foreground">Dokumente:</h4>
+                           {taskDocumentDetails[task.id].map((document) => (
+                             <div key={document.id} className="flex items-center gap-2 text-sm">
+                               <Paperclip className="h-3 w-3" />
+                               <span>{document.file_name}</span>
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 className="h-6 w-6 p-0"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   // Handle document download
+                                 }}
+                               >
+                                 <Download className="h-3 w-3" />
+                               </Button>
+                             </div>
+                           ))}
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 </CardContent>
+               </Card>
             ))
           )}
         </div>
