@@ -554,7 +554,7 @@ export function TasksView() {
     try {
       const { data, error } = await supabase
         .from('subtasks')
-        .select('task_id, id');
+        .select('task_id, id, is_completed');
 
       if (error) throw error;
 
@@ -575,7 +575,6 @@ export function TasksView() {
         .from('subtasks')
         .select('*')
         .eq('task_id', taskId)
-        .eq('is_completed', false)
         .order('order_index');
 
       if (error) throw error;
@@ -1227,12 +1226,12 @@ export function TasksView() {
                                }
                              }}
                            >
-                             <ListTodo className="h-4 w-4" />
                              {showSubtasksFor === task.id ? (
                                <ChevronDown className="h-4 w-4" />
                              ) : (
                                <ChevronRight className="h-4 w-4" />
                              )}
+                             <ListTodo className="h-4 w-4" />
                              <span>{subtaskCounts[task.id]} Unteraufgaben</span>
                            </div>
                          )}
@@ -1250,12 +1249,12 @@ export function TasksView() {
                                }
                              }}
                            >
-                             <Paperclip className="h-4 w-4" />
                              {showDocumentsFor === task.id ? (
                                <ChevronDown className="h-4 w-4" />
                              ) : (
                                <ChevronRight className="h-4 w-4" />
                              )}
+                             <Paperclip className="h-4 w-4" />
                              <span>{taskDocuments[task.id]} Dokumente</span>
                            </div>
                          )}
@@ -1285,12 +1284,12 @@ export function TasksView() {
                              }
                            }}
                          >
-                           <MessageCircle className="h-4 w-4" />
                            {showCommentsFor === task.id ? (
                              <ChevronDown className="h-4 w-4" />
                            ) : (
                              <ChevronRight className="h-4 w-4" />
                            )}
+                           <MessageCircle className="h-4 w-4" />
                            <span>Kommentare ({taskComments[task.id]?.length || 0})</span>
                          </div>
                        </div>
