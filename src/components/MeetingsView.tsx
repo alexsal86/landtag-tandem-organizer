@@ -22,6 +22,7 @@ import { MeetingArchiveView } from "./MeetingArchiveView";
 
 interface AgendaItem {
   id?: string;
+  meeting_id?: string;
   title: string;
   description?: string;
   assigned_to?: string | null;
@@ -34,6 +35,12 @@ interface AgendaItem {
   file_path?: string | null;
   result_text?: string | null;
   carry_over_to_next?: boolean;
+  sub_items?: any[];
+  source_meeting_id?: string | null;
+  carried_over_from?: string | null;
+  original_meeting_date?: string | null;
+  original_meeting_title?: string | null;
+  carryover_notes?: string | null;
   // lokale Hilfskeys für Hierarchie vor dem Speichern
   localKey?: string;
   parentLocalKey?: string;
@@ -616,6 +623,13 @@ export function MeetingsView() {
 
       if (agendaError) throw agendaError;
 
+      // CARRYOVER PROCESSING - Handle items marked for carryover FIRST
+      const carryoverItems = agendaItemsData?.filter(item => item.carry_over_to_next) || [];
+      if (carryoverItems.length > 0) {
+        console.log('Processing carryover items...');
+        await processCarryoverItems(meeting, carryoverItems);
+      }
+
       console.log('Step 2: Creating follow-up task...');
       // Create follow-up task
       const followUpTaskData = {
@@ -764,6 +778,7 @@ export function MeetingsView() {
       
       console.log('Step 7: Setting active meeting to null...');
       setActiveMeeting(null);
+      setActiveMeetingId(null);
       
       console.log('Step 8: Reloading meetings...');
       await loadMeetings(); // Reload to update UI
@@ -790,6 +805,114 @@ export function MeetingsView() {
         description: `Die Besprechung konnte nicht archiviert werden: ${errorMessage}`,
         variant: "destructive"
       });
+    }
+  };
+
+  const processCarryoverItems = async (meeting: Meeting, carryoverItems: AgendaItem[]) => {
+    if (!user || !meeting.template_id) return;
+
+    try {
+      // Check if there's already a next meeting with the same template
+      const { data: nextMeeting } = await supabase
+        .from('meetings')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('template_id', meeting.template_id)
+        .eq('status', 'planned')
+        .gt('meeting_date', meeting.meeting_date)
+        .order('meeting_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (nextMeeting) {
+        // Transfer directly to the next meeting
+        await transferItemsToMeeting(carryoverItems, nextMeeting.id, meeting);
+        toast({
+          title: "Punkte übertragen",
+          description: `${carryoverItems.length} Punkte wurden auf die nächste Besprechung übertragen`
+        });
+      } else {
+        // Store in carryover_items table for later
+        await storeCarryoverItems(carryoverItems, meeting);
+        toast({
+          title: "Punkte vorgemerkt",
+          description: `${carryoverItems.length} Punkte wurden für die nächste Besprechung vorgemerkt`
+        });
+      }
+    } catch (error) {
+      console.error('Error processing carryover items:', error);
+      toast({
+        title: "Fehler",
+        description: "Fehler beim Übertragen der Agenda-Punkte",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const transferItemsToMeeting = async (items: AgendaItem[], targetMeetingId: string, sourceMeeting: Meeting) => {
+    for (const item of items) {
+      try {
+        // Get current max order index for target meeting
+        const { data: maxOrderData } = await supabase
+          .from('meeting_agenda_items')
+          .select('order_index')
+          .eq('meeting_id', targetMeetingId)
+          .order('order_index', { ascending: false })
+          .limit(1);
+
+        const nextOrderIndex = (maxOrderData?.[0]?.order_index || 0) + 1;
+
+        // Insert the carried over item
+        const { error } = await supabase
+          .from('meeting_agenda_items')
+          .insert({
+            meeting_id: targetMeetingId,
+            title: item.title,
+            description: item.description,
+            notes: item.notes,
+            result_text: item.result_text,
+            assigned_to: item.assigned_to,
+            order_index: nextOrderIndex,
+            source_meeting_id: sourceMeeting.id,
+            original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
+            original_meeting_title: sourceMeeting.title,
+            carryover_notes: `Übertragen von: ${sourceMeeting.title} (${sourceMeeting.meeting_date})`
+          });
+
+        if (error) {
+          console.error('Error transferring item:', error);
+        }
+      } catch (error) {
+        console.error('Error transferring agenda item:', item.title, error);
+      }
+    }
+  };
+
+  const storeCarryoverItems = async (items: AgendaItem[], sourceMeeting: Meeting) => {
+    for (const item of items) {
+      try {
+        const { error } = await supabase
+          .from('carryover_items')
+          .insert({
+            user_id: user!.id,
+            template_id: sourceMeeting.template_id,
+            title: item.title,
+            description: item.description,
+            notes: item.notes,
+            result_text: item.result_text,
+            assigned_to: item.assigned_to,
+            order_index: item.order_index,
+            original_meeting_id: sourceMeeting.id,
+            original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
+            original_meeting_title: sourceMeeting.title
+          });
+
+        if (error) {
+          console.error('Error storing carryover item:', error);
+        }
+      } catch (error) {
+        console.error('Error storing carryover item:', item.title, error);
+      }
     }
   };
 

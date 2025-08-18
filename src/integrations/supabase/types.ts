@@ -260,6 +260,57 @@ export type Database = {
         }
         Relationships: []
       }
+      carryover_items: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          description: string | null
+          id: string
+          notes: string | null
+          order_index: number
+          original_meeting_date: string | null
+          original_meeting_id: string | null
+          original_meeting_title: string | null
+          result_text: string | null
+          sub_items: Json | null
+          template_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          notes?: string | null
+          order_index?: number
+          original_meeting_date?: string | null
+          original_meeting_id?: string | null
+          original_meeting_title?: string | null
+          result_text?: string | null
+          sub_items?: Json | null
+          template_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          notes?: string | null
+          order_index?: number
+          original_meeting_date?: string | null
+          original_meeting_id?: string | null
+          original_meeting_title?: string | null
+          result_text?: string | null
+          sub_items?: Json | null
+          template_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           accessibility_features: string[] | null
@@ -1026,7 +1077,9 @@ export type Database = {
       meeting_agenda_items: {
         Row: {
           assigned_to: string | null
+          carried_over_from: string | null
           carry_over_to_next: boolean | null
+          carryover_notes: string | null
           created_at: string
           description: string | null
           file_path: string | null
@@ -1036,15 +1089,20 @@ export type Database = {
           meeting_id: string
           notes: string | null
           order_index: number
+          original_meeting_date: string | null
+          original_meeting_title: string | null
           parent_id: string | null
           result_text: string | null
+          source_meeting_id: string | null
           task_id: string | null
           title: string
           updated_at: string
         }
         Insert: {
           assigned_to?: string | null
+          carried_over_from?: string | null
           carry_over_to_next?: boolean | null
+          carryover_notes?: string | null
           created_at?: string
           description?: string | null
           file_path?: string | null
@@ -1054,15 +1112,20 @@ export type Database = {
           meeting_id: string
           notes?: string | null
           order_index?: number
+          original_meeting_date?: string | null
+          original_meeting_title?: string | null
           parent_id?: string | null
           result_text?: string | null
+          source_meeting_id?: string | null
           task_id?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           assigned_to?: string | null
+          carried_over_from?: string | null
           carry_over_to_next?: boolean | null
+          carryover_notes?: string | null
           created_at?: string
           description?: string | null
           file_path?: string | null
@@ -1072,8 +1135,11 @@ export type Database = {
           meeting_id?: string
           notes?: string | null
           order_index?: number
+          original_meeting_date?: string | null
+          original_meeting_title?: string | null
           parent_id?: string | null
           result_text?: string | null
+          source_meeting_id?: string | null
           task_id?: string | null
           title?: string
           updated_at?: string
