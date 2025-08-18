@@ -88,6 +88,7 @@ export function MeetingsView() {
   const [showTaskSelector, setShowTaskSelector] = useState<{itemIndex: number} | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [activeMeeting, setActiveMeeting] = useState<Meeting | null>(null);
+  const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
@@ -564,7 +565,14 @@ export function MeetingsView() {
   };
 
   const startMeeting = async (meeting: Meeting) => {
+    // Stop any currently active meeting first
+    if (activeMeetingId && activeMeetingId !== meeting.id) {
+      setActiveMeeting(null);
+      setActiveMeetingId(null);
+    }
+    
     setActiveMeeting(meeting);
+    setActiveMeetingId(meeting.id || null);
     if (meeting.id) {
       await loadAgendaItems(meeting.id);
     }
@@ -572,6 +580,7 @@ export function MeetingsView() {
 
   const stopMeeting = () => {
     setActiveMeeting(null);
+    setActiveMeetingId(null);
   };
 
   const archiveMeeting = async (meeting: Meeting) => {
@@ -1790,12 +1799,22 @@ export function MeetingsView() {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex justify-end">
-                  <Button size="sm" variant="default" 
-                    onClick={() => startMeeting(meeting)}
-                    className="w-full">
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Start
-                  </Button>
+                  {activeMeetingId === meeting.id ? (
+                    <Button size="sm" variant="default" 
+                      onClick={stopMeeting}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white">
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Laufend
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="default" 
+                      onClick={() => startMeeting(meeting)}
+                      className="w-full"
+                      disabled={activeMeetingId !== null}>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Start
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
