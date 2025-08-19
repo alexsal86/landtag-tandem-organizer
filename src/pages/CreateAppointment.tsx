@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { AppointmentPollCreator } from "@/components/poll/AppointmentPollCreator";
 
 const appointmentSchema = z.object({
   title: z.string().min(1, "Titel ist erforderlich"),
@@ -48,6 +49,7 @@ const CreateAppointment = () => {
   const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
   const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string }>>([]);
   const [appointmentStatuses, setAppointmentStatuses] = useState<Array<{ name: string; label: string }>>([]);
+  const [showPollCreator, setShowPollCreator] = useState(false);
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -208,16 +210,31 @@ const CreateAppointment = () => {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Termindetails
-            </CardTitle>
-            <CardDescription>
-              Geben Sie alle relevanten Informationen für Ihren Termin ein
-            </CardDescription>
-          </CardHeader>
+        {showPollCreator ? (
+          <AppointmentPollCreator onClose={() => setShowPollCreator(false)} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Termindetails
+                  </CardTitle>
+                  <CardDescription>
+                    Geben Sie alle relevanten Informationen für Ihren Termin ein
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPollCreator(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Users className="h-4 w-4" />
+                  Terminabstimmung
+                </Button>
+              </div>
+            </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -471,6 +488,7 @@ const CreateAppointment = () => {
             </Form>
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
   );
