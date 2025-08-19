@@ -110,6 +110,39 @@ export type Database = {
           },
         ]
       }
+      appointment_polls: {
+        Row: {
+          created_at: string
+          deadline: string | null
+          description: string | null
+          id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       appointment_statuses: {
         Row: {
           created_at: string
@@ -150,6 +183,7 @@ export type Database = {
           id: string
           location: string | null
           meeting_id: string | null
+          poll_id: string | null
           priority: string | null
           reminder_minutes: number | null
           start_time: string
@@ -167,6 +201,7 @@ export type Database = {
           id?: string
           location?: string | null
           meeting_id?: string | null
+          poll_id?: string | null
           priority?: string | null
           reminder_minutes?: number | null
           start_time: string
@@ -184,6 +219,7 @@ export type Database = {
           id?: string
           location?: string | null
           meeting_id?: string | null
+          poll_id?: string | null
           priority?: string | null
           reminder_minutes?: number | null
           start_time?: string
@@ -205,6 +241,13 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: true
             referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_polls"
             referencedColumns: ["id"]
           },
         ]
@@ -1467,6 +1510,137 @@ export type Database = {
         }
         Relationships: []
       }
+      poll_participants: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_external: boolean
+          name: string | null
+          poll_id: string
+          token: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_external?: boolean
+          name?: string | null
+          poll_id: string
+          token?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_external?: boolean
+          name?: string | null
+          poll_id?: string
+          token?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_participants_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_responses: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          participant_id: string
+          poll_id: string
+          status: string
+          time_slot_id: string
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          participant_id: string
+          poll_id: string
+          status: string
+          time_slot_id: string
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          participant_id?: string
+          poll_id?: string
+          status?: string
+          time_slot_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_responses_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "poll_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_responses_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_responses_time_slot_id_fkey"
+            columns: ["time_slot_id"]
+            isOneToOne: false
+            referencedRelation: "poll_time_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_time_slots: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          order_index: number
+          poll_id: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          order_index?: number
+          poll_id: string
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          order_index?: number
+          poll_id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_time_slots_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1987,6 +2161,10 @@ export type Database = {
           | { planning_id: string }
           | { planning_id: string; template_id_param?: string }
         Returns: undefined
+      }
+      generate_participant_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_authored_messages: {
         Args: { author_id_param: string }
