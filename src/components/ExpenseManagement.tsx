@@ -135,8 +135,9 @@ export const ExpenseManagement = () => {
     console.log('Starting receipt upload for file:', file.name, 'Size:', file.size);
     
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
-    const filePath = `receipts/${fileName}`;
+    const fileName = `${Date.now()}.${fileExt}`;
+    // Korrigiere den Pfad: user_id/receipts/filename statt receipts/user_id-filename
+    const filePath = `${user?.id}/receipts/${fileName}`;
 
     console.log('Uploading to path:', filePath);
 
