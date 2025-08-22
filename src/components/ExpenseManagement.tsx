@@ -9,12 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Euro, TrendingUp, Calendar, Upload, Download, FileImage } from "lucide-react";
+import { Plus, Edit, Trash2, Euro, TrendingUp, Calendar, Upload, Download, FileImage, Repeat, List, PieChart } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, Tooltip, Legend, Pie } from 'recharts';
 
 interface ExpenseCategory {
   id: string;
@@ -34,6 +35,7 @@ interface Expense {
   receipt_file_path: string | null;
   category_id: string;
   category?: ExpenseCategory;
+  recurring_type: string; // Database returns string, we'll handle the typing
 }
 
 interface ExpenseBudget {
@@ -55,6 +57,7 @@ export const ExpenseManagement = () => {
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [isSettingBudget, setIsSettingBudget] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'chart'>('list');
 
   const [newExpense, setNewExpense] = useState({
     amount: "",
@@ -62,7 +65,8 @@ export const ExpenseManagement = () => {
     description: "",
     notes: "",
     category_id: "",
-    receipt_file: null as File | null
+    receipt_file: null as File | null,
+    recurring_type: "none"
   });
 
   const [newCategory, setNewCategory] = useState({
@@ -96,8 +100,14 @@ export const ExpenseManagement = () => {
   };
 
   const loadExpenses = async () => {
-    const startDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`;
-    const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-31`;
+    // Fix date range calculation - ensure we get the actual last day of the month
+    const year = selectedYear;
+    const month = selectedMonth;
+    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate(); // Get actual last day of month
+    const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+    
+    console.log('Loading expenses for date range:', startDate, 'to', endDate);
     
     const { data, error } = await supabase
       .from("expenses")
@@ -110,9 +120,11 @@ export const ExpenseManagement = () => {
       .order("expense_date", { ascending: false });
     
     if (error) {
+      console.error('Error loading expenses:', error);
       toast({ title: "Fehler", description: "Ausgaben konnten nicht geladen werden", variant: "destructive" });
     } else {
-      setExpenses(data || []);
+      console.log('Loaded expenses:', data?.length || 0);
+      setExpenses((data as Expense[]) || []);
     }
   };
 
@@ -183,7 +195,8 @@ export const ExpenseManagement = () => {
         description: newExpense.description || null,
         notes: newExpense.notes || null,
         receipt_file_path: receiptPath,
-        category_id: newExpense.category_id
+        category_id: newExpense.category_id,
+        recurring_type: newExpense.recurring_type
       });
 
     if (error) {
@@ -196,7 +209,8 @@ export const ExpenseManagement = () => {
         description: "",
         notes: "",
         category_id: "",
-        receipt_file: null
+        receipt_file: null,
+        recurring_type: "none"
       });
       setIsAddingExpense(false);
       loadExpenses();
@@ -296,9 +310,39 @@ export const ExpenseManagement = () => {
     const categoryTotals = new Map();
     expenses.forEach(expense => {
       const categoryName = expense.category?.name || "Unbekannt";
-      categoryTotals.set(categoryName, (categoryTotals.get(categoryName) || 0) + expense.amount);
+      const categoryColor = expense.category?.color || "#6b7280";
+      const currentTotal = categoryTotals.get(categoryName) || { total: 0, color: categoryColor };
+      categoryTotals.set(categoryName, { 
+        total: currentTotal.total + expense.amount, 
+        color: categoryColor 
+      });
     });
-    return Array.from(categoryTotals.entries()).map(([name, total]) => ({ name, total }));
+    return Array.from(categoryTotals.entries()).map(([name, data]) => ({ 
+      name, 
+      total: data.total, 
+      color: data.color 
+    }));
+  };
+
+  const getRecurringIcon = (recurringType: string) => {
+    if (recurringType === 'none') return null;
+    
+    const getRecurringText = (type: string) => {
+      switch (type) {
+        case 'monthly': return 'Monatlich';
+        case 'quarterly': return 'Vierteljährlich';
+        case 'semi-annually': return 'Halbjährlich';  
+        case 'yearly': return 'Jährlich';
+        default: return '';
+      }
+    };
+
+    return (
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Repeat className="h-3 w-3" />
+        <span>{getRecurringText(recurringType)}</span>
+      </div>
+    );
   };
 
   const exportToCSV = () => {
@@ -485,6 +529,21 @@ export const ExpenseManagement = () => {
                       />
                     </div>
                     <div>
+                      <Label htmlFor="recurring">Wiederholung</Label>
+                      <Select value={newExpense.recurring_type} onValueChange={(value) => setNewExpense({...newExpense, recurring_type: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Wiederholung wählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Keine Wiederholung</SelectItem>
+                          <SelectItem value="monthly">Monatlich</SelectItem>
+                          <SelectItem value="quarterly">Vierteljährlich</SelectItem>
+                          <SelectItem value="semi-annually">Halbjährlich</SelectItem>
+                          <SelectItem value="yearly">Jährlich</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
                       <Label htmlFor="receipt">Beleg hochladen</Label>
                       <Input
                         id="receipt"
@@ -510,6 +569,7 @@ export const ExpenseManagement = () => {
                     <TableHead>Datum</TableHead>
                     <TableHead>Beschreibung</TableHead>
                     <TableHead>Kategorie</TableHead>
+                    <TableHead>Wiederholung</TableHead>
                     <TableHead>Beleg</TableHead>
                     <TableHead className="text-right">Betrag</TableHead>
                   </TableRow>
@@ -529,9 +589,18 @@ export const ExpenseManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge style={{ backgroundColor: expense.category?.color }}>
-                          {expense.category?.name || "Unbekannt"}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-sm border" 
+                            style={{ backgroundColor: expense.category?.color || "#6b7280" }}
+                          />
+                          <Badge variant="outline">
+                            {expense.category?.name || "Unbekannt"}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getRecurringIcon(expense.recurring_type)}
                       </TableCell>
                       <TableCell>
                         {expense.receipt_file_path ? (
@@ -556,7 +625,7 @@ export const ExpenseManagement = () => {
                   ))}
                   {expenses.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
                         Keine Ausgaben für diesen Monat
                       </TableCell>
                     </TableRow>
@@ -712,38 +781,113 @@ export const ExpenseManagement = () => {
         </TabsContent>
 
         <TabsContent value="overview" className="space-y-4">
-          <h3 className="text-lg font-semibold">Ausgaben nach Kategorien</h3>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Kategorie</TableHead>
-                    <TableHead className="text-right">Betrag</TableHead>
-                    <TableHead className="text-right">Anteil</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {getCategoryExpenses().map(({ name, total }) => (
-                    <TableRow key={name}>
-                      <TableCell>{name}</TableCell>
-                      <TableCell className="text-right">{total.toFixed(2)} €</TableCell>
-                      <TableCell className="text-right">
-                        {getTotalExpenses() > 0 ? ((total / getTotalExpenses()) * 100).toFixed(1) : 0}%
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {getCategoryExpenses().length === 0 && (
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Ausgaben nach Kategorien</h3>
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="h-4 w-4 mr-2" />
+                Liste
+              </Button>
+              <Button
+                variant={viewMode === 'chart' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('chart')}
+              >
+                <PieChart className="h-4 w-4 mr-2" />
+                Diagramm
+              </Button>
+            </div>
+          </div>
+          
+          {viewMode === 'list' ? (
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground">
-                        Keine Ausgaben für diesen Monat
-                      </TableCell>
+                      <TableHead>Kategorie</TableHead>
+                      <TableHead className="text-right">Betrag</TableHead>
+                      <TableHead className="text-right">Anteil</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {getCategoryExpenses().map(({ name, total, color }) => (
+                      <TableRow key={name}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-sm border" 
+                              style={{ backgroundColor: color }}
+                            />
+                            {name}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">{total.toFixed(2)} €</TableCell>
+                        <TableCell className="text-right">
+                          {getTotalExpenses() > 0 ? ((total / getTotalExpenses()) * 100).toFixed(1) : 0}%
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {getCategoryExpenses().length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground">
+                          Keine Ausgaben für diesen Monat
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-6">
+                {getCategoryExpenses().length > 0 ? (
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <defs>
+                          {getCategoryExpenses().map(({ name, color }, index) => (
+                            <pattern key={name} id={`pattern-${index}`} patternUnits="userSpaceOnUse" width="4" height="4">
+                              <rect width="4" height="4" fill={color} />
+                            </pattern>
+                          ))}
+                        </defs>
+                        <Pie
+                          data={getCategoryExpenses().map(({ name, total, color }) => ({
+                            name,
+                            value: total,
+                            fill: color
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {getCategoryExpenses().map(({ color }, index) => (
+                            <Cell key={`cell-${index}`} fill={color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => [`${value.toFixed(2)} €`, 'Betrag']} />
+                        <Legend />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground py-12">
+                    Keine Ausgaben für diesen Monat
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

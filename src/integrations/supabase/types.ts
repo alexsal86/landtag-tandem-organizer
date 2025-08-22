@@ -1042,11 +1042,13 @@ export type Database = {
           amount: number
           category_id: string
           created_at: string
+          created_from_recurring: string | null
           description: string | null
           expense_date: string
           id: string
           notes: string | null
           receipt_file_path: string | null
+          recurring_type: string | null
           updated_at: string
           user_id: string
         }
@@ -1054,11 +1056,13 @@ export type Database = {
           amount: number
           category_id: string
           created_at?: string
+          created_from_recurring?: string | null
           description?: string | null
           expense_date: string
           id?: string
           notes?: string | null
           receipt_file_path?: string | null
+          recurring_type?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1066,11 +1070,13 @@ export type Database = {
           amount?: number
           category_id?: string
           created_at?: string
+          created_from_recurring?: string | null
           description?: string | null
           expense_date?: string
           id?: string
           notes?: string | null
           receipt_file_path?: string | null
+          recurring_type?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1080,6 +1086,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_created_from_recurring_fkey"
+            columns: ["created_from_recurring"]
+            isOneToOne: false
+            referencedRelation: "expenses"
             referencedColumns: ["id"]
           },
         ]
