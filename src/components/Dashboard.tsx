@@ -2,6 +2,7 @@ import { Calendar, Users, CheckSquare, Clock, FileText, Phone, AlertCircle, Circ
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ExpenseWidget } from "@/components/widgets/ExpenseWidget";
 
 interface QuickStats {
   todayMeetings: number;
@@ -301,6 +302,9 @@ export function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Expense Widget */}
+        <ExpenseWidget className="bg-card shadow-card border-border" />
       </div>
     </div>
   );

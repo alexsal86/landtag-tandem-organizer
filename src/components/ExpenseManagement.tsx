@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Euro, TrendingUp, Calendar } from "lucide-react";
+import { Plus, Edit, Trash2, Euro, TrendingUp, Calendar, Upload, Download, FileImage } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ interface Expense {
   expense_date: string;
   description: string | null;
   notes: string | null;
+  receipt_file_path: string | null;
   category_id: string;
   category?: ExpenseCategory;
 }
@@ -60,7 +61,8 @@ export const ExpenseManagement = () => {
     expense_date: format(new Date(), "yyyy-MM-dd"),
     description: "",
     notes: "",
-    category_id: ""
+    category_id: "",
+    receipt_file: null as File | null
   });
 
   const [newCategory, setNewCategory] = useState({
@@ -129,10 +131,33 @@ export const ExpenseManagement = () => {
     }
   };
 
+  const uploadReceipt = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+    const filePath = `receipts/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      toast({ title: "Fehler", description: "Beleg konnte nicht hochgeladen werden", variant: "destructive" });
+      return null;
+    }
+
+    return filePath;
+  };
+
   const addExpense = async () => {
     if (!newExpense.amount || !newExpense.category_id) {
       toast({ title: "Fehler", description: "Betrag und Kategorie sind erforderlich", variant: "destructive" });
       return;
+    }
+
+    let receiptPath = null;
+    if (newExpense.receipt_file) {
+      receiptPath = await uploadReceipt(newExpense.receipt_file);
+      if (!receiptPath) return;
     }
 
     const { error } = await supabase
@@ -143,6 +168,7 @@ export const ExpenseManagement = () => {
         expense_date: newExpense.expense_date,
         description: newExpense.description || null,
         notes: newExpense.notes || null,
+        receipt_file_path: receiptPath,
         category_id: newExpense.category_id
       });
 
@@ -155,7 +181,8 @@ export const ExpenseManagement = () => {
         expense_date: format(new Date(), "yyyy-MM-dd"),
         description: "",
         notes: "",
-        category_id: ""
+        category_id: "",
+        receipt_file: null
       });
       setIsAddingExpense(false);
       loadExpenses();
@@ -193,23 +220,49 @@ export const ExpenseManagement = () => {
       return;
     }
 
+    const amount = parseFloat(budgetAmount);
+
+    // Set budget for current month
     const { error } = await supabase
       .from("expense_budgets")
       .upsert({
         user_id: user?.id,
         year: selectedYear,
         month: selectedMonth,
-        budget_amount: parseFloat(budgetAmount)
+        budget_amount: amount
       });
 
     if (error) {
       toast({ title: "Fehler", description: "Budget konnte nicht gesetzt werden", variant: "destructive" });
-    } else {
-      toast({ title: "Erfolg", description: "Budget wurde gesetzt" });
-      setBudgetAmount("");
-      setIsSettingBudget(false);
-      loadBudgets();
+      return;
     }
+
+    // Apply budget to future months that don't have a budget yet
+    const currentDate = new Date(selectedYear, selectedMonth - 1);
+    const futureMonths = [];
+    
+    for (let i = 1; i <= 12; i++) {
+      const futureDate = new Date(currentDate);
+      futureDate.setMonth(futureDate.getMonth() + i);
+      
+      const year = futureDate.getFullYear();
+      const month = futureDate.getMonth() + 1;
+      
+      // Check if budget already exists for this month
+      const existingBudget = budgets.find(b => b.year === year && b.month === month);
+      if (!existingBudget) {
+        futureMonths.push({ user_id: user?.id, year, month, budget_amount: amount });
+      }
+    }
+
+    if (futureMonths.length > 0) {
+      await supabase.from("expense_budgets").insert(futureMonths);
+    }
+
+    toast({ title: "Erfolg", description: `Budget wurde gesetzt und auf ${futureMonths.length} weitere Monate angewendet` });
+    setBudgetAmount("");
+    setIsSettingBudget(false);
+    loadBudgets();
   };
 
   const getCurrentBudget = () => {
@@ -232,6 +285,28 @@ export const ExpenseManagement = () => {
       categoryTotals.set(categoryName, (categoryTotals.get(categoryName) || 0) + expense.amount);
     });
     return Array.from(categoryTotals.entries()).map(([name, total]) => ({ name, total }));
+  };
+
+  const exportToCSV = () => {
+    const headers = ['Datum', 'Beschreibung', 'Kategorie', 'Betrag', 'Hinweise'];
+    const csvData = expenses.map(expense => [
+      format(new Date(expense.expense_date), "dd.MM.yyyy"),
+      expense.description || '',
+      expense.category?.name || 'Unbekannt',
+      expense.amount.toFixed(2),
+      expense.notes || ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `ausgaben-${format(new Date(selectedYear, selectedMonth - 1), "yyyy-MM", { locale: de })}.csv`;
+    link.click();
   };
 
   return (
@@ -325,77 +400,92 @@ export const ExpenseManagement = () => {
         <TabsContent value="expenses" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Ausgaben</h3>
-            <Dialog open={isAddingExpense} onOpenChange={setIsAddingExpense}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ausgabe hinzufügen
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Neue Ausgabe</DialogTitle>
-                  <DialogDescription>
-                    Fügen Sie eine neue Ausgabe hinzu
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="amount">Betrag (€)</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      step="0.01"
-                      value={newExpense.amount}
-                      onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="date">Datum</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={newExpense.expense_date}
-                      onChange={(e) => setNewExpense({...newExpense, expense_date: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="category">Kategorie</Label>
-                    <Select value={newExpense.category_id} onValueChange={(value) => setNewExpense({...newExpense, category_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Kategorie wählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="description">Beschreibung</Label>
-                    <Input
-                      id="description"
-                      value={newExpense.description}
-                      onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="notes">Hinweise</Label>
-                    <Textarea
-                      id="notes"
-                      value={newExpense.notes}
-                      onChange={(e) => setNewExpense({...newExpense, notes: e.target.value})}
-                    />
-                  </div>
-                  <Button onClick={addExpense} className="w-full">
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={exportToCSV}>
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
+              <Dialog open={isAddingExpense} onOpenChange={setIsAddingExpense}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
                     Ausgabe hinzufügen
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Neue Ausgabe</DialogTitle>
+                    <DialogDescription>
+                      Fügen Sie eine neue Ausgabe hinzu
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="amount">Betrag (€)</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        step="0.01"
+                        value={newExpense.amount}
+                        onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="date">Datum</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={newExpense.expense_date}
+                        onChange={(e) => setNewExpense({...newExpense, expense_date: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="category">Kategorie</Label>
+                      <Select value={newExpense.category_id} onValueChange={(value) => setNewExpense({...newExpense, category_id: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Kategorie wählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Beschreibung</Label>
+                      <Input
+                        id="description"
+                        value={newExpense.description}
+                        onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="notes">Hinweise</Label>
+                      <Textarea
+                        id="notes"
+                        value={newExpense.notes}
+                        onChange={(e) => setNewExpense({...newExpense, notes: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="receipt">Beleg hochladen</Label>
+                      <Input
+                        id="receipt"
+                        type="file"
+                        accept="image/*,application/pdf"
+                        onChange={(e) => setNewExpense({...newExpense, receipt_file: e.target.files?.[0] || null})}
+                      />
+                    </div>
+                    <Button onClick={addExpense} className="w-full">
+                      Ausgabe hinzufügen
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           <Card>
@@ -406,6 +496,7 @@ export const ExpenseManagement = () => {
                     <TableHead>Datum</TableHead>
                     <TableHead>Beschreibung</TableHead>
                     <TableHead>Kategorie</TableHead>
+                    <TableHead>Beleg</TableHead>
                     <TableHead className="text-right">Betrag</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -428,6 +519,22 @@ export const ExpenseManagement = () => {
                           {expense.category?.name || "Unbekannt"}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        {expense.receipt_file_path ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const { data } = supabase.storage.from('documents').getPublicUrl(expense.receipt_file_path!);
+                              window.open(data.publicUrl, '_blank');
+                            }}
+                          >
+                            <FileImage className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Kein Beleg</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-medium">
                         {expense.amount.toFixed(2)} €
                       </TableCell>
@@ -435,7 +542,7 @@ export const ExpenseManagement = () => {
                   ))}
                   {expenses.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
                         Keine Ausgaben für diesen Monat
                       </TableCell>
                     </TableRow>
