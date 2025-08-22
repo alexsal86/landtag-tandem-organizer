@@ -132,23 +132,31 @@ export const ExpenseManagement = () => {
   };
 
   const uploadReceipt = async (file: File): Promise<string | null> => {
+    console.log('Starting receipt upload for file:', file.name, 'Size:', file.size);
+    
     const fileExt = file.name.split('.').pop();
     const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
     const filePath = `receipts/${fileName}`;
+
+    console.log('Uploading to path:', filePath);
 
     const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(filePath, file);
 
     if (uploadError) {
-      toast({ title: "Fehler", description: "Beleg konnte nicht hochgeladen werden", variant: "destructive" });
+      console.error('Upload error:', uploadError);
+      toast({ title: "Fehler", description: `Beleg konnte nicht hochgeladen werden: ${uploadError.message}`, variant: "destructive" });
       return null;
     }
 
+    console.log('Upload successful, file path:', filePath);
     return filePath;
   };
 
   const addExpense = async () => {
+    console.log('Adding expense with data:', newExpense);
+    
     if (!newExpense.amount || !newExpense.category_id) {
       toast({ title: "Fehler", description: "Betrag und Kategorie sind erforderlich", variant: "destructive" });
       return;
@@ -156,8 +164,13 @@ export const ExpenseManagement = () => {
 
     let receiptPath = null;
     if (newExpense.receipt_file) {
+      console.log('Receipt file selected, starting upload...');
       receiptPath = await uploadReceipt(newExpense.receipt_file);
-      if (!receiptPath) return;
+      if (!receiptPath) {
+        console.error('Receipt upload failed, aborting expense creation');
+        return;
+      }
+      console.log('Receipt uploaded successfully to:', receiptPath);
     }
 
     const { error } = await supabase
