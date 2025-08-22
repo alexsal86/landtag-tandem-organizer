@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { GeneralSettings } from "@/components/GeneralSettings";
+import { ExpenseManagement } from "@/components/ExpenseManagement";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
@@ -468,8 +469,9 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="general">Allgemein</TabsTrigger>
+          <TabsTrigger value="expenses">Kosten</TabsTrigger>
           <TabsTrigger value="appointments">Termine</TabsTrigger>
           <TabsTrigger value="tasks">Aufgaben</TabsTrigger>
           <TabsTrigger value="todos">ToDos</TabsTrigger>
@@ -480,6 +482,10 @@ export default function Administration() {
 
         <TabsContent value="general" className="space-y-6">
           <GeneralSettings />
+        </TabsContent>
+
+        <TabsContent value="expenses" className="space-y-6">
+          <ExpenseManagement />
         </TabsContent>
 
         <TabsContent value="appointments" className="space-y-6">
