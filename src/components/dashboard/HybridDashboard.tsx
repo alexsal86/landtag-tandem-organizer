@@ -205,6 +205,7 @@ function HybridDashboardContent() {
       actions: 'Schnellaktionen',
       messages: 'Nachrichten',
       blackboard: 'Schwarzes Brett',
+      'combined-messages': 'Nachrichten & Brett',
       quicknotes: 'Notizen',
       pomodoro: 'Pomodoro Timer',
       habits: 'Gewohnheiten',

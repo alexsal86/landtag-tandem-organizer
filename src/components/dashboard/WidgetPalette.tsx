@@ -10,6 +10,7 @@ import {
   Calendar,
   Zap,
   MessageSquare,
+  MessageCircle,
   StickyNote,
   Timer,
   Target,
@@ -111,6 +112,14 @@ const WIDGET_TYPES = [
     icon: Users,
     category: 'communication',
     popular: false
+  },
+  {
+    type: 'combined-messages' as const,
+    title: 'Nachrichten & Brett',
+    description: 'Schwarzes Brett und Nachrichten kombiniert',
+    icon: MessageCircle,
+    category: 'communication',
+    popular: true
   },
   {
     type: 'blackboard' as const,
