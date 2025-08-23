@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Settings,
@@ -67,6 +67,31 @@ export function WidgetHoverControls({
   const [showSizeMenu, setShowSizeMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isHoverExtended, setIsHoverExtended] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<'left' | 'right'>('right');
+  
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const widgetRef = useRef<HTMLDivElement>(null);
+
+  // Detect screen edge and adjust menu position
+  useEffect(() => {
+    const updatePosition = () => {
+      if (!controlsRef.current) return;
+      
+      const rect = controlsRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      
+      // If menu would go off-screen on the right, position it on the left
+      if (rect.right + 200 > viewportWidth) {
+        setMenuPosition('left');
+      } else {
+        setMenuPosition('right');
+      }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    return () => window.removeEventListener('resize', updatePosition);
+  }, [isHoverExtended]);
 
   const isMinimized = widget.configuration?.minimized;
 
@@ -74,17 +99,22 @@ export function WidgetHoverControls({
     <>
       {/* Extended Hover Zone - invisible but captures hover */}
       <div 
-        className="absolute -inset-4 z-10"
+        ref={widgetRef}
+        className="absolute -inset-4 z-50"
         onMouseEnter={() => setIsHoverExtended(true)}
         onMouseLeave={() => setIsHoverExtended(false)}
       />
       
-      {/* Main Controls Bar - positioned on the right side for better accessibility */}
+      {/* Main Controls Bar - position dynamically based on screen edge */}
       <div 
-        className="absolute -right-16 top-0 w-14 bg-background/95 backdrop-blur border rounded-lg shadow-lg z-60 transition-opacity duration-200"
+        ref={controlsRef}
+        className={`absolute top-0 w-14 bg-background/98 backdrop-blur-sm border-2 border-primary/20 rounded-lg shadow-elegant z-[100] transition-all duration-200 ${
+          menuPosition === 'right' ? '-right-16' : '-left-16'
+        }`}
         style={{ 
           opacity: isHoverExtended ? 1 : 0,
-          pointerEvents: isHoverExtended ? 'auto' : 'none'
+          pointerEvents: isHoverExtended ? 'auto' : 'none',
+          transform: isHoverExtended ? 'scale(1)' : 'scale(0.95)'
         }}
         onMouseEnter={() => setIsHoverExtended(true)}
         onMouseLeave={() => setIsHoverExtended(false)}
@@ -102,7 +132,12 @@ export function WidgetHoverControls({
                 {widget.widgetSize}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="left" align="start" className="z-60">
+            <DropdownMenuContent 
+              side={menuPosition === 'right' ? 'left' : 'right'} 
+              align="start" 
+              className="z-[110] bg-background/98 backdrop-blur-sm border-primary/20"
+              sideOffset={8}
+            >
               {SIZE_OPTIONS.map((option) => (
                 <DropdownMenuItem
                   key={option.size}
@@ -152,7 +187,12 @@ export function WidgetHoverControls({
                 <MoreVertical className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="left" align="start" className="z-60">
+            <DropdownMenuContent 
+              side={menuPosition === 'right' ? 'left' : 'right'} 
+              align="start" 
+              className="z-[110] bg-background/98 backdrop-blur-sm border-primary/20"
+              sideOffset={8}
+            >
               <DropdownMenuItem onClick={() => setShowConfigDialog(true)}>
                 <Settings className="h-4 w-4 mr-2" />
                 Konfigurieren
@@ -193,7 +233,7 @@ export function WidgetHoverControls({
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="z-60">
+        <AlertDialogContent className="z-[110] bg-background/98 backdrop-blur-sm border-primary/20">
           <AlertDialogHeader>
             <AlertDialogTitle>Widget löschen</AlertDialogTitle>
             <AlertDialogDescription>
