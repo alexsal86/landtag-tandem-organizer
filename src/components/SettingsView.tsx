@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2 } from "lucide-react";
+import { NotificationSettings } from "./NotificationSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -46,7 +47,7 @@ export function SettingsView() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Appearance Settings */}
           <Card className="bg-card shadow-card border-border">
             <CardHeader>
@@ -117,66 +118,6 @@ export function SettingsView() {
             </CardContent>
           </Card>
 
-          {/* Notification Settings */}
-          <Card className="bg-card shadow-card border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Benachrichtigungen
-              </CardTitle>
-              <CardDescription>
-                Steuern Sie, wie Sie benachrichtigt werden
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="notifications">Push-Benachrichtigungen</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Erhalten Sie Benachrichtigungen im Browser
-                  </p>
-                </div>
-                <Switch
-                  id="notifications"
-                  checked={notifications}
-                  onCheckedChange={setNotifications}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="email-alerts">E-Mail Benachrichtigungen</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Wichtige Updates per E-Mail erhalten
-                  </p>
-                </div>
-                <Switch
-                  id="email-alerts"
-                  checked={emailAlerts}
-                  onCheckedChange={setEmailAlerts}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="sound">Sound-Benachrichtigungen</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Akustische Signale bei Benachrichtigungen
-                  </p>
-                </div>
-                <Switch
-                  id="sound"
-                  checked={soundEnabled}
-                  onCheckedChange={setSoundEnabled}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
           {/* System Settings */}
           <Card className="bg-card shadow-card border-border">
             <CardHeader>
@@ -228,6 +169,11 @@ export function SettingsView() {
               </Button>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Notification Settings */}
+        <div className="mt-6">
+          <NotificationSettings />
         </div>
 
         {/* Additional Settings Cards */}

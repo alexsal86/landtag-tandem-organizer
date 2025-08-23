@@ -1,4 +1,5 @@
 import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -197,7 +198,10 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   return (
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b">
-        <SidebarTrigger className="ml-auto" />
+        <div className="flex items-center justify-between p-2">
+          <SidebarTrigger />
+          <NotificationBell />
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton

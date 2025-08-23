@@ -1492,6 +1492,95 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          expires_at: string | null
+          id: string
+          is_pushed: boolean
+          is_read: boolean
+          message: string
+          notification_type_id: string
+          priority: string
+          push_sent_at: string | null
+          read_at: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          expires_at?: string | null
+          id?: string
+          is_pushed?: boolean
+          is_read?: boolean
+          message: string
+          notification_type_id: string
+          priority?: string
+          push_sent_at?: string | null
+          read_at?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          expires_at?: string | null
+          id?: string
+          is_pushed?: boolean
+          is_read?: boolean
+          message?: string
+          notification_type_id?: string
+          priority?: string
+          push_sent_at?: string | null
+          read_at?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_notification_type_id_fkey"
+            columns: ["notification_type_id"]
+            isOneToOne: false
+            referencedRelation: "notification_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planning_item_comments: {
         Row: {
           content: string
@@ -1790,6 +1879,42 @@ export type Database = {
           display_name?: string | null
           id?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth_key: string
+          created_at: string
+          endpoint: string
+          id: string
+          is_active: boolean
+          p256dh_key: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_key: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          is_active?: boolean
+          p256dh_key: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_key?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          is_active?: boolean
+          p256dh_key?: string
+          updated_at?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: []
@@ -2220,6 +2345,53 @@ export type Database = {
           },
         ]
       }
+      user_notification_settings: {
+        Row: {
+          created_at: string
+          email_enabled: boolean
+          id: string
+          is_enabled: boolean
+          notification_type_id: string
+          push_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          is_enabled?: boolean
+          notification_type_id: string
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          is_enabled?: boolean
+          notification_type_id?: string
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notification_settings_notification_type_id_fkey"
+            columns: ["notification_type_id"]
+            isOneToOne: false
+            referencedRelation: "notification_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           assigned_at: string
@@ -2284,6 +2456,17 @@ export type Database = {
           | { planning_id: string }
           | { planning_id: string; template_id_param?: string }
         Returns: undefined
+      }
+      create_notification: {
+        Args: {
+          data_param?: Json
+          message_param: string
+          priority_param?: string
+          title_param: string
+          type_name: string
+          user_id_param: string
+        }
+        Returns: string
       }
       generate_participant_token: {
         Args: Record<PropertyKey, never>
