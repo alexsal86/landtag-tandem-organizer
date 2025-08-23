@@ -13,6 +13,8 @@ import { useAuth } from '@/hooks/useAuth';
 interface CallLog {
   id: string;
   contact_id?: string;
+  caller_name?: string;
+  caller_phone?: string;
   call_type: 'outgoing' | 'incoming' | 'missed';
   duration_minutes?: number;
   call_date: string;
@@ -22,6 +24,7 @@ interface CallLog {
   follow_up_completed: boolean;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
+  created_by_name?: string;
 }
 
 interface Contact {
@@ -51,13 +54,17 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
   const [showAddForm, setShowAddForm] = useState(false);
   
   // Form state
+  const [contactMode, setContactMode] = useState<'existing' | 'new'>('existing');
   const [selectedContact, setSelectedContact] = useState('');
+  const [callerName, setCallerName] = useState('');
+  const [callerPhone, setCallerPhone] = useState('');
   const [callType, setCallType] = useState<'outgoing' | 'incoming' | 'missed'>('outgoing');
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
   const [followUpRequired, setFollowUpRequired] = useState(false);
   const [followUpDate, setFollowUpDate] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
+  const [suggestedContact, setSuggestedContact] = useState<Contact | null>(null);
 
   const { showFollowUps = true, compact = false } = configuration;
 
@@ -111,25 +118,58 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      // Get user profile for created_by_name
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', user.id)
+        .single();
+
+      const { data: callLogData, error } = await supabase
         .from('call_logs')
         .insert({
           user_id: user.id,
-          contact_id: selectedContact || undefined,
+          contact_id: contactMode === 'existing' ? selectedContact || undefined : undefined,
+          caller_name: contactMode === 'new' ? callerName.trim() || undefined : undefined,
+          caller_phone: contactMode === 'new' ? callerPhone.trim() || undefined : undefined,
           call_type: callType,
           duration_minutes: duration ? parseInt(duration) : undefined,
           call_date: new Date().toISOString(),
           notes: notes.trim() || undefined,
           follow_up_required: followUpRequired,
           follow_up_date: followUpDate ? new Date(followUpDate).toISOString() : undefined,
-          priority
+          priority,
+          created_by_name: profile?.display_name || undefined
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      setCallLogs(prev => [data as CallLog, ...prev.slice(0, 9)]);
+      // Create follow-up task if required
+      if (followUpRequired) {
+        const contactName = contactMode === 'existing' 
+          ? getContactName(selectedContact) 
+          : callerName || 'Unbekannter Kontakt';
+        
+        const callTypeLabel = callType === 'outgoing' ? 'Ausgehender Anruf' : 
+                              callType === 'incoming' ? 'Eingehender Anruf' : 'Verpasster Anruf';
+
+        await supabase
+          .from('tasks')
+          .insert({
+            user_id: user.id,
+            call_log_id: callLogData.id,
+            title: `Follow-up: ${contactName} - ${callTypeLabel}`,
+            description: notes.trim() ? `Call-Notizen: ${notes.trim()}` : undefined,
+            category: 'call_followup',
+            priority: priority,
+            due_date: followUpDate ? new Date(followUpDate).toISOString() : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            status: 'todo'
+          });
+      }
+
+      setCallLogs(prev => [callLogData as CallLog, ...prev.slice(0, 9)]);
       resetForm();
       toast.success('Anruf protokolliert');
     } catch (error) {
@@ -147,6 +187,12 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
 
       if (error) throw error;
 
+      // Also complete the corresponding task if it exists
+      await supabase
+        .from('tasks')
+        .update({ status: 'completed' })
+        .eq('call_log_id', id);
+
       setCallLogs(prev => prev.map(log => 
         log.id === id ? { ...log, follow_up_completed: true } : log
       ));
@@ -158,13 +204,17 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
   };
 
   const resetForm = () => {
+    setContactMode('existing');
     setSelectedContact('');
+    setCallerName('');
+    setCallerPhone('');
     setCallType('outgoing');
     setDuration('');
     setNotes('');
     setFollowUpRequired(false);
     setFollowUpDate('');
     setPriority('medium');
+    setSuggestedContact(null);
     setShowAddForm(false);
   };
 
@@ -186,10 +236,47 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
     }
   };
 
-  const getContactName = (contactId?: string) => {
+  const getContactName = (contactId?: string, callerName?: string) => {
+    if (callerName) return callerName;
     if (!contactId) return 'Unbekannt';
     const contact = contacts.find(c => c.id === contactId);
     return contact?.name || 'Unbekannt';
+  };
+
+  const checkForExistingContact = (phone: string) => {
+    if (!phone.trim()) {
+      setSuggestedContact(null);
+      return;
+    }
+    
+    const foundContact = contacts.find(c => c.phone && c.phone.includes(phone.replace(/\s/g, '')));
+    setSuggestedContact(foundContact || null);
+  };
+
+  const saveAsNewContact = async () => {
+    if (!callerName.trim()) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .insert({
+          user_id: user?.id,
+          name: callerName.trim(),
+          phone: callerPhone.trim() || undefined,
+          contact_type: 'person',
+          category: 'citizen'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setContacts(prev => [...prev, data]);
+      toast.success('Kontakt gespeichert');
+    } catch (error) {
+      console.error('Error saving contact:', error);
+      toast.error('Fehler beim Speichern des Kontakts');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -244,7 +331,28 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
         {/* Add Form */}
         {showAddForm && (
           <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
-            <div className="grid grid-cols-2 gap-2">
+            {/* Contact Mode Toggle */}
+            <div className="flex gap-1 p-1 bg-background rounded-md">
+              <Button
+                variant={contactMode === 'existing' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setContactMode('existing')}
+                className="flex-1 h-7 text-xs"
+              >
+                Bestehender Kontakt
+              </Button>
+              <Button
+                variant={contactMode === 'new' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setContactMode('new')}
+                className="flex-1 h-7 text-xs"
+              >
+                Neuer Kontakt
+              </Button>
+            </div>
+
+            {/* Contact Selection */}
+            {contactMode === 'existing' ? (
               <Select value={selectedContact} onValueChange={setSelectedContact}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Kontakt wählen..." />
@@ -257,7 +365,48 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                   ))}
                 </SelectContent>
               </Select>
-              
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  placeholder="Name des Anrufers..."
+                  value={callerName}
+                  onChange={(e) => setCallerName(e.target.value)}
+                  className="h-8 text-xs"
+                />
+                <div className="space-y-1">
+                  <Input
+                    placeholder="Telefonnummer (optional)"
+                    value={callerPhone}
+                    onChange={(e) => {
+                      setCallerPhone(e.target.value);
+                      checkForExistingContact(e.target.value);
+                    }}
+                    className="h-8 text-xs"
+                  />
+                  {suggestedContact && (
+                    <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border dark:bg-amber-950/20 dark:text-amber-400">
+                      📞 Kontakt bereits vorhanden: {suggestedContact.name}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setContactMode('existing');
+                          setSelectedContact(suggestedContact.id);
+                          setCallerName('');
+                          setCallerPhone('');
+                          setSuggestedContact(null);
+                        }}
+                        className="ml-2 h-6 px-2 text-xs"
+                      >
+                        Verwenden
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
               <Select value={callType} onValueChange={(value) => setCallType(value as any)}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
@@ -268,9 +417,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                   <SelectItem value="missed">Verpasst</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
 
-            <div className="grid grid-cols-2 gap-2">
               <Input
                 placeholder="Dauer (Min)"
                 value={duration}
@@ -278,7 +425,9 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                 type="number"
                 className="h-8 text-xs"
               />
-              
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
               <Select value={priority} onValueChange={(value) => setPriority(value as any)}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
@@ -325,6 +474,11 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               <Button onClick={createCallLog} size="sm">
                 Protokollieren
               </Button>
+              {contactMode === 'new' && callerName.trim() && (
+                <Button onClick={saveAsNewContact} variant="outline" size="sm">
+                  Als Kontakt speichern
+                </Button>
+              )}
               <Button onClick={resetForm} variant="ghost" size="sm">
                 Abbrechen
               </Button>
@@ -348,7 +502,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
-                        {getContactName(log.contact_id)}
+                        {getContactName(log.contact_id, log.caller_name)}
                       </span>
                       <Badge className={`text-xs ${getPriorityColor(log.priority)}`}>
                         {log.priority}
@@ -398,7 +552,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">
-                          {getContactName(log.contact_id)}
+                          {getContactName(log.contact_id, log.caller_name)}
                         </span>
                         {log.priority !== 'medium' && (
                           <Badge className={`text-xs ${getPriorityColor(log.priority)}`}>
@@ -409,6 +563,12 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                           <AlertCircle className="h-3 w-3 text-amber-500" />
                         )}
                       </div>
+                      
+                      {log.caller_phone && (
+                        <div className="text-xs text-muted-foreground">
+                          📞 {log.caller_phone}
+                        </div>
+                      )}
                       
                       <div className="text-xs text-muted-foreground">
                         {formatDate(log.call_date)}

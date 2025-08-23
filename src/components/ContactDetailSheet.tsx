@@ -1,14 +1,33 @@
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink } from "lucide-react";
+import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ContactEditForm } from "./ContactEditForm";
+import { CallLogWidget } from "@/components/widgets/CallLogWidget";
+
+interface CallLog {
+  id: string;
+  contact_id?: string;
+  caller_name?: string;
+  caller_phone?: string;
+  call_type: 'outgoing' | 'incoming' | 'missed';
+  duration_minutes?: number;
+  call_date: string;
+  notes?: string;
+  follow_up_required: boolean;
+  follow_up_date?: string;
+  follow_up_completed: boolean;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  created_at: string;
+  created_by_name?: string;
+}
 
 interface Contact {
   id: string;
@@ -49,15 +68,40 @@ interface ContactDetailSheetProps {
 
 export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate }: ContactDetailSheetProps) {
   const [contact, setContact] = useState<Contact | null>(null);
+  const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingCallLogs, setLoadingCallLogs] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showCallLogWidget, setShowCallLogWidget] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (contactId && isOpen) {
       fetchContact();
+      fetchCallLogs();
     }
   }, [contactId, isOpen]);
+
+  const fetchCallLogs = async () => {
+    if (!contactId) return;
+    
+    try {
+      setLoadingCallLogs(true);
+      const { data, error } = await supabase
+        .from('call_logs')
+        .select('*')
+        .or(`contact_id.eq.${contactId},caller_phone.ilike.%${contact?.phone || ''}%`)
+        .order('call_date', { ascending: false });
+
+      if (error) throw error;
+
+      setCallLogs((data || []) as CallLog[]);
+    } catch (error) {
+      console.error('Error fetching call logs:', error);
+    } finally {
+      setLoadingCallLogs(false);
+    }
+  };
 
   const fetchContact = async () => {
     if (!contactId) return;
@@ -142,7 +186,27 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
   const handleEditSuccess = () => {
     setIsEditing(false);
     fetchContact();
+    fetchCallLogs();
     onContactUpdate();
+  };
+
+  const getCallTypeIcon = (type: 'outgoing' | 'incoming' | 'missed') => {
+    switch (type) {
+      case 'outgoing': return <PhoneCall className="h-4 w-4 text-green-500" />;
+      case 'incoming': return <PhoneCall className="h-4 w-4 text-blue-500" />;
+      case 'missed': return <PhoneCall className="h-4 w-4 text-red-500" />;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('de-DE', { 
+      day: '2-digit', 
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (isEditing && contact) {
@@ -169,7 +233,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[600px] sm:w-[540px] overflow-y-auto">
+      <SheetContent className="w-[700px] sm:w-[640px] overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center h-96">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -220,10 +284,17 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
 
             <Separator />
 
-            {/* Contact Information */}
-            <Card>
-              <CardContent className="p-4 space-y-4">
-                <h3 className="font-semibold text-lg">Kontaktinformationen</h3>
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details">Kontaktdaten</TabsTrigger>
+                <TabsTrigger value="calls">Anrufliste ({callLogs.length})</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details" className="space-y-4 mt-4">
+                {/* Contact Information */}
+                <Card>
+                  <CardContent className="p-4 space-y-4">
+                    <h3 className="font-semibold text-lg">Kontaktinformationen</h3>
                 
                 {contact.email && (
                   <div className="flex items-center gap-3">
@@ -296,90 +367,181 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                       </a>
                     </Button>
                   </div>
+                 )}
+               </CardContent>
+                </Card>
+
+                {/* Social Media */}
+                {(contact.linkedin || contact.twitter || contact.facebook || contact.instagram || contact.xing) && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-lg mb-4">Social Media</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {contact.linkedin && (
+                          <div>
+                            <p className="font-medium">LinkedIn</p>
+                            <p className="text-muted-foreground text-sm">{contact.linkedin}</p>
+                          </div>
+                        )}
+                        {contact.twitter && (
+                          <div>
+                            <p className="font-medium">Twitter</p>
+                            <p className="text-muted-foreground text-sm">{contact.twitter}</p>
+                          </div>
+                        )}
+                        {contact.facebook && (
+                          <div>
+                            <p className="font-medium">Facebook</p>
+                            <p className="text-muted-foreground text-sm">{contact.facebook}</p>
+                          </div>
+                        )}
+                        {contact.instagram && (
+                          <div>
+                            <p className="font-medium">Instagram</p>
+                            <p className="text-muted-foreground text-sm">{contact.instagram}</p>
+                          </div>
+                        )}
+                        {contact.xing && (
+                          <div>
+                            <p className="font-medium">XING</p>
+                            <p className="text-muted-foreground text-sm">{contact.xing}</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
-              </CardContent>
-            </Card>
 
-            {/* Social Media */}
-            {(contact.linkedin || contact.twitter || contact.facebook || contact.instagram || contact.xing) && (
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-4">Social Media</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    {contact.linkedin && (
-                      <div>
-                        <p className="font-medium">LinkedIn</p>
-                        <p className="text-muted-foreground text-sm">{contact.linkedin}</p>
+                {/* Organization Details */}
+                {contact.contact_type === "organization" && contact.business_description && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-lg mb-2">Geschäftsbeschreibung</h3>
+                      <p className="text-muted-foreground">{contact.business_description}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Notes */}
+                {contact.notes && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-lg mb-2">Notizen</h3>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{contact.notes}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Additional Info */}
+                {contact.additional_info && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-lg mb-2">Zusätzliche Informationen</h3>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{contact.additional_info}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {contact.last_contact && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-lg mb-2">Letzter Kontakt</h3>
+                      <p className="text-muted-foreground">{contact.last_contact}</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="calls" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">Anrufhistorie</CardTitle>
+                      <Button 
+                        size="sm" 
+                        onClick={() => setShowCallLogWidget(!showCallLogWidget)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Anruf protokollieren
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {showCallLogWidget && (
+                      <div className="mb-4 p-4 border rounded-lg bg-muted/30">
+                        <div className="text-sm font-medium mb-2">Neuen Anruf protokollieren</div>
+                        <CallLogWidget 
+                          className="border-0 shadow-none bg-transparent" 
+                          configuration={{ compact: true, showFollowUps: false }}
+                        />
                       </div>
                     )}
-                    {contact.twitter && (
-                      <div>
-                        <p className="font-medium">Twitter</p>
-                        <p className="text-muted-foreground text-sm">{contact.twitter}</p>
-                      </div>
-                    )}
-                    {contact.facebook && (
-                      <div>
-                        <p className="font-medium">Facebook</p>
-                        <p className="text-muted-foreground text-sm">{contact.facebook}</p>
-                      </div>
-                    )}
-                    {contact.instagram && (
-                      <div>
-                        <p className="font-medium">Instagram</p>
-                        <p className="text-muted-foreground text-sm">{contact.instagram}</p>
-                      </div>
-                    )}
-                    {contact.xing && (
-                      <div>
-                        <p className="font-medium">XING</p>
-                        <p className="text-muted-foreground text-sm">{contact.xing}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Organization Details */}
-            {contact.contact_type === "organization" && contact.business_description && (
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">Geschäftsbeschreibung</h3>
-                  <p className="text-muted-foreground">{contact.business_description}</p>
-                </CardContent>
-              </Card>
-            )}
+                    {loadingCallLogs ? (
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                      </div>
+                    ) : callLogs.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        <PhoneCall className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>Noch keine Anrufe protokolliert</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {callLogs.map((log) => (
+                          <div key={log.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                            <div className="flex items-start gap-3">
+                              {getCallTypeIcon(log.call_type)}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium text-sm">
+                                    {log.call_type === 'outgoing' ? 'Ausgehender Anruf' : 
+                                     log.call_type === 'incoming' ? 'Eingehender Anruf' : 'Verpasster Anruf'}
+                                  </span>
+                                  {log.duration_minutes && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {log.duration_minutes} Min
+                                    </Badge>
+                                  )}
+                                  <Badge variant="secondary" className="text-xs">
+                                    {log.priority}
+                                  </Badge>
+                                </div>
+                                
+                                <div className="text-xs text-muted-foreground mb-2">
+                                  {formatDate(log.call_date)}
+                                  {log.created_by_name && ` • Protokolliert von ${log.created_by_name}`}
+                                </div>
 
-            {/* Notes */}
-            {contact.notes && (
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">Notizen</h3>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{contact.notes}</p>
-                </CardContent>
-              </Card>
-            )}
+                                {log.notes && (
+                                  <p className="text-sm text-muted-foreground mb-2">
+                                    {log.notes}
+                                  </p>
+                                )}
 
-            {/* Additional Info */}
-            {contact.additional_info && (
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">Zusätzliche Informationen</h3>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{contact.additional_info}</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {contact.last_contact && (
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">Letzter Kontakt</h3>
-                  <p className="text-muted-foreground">{contact.last_contact}</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                                {log.follow_up_required && (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <Badge variant={log.follow_up_completed ? "default" : "destructive"} className="text-xs">
+                                      {log.follow_up_completed ? "Follow-up erledigt" : "Follow-up erforderlich"}
+                                    </Badge>
+                                    {log.follow_up_date && (
+                                      <span className="text-muted-foreground">
+                                        bis {formatDate(log.follow_up_date)}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                       </div>
+                     )}
+                   </CardContent>
+                 </Card>
+               </TabsContent>
+             </Tabs>
+           </div>
         ) : (
           <div className="flex items-center justify-center h-96">
             <p className="text-muted-foreground">Kontakt nicht gefunden</p>

@@ -307,8 +307,11 @@ export type Database = {
         Row: {
           call_date: string
           call_type: string | null
+          caller_name: string | null
+          caller_phone: string | null
           contact_id: string | null
           created_at: string
+          created_by_name: string | null
           duration_minutes: number | null
           follow_up_completed: boolean | null
           follow_up_date: string | null
@@ -322,8 +325,11 @@ export type Database = {
         Insert: {
           call_date?: string
           call_type?: string | null
+          caller_name?: string | null
+          caller_phone?: string | null
           contact_id?: string | null
           created_at?: string
+          created_by_name?: string | null
           duration_minutes?: number | null
           follow_up_completed?: boolean | null
           follow_up_date?: string | null
@@ -337,8 +343,11 @@ export type Database = {
         Update: {
           call_date?: string
           call_type?: string | null
+          caller_name?: string | null
+          caller_phone?: string | null
           contact_id?: string | null
           created_at?: string
+          created_by_name?: string | null
           duration_minutes?: number | null
           follow_up_completed?: boolean | null
           follow_up_date?: string | null
@@ -2385,6 +2394,7 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
+          call_log_id: string | null
           category: string
           created_at: string
           description: string | null
@@ -2399,6 +2409,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          call_log_id?: string | null
           category?: string
           created_at?: string
           description?: string | null
@@ -2413,6 +2424,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          call_log_id?: string | null
           category?: string
           created_at?: string
           description?: string | null
@@ -2425,7 +2437,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_call_log_id_fkey"
+            columns: ["call_log_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_dashboard_members: {
         Row: {
