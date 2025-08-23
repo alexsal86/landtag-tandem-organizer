@@ -7,6 +7,7 @@ import { DashboardWidget } from '../DashboardWidget';
 import { WidgetPalette } from './WidgetPalette';
 import { WidgetResizeHandle } from './WidgetResizeHandle';
 import { WidgetHoverControls } from './WidgetHoverControls';
+import { ResponsiveGridSystem } from './ResponsiveGridSystem';
 import { PerformanceMonitor } from './PerformanceMonitor';
 import { ContextAwareSuggestions } from './ContextAwareSuggestions';
 import { UndoRedoSystem } from './UndoRedoSystem';
@@ -14,6 +15,7 @@ import { RealTimeSync } from './RealTimeSync';
 import { EditModeProvider, useEditMode } from './EditModeProvider';
 import { toast } from 'sonner';
 import { DashboardWidget as WidgetType, WidgetSize } from '@/hooks/useDashboardLayout';
+import { getGridColumns, getGridRows, isValidPosition, calculateGridUnit } from '@/hooks/useDashboardGrid';
 
 function HybridDashboardContent() {
   const {
@@ -37,6 +39,7 @@ function HybridDashboardContent() {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [showPerformanceIssues, setShowPerformanceIssues] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(1200);
   
   const dashboardRef = useRef<HTMLDivElement>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
@@ -58,6 +61,19 @@ function HybridDashboardContent() {
       }
     };
   }, [currentLayout, isEditMode, autoSaveEnabled, saveCurrentLayout]);
+
+  // Update container width on resize
+  useEffect(() => {
+    const updateContainerWidth = () => {
+      if (dashboardRef.current) {
+        setContainerWidth(dashboardRef.current.offsetWidth);
+      }
+    };
+
+    updateContainerWidth();
+    window.addEventListener('resize', updateContainerWidth);
+    return () => window.removeEventListener('resize', updateContainerWidth);
+  }, []);
 
   // Close palette when exiting edit mode
   useEffect(() => {
@@ -90,37 +106,31 @@ function HybridDashboardContent() {
     event.dataTransfer.setData('text/plain', widgetId);
   };
 
-  const handleWidgetDrop = (event: React.DragEvent, targetGridArea?: { column: number; row: number }) => {
-    event.preventDefault();
-    if (!draggedWidget || !dashboardRef.current || !isEditMode) return;
+  const handleWidgetDrop = (widgetId: string, x: number, y: number) => {
+    if (!isEditMode) return;
 
-    const widget = currentLayout.widgets.find(w => w.id === draggedWidget);
+    const widget = currentLayout.widgets.find(w => w.id === widgetId);
     if (!widget) return;
 
-    // Calculate grid position for CSS Grid layout
-    let gridColumn = 1;
-    let gridRow = 1;
+    // Check if position is valid
+    const existingWidgets = currentLayout.widgets
+      .filter(w => w.id !== widgetId)
+      .map(w => ({
+        x: w.position?.x || 0,
+        y: w.position?.y || 0,
+        w: getGridColumns(w.widgetSize),
+        h: getGridRows(w.widgetSize),
+        id: w.id
+      }));
 
-    if (targetGridArea) {
-      gridColumn = targetGridArea.column;
-      gridRow = targetGridArea.row;
-    } else {
-      const rect = dashboardRef.current.getBoundingClientRect();
-      const containerWidth = rect.width;
-      const containerHeight = rect.height;
-      
-      // Calculate based on 6-column grid
-      const columnWidth = containerWidth / 6;
-      const dropX = event.clientX - rect.left;
-      const dropY = event.clientY - rect.top;
-      
-      gridColumn = Math.max(1, Math.min(6, Math.ceil(dropX / columnWidth)));
-      gridRow = Math.max(1, Math.ceil(dropY / 200)); // 200px row height
+    if (!isValidPosition(x, y, widget.widgetSize, existingWidgets)) {
+      toast.error('Position nicht verfügbar');
+      return;
     }
 
     // Update widget with new grid position
-    updateWidget(draggedWidget, { 
-      position: { x: gridColumn - 1, y: gridRow - 1 }
+    updateWidget(widgetId, { 
+      position: { x, y }
     });
 
     setDraggedWidget(null);
@@ -257,25 +267,13 @@ function HybridDashboardContent() {
       </div>
 
       {/* Dashboard Grid */}
-      <div
+      <ResponsiveGridSystem
         ref={dashboardRef}
-        className={`relative min-h-[800px] transition-all duration-200 ${
-          isEditMode ? 'border-2 border-dashed border-primary/30 rounded-lg p-4' : 'p-2'
-        }`}
-        onDrop={handleWidgetDrop}
+        widgets={currentLayout.widgets}
+        onWidgetDrop={handleWidgetDrop}
         onDragOver={handleDragOver}
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(6, 1fr)',
-          gridTemplateRows: 'repeat(auto-fit, 200px)',
-          gap: '1rem',
-          alignContent: 'start',
-          backgroundImage: isEditMode && gridSnap ? `
-            linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
-            linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
-          ` : 'none',
-          backgroundSize: isEditMode && gridSnap ? 'calc(100% / 6) 200px' : 'auto'
-        }}
+        isEditMode={isEditMode}
+        gridSnap={gridSnap}
       >
         {currentLayout.widgets.map((widget) => {
           // Convert widget position to CSS Grid placement
@@ -287,8 +285,7 @@ function HybridDashboardContent() {
               key={widget.id}
               className={`
                 relative 
-                ${getGridSpan(widget.widgetSize)}
-                ${widget.configuration?.minimized ? 'h-12' : getWidgetHeight(widget.widgetSize)}
+                ${widget.configuration?.minimized ? 'h-12' : ''}
                 ${draggedWidget === widget.id ? 'opacity-50 scale-95 z-30' : 'z-10'}
                 ${isEditMode && hoveredWidget === widget.id ? 'ring-2 ring-primary/50 shadow-lg' : ''}
                 ${isEditMode ? 'cursor-move' : 'cursor-default'}
@@ -296,11 +293,15 @@ function HybridDashboardContent() {
               `}
               style={{
                 gridColumn: `${gridColumnStart} / span ${getGridColumns(widget.widgetSize)}`,
-                gridRow: `${gridRowStart} / span ${getGridRows(widget.widgetSize)}`,
-                minHeight: `${getGridRows(widget.widgetSize) * 200}px`
+                gridRow: `${gridRowStart} / span ${getGridRows(widget.widgetSize)}`
               }}
               draggable={isEditMode}
-              onDragStart={(e) => handleWidgetDragStart(widget.id, e)}
+              onDragStart={(e) => {
+                if (!isEditMode) return;
+                setDraggedWidget(widget.id);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', widget.id);
+              }}
               onMouseEnter={() => isEditMode && setHoveredWidget(widget.id)}
               onMouseLeave={() => isEditMode && setHoveredWidget(null)}
             >
@@ -321,6 +322,7 @@ function HybridDashboardContent() {
                   widget={widget}
                   onResize={(size) => handleWidgetResize(widget.id, size)}
                   gridSnap={gridSnap}
+                  containerWidth={containerWidth}
                 />
               )}
 
@@ -333,7 +335,7 @@ function HybridDashboardContent() {
             </div>
           );
         })}
-      </div>
+      </ResponsiveGridSystem>
 
       {/* Widget Palette - Positioned near button */}
       {isEditMode && showPalette && (
@@ -444,51 +446,4 @@ export function HybridDashboard() {
   );
 }
 
-// Helper functions
-function getGridSpan(size: WidgetSize): string {
-  const spans = {
-    '1x1': 'col-span-1 row-span-1',
-    '2x1': 'col-span-2 row-span-1',
-    '1x2': 'col-span-1 row-span-2',
-    '2x2': 'col-span-2 row-span-2',
-    '3x1': 'col-span-3 row-span-1',
-    '1x3': 'col-span-1 row-span-3',
-    '3x2': 'col-span-3 row-span-2',
-    '2x3': 'col-span-2 row-span-3',
-    '3x3': 'col-span-3 row-span-3',
-    '4x1': 'col-span-4 row-span-1',
-    '1x4': 'col-span-1 row-span-4',
-    '4x2': 'col-span-4 row-span-2',
-    '2x4': 'col-span-2 row-span-4'
-  };
-  return spans[size] || 'col-span-1 row-span-1';
-}
-
-function getWidgetHeight(size: WidgetSize): string {
-  const heights = {
-    '1x1': 'h-48',
-    '2x1': 'h-48',
-    '1x2': 'h-96',
-    '2x2': 'h-96',
-    '3x1': 'h-48',
-    '1x3': 'h-[600px]',
-    '3x2': 'h-96',
-    '2x3': 'h-[600px]',
-    '3x3': 'h-[600px]',
-    '4x1': 'h-48',
-    '1x4': 'h-[800px]',
-    '4x2': 'h-96',
-    '2x4': 'h-[800px]'
-  };
-  return heights[size] || 'h-48';
-}
-
-function getGridColumns(size: WidgetSize): number {
-  const [columns] = size.split('x').map(Number);
-  return columns;
-}
-
-function getGridRows(size: WidgetSize): number {
-  const [, rows] = size.split('x').map(Number);
-  return rows;
-}
+// Helper functions maintained for compatibility but moved to useDashboardGrid hook

@@ -1,13 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { DashboardWidget, WidgetSize } from '@/hooks/useDashboardLayout';
+import { deltaToGridSize, validateWidgetSize, getGridColumns, getGridRows } from '@/hooks/useDashboardGrid';
 
 interface WidgetResizeHandleProps {
   widget: DashboardWidget;
   onResize: (size: WidgetSize) => void;
   gridSnap: boolean;
+  containerWidth?: number;
 }
 
-export function WidgetResizeHandle({ widget, onResize, gridSnap }: WidgetResizeHandleProps) {
+export function WidgetResizeHandle({ widget, onResize, gridSnap, containerWidth = 1200 }: WidgetResizeHandleProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [previewSize, setPreviewSize] = useState<WidgetSize | null>(null);
@@ -27,7 +29,7 @@ export function WidgetResizeHandle({ widget, onResize, gridSnap }: WidgetResizeH
       const deltaY = e.clientY - startPos.y;
 
       // Calculate new size based on delta and grid snap
-      const newSize = calculateNewSize(widget.widgetSize, deltaX, deltaY, corner, gridSnap);
+      const newSize = calculateNewSize(widget.widgetSize, deltaX, deltaY, corner, gridSnap, containerWidth);
       setPreviewSize(newSize);
     };
 
@@ -87,40 +89,26 @@ function calculateNewSize(
   deltaX: number,
   deltaY: number,
   corner: string,
-  gridSnap: boolean
+  gridSnap: boolean,
+  containerWidth: number
 ): WidgetSize {
   // Parse current size
   const [currentW, currentH] = currentSize.split('x').map(Number);
   
-  // Calculate grid units (assuming 200px per unit)
-  const gridUnit = 200;
+  // Use responsive grid calculations
+  const { deltaColumns, deltaRows } = deltaToGridSize(deltaX, deltaY, containerWidth);
+  
   let newW = currentW;
   let newH = currentH;
 
   if (corner.includes('e') || corner === 'se') {
-    newW = Math.max(1, Math.min(4, currentW + Math.round(deltaX / gridUnit)));
+    newW = currentW + deltaColumns;
   }
   
   if (corner.includes('s') || corner === 'se') {
-    newH = Math.max(1, Math.min(4, currentH + Math.round(deltaY / gridUnit)));
+    newH = currentH + deltaRows;
   }
 
-  // Validate size combination
-  const validSizes: WidgetSize[] = [
-    '1x1', '2x1', '1x2', '2x2', '3x1', '1x3', '3x2', '2x3', '3x3', '4x1', '1x4', '4x2', '2x4'
-  ];
-  
-  const newSizeStr = `${newW}x${newH}` as WidgetSize;
-  
-  if (validSizes.includes(newSizeStr)) {
-    return newSizeStr;
-  }
-  
-  // Fallback to nearest valid size
-  const nearest = validSizes.find(size => {
-    const [w, h] = size.split('x').map(Number);
-    return Math.abs(w - newW) + Math.abs(h - newH) <= 1;
-  });
-  
-  return nearest || currentSize;
+  // Validate and clamp the new size
+  return validateWidgetSize(currentSize, newW, newH, 6, 4);
 }
