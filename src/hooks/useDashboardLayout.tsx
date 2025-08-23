@@ -153,8 +153,9 @@ export function useDashboardLayout() {
       }
 
       if (data?.layout_data) {
-        setCurrentLayout(data.layout_data as DashboardLayout);
-        setLayouts([data.layout_data as DashboardLayout, defaultLayout]);
+        const layout = data.layout_data as unknown as DashboardLayout;
+        setCurrentLayout(layout);
+        setLayouts([layout, defaultLayout]);
       } else {
         setCurrentLayout(defaultLayout);
         setLayouts([defaultLayout]);

@@ -129,11 +129,12 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
       const { error } = await supabase
         .from('team_dashboards')
         .upsert({
-          user_id: user.id,
-          layout_data: currentLayout,
+          owner_id: user.id,
+          name: currentLayout.name,
+          layout_data: JSON.parse(JSON.stringify(currentLayout)),
           updated_at: new Date().toISOString()
         }, {
-          onConflict: 'user_id'
+          onConflict: 'owner_id'
         });
 
       if (error) throw error;
