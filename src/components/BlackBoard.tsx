@@ -35,12 +35,29 @@ export function BlackBoard() {
         return;
       }
 
-      // Filter for unread "An alle" messages only
-      const publicMessages = (data || [])
-        .filter(msg => msg.is_for_all_users && !msg.has_read && msg.author_id !== user.id)
+      // Filter for relevant messages:
+      // 1. Unread "An alle" messages from others
+      // 2. Own "An alle" messages (regardless of read status)
+      // 3. Unread personal messages addressed to the user
+      const relevantMessages = (data || [])
+        .filter(msg => {
+          // Own "An alle" messages
+          if (msg.is_for_all_users && msg.author_id === user.id) {
+            return true;
+          }
+          // Unread "An alle" messages from others
+          if (msg.is_for_all_users && !msg.has_read && msg.author_id !== user.id) {
+            return true;
+          }
+          // Unread personal messages to the user
+          if (!msg.is_for_all_users && !msg.has_read) {
+            return true;
+          }
+          return false;
+        })
         .slice(0, 5); // Limit to 5 most recent
 
-      setMessages(publicMessages);
+      setMessages(relevantMessages);
     } catch (error) {
       console.error('Error fetching public messages:', error);
     } finally {
