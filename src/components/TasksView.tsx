@@ -26,7 +26,7 @@ interface Task {
   priority: "low" | "medium" | "high";
   status: "todo" | "in-progress" | "completed";
   dueDate: string;
-  category: "legislation" | "constituency" | "committee" | "personal" | "call_followup";
+  category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
   assignedTo?: string;
   progress?: number;
   created_at?: string;
@@ -56,8 +56,13 @@ interface Subtask {
   completed_at?: string;
   result_text?: string;
   planning_item_id?: string;
-  source_type?: 'task' | 'planning';
+  source_type?: 'task' | 'planning' | 'call_followup';
   checklist_item_title?: string;
+  call_log_id?: string;
+  contact_name?: string;
+  priority?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export function TasksView() {
@@ -465,15 +470,16 @@ export function TasksView() {
             description: followupTask.title,
             task_id: followupTask.id,
             task_title: `Follow-Up: ${contactName}`,
-            source_type: 'call_followup' as const,
-            assigned_to: followupTask.assigned_to,
-            due_date: followupTask.due_date,
-            is_completed: followupTask.status === 'completed',
-            created_at: followupTask.created_at,
-            updated_at: followupTask.updated_at,
-            priority: followupTask.priority,
-            call_log_id: followupTask.call_log_id,
-            contact_name: contactName
+              source_type: 'call_followup' as const,
+              assigned_to: followupTask.assigned_to,
+              due_date: followupTask.due_date,
+              is_completed: followupTask.status === 'completed',
+              created_at: followupTask.created_at,
+              updated_at: followupTask.updated_at,
+              priority: followupTask.priority,
+              call_log_id: followupTask.call_log_id,
+              contact_name: contactName,
+              order_index: 0
           });
         }
       }
@@ -979,25 +985,40 @@ export function TasksView() {
 
   const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string = '') => {
     try {
-      // Determine if this is a regular subtask or planning subtask
       const subtask = assignedSubtasks.find(s => s.id === subtaskId);
-      const tableName = subtask?.source_type === 'planning' ? 'planning_item_subtasks' : 'subtasks';
-      
-      const updateData: any = {
-        is_completed: isCompleted,
-        completed_at: isCompleted ? new Date().toISOString() : null
-      };
+      if (!subtask) return;
 
-      if (result) {
-        updateData.result_text = result;
+      // Handle call follow-up tasks specially
+      if (subtask.source_type === 'call_followup' && isCompleted && subtask.call_log_id) {
+        await handleCallFollowUpComplete(subtask.call_log_id, result);
+        
+        // Mark the task as completed
+        const { error: taskError } = await supabase
+          .from('tasks')
+          .update({ status: 'completed' })
+          .eq('id', subtaskId);
+
+        if (taskError) throw taskError;
+      } else {
+        // Handle regular and planning subtasks
+        const tableName = subtask?.source_type === 'planning' ? 'planning_item_subtasks' : 'subtasks';
+        
+        const updateData: any = {
+          is_completed: isCompleted,
+          completed_at: isCompleted ? new Date().toISOString() : null
+        };
+
+        if (result) {
+          updateData.result_text = result;
+        }
+
+        const { error } = await supabase
+          .from(tableName)
+          .update(updateData)
+          .eq('id', subtaskId);
+
+        if (error) throw error;
       }
-
-      const { error } = await supabase
-        .from(tableName)
-        .update(updateData)
-        .eq('id', subtaskId);
-
-      if (error) throw error;
 
       loadAssignedSubtasks();
       setCompletingSubtask(null);
@@ -1014,6 +1035,137 @@ export function TasksView() {
         description: "Unteraufgabe konnte nicht aktualisiert werden.",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleCallFollowUpComplete = async (callLogId: string, resultText?: string) => {
+    try {
+      // Get the call log with contact information
+      const { data: callLog, error: callLogError } = await supabase
+        .from('call_logs')
+        .select('*, contact_id, caller_phone, caller_name')
+        .eq('id', callLogId)
+        .single();
+
+      if (callLogError) throw callLogError;
+
+      if (callLog.contact_id) {
+        // Contact exists - update call log with completion notes
+        const { error: updateError } = await supabase
+          .from('call_logs')
+          .update({ 
+            follow_up_completed: true,
+            completion_notes: resultText || null
+          })
+          .eq('id', callLogId);
+
+        if (updateError) throw updateError;
+
+        toast({
+          title: "Follow-Up erledigt",
+          description: "Die Notizen wurden beim Kontakt gespeichert.",
+        });
+      } else {
+        // No contact exists - create archive contact
+        await createArchiveContact(callLog, resultText);
+      }
+    } catch (error) {
+      console.error('Error handling call follow-up completion:', error);
+      throw error;
+    }
+  };
+
+  const createArchiveContact = async (callLog: any, resultText?: string) => {
+    try {
+      const phone = callLog.caller_phone;
+      const name = callLog.caller_name || `Unbekannter Anrufer (${phone})`;
+      
+      // Check if archive contact already exists for this phone number
+      let archiveContact = null;
+      if (phone) {
+        const { data: existingContact } = await supabase
+          .from('contacts')
+          .select('*')
+          .eq('phone', phone)
+          .eq('contact_type', 'archive')
+          .eq('user_id', user!.id)
+          .single();
+        
+        archiveContact = existingContact;
+      }
+
+      if (archiveContact) {
+        // Update existing archive contact with new follow-up details
+        const currentNotes = archiveContact.notes || '';
+        const newNotes = currentNotes + 
+          `\n\n--- Follow-Up vom ${new Date().toLocaleDateString('de-DE')} ---\n` +
+          `Ursprünglicher Anruf: ${new Date(callLog.call_date).toLocaleString('de-DE')}\n` +
+          `Anruftyp: ${callLog.call_type === 'incoming' ? 'Eingehend' : 'Ausgehend'}\n` +
+          `Priorität: ${callLog.priority}\n` +
+          `Ursprüngliche Notizen: ${callLog.notes || 'Keine'}\n` +
+          `Follow-Up Ergebnis: ${resultText || 'Keine Notizen'}`;
+
+        const { error: updateError } = await supabase
+          .from('contacts')
+          .update({ 
+            notes: newNotes,
+            last_contact: 'heute',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', archiveContact.id);
+
+        if (updateError) throw updateError;
+
+        toast({
+          title: "Follow-Up archiviert",
+          description: `Details wurden zum bestehenden Archiv-Kontakt "${archiveContact.name}" hinzugefügt.`,
+        });
+      } else {
+        // Create new archive contact
+        const newContact = {
+          user_id: user!.id,
+          name: name,
+          phone: phone,
+          contact_type: 'archive',
+          category: 'citizen',
+          priority: 'low',
+          last_contact: 'heute',
+          notes: `=== CALL FOLLOW-UP ARCHIV ===\n` +
+                 `Ursprünglicher Anruf: ${new Date(callLog.call_date).toLocaleString('de-DE')}\n` +
+                 `Anruftyp: ${callLog.call_type === 'incoming' ? 'Eingehend' : 'Ausgehend'}\n` +
+                 `Priorität: ${callLog.priority}\n` +
+                 `Ursprüngliche Notizen: ${callLog.notes || 'Keine'}\n` +
+                 `Follow-Up Ergebnis: ${resultText || 'Keine Notizen'}\n\n` +
+                 `Dieser Kontakt wurde automatisch aus Call Follow-Ups erstellt.`,
+          additional_info: 'Automatisch erstellt aus Call Follow-Up'
+        };
+
+        const { error: insertError } = await supabase
+          .from('contacts')
+          .insert(newContact);
+
+        if (insertError) throw insertError;
+
+        toast({
+          title: "Follow-Up archiviert",
+          description: `Neuer Archiv-Kontakt "${name}" wurde erstellt.`,
+        });
+      }
+
+      // Mark the call log as completed
+      const { error: callLogUpdateError } = await supabase
+        .from('call_logs')
+        .update({ 
+          follow_up_completed: true,
+          completion_notes: resultText || null
+        })
+        .eq('id', callLog.id);
+
+      if (callLogUpdateError) throw callLogUpdateError;
+
+    } catch (error) {
+      console.error('Error creating archive contact:', error);
+      throw error;
     }
   };
 
@@ -1044,6 +1196,10 @@ export function TasksView() {
   }).filter(task => {
     if (priorityFilter === "all") return true;
     return task.priority === priorityFilter;
+  }).filter(task => {
+    // Hide call follow-up tasks from general view
+    if (task.category === 'call_follow_up' || task.category === 'call_followup') return false;
+    return true;
   });
 
   // Filter out snoozed tasks and subtasks for current user
