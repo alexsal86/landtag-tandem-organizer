@@ -15,7 +15,7 @@ import { RealTimeSync } from './RealTimeSync';
 import { EditModeProvider, useEditMode } from './EditModeProvider';
 import { toast } from 'sonner';
 import { DashboardWidget as WidgetType, WidgetSize } from '@/hooks/useDashboardLayout';
-import { getGridColumns, getGridRows, isValidPosition, calculateGridUnit } from '@/hooks/useDashboardGrid';
+import { getGridColumns, getGridRows, isValidPosition, calculateGridUnit, getResponsiveColumns } from '@/hooks/useDashboardGrid';
 
 function HybridDashboardContent() {
   const {
@@ -112,6 +112,12 @@ function HybridDashboardContent() {
     const widget = currentLayout.widgets.find(w => w.id === widgetId);
     if (!widget) return;
 
+    // Clamp position to grid boundaries
+    const maxColumns = getResponsiveColumns(containerWidth);
+    const widgetCols = getGridColumns(widget.widgetSize);
+    const clampedX = Math.max(0, Math.min(x, maxColumns - widgetCols));
+    const clampedY = Math.max(0, y);
+
     // Check if position is valid
     const existingWidgets = currentLayout.widgets
       .filter(w => w.id !== widgetId)
@@ -123,14 +129,14 @@ function HybridDashboardContent() {
         id: w.id
       }));
 
-    if (!isValidPosition(x, y, widget.widgetSize, existingWidgets)) {
-      toast.error('Position nicht verfügbar');
+    if (!isValidPosition(clampedX, clampedY, widget.widgetSize, existingWidgets, widgetId, containerWidth)) {
+      toast.error('Position nicht verfügbar - Widget kann hier nicht platziert werden');
       return;
     }
 
     // Update widget with new grid position
     updateWidget(widgetId, { 
-      position: { x, y }
+      position: { x: clampedX, y: clampedY }
     });
 
     setDraggedWidget(null);
@@ -301,6 +307,12 @@ function HybridDashboardContent() {
                 setDraggedWidget(widget.id);
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', widget.id);
+                // Add visual feedback
+                e.currentTarget.style.opacity = '0.5';
+              }}
+              onDragEnd={(e) => {
+                e.currentTarget.style.opacity = '1';
+                setDraggedWidget(null);
               }}
               onMouseEnter={() => isEditMode && setHoveredWidget(widget.id)}
               onMouseLeave={() => isEditMode && setHoveredWidget(null)}

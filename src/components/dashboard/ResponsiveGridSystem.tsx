@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { DashboardWidget, WidgetSize } from '@/hooks/useDashboardLayout';
 import { 
-  GRID_COLUMNS, 
+  getResponsiveColumns,
   GRID_ROW_HEIGHT, 
   GRID_GAP,
   calculateGridUnit,
@@ -39,16 +39,24 @@ export const ResponsiveGridSystem = forwardRef<HTMLDivElement, ResponsiveGridSys
   useEffect(() => {
     const updateContainerWidth = () => {
       if (gridRef.current) {
-        setContainerWidth(gridRef.current.offsetWidth);
+        const newWidth = gridRef.current.offsetWidth;
+        setContainerWidth(newWidth);
       }
     };
 
     updateContainerWidth();
-    window.addEventListener('resize', updateContainerWidth);
-    return () => window.removeEventListener('resize', updateContainerWidth);
+    const resizeObserver = new ResizeObserver(updateContainerWidth);
+    if (gridRef.current) {
+      resizeObserver.observe(gridRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, [gridRef]);
 
-  // Calculate grid unit based on current container width
+  // Calculate responsive values
+  const gridColumns = getResponsiveColumns(containerWidth);
   const gridUnit = calculateGridUnit(containerWidth);
 
   const handleDragOver = (event: React.DragEvent) => {
@@ -89,10 +97,10 @@ export const ResponsiveGridSystem = forwardRef<HTMLDivElement, ResponsiveGridSys
     setDragPreview(null);
   };
 
-  const handleDragStart = (event: React.DragEvent, widgetId: string) => {
+  const handleDragStart = (event: React.DragEvent) => {
     if (!isEditMode) return;
+    const widgetId = event.dataTransfer.getData('text/plain');
     setDraggedWidget(widgetId);
-    event.dataTransfer.setData('text/plain', widgetId);
   };
 
   const handleDragEnd = () => {
@@ -104,48 +112,51 @@ export const ResponsiveGridSystem = forwardRef<HTMLDivElement, ResponsiveGridSys
     <div
       ref={gridRef}
       className={`
-        relative min-h-[800px] transition-all duration-200
+        relative min-h-[800px] transition-all duration-200 w-full
         ${isEditMode ? 'border-2 border-dashed border-primary/30 rounded-lg p-4' : 'p-2'}
       `}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
-      onDragStart={(e) => handleDragStart(e, '')}
       onDragEnd={handleDragEnd}
       style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${GRID_COLUMNS}, 1fr)`,
-        gridTemplateRows: `repeat(auto-fit, ${GRID_ROW_HEIGHT}px)`,
+        gridTemplateColumns: `repeat(${gridColumns}, 1fr)`,
+        gridAutoRows: `${GRID_ROW_HEIGHT}px`,
         gap: `${GRID_GAP}px`,
         alignContent: 'start',
+        width: '100%',
         backgroundImage: isEditMode && gridSnap ? `
           linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
           linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
         ` : 'none',
         backgroundSize: isEditMode && gridSnap ? 
-          `${gridUnit + GRID_GAP}px ${GRID_ROW_HEIGHT + GRID_GAP}px` : 'auto'
+          `${gridUnit + GRID_GAP}px ${GRID_ROW_HEIGHT + GRID_GAP}px` : 'auto',
+        backgroundPosition: isEditMode && gridSnap ? 
+          `${GRID_GAP / 2}px ${GRID_GAP / 2}px` : 'auto'
       }}
     >
       {/* Drop Preview */}
       {isEditMode && dragPreview && draggedWidget && (
         <div
-          className="absolute bg-primary/20 border-2 border-primary border-dashed rounded-lg z-50 pointer-events-none"
+          className="bg-primary/20 border-2 border-primary border-dashed rounded-lg z-50 pointer-events-none flex items-center justify-center"
           style={{
             gridColumn: `${dragPreview.x + 1} / span ${getGridColumns(
               widgets.find(w => w.id === draggedWidget)?.widgetSize || '1x1'
             )}`,
             gridRow: `${dragPreview.y + 1} / span ${getGridRows(
               widgets.find(w => w.id === draggedWidget)?.widgetSize || '1x1'
-            )}`,
-            height: `${getGridRows(
-              widgets.find(w => w.id === draggedWidget)?.widgetSize || '1x1'
-            ) * GRID_ROW_HEIGHT + (getGridRows(
-              widgets.find(w => w.id === draggedWidget)?.widgetSize || '1x1'
-            ) - 1) * GRID_GAP}px`
+            )}`
           }}
-        />
+        >
+          <div className="bg-primary text-primary-foreground px-2 py-1 rounded text-sm font-medium">
+            Drop hier
+          </div>
+        </div>
       )}
 
       {children}
     </div>
   );
 });
+
+ResponsiveGridSystem.displayName = 'ResponsiveGridSystem';
