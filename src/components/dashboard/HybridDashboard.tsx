@@ -90,23 +90,38 @@ function HybridDashboardContent() {
     event.dataTransfer.setData('text/plain', widgetId);
   };
 
-  const handleWidgetDrop = (event: React.DragEvent) => {
+  const handleWidgetDrop = (event: React.DragEvent, targetGridArea?: { column: number; row: number }) => {
     event.preventDefault();
     if (!draggedWidget || !dashboardRef.current || !isEditMode) return;
 
-    const rect = dashboardRef.current.getBoundingClientRect();
-    const x = Math.floor((event.clientX - rect.left) / 200);
-    const y = Math.floor((event.clientY - rect.top) / 200);
+    const widget = currentLayout.widgets.find(w => w.id === draggedWidget);
+    if (!widget) return;
 
-    if (gridSnap) {
-      updateWidget(draggedWidget, { 
-        position: { x: x * 200, y: y * 200 } 
-      });
+    // Calculate grid position for CSS Grid layout
+    let gridColumn = 1;
+    let gridRow = 1;
+
+    if (targetGridArea) {
+      gridColumn = targetGridArea.column;
+      gridRow = targetGridArea.row;
     } else {
-      updateWidget(draggedWidget, { 
-        position: { x: event.clientX - rect.left, y: event.clientY - rect.top } 
-      });
+      const rect = dashboardRef.current.getBoundingClientRect();
+      const containerWidth = rect.width;
+      const containerHeight = rect.height;
+      
+      // Calculate based on 6-column grid
+      const columnWidth = containerWidth / 6;
+      const dropX = event.clientX - rect.left;
+      const dropY = event.clientY - rect.top;
+      
+      gridColumn = Math.max(1, Math.min(6, Math.ceil(dropX / columnWidth)));
+      gridRow = Math.max(1, Math.ceil(dropY / 200)); // 200px row height
     }
+
+    // Update widget with new grid position
+    updateWidget(draggedWidget, { 
+      position: { x: gridColumn - 1, y: gridRow - 1 }
+    });
 
     setDraggedWidget(null);
     toast.success('Widget-Position aktualisiert');
@@ -270,26 +285,34 @@ function HybridDashboardContent() {
           backgroundSize: isEditMode && gridSnap ? '200px 200px' : 'auto'
         }}
       >
-        {currentLayout.widgets.map((widget) => (
-          <div
-            key={widget.id}
-            className={`
-              relative 
-              ${getGridSpan(widget.widgetSize)}
-              ${widget.configuration?.minimized ? 'h-12' : getWidgetHeight(widget.widgetSize)}
-              ${draggedWidget === widget.id ? 'opacity-50 scale-95 z-30' : 'z-10'}
-              ${isEditMode && hoveredWidget === widget.id ? 'ring-2 ring-primary/50 shadow-lg' : ''}
-              ${isEditMode ? 'cursor-move' : 'cursor-default'}
-              transition-all duration-200
-            `}
-            draggable={isEditMode}
-            onDragStart={(e) => handleWidgetDragStart(widget.id, e)}
-            onMouseEnter={() => isEditMode && setHoveredWidget(widget.id)}
-            onMouseLeave={() => isEditMode && setHoveredWidget(null)}
-          >
-            {/* Widget Hover Controls - Only in Edit Mode */}
-            {isEditMode && hoveredWidget === widget.id && (
-              <div className="absolute inset-0 z-20">
+        {currentLayout.widgets.map((widget) => {
+          // Convert widget position to CSS Grid placement
+          const gridColumnStart = (widget.position?.x || 0) + 1;
+          const gridRowStart = (widget.position?.y || 0) + 1;
+          
+          return (
+            <div
+              key={widget.id}
+              className={`
+                relative 
+                ${getGridSpan(widget.widgetSize)}
+                ${widget.configuration?.minimized ? 'h-12' : getWidgetHeight(widget.widgetSize)}
+                ${draggedWidget === widget.id ? 'opacity-50 scale-95 z-30' : 'z-10'}
+                ${isEditMode && hoveredWidget === widget.id ? 'ring-2 ring-primary/50 shadow-lg' : ''}
+                ${isEditMode ? 'cursor-move' : 'cursor-default'}
+                transition-all duration-200
+              `}
+              style={{
+                gridColumn: `${gridColumnStart} / span ${getGridColumns(widget.widgetSize)}`,
+                gridRow: `${gridRowStart} / span ${getGridRows(widget.widgetSize)}`
+              }}
+              draggable={isEditMode}
+              onDragStart={(e) => handleWidgetDragStart(widget.id, e)}
+              onMouseEnter={() => isEditMode && setHoveredWidget(widget.id)}
+              onMouseLeave={() => isEditMode && setHoveredWidget(null)}
+            >
+              {/* Widget Hover Controls - Only in Edit Mode */}
+              {isEditMode && hoveredWidget === widget.id && (
                 <WidgetHoverControls
                   widget={widget}
                   onResize={(size) => handleWidgetResize(widget.id, size)}
@@ -297,28 +320,26 @@ function HybridDashboardContent() {
                   onHide={() => handleWidgetHide(widget.id)}
                   onConfigure={() => {}}
                 />
-              </div>
-            )}
+              )}
 
-            {/* Widget Resize Handles - Only in Edit Mode */}
-            {isEditMode && hoveredWidget === widget.id && !widget.configuration?.minimized && (
-              <div className="absolute inset-0 z-20">
+              {/* Widget Resize Handles - Only in Edit Mode */}
+              {isEditMode && hoveredWidget === widget.id && !widget.configuration?.minimized && (
                 <WidgetResizeHandle
                   widget={widget}
                   onResize={(size) => handleWidgetResize(widget.id, size)}
                   gridSnap={gridSnap}
                 />
-              </div>
-            )}
+              )}
 
-            {/* Widget Content */}
-            <DashboardWidget 
-              widget={widget} 
-              isDragging={draggedWidget === widget.id}
-              isEditMode={isEditMode}
-            />
-          </div>
-        ))}
+              {/* Widget Content */}
+              <DashboardWidget 
+                widget={widget} 
+                isDragging={draggedWidget === widget.id}
+                isEditMode={isEditMode}
+              />
+            </div>
+          );
+        })}
       </div>
 
       {/* Widget Palette - Fixed Z-index under navigation */}
@@ -467,4 +488,14 @@ function getWidgetHeight(size: WidgetSize): string {
     '2x4': 'h-[800px]'
   };
   return heights[size] || 'h-48';
+}
+
+function getGridColumns(size: WidgetSize): number {
+  const [columns] = size.split('x').map(Number);
+  return columns;
+}
+
+function getGridRows(size: WidgetSize): number {
+  const [, rows] = size.split('x').map(Number);
+  return rows;
 }

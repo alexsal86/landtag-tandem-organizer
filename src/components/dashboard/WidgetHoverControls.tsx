@@ -58,27 +58,43 @@ export function WidgetHoverControls({
 }: WidgetHoverControlsProps) {
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [showSizeMenu, setShowSizeMenu] = useState(false);
+  const [isHoverExtended, setIsHoverExtended] = useState(false);
 
   const isMinimized = widget.configuration?.minimized;
 
   return (
     <>
-      {/* Main Controls Bar */}
-      <div className="absolute -top-12 left-0 right-0 flex items-center justify-between p-2 bg-background/95 backdrop-blur border rounded-lg shadow-lg z-20">
-        <div className="flex items-center gap-1">
+      {/* Extended Hover Zone - invisible but captures hover */}
+      <div 
+        className="absolute -inset-4 z-10"
+        onMouseEnter={() => setIsHoverExtended(true)}
+        onMouseLeave={() => setIsHoverExtended(false)}
+      />
+      
+      {/* Main Controls Bar - positioned on the right side for better accessibility */}
+      <div 
+        className="absolute -right-16 top-0 w-14 bg-background/95 backdrop-blur border rounded-lg shadow-lg z-20 transition-opacity duration-200"
+        style={{ 
+          opacity: isHoverExtended ? 1 : 0,
+          pointerEvents: isHoverExtended ? 'auto' : 'none'
+        }}
+        onMouseEnter={() => setIsHoverExtended(true)}
+        onMouseLeave={() => setIsHoverExtended(false)}
+      >
+        <div className="flex flex-col p-1 gap-1">
           {/* Move Handle */}
-          <div className="p-1 hover:bg-accent rounded cursor-move">
+          <div className="p-1 hover:bg-accent rounded cursor-move flex items-center justify-center" title="Verschieben">
             <Move className="h-3 w-3 text-muted-foreground" />
           </div>
           
           {/* Size Selector */}
           <DropdownMenu open={showSizeMenu} onOpenChange={setShowSizeMenu}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+              <Button variant="ghost" size="sm" className="h-6 w-12 px-1 text-xs" title="Größe ändern">
                 {widget.widgetSize}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent side="left" align="start">
               {SIZE_OPTIONS.map((option) => (
                 <DropdownMenuItem
                   key={option.size}
@@ -90,9 +106,7 @@ export function WidgetHoverControls({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
 
-        <div className="flex items-center gap-1">
           {/* Quick Actions */}
           <Button
             variant="ghost"
@@ -125,11 +139,12 @@ export function WidgetHoverControls({
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 p-0"
+                title="Weitere Optionen"
               >
                 <MoreVertical className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent side="left" align="start">
               <DropdownMenuItem onClick={() => setShowConfigDialog(true)}>
                 <Settings className="h-4 w-4 mr-2" />
                 Konfigurieren

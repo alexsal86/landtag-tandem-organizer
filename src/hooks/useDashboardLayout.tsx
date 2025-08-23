@@ -126,17 +126,31 @@ export function useDashboardLayout() {
     ]
   };
 
-  // Initialize with default layout and load from database
+  // Initialize with default layout and load from database with fallback
   useEffect(() => {
     if (user) {
       loadLayoutFromDatabase();
     } else {
-      setCurrentLayout(defaultLayout);
-      setLayouts([defaultLayout]);
+      // Try to load from localStorage for anonymous users
+      try {
+        const saved = localStorage.getItem(`dashboard-layout-anonymous`);
+        if (saved) {
+          const layout = JSON.parse(saved);
+          setCurrentLayout(layout);
+          setLayouts([layout, defaultLayout]);
+        } else {
+          setCurrentLayout(defaultLayout);
+          setLayouts([defaultLayout]);
+        }
+      } catch (error) {
+        console.warn('Failed to load from localStorage:', error);
+        setCurrentLayout(defaultLayout);
+        setLayouts([defaultLayout]);
+      }
     }
   }, [user]);
 
-  // Load layout from database
+  // Load layout from database with localStorage fallback
   const loadLayoutFromDatabase = async () => {
     if (!user) return;
 
@@ -157,19 +171,49 @@ export function useDashboardLayout() {
         setCurrentLayout(layout);
         setLayouts([layout, defaultLayout]);
       } else {
+        // Try localStorage fallback
+        try {
+          const saved = localStorage.getItem(`dashboard-layout-${user.id}`);
+          if (saved) {
+            const layout = JSON.parse(saved);
+            setCurrentLayout(layout);
+            setLayouts([layout, defaultLayout]);
+            // Save to Supabase for future use
+            setTimeout(() => saveCurrentLayout(), 1000);
+          } else {
+            setCurrentLayout(defaultLayout);
+            setLayouts([defaultLayout]);
+          }
+        } catch (localError) {
+          console.warn('Failed to load from localStorage:', localError);
+          setCurrentLayout(defaultLayout);
+          setLayouts([defaultLayout]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load layout from Supabase:', error);
+      // Fallback to localStorage
+      try {
+        const saved = localStorage.getItem(`dashboard-layout-${user.id}`);
+        if (saved) {
+          const layout = JSON.parse(saved);
+          setCurrentLayout(layout);
+          setLayouts([layout, defaultLayout]);
+        } else {
+          setCurrentLayout(defaultLayout);
+          setLayouts([defaultLayout]);
+        }
+      } catch (localError) {
+        console.warn('Failed to load from localStorage fallback:', localError);
         setCurrentLayout(defaultLayout);
         setLayouts([defaultLayout]);
       }
-    } catch (error) {
-      console.error('Failed to load layout:', error);
-      setCurrentLayout(defaultLayout);
-      setLayouts([defaultLayout]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Update widget position/size
+  // Update widget position/size with improved persistence
   const updateWidget = (widgetId: string, updates: Partial<DashboardWidget>) => {
     if (!currentLayout) return;
 
@@ -180,9 +224,24 @@ export function useDashboardLayout() {
     const updatedLayout = { ...currentLayout, widgets: updatedWidgets };
     setCurrentLayout(updatedLayout);
     
-    // Auto-save after changes with debouncing
-    setTimeout(() => {
-      saveCurrentLayout();
+    // Immediate local storage backup
+    try {
+      localStorage.setItem(`dashboard-layout-${user?.id || 'anonymous'}`, JSON.stringify(updatedLayout));
+    } catch (error) {
+      console.warn('Failed to save to localStorage:', error);
+    }
+    
+    // Debounced Supabase save with retry mechanism
+    setTimeout(async () => {
+      try {
+        await saveCurrentLayout();
+      } catch (error) {
+        console.error('Failed to save to Supabase, retrying...', error);
+        // Retry once after 2 seconds
+        setTimeout(() => {
+          saveCurrentLayout().catch(console.error);
+        }, 2000);
+      }
     }, 1000);
   };
 
