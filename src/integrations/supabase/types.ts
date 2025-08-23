@@ -2096,6 +2096,7 @@ export type Database = {
           id: string
           is_pinned: boolean | null
           tags: string[] | null
+          task_id: string | null
           title: string | null
           updated_at: string
           user_id: string
@@ -2108,6 +2109,7 @@ export type Database = {
           id?: string
           is_pinned?: boolean | null
           tags?: string[] | null
+          task_id?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
@@ -2120,11 +2122,20 @@ export type Database = {
           id?: string
           is_pinned?: boolean | null
           tags?: string[] | null
+          task_id?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quick_notes_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sick_days: {
         Row: {

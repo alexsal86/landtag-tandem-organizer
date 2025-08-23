@@ -155,18 +155,58 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
         const callTypeLabel = callType === 'outgoing' ? 'Ausgehender Anruf' : 
                               callType === 'incoming' ? 'Eingehender Anruf' : 'Verpasster Anruf';
 
-        await supabase
+        // First create a main task
+        const { data: mainTask, error: mainTaskError } = await supabase
           .from('tasks')
           .insert({
             user_id: user.id,
-            call_log_id: callLogData.id,
-            title: `Follow-up: ${contactName} - ${callTypeLabel}`,
-            description: notes.trim() ? `Call-Notizen: ${notes.trim()}` : undefined,
+            title: 'Call Follow-ups',
+            description: 'Hauptaufgabe für Anruf Follow-ups',
             category: 'call_followup',
-            priority: priority,
-            due_date: followUpDate ? new Date(followUpDate).toISOString() : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            priority: 'medium',
+            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
             status: 'todo'
-          });
+          })
+          .select()
+          .single();
+
+        if (mainTaskError) {
+          // Task might already exist, try to find it
+          const { data: existingTask } = await supabase
+            .from('tasks')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('category', 'call_followup')
+            .eq('title', 'Call Follow-ups')
+            .eq('status', 'todo')
+            .single();
+
+          if (existingTask) {
+            // Create subtask under existing main task
+            await supabase
+              .from('subtasks')
+              .insert({
+                task_id: existingTask.id,
+                user_id: user.id,
+                description: `Follow-up: ${contactName} - ${callTypeLabel}${notes.trim() ? '\n\nCall-Notizen: ' + notes.trim() : ''}`,
+                assigned_to: user.id,
+                due_date: followUpDate ? new Date(followUpDate).toISOString() : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                order_index: 0
+              });
+          }
+        } else if (mainTask) {
+          // Create subtask under new main task
+          await supabase
+            .from('subtasks')
+            .insert({
+              task_id: mainTask.id,
+              user_id: user.id,
+              description: `Follow-up: ${contactName} - ${callTypeLabel}${notes.trim() ? '\n\nCall-Notizen: ' + notes.trim() : ''}`,
+              assigned_to: user.id,
+              due_date: followUpDate ? new Date(followUpDate).toISOString() : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              order_index: 0
+            });
+        }
       }
 
       setCallLogs(prev => [callLogData as CallLog, ...prev.slice(0, 9)]);

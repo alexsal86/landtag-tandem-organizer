@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Save, Trash2, Pin, Tag, Palette, Search } from 'lucide-react';
+import { Plus, Save, Trash2, Pin, Tag, Palette, Search, CheckSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ interface QuickNote {
   color: string;
   is_pinned: boolean;
   tags: string[];
+  task_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -185,6 +186,36 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     setSelectedColor(note.color);
   };
 
+  const createTaskFromNote = async (note: QuickNote) => {
+    if (!user) return;
+
+    try {
+      const { data: task, error: taskError } = await supabase
+        .from('tasks')
+        .insert({
+          user_id: user.id,
+          title: note.title || note.content.substring(0, 50) + (note.content.length > 50 ? '...' : ''),
+          description: note.content,
+          category: 'personal',
+          priority: 'medium',
+          status: 'todo',
+          due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+        })
+        .select()
+        .single();
+
+      if (taskError) throw taskError;
+
+      // Link the note to the task
+      await updateNote(note.id, { task_id: task.id });
+
+      toast.success('Aufgabe erstellt und mit Notiz verknüpft');
+    } catch (error) {
+      console.error('Error creating task from note:', error);
+      toast.error('Fehler beim Erstellen der Aufgabe');
+    }
+  };
+
   const filteredNotes = notes.filter(note =>
     note.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (note.title && note.title.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -309,6 +340,11 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                       <span className="text-xs text-muted-foreground">
                         {new Date(note.updated_at).toLocaleDateString()}
                       </span>
+                      {note.task_id && (
+                        <Badge variant="outline" className="text-xs px-1 py-0 text-blue-600">
+                          Mit Aufgabe verknüpft
+                        </Badge>
+                      )}
                       {note.tags && note.tags.length > 0 && (
                         <div className="flex gap-1">
                           {note.tags.slice(0, 2).map(tag => (
@@ -322,6 +358,20 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                   </div>
                   
                   <div className="flex flex-col gap-1">
+                    {!note.task_id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          createTaskFromNote(note);
+                        }}
+                        className="h-6 w-6 p-0 text-blue-500 hover:text-blue-600"
+                        title="Als Aufgabe erstellen"
+                      >
+                        <CheckSquare className="h-3 w-3" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
