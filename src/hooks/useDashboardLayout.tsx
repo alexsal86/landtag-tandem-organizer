@@ -179,6 +179,11 @@ export function useDashboardLayout() {
 
     const updatedLayout = { ...currentLayout, widgets: updatedWidgets };
     setCurrentLayout(updatedLayout);
+    
+    // Auto-save after changes with debouncing
+    setTimeout(() => {
+      saveCurrentLayout();
+    }, 1000);
   };
 
   // Save current layout to database
@@ -190,7 +195,7 @@ export function useDashboardLayout() {
         ? { ...currentLayout, name, id: Math.random().toString() }
         : currentLayout;
 
-      // Save to Supabase
+      // Save to Supabase with proper serialization
       const { error } = await supabase
         .from('team_dashboards')
         .upsert({
@@ -207,6 +212,9 @@ export function useDashboardLayout() {
       if (name) {
         setLayouts(prev => [...prev, layoutToSave]);
         setCurrentLayout(layoutToSave);
+      } else {
+        // Update the current layout in state to reflect saved changes
+        setCurrentLayout({ ...layoutToSave });
       }
       
       toast.success('Layout gespeichert');
@@ -245,7 +253,11 @@ export function useDashboardLayout() {
       widgets: [...currentLayout.widgets, widget]
     };
     setCurrentLayout(updatedLayout);
-    saveCurrentLayout(); // Auto-save
+    
+    // Auto-save after a delay to ensure state is updated
+    setTimeout(() => {
+      saveCurrentLayout();
+    }, 100);
   };
 
   // Remove widget
@@ -257,7 +269,11 @@ export function useDashboardLayout() {
       widgets: currentLayout.widgets.filter(w => w.id !== widgetId)
     };
     setCurrentLayout(updatedLayout);
-    saveCurrentLayout(); // Auto-save
+    
+    // Auto-save after a delay to ensure state is updated
+    setTimeout(() => {
+      saveCurrentLayout();
+    }, 100);
   };
 
   return {

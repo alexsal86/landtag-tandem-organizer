@@ -23,6 +23,7 @@ import {
 import { DashboardWidget } from './DashboardWidget';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
 import { RealTimeDashboard } from './dashboard/RealTimeDashboard';
+import { HybridDashboard } from './dashboard/HybridDashboard';
 import { toast } from 'sonner';
 
 export function CustomizableDashboard() {
@@ -40,9 +41,15 @@ export function CustomizableDashboard() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newLayoutName, setNewLayoutName] = useState('');
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
-  const [useRealTimeDashboard, setUseRealTimeDashboard] = useState(true);
+  const [useRealTimeDashboard, setUseRealTimeDashboard] = useState(false);
+  const [useHybridDashboard, setUseHybridDashboard] = useState(true);
 
-  // If real-time dashboard is enabled, use the new component
+  // If hybrid dashboard is enabled, use the new component
+  if (useHybridDashboard) {
+    return <HybridDashboard />;
+  }
+
+  // If real-time dashboard is enabled, use the real-time component
   if (useRealTimeDashboard) {
     return <RealTimeDashboard />;
   }
@@ -272,14 +279,24 @@ export function CustomizableDashboard() {
             </DialogContent>
           </Dialog>
 
-          {/* Real-time Dashboard Toggle */}
+          {/* Dashboard Mode Toggle */}
           <Button
-            variant={useRealTimeDashboard ? "default" : "outline"}
+            variant={useHybridDashboard ? "default" : "outline"}
             size="sm"
-            onClick={() => setUseRealTimeDashboard(!useRealTimeDashboard)}
+            onClick={() => {
+              if (useHybridDashboard) {
+                setUseHybridDashboard(false);
+                setUseRealTimeDashboard(true);
+              } else if (useRealTimeDashboard) {
+                setUseRealTimeDashboard(false);
+                setUseHybridDashboard(false);
+              } else {
+                setUseHybridDashboard(true);
+              }
+            }}
           >
             <Sparkles className="h-4 w-4 mr-2" />
-            {useRealTimeDashboard ? 'Classic' : 'Real-Time'}
+            {useHybridDashboard ? 'Hybrid' : useRealTimeDashboard ? 'Real-Time' : 'Classic'}
           </Button>
 
           {/* Edit Mode Toggle */}

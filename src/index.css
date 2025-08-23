@@ -214,4 +214,25 @@ All colors MUST be HSL.
   .prose a {
     @apply text-primary hover:text-primary/80 underline;
   }
+
+  /* Z-index utilities for proper layering */
+  .z-nav {
+    z-index: 50;
+  }
+
+  .z-overlay {
+    z-index: 40;
+  }
+
+  .z-modal {
+    z-index: 30;
+  }
+
+  .z-widget {
+    z-index: 10;
+  }
+
+  .z-background {
+    z-index: 1;
+  }
 }
