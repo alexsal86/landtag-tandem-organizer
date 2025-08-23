@@ -272,17 +272,22 @@ function HybridDashboardContent() {
       {/* Dashboard Grid */}
       <div
         ref={dashboardRef}
-        className={`relative min-h-[800px] grid grid-cols-6 gap-4 auto-rows-min transition-all duration-200 ${
-          isEditMode ? 'border-2 border-dashed border-primary/30 rounded-lg p-2' : ''
+        className={`relative min-h-[800px] transition-all duration-200 ${
+          isEditMode ? 'border-2 border-dashed border-primary/30 rounded-lg p-4' : 'p-2'
         }`}
         onDrop={handleWidgetDrop}
         onDragOver={handleDragOver}
         style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(6, 1fr)',
+          gridTemplateRows: 'repeat(auto-fit, 200px)',
+          gap: '1rem',
+          alignContent: 'start',
           backgroundImage: isEditMode && gridSnap ? `
             linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
             linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
           ` : 'none',
-          backgroundSize: isEditMode && gridSnap ? '200px 200px' : 'auto'
+          backgroundSize: isEditMode && gridSnap ? 'calc(100% / 6) 200px' : 'auto'
         }}
       >
         {currentLayout.widgets.map((widget) => {
@@ -304,7 +309,8 @@ function HybridDashboardContent() {
               `}
               style={{
                 gridColumn: `${gridColumnStart} / span ${getGridColumns(widget.widgetSize)}`,
-                gridRow: `${gridRowStart} / span ${getGridRows(widget.widgetSize)}`
+                gridRow: `${gridRowStart} / span ${getGridRows(widget.widgetSize)}`,
+                minHeight: `${getGridRows(widget.widgetSize) * 200}px`
               }}
               draggable={isEditMode}
               onDragStart={(e) => handleWidgetDragStart(widget.id, e)}
@@ -342,10 +348,10 @@ function HybridDashboardContent() {
         })}
       </div>
 
-      {/* Widget Palette - Fixed Z-index under navigation */}
+      {/* Widget Palette - Positioned near button */}
       {isEditMode && showPalette && (
-        <div className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm" onClick={() => setShowPalette(false)}>
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-overlay bg-black/20 backdrop-blur-sm" onClick={() => setShowPalette(false)}>
+          <div className="absolute top-20 right-6" onClick={(e) => e.stopPropagation()}>
             <WidgetPalette
               onAddWidget={handleAddWidget}
               onClose={() => setShowPalette(false)}
@@ -357,7 +363,7 @@ function HybridDashboardContent() {
 
       {/* Context-Aware Suggestions - Proper Z-index */}
       {isEditMode && showSuggestions && (
-        <div className="fixed bottom-20 left-6 z-30 max-w-sm">
+        <div className="fixed bottom-20 left-6 z-modal max-w-sm">
           <ContextAwareSuggestions
             currentLayout={currentLayout}
             onSuggestionApply={(suggestion) => {
@@ -372,7 +378,7 @@ function HybridDashboardContent() {
       {isEditMode && (
         <>
           {/* Undo/Redo System */}
-          <div className="fixed bottom-6 right-24 z-30">
+          <div className="fixed bottom-6 right-24 z-modal">
             <UndoRedoSystem />
           </div>
 
@@ -388,7 +394,7 @@ function HybridDashboardContent() {
 
       {/* Performance Monitor - Only show when issues exist */}
       {showPerformanceIssues && (
-        <div className="fixed bottom-6 left-6 z-30 max-w-xs">
+        <div className="fixed bottom-6 left-6 z-modal max-w-xs">
           <PerformanceMonitor
             widgets={currentLayout.widgets}
             onPerformanceAlert={(alert) => {
@@ -401,7 +407,7 @@ function HybridDashboardContent() {
 
       {/* Edit Mode Status Card */}
       {isEditMode && (
-        <Card className="fixed bottom-6 right-6 border-primary/20 bg-background/95 backdrop-blur-sm shadow-elegant z-30">
+        <Card className="fixed bottom-6 right-6 border-primary/20 bg-background/95 backdrop-blur-sm shadow-elegant z-modal">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">

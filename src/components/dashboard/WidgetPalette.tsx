@@ -170,7 +170,7 @@ export function WidgetPalette({ onAddWidget, onClose, suggestions }: WidgetPalet
   };
 
   return (
-    <Card className="fixed top-20 right-6 w-96 max-h-[80vh] z-50 shadow-elegant border-primary/20">
+    <Card className="w-96 max-h-[80vh] shadow-elegant border-primary/20 bg-popover">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Widget hinzufügen</CardTitle>
