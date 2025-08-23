@@ -23,7 +23,8 @@ export const ResponsiveGridSystem = forwardRef<HTMLDivElement, ResponsiveGridSys
       const updateContainerWidth = () => {
         if (containerRef.current) {
           const rect = containerRef.current.getBoundingClientRect();
-          setContainerWidth(rect.width - (GRID_GAP * 2)); // Account for padding
+          // Pure CSS Grid: use actual container width minus padding
+          setContainerWidth(rect.width - (GRID_GAP * 2));
         }
       };
 
@@ -102,13 +103,14 @@ export const ResponsiveGridSystem = forwardRef<HTMLDivElement, ResponsiveGridSys
       width: '100%',
     };
 
-    // Grid background pattern for visual alignment
+    // CSS Grid aligned background pattern
     const gridBackgroundStyle = isEditMode ? {
       backgroundImage: `
         linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
         linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
       `,
-      backgroundSize: `calc((100% - ${GRID_GAP * (gridColumns + 1)}px) / ${gridColumns}) ${GRID_ROW_HEIGHT + GRID_GAP}px`,
+      // Perfect CSS Grid alignment: 100% divided by columns for width, fixed row height
+      backgroundSize: `calc(100% / ${gridColumns}) ${GRID_ROW_HEIGHT + GRID_GAP}px`,
       backgroundPosition: `${GRID_GAP}px ${GRID_GAP}px`,
     } : {};
 

@@ -5,7 +5,8 @@ import {
   validateWidgetSize, 
   getResponsiveColumns,
   getGridColumns,
-  getGridRows 
+  getGridRows,
+  getCSSGridUnit
 } from '@/hooks/useDashboardGrid';
 
 interface WidgetResizeHandleProps {
@@ -57,13 +58,16 @@ export function WidgetResizeHandle({
           newHeight = Math.max(1, Math.min(4, currentRows + deltaRows));
         }
       } else {
-        // Pixel-based resizing for freeform mode
-        const pixelThreshold = 50;
+        // CSS Grid unit-based resizing for freeform mode
+        const gridUnit = getCSSGridUnit(containerWidth);
+        const colThreshold = gridUnit * 0.5;
+        const rowThreshold = 80; // Half row height
+        
         if (direction.includes('right') || direction.includes('e')) {
-          newWidth = Math.max(1, Math.min(maxCols - (widget.position?.x || 0), currentCols + Math.round(deltaX / pixelThreshold)));
+          newWidth = Math.max(1, Math.min(maxCols - (widget.position?.x || 0), currentCols + Math.round(deltaX / colThreshold)));
         }
         if (direction.includes('bottom') || direction.includes('s')) {
-          newHeight = Math.max(1, Math.min(4, currentRows + Math.round(deltaY / pixelThreshold)));
+          newHeight = Math.max(1, Math.min(4, currentRows + Math.round(deltaY / rowThreshold)));
         }
       }
 

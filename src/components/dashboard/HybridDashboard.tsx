@@ -15,7 +15,7 @@ import { RealTimeSync } from './RealTimeSync';
 import { EditModeProvider, useEditMode } from './EditModeProvider';
 import { toast } from 'sonner';
 import { DashboardWidget as WidgetType, WidgetSize } from '@/hooks/useDashboardLayout';
-import { getGridColumns, getGridRows, isValidPosition, calculateGridUnit, getResponsiveColumns } from '@/hooks/useDashboardGrid';
+import { getGridColumns, getGridRows, isValidPosition, getCSSGridUnit, getResponsiveColumns } from '@/hooks/useDashboardGrid';
 
 function HybridDashboardContent() {
   const {

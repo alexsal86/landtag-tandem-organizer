@@ -26,23 +26,23 @@ export function getGridRows(widgetSize: WidgetSize): number {
   return height;
 }
 
-// Calculate responsive grid unit based on container width
-export function calculateGridUnit(containerWidth: number): number {
+// Get CSS Grid unit size - simplified for CSS Grid 1fr
+export function getCSSGridUnit(containerWidth: number): number {
   const columns = getResponsiveColumns(containerWidth);
-  const availableWidth = containerWidth - (GRID_GAP * (columns + 1)); // Account for outer gaps
-  return Math.floor(availableWidth / columns);
+  // Pure CSS Grid calculation: available width divided by columns
+  return (containerWidth - (GRID_GAP * (columns + 1))) / columns;
 }
 
-// Convert pixel coordinates to grid position
+// Convert pixel coordinates to CSS Grid position
 export function pixelToGridPosition(
   x: number,
   y: number,
   containerWidth: number
 ): { column: number; row: number } {
-  const gridUnit = calculateGridUnit(containerWidth);
   const columns = getResponsiveColumns(containerWidth);
+  const gridUnit = getCSSGridUnit(containerWidth);
   
-  // Account for container padding and gaps
+  // Direct CSS Grid mapping with padding offset
   const adjustedX = Math.max(0, x - GRID_GAP);
   const adjustedY = Math.max(0, y - GRID_GAP);
   
@@ -52,18 +52,20 @@ export function pixelToGridPosition(
   return { column, row };
 }
 
-// Convert mouse delta to grid size change
+// Convert mouse delta to CSS Grid columns/rows
 export function deltaToGridSize(
   deltaX: number,
   deltaY: number,
   containerWidth: number
 ): { deltaColumns: number; deltaRows: number } {
-  const gridUnit = calculateGridUnit(containerWidth);
+  const gridUnit = getCSSGridUnit(containerWidth);
   
-  // More precise delta calculation with threshold
-  const threshold = (gridUnit + GRID_GAP) * 0.3; // 30% threshold
-  const deltaColumns = Math.abs(deltaX) > threshold ? Math.round(deltaX / (gridUnit + GRID_GAP)) : 0;
-  const deltaRows = Math.abs(deltaY) > threshold ? Math.round(deltaY / (GRID_ROW_HEIGHT + GRID_GAP)) : 0;
+  // CSS Grid-based delta with smaller threshold for responsiveness
+  const colThreshold = gridUnit * 0.25;
+  const rowThreshold = GRID_ROW_HEIGHT * 0.25;
+  
+  const deltaColumns = Math.abs(deltaX) > colThreshold ? Math.round(deltaX / (gridUnit + GRID_GAP)) : 0;
+  const deltaRows = Math.abs(deltaY) > rowThreshold ? Math.round(deltaY / (GRID_ROW_HEIGHT + GRID_GAP)) : 0;
   
   return { deltaColumns, deltaRows };
 }
@@ -116,7 +118,7 @@ export function findAvailablePosition(
 export function getWidgetDimensions(widgetSize: WidgetSize, containerWidth: number) {
   const cols = getGridColumns(widgetSize);
   const rows = getGridRows(widgetSize);
-  const gridUnit = calculateGridUnit(containerWidth);
+  const gridUnit = getCSSGridUnit(containerWidth);
   
   return {
     width: cols * gridUnit + (cols - 1) * GRID_GAP,
@@ -191,14 +193,14 @@ export function validateWidgetSize(
   return nearest || currentSize;
 }
 
-// Get widget pixel dimensions based on grid and container
+// Get widget pixel dimensions based on CSS Grid units
 export function getWidgetPixelDimensions(
   widgetSize: WidgetSize, 
   containerWidth: number
 ): { width: number; height: number } {
   const cols = getGridColumns(widgetSize);
   const rows = getGridRows(widgetSize);
-  const gridUnit = calculateGridUnit(containerWidth);
+  const gridUnit = getCSSGridUnit(containerWidth);
   
   return {
     width: cols * gridUnit + (cols - 1) * GRID_GAP,
