@@ -113,35 +113,32 @@ export const NotificationSettings: React.FC = () => {
       const updateData = {
         user_id: user.id,
         notification_type_id: typeId,
+        is_enabled: setting?.is_enabled ?? true,
+        push_enabled: setting?.push_enabled ?? false,
+        email_enabled: setting?.email_enabled ?? false,
+        quiet_hours_start: setting?.quiet_hours_start || '22:00',
+        quiet_hours_end: setting?.quiet_hours_end || '08:00',
         [field]: value,
       };
 
-      if (setting?.id) {
-        // Update existing setting
-        const { error } = await supabase
-          .from('user_notification_settings')
-          .update(updateData)
-          .eq('id', setting.id);
-        
-        if (error) throw error;
-      } else {
-        // Create new setting
-        const { error } = await supabase
-          .from('user_notification_settings')
-          .insert({
-            ...updateData,
-            is_enabled: true,
-            push_enabled: false,
-            email_enabled: false,
-          });
-        
-        if (error) throw error;
-      }
+      const { error, data } = await supabase
+        .from('user_notification_settings')
+        .upsert(updateData, {
+          onConflict: 'user_id,notification_type_id'
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
 
-      // Update local state
+      // Update local state with the returned data
       setSettings(prev => prev.map(s => 
         s.notification_type_id === typeId 
-          ? { ...s, [field]: value }
+          ? { 
+              ...s, 
+              id: data.id,
+              [field]: value 
+            }
           : s
       ));
 
@@ -167,8 +164,8 @@ export const NotificationSettings: React.FC = () => {
 
     setLoading(true);
     try {
+      // Create upsert data for all notification types
       const updates = settings.map(setting => ({
-        id: setting.id,
         user_id: user.id,
         notification_type_id: setting.notification_type_id,
         quiet_hours_start: quietHoursStart,
@@ -176,21 +173,31 @@ export const NotificationSettings: React.FC = () => {
         is_enabled: setting.is_enabled,
         push_enabled: setting.push_enabled,
         email_enabled: setting.email_enabled,
-      })).filter(s => s.id);
+      }));
 
-      if (updates.length > 0) {
-        const { error } = await supabase
-          .from('user_notification_settings')
-          .upsert(updates);
+      const { error, data } = await supabase
+        .from('user_notification_settings')
+        .upsert(updates, {
+          onConflict: 'user_id,notification_type_id'
+        })
+        .select();
 
-        if (error) throw error;
-      }
+      if (error) throw error;
 
-      setSettings(prev => prev.map(s => ({
-        ...s,
-        quiet_hours_start: quietHoursStart,
-        quiet_hours_end: quietHoursEnd,
-      })));
+      // Update local state with returned data
+      setSettings(prev => prev.map(setting => {
+        const updatedSetting = data?.find(d => d.notification_type_id === setting.notification_type_id);
+        return updatedSetting ? {
+          ...setting,
+          id: updatedSetting.id,
+          quiet_hours_start: quietHoursStart,
+          quiet_hours_end: quietHoursEnd,
+        } : {
+          ...setting,
+          quiet_hours_start: quietHoursStart,
+          quiet_hours_end: quietHoursEnd,
+        };
+      }));
 
       toast({
         title: 'Gespeichert',

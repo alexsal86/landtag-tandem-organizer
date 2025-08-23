@@ -206,8 +206,8 @@ export const useNotifications = () => {
       let subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
-        // Create new subscription (you'll need to set VAPID public key)
-        const vapidPublicKey = 'BP0J1aaa...'; // Replace with your VAPID public key
+        // Create new subscription with VAPID public key
+        const vapidPublicKey = 'BEelqtP2nJZSUYbfhTdv4SaQqTGCJXXn-2GXEcZdI9J_fdhg8Sb_FT7JqqQyoVQHO7hMJdm9MqA9YhwMc7a6V3E'; // VAPID public key
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
