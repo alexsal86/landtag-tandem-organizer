@@ -349,34 +349,23 @@ export function TasksView() {
       // Get call follow-up tasks assigned to this user
       console.log('Looking for call follow-up tasks for user:', user.id, 'email:', user.email);
       
-      // Debug: Let's see ALL tasks to understand the data structure
-      const { data: allTasks, error: allTasksError } = await supabase
+      // First query: All tasks with call follow-up category (this should work!)
+      const { data: callFollowupData, error: callFollowupError } = await supabase
         .from('tasks')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      
-      console.log('Last 10 tasks:', allTasks);
-      
-      // Check for tasks by category broadly
-      const { data: categoryTasks, error: categoryError } = await supabase
-        .from('tasks')
-        .select('*')
-        .like('category', '%call%');
-      
-      console.log('All tasks with "call" in category:', categoryTasks);
-      
-      // Try to find follow-up tasks by user assignment
-      const { data: userTasks, error: userTasksError } = await supabase
-        .from('tasks')
-        .select('*')
-        .or(`assigned_to.eq.${user.email},assigned_to.eq.${user.id}`)
+        .select('*, call_log_id')
+        .eq('category', 'call_follow_up')
         .neq('status', 'completed');
       
-      console.log('All user assigned tasks:', userTasks);
+      console.log('All call follow-up tasks (category filter):', callFollowupData);
       
-      // Set empty for now until we understand the data
-      const callFollowupData = [];
+      // Filter those assigned to current user
+      const userCallFollowups = (callFollowupData || []).filter(task => 
+        task.assigned_to === user.email || 
+        task.assigned_to === user.id ||
+        task.user_id === user.id
+      );
+      
+      console.log('User assigned call follow-ups:', userCallFollowups);
 
       console.log('Regular subtasks:', subtasksData);
       console.log('Planning subtasks:', planningSubtasksData);
@@ -433,8 +422,8 @@ export function TasksView() {
       }
 
       // Process call follow-up tasks as pseudo-subtasks
-      if (callFollowupData) {
-        for (const followupTask of callFollowupData) {
+      if (userCallFollowups && userCallFollowups.length > 0) {
+        for (const followupTask of userCallFollowups) {
           // Get contact name from call log
           let contactName = 'Unbekannter Kontakt';
           if (followupTask.call_log_id) {
