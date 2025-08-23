@@ -6,6 +6,7 @@ import { Calendar, Users, CheckSquare, Clock, FileText, Phone, AlertCircle, Circ
 import { DashboardWidget as WidgetType } from '@/hooks/useDashboardLayout';
 import { supabase } from "@/integrations/supabase/client";
 import { MessageSystem } from './MessageSystem';
+import { BlackBoard } from './BlackBoard';
 import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 import { PomodoroWidget } from '@/components/widgets/PomodoroWidget';
 import { HabitsWidget } from '@/components/widgets/HabitsWidget';
@@ -293,6 +294,8 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
           </div>
         );
 
+      case 'blackboard':
+        return <BlackBoard />;
       case 'messages':
         return <MessageSystem />;
 
