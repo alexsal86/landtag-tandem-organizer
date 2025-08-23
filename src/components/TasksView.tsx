@@ -347,6 +347,16 @@ export function TasksView() {
       if (planningError) throw planningError;
 
       // Get call follow-up tasks assigned to this user
+      console.log('Looking for call follow-up tasks for user:', user.id, 'email:', user.email);
+      
+      // First, let's see all tasks with call_log_id to debug
+      const { data: allCallTasks, error: allCallError } = await supabase
+        .from('tasks')
+        .select('*')
+        .not('call_log_id', 'is', null);
+      
+      console.log('All tasks with call_log_id:', allCallTasks);
+      
       const { data: callFollowupData, error: callFollowupError } = await supabase
         .from('tasks')
         .select('*, call_log_id')
