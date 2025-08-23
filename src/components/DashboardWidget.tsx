@@ -305,31 +305,45 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
   if (['quicknotes', 'pomodoro', 'habits', 'calllog'].includes(widget.type)) {
     return (
       <div 
-        className={`h-full ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}
+        className={`h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}
         draggable={isEditMode}
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          boxSizing: 'border-box'
+        }}
       >
-        {renderWidgetContent()}
+        <div className="w-full h-full overflow-hidden">
+          {renderWidgetContent()}
+        </div>
       </div>
     );
   }
 
   return (
     <Card 
-      className={`bg-card shadow-card border-border h-full ${
+      className={`bg-card shadow-card border-border h-full w-full max-w-full overflow-hidden ${
         isDragging ? 'rotate-3 shadow-lg' : 'hover:shadow-elegant'
       } transition-all duration-300 ${isEditMode ? 'cursor-move' : ''}`}
       draggable={isEditMode}
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        boxSizing: 'border-box'
+      }}
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            {isEditMode && <GripVertical className="h-4 w-4 text-muted-foreground" />}
-            {widget.title}
+          <CardTitle className="flex items-center gap-2 truncate">
+            {isEditMode && <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+            <span className="truncate">{widget.title}</span>
           </CardTitle>
         </div>
       </CardHeader>
-      <CardContent>
-        {renderWidgetContent()}
+      <CardContent className="overflow-hidden">
+        <div className="w-full h-full overflow-hidden">
+          {renderWidgetContent()}
+        </div>
       </CardContent>
     </Card>
   );

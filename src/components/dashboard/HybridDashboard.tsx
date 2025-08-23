@@ -45,16 +45,25 @@ function HybridDashboardContent() {
   const dashboardRef = useRef<HTMLDivElement>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Auto-save in edit mode
+  // Debounced auto-save to prevent race conditions
+  const lastLayoutRef = useRef<string>('');
+  
   useEffect(() => {
     if (isEditMode && autoSaveEnabled && currentLayout) {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
+      const currentLayoutString = JSON.stringify(currentLayout);
+      
+      // Only save if layout actually changed
+      if (currentLayoutString !== lastLayoutRef.current) {
+        if (autoSaveTimeoutRef.current) {
+          clearTimeout(autoSaveTimeoutRef.current);
+        }
+        
+        autoSaveTimeoutRef.current = setTimeout(() => {
+          saveCurrentLayout();
+          lastLayoutRef.current = currentLayoutString;
+          toast.success('Automatisch gespeichert', { duration: 2000 });
+        }, 2000);
       }
-      autoSaveTimeoutRef.current = setTimeout(() => {
-        saveCurrentLayout();
-        toast.success('Automatisch gespeichert', { duration: 2000 });
-      }, 3000);
     }
     return () => {
       if (autoSaveTimeoutRef.current) {
@@ -176,6 +185,11 @@ function HybridDashboardContent() {
   const handleWidgetHide = (widgetId: string) => {
     removeWidget(widgetId);
     toast.success('Widget ausgeblendet');
+  };
+
+  const handleWidgetDelete = (widgetId: string) => {
+    removeWidget(widgetId);
+    toast.success('Widget gelöscht');
   };
 
   const handleAddWidget = (type: string, position?: { x: number; y: number }) => {
@@ -331,6 +345,7 @@ function HybridDashboardContent() {
                   onResize={(size) => handleWidgetResize(widget.id, size)}
                   onMinimize={() => handleWidgetMinimize(widget.id)}
                   onHide={() => handleWidgetHide(widget.id)}
+                  onDelete={() => handleWidgetDelete(widget.id)}
                   onConfigure={() => {}}
                 />
               )}
@@ -390,13 +405,6 @@ function HybridDashboardContent() {
             <UndoRedoSystem />
           </div>
 
-          {/* Real-Time Sync */}
-          <RealTimeSync
-            currentLayout={currentLayout}
-            onLayoutUpdate={(updatedLayout) => {
-              // Handle real-time updates
-            }}
-          />
         </>
       )}
 

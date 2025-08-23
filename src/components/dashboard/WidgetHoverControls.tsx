@@ -19,11 +19,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { DashboardWidget, WidgetSize } from '@/hooks/useDashboardLayout';
 import { WidgetConfigDialog } from './WidgetConfigDialog';
 
@@ -32,6 +37,7 @@ interface WidgetHoverControlsProps {
   onResize: (size: WidgetSize) => void;
   onMinimize: () => void;
   onHide: () => void;
+  onDelete: () => void;
   onConfigure: () => void;
 }
 
@@ -54,10 +60,12 @@ export function WidgetHoverControls({
   onResize,
   onMinimize,
   onHide,
+  onDelete,
   onConfigure
 }: WidgetHoverControlsProps) {
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [showSizeMenu, setShowSizeMenu] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isHoverExtended, setIsHoverExtended] = useState(false);
 
   const isMinimized = widget.configuration?.minimized;
@@ -73,7 +81,7 @@ export function WidgetHoverControls({
       
       {/* Main Controls Bar - positioned on the right side for better accessibility */}
       <div 
-        className="absolute -right-16 top-0 w-14 bg-background/95 backdrop-blur border rounded-lg shadow-lg z-20 transition-opacity duration-200"
+        className="absolute -right-16 top-0 w-14 bg-background/95 backdrop-blur border rounded-lg shadow-lg z-60 transition-opacity duration-200"
         style={{ 
           opacity: isHoverExtended ? 1 : 0,
           pointerEvents: isHoverExtended ? 'auto' : 'none'
@@ -94,7 +102,7 @@ export function WidgetHoverControls({
                 {widget.widgetSize}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="left" align="start">
+            <DropdownMenuContent side="left" align="start" className="z-60">
               {SIZE_OPTIONS.map((option) => (
                 <DropdownMenuItem
                   key={option.size}
@@ -144,7 +152,7 @@ export function WidgetHoverControls({
                 <MoreVertical className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="left" align="start">
+            <DropdownMenuContent side="left" align="start" className="z-60">
               <DropdownMenuItem onClick={() => setShowConfigDialog(true)}>
                 <Settings className="h-4 w-4 mr-2" />
                 Konfigurieren
@@ -162,7 +170,7 @@ export function WidgetHoverControls({
                 <EyeOff className="h-4 w-4 mr-2" />
                 Ausblenden
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {}} className="text-destructive">
+              <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Löschen
               </DropdownMenuItem>
@@ -182,6 +190,30 @@ export function WidgetHoverControls({
           setShowConfigDialog(false);
         }}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="z-60">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Widget löschen</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchten Sie das Widget "{widget.title}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                onDelete();
+                setShowDeleteDialog(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

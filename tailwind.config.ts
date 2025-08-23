@@ -123,6 +123,13 @@ export default {
 			boxShadow: {
 				'elegant': 'var(--shadow-elegant)',
 				'card': 'var(--shadow-card)'
+			},
+			zIndex: {
+				'widget': '10',
+				'controls': '50',
+				'dropdown': '60',
+				'modal': '70',
+				'overlay': '80'
 			}
 		}
 	},
