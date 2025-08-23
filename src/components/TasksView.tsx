@@ -346,8 +346,19 @@ export function TasksView() {
 
       if (planningError) throw planningError;
 
+      // Get call follow-up tasks assigned to this user
+      const { data: callFollowupData, error: callFollowupError } = await supabase
+        .from('tasks')
+        .select('*, call_log_id')
+        .eq('assigned_to', user.email || user.id)
+        .in('category', ['call_follow_up', 'call_followup'])
+        .eq('status', 'todo');
+
+      if (callFollowupError) throw callFollowupError;
+
       console.log('Regular subtasks:', subtasksData);
       console.log('Planning subtasks:', planningSubtasksData);
+      console.log('Call follow-up tasks:', callFollowupData);
 
       // Combine subtasks with task titles
       const allSubtasks = [];
@@ -395,6 +406,48 @@ export function TasksView() {
             source_type: 'planning' as const,
             checklist_item_title: checklistItemData?.title,
             planning_item_id: subtask.planning_item_id
+          });
+        }
+      }
+
+      // Process call follow-up tasks as pseudo-subtasks
+      if (callFollowupData) {
+        for (const followupTask of callFollowupData) {
+          // Get contact name from call log
+          let contactName = 'Unbekannter Kontakt';
+          if (followupTask.call_log_id) {
+            const { data: callLogData } = await supabase
+              .from('call_logs')
+              .select('contact_id')
+              .eq('id', followupTask.call_log_id)
+              .single();
+
+            if (callLogData?.contact_id) {
+              const { data: contactData } = await supabase
+                .from('contacts')
+                .select('name')
+                .eq('id', callLogData.contact_id)
+                .single();
+              
+              contactName = contactData?.name || contactName;
+            }
+          }
+
+          // Convert task to subtask format
+          allSubtasks.push({
+            id: followupTask.id,
+            description: followupTask.title,
+            task_id: followupTask.id,
+            task_title: `Follow-Up: ${contactName}`,
+            source_type: 'call_followup' as const,
+            assigned_to: followupTask.assigned_to,
+            due_date: followupTask.due_date,
+            is_completed: followupTask.status === 'completed',
+            created_at: followupTask.created_at,
+            updated_at: followupTask.updated_at,
+            priority: followupTask.priority,
+            call_log_id: followupTask.call_log_id,
+            contact_name: contactName
           });
         }
       }
