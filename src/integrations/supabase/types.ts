@@ -303,6 +303,54 @@ export type Database = {
         }
         Relationships: []
       }
+      call_logs: {
+        Row: {
+          call_date: string
+          call_type: string | null
+          contact_id: string | null
+          created_at: string
+          duration_minutes: number | null
+          follow_up_completed: boolean | null
+          follow_up_date: string | null
+          follow_up_required: boolean | null
+          id: string
+          notes: string | null
+          priority: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          call_date?: string
+          call_type?: string | null
+          contact_id?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          follow_up_completed?: boolean | null
+          follow_up_date?: string | null
+          follow_up_required?: boolean | null
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          call_date?: string
+          call_type?: string | null
+          contact_id?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          follow_up_completed?: boolean | null
+          follow_up_date?: string | null
+          follow_up_required?: boolean | null
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       carryover_items: {
         Row: {
           assigned_to: string | null
@@ -1097,6 +1145,78 @@ export type Database = {
           },
         ]
       }
+      habit_completions: {
+        Row: {
+          completion_date: string
+          count: number | null
+          created_at: string
+          habit_id: string
+          id: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          completion_date: string
+          count?: number | null
+          created_at?: string
+          habit_id: string
+          id?: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          completion_date?: string
+          count?: number | null
+          created_at?: string
+          habit_id?: string
+          id?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      habits: {
+        Row: {
+          category: string | null
+          color: string | null
+          created_at: string
+          description: string | null
+          frequency: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          target_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          target_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          target_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       knowledge_document_permissions: {
         Row: {
           created_at: string
@@ -1853,6 +1973,45 @@ export type Database = {
           },
         ]
       }
+      pomodoro_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          is_completed: boolean | null
+          notes: string | null
+          session_type: string | null
+          started_at: string
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_completed?: boolean | null
+          notes?: string | null
+          session_type?: string | null
+          started_at?: string
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_completed?: boolean | null
+          notes?: string | null
+          session_type?: string | null
+          started_at?: string
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1915,6 +2074,45 @@ export type Database = {
           p256dh_key?: string
           updated_at?: string
           user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quick_notes: {
+        Row: {
+          category: string | null
+          color: string | null
+          content: string
+          created_at: string
+          id: string
+          is_pinned: boolean | null
+          tags: string[] | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          color?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          tags?: string[] | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          color?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          tags?: string[] | null
+          title?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -2229,6 +2427,63 @@ export type Database = {
         }
         Relationships: []
       }
+      team_dashboard_members: {
+        Row: {
+          added_at: string
+          id: string
+          role: string | null
+          team_dashboard_id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          role?: string | null
+          team_dashboard_id: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          role?: string | null
+          team_dashboard_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      team_dashboards: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          layout_data: Json
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          layout_data?: Json
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          layout_data?: Json
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       time_entries: {
         Row: {
           created_at: string
@@ -2419,6 +2674,36 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      widget_configurations: {
+        Row: {
+          configuration: Json
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          widget_id: string
+          widget_type: string
+        }
+        Insert: {
+          configuration?: Json
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          widget_id: string
+          widget_type: string
+        }
+        Update: {
+          configuration?: Json
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          widget_id?: string
+          widget_type?: string
         }
         Relationships: []
       }

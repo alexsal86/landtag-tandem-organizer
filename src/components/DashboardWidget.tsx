@@ -6,6 +6,10 @@ import { Calendar, Users, CheckSquare, Clock, FileText, Phone, AlertCircle, Circ
 import { DashboardWidget as WidgetType } from '@/hooks/useDashboardLayout';
 import { supabase } from "@/integrations/supabase/client";
 import { MessageSystem } from './MessageSystem';
+import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
+import { PomodoroWidget } from '@/components/widgets/PomodoroWidget';
+import { HabitsWidget } from '@/components/widgets/HabitsWidget';
+import { CallLogWidget } from '@/components/widgets/CallLogWidget';
 
 interface WidgetProps {
   widget: WidgetType;
@@ -163,6 +167,14 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
 
   const renderWidgetContent = () => {
     switch (widget.type) {
+      case 'quicknotes':
+        return <QuickNotesWidget configuration={widget.configuration} />;
+      case 'pomodoro':
+        return <PomodoroWidget configuration={widget.configuration} />;
+      case 'habits':
+        return <HabitsWidget configuration={widget.configuration} />;
+      case 'calllog':
+        return <CallLogWidget configuration={widget.configuration} />;
       case 'stats':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -289,11 +301,24 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
     }
   };
 
+  // For new widget types that handle their own layout, render them directly
+  if (['quicknotes', 'pomodoro', 'habits', 'calllog'].includes(widget.type)) {
+    return (
+      <div 
+        className={`h-full ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}
+        draggable={isEditMode}
+      >
+        {renderWidgetContent()}
+      </div>
+    );
+  }
+
   return (
     <Card 
-      className={`bg-card shadow-card border-border ${
+      className={`bg-card shadow-card border-border h-full ${
         isDragging ? 'rotate-3 shadow-lg' : 'hover:shadow-elegant'
       } transition-all duration-300 ${isEditMode ? 'cursor-move' : ''}`}
+      draggable={isEditMode}
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
