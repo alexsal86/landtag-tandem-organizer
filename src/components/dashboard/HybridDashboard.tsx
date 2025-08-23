@@ -62,17 +62,23 @@ function HybridDashboardContent() {
     };
   }, [currentLayout, isEditMode, autoSaveEnabled, saveCurrentLayout]);
 
-  // Update container width on resize
+  // Update container width on resize - sync with ResponsiveGridSystem
   useEffect(() => {
     const updateContainerWidth = () => {
       if (dashboardRef.current) {
-        setContainerWidth(dashboardRef.current.offsetWidth);
+        const rect = dashboardRef.current.getBoundingClientRect();
+        setContainerWidth(rect.width);
       }
     };
 
     updateContainerWidth();
-    window.addEventListener('resize', updateContainerWidth);
-    return () => window.removeEventListener('resize', updateContainerWidth);
+    
+    const resizeObserver = new ResizeObserver(updateContainerWidth);
+    if (dashboardRef.current) {
+      resizeObserver.observe(dashboardRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
   }, []);
 
   // Close palette when exiting edit mode

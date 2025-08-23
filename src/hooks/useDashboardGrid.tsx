@@ -26,11 +26,13 @@ export function getGridRows(widgetSize: WidgetSize): number {
   return height;
 }
 
-// Get CSS Grid unit size - simplified for CSS Grid 1fr
+// Get CSS Grid unit size - True CSS Grid 1fr calculation
 export function getCSSGridUnit(containerWidth: number): number {
   const columns = getResponsiveColumns(containerWidth);
-  // Pure CSS Grid calculation: available width divided by columns
-  return (containerWidth - (GRID_GAP * (columns + 1))) / columns;
+  // CSS Grid 1fr: (container width - padding - gaps) / columns
+  const totalPadding = GRID_GAP * 2; // Left and right padding
+  const totalGaps = GRID_GAP * (columns - 1); // Gaps between columns
+  return (containerWidth - totalPadding - totalGaps) / columns;
 }
 
 // Convert pixel coordinates to CSS Grid position
