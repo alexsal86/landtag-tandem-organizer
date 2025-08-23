@@ -4,7 +4,7 @@ import { WidgetSize } from './useDashboardLayout';
 export const GRID_COLUMNS_DESKTOP = 6;
 export const GRID_COLUMNS_TABLET = 4;
 export const GRID_COLUMNS_MOBILE = 2;
-export const GRID_ROW_HEIGHT = 200; // Base height in px
+export const GRID_ROW_HEIGHT = 120; // Reduced for better fit
 export const GRID_GAP = 16; // Gap in px
 
 // Get responsive column count based on screen width
@@ -29,7 +29,8 @@ export function getGridRows(widgetSize: WidgetSize): number {
 // Calculate responsive grid unit based on container width
 export function calculateGridUnit(containerWidth: number): number {
   const columns = getResponsiveColumns(containerWidth);
-  return (containerWidth - (GRID_GAP * (columns - 1))) / columns;
+  const availableWidth = containerWidth - (GRID_GAP * (columns + 1)); // Account for outer gaps
+  return Math.floor(availableWidth / columns);
 }
 
 // Convert pixel coordinates to grid position
@@ -41,8 +42,12 @@ export function pixelToGridPosition(
   const gridUnit = calculateGridUnit(containerWidth);
   const columns = getResponsiveColumns(containerWidth);
   
-  const column = Math.max(1, Math.min(columns, Math.floor(x / (gridUnit + GRID_GAP)) + 1));
-  const row = Math.max(1, Math.floor(y / (GRID_ROW_HEIGHT + GRID_GAP)) + 1);
+  // Account for container padding and gaps
+  const adjustedX = Math.max(0, x - GRID_GAP);
+  const adjustedY = Math.max(0, y - GRID_GAP);
+  
+  const column = Math.max(0, Math.min(columns - 1, Math.floor(adjustedX / (gridUnit + GRID_GAP))));
+  const row = Math.max(0, Math.floor(adjustedY / (GRID_ROW_HEIGHT + GRID_GAP)));
   
   return { column, row };
 }
@@ -55,9 +60,10 @@ export function deltaToGridSize(
 ): { deltaColumns: number; deltaRows: number } {
   const gridUnit = calculateGridUnit(containerWidth);
   
-  // Improved delta calculation for more accurate resizing
-  const deltaColumns = Math.max(-1, Math.round(deltaX / (gridUnit + GRID_GAP)));
-  const deltaRows = Math.max(-1, Math.round(deltaY / (GRID_ROW_HEIGHT + GRID_GAP)));
+  // More precise delta calculation with threshold
+  const threshold = (gridUnit + GRID_GAP) * 0.3; // 30% threshold
+  const deltaColumns = Math.abs(deltaX) > threshold ? Math.round(deltaX / (gridUnit + GRID_GAP)) : 0;
+  const deltaRows = Math.abs(deltaY) > threshold ? Math.round(deltaY / (GRID_ROW_HEIGHT + GRID_GAP)) : 0;
   
   return { deltaColumns, deltaRows };
 }

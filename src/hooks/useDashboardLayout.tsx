@@ -4,7 +4,9 @@ import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { getGridColumns, getGridRows, findAvailablePosition } from './useDashboardGrid';
 
-export type WidgetSize = '1x1' | '2x1' | '1x2' | '2x2' | '3x1' | '1x3' | '3x2' | '2x3' | '3x3' | '4x1' | '1x4' | '4x2' | '2x4' | '5x1' | '6x1' | '5x2' | '6x2';
+export type WidgetSize = 
+  | '1x1' | '2x1' | '1x2' | '2x2' | '3x1' | '1x3' | '3x2' | '2x3' | '3x3' 
+  | '4x1' | '1x4' | '4x2' | '2x4' | '4x3' | '3x4' | '4x4' | '5x1' | '6x1' | '5x2' | '6x2';
 
 export interface DashboardWidget {
   id: string;

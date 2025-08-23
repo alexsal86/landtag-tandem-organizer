@@ -232,7 +232,7 @@ export function RealTimeDashboard() {
             {hoveredWidget === widget.id && !widget.configuration?.minimized && (
               <WidgetResizeHandle
                 widget={widget}
-                onResize={(size) => handleWidgetResize(widget.id, size)}
+                onResize={(widgetId: string, size: WidgetSize) => handleWidgetResize(widgetId, size)}
                 gridSnap={gridSnap}
               />
             )}

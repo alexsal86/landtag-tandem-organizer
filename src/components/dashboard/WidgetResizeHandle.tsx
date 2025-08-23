@@ -1,163 +1,156 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { DashboardWidget, WidgetSize } from '@/hooks/useDashboardLayout';
 import { 
   deltaToGridSize, 
   validateWidgetSize, 
-  getGridColumns, 
-  getGridRows,
-  getResponsiveColumns 
+  getResponsiveColumns,
+  getGridColumns,
+  getGridRows 
 } from '@/hooks/useDashboardGrid';
 
 interface WidgetResizeHandleProps {
   widget: DashboardWidget;
-  onResize: (size: WidgetSize) => void;
-  gridSnap: boolean;
+  onResize: (widgetId: string, newSize: WidgetSize) => void;
+  gridSnap?: boolean;
   containerWidth?: number;
 }
 
 export function WidgetResizeHandle({ 
   widget, 
   onResize, 
-  gridSnap, 
+  gridSnap = true, 
   containerWidth = 1200 
 }: WidgetResizeHandleProps) {
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeDirection, setResizeDirection] = useState('');
+  const [resizeDirection, setResizeDirection] = useState<string>('');
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [previewSize, setPreviewSize] = useState<WidgetSize | null>(null);
   const resizeRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseDown = (event: React.MouseEvent, direction: string) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const currentCols = getGridColumns(widget.widgetSize);
+  const currentRows = getGridRows(widget.widgetSize);
+  const maxCols = getResponsiveColumns(containerWidth);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent, direction: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     
     setIsResizing(true);
     setResizeDirection(direction);
-    setStartPos({ x: event.clientX, y: event.clientY });
+    setStartPos({ x: e.clientX, y: e.clientY });
+    setPreviewSize(widget.widgetSize);
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!resizeRef.current) return;
-
       const deltaX = e.clientX - startPos.x;
       const deltaY = e.clientY - startPos.y;
 
-      // Calculate new size based on delta and grid snap
-      const newSize = calculateNewSize(
-        widget.widgetSize, 
-        deltaX, 
-        deltaY, 
-        direction, 
-        gridSnap, 
-        containerWidth
-      );
-      setPreviewSize(newSize);
+      let newWidth = currentCols;
+      let newHeight = currentRows;
+
+      if (gridSnap) {
+        const { deltaColumns, deltaRows } = deltaToGridSize(deltaX, deltaY, containerWidth);
+        
+        if (direction.includes('right') || direction.includes('e')) {
+          newWidth = Math.max(1, Math.min(maxCols - (widget.position?.x || 0), currentCols + deltaColumns));
+        }
+        if (direction.includes('bottom') || direction.includes('s')) {
+          newHeight = Math.max(1, Math.min(4, currentRows + deltaRows));
+        }
+      } else {
+        // Pixel-based resizing for freeform mode
+        const pixelThreshold = 50;
+        if (direction.includes('right') || direction.includes('e')) {
+          newWidth = Math.max(1, Math.min(maxCols - (widget.position?.x || 0), currentCols + Math.round(deltaX / pixelThreshold)));
+        }
+        if (direction.includes('bottom') || direction.includes('s')) {
+          newHeight = Math.max(1, Math.min(4, currentRows + Math.round(deltaY / pixelThreshold)));
+        }
+      }
+
+      const validatedSize = validateWidgetSize(widget.widgetSize, newWidth, newHeight, containerWidth);
+      setPreviewSize(validatedSize);
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
       setResizeDirection('');
-      if (previewSize && previewSize !== widget.widgetSize) {
-        onResize(previewSize);
-      }
-      setPreviewSize(null);
       
+      if (previewSize && previewSize !== widget.widgetSize) {
+        onResize(widget.id, previewSize);
+      }
+      
+      setPreviewSize(null);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  };
+  }, [widget, currentCols, currentRows, maxCols, startPos, containerWidth, gridSnap, onResize, previewSize]);
 
-  const maxColumns = getResponsiveColumns(containerWidth);
+  const displaySize = previewSize || widget.widgetSize;
+  const [displayCols, displayRows] = displaySize.split('x').map(Number);
 
   return (
-    <div ref={resizeRef} className="absolute inset-0 pointer-events-none z-20">
-      {/* Corner Handle - Bottom Right */}
+    <div ref={resizeRef} className="absolute inset-0 pointer-events-none">
+      {/* Corner resize handle - bottom-right */}
       <div
-        className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary border-2 border-background rounded-full cursor-se-resize pointer-events-auto hover:scale-110 transition-transform shadow-md"
-        onMouseDown={(e) => handleMouseDown(e, 'se')}
+        className="absolute bottom-0 right-0 w-4 h-4 cursor-nw-resize pointer-events-auto z-50"
+        style={{
+          background: 'hsl(var(--primary))',
+          borderRadius: '50%',
+          border: '2px solid hsl(var(--background))',
+          transform: 'translate(50%, 50%)',
+          opacity: isResizing ? 1 : 0.8,
+          boxShadow: '0 2px 8px hsl(var(--primary) / 0.3)',
+        }}
+        onMouseDown={(e) => handleMouseDown(e, 'bottom-right')}
         title="Größe ändern"
       />
       
-      {/* Edge Handles */}
+      {/* Edge resize handles */}
       <div
-        className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-2 h-8 bg-primary/80 rounded-full cursor-e-resize pointer-events-auto hover:scale-110 transition-transform shadow-md"
-        onMouseDown={(e) => handleMouseDown(e, 'e')}
+        className="absolute right-0 top-2 bottom-2 w-2 cursor-e-resize pointer-events-auto z-40"
+        style={{
+          background: isResizing && resizeDirection.includes('right') 
+            ? 'hsl(var(--primary) / 0.3)' : 'transparent',
+          borderRadius: '2px',
+        }}
+        onMouseDown={(e) => handleMouseDown(e, 'right')}
         title="Breite ändern"
       />
       
       <div
-        className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 h-2 w-8 bg-primary/80 rounded-full cursor-s-resize pointer-events-auto hover:scale-110 transition-transform shadow-md"
-        onMouseDown={(e) => handleMouseDown(e, 's')}
+        className="absolute bottom-0 left-2 right-2 h-2 cursor-s-resize pointer-events-auto z-40"
+        style={{
+          background: isResizing && resizeDirection.includes('bottom') 
+            ? 'hsl(var(--primary) / 0.3)' : 'transparent',
+          borderRadius: '2px',
+        }}
+        onMouseDown={(e) => handleMouseDown(e, 'bottom')}
         title="Höhe ändern"
       />
 
-      {/* Preview Overlay */}
-      {isResizing && previewSize && (
-        <div className="absolute inset-0 bg-primary/20 border-2 border-primary border-dashed rounded-lg flex items-center justify-center">
-          <div className="bg-primary text-primary-foreground px-3 py-1 rounded text-sm font-medium shadow-lg">
-            {previewSize}
-          </div>
-        </div>
-      )}
-
-      {/* Size indicator */}
-      <div className="absolute -top-8 left-0 bg-background/95 backdrop-blur px-2 py-1 rounded text-xs text-muted-foreground border shadow-sm">
-        {previewSize || widget.widgetSize} ({maxColumns} Spalten max)
-      </div>
-
-      {/* Grid constraints indicator */}
+      {/* Size preview */}
       {isResizing && (
-        <div className="absolute -top-14 left-0 bg-accent/90 text-accent-foreground px-2 py-1 rounded text-xs font-medium">
-          {resizeDirection.includes('e') && getGridColumns(previewSize || widget.widgetSize) >= maxColumns && '• Max Breite erreicht'}
-          {resizeDirection.includes('s') && getGridRows(previewSize || widget.widgetSize) >= 4 && '• Max Höhe erreicht'}
+        <div 
+          className="absolute top-2 left-2 px-2 py-1 text-xs font-medium pointer-events-none z-50"
+          style={{
+            background: 'hsl(var(--primary))',
+            color: 'hsl(var(--primary-foreground))',
+            borderRadius: '4px',
+            boxShadow: '0 2px 8px hsl(var(--primary) / 0.3)',
+          }}
+        >
+          {displayCols}×{displayRows}
+          {displayCols >= maxCols && (
+            <span className="ml-1 text-yellow-300">MAX</span>
+          )}
+          {displayRows >= 4 && (
+            <span className="ml-1 text-yellow-300">MAX</span>
+          )}
         </div>
       )}
     </div>
   );
-}
-
-function calculateNewSize(
-  currentSize: WidgetSize,
-  deltaX: number,
-  deltaY: number,
-  direction: string,
-  gridSnap: boolean,
-  containerWidth: number
-): WidgetSize {
-  // Parse current size
-  const [currentW, currentH] = currentSize.split('x').map(Number);
-  
-  if (!gridSnap) {
-    // Simple pixel-based calculation for non-grid mode
-    let newW = currentW;
-    let newH = currentH;
-    
-    if (direction.includes('e')) {
-      newW = Math.max(1, currentW + Math.round(deltaX / 100));
-    }
-    if (direction.includes('s')) {
-      newH = Math.max(1, currentH + Math.round(deltaY / 100));
-    }
-    
-    return validateWidgetSize(currentSize, newW, newH, containerWidth, 4);
-  }
-
-  // Use responsive grid calculations
-  const { deltaColumns, deltaRows } = deltaToGridSize(deltaX, deltaY, containerWidth);
-  
-  let newW = currentW;
-  let newH = currentH;
-
-  if (direction.includes('e') || direction === 'se') {
-    newW = Math.max(1, currentW + deltaColumns);
-  }
-  
-  if (direction.includes('s') || direction === 'se') {
-    newH = Math.max(1, currentH + deltaRows);
-  }
-
-  // Validate and clamp the new size
-  return validateWidgetSize(currentSize, newW, newH, containerWidth, 4);
 }

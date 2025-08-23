@@ -330,12 +330,12 @@ function HybridDashboardContent() {
 
               {/* Widget Resize Handles - Only in Edit Mode */}
               {isEditMode && hoveredWidget === widget.id && !widget.configuration?.minimized && (
-                <WidgetResizeHandle
-                  widget={widget}
-                  onResize={(size) => handleWidgetResize(widget.id, size)}
-                  gridSnap={gridSnap}
-                  containerWidth={containerWidth}
-                />
+                  <WidgetResizeHandle
+                    widget={widget}
+                    onResize={(widgetId: string, size: WidgetSize) => handleWidgetResize(widgetId, size)}
+                    gridSnap={gridSnap}
+                    containerWidth={containerWidth}
+                  />
               )}
 
               {/* Widget Content */}
