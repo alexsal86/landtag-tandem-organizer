@@ -357,12 +357,21 @@ export function TasksView() {
       
       console.log('All tasks with call_log_id:', allCallTasks);
       
+      // Check for tasks by category first
+      const { data: categoryTasks, error: categoryError } = await supabase
+        .from('tasks')
+        .select('*')
+        .in('category', ['call_follow_up', 'call_followup', 'call_followup']);
+      
+      console.log('All tasks with call follow-up category:', categoryTasks);
+      
+      // Try broader query for call follow-ups
       const { data: callFollowupData, error: callFollowupError } = await supabase
         .from('tasks')
         .select('*, call_log_id')
-        .eq('assigned_to', user.email || user.id)
+        .or(`assigned_to.eq.${user.email},assigned_to.eq.${user.id}`)
         .in('category', ['call_follow_up', 'call_followup'])
-        .eq('status', 'todo');
+        .neq('status', 'completed');
 
       if (callFollowupError) throw callFollowupError;
 
