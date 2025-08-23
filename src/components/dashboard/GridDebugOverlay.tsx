@@ -12,13 +12,13 @@ export function GridDebugOverlay({ containerWidth, isVisible }: GridDebugOverlay
   const gridColumns = getResponsiveColumns(containerWidth);
   const gridUnit = getCSSGridUnit(containerWidth);
 
-  console.log('🎯 Grid Debug:', {
+  console.log('🎯 Grid Debug (8-Column):', {
     containerWidth,
     gridColumns,
     gridUnit,
     calculatedTotalWidth: gridColumns * gridUnit + (gridColumns - 1) * GRID_GAP,
-    availableWidth: containerWidth - (GRID_GAP * 2),
-    padding: GRID_GAP * 2,
+    availableWidth: containerWidth,
+    padding: 'vertical only',
     gaps: GRID_GAP * (gridColumns - 1)
   });
 
@@ -28,7 +28,8 @@ export function GridDebugOverlay({ containerWidth, isVisible }: GridDebugOverlay
     `Unit: ${Math.round(gridUnit)}px`,
     `3x1 Widget: ${Math.round(3 * gridUnit + 2 * GRID_GAP)}px`,
     `2x1 Widget: ${Math.round(2 * gridUnit + 1 * GRID_GAP)}px`,
-    `Total (3+2): ${Math.round(5 * gridUnit + 4 * GRID_GAP)}px`
+    `3x1 Widget: ${Math.round(3 * gridUnit + 2 * GRID_GAP)}px`,
+    `Total (3+2+3): ${Math.round(8 * gridUnit + 7 * GRID_GAP)}px`
   ];
 
   return (

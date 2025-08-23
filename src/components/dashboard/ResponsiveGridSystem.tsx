@@ -92,14 +92,14 @@ export const ResponsiveGridSystem = forwardRef<HTMLDivElement, ResponsiveGridSys
       setDragPreview(null);
     }, []);
 
-    // Grid styles
+    // Grid styles - no horizontal padding for edge-to-edge layout
     const gridStyle = {
       display: 'grid',
       gridTemplateColumns: `repeat(${gridColumns}, 1fr)`,
       gridTemplateRows: `repeat(auto, ${GRID_ROW_HEIGHT}px)`,
       gap: `${GRID_GAP}px`,
       minHeight: '60vh',
-      padding: `${GRID_GAP}px`,
+      padding: `${GRID_GAP}px 0`, // Only vertical padding
       position: 'relative' as const,
       width: '100%',
     };

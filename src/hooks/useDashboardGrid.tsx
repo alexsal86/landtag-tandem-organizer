@@ -1,8 +1,8 @@
 import { WidgetSize } from './useDashboardLayout';
 
 // Grid configuration - Responsive breakpoints
-export const GRID_COLUMNS_DESKTOP = 6;
-export const GRID_COLUMNS_TABLET = 4;
+export const GRID_COLUMNS_DESKTOP = 8;
+export const GRID_COLUMNS_TABLET = 6;
 export const GRID_COLUMNS_MOBILE = 2;
 export const GRID_ROW_HEIGHT = 120; // Reduced for better fit
 export const GRID_GAP = 16; // Gap in px
@@ -26,14 +26,12 @@ export function getGridRows(widgetSize: WidgetSize): number {
   return height;
 }
 
-// Get CSS Grid unit size - Pure CSS Grid 1fr calculation
+// Get CSS Grid unit size - Pure CSS Grid 1fr calculation (no horizontal padding)
 export function getCSSGridUnit(containerWidth: number): number {
   const columns = getResponsiveColumns(containerWidth);
-  // Pure CSS Grid 1fr calculation
-  // Each grid column gets exactly 1/columns of the container width
-  // Gaps are handled automatically by CSS Grid
-  const containerWidthMinusPadding = containerWidth - (GRID_GAP * 2);
-  const availableWidth = containerWidthMinusPadding - (GRID_GAP * (columns - 1));
+  // Pure CSS Grid 1fr calculation - no container padding, gaps handled by CSS Grid
+  // Container has full width, gaps only between columns
+  const availableWidth = containerWidth - (GRID_GAP * (columns - 1));
   return availableWidth / columns;
 }
 
@@ -46,9 +44,9 @@ export function pixelToGridPosition(
   const columns = getResponsiveColumns(containerWidth);
   const gridUnit = getCSSGridUnit(containerWidth);
   
-  // Direct CSS Grid mapping with padding offset
-  const adjustedX = Math.max(0, x - GRID_GAP);
-  const adjustedY = Math.max(0, y - GRID_GAP);
+  // Direct CSS Grid mapping - no horizontal padding offset
+  const adjustedX = Math.max(0, x);
+  const adjustedY = Math.max(0, y - GRID_GAP); // Keep vertical padding
   
   const column = Math.max(0, Math.min(columns - 1, Math.floor(adjustedX / (gridUnit + GRID_GAP))));
   const row = Math.max(0, Math.floor(adjustedY / (GRID_ROW_HEIGHT + GRID_GAP)));
@@ -176,7 +174,8 @@ export function validateWidgetSize(
   const maxWidth = getResponsiveColumns(containerWidth);
   const validSizes: WidgetSize[] = [
     '1x1', '2x1', '1x2', '2x2', '3x1', '1x3', '3x2', '2x3', '3x3', 
-    '4x1', '1x4', '4x2', '2x4', '5x1', '6x1', '5x2', '6x2'
+    '4x1', '1x4', '4x2', '2x4', '5x1', '5x2', '6x1', '6x2', 
+    '7x1', '7x2', '8x1', '8x2'
   ];
   
   // Clamp to boundaries

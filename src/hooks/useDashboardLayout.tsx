@@ -6,7 +6,8 @@ import { getGridColumns, getGridRows, findAvailablePosition } from './useDashboa
 
 export type WidgetSize = 
   | '1x1' | '2x1' | '1x2' | '2x2' | '3x1' | '1x3' | '3x2' | '2x3' | '3x3' 
-  | '4x1' | '1x4' | '4x2' | '2x4' | '4x3' | '3x4' | '4x4' | '5x1' | '6x1' | '5x2' | '6x2';
+  | '4x1' | '1x4' | '4x2' | '2x4' | '4x3' | '3x4' | '4x4' | '5x1' | '5x2' 
+  | '6x1' | '6x2' | '7x1' | '7x2' | '8x1' | '8x2';
 
 export interface DashboardWidget {
   id: string;
@@ -68,8 +69,8 @@ export function useDashboardLayout() {
         type: 'messages',
         title: 'Nachrichten',
         position: { x: 5, y: 0 },
-        size: { width: 1, height: 1 },
-        widgetSize: '1x1',
+        size: { width: 3, height: 1 },
+        widgetSize: '3x1',
         configuration: { theme: 'default', notifications: true }
       },
       {
@@ -95,8 +96,8 @@ export function useDashboardLayout() {
         type: 'habits',
         title: 'Habit Tracker',
         position: { x: 5, y: 1 },
-        size: { width: 1, height: 2 },
-        widgetSize: '1x2',
+        size: { width: 3, height: 2 },
+        widgetSize: '3x2',
         configuration: { theme: 'default', showStreak: true }
       },
       {
@@ -122,8 +123,8 @@ export function useDashboardLayout() {
         type: 'actions',
         title: 'Schnellaktionen',
         position: { x: 0, y: 5 },
-        size: { width: 6, height: 1 },
-        widgetSize: '6x1',
+        size: { width: 8, height: 1 },
+        widgetSize: '8x1',
         configuration: { theme: 'default', showIcons: true }
       }
     ]
