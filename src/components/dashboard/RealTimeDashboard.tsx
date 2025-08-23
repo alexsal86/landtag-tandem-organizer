@@ -127,21 +127,8 @@ export function RealTimeDashboard() {
   };
 
   const handleAddWidget = (type: WidgetType['type'], position?: { x: number; y: number }) => {
-    const newWidget: WidgetType = {
-      id: `widget-${Date.now()}`,
-      type,
-      title: getWidgetTitle(type),
-      position: position || { x: 0, y: 0 },
-      size: { width: 200, height: 200 },
-      widgetSize: '1x1',
-      configuration: {
-        theme: 'default',
-        showHeader: true
-      }
-    };
-
-    addWidget(newWidget);
-    toast.success(`${newWidget.title} hinzugefügt`);
+    addWidget(type, position);
+    toast.success(`Widget "${type}" hinzugefügt`);
   };
 
   const getWidgetTitle = (type: WidgetType['type']): string => {

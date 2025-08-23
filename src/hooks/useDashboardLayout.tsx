@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { getGridColumns, getGridRows, findAvailablePosition } from './useDashboardGrid';
 
 export type WidgetSize = '1x1' | '2x1' | '1x2' | '2x2' | '3x1' | '1x3' | '3x2' | '2x3' | '3x3' | '4x1' | '1x4' | '4x2' | '2x4';
 
@@ -156,18 +157,29 @@ export function useDashboardLayout() {
 
     try {
       setLoading(true);
+      console.log('Loading dashboard layout from database...');
+      
       const { data, error } = await supabase
         .from('team_dashboards')
-        .select('layout_data')
+        .select('id, name, description, layout_data, is_public')
         .eq('owner_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
         .single();
 
       if (error && error.code !== 'PGRST116') {
+        console.error('Database query error:', error);
         throw error;
       }
 
       if (data?.layout_data) {
-        const layout = data.layout_data as unknown as DashboardLayout;
+        console.log('Successfully loaded layout from database');
+        const layout: DashboardLayout = {
+          id: data.id,
+          name: data.name,
+          widgets: (data.layout_data as any) as DashboardWidget[],
+          isActive: true
+        };
         setCurrentLayout(layout);
         setLayouts([layout, defaultLayout]);
       } else {
@@ -245,41 +257,71 @@ export function useDashboardLayout() {
     }, 1000);
   };
 
-  // Save current layout to database
+  // Save current layout to database with retry mechanism
   const saveCurrentLayout = async (name?: string) => {
     if (!currentLayout || !user) return;
     
-    try {
-      const layoutToSave = name 
-        ? { ...currentLayout, name, id: Math.random().toString() }
-        : currentLayout;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const attemptSave = async (): Promise<boolean> => {
+      try {
+        const layoutToSave = name 
+          ? { ...currentLayout, name, id: crypto.randomUUID() }
+          : currentLayout;
 
-      // Save to Supabase with proper serialization
-      const { error } = await supabase
-        .from('team_dashboards')
-        .upsert({
-          owner_id: user.id,
-          name: layoutToSave.name,
-          layout_data: JSON.parse(JSON.stringify(layoutToSave)),
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'owner_id'
-        });
+        // Save to Supabase with proper error handling
+        const { error } = await supabase
+          .from('team_dashboards')
+          .upsert({
+            id: layoutToSave.id || crypto.randomUUID(),
+            owner_id: user.id,
+            name: layoutToSave.name,
+            description: 'Custom Dashboard',
+            layout_data: JSON.parse(JSON.stringify(layoutToSave.widgets)) as any,
+            is_public: false
+          }, {
+            onConflict: 'id',
+            ignoreDuplicates: false
+          });
 
-      if (error) throw error;
+        if (error) {
+          console.error('Database save error:', error);
+          throw error;
+        }
 
-      if (name) {
-        setLayouts(prev => [...prev, layoutToSave]);
-        setCurrentLayout(layoutToSave);
-      } else {
-        // Update the current layout in state to reflect saved changes
-        setCurrentLayout({ ...layoutToSave });
+        if (name) {
+          setLayouts(prev => [...prev, layoutToSave]);
+          setCurrentLayout(layoutToSave);
+        }
+        
+        return true;
+      } catch (error) {
+        console.error(`Save attempt ${retryCount + 1} failed:`, error);
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+          return attemptSave();
+        }
+        return false;
       }
-      
-      toast.success('Layout gespeichert');
+    };
+
+    const success = await attemptSave();
+    
+    // Always save to localStorage as fallback
+    try {
+      localStorage.setItem(`dashboard-layout-${user.id}`, JSON.stringify(currentLayout));
     } catch (error) {
-      console.error('Failed to save layout:', error);
-      toast.error('Layout konnte nicht gespeichert werden');
+      console.warn('Failed to save to localStorage:', error);
+    }
+
+    if (success) {
+      toast.success('Layout gespeichert');
+    } else {
+      toast.error('Layout konnte nicht gespeichert werden - wird lokal gespeichert');
     }
   };
 
@@ -303,13 +345,32 @@ export function useDashboardLayout() {
     toast.success('Layout gelöscht');
   };
 
-  // Add new widget
-  const addWidget = (widget: DashboardWidget) => {
+  // Add new widget with position parameter
+  const addWidget = (type: string, position?: { x: number; y: number }) => {
     if (!currentLayout) return;
+    
+    // Find next available position
+    const existingPositions = currentLayout.widgets.map(w => ({
+      x: w.position.x,
+      y: w.position.y,
+      w: getGridColumns(w.widgetSize),
+      h: getGridRows(w.widgetSize)
+    }));
+
+    const defaultPosition = position || findAvailablePosition(existingPositions);
+
+    const newWidget: DashboardWidget = {
+      id: `widget-${Date.now()}`,
+      type: type as any,
+      title: type.charAt(0).toUpperCase() + type.slice(1),
+      position: defaultPosition,
+      size: { width: 400, height: 400 },
+      widgetSize: '2x2'
+    };
     
     const updatedLayout = {
       ...currentLayout,
-      widgets: [...currentLayout.widgets, widget]
+      widgets: [...currentLayout.widgets, newWidget]
     };
     setCurrentLayout(updatedLayout);
     

@@ -2728,6 +2728,10 @@ export type Database = {
         Args: { _document_id: string; _user_id: string }
         Returns: boolean
       }
+      can_manage_dashboard: {
+        Args: { dashboard_id: string; user_id: string }
+        Returns: boolean
+      }
       can_view_message_confirmations: {
         Args: { message_id_param: string }
         Returns: boolean
