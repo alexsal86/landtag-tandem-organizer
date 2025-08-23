@@ -13,6 +13,7 @@ import { ContextAwareSuggestions } from './ContextAwareSuggestions';
 import { UndoRedoSystem } from './UndoRedoSystem';
 import { RealTimeSync } from './RealTimeSync';
 import { EditModeProvider, useEditMode } from './EditModeProvider';
+import { GridDebugOverlay } from './GridDebugOverlay';
 import { toast } from 'sonner';
 import { DashboardWidget as WidgetType, WidgetSize } from '@/hooks/useDashboardLayout';
 import { getGridColumns, getGridRows, isValidPosition, getCSSGridUnit, getResponsiveColumns } from '@/hooks/useDashboardGrid';

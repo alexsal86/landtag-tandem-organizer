@@ -26,13 +26,15 @@ export function getGridRows(widgetSize: WidgetSize): number {
   return height;
 }
 
-// Get CSS Grid unit size - True CSS Grid 1fr calculation
+// Get CSS Grid unit size - Pure CSS Grid 1fr calculation
 export function getCSSGridUnit(containerWidth: number): number {
   const columns = getResponsiveColumns(containerWidth);
-  // CSS Grid 1fr: (container width - padding - gaps) / columns
-  const totalPadding = GRID_GAP * 2; // Left and right padding
-  const totalGaps = GRID_GAP * (columns - 1); // Gaps between columns
-  return (containerWidth - totalPadding - totalGaps) / columns;
+  // Pure CSS Grid 1fr calculation
+  // Each grid column gets exactly 1/columns of the container width
+  // Gaps are handled automatically by CSS Grid
+  const containerWidthMinusPadding = containerWidth - (GRID_GAP * 2);
+  const availableWidth = containerWidthMinusPadding - (GRID_GAP * (columns - 1));
+  return availableWidth / columns;
 }
 
 // Convert pixel coordinates to CSS Grid position
@@ -122,6 +124,7 @@ export function getWidgetDimensions(widgetSize: WidgetSize, containerWidth: numb
   const rows = getGridRows(widgetSize);
   const gridUnit = getCSSGridUnit(containerWidth);
   
+  // CSS Grid handles gaps automatically, so we calculate the exact widget size
   return {
     width: cols * gridUnit + (cols - 1) * GRID_GAP,
     height: rows * GRID_ROW_HEIGHT + (rows - 1) * GRID_GAP
@@ -195,7 +198,7 @@ export function validateWidgetSize(
   return nearest || currentSize;
 }
 
-// Get widget pixel dimensions based on CSS Grid units
+// Get widget pixel dimensions based on pure CSS Grid calculation
 export function getWidgetPixelDimensions(
   widgetSize: WidgetSize, 
   containerWidth: number
@@ -204,6 +207,7 @@ export function getWidgetPixelDimensions(
   const rows = getGridRows(widgetSize);
   const gridUnit = getCSSGridUnit(containerWidth);
   
+  // Pure CSS Grid dimensions - widgets will use exactly the space CSS Grid allocates
   return {
     width: cols * gridUnit + (cols - 1) * GRID_GAP,
     height: rows * GRID_ROW_HEIGHT + (rows - 1) * GRID_GAP

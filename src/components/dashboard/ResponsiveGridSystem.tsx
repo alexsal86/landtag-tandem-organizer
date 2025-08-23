@@ -1,6 +1,7 @@
 import React, { forwardRef, useEffect, useRef, useState, useCallback } from 'react';
 import { getResponsiveColumns, GRID_ROW_HEIGHT, GRID_GAP, pixelToGridPosition } from '@/hooks/useDashboardGrid';
 import { DashboardWidget } from '@/hooks/useDashboardLayout';
+import { GridDebugOverlay } from './GridDebugOverlay';
 
 interface ResponsiveGridSystemProps {
   widgets: DashboardWidget[];
@@ -103,15 +104,17 @@ export const ResponsiveGridSystem = forwardRef<HTMLDivElement, ResponsiveGridSys
       width: '100%',
     };
 
-    // CSS Grid aligned background pattern
+    // Pure CSS Grid aligned background pattern
     const gridBackgroundStyle = isEditMode ? {
       backgroundImage: `
         linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
         linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px)
       `,
-      // Perfect CSS Grid alignment: account for padding and gaps
-      backgroundSize: `calc((100% - ${GRID_GAP * 2}px - ${GRID_GAP * (gridColumns - 1)}px) / ${gridColumns}) ${GRID_ROW_HEIGHT + GRID_GAP}px`,
-      backgroundPosition: `${GRID_GAP}px ${GRID_GAP}px`,
+      // Direct CSS Grid 1fr alignment - no pixel calculations
+      backgroundSize: `calc(100% / ${gridColumns}) ${GRID_ROW_HEIGHT + GRID_GAP}px`,
+      backgroundPosition: `0px 0px`,
+      // Account for padding and gaps in the container
+      backgroundOrigin: 'padding-box',
     } : {};
 
     return (
@@ -152,6 +155,12 @@ export const ResponsiveGridSystem = forwardRef<HTMLDivElement, ResponsiveGridSys
             </div>
           </div>
         )}
+        
+        {/* Debug Overlay - temporarily enabled for testing */}
+        <GridDebugOverlay 
+          containerWidth={containerWidth} 
+          isVisible={isEditMode} 
+        />
         
         {children}
       </div>
