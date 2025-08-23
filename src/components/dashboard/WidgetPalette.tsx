@@ -15,6 +15,7 @@ import {
   Target,
   Phone,
   Users,
+  Clipboard,
   Search,
   X,
   Plus,
@@ -108,6 +109,14 @@ const WIDGET_TYPES = [
     title: 'Team Chat',
     description: 'Interne Kommunikation',
     icon: Users,
+    category: 'communication',
+    popular: false
+  },
+  {
+    type: 'blackboard' as const,
+    title: 'Schwarzes Brett',
+    description: 'Öffentliche Bekanntmachungen bestätigen',
+    icon: Clipboard,
     category: 'communication',
     popular: false
   }

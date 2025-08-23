@@ -204,6 +204,7 @@ function HybridDashboardContent() {
       schedule: 'Terminplan',
       actions: 'Schnellaktionen',
       messages: 'Nachrichten',
+      blackboard: 'Schwarzes Brett',
       quicknotes: 'Notizen',
       pomodoro: 'Pomodoro Timer',
       habits: 'Gewohnheiten',
