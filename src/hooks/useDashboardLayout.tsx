@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { useAuth } from './useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export type WidgetSize = '1x1' | '2x1' | '1x2' | '2x2' | '3x1' | '1x3' | '3x2' | '2x3' | '3x3' | '4x1' | '1x4' | '4x2' | '2x4';
 
@@ -33,6 +35,7 @@ export function useDashboardLayout() {
   const [layouts, setLayouts] = useState<DashboardLayout[]>([]);
   const [currentLayout, setCurrentLayout] = useState<DashboardLayout | null>(null);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   // Default layout
   const defaultLayout: DashboardLayout = {
@@ -123,11 +126,47 @@ export function useDashboardLayout() {
     ]
   };
 
-  // Initialize with default layout
+  // Initialize with default layout and load from database
   useEffect(() => {
-    setCurrentLayout(defaultLayout);
-    setLayouts([defaultLayout]);
-  }, []);
+    if (user) {
+      loadLayoutFromDatabase();
+    } else {
+      setCurrentLayout(defaultLayout);
+      setLayouts([defaultLayout]);
+    }
+  }, [user]);
+
+  // Load layout from database
+  const loadLayoutFromDatabase = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('team_dashboards')
+        .select('layout_data')
+        .eq('owner_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (data?.layout_data) {
+        setCurrentLayout(data.layout_data as DashboardLayout);
+        setLayouts([data.layout_data as DashboardLayout, defaultLayout]);
+      } else {
+        setCurrentLayout(defaultLayout);
+        setLayouts([defaultLayout]);
+      }
+    } catch (error) {
+      console.error('Failed to load layout:', error);
+      setCurrentLayout(defaultLayout);
+      setLayouts([defaultLayout]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Update widget position/size
   const updateWidget = (widgetId: string, updates: Partial<DashboardWidget>) => {
@@ -141,20 +180,39 @@ export function useDashboardLayout() {
     setCurrentLayout(updatedLayout);
   };
 
-  // Save current layout (for now just store locally)
+  // Save current layout to database
   const saveCurrentLayout = async (name?: string) => {
-    if (!currentLayout) return;
+    if (!currentLayout || !user) return;
     
-    const layoutToSave = name 
-      ? { ...currentLayout, name, id: Math.random().toString() }
-      : currentLayout;
+    try {
+      const layoutToSave = name 
+        ? { ...currentLayout, name, id: Math.random().toString() }
+        : currentLayout;
 
-    if (name) {
-      setLayouts(prev => [...prev, layoutToSave]);
-      setCurrentLayout(layoutToSave);
+      // Save to Supabase
+      const { error } = await supabase
+        .from('team_dashboards')
+        .upsert({
+          owner_id: user.id,
+          name: layoutToSave.name,
+          layout_data: JSON.parse(JSON.stringify(layoutToSave)),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'owner_id'
+        });
+
+      if (error) throw error;
+
+      if (name) {
+        setLayouts(prev => [...prev, layoutToSave]);
+        setCurrentLayout(layoutToSave);
+      }
+      
+      toast.success('Layout gespeichert');
+    } catch (error) {
+      console.error('Failed to save layout:', error);
+      toast.error('Layout konnte nicht gespeichert werden');
     }
-    
-    toast.success('Layout gespeichert');
   };
 
   // Switch to different layout
@@ -177,11 +235,37 @@ export function useDashboardLayout() {
     toast.success('Layout gelöscht');
   };
 
+  // Add new widget
+  const addWidget = (widget: DashboardWidget) => {
+    if (!currentLayout) return;
+    
+    const updatedLayout = {
+      ...currentLayout,
+      widgets: [...currentLayout.widgets, widget]
+    };
+    setCurrentLayout(updatedLayout);
+    saveCurrentLayout(); // Auto-save
+  };
+
+  // Remove widget
+  const removeWidget = (widgetId: string) => {
+    if (!currentLayout) return;
+    
+    const updatedLayout = {
+      ...currentLayout,
+      widgets: currentLayout.widgets.filter(w => w.id !== widgetId)
+    };
+    setCurrentLayout(updatedLayout);
+    saveCurrentLayout(); // Auto-save
+  };
+
   return {
     layouts,
     currentLayout,
     loading,
     updateWidget,
+    addWidget,
+    removeWidget,
     saveCurrentLayout,
     switchLayout,
     deleteLayout,

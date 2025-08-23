@@ -10,7 +10,8 @@ import {
   Save, 
   Layout, 
   Trash2, 
-  GripVertical 
+  GripVertical,
+  Sparkles
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -21,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { DashboardWidget } from './DashboardWidget';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
+import { RealTimeDashboard } from './dashboard/RealTimeDashboard';
 import { toast } from 'sonner';
 
 export function CustomizableDashboard() {
@@ -38,6 +40,12 @@ export function CustomizableDashboard() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newLayoutName, setNewLayoutName] = useState('');
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
+  const [useRealTimeDashboard, setUseRealTimeDashboard] = useState(true);
+
+  // If real-time dashboard is enabled, use the new component
+  if (useRealTimeDashboard) {
+    return <RealTimeDashboard />;
+  }
 
   if (loading) {
     return (
@@ -263,6 +271,16 @@ export function CustomizableDashboard() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Real-time Dashboard Toggle */}
+          <Button
+            variant={useRealTimeDashboard ? "default" : "outline"}
+            size="sm"
+            onClick={() => setUseRealTimeDashboard(!useRealTimeDashboard)}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            {useRealTimeDashboard ? 'Classic' : 'Real-Time'}
+          </Button>
 
           {/* Edit Mode Toggle */}
           <Button
