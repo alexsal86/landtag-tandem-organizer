@@ -22,9 +22,11 @@ interface CallLog {
   follow_up_required: boolean;
   follow_up_date?: string;
   follow_up_completed: boolean;
+  completion_notes?: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
   created_by_name?: string;
+  task_id?: string;
 }
 
 interface Contact {
@@ -52,6 +54,12 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
+  const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
+  const [completionNotes, setCompletionNotes] = useState("");
+  
+  const CALLS_PER_PAGE = 5;
   
   // Form state
   const [contactMode, setContactMode] = useState<'existing' | 'new'>('existing');
@@ -85,7 +93,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
         .select('*')
         .eq('user_id', user.id)
         .order('call_date', { ascending: false })
-        .limit(10);
+        .limit(50);
 
       if (error) throw error;
       setCallLogs((data || []) as CallLog[]);
@@ -125,22 +133,24 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
         .eq('user_id', user.id)
         .single();
 
-      const { data: callLogData, error } = await supabase
+      const newCallLog = {
+        user_id: user.id,
+        contact_id: contactMode === 'existing' ? selectedContact || undefined : undefined,
+        caller_name: contactMode === 'new' ? callerName.trim() || undefined : undefined,
+        caller_phone: contactMode === 'new' ? callerPhone.trim() || undefined : undefined,
+        call_type: callType,
+        duration_minutes: duration ? parseInt(duration) : undefined,
+        call_date: new Date().toISOString(),
+        notes: notes.trim() || undefined,
+        follow_up_required: followUpRequired,
+        follow_up_date: followUpDate ? new Date(followUpDate).toISOString() : undefined,
+        priority,
+        created_by_name: profile?.display_name || undefined
+      };
+
+      const { data, error } = await supabase
         .from('call_logs')
-        .insert({
-          user_id: user.id,
-          contact_id: contactMode === 'existing' ? selectedContact || undefined : undefined,
-          caller_name: contactMode === 'new' ? callerName.trim() || undefined : undefined,
-          caller_phone: contactMode === 'new' ? callerPhone.trim() || undefined : undefined,
-          call_type: callType,
-          duration_minutes: duration ? parseInt(duration) : undefined,
-          call_date: new Date().toISOString(),
-          notes: notes.trim() || undefined,
-          follow_up_required: followUpRequired,
-          follow_up_date: followUpDate ? new Date(followUpDate).toISOString() : undefined,
-          priority,
-          created_by_name: profile?.display_name || undefined
-        })
+        .insert(newCallLog)
         .select()
         .single();
 
@@ -148,68 +158,71 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
 
       // Create follow-up task if required
       if (followUpRequired) {
+        // First, ensure main "Call Follow-ups" task exists
+        let mainTaskId: string;
+        
+        const { data: existingMainTask } = await supabase
+          .from('tasks')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('title', 'Call Follow-ups')
+          .eq('category', 'call_follow_up')
+          .single();
+
+        if (existingMainTask) {
+          mainTaskId = existingMainTask.id;
+        } else {
+          // Create main task
+          const { data: mainTaskData, error: mainTaskError } = await supabase
+            .from('tasks')
+            .insert({
+              user_id: user.id,
+              title: 'Call Follow-ups',
+              description: 'Sammlung aller Follow-ups aus Anrufprotokollen',
+              priority: 'medium',
+              status: 'todo',
+              category: 'call_follow_up',
+              due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            })
+            .select('id')
+            .single();
+
+          if (mainTaskError || !mainTaskData) {
+            console.error('Error creating main task:', mainTaskError);
+            return;
+          }
+          mainTaskId = mainTaskData.id;
+        }
+
+        // Create subtask linked to main task
         const contactName = contactMode === 'existing' 
           ? getContactName(selectedContact) 
           : callerName || 'Unbekannter Kontakt';
-        
-        const callTypeLabel = callType === 'outgoing' ? 'Ausgehender Anruf' : 
-                              callType === 'incoming' ? 'Eingehender Anruf' : 'Verpasster Anruf';
 
-        // First create a main task
-        const { data: mainTask, error: mainTaskError } = await supabase
+        const { data: subtaskData, error: subtaskError } = await supabase
           .from('tasks')
           .insert({
             user_id: user.id,
-            title: 'Call Follow-ups',
-            description: 'Hauptaufgabe für Anruf Follow-ups',
-            category: 'call_followup',
-            priority: 'medium',
-            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-            status: 'todo'
+            title: `Follow-up: ${contactName}`,
+            description: `Grund: ${notes}\nTermin: ${followUpDate ? new Date(followUpDate).toLocaleDateString('de-DE') : 'Bald'}\nHauptaufgabe: Call Follow-ups`,
+            priority: priority,
+            status: 'todo',
+            category: 'call_follow_up',
+            due_date: followUpDate ? new Date(followUpDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            call_log_id: data.id
           })
-          .select()
+          .select('id')
           .single();
 
-        if (mainTaskError) {
-          // Task might already exist, try to find it
-          const { data: existingTask } = await supabase
-            .from('tasks')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('category', 'call_followup')
-            .eq('title', 'Call Follow-ups')
-            .eq('status', 'todo')
-            .single();
-
-          if (existingTask) {
-            // Create subtask under existing main task
-            await supabase
-              .from('subtasks')
-              .insert({
-                task_id: existingTask.id,
-                user_id: user.id,
-                description: `Follow-up: ${contactName} - ${callTypeLabel}${notes.trim() ? '\n\nCall-Notizen: ' + notes.trim() : ''}`,
-                assigned_to: user.id,
-                due_date: followUpDate ? new Date(followUpDate).toISOString() : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-                order_index: 0
-              });
-          }
-        } else if (mainTask) {
-          // Create subtask under new main task
-          await supabase
-            .from('subtasks')
-            .insert({
-              task_id: mainTask.id,
-              user_id: user.id,
-              description: `Follow-up: ${contactName} - ${callTypeLabel}${notes.trim() ? '\n\nCall-Notizen: ' + notes.trim() : ''}`,
-              assigned_to: user.id,
-              due_date: followUpDate ? new Date(followUpDate).toISOString() : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-              order_index: 0
-            });
+        if (subtaskError || !subtaskData) {
+          console.error('Error creating subtask:', subtaskError);
+        } else {
+          // Task linking is handled via call_log_id in tasks table
+          console.log('Subtask created successfully:', subtaskData.id);
         }
       }
 
-      setCallLogs(prev => [callLogData as CallLog, ...prev.slice(0, 9)]);
+      await loadCallLogs();
       resetForm();
       toast.success('Anruf protokolliert');
     } catch (error) {
@@ -218,28 +231,33 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
     }
   };
 
-  const markFollowUpComplete = async (id: string) => {
+  const markFollowUpComplete = async (id: string, notes?: string) => {
     try {
       const { error } = await supabase
         .from('call_logs')
-        .update({ follow_up_completed: true })
+        .update({ 
+          follow_up_completed: true,
+          completion_notes: notes || null
+        })
         .eq('id', id);
 
       if (error) throw error;
 
-      // Also complete the corresponding task if it exists
-      await supabase
+      // Update the associated task if it exists
+      const { error: taskError } = await supabase
         .from('tasks')
         .update({ status: 'completed' })
         .eq('call_log_id', id);
+      
+      if (taskError) {
+        console.error('Error updating task:', taskError);
+      }
 
-      setCallLogs(prev => prev.map(log => 
-        log.id === id ? { ...log, follow_up_completed: true } : log
-      ));
-      toast.success('Follow-up als erledigt markiert');
+      await loadCallLogs();
+      toast.success('Follow-up abgeschlossen');
     } catch (error) {
-      console.error('Error updating follow-up:', error);
-      toast.error('Fehler beim Aktualisieren des Follow-ups');
+      console.error('Error marking follow-up complete:', error);
+      toast.error('Fehler beim Abschließen des Follow-ups');
     }
   };
 
@@ -282,6 +300,36 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
     const contact = contacts.find(c => c.id === contactId);
     return contact?.name || 'Unbekannt';
   };
+
+  const getPriorityDotColor = (priority: 'low' | 'medium' | 'high' | 'urgent') => {
+    switch (priority) {
+      case 'low': return 'hsl(var(--muted-foreground))';
+      case 'medium': return 'hsl(45 95% 50%)'; // government-gold
+      case 'high': return 'hsl(25 95% 53%)'; // orange
+      case 'urgent': return 'hsl(var(--destructive))';
+      default: return 'hsl(var(--muted-foreground))';
+    }
+  };
+
+  const handleCompleteFollowUp = (callLog: CallLog) => {
+    setSelectedCallLog(callLog);
+    setCompletionDialogOpen(true);
+  };
+
+  const handleSubmitCompletion = async () => {
+    if (!selectedCallLog) return;
+    
+    await markFollowUpComplete(selectedCallLog.id, completionNotes);
+    setCompletionDialogOpen(false);
+    setSelectedCallLog(null);
+    setCompletionNotes("");
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(callLogs.length / CALLS_PER_PAGE);
+  const startIndex = (currentPage - 1) * CALLS_PER_PAGE;
+  const endIndex = startIndex + CALLS_PER_PAGE;
+  const currentCallLogs = callLogs.slice(startIndex, endIndex);
 
   const checkForExistingContact = (phone: string) => {
     if (!phone.trim()) {
@@ -533,7 +581,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               <AlertCircle className="h-4 w-4 text-amber-500" />
               Ausstehende Follow-ups
             </h4>
-            {pendingFollowUps.map(log => (
+            {pendingFollowUps.slice(0, 3).map(log => (
               <div
                 key={log.id}
                 className="p-2 border rounded-lg bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800"
@@ -544,9 +592,15 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                       <span className="text-sm font-medium">
                         {getContactName(log.contact_id, log.caller_name)}
                       </span>
-                      <Badge className={`text-xs ${getPriorityColor(log.priority)}`}>
-                        {log.priority}
-                      </Badge>
+                      <button
+                        className="w-3 h-3 rounded-full border-2 hover:scale-110 transition-transform cursor-pointer"
+                        style={{ 
+                          backgroundColor: getPriorityDotColor(log.priority),
+                          borderColor: getPriorityDotColor(log.priority)
+                        }}
+                        title={`Priorität: ${log.priority}`}
+                        onClick={() => handleCompleteFollowUp(log)}
+                      />
                     </div>
                     {log.follow_up_date && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -557,7 +611,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                   </div>
                   <Button
                     size="sm"
-                    onClick={() => markFollowUpComplete(log.id)}
+                    onClick={() => handleCompleteFollowUp(log)}
                     className="h-6 px-2 text-xs"
                   >
                     Erledigt
@@ -570,7 +624,34 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
 
         {/* Call Logs List */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">Letzte Anrufe</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">Letzte Anrufe</h4>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="h-6 w-6 p-0"
+                >
+                  ‹
+                </Button>
+                <span className="text-xs text-muted-foreground mx-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-6 w-6 p-0"
+                >
+                  ›
+                </Button>
+              </div>
+            )}
+          </div>
           
           {loading ? (
             <div className="text-center text-sm text-muted-foreground py-4">
@@ -581,7 +662,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               Noch keine Anrufe protokolliert
             </div>
           ) : (
-            callLogs.map(log => (
+            currentCallLogs.map(log => (
               <div
                 key={log.id}
                 className="p-3 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -627,6 +708,49 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
             ))
           )}
         </div>
+
+        {/* Completion Dialog */}
+        {completionDialogOpen && selectedCallLog && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-modal">
+            <div className="bg-card p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4">Follow-up abschließen</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Follow-up für {getContactName(selectedCallLog.contact_id, selectedCallLog.caller_name)}
+              </p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Erledigungsnotiz (optional)
+                  </label>
+                  <textarea
+                    className="w-full p-2 border border-input rounded-md text-sm resize-none"
+                    rows={3}
+                    value={completionNotes}
+                    onChange={(e) => setCompletionNotes(e.target.value)}
+                    placeholder="Was wurde zur Erledigung unternommen?"
+                  />
+                </div>
+                
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setCompletionDialogOpen(false);
+                      setSelectedCallLog(null);
+                      setCompletionNotes("");
+                    }}
+                  >
+                    Abbrechen
+                  </Button>
+                  <Button onClick={handleSubmitCompletion}>
+                    Abschließen
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

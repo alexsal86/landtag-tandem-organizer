@@ -309,6 +309,7 @@ export type Database = {
           call_type: string | null
           caller_name: string | null
           caller_phone: string | null
+          completion_notes: string | null
           contact_id: string | null
           created_at: string
           created_by_name: string | null
@@ -327,6 +328,7 @@ export type Database = {
           call_type?: string | null
           caller_name?: string | null
           caller_phone?: string | null
+          completion_notes?: string | null
           contact_id?: string | null
           created_at?: string
           created_by_name?: string | null
@@ -345,6 +347,7 @@ export type Database = {
           call_type?: string | null
           caller_name?: string | null
           caller_phone?: string | null
+          completion_notes?: string | null
           contact_id?: string | null
           created_at?: string
           created_by_name?: string | null

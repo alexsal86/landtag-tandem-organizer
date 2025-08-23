@@ -24,6 +24,7 @@ interface CallLog {
   follow_up_required: boolean;
   follow_up_date?: string;
   follow_up_completed: boolean;
+  completion_notes?: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
   created_by_name?: string;
@@ -519,18 +520,25 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                                   </p>
                                 )}
 
-                                {log.follow_up_required && (
-                                  <div className="flex items-center gap-2 text-xs">
-                                    <Badge variant={log.follow_up_completed ? "default" : "destructive"} className="text-xs">
-                                      {log.follow_up_completed ? "Follow-up erledigt" : "Follow-up erforderlich"}
-                                    </Badge>
-                                    {log.follow_up_date && (
-                                      <span className="text-muted-foreground">
-                                        bis {formatDate(log.follow_up_date)}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
+                                 {log.follow_up_required && (
+                                   <div className="flex items-center gap-2 text-xs">
+                                     <Badge variant={log.follow_up_completed ? "default" : "destructive"} className="text-xs">
+                                       {log.follow_up_completed ? "Follow-up erledigt" : "Follow-up erforderlich"}
+                                     </Badge>
+                                     {log.follow_up_date && (
+                                       <span className="text-muted-foreground">
+                                         bis {formatDate(log.follow_up_date)}
+                                       </span>
+                                     )}
+                                   </div>
+                                 )}
+
+                                 {log.follow_up_completed && log.completion_notes && (
+                                   <div className="mt-2 p-2 bg-muted/30 rounded text-xs">
+                                     <span className="font-medium text-muted-foreground">Erledigungsnotiz: </span>
+                                     <span className="text-muted-foreground">{log.completion_notes}</span>
+                                   </div>
+                                 )}
                               </div>
                             </div>
                           </div>
