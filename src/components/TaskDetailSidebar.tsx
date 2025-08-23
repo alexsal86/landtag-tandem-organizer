@@ -18,9 +18,10 @@ interface Task {
   priority: "low" | "medium" | "high";
   status: "todo" | "in-progress" | "completed";
   dueDate: string;
-  category: "legislation" | "constituency" | "committee" | "personal";
+  category: "legislation" | "constituency" | "committee" | "personal" | "call_followup";
   assignedTo?: string;
   progress?: number;
+  call_log_id?: string;
 }
 
 interface TaskDocument {

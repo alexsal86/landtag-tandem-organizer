@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo, AlarmClock } from "lucide-react";
+import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo, AlarmClock, StickyNote } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,12 +26,13 @@ interface Task {
   priority: "low" | "medium" | "high";
   status: "todo" | "in-progress" | "completed";
   dueDate: string;
-  category: "legislation" | "constituency" | "committee" | "personal";
+  category: "legislation" | "constituency" | "committee" | "personal" | "call_followup";
   assignedTo?: string;
   progress?: number;
   created_at?: string;
   updated_at?: string;
   user_id?: string;
+  call_log_id?: string;
 }
 
 interface TaskComment {
@@ -116,6 +117,8 @@ export function TasksView() {
     due_date: string | null;
     is_completed: boolean;
   }>>([]);
+  const [quickNoteDialog, setQuickNoteDialog] = useState<{ open: boolean; taskId: string | null }>({ open: false, taskId: null });
+  const [quickNoteContent, setQuickNoteContent] = useState("");
   
   console.log('TodoCreateOpen state:', todoCreateOpen); // Debug log
   
@@ -420,12 +423,13 @@ export function TasksView() {
         priority: task.priority as "low" | "medium" | "high",
         status: task.status as "todo" | "in-progress" | "completed",
         dueDate: task.due_date,
-        category: task.category as "legislation" | "constituency" | "committee" | "personal",
+        category: task.category as "legislation" | "constituency" | "committee" | "personal" | "call_followup",
         assignedTo: task.assigned_to,
         progress: task.progress,
         created_at: task.created_at,
         updated_at: task.updated_at,
-        user_id: task.user_id
+        user_id: task.user_id,
+        call_log_id: task.call_log_id
       }));
 
       setTasks(transformedTasks);
@@ -757,6 +761,44 @@ export function TasksView() {
 
   const handleTaskRestored = () => {
     loadTasks();
+  };
+
+  const createQuickNoteFromTask = async () => {
+    if (!user || !quickNoteDialog.taskId || !quickNoteContent.trim()) return;
+
+    try {
+      const task = tasks.find(t => t.id === quickNoteDialog.taskId);
+      if (!task) return;
+
+      const { error } = await supabase
+        .from('quick_notes')
+        .insert({
+          user_id: user.id,
+          title: `Task Note: ${task.title}`,
+          content: quickNoteContent.trim(),
+          category: 'task',
+          color: '#3b82f6',
+          is_pinned: false,
+          tags: ['task', task.category]
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Notiz erstellt",
+        description: "Quick Note wurde erfolgreich erstellt.",
+      });
+
+      setQuickNoteDialog({ open: false, taskId: null });
+      setQuickNoteContent("");
+    } catch (error) {
+      console.error('Error creating quick note:', error);
+      toast({
+        title: "Fehler",
+        description: "Notiz konnte nicht erstellt werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const snoozeTask = async (taskId: string, snoozeUntil: string) => {
@@ -1230,10 +1272,23 @@ export function TasksView() {
                         </div>
                         
                         <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setQuickNoteDialog({ open: true, taskId: task.id });
+                            }}
+                            title="Quick Note erstellen"
+                          >
+                            <StickyNote className="h-4 w-4" />
+                          </Button>
                           <Badge variant="secondary">
                             {task.category === "legislation" ? "Gesetzgebung" :
                              task.category === "committee" ? "Ausschuss" :
-                             task.category === "constituency" ? "Wahlkreis" : "Persönlich"}
+                             task.category === "constituency" ? "Wahlkreis" : 
+                             task.category === "call_followup" ? "Call Follow-up" : "Persönlich"}
                           </Badge>
                           <TooltipProvider>
                             <Tooltip>
@@ -1923,7 +1978,46 @@ export function TasksView() {
           console.log('Todo created callback called');
           loadTodos();
         }}
-      />
-    </>
-  );
-}
+       />
+
+      {/* Quick Note Dialog */}
+      <Dialog open={quickNoteDialog.open} onOpenChange={(open) => setQuickNoteDialog({ open, taskId: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Quick Note zur Aufgabe erstellen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Notiz-Inhalt</Label>
+              <Textarea
+                value={quickNoteContent}
+                onChange={(e) => setQuickNoteContent(e.target.value)}
+                placeholder="Schreiben Sie Ihre Notiz zur Aufgabe..."
+                className="mt-2 min-h-[120px]"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setQuickNoteDialog({ open: false, taskId: null });
+                  setQuickNoteContent("");
+                }}
+                className="flex-1"
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={createQuickNoteFromTask}
+                disabled={!quickNoteContent.trim()}
+                className="flex-1"
+              >
+                Notiz erstellen
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+     </>
+   );
+ }
