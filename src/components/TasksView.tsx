@@ -349,31 +349,34 @@ export function TasksView() {
       // Get call follow-up tasks assigned to this user
       console.log('Looking for call follow-up tasks for user:', user.id, 'email:', user.email);
       
-      // First, let's see all tasks with call_log_id to debug
-      const { data: allCallTasks, error: allCallError } = await supabase
+      // Debug: Let's see ALL tasks to understand the data structure
+      const { data: allTasks, error: allTasksError } = await supabase
         .from('tasks')
         .select('*')
-        .not('call_log_id', 'is', null);
+        .order('created_at', { ascending: false })
+        .limit(10);
       
-      console.log('All tasks with call_log_id:', allCallTasks);
+      console.log('Last 10 tasks:', allTasks);
       
-      // Check for tasks by category first
+      // Check for tasks by category broadly
       const { data: categoryTasks, error: categoryError } = await supabase
         .from('tasks')
         .select('*')
-        .in('category', ['call_follow_up', 'call_followup', 'call_followup']);
+        .like('category', '%call%');
       
-      console.log('All tasks with call follow-up category:', categoryTasks);
+      console.log('All tasks with "call" in category:', categoryTasks);
       
-      // Try broader query for call follow-ups
-      const { data: callFollowupData, error: callFollowupError } = await supabase
+      // Try to find follow-up tasks by user assignment
+      const { data: userTasks, error: userTasksError } = await supabase
         .from('tasks')
-        .select('*, call_log_id')
+        .select('*')
         .or(`assigned_to.eq.${user.email},assigned_to.eq.${user.id}`)
-        .in('category', ['call_follow_up', 'call_followup'])
         .neq('status', 'completed');
-
-      if (callFollowupError) throw callFollowupError;
+      
+      console.log('All user assigned tasks:', userTasks);
+      
+      // Set empty for now until we understand the data
+      const callFollowupData = [];
 
       console.log('Regular subtasks:', subtasksData);
       console.log('Planning subtasks:', planningSubtasksData);
