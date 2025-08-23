@@ -349,14 +349,31 @@ export function TasksView() {
       // Get call follow-up tasks assigned to this user
       console.log('Looking for call follow-up tasks for user:', user.id, 'email:', user.email);
       
-      // First query: All tasks with call follow-up category (this should work!)
+      // Debug: Check if ANY tasks exist with call_follow_up category for ANY user
+      const { data: allCallFollowups, error: allCallError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('category', 'call_follow_up');
+      
+      console.log('ALL call follow-up tasks in database:', allCallFollowups);
+      
+      // Debug: Check what categories exist
+      const { data: allCategories, error: categoriesError } = await supabase
+        .from('tasks')
+        .select('category')
+        .not('category', 'is', null);
+      
+      const uniqueCategories = [...new Set((allCategories || []).map(t => t.category))];
+      console.log('All unique task categories in database:', uniqueCategories);
+      
+      // Try the actual query for user tasks
       const { data: callFollowupData, error: callFollowupError } = await supabase
         .from('tasks')
         .select('*, call_log_id')
         .eq('category', 'call_follow_up')
         .neq('status', 'completed');
       
-      console.log('All call follow-up tasks (category filter):', callFollowupData);
+       console.log('Call follow-up tasks query result:', callFollowupData);
       
       // Filter those assigned to current user
       const userCallFollowups = (callFollowupData || []).filter(task => 
@@ -364,12 +381,10 @@ export function TasksView() {
         task.assigned_to === user.id ||
         task.user_id === user.id
       );
-      
-      console.log('User assigned call follow-ups:', userCallFollowups);
 
       console.log('Regular subtasks:', subtasksData);
       console.log('Planning subtasks:', planningSubtasksData);
-      console.log('Call follow-up tasks:', callFollowupData);
+      console.log('User assigned call follow-ups:', userCallFollowups);
 
       // Combine subtasks with task titles
       const allSubtasks = [];
