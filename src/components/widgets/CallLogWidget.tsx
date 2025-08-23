@@ -220,6 +220,34 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
           // Task linking is handled via call_log_id in tasks table
           console.log('Subtask created successfully:', subtaskData.id);
         }
+
+        // Create calendar appointment if follow-up has a date
+        if (followUpDate) {
+          const appointmentStartTime = new Date(followUpDate);
+          appointmentStartTime.setHours(10, 0, 0, 0); // Default to 10:00 AM
+          const appointmentEndTime = new Date(appointmentStartTime);
+          appointmentEndTime.setHours(11, 0, 0, 0); // Default 1 hour duration
+
+          const { error: appointmentError } = await supabase
+            .from('appointments')
+            .insert({
+              user_id: user.id,
+              call_log_id: data.id,
+              title: `Follow-up: ${contactName}`,
+              description: `Follow-up Termin aus Anrufprotokoll.\nGrund: ${notes}`,
+              start_time: appointmentStartTime.toISOString(),
+              end_time: appointmentEndTime.toISOString(),
+              category: 'follow_up',
+              priority: priority,
+              status: 'planned'
+            });
+
+          if (appointmentError) {
+            console.error('Error creating follow-up appointment:', appointmentError);
+          } else {
+            console.log('Follow-up appointment created successfully');
+          }
+        }
       }
 
       await loadCallLogs();
@@ -251,6 +279,28 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       
       if (taskError) {
         console.error('Error updating task:', taskError);
+      }
+
+      // Update the associated appointment if it exists (add "Erledigt:" prefix instead of deleting)
+      // First, get the current appointment
+      const { data: appointment } = await supabase
+        .from('appointments')
+        .select('title')
+        .eq('call_log_id', id)
+        .single();
+
+      if (appointment && !appointment.title.startsWith('Erledigt:')) {
+        const { error: appointmentError } = await supabase
+          .from('appointments')
+          .update({ 
+            title: `Erledigt: ${appointment.title}`,
+            status: 'completed'
+          })
+          .eq('call_log_id', id);
+        
+        if (appointmentError) {
+          console.error('Error updating appointment:', appointmentError);
+        }
       }
 
       await loadCallLogs();

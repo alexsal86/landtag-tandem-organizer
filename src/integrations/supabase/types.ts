@@ -175,6 +175,7 @@ export type Database = {
       }
       appointments: {
         Row: {
+          call_log_id: string | null
           category: string | null
           contact_id: string | null
           created_at: string
@@ -193,6 +194,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          call_log_id?: string | null
           category?: string | null
           contact_id?: string | null
           created_at?: string
@@ -211,6 +213,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          call_log_id?: string | null
           category?: string | null
           contact_id?: string | null
           created_at?: string
@@ -229,6 +232,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "appointments_call_log_id_fkey"
+            columns: ["call_log_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "appointments_contact_id_fkey"
             columns: ["contact_id"]

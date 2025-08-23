@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { ContactDetailSheet } from "./ContactDetailSheet";
 
 interface Contact {
   id: string;
-  contact_type: "person" | "organization";
+  contact_type: "person" | "organization" | "archive";
   name: string;
   role?: string;
   organization?: string;
@@ -64,7 +64,7 @@ export function ContactsView() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [activeTab, setActiveTab] = useState<"contacts" | "distribution-lists">("contacts");
+  const [activeTab, setActiveTab] = useState<"contacts" | "distribution-lists" | "archive">("contacts");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -94,7 +94,7 @@ export function ContactsView() {
 
       setContacts(data?.map(contact => ({
         id: contact.id,
-        contact_type: (contact.contact_type as "person" | "organization") || "person",
+        contact_type: (contact.contact_type as "person" | "organization" | "archive") || "person",
         name: contact.name,
         role: contact.role,
         organization: contact.organization,
@@ -259,6 +259,10 @@ export function ContactsView() {
   };
 
   const filteredContacts = contacts.filter(contact => {
+    // Filter out archive contacts from regular view
+    if (activeTab === "contacts" && contact.contact_type === 'archive') return false;
+    if (activeTab === "archive" && contact.contact_type !== 'archive') return false;
+    
     const matchesSearch = 
       contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (contact.organization && contact.organization.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -324,7 +328,7 @@ export function ContactsView() {
             className="gap-2"
           >
             <User className="h-4 w-4" />
-            Kontakte ({contacts.length})
+            Kontakte ({contacts.filter(c => c.contact_type !== 'archive').length})
           </Button>
           <Button
             variant={activeTab === "distribution-lists" ? "default" : "outline"}
@@ -334,6 +338,15 @@ export function ContactsView() {
           >
             <Users className="h-4 w-4" />
             Verteiler ({distributionLists.length})
+          </Button>
+          <Button
+            variant={activeTab === "archive" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab("archive")}
+            className="gap-2"
+          >
+            <Archive className="h-4 w-4" />
+            Archiv ({contacts.filter(c => c.contact_type === 'archive').length})
           </Button>
         </div>
 
@@ -613,6 +626,76 @@ export function ContactsView() {
           </Table>
         </Card>
         )
+      ) : activeTab === "archive" ? (
+        // Archive Display
+        <div className="space-y-6">
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Archive className="h-5 w-5" />
+                Kontakt-Archiv
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Automatisch erstellte Kontakte aus Follow-Ups unbekannter Telefonnummern, gruppiert nach Nummer.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {contacts.filter(c => c.contact_type === 'archive').length === 0 ? (
+                <div className="text-center py-8">
+                  <Archive className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Kein Archiv vorhanden</h3>
+                  <p className="text-muted-foreground">
+                    Follow-Ups von unbekannten Kontakten werden automatisch hier archiviert.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Group archive contacts by phone number */}
+                  {Object.entries(
+                    contacts
+                      .filter(c => c.contact_type === 'archive')
+                      .reduce((groups, contact) => {
+                        const phone = contact.phone || 'Unbekannte Nummer';
+                        if (!groups[phone]) groups[phone] = [];
+                        groups[phone].push(contact);
+                        return groups;
+                      }, {} as Record<string, Contact[]>)
+                  ).map(([phone, groupContacts]) => (
+                    <Card key={phone} className="border-l-4 border-l-muted">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="font-medium flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
+                              {phone}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              {groupContacts.length} Follow-Up{groupContacts.length !== 1 ? 's' : ''} archiviert
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          {groupContacts.map(contact => (
+                            <div key={contact.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                              <div>
+                                <p className="font-medium">{contact.name}</p>
+                                {contact.notes && (
+                                  <p className="text-sm text-muted-foreground truncate max-w-md">
+                                    {contact.notes}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         // Distribution Lists Display
         <div className="space-y-6">

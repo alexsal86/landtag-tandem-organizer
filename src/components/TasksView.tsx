@@ -1069,6 +1069,23 @@ export function TasksView() {
         // No contact exists - create archive contact
         await createArchiveContact(callLog, resultText);
       }
+
+      // Update associated appointment if it exists (add "Erledigt:" prefix)
+      const { data: appointment } = await supabase
+        .from('appointments')
+        .select('title')
+        .eq('call_log_id', callLogId)
+        .single();
+
+      if (appointment && !appointment.title.startsWith('Erledigt:')) {
+        await supabase
+          .from('appointments')
+          .update({ 
+            title: `Erledigt: ${appointment.title}`,
+            status: 'completed'
+          })
+          .eq('call_log_id', callLogId);
+      }
     } catch (error) {
       console.error('Error handling call follow-up completion:', error);
       throw error;
