@@ -89,13 +89,30 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get user from request
-    const { data: { user } } = await supabaseClient.auth.getUser(
-      req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
+    // Get authorization header and extract token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // For test notifications, use the user token; for regular notifications, use service role
+    const token = authHeader.replace('Bearer ', '');
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        auth: { persistSession: false },
+        global: { headers: { authorization: authHeader } }
+      }
     );
 
-    if (!user) {
-      console.error('Unauthorized request');
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      console.error('User authentication failed:', userError);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -148,7 +165,13 @@ serve(async (req) => {
               }
             });
 
-            await webPush.sendNotification(subscription.subscription_data, payload);
+            await webPush.sendNotification({
+              endpoint: subscription.endpoint,
+              keys: {
+                p256dh: subscription.p256dh_key,
+                auth: subscription.auth_key
+              }
+            }, payload);
             sent++;
             console.log('Successfully sent push notification');
           } catch (error) {
@@ -263,7 +286,13 @@ serve(async (req) => {
     // Send push notifications to all subscriptions
     for (const subscription of subscriptions) {
       try {
-        await webPush.sendNotification(subscription.subscription_data, JSON.stringify(payload));
+        await webPush.sendNotification({
+          endpoint: subscription.endpoint,
+          keys: {
+            p256dh: subscription.p256dh_key,
+            auth: subscription.auth_key
+          }
+        }, JSON.stringify(payload));
         sentCount++;
       } catch (error) {
         console.error('Error sending push notification:', error);

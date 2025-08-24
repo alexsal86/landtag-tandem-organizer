@@ -206,8 +206,9 @@ export const useNotifications = () => {
       let subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
-        // Create new subscription with VAPID public key
-        const vapidPublicKey = 'BPBj5fIxPCJM5YnL4QQ0HXZW0wOILkxzEkDoPx3jDw16F4n2HzEGQ4YRfkC4jQ_g9nNHX3M6Q5WzV3xT8Y-1Lgk'; // Updated VAPID public key
+        // Create new subscription with VAPID public key from environment
+        // Use consistent VAPID public key 
+        const vapidPublicKey = 'BLdVpAiJdyPssbWBAQ1gOEWAz9xfUKVKkMELMLjQ8J93F11bnbnbfkJGsIDM1u09QJyTzD7Q8FNw-SWJx3OP-JQ';
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
@@ -270,7 +271,7 @@ export const useNotifications = () => {
     if (!user) return;
 
     const channel = supabase
-      .channel('notifications-changes')
+      .channel(`notifications-realtime-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -280,11 +281,19 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('New notification received:', payload);
+          console.log('New notification received via realtime:', payload);
+          const newNotification = payload.new as Notification;
           
-          // Add to notifications list
-          const newNotification = payload.new as any as Notification;
-          setNotifications(prev => [newNotification, ...prev]);
+          // Check for duplicates before adding
+          setNotifications(prev => {
+            const exists = prev.some(n => n.id === newNotification.id);
+            if (exists) {
+              console.log('Duplicate notification prevented:', newNotification.id);
+              return prev;
+            }
+            return [newNotification, ...prev];
+          });
+          
           setUnreadCount(prev => prev + 1);
           
           // Show toast for new notification
@@ -303,25 +312,27 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Notification updated:', payload);
-          const updatedNotification = payload.new as any as Notification;
+          console.log('Notification updated via realtime:', payload);
+          const updatedNotification = payload.new as Notification;
           
-          // Update notification in state
           setNotifications(prev => 
             prev.map(notif => 
               notif.id === updatedNotification.id ? updatedNotification : notif
             )
           );
           
-          // Update unread count based on read status change
+          // Update unread count immediately for real-time feedback
           if (updatedNotification.is_read && payload.old && !(payload.old as any).is_read) {
             setUnreadCount(prev => Math.max(0, prev - 1));
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Notifications realtime subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up notifications realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [user, toast]);
