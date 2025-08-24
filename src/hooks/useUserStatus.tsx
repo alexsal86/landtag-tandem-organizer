@@ -29,15 +29,28 @@ export interface UserWithStatus {
   display_name: string;
   avatar_url?: string;
   status?: UserStatus;
+  is_online?: boolean;
+  last_seen?: string;
+}
+
+export interface OnlineUser {
+  user_id: string;
+  display_name: string;
+  avatar_url?: string;
+  presence_ref: string;
+  online_at: string;
+  status?: UserStatus;
 }
 
 export const useUserStatus = () => {
   const { user } = useAuth();
   const [currentStatus, setCurrentStatus] = useState<UserStatus | null>(null);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [usersWithStatus, setUsersWithStatus] = useState<UserWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAwayTimerActive, setIsAwayTimerActive] = useState(false);
+  const [presenceChannel, setPresenceChannel] = useState<any>(null);
 
   // Auto-away timer
   useEffect(() => {
@@ -129,53 +142,138 @@ export const useUserStatus = () => {
     loadCurrentStatus();
   }, [user]);
 
-  // Load all users with their status
+  // Set up presence tracking for online users
   useEffect(() => {
-    const loadUsersWithStatus = async () => {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, avatar_url');
+    if (!user) return;
 
-      if (profilesError) {
-        console.error('Error loading profiles:', profilesError);
-        return;
-      }
+    const setupPresence = async () => {
+      // Create a unique channel for user presence
+      const channel = supabase.channel('user_presence', {
+        config: {
+          presence: {
+            key: user.id,
+          },
+        },
+      });
 
-      const { data: statuses, error: statusesError } = await supabase
-        .from('user_status')
-        .select('*');
+      // Track presence events
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          const presenceState = channel.presenceState();
+          const onlineUsersList: OnlineUser[] = [];
+          
+          Object.entries(presenceState).forEach(([userId, presences]: [string, any[]]) => {
+            if (presences && presences.length > 0) {
+              const presence = presences[0];
+              onlineUsersList.push({
+                user_id: userId,
+                display_name: presence.display_name || 'Unbekannt',
+                avatar_url: presence.avatar_url,
+                presence_ref: presence.presence_ref,
+                online_at: presence.online_at,
+                status: presence.status
+              });
+            }
+          });
+          
+          setOnlineUsers(onlineUsersList);
+          updateUsersWithStatus(onlineUsersList);
+        })
+        .on('presence', { event: 'join' }, ({ newPresences }) => {
+          console.log('User joined:', newPresences);
+        })
+        .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+          console.log('User left:', leftPresences);
+        });
 
-      if (statusesError) {
-        console.error('Error loading statuses:', statusesError);
-        return;
-      }
+      // Subscribe and track own presence
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          // Get user profile for presence data
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name, avatar_url')
+            .eq('user_id', user.id)
+            .single();
 
-      const usersWithStatus = profiles?.map(profile => ({
-        ...profile,
-        status: statuses?.find(status => status.user_id === profile.user_id)
-      })) || [];
+          // Track current user's presence
+          await channel.track({
+            user_id: user.id,
+            display_name: profile?.display_name || user.email,
+            avatar_url: profile?.avatar_url,
+            online_at: new Date().toISOString(),
+            status: currentStatus
+          });
+        }
+      });
 
-      setUsersWithStatus(usersWithStatus);
+      setPresenceChannel(channel);
     };
 
-    loadUsersWithStatus();
+    setupPresence();
 
-    // Set up real-time listener
-    const channel = supabase
-      .channel('user_status_changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'user_status'
-      }, () => {
-        loadUsersWithStatus();
-      })
-      .subscribe();
-
+    // Cleanup function
     return () => {
-      supabase.removeChannel(channel);
+      if (presenceChannel) {
+        presenceChannel.unsubscribe();
+      }
     };
-  }, []);
+  }, [user?.id]);
+
+  // Update presence when status changes
+  useEffect(() => {
+    if (presenceChannel && currentStatus && user) {
+      const updatePresence = async () => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, avatar_url')
+          .eq('user_id', user.id)
+          .single();
+
+        await presenceChannel.track({
+          user_id: user.id,
+          display_name: profile?.display_name || user.email,
+          avatar_url: profile?.avatar_url,
+          online_at: new Date().toISOString(),
+          status: currentStatus
+        });
+      };
+
+      updatePresence();
+    }
+  }, [currentStatus, presenceChannel, user]);
+
+  // Function to update usersWithStatus based on online users and their statuses
+  const updateUsersWithStatus = async (onlineUsersList: OnlineUser[]) => {
+    try {
+      // Get all statuses for online users
+      const onlineUserIds = onlineUsersList.map(u => u.user_id);
+      
+      if (onlineUserIds.length === 0) {
+        setUsersWithStatus([]);
+        return;
+      }
+
+      const { data: statuses } = await supabase
+        .from('user_status')
+        .select('*')
+        .in('user_id', onlineUserIds);
+
+      // Combine online users with their statuses
+      const usersWithStatusData = onlineUsersList.map(onlineUser => ({
+        user_id: onlineUser.user_id,
+        display_name: onlineUser.display_name,
+        avatar_url: onlineUser.avatar_url,
+        is_online: true,
+        last_seen: onlineUser.online_at,
+        status: statuses?.find(status => status.user_id === onlineUser.user_id)
+      }));
+
+      setUsersWithStatus(usersWithStatusData);
+    } catch (error) {
+      console.error('Error updating users with status:', error);
+    }
+  };
 
   const updateStatus = async (
     statusType: UserStatus['status_type'],
@@ -285,7 +383,8 @@ export const useUserStatus = () => {
   return {
     currentStatus,
     statusOptions,
-    usersWithStatus,
+    onlineUsers,
+    usersWithStatus, // Now only contains online users
     loading,
     isAwayTimerActive,
     updateStatus,

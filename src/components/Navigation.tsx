@@ -33,10 +33,9 @@ interface NavigationProps {
 
 export function Navigation({ activeSection, onSectionChange }: NavigationProps) {
   const { signOut, user } = useAuth();
-  const { usersWithStatus, getStatusDisplay } = useUserStatus();
+  const { onlineUsers, getStatusDisplay } = useUserStatus();
   const { toast } = useToast();
   const { state } = useSidebar();
-  const [onlineUsers, setOnlineUsers] = useState<Array<{ user_id: string; email: string; display_name?: string; online_at: string }>>([]);
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
@@ -143,62 +142,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     checkAdminAccess();
   }, [user]);
 
-  // Online users presence tracking
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase.channel('online-users');
-
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const newState = channel.presenceState();
-        const allUsers = Object.keys(newState).flatMap(key => newState[key]);
-        
-        // Deduplicate users by user_id to show each user only once
-        const uniqueUsers = allUsers.reduce((acc, user) => {
-          const userData = user as any;
-          if (userData.user_id && !acc.find(u => u.user_id === userData.user_id)) {
-            acc.push({
-              user_id: userData.user_id,
-              email: userData.email,
-              display_name: userData.display_name,
-              online_at: userData.online_at
-            });
-          }
-          return acc;
-        }, [] as Array<{ user_id: string; email: string; display_name?: string; online_at: string }>);
-        
-        setOnlineUsers(uniqueUsers);
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('user joined:', key, newPresences);
-      })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('user left:', key, leftPresences);
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          // Fetch user profile to get display_name
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('user_id', user.id)
-            .single();
-
-          // Track current user presence
-          await channel.track({
-            user_id: user.id,
-            email: user.email,
-            display_name: profile?.display_name,
-            online_at: new Date().toISOString(),
-          });
-        }
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
+  // Real-time presence tracking is now handled in useUserStatus hook
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -288,19 +232,19 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Users with Status Section */}
+        {/* Online Users Section */}
         <div className="border-t border-border mt-4 pt-4">
           <SidebarGroup>
             <SidebarGroupLabel className="text-xs font-medium text-muted-foreground mb-2">
-              Benutzer ({usersWithStatus.length})
+              Online ({onlineUsers.length})
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {usersWithStatus.slice(0, 8).map((userWithStatus) => {
-                  const statusDisplay = getStatusDisplay(userWithStatus.status);
+                {onlineUsers.slice(0, 8).map((onlineUser) => {
+                  const statusDisplay = getStatusDisplay(onlineUser.status);
                   return (
                     <div
-                      key={userWithStatus.user_id}
+                      key={onlineUser.user_id}
                       className="flex items-center gap-2 px-2 py-1 rounded-md text-sm hover:bg-accent/50 transition-colors"
                     >
                       <div className="flex items-center gap-1">
@@ -311,24 +255,24 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         />
                       </div>
                       <span className="text-muted-foreground truncate flex-1">
-                        {userWithStatus.display_name || 'Unbekannt'}
+                        {onlineUser.display_name || 'Unbekannt'}
                       </span>
-                      {userWithStatus.status?.custom_message && (
+                      {onlineUser.status?.custom_message && (
                         <Badge variant="outline" className="text-xs px-1 py-0 max-w-[60px] truncate">
-                          {userWithStatus.status.custom_message}
+                          {onlineUser.status.custom_message}
                         </Badge>
                       )}
                     </div>
                   );
                 })}
-                {usersWithStatus.length > 8 && (
+                {onlineUsers.length > 8 && (
                   <div className="text-xs text-muted-foreground px-2">
-                    +{usersWithStatus.length - 8} weitere
+                    +{onlineUsers.length - 8} weitere
                   </div>
                 )}
-                {usersWithStatus.length === 0 && (
+                {onlineUsers.length === 0 && (
                   <div className="text-xs text-muted-foreground px-2">
-                    Keine Benutzer gefunden
+                    Niemand online
                   </div>
                 )}
               </div>
