@@ -17,46 +17,120 @@ interface PushPayload {
     icon?: string;
   }>;
   data?: any;
+  tag?: string;
+  requireInteraction?: boolean;
 }
 
-// Simple WebPush implementation for Deno
-class WebPushClient {
-  private vapidPublicKey: string;
-  private vapidPrivateKey: string;
-  private vapidSubject: string;
+// Base64URL encoding for VAPID
+function base64UrlEncode(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
 
-  constructor(vapidPublicKey: string, vapidPrivateKey: string, vapidSubject: string) {
-    this.vapidPublicKey = vapidPublicKey;
-    this.vapidPrivateKey = vapidPrivateKey;
-    this.vapidSubject = vapidSubject;
+// Generate VAPID JWT token
+async function generateVapidJWT(
+  audience: string,
+  subject: string,
+  publicKey: string,
+  privateKey: string,
+  expiration = Math.floor(Date.now() / 1000) + 12 * 60 * 60 // 12 hours
+): Promise<string> {
+  const header = {
+    typ: 'JWT',
+    alg: 'ES256'
+  };
+
+  const payload = {
+    aud: audience,
+    exp: expiration,
+    sub: subject
+  };
+
+  const encodedHeader = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
+  const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+  
+  // Import the private key
+  const privateKeyBuffer = new Uint8Array(
+    atob(privateKey.replace(/-/g, '+').replace(/_/g, '/'))
+      .split('')
+      .map(char => char.charCodeAt(0))
+  );
+
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    privateKeyBuffer,
+    {
+      name: 'ECDSA',
+      namedCurve: 'P-256'
+    },
+    false,
+    ['sign']
+  );
+
+  // Sign the JWT
+  const signature = await crypto.subtle.sign(
+    {
+      name: 'ECDSA',
+      hash: 'SHA-256'
+    },
+    key,
+    new TextEncoder().encode(signingInput)
+  );
+
+  const encodedSignature = base64UrlEncode(signature);
+  return `${signingInput}.${encodedSignature}`;
+}
+
+// Web Push Protocol implementation
+async function sendWebPushNotification(
+  subscription: any,
+  payload: string,
+  vapidJWT: string,
+  vapidPublicKey: string
+): Promise<Response> {
+  const endpoint = subscription.endpoint;
+  
+  console.log('📤 Sending push notification to:', endpoint);
+  console.log('📦 Payload size:', payload.length);
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/octet-stream',
+    'TTL': '86400',
+    'Authorization': `vapid t=${vapidJWT}, k=${vapidPublicKey}`
+  };
+
+  // Add FCM-specific headers for Chrome/Edge
+  if (endpoint.includes('fcm.googleapis.com')) {
+    headers['Content-Encoding'] = 'aes128gcm';
   }
 
-  async sendNotification(subscription: any, payload: string) {
-    const endpoint = subscription.endpoint;
-    
-    console.log('Sending push notification to:', endpoint);
-    console.log('Payload size:', payload.length);
-    
-    // Simple fetch to push endpoint - browsers handle the encryption
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'TTL': '86400'
-      },
-      body: payload
-    });
+  console.log('📋 Request headers:', headers);
 
-    console.log('Push response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log('Push error response:', errorText);
-      throw new Error(`Push failed with status ${response.status}: ${errorText}`);
-    }
-    
-    return response;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: payload
+  });
+
+  console.log(`📨 Push response status: ${response.status}`);
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ Push error response:', errorText);
+    throw new Error(`Push failed with status ${response.status}: ${errorText}`);
   }
+  
+  console.log('✅ Push notification sent successfully');
+  return response;
 }
 
 serve(async (req) => {
@@ -156,10 +230,24 @@ serve(async (req) => {
       let failed = 0;
 
       if (subscriptions && subscriptions.length > 0) {
-        const webPush = new WebPushClient(vapidPublicKey, vapidPrivateKey, vapidSubject);
+        console.log(`🚀 Processing ${subscriptions.length} subscriptions for test notification`);
         
         for (const subscription of subscriptions) {
           try {
+            console.log(`📨 Sending to subscription: ${subscription.id}`);
+            
+            // Extract audience from endpoint for VAPID JWT
+            const endpointUrl = new URL(subscription.endpoint);
+            const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
+            
+            // Generate VAPID JWT
+            const vapidJWT = await generateVapidJWT(
+              audience,
+              vapidSubject,
+              vapidPublicKey,
+              vapidPrivateKey
+            );
+
             const payload = JSON.stringify({
               title,
               body: message,
@@ -171,17 +259,17 @@ serve(async (req) => {
               }
             });
 
-            await webPush.sendNotification({
-              endpoint: subscription.endpoint,
-              keys: {
-                p256dh: subscription.p256dh_key,
-                auth: subscription.auth_key
-              }
-            }, payload);
+            await sendWebPushNotification(
+              { endpoint: subscription.endpoint },
+              payload,
+              vapidJWT,
+              vapidPublicKey
+            );
+            
             sent++;
-            console.log('Successfully sent push notification');
+            console.log(`✅ Successfully sent test notification to subscription ${subscription.id}`);
           } catch (error) {
-            console.error('Failed to send push notification:', error);
+            console.error(`❌ Failed to send test notification to subscription ${subscription.id}:`, error);
             failed++;
             
             // Deactivate failed subscription
@@ -287,21 +375,37 @@ serve(async (req) => {
 
     let sentCount = 0;
     const failedSubscriptions: string[] = [];
-    const webPush = new WebPushClient(vapidPublicKey, vapidPrivateKey, vapidSubject);
+
+    console.log(`🚀 Processing ${subscriptions.length} subscriptions for notification`);
 
     // Send push notifications to all subscriptions
     for (const subscription of subscriptions) {
       try {
-        await webPush.sendNotification({
-          endpoint: subscription.endpoint,
-          keys: {
-            p256dh: subscription.p256dh_key,
-            auth: subscription.auth_key
-          }
-        }, JSON.stringify(payload));
+        console.log(`📨 Sending to subscription: ${subscription.id}`);
+        
+        // Extract audience from endpoint for VAPID JWT
+        const endpointUrl = new URL(subscription.endpoint);
+        const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
+        
+        // Generate VAPID JWT
+        const vapidJWT = await generateVapidJWT(
+          audience,
+          vapidSubject,
+          vapidPublicKey,
+          vapidPrivateKey
+        );
+
+        await sendWebPushNotification(
+          { endpoint: subscription.endpoint },
+          JSON.stringify(payload),
+          vapidJWT,
+          vapidPublicKey
+        );
+        
         sentCount++;
+        console.log(`✅ Successfully sent notification to subscription ${subscription.id}`);
       } catch (error) {
-        console.error('Error sending push notification:', error);
+        console.error(`❌ Error sending notification to subscription ${subscription.id}:`, error);
         failedSubscriptions.push(subscription.id);
       }
     }

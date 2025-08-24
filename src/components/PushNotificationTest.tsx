@@ -61,7 +61,9 @@ export const PushNotificationTest: React.FC = () => {
       // Step 4: Test notification creation
       setTestResult({ step: 'Test-Benachrichtigung senden', status: 'pending', message: 'Sende Test-Benachrichtigung...' });
 
-      const { data, error } = await supabase.functions.invoke('send-push-notification', {
+      console.log('🚀 Invoking push notification test...');
+      
+      const response = await supabase.functions.invoke('send-push-notification', {
         body: { 
           test: true,
           title: 'Push-Test erfolgreich!',
@@ -70,32 +72,65 @@ export const PushNotificationTest: React.FC = () => {
         }
       });
 
-      if (error) {
-        console.error('Push notification error:', error);
+      console.log('📤 Edge Function response:', response);
+
+      if (response.error) {
+        console.error('❌ Edge Function error:', response.error);
+        let errorMessage = 'Unbekannter Fehler';
+        
+        if (response.error.message) {
+          errorMessage = response.error.message;
+        } else if (typeof response.error === 'string') {
+          errorMessage = response.error;
+        }
+        
         setTestResult({ 
           step: 'Test-Benachrichtigung senden', 
           status: 'error',
-          message: `Fehler beim Senden: ${error.message}`
+          message: `Edge Function Fehler: ${errorMessage}`
         });
         return;
       }
 
-      console.log('Push notification response:', data);
-
-      if (data && data.success) {
-        setTestResult({ 
-          step: 'Test-Benachrichtigung senden', 
-          status: 'success',
-          message: `Test-Benachrichtigung erfolgreich gesendet! Gesendet: ${data.sent}, Fehlgeschlagen: ${data.failed}, Gesamt: ${data.total_subscriptions} Abonnements.`
-        });
-      } else {
+      if (!response.data) {
+        console.error('❌ No data received from Edge Function');
         setTestResult({ 
           step: 'Test-Benachrichtigung senden', 
           status: 'error',
-          message: 'Unerwartete Antwort vom Server'
+          message: 'Keine Antwort von der Edge Function erhalten'
         });
         return;
       }
+
+      const { success, sent, failed, total_subscriptions, error: dataError } = response.data;
+      
+      if (dataError) {
+        console.error('❌ Server error:', dataError);
+        setTestResult({ 
+          step: 'Test-Benachrichtigung senden', 
+          status: 'error',
+          message: `Server Fehler: ${dataError}`
+        });
+        return;
+      }
+
+      if (!success) {
+        console.error('❌ Push notification test failed');
+        setTestResult({ 
+          step: 'Test-Benachrichtigung senden', 
+          status: 'error',
+          message: 'Push-Notification Test fehlgeschlagen'
+        });
+        return;
+      }
+
+      console.log('✅ Push notification test successful:', { sent, failed, total_subscriptions });
+      
+      setTestResult({ 
+        step: 'Test-Benachrichtigung senden', 
+        status: 'success',
+        message: `✅ Test erfolgreich! Gesendet: ${sent || 0}, Fehlgeschlagen: ${failed || 0}, Gesamt: ${total_subscriptions || 0} Abonnements.`
+      });
 
       toast({
         title: "Push-Test erfolgreich!",
