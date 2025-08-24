@@ -35,18 +35,13 @@ export function BlackBoard() {
         return;
       }
 
-      // Filter for relevant messages:
-      // 1. Unread "An alle" messages from others
-      // 2. Own "An alle" messages (regardless of read status)
-      // 3. Unread personal messages addressed to the user
+      // Filter for unread messages only:
+      // 1. Unread "An alle" messages (including own)
+      // 2. Unread personal messages addressed to the user
       const relevantMessages = (data || [])
         .filter(msg => {
-          // Own "An alle" messages
-          if (msg.is_for_all_users && msg.author_id === user.id) {
-            return true;
-          }
-          // Unread "An alle" messages from others
-          if (msg.is_for_all_users && !msg.has_read && msg.author_id !== user.id) {
+          // Unread "An alle" messages (from anyone including self)
+          if (msg.is_for_all_users && !msg.has_read) {
             return true;
           }
           // Unread personal messages to the user
