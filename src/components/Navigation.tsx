@@ -243,10 +243,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                       key={onlineUser.user_id}
                       className="flex items-center gap-2 px-2 py-1 rounded-md text-sm hover:bg-accent/50 transition-colors"
                     >
-                      <div 
-                        className="w-2 h-2 rounded-full" 
-                        style={{ backgroundColor: statusDisplay.color }}
-                      />
+                      <span className="text-sm">{statusDisplay.emoji}</span>
                       <span className="text-muted-foreground truncate flex-1">
                         {onlineUser.display_name || 'Unbekannt'}
                       </span>
