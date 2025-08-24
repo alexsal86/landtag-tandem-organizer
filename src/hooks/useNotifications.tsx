@@ -207,7 +207,7 @@ export const useNotifications = () => {
       
       if (!subscription) {
         // Create new subscription with VAPID public key
-        const vapidPublicKey = 'BEelqtP2nJZSUYbfhTdv4SaQqTGCJXXn-2GXEcZdI9J_fdhg8Sb_FT7JqqQyoVQHO7hMJdm9MqA9YhwMc7a6V3E'; // VAPID public key
+        const vapidPublicKey = 'BPBj5fIxPCJM5YnL4QQ0HXZW0wOILkxzEkDoPx3jDw16F4n2HzEGQ4YRfkC4jQ_g9nNHX3M6Q5WzV3xT8Y-1Lgk'; // Updated VAPID public key
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
