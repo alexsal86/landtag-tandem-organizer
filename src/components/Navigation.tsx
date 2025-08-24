@@ -1,6 +1,7 @@
 import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { CompactStatusSelector } from "./CompactStatusSelector";
+import { UserStatusSelector } from "./UserStatusSelector";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -276,28 +277,30 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
-                <AvatarFallback>
-                  {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">
-                  {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
-                </span>
-                <span className="truncate text-xs">{userRole}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">|</span>
-                <CompactStatusSelector />
-                <NotificationBell />
-              </div>
-            </SidebarMenuButton>
+            <div className="flex items-center gap-1">
+              <UserStatusSelector>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer flex-1"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
+                    <AvatarFallback>
+                      {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">
+                      {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
+                    </span>
+                    <span className="truncate text-xs">{userRole}</span>
+                  </div>
+                </SidebarMenuButton>
+              </UserStatusSelector>
+              <span className="text-muted-foreground">|</span>
+              <CompactStatusSelector />
+              <NotificationBell />
+            </div>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleSignOut} tooltip="Abmelden">
