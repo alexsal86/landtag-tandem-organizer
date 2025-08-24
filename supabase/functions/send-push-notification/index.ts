@@ -68,10 +68,16 @@ serve(async (req) => {
   try {
     console.log('Starting push notification function...');
     
-    // Get VAPID keys from environment
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    // Get VAPID keys from environment with fallback to new keys
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY_NEW') || Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY_NEW') || Deno.env.get('VAPID_PRIVATE_KEY');
     const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com';
+    
+    console.log('🔑 VAPID configuration:', {
+      publicKeyExists: !!vapidPublicKey,
+      privateKeyExists: !!vapidPrivateKey,
+      subject: vapidSubject
+    });
 
     if (!vapidPublicKey || !vapidPrivateKey) {
       console.error('Missing VAPID configuration');

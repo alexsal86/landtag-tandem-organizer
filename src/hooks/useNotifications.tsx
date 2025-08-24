@@ -96,9 +96,19 @@ export const useNotifications = () => {
     }
   }, [user, toast]);
 
-  // Mark notification as read
+  // Mark notification as read with cross-tab sync
   const markAsRead = useCallback(async (notificationId: string) => {
     if (!user) return;
+
+    // Optimistic update
+    setNotifications(prev => 
+      prev.map(n => 
+        n.id === notificationId 
+          ? { ...n, is_read: true }
+          : n
+      )
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
 
     try {
       const { error } = await supabase
@@ -112,23 +122,35 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
+      // Trigger cross-tab update
+      localStorage.setItem(`notifications-update-${user.id}`, Date.now().toString());
+      localStorage.removeItem(`notifications-update-${user.id}`);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      // Revert optimistic update on error
       setNotifications(prev => 
         prev.map(n => 
           n.id === notificationId 
-            ? { ...n, is_read: true }
+            ? { ...n, is_read: false }
             : n
         )
       );
-      
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
+      setUnreadCount(prev => prev + 1);
     }
   }, [user]);
 
-  // Mark all notifications as read
+  // Mark all notifications as read with cross-tab sync
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
+
+    // Optimistic update
+    const previousNotifications = notifications;
+    const previousUnreadCount = unreadCount;
+    
+    setNotifications(prev => 
+      prev.map(n => ({ ...n, is_read: true }))
+    );
+    setUnreadCount(0);
 
     try {
       const { error } = await supabase
@@ -142,19 +164,22 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
-      setNotifications(prev => 
-        prev.map(n => ({ ...n, is_read: true }))
-      );
-      setUnreadCount(0);
+      // Trigger cross-tab update
+      localStorage.setItem(`notifications-update-${user.id}`, Date.now().toString());
+      localStorage.removeItem(`notifications-update-${user.id}`);
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
+      // Revert optimistic update on error
+      setNotifications(previousNotifications);
+      setUnreadCount(previousUnreadCount);
+      
       toast({
         title: 'Fehler',
         description: 'Benachrichtigungen konnten nicht als gelesen markiert werden.',
         variant: 'destructive',
       });
     }
-  }, [user, toast]);
+  }, [user, toast, notifications, unreadCount]);
 
   // Request push permission
   const requestPushPermission = useCallback(async (): Promise<boolean> => {
@@ -266,12 +291,15 @@ export const useNotifications = () => {
     return outputArray;
   };
 
-  // Set up real-time subscription
+  // Set up real-time subscription with cross-tab synchronization
   useEffect(() => {
     if (!user) return;
 
+    console.log('Setting up notifications realtime subscription for user:', user.id);
+
+    // Create unique channel per user to avoid conflicts
     const channel = supabase
-      .channel(`notifications-realtime-${user.id}`)
+      .channel(`user-notifications:${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -281,25 +309,31 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('New notification received via realtime:', payload);
+          console.log('📥 New notification received via realtime:', payload);
           const newNotification = payload.new as Notification;
           
-          // Check for duplicates before adding
+          // Check for duplicates and add with additional metadata check
           setNotifications(prev => {
             const exists = prev.some(n => n.id === newNotification.id);
             if (exists) {
-              console.log('Duplicate notification prevented:', newNotification.id);
+              console.log('🔄 Duplicate notification prevented:', newNotification.id);
               return prev;
             }
+            
+            console.log('✅ Adding new notification:', newNotification.id);
             return [newNotification, ...prev];
           });
           
-          setUnreadCount(prev => prev + 1);
+          // Only increment if not read
+          if (!newNotification.is_read) {
+            setUnreadCount(prev => prev + 1);
+          }
           
-          // Show toast for new notification
+          // Show toast for new notification with better fallback
           toast({
-            title: newNotification.title,
-            description: newNotification.message,
+            title: newNotification.title || 'Neue Benachrichtigung',
+            description: newNotification.message || 'Sie haben eine neue Benachrichtigung erhalten.',
+            duration: 4000,
           });
         }
       )
@@ -312,30 +346,50 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Notification updated via realtime:', payload);
+          console.log('📝 Notification updated via realtime:', payload);
           const updatedNotification = payload.new as Notification;
+          const oldNotification = payload.old as Notification;
           
           setNotifications(prev => 
             prev.map(notif => 
-              notif.id === updatedNotification.id ? updatedNotification : notif
+              notif.id === updatedNotification.id ? { ...updatedNotification } : notif
             )
           );
           
-          // Update unread count immediately for real-time feedback
-          if (updatedNotification.is_read && payload.old && !(payload.old as any).is_read) {
-            setUnreadCount(prev => Math.max(0, prev - 1));
+          // Update unread count based on read status change
+          if (oldNotification && updatedNotification.is_read !== oldNotification.is_read) {
+            if (updatedNotification.is_read && !oldNotification.is_read) {
+              // Marked as read
+              setUnreadCount(prev => Math.max(0, prev - 1));
+              console.log('📖 Notification marked as read, decreasing count');
+            } else if (!updatedNotification.is_read && oldNotification.is_read) {
+              // Marked as unread
+              setUnreadCount(prev => prev + 1);
+              console.log('📬 Notification marked as unread, increasing count');
+            }
           }
         }
       )
       .subscribe((status) => {
-        console.log('Notifications realtime subscription status:', status);
+        console.log('📡 Notifications realtime subscription status:', status);
       });
 
-    return () => {
-      console.log('Cleaning up notifications realtime subscription');
-      supabase.removeChannel(channel);
+    // Listen for storage events for cross-tab synchronization
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === `notifications-update-${user.id}` && e.newValue) {
+        console.log('🔄 Cross-tab notification update detected');
+        loadNotifications();
+      }
     };
-  }, [user, toast]);
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      console.log('🧹 Cleaning up notifications realtime subscription');
+      supabase.removeChannel(channel);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [user, toast, loadNotifications]);
 
   // Load notifications on mount
   useEffect(() => {
