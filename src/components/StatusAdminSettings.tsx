@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, GripVertical, Palette } from 'lucide-react';
 import { StatusOption } from '@/hooks/useUserStatus';
+import { EmojiPicker } from './EmojiPicker';
 
 export const StatusAdminSettings: React.FC = () => {
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
@@ -226,12 +227,9 @@ export const StatusAdminSettings: React.FC = () => {
 
                 <div>
                   <Label htmlFor="emoji">Emoji</Label>
-                  <Input
-                    id="emoji"
+                  <EmojiPicker
                     value={formData.emoji}
-                    onChange={(e) => setFormData(prev => ({ ...prev, emoji: e.target.value }))}
-                    placeholder="🟢"
-                    maxLength={2}
+                    onEmojiSelect={(emoji) => setFormData(prev => ({ ...prev, emoji }))}
                   />
                 </div>
 
