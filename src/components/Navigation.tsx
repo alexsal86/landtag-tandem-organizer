@@ -1,12 +1,16 @@
 import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
+import { QuickStatusButtons } from "./QuickStatusButtons";
+import { UserStatusSelector } from "./UserStatusSelector";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserStatus } from "@/hooks/useUserStatus";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -29,6 +33,7 @@ interface NavigationProps {
 
 export function Navigation({ activeSection, onSectionChange }: NavigationProps) {
   const { signOut, user } = useAuth();
+  const { usersWithStatus, getStatusDisplay } = useUserStatus();
   const { toast } = useToast();
   const { state } = useSidebar();
   const [onlineUsers, setOnlineUsers] = useState<Array<{ user_id: string; email: string; display_name?: string; online_at: string }>>([]);
@@ -200,7 +205,10 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       <SidebarHeader className="border-b">
         <div className="flex items-center justify-between p-2">
           <SidebarTrigger />
-          <NotificationBell />
+            <div className="flex items-center gap-2">
+              <QuickStatusButtons />
+              <NotificationBell />
+            </div>
         </div>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -280,33 +288,47 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Online Users Section */}
+        {/* Users with Status Section */}
         <div className="border-t border-border mt-4 pt-4">
           <SidebarGroup>
             <SidebarGroupLabel className="text-xs font-medium text-muted-foreground mb-2">
-              Online ({onlineUsers.length})
+              Benutzer ({usersWithStatus.length})
             </SidebarGroupLabel>
             <SidebarGroupContent>
-              <div className="space-y-2">
-                {onlineUsers.slice(0, 5).map((onlineUser, index) => (
-                  <div
-                    key={`${onlineUser.user_id}-${index}`}
-                    className="flex items-center gap-2 px-2 py-1 rounded-md text-sm"
-                  >
-                    <Circle className="h-2 w-2 fill-green-500 text-green-500" />
-                    <span className="text-muted-foreground truncate">
-                      {onlineUser.display_name || onlineUser.email || 'Unbekannt'}
-                    </span>
-                  </div>
-                ))}
-                {onlineUsers.length > 5 && (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {usersWithStatus.slice(0, 8).map((userWithStatus) => {
+                  const statusDisplay = getStatusDisplay(userWithStatus.status);
+                  return (
+                    <div
+                      key={userWithStatus.user_id}
+                      className="flex items-center gap-2 px-2 py-1 rounded-md text-sm hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs">{statusDisplay.emoji}</span>
+                        <div 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: statusDisplay.color }}
+                        />
+                      </div>
+                      <span className="text-muted-foreground truncate flex-1">
+                        {userWithStatus.display_name || 'Unbekannt'}
+                      </span>
+                      {userWithStatus.status?.custom_message && (
+                        <Badge variant="outline" className="text-xs px-1 py-0 max-w-[60px] truncate">
+                          {userWithStatus.status.custom_message}
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+                {usersWithStatus.length > 8 && (
                   <div className="text-xs text-muted-foreground px-2">
-                    +{onlineUsers.length - 5} weitere
+                    +{usersWithStatus.length - 8} weitere
                   </div>
                 )}
-                {onlineUsers.length === 0 && (
+                {usersWithStatus.length === 0 && (
                   <div className="text-xs text-muted-foreground px-2">
-                    Niemand online
+                    Keine Benutzer gefunden
                   </div>
                 )}
               </div>
@@ -318,24 +340,25 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={() => navigate("/profile/edit")}
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
-                <AvatarFallback>
-                  {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">
-                  {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
-                </span>
-                <span className="truncate text-xs">{userRole}</span>
-              </div>
-            </SidebarMenuButton>
+            <UserStatusSelector>
+              <SidebarMenuButton
+                size="lg"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
+                  <AvatarFallback>
+                    {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">
+                    {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
+                  </span>
+                  <span className="truncate text-xs">{userRole}</span>
+                </div>
+              </SidebarMenuButton>
+            </UserStatusSelector>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleSignOut} tooltip="Abmelden">

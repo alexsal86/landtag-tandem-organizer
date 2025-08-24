@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_status_options: {
+        Row: {
+          color: string
+          created_at: string
+          emoji: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string
@@ -2721,6 +2754,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_status: {
+        Row: {
+          auto_away_enabled: boolean
+          color: string | null
+          created_at: string
+          custom_message: string | null
+          emoji: string | null
+          id: string
+          last_activity: string
+          notifications_enabled: boolean
+          status_type: Database["public"]["Enums"]["user_status_type"]
+          status_until: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_away_enabled?: boolean
+          color?: string | null
+          created_at?: string
+          custom_message?: string | null
+          emoji?: string | null
+          id?: string
+          last_activity?: string
+          notifications_enabled?: boolean
+          status_type?: Database["public"]["Enums"]["user_status_type"]
+          status_until?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_away_enabled?: boolean
+          color?: string | null
+          created_at?: string
+          custom_message?: string | null
+          emoji?: string | null
+          id?: string
+          last_activity?: string
+          notifications_enabled?: boolean
+          status_type?: Database["public"]["Enums"]["user_status_type"]
+          status_until?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       widget_configurations: {
         Row: {
           configuration: Json
@@ -2892,6 +2970,13 @@ export type Database = {
       app_role: "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant"
       leave_status: "pending" | "approved" | "rejected"
       leave_type: "vacation" | "sick" | "other"
+      user_status_type:
+        | "online"
+        | "meeting"
+        | "break"
+        | "away"
+        | "offline"
+        | "custom"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3022,6 +3107,14 @@ export const Constants = {
       app_role: ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant"],
       leave_status: ["pending", "approved", "rejected"],
       leave_type: ["vacation", "sick", "other"],
+      user_status_type: [
+        "online",
+        "meeting",
+        "break",
+        "away",
+        "offline",
+        "custom",
+      ],
     },
   },
 } as const
