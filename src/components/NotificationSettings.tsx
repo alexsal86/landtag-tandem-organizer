@@ -9,6 +9,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { PushNotificationTest } from './PushNotificationTest';
 
 interface NotificationTypeSettings {
   id: string;
@@ -372,6 +373,11 @@ export const NotificationSettings: React.FC = () => {
                 )}
               </div>
             ))}
+          </div>
+
+          <div className="mt-6">
+            <h4 className="text-sm font-medium mb-4">Push-System Test</h4>
+            <PushNotificationTest />
           </div>
         </CardContent>
       </Card>

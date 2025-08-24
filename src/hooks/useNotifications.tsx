@@ -292,12 +292,30 @@ export const useNotifications = () => {
             title: newNotification.title,
             description: newNotification.message,
           });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Notification updated:', payload);
+          const updatedNotification = payload.new as any as Notification;
           
-          // Send push notification
-          if (newNotification && pushPermission === 'granted') {
-            supabase.functions.invoke('send-push-notification', {
-              body: { notification_id: newNotification.id }
-            }).catch(console.error);
+          // Update notification in state
+          setNotifications(prev => 
+            prev.map(notif => 
+              notif.id === updatedNotification.id ? updatedNotification : notif
+            )
+          );
+          
+          // Update unread count based on read status change
+          if (updatedNotification.is_read && payload.old && !(payload.old as any).is_read) {
+            setUnreadCount(prev => Math.max(0, prev - 1));
           }
         }
       )
@@ -306,7 +324,7 @@ export const useNotifications = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, pushPermission, toast]);
+  }, [user, toast]);
 
   // Load notifications on mount
   useEffect(() => {
