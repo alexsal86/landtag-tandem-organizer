@@ -67,30 +67,39 @@ const NotificationItem: React.FC<{
       onMarkRead(notification.id);
     }
     
-    // Navigate based on notification type
-    if (notification.data) {
-      const { type } = notification.data;
-      let path = '/';
-      
-      switch (type) {
-        case 'task_created':
-        case 'task_due':
-          path = '/tasks';
-          break;
-        case 'appointment_reminder':
-          path = '/calendar';
-          break;
-        case 'message_received':
-          path = '/messages';
-          break;
-        default:
-          path = '/';
+      // Navigate based on notification type
+      if (notification.data) {
+        const { type } = notification.data;
+        let path = '/';
+        
+        switch (type) {
+          case 'task_created':
+          case 'task_due':
+            path = '/tasks';
+            break;
+          case 'appointment_reminder':
+            path = '/calendar';
+            break;
+          case 'message_received':
+            path = '/messages';
+            break;
+          case 'document_created':
+            path = '/documents';
+            break;
+          case 'knowledge_document_created':
+            path = '/knowledge';
+            break;
+          case 'meeting_created':
+            path = '/meetings';
+            break;
+          default:
+            path = '/';
+        }
+        
+        // Use proper navigation
+        window.location.href = '/#' + path;
+        onClose?.();
       }
-      
-      // Use router navigation here if needed
-      window.location.hash = path;
-      onClose?.();
-    }
   };
 
   return (
@@ -227,7 +236,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose 
               size="sm"
               className="w-full justify-center text-xs"
               onClick={() => {
-                window.location.hash = '/settings';
+                window.location.href = '/#/settings';
                 onClose?.();
               }}
             >
