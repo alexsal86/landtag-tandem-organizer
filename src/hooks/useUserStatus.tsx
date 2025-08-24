@@ -331,18 +331,41 @@ export const useUserStatus = () => {
     }
   };
 
-  const quickSetStatus = async (statusType: UserStatus['status_type']) => {
-    const statusOption = statusOptions.find(opt => 
-      opt.name.toLowerCase().includes(statusType.toLowerCase())
-    );
+  const quickSetStatus = async (statusName: string) => {
+    if (!user) return;
 
-    await updateStatus(
-      statusType,
-      undefined,
-      statusOption?.emoji,
-      undefined,
-      statusType !== 'meeting' && statusType !== 'break' // Disable notifications for meetings and breaks
-    );
+    try {
+      // First check if it's a predefined status type
+      const predefinedStatuses = ['online', 'meeting', 'break', 'away', 'offline'];
+      if (predefinedStatuses.includes(statusName)) {
+        const statusOption = statusOptions.find(opt => 
+          opt.name.toLowerCase().includes(statusName.toLowerCase())
+        );
+
+        await updateStatus(
+          statusName as UserStatus['status_type'],
+          undefined,
+          statusOption?.emoji,
+          undefined,
+          statusName !== 'meeting' && statusName !== 'break'
+        );
+        return;
+      }
+
+      // Otherwise, look for it in admin status options (custom status)
+      const option = statusOptions.find(opt => opt.name === statusName);
+      if (option) {
+        await updateStatus(
+          'custom',
+          option.name, // Use the option name as custom message
+          option.emoji || null,
+          undefined, // No status_until for custom statuses
+          true
+        );
+      }
+    } catch (error) {
+      console.error('Error setting quick status:', error);
+    }
   };
 
   const getStatusDisplay = (status?: UserStatus) => {
