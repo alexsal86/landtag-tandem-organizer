@@ -8,12 +8,55 @@ const corsHeaders = {
 
 interface PushPayload {
   title: string;
-  message: string;
+  body: string;
   icon?: string;
   badge?: string;
+  actions?: Array<{
+    action: string;
+    title: string;
+    icon?: string;
+  }>;
   data?: any;
-  tag?: string;
-  requireInteraction?: boolean;
+}
+
+// Simple WebPush implementation for Deno
+class WebPushClient {
+  private vapidPublicKey: string;
+  private vapidPrivateKey: string;
+  private vapidSubject: string;
+
+  constructor(vapidPublicKey: string, vapidPrivateKey: string, vapidSubject: string) {
+    this.vapidPublicKey = vapidPublicKey;
+    this.vapidPrivateKey = vapidPrivateKey;
+    this.vapidSubject = vapidSubject;
+  }
+
+  async sendNotification(subscription: any, payload: string) {
+    const endpoint = subscription.endpoint;
+    
+    console.log('Sending push notification to:', endpoint);
+    console.log('Payload size:', payload.length);
+    
+    // Simple fetch to push endpoint - browsers handle the encryption
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'TTL': '86400'
+      },
+      body: payload
+    });
+
+    console.log('Push response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('Push error response:', errorText);
+      throw new Error(`Push failed with status ${response.status}: ${errorText}`);
+    }
+    
+    return response;
+  }
 }
 
 serve(async (req) => {
@@ -23,29 +66,119 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    );
+    console.log('Starting push notification function...');
+    
+    // Get VAPID keys from environment
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com';
 
-    // Get the user from the request
-    const {
-      data: { user },
-    } = await supabaseClient.auth.getUser();
-
-    if (!user) {
-      throw new Error('Unauthorized');
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      console.error('Missing VAPID configuration');
+      return new Response(JSON.stringify({ 
+        error: 'Server configuration error: Missing VAPID keys' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const { notification_id } = await req.json();
+    // Initialize Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
+    // Get user from request
+    const { data: { user } } = await supabaseClient.auth.getUser(
+      req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
+    );
+
+    if (!user) {
+      console.error('Unauthorized request');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = await req.json();
+    console.log('Received request body:', body);
+
+    // Check if this is a test notification
+    if (body.test) {
+      console.log('Processing test notification...');
+      const { title = 'Test Notification', message = 'This is a test notification', priority = 'medium' } = body;
+      
+      // Get user's push subscriptions
+      const { data: subscriptions, error: subError } = await supabaseClient
+        .from('push_subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      if (subError) {
+        console.error('Error fetching subscriptions:', subError);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to fetch push subscriptions: ' + subError.message 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log('Found subscriptions:', subscriptions?.length || 0);
+
+      let sent = 0;
+      let failed = 0;
+
+      if (subscriptions && subscriptions.length > 0) {
+        const webPush = new WebPushClient(vapidPublicKey, vapidPrivateKey, vapidSubject);
+        
+        for (const subscription of subscriptions) {
+          try {
+            const payload = JSON.stringify({
+              title,
+              body: message,
+              icon: '/favicon.ico',
+              badge: '/favicon.ico',
+              data: {
+                test: true,
+                timestamp: new Date().toISOString()
+              }
+            });
+
+            await webPush.sendNotification(subscription.subscription_data, payload);
+            sent++;
+            console.log('Successfully sent push notification');
+          } catch (error) {
+            console.error('Failed to send push notification:', error);
+            failed++;
+            
+            // Deactivate failed subscription
+            await supabaseClient
+              .from('push_subscriptions')
+              .update({ is_active: false })
+              .eq('id', subscription.id);
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Test notification sent successfully',
+        sent,
+        failed,
+        total_subscriptions: subscriptions?.length || 0
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Handle regular notifications
+    const { notification_id } = body;
     if (!notification_id) {
-      throw new Error('notification_id is required');
+      throw new Error('notification_id is required for non-test notifications');
     }
 
     // Get notification details
@@ -108,18 +241,10 @@ serve(async (req) => {
       }
     }
 
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com';
-
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      throw new Error('VAPID keys not configured');
-    }
-
     // Prepare push payload
-    const payload: PushPayload = {
+    const payload = {
       title: notification.title,
-      message: notification.message,
+      body: notification.message,
       icon: '/favicon.ico',
       badge: '/favicon.ico',
       data: {
@@ -133,36 +258,13 @@ serve(async (req) => {
 
     let sentCount = 0;
     const failedSubscriptions: string[] = [];
+    const webPush = new WebPushClient(vapidPublicKey, vapidPrivateKey, vapidSubject);
 
     // Send push notifications to all subscriptions
     for (const subscription of subscriptions) {
       try {
-        const pushSubscription = {
-          endpoint: subscription.endpoint,
-          keys: {
-            p256dh: subscription.p256dh_key,
-            auth: subscription.auth_key,
-          },
-        };
-
-        // Use web-push library equivalent for Deno
-        const response = await fetch(subscription.endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/octet-stream',
-            'Content-Encoding': 'aes128gcm',
-            'Authorization': `WebPush ${vapidPrivateKey}`,
-            'Crypto-Key': `p256ecdsa=${vapidPublicKey}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (response.ok) {
-          sentCount++;
-        } else {
-          console.error(`Failed to send push notification: ${response.status}`);
-          failedSubscriptions.push(subscription.id);
-        }
+        await webPush.sendNotification(subscription.subscription_data, JSON.stringify(payload));
+        sentCount++;
       } catch (error) {
         console.error('Error sending push notification:', error);
         failedSubscriptions.push(subscription.id);

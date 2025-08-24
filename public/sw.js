@@ -24,15 +24,15 @@ self.addEventListener('push', (event) => {
 
   try {
     const data = event.data.json();
-    console.log('Push data:', data);
+    console.log('Push data received:', data);
 
     const options = {
-      body: data.message,
+      body: data.body || data.message || 'Sie haben eine neue Benachrichtigung erhalten.',
       icon: data.icon || '/favicon.ico',
       badge: data.badge || '/favicon.ico',
-      data: data.data || {},
+      data: data.data || data,
       tag: data.tag || 'default',
-      requireInteraction: data.requireInteraction || false,
+      requireInteraction: data.requireInteraction || data.priority === 'urgent' || data.priority === 'high',
       actions: [
         {
           action: 'view',
@@ -45,8 +45,10 @@ self.addEventListener('push', (event) => {
       ]
     };
 
+    console.log('Showing notification:', data.title, options);
+
     event.waitUntil(
-      self.registration.showNotification(data.title, options)
+      self.registration.showNotification(data.title || 'Neue Benachrichtigung', options)
     );
   } catch (error) {
     console.error('Error parsing push data:', error);
@@ -56,7 +58,13 @@ self.addEventListener('push', (event) => {
       self.registration.showNotification('Neue Benachrichtigung', {
         body: 'Sie haben eine neue Benachrichtigung erhalten.',
         icon: '/favicon.ico',
-        badge: '/favicon.ico'
+        badge: '/favicon.ico',
+        actions: [
+          {
+            action: 'view',
+            title: 'Anzeigen'
+          }
+        ]
       })
     );
   }

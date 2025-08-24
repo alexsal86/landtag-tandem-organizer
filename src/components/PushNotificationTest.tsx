@@ -71,6 +71,7 @@ export const PushNotificationTest: React.FC = () => {
       });
 
       if (error) {
+        console.error('Push notification error:', error);
         setTestResult({ 
           step: 'Test-Benachrichtigung senden', 
           status: 'error',
@@ -79,11 +80,22 @@ export const PushNotificationTest: React.FC = () => {
         return;
       }
 
-      setTestResult({ 
-        step: 'Test-Benachrichtigung senden', 
-        status: 'success',
-        message: 'Test-Benachrichtigung erfolgreich gesendet! Prüfen Sie Ihre Benachrichtigungen.'
-      });
+      console.log('Push notification response:', data);
+
+      if (data && data.success) {
+        setTestResult({ 
+          step: 'Test-Benachrichtigung senden', 
+          status: 'success',
+          message: `Test-Benachrichtigung erfolgreich gesendet! Gesendet: ${data.sent}, Fehlgeschlagen: ${data.failed}, Gesamt: ${data.total_subscriptions} Abonnements.`
+        });
+      } else {
+        setTestResult({ 
+          step: 'Test-Benachrichtigung senden', 
+          status: 'error',
+          message: 'Unerwartete Antwort vom Server'
+        });
+        return;
+      }
 
       toast({
         title: "Push-Test erfolgreich!",
