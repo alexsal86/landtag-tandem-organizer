@@ -93,6 +93,7 @@ export const StatusAdminSettings: React.FC = () => {
     }
 
     try {
+      console.log('Attempting to save status option:', formData);
       const statusData = {
         name: formData.name.trim(),
         emoji: formData.emoji || null,
@@ -100,23 +101,32 @@ export const StatusAdminSettings: React.FC = () => {
         is_active: formData.is_active,
         sort_order: editingOption?.sort_order || statusOptions.length
       };
+      console.log('Status data to save:', statusData);
 
       if (editingOption) {
         // Update existing option
+        console.log('Updating existing option with ID:', editingOption.id);
         const { error } = await supabase
           .from('admin_status_options')
           .update(statusData)
           .eq('id', editingOption.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
         toast.success('Status-Option aktualisiert');
       } else {
         // Create new option
+        console.log('Creating new status option');
         const { error } = await supabase
           .from('admin_status_options')
           .insert(statusData);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
         toast.success('Status-Option erstellt');
       }
 
@@ -125,7 +135,8 @@ export const StatusAdminSettings: React.FC = () => {
       loadStatusOptions();
     } catch (error) {
       console.error('Error saving status option:', error);
-      toast.error('Fehler beim Speichern der Status-Option');
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      toast.error(`Fehler beim Speichern der Status-Option: ${error.message || 'Unbekannter Fehler'}`);
     }
   };
 
