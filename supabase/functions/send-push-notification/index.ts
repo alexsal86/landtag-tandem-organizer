@@ -240,24 +240,37 @@ serve(async (req) => {
 
     // Real push notifications implementation
     console.log('🔔 Processing real push notification...');
+    console.log('📦 Request body for real push:', JSON.stringify(body, null, 2));
     
     // Get VAPID keys and subject from environment
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     const vapidSubject = Deno.env.get('VAPID_SUBJECT');
 
+    console.log('🔑 VAPID config check:', {
+      publicKeyExists: !!vapidPublicKey,
+      privateKeyExists: !!vapidPrivateKey,
+      subjectExists: !!vapidSubject,
+      publicKeyLength: vapidPublicKey?.length || 0,
+      privateKeyLength: vapidPrivateKey?.length || 0,
+      subject: vapidSubject
+    });
+
     if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
       console.error('❌ Missing VAPID configuration');
       return new Response(JSON.stringify({
         success: false,
-        error: 'VAPID keys not configured'
+        error: 'VAPID keys not configured',
+        details: {
+          publicKey: !!vapidPublicKey,
+          privateKey: !!vapidPrivateKey,
+          subject: !!vapidSubject
+        }
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-
-    console.log('🔑 VAPID configuration found');
 
     // Get active push subscriptions
     const { data: subscriptions, error } = await supabaseAdmin
@@ -321,6 +334,8 @@ serve(async (req) => {
     for (const subscription of subscriptions) {
       try {
         console.log(`📤 Sending push to subscription ${subscription.id}`);
+        console.log(`🔗 Endpoint: ${subscription.endpoint}`);
+        console.log(`📝 Payload: ${pushPayload.substring(0, 100)}...`);
         
         const response = await sendPushNotification(
           subscription.endpoint,
@@ -330,6 +345,9 @@ serve(async (req) => {
           vapidSubject
         );
 
+        console.log(`📊 Response status: ${response.status}`);
+        console.log(`📊 Response headers:`, [...response.headers.entries()]);
+        
         if (response.ok) {
           console.log(`✅ Push sent successfully to ${subscription.id}`);
           sent++;
