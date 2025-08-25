@@ -60,7 +60,7 @@ const NotificationItem: React.FC<{
   onMarkRead: (id: string) => void;
   onClose?: () => void;
 }> = ({ notification, onMarkRead, onClose }) => {
-  const Icon = getNotificationIcon(notification.notification_types.name);
+  const Icon = getNotificationIcon(notification.notification_types?.name || 'default');
   
   const handleClick = () => {
     if (!notification.is_read) {
