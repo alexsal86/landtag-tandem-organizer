@@ -220,17 +220,29 @@ export const useNotifications = () => {
 
   // Subscribe to push notifications
   const subscribeToPush = useCallback(async () => {
-    if (!user || !pushSupported || pushPermission !== 'granted') return;
+    if (!user || !pushSupported || pushPermission !== 'granted') {
+      console.log('❌ Cannot subscribe - requirements not met:', {
+        user: !!user,
+        pushSupported,
+        pushPermission
+      });
+      return;
+    }
 
     try {
+      console.log('🔄 Starting push subscription process...');
+      
       // Register service worker
       const registration = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
+      console.log('✅ Service worker registered');
 
       // Get existing subscription or create new one
       let subscription = await registration.pushManager.getSubscription();
+      console.log('📋 Existing subscription:', !!subscription);
       
       if (!subscription) {
+        console.log('🔧 Creating new push subscription...');
         // Create new subscription with VAPID public key matching the server
         // Use the NEW VAPID public key that matches the server configuration
         const vapidPublicKey = 'BDz_VKhT-q1qcfrlYaBG8fQEWZvFPcONgJEQNJYr43Ku2rU45OqP9jWUP_7SDdAUJr-SuC2wCH8C2-Y2SQUbWhE';
@@ -238,27 +250,55 @@ export const useNotifications = () => {
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
         });
+        console.log('✅ New subscription created');
+      } else {
+        console.log('ℹ️ Using existing subscription');
       }
 
       if (subscription) {
-        // Save subscription to database
-        const p256dh = btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')!)));
-        const auth = btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')!)));
+        console.log('💾 Saving subscription to database...');
+        console.log('📋 Subscription endpoint:', subscription.endpoint);
+        
+        // Extract keys from subscription
+        const p256dh = subscription.getKey('p256dh');
+        const auth = subscription.getKey('auth');
 
+        if (!p256dh || !auth) {
+          console.error('❌ Invalid subscription keys');
+          throw new Error('Invalid subscription keys');
+        }
+
+        console.log('🔑 Subscription keys extracted successfully');
+
+        // Convert keys to base64
+        const p256dhBase64 = btoa(String.fromCharCode(...new Uint8Array(p256dh)));
+        const authBase64 = btoa(String.fromCharCode(...new Uint8Array(auth)));
+
+        console.log('🔑 Keys converted to base64:', {
+          p256dh_length: p256dhBase64.length,
+          auth_length: authBase64.length
+        });
+
+        // Save to database
         const { error } = await supabase
           .from('push_subscriptions')
           .upsert({
             user_id: user.id,
             endpoint: subscription.endpoint,
-            p256dh_key: p256dh,
-            auth_key: auth,
+            p256dh_key: p256dhBase64,
+            auth_key: authBase64,
             user_agent: navigator.userAgent,
             is_active: true,
           }, {
             onConflict: 'user_id,endpoint'
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Database error:', error);
+          throw error;
+        }
+
+        console.log('✅ Subscription saved to database successfully');
 
         toast({
           title: 'Erfolgreich',
@@ -266,12 +306,13 @@ export const useNotifications = () => {
         });
       }
     } catch (error) {
-      console.error('Error subscribing to push:', error);
+      console.error('❌ Error subscribing to push:', error);
       toast({
         title: 'Fehler',
         description: 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
         variant: 'destructive',
       });
+      throw error; // Re-throw so calling code can handle it
     }
   }, [user, pushSupported, pushPermission, toast]);
 
