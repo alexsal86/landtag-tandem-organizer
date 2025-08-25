@@ -249,6 +249,9 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         console.log('Poll title:', title);
         console.log('=== ATTEMPTING EDGE FUNCTION CALL ===');
         
+        // Add alert to ensure this code runs
+        alert(`Versuche E-Mails zu senden an: ${externalEmails.join(', ')}`);
+        
         const { data: emailData, error: emailError } = await supabase.functions.invoke('send-poll-invitation', {
           body: {
             pollId: poll.id,
@@ -260,6 +263,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         });
         
         console.log('Edge function response:', { emailData, emailError });
+        alert(`Edge Function Antwort: Success=${!emailError}, Error=${emailError?.message || 'none'}`);
 
       if (emailError) {
         console.error('=== EMAIL ERROR DETAILS ===');
