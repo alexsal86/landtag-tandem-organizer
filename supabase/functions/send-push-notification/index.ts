@@ -6,6 +6,105 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Web Push utilities
+async function urlBase64ToUint8Array(base64String: string): Promise<Uint8Array> {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function createVapidJWT(audience: string, subject: string, privateKeyPem: string): Promise<string> {
+  // Create header
+  const header = {
+    alg: 'ES256',
+    typ: 'JWT'
+  };
+
+  // Create payload
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    aud: audience,
+    exp: now + (12 * 60 * 60), // 12 hours
+    sub: subject
+  };
+
+  // Encode header and payload
+  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+  // Create signing input
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+
+  // Import private key
+  const privateKeyBuffer = new TextEncoder().encode(privateKeyPem);
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    privateKeyBuffer,
+    {
+      name: 'ECDSA',
+      namedCurve: 'P-256'
+    },
+    false,
+    ['sign']
+  );
+
+  // Sign the JWT
+  const signature = await crypto.subtle.sign(
+    {
+      name: 'ECDSA',
+      hash: 'SHA-256'
+    },
+    privateKey,
+    new TextEncoder().encode(signingInput)
+  );
+
+  // Encode signature
+  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+
+  return `${signingInput}.${encodedSignature}`;
+}
+
+async function sendPushNotification(
+  endpoint: string, 
+  payload: string, 
+  vapidPublicKey: string, 
+  vapidPrivateKey: string, 
+  vapidSubject: string
+): Promise<Response> {
+  // Parse endpoint to get audience
+  const url = new URL(endpoint);
+  const audience = `${url.protocol}//${url.host}`;
+
+  // Create VAPID JWT
+  const jwt = await createVapidJWT(audience, vapidSubject, vapidPrivateKey);
+
+  // Prepare headers
+  const headers: Record<string, string> = {
+    'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`,
+    'Content-Type': 'application/octet-stream',
+    'TTL': '86400'
+  };
+
+  // Send push notification
+  return await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: payload
+  });
+}
+
 console.log("Push notification function initialized");
 
 serve(async (req) => {
@@ -120,12 +219,158 @@ serve(async (req) => {
       }
     }
 
-    // For real notifications, return not implemented for now
+    // Real push notifications implementation
+    console.log('🔔 Processing real push notification...');
+    
+    // Get VAPID keys and subject from environment
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    const vapidSubject = Deno.env.get('VAPID_SUBJECT');
+
+    if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
+      console.error('❌ Missing VAPID configuration');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'VAPID keys not configured'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log('🔑 VAPID configuration found');
+
+    // Get active push subscriptions
+    const { data: subscriptions, error } = await supabaseAdmin
+      .from('push_subscriptions')
+      .select('*')
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('❌ Database error:', error);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Database error: ' + error.message
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!subscriptions || subscriptions.length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        sent: 0,
+        failed: 0,
+        total_subscriptions: 0,
+        message: 'No active push subscriptions found'
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log(`📋 Found ${subscriptions.length} active subscriptions`);
+
+    // Prepare push notification payload
+    const pushPayload = JSON.stringify({
+      title: body.title || 'Neue Benachrichtigung',
+      body: body.message || 'Sie haben eine neue Nachricht',
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      data: {
+        ...body.data,
+        timestamp: new Date().toISOString(),
+        url: body.url || '/'
+      },
+      actions: [
+        {
+          action: 'view',
+          title: 'Anzeigen'
+        },
+        {
+          action: 'dismiss',
+          title: 'Schließen'
+        }
+      ]
+    });
+
+    let sent = 0;
+    let failed = 0;
+
+    // Send push notifications to all subscriptions
+    for (const subscription of subscriptions) {
+      try {
+        console.log(`📤 Sending push to subscription ${subscription.id}`);
+        
+        const response = await sendPushNotification(
+          subscription.endpoint,
+          pushPayload,
+          vapidPublicKey,
+          vapidPrivateKey,
+          vapidSubject
+        );
+
+        if (response.ok) {
+          console.log(`✅ Push sent successfully to ${subscription.id}`);
+          sent++;
+          
+          // Update push_sent_at timestamp
+          await supabaseAdmin
+            .from('push_subscriptions')
+            .update({ 
+              last_used: new Date().toISOString(),
+              error_count: 0 
+            })
+            .eq('id', subscription.id);
+            
+        } else {
+          console.error(`❌ Push failed for ${subscription.id}:`, response.status, await response.text());
+          failed++;
+          
+          // Update error count
+          await supabaseAdmin
+            .from('push_subscriptions')
+            .update({ 
+              error_count: (subscription.error_count || 0) + 1,
+              last_error: new Date().toISOString()
+            })
+            .eq('id', subscription.id);
+            
+          // Deactivate subscription after too many failures
+          if ((subscription.error_count || 0) >= 5) {
+            console.log(`🚫 Deactivating subscription ${subscription.id} due to too many failures`);
+            await supabaseAdmin
+              .from('push_subscriptions')
+              .update({ is_active: false })
+              .eq('id', subscription.id);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error sending push to ${subscription.id}:`, error);
+        failed++;
+        
+        // Update error count
+        await supabaseAdmin
+          .from('push_subscriptions')
+          .update({ 
+            error_count: (subscription.error_count || 0) + 1,
+            last_error: new Date().toISOString()
+          })
+          .eq('id', subscription.id);
+      }
+    }
+
+    console.log(`✅ Push notification complete: ${sent} sent, ${failed} failed`);
+
     return new Response(JSON.stringify({
-      success: false,
-      error: 'Real push notifications not implemented yet'
+      success: true,
+      sent,
+      failed,
+      total_subscriptions: subscriptions.length,
+      message: `Push-Benachrichtigung gesendet: ${sent} erfolgreich, ${failed} fehlgeschlagen`
     }), {
-      status: 501,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
