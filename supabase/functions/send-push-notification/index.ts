@@ -23,57 +23,76 @@ async function urlBase64ToUint8Array(base64String: string): Promise<Uint8Array> 
 }
 
 async function createVapidJWT(audience: string, subject: string, privateKeyPem: string): Promise<string> {
-  // Create header
-  const header = {
-    alg: 'ES256',
-    typ: 'JWT'
-  };
+  try {
+    // Create header
+    const header = {
+      alg: 'ES256',
+      typ: 'JWT'
+    };
 
-  // Create payload
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    aud: audience,
-    exp: now + (12 * 60 * 60), // 12 hours
-    sub: subject
-  };
+    // Create payload
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      aud: audience,
+      exp: now + (12 * 60 * 60), // 12 hours
+      sub: subject
+    };
 
-  // Encode header and payload
-  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    // Encode header and payload
+    const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
-  // Create signing input
-  const signingInput = `${encodedHeader}.${encodedPayload}`;
+    // Create signing input
+    const signingInput = `${encodedHeader}.${encodedPayload}`;
 
-  // Import private key
-  const privateKeyBuffer = new TextEncoder().encode(privateKeyPem);
-  const privateKey = await crypto.subtle.importKey(
-    'pkcs8',
-    privateKeyBuffer,
-    {
-      name: 'ECDSA',
-      namedCurve: 'P-256'
-    },
-    false,
-    ['sign']
-  );
+    // Convert PEM to DER format for Web Crypto API
+    let pemKey = privateKeyPem;
+    
+    // Remove PEM headers/footers and whitespace if present
+    pemKey = pemKey.replace(/-----BEGIN PRIVATE KEY-----/g, '');
+    pemKey = pemKey.replace(/-----END PRIVATE KEY-----/g, '');
+    pemKey = pemKey.replace(/\s/g, '');
+    
+    // Decode base64 to get DER
+    const binaryDer = atob(pemKey);
+    const derBytes = new Uint8Array(binaryDer.length);
+    for (let i = 0; i < binaryDer.length; i++) {
+      derBytes[i] = binaryDer.charCodeAt(i);
+    }
 
-  // Sign the JWT
-  const signature = await crypto.subtle.sign(
-    {
-      name: 'ECDSA',
-      hash: 'SHA-256'
-    },
-    privateKey,
-    new TextEncoder().encode(signingInput)
-  );
+    // Import private key
+    const privateKey = await crypto.subtle.importKey(
+      'pkcs8',
+      derBytes,
+      {
+        name: 'ECDSA',
+        namedCurve: 'P-256'
+      },
+      false,
+      ['sign']
+    );
 
-  // Encode signature
-  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
+    // Sign the JWT
+    const signature = await crypto.subtle.sign(
+      {
+        name: 'ECDSA',
+        hash: 'SHA-256'
+      },
+      privateKey,
+      new TextEncoder().encode(signingInput)
+    );
 
-  return `${signingInput}.${encodedSignature}`;
+    // Encode signature
+    const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+
+    return `${signingInput}.${encodedSignature}`;
+  } catch (error) {
+    console.error('❌ Error creating VAPID JWT:', error);
+    throw new Error(`Failed to create VAPID JWT: ${error.message}`);
+  }
 }
 
 async function sendPushNotification(
