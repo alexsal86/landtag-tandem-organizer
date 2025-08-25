@@ -29,11 +29,38 @@ interface EventPlanning {
   title: string;
   description?: string;
   location?: string;
-  contact_person?: string;
   background_info?: string;
   confirmed_date?: string;
   is_private: boolean;
   user_id: string;
+  created_at: string;
+  updated_at: string;
+  is_digital?: boolean;
+  digital_platform?: string;
+  digital_link?: string;
+  digital_access_info?: string;
+}
+
+interface EventPlanningContact {
+  id: string;
+  event_planning_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface EventPlanningSpeaker {
+  id: string;
+  event_planning_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  bio?: string;
+  topic?: string;
+  order_index: number;
   created_at: string;
   updated_at: string;
 }
@@ -125,9 +152,14 @@ export function EventPlanningView() {
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+  const [contacts, setContacts] = useState<EventPlanningContact[]>([]);
+  const [speakers, setSpeakers] = useState<EventPlanningSpeaker[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCollaboratorDialogOpen, setIsCollaboratorDialogOpen] = useState(false);
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
+  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+  const [isSpeakerDialogOpen, setIsSpeakerDialogOpen] = useState(false);
+  const [isDigitalDialogOpen, setIsDigitalDialogOpen] = useState(false);
   const [newPlanningTitle, setNewPlanningTitle] = useState("");
   const [newPlanningIsPrivate, setNewPlanningIsPrivate] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("none");
@@ -136,6 +168,9 @@ export function EventPlanningView() {
   const [selectedTime, setSelectedTime] = useState("10:00");
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [loading, setLoading] = useState(false);
+  const [newContact, setNewContact] = useState({ name: "", email: "", phone: "" });
+  const [newSpeaker, setNewSpeaker] = useState({ name: "", email: "", phone: "", bio: "", topic: "" });
+  const [digitalEvent, setDigitalEvent] = useState({ platform: "", link: "", access_info: "" });
   const [editingTitle, setEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState("");
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -327,6 +362,24 @@ export function EventPlanningView() {
     } else {
       setCollaborators([]);
     }
+
+    // Fetch contacts
+    const { data: contactsData } = await supabase
+      .from("event_planning_contacts")
+      .select("*")
+      .eq("event_planning_id", planningId)
+      .order("created_at");
+
+    setContacts(contactsData || []);
+
+    // Fetch speakers
+    const { data: speakersData } = await supabase
+      .from("event_planning_speakers")
+      .select("*")
+      .eq("event_planning_id", planningId)
+      .order("order_index");
+
+    setSpeakers(speakersData || []);
   };
 
   // Utility function for debouncing
@@ -736,6 +789,201 @@ export function EventPlanningView() {
     toast({
       title: "Erfolg",
       description: "Berechtigung wurde aktualisiert.",
+    });
+  };
+
+  // Add contact functions
+  const addContact = async () => {
+    if (!selectedPlanning || !newContact.name.trim()) return;
+
+    const { data, error } = await supabase
+      .from("event_planning_contacts")
+      .insert({
+        event_planning_id: selectedPlanning.id,
+        name: newContact.name,
+        email: newContact.email || null,
+        phone: newContact.phone || null,
+        role: "contact_person",
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Ansprechperson konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setContacts([...contacts, data]);
+    setNewContact({ name: "", email: "", phone: "" });
+    setIsContactDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Ansprechperson wurde hinzugefügt.",
+    });
+  };
+
+  const removeContact = async (contactId: string) => {
+    const { error } = await supabase
+      .from("event_planning_contacts")
+      .delete()
+      .eq("id", contactId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Ansprechperson konnte nicht entfernt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setContacts(contacts.filter(contact => contact.id !== contactId));
+
+    toast({
+      title: "Erfolg",
+      description: "Ansprechperson wurde entfernt.",
+    });
+  };
+
+  // Add speaker functions
+  const addSpeaker = async () => {
+    if (!selectedPlanning || !newSpeaker.name.trim()) return;
+
+    const maxOrder = Math.max(...speakers.map(speaker => speaker.order_index), -1);
+
+    const { data, error } = await supabase
+      .from("event_planning_speakers")
+      .insert({
+        event_planning_id: selectedPlanning.id,
+        name: newSpeaker.name,
+        email: newSpeaker.email || null,
+        phone: newSpeaker.phone || null,
+        bio: newSpeaker.bio || null,
+        topic: newSpeaker.topic || null,
+        order_index: maxOrder + 1,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Referent konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSpeakers([...speakers, data]);
+    setNewSpeaker({ name: "", email: "", phone: "", bio: "", topic: "" });
+    setIsSpeakerDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Referent wurde hinzugefügt.",
+    });
+  };
+
+  const removeSpeaker = async (speakerId: string) => {
+    const { error } = await supabase
+      .from("event_planning_speakers")
+      .delete()
+      .eq("id", speakerId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Referent konnte nicht entfernt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSpeakers(speakers.filter(speaker => speaker.id !== speakerId));
+
+    toast({
+      title: "Erfolg",
+      description: "Referent wurde entfernt.",
+    });
+  };
+
+  // Digital event functions
+  const updateDigitalEventSettings = async () => {
+    if (!selectedPlanning) return;
+
+    const { error } = await supabase
+      .from("event_plannings")
+      .update({
+        is_digital: true,
+        digital_platform: digitalEvent.platform || null,
+        digital_link: digitalEvent.link || null,
+        digital_access_info: digitalEvent.access_info || null,
+      })
+      .eq("id", selectedPlanning.id);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Digitale Einstellungen konnten nicht gespeichert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedPlanning({
+      ...selectedPlanning,
+      is_digital: true,
+      digital_platform: digitalEvent.platform,
+      digital_link: digitalEvent.link,
+      digital_access_info: digitalEvent.access_info,
+    });
+
+    setIsDigitalDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Digitale Einstellungen wurden gespeichert.",
+    });
+  };
+
+  const removeDigitalEventSettings = async () => {
+    if (!selectedPlanning) return;
+
+    const { error } = await supabase
+      .from("event_plannings")
+      .update({
+        is_digital: false,
+        digital_platform: null,
+        digital_link: null,
+        digital_access_info: null,
+      })
+      .eq("id", selectedPlanning.id);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Digitale Einstellungen konnten nicht entfernt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedPlanning({
+      ...selectedPlanning,
+      is_digital: false,
+      digital_platform: undefined,
+      digital_link: undefined,
+      digital_access_info: undefined,
+    });
+
+    toast({
+      title: "Erfolg",
+      description: "Digitale Einstellungen wurden entfernt.",
     });
   };
 
@@ -1632,15 +1880,59 @@ export function EventPlanningView() {
                   onChange={(e) => updatePlanningField("location", e.target.value)}
                   placeholder="Veranstaltungsort..."
                 />
-              </div>
-              <div>
-                <Label htmlFor="contact">Ansprechperson vor Ort</Label>
-                <Input
-                  id="contact"
-                  value={selectedPlanning.contact_person || ""}
-                  onChange={(e) => updatePlanningField("contact_person", e.target.value)}
-                  placeholder="Name und Kontaktdaten..."
-                />
+                {!selectedPlanning.is_digital && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDigitalEvent({
+                        platform: selectedPlanning.digital_platform || "",
+                        link: selectedPlanning.digital_link || "",
+                        access_info: selectedPlanning.digital_access_info || "",
+                      });
+                      setIsDigitalDialogOpen(true);
+                    }}
+                    className="mt-2"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Digital
+                  </Button>
+                )}
+                {selectedPlanning.is_digital && (
+                  <div className="mt-2 p-2 bg-muted rounded-md">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Digital: {selectedPlanning.digital_platform}</p>
+                        {selectedPlanning.digital_link && (
+                          <p className="text-xs text-muted-foreground">{selectedPlanning.digital_link}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setDigitalEvent({
+                              platform: selectedPlanning.digital_platform || "",
+                              link: selectedPlanning.digital_link || "",
+                              access_info: selectedPlanning.digital_access_info || "",
+                            });
+                            setIsDigitalDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={removeDigitalEventSettings}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="background">Hintergründe</Label>
@@ -1741,6 +2033,190 @@ export function EventPlanningView() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">Noch keine Mitarbeiter hinzugefügt</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Ansprechpersonen */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Ansprechpersonen
+                <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ansprechperson
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Ansprechperson hinzufügen</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="contact-name">Name</Label>
+                        <Input
+                          id="contact-name"
+                          value={newContact.name}
+                          onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                          placeholder="Name der Ansprechperson"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-email">E-Mail</Label>
+                        <Input
+                          id="contact-email"
+                          type="email"
+                          value={newContact.email}
+                          onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                          placeholder="email@beispiel.de"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-phone">Telefon</Label>
+                        <Input
+                          id="contact-phone"
+                          type="tel"
+                          value={newContact.phone}
+                          onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                          placeholder="+49 123 456789"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={addContact}>Hinzufügen</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {contacts.length > 0 ? (
+                <div className="space-y-2">
+                  {contacts.map((contact) => (
+                    <div key={contact.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div>
+                        <p className="font-medium">{contact.name}</p>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {contact.email && <p>📧 {contact.email}</p>}
+                          {contact.phone && <p>📞 {contact.phone}</p>}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeContact(contact.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Noch keine Ansprechpersonen hinzugefügt</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Referenten */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Referenten
+                <Dialog open={isSpeakerDialogOpen} onOpenChange={setIsSpeakerDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Referent
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Referent hinzufügen</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="speaker-name">Name</Label>
+                        <Input
+                          id="speaker-name"
+                          value={newSpeaker.name}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, name: e.target.value })}
+                          placeholder="Name des Referenten"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-topic">Thema</Label>
+                        <Input
+                          id="speaker-topic"
+                          value={newSpeaker.topic}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, topic: e.target.value })}
+                          placeholder="Vortragsthema"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-email">E-Mail</Label>
+                        <Input
+                          id="speaker-email"
+                          type="email"
+                          value={newSpeaker.email}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, email: e.target.value })}
+                          placeholder="email@beispiel.de"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-phone">Telefon</Label>
+                        <Input
+                          id="speaker-phone"
+                          type="tel"
+                          value={newSpeaker.phone}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, phone: e.target.value })}
+                          placeholder="+49 123 456789"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-bio">Biografie</Label>
+                        <Textarea
+                          id="speaker-bio"
+                          value={newSpeaker.bio}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, bio: e.target.value })}
+                          placeholder="Kurze Biografie oder Qualifikation"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={addSpeaker}>Hinzufügen</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {speakers.length > 0 ? (
+                <div className="space-y-2">
+                  {speakers.map((speaker) => (
+                    <div key={speaker.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div>
+                        <p className="font-medium">{speaker.name}</p>
+                        {speaker.topic && <p className="text-sm font-medium text-primary">{speaker.topic}</p>}
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {speaker.email && <p>📧 {speaker.email}</p>}
+                          {speaker.phone && <p>📞 {speaker.phone}</p>}
+                          {speaker.bio && <p className="mt-1">{speaker.bio}</p>}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSpeaker(speaker.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Noch keine Referenten hinzugefügt</p>
               )}
             </CardContent>
           </Card>
@@ -2425,6 +2901,47 @@ export function EventPlanningView() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Digital Event Dialog */}
+      <Dialog open={isDigitalDialogOpen} onOpenChange={setIsDigitalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Digitale Veranstaltung einrichten</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="digital-platform">Plattform</Label>
+              <Input
+                id="digital-platform"
+                value={digitalEvent.platform}
+                onChange={(e) => setDigitalEvent({ ...digitalEvent, platform: e.target.value })}
+                placeholder="z.B. Zoom, Microsoft Teams, etc."
+              />
+            </div>
+            <div>
+              <Label htmlFor="digital-link">Meeting-Link</Label>
+              <Input
+                id="digital-link"
+                value={digitalEvent.link}
+                onChange={(e) => setDigitalEvent({ ...digitalEvent, link: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="digital-access">Einwahldaten</Label>
+              <Textarea
+                id="digital-access"
+                value={digitalEvent.access_info}
+                onChange={(e) => setDigitalEvent({ ...digitalEvent, access_info: e.target.value })}
+                placeholder="Meeting-ID, Passwort, Telefonnummer etc."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={updateDigitalEventSettings}>Speichern</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

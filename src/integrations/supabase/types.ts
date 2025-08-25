@@ -1046,6 +1046,47 @@ export type Database = {
           },
         ]
       }
+      event_planning_contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          event_planning_id: string
+          id: string
+          name: string
+          phone: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          event_planning_id: string
+          id?: string
+          name: string
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          event_planning_id?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_planning_contacts_event_planning_id_fkey"
+            columns: ["event_planning_id"]
+            isOneToOne: false
+            referencedRelation: "event_plannings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_planning_dates: {
         Row: {
           appointment_id: string | null
@@ -1088,6 +1129,53 @@ export type Database = {
           },
         ]
       }
+      event_planning_speakers: {
+        Row: {
+          bio: string | null
+          created_at: string
+          email: string | null
+          event_planning_id: string
+          id: string
+          name: string
+          order_index: number | null
+          phone: string | null
+          topic: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          email?: string | null
+          event_planning_id: string
+          id?: string
+          name: string
+          order_index?: number | null
+          phone?: string | null
+          topic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          email?: string | null
+          event_planning_id?: string
+          id?: string
+          name?: string
+          order_index?: number | null
+          phone?: string | null
+          topic?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_planning_speakers_event_planning_id_fkey"
+            columns: ["event_planning_id"]
+            isOneToOne: false
+            referencedRelation: "event_plannings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_plannings: {
         Row: {
           background_info: string | null
@@ -1095,7 +1183,11 @@ export type Database = {
           contact_person: string | null
           created_at: string
           description: string | null
+          digital_access_info: string | null
+          digital_link: string | null
+          digital_platform: string | null
           id: string
+          is_digital: boolean | null
           is_private: boolean
           location: string | null
           template_id: string | null
@@ -1110,7 +1202,11 @@ export type Database = {
           contact_person?: string | null
           created_at?: string
           description?: string | null
+          digital_access_info?: string | null
+          digital_link?: string | null
+          digital_platform?: string | null
           id?: string
+          is_digital?: boolean | null
           is_private?: boolean
           location?: string | null
           template_id?: string | null
@@ -1125,7 +1221,11 @@ export type Database = {
           contact_person?: string | null
           created_at?: string
           description?: string | null
+          digital_access_info?: string | null
+          digital_link?: string | null
+          digital_platform?: string | null
           id?: string
+          is_digital?: boolean | null
           is_private?: boolean
           location?: string | null
           template_id?: string | null
