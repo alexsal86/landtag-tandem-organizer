@@ -241,66 +241,20 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         .filter(p => p.type === 'external')
         .map(p => p.email);
 
-      console.log('=== PARTICIPANT DEBUG ===');
-      console.log('All participants:', participants);
-      console.log('External emails found:', externalEmails);
-      console.log('External emails count:', externalEmails.length);
-      alert(`Externe E-Mails gefunden: ${externalEmails.length} - ${JSON.stringify(externalEmails)}`);
-
       if (externalEmails.length > 0) {
-        console.log('=== FRONTEND EMAIL DEBUG ===');
-        console.log('Sending emails to:', externalEmails);
-        console.log('Poll ID:', poll.id);
-        console.log('Creator name:', creatorName);
-        console.log('Poll title:', title);
-        console.log('=== ATTEMPTING EDGE FUNCTION CALL ===');
         
-        // Add alert to ensure this code runs
-        alert(`Versuche E-Mails zu senden an: ${externalEmails.join(', ')}`);
-        
-        let emailData, emailError;
-        
-        try {
-          const response = await supabase.functions.invoke('send-poll-invitation', {
-            body: {
-              pollId: poll.id,
-              participantEmails: externalEmails,
-              pollTitle: title,
-              pollDescription: description,
-              creatorName
-            }
-          });
-          
-          emailData = response.data;
-          emailError = response.error;
-          
-          console.log('Edge function response:', { emailData, emailError });
-          
-          // Check if we have response data that indicates failure
-          if (emailError) {
-            console.error('Supabase function error:', emailError);
-            alert(`Supabase Error: ${JSON.stringify(emailError)}`);
-          } else if (emailData) {
-            console.log('Email data received:', emailData);
-            alert(`Email Data: ${JSON.stringify(emailData)}`);
-          } else {
-            alert('No data or error received from function');
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-poll-invitation', {
+          body: {
+            pollId: poll.id,
+            participantEmails: externalEmails,
+            pollTitle: title,
+            pollDescription: description,
+            creatorName
           }
-          
-        } catch (functionError) {
-          console.error('Function invocation error:', functionError);
-          alert(`Function Error: ${JSON.stringify(functionError)}`);
-          emailError = functionError;
-        }
-        
-        alert(`Edge Function Antwort: Success=${!emailError}, Error=${emailError?.message || 'none'}`);
+        });
 
         if (emailError) {
-          console.error('=== EMAIL ERROR DETAILS ===');
           console.error('Error sending emails:', emailError);
-          console.error('Error message:', emailError.message);
-          console.error('Error details:', JSON.stringify(emailError, null, 2));
-          console.error('=== END ERROR DETAILS ===');
           toast({
             title: "E-Mail-Versendung fehlgeschlagen",
             description: `Die Abstimmung wurde erstellt, aber E-Mails konnten nicht versendet werden: ${emailError.message}`,
