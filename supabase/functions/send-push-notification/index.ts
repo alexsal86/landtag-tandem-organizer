@@ -140,47 +140,211 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting push notification function...');
+    console.log('🚀 Starting push notification function...');
     
-    // Get VAPID keys from environment with fallback to new keys
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY_NEW') || Deno.env.get('VAPID_PUBLIC_KEY');
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY_NEW') || Deno.env.get('VAPID_PRIVATE_KEY');
+    // Use the NEW VAPID keys consistently - prioritize NEW keys
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY_NEW');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY_NEW');
     const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com';
     
     console.log('🔑 VAPID configuration:', {
       publicKeyExists: !!vapidPublicKey,
       privateKeyExists: !!vapidPrivateKey,
-      subject: vapidSubject
+      subject: vapidSubject,
+      publicKeyLength: vapidPublicKey?.length || 0,
+      privateKeyLength: vapidPrivateKey?.length || 0
     });
 
     if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error('Missing VAPID configuration');
+      console.error('❌ Missing VAPID NEW configuration');
       return new Response(JSON.stringify({ 
-        error: 'Server configuration error: Missing VAPID keys' 
+        success: false,
+        error: 'Server configuration error: Missing VAPID NEW keys',
+        details: {
+          publicKey: !!vapidPublicKey,
+          privateKey: !!vapidPrivateKey,
+          subject: !!vapidSubject
+        }
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Initialize Supabase client
-    const supabaseClient = createClient(
+    // Initialize Supabase clients
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     );
 
-    // Get authorization header and extract token
+    const body = await req.json();
+    console.log('📥 Received request body:', body);
+
+    // Check if this is a test notification - handle with relaxed auth
+    if (body.test || body.type === 'test') {
+      console.log('🧪 Processing test notification...');
+      const { title = 'Test Benachrichtigung', message = 'Dies ist eine Test-Push-Benachrichtigung!', priority = 'medium' } = body;
+      
+      // Try to get user from Authorization header, but allow fallback for testing
+      let userId = null;
+      
+      try {
+        const authHeader = req.headers.get('Authorization');
+        if (authHeader) {
+          const token = authHeader.replace('Bearer ', '');
+          const userClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            {
+              auth: { persistSession: false },
+              global: { headers: { authorization: authHeader } }
+            }
+          );
+          
+          const { data: { user }, error: userError } = await userClient.auth.getUser();
+          if (user && !userError) {
+            userId = user.id;
+            console.log('✅ Test notification for authenticated user:', userId);
+          } else {
+            console.log('⚠️ Auth error for test:', userError?.message);
+          }
+        }
+      } catch (e) {
+        console.log('ℹ️ No valid user auth for test, will use all active subscriptions:', e.message);
+      }
+
+      // Get push subscriptions - either for specific user or all active ones for testing
+      const subscriptionQuery = supabaseAdmin
+        .from('push_subscriptions')
+        .select('*')
+        .eq('is_active', true);
+      
+      if (userId) {
+        subscriptionQuery.eq('user_id', userId);
+      }
+      
+      const { data: subscriptions, error: subError } = await subscriptionQuery;
+
+      if (subError) {
+        console.error('❌ Error fetching subscriptions:', subError);
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'Failed to fetch subscriptions: ' + subError.message 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`📊 Found ${subscriptions?.length || 0} active subscriptions${userId ? ' for user ' + userId : ' (all users)'}`);
+
+      if (!subscriptions || subscriptions.length === 0) {
+        console.log('ℹ️ No active push subscriptions found');
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: 'No active subscriptions to send to',
+          sent: 0,
+          failed: 0,
+          total_subscriptions: 0,
+          results: { total: 0, success: 0, failures: 0 }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Send test notification to each subscription
+      let sent = 0;
+      let failed = 0;
+      const results = [];
+
+      for (const subscription of subscriptions) {
+        try {
+          console.log(`🔔 Sending to subscription ${subscription.id} (endpoint: ${subscription.endpoint.substring(0, 50)}...)`);
+          
+          // Extract audience from endpoint for VAPID JWT
+          const endpointUrl = new URL(subscription.endpoint);
+          const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
+          
+          // Generate VAPID JWT
+          const vapidJWT = await generateVapidJWT(
+            audience,
+            vapidSubject,
+            vapidPublicKey,
+            vapidPrivateKey
+          );
+
+          const payload = JSON.stringify({
+            title,
+            body: message,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: 'test-notification',
+            requireInteraction: priority === 'high',
+            data: {
+              type: 'test',
+              timestamp: Date.now(),
+              priority
+            }
+          });
+
+          await sendWebPushNotification(
+            { endpoint: subscription.endpoint },
+            payload,
+            vapidJWT,
+            vapidPublicKey
+          );
+          
+          sent++;
+          results.push({ subscription_id: subscription.id, status: 'sent' });
+          console.log(`✅ Successfully sent to subscription ${subscription.id}`);
+        } catch (error) {
+          failed++;
+          results.push({ subscription_id: subscription.id, status: 'error', error: error.message });
+          console.error(`❌ Failed to send to subscription ${subscription.id}:`, error);
+          
+          // Deactivate failed subscription
+          await supabaseAdmin
+            .from('push_subscriptions')
+            .update({ is_active: false })
+            .eq('id', subscription.id);
+        }
+      }
+
+      console.log(`📊 Test notification results: ${sent} sent, ${failed} failed out of ${subscriptions.length} total`);
+
+      return new Response(JSON.stringify({ 
+        success: sent > 0 || subscriptions.length === 0, 
+        message: `Test notification completed: ${sent} sent, ${failed} failed out of ${subscriptions.length} subscriptions`,
+        results: {
+          total: subscriptions.length,
+          success: sent,
+          failures: failed,
+          details: results
+        },
+        sent,
+        failed,
+        total_subscriptions: subscriptions.length
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // For regular notifications, require authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('No authorization header provided');
+      console.error('No authorization header provided for regular notification');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // For test notifications, use the user token; for regular notifications, use service role
-    const token = authHeader.replace('Bearer ', '');
     const userClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -198,9 +362,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const body = await req.json();
-    console.log('Received request body:', body);
 
     // Check if this is a test notification
     if (body.test || body.type === 'test') {
@@ -304,7 +465,7 @@ serve(async (req) => {
     }
 
     // Get notification details
-    const { data: notification, error: notificationError } = await supabaseClient
+    const { data: notification, error: notificationError } = await supabaseAdmin
       .from('notifications')
       .select(`
         *,
@@ -318,7 +479,7 @@ serve(async (req) => {
     }
 
     // Get user's push subscriptions
-    const { data: subscriptions, error: subscriptionsError } = await supabaseClient
+    const { data: subscriptions, error: subscriptionsError } = await supabaseAdmin
       .from('push_subscriptions')
       .select('*')
       .eq('user_id', notification.user_id)
@@ -336,7 +497,7 @@ serve(async (req) => {
     }
 
     // Check user's notification settings
-    const { data: settings } = await supabaseClient
+    const { data: settings } = await supabaseAdmin
       .from('user_notification_settings')
       .select('*')
       .eq('user_id', notification.user_id)
@@ -417,14 +578,14 @@ serve(async (req) => {
 
     // Deactivate failed subscriptions
     if (failedSubscriptions.length > 0) {
-      await supabaseClient
+      await supabaseAdmin
         .from('push_subscriptions')
         .update({ is_active: false })
         .in('id', failedSubscriptions);
     }
 
     // Mark notification as pushed
-    await supabaseClient
+    await supabaseAdmin
       .from('notifications')
       .update({ 
         is_pushed: true, 

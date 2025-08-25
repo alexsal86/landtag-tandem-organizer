@@ -31,32 +31,59 @@ export const PushNotificationTest: React.FC = () => {
       setTestResult({ 
         step: 'Browser-Support prüfen', 
         status: pushSupported ? 'success' : 'error',
-        message: pushSupported ? 'Push-Notifications werden unterstützt' : 'Browser unterstützt keine Push-Notifications'
+        message: pushSupported ? '✅ Push-Notifications werden unterstützt' : '❌ Browser unterstützt keine Push-Notifications'
       });
 
       if (!pushSupported) return;
 
-      // Step 2: Request permission
-      setTestResult({ step: 'Berechtigung anfordern', status: 'pending', message: 'Warte auf Benutzer-Berechtigung...' });
-      
-      const permission = await requestPushPermission();
-      setTestResult({ 
-        step: 'Berechtigung anfordern', 
-        status: permission ? 'success' : 'error',
-        message: permission ? 'Berechtigung erteilt' : 'Berechtigung verweigert'
-      });
+      // Step 2: Request permission if needed
+      if (pushPermission !== 'granted') {
+        setTestResult({ step: 'Berechtigung anfordern', status: 'pending', message: 'Fordere Push-Berechtigung an...' });
+        
+        try {
+          const permission = await requestPushPermission();
+          setTestResult({ 
+            step: 'Berechtigung anfordern', 
+            status: permission ? 'success' : 'error',
+            message: permission ? '✅ Berechtigung erfolgreich erteilt' : '❌ Berechtigung verweigert'
+          });
 
-      if (!permission) return;
+          if (!permission) return;
+        } catch (error) {
+          setTestResult({ 
+            step: 'Berechtigung anfordern', 
+            status: 'error',
+            message: `❌ Fehler beim Anfordern der Berechtigung: ${error.message}`
+          });
+          return;
+        }
+      } else {
+        setTestResult({ 
+          step: 'Berechtigung prüfen', 
+          status: 'success',
+          message: '✅ Push-Berechtigung bereits erteilt'
+        });
+      }
 
       // Step 3: Subscribe to push
       setTestResult({ step: 'Push-Subscription erstellen', status: 'pending', message: 'Erstelle Subscription...' });
       
-      await subscribeToPush();
-      setTestResult({ 
-        step: 'Push-Subscription erstellen', 
-        status: 'success',
-        message: 'Subscription erfolgreich erstellt'
-      });
+      try {
+        await subscribeToPush();
+        setTestResult({ 
+          step: 'Push-Subscription erstellen', 
+          status: 'success',
+          message: '✅ Subscription erfolgreich erstellt'
+        });
+      } catch (error) {
+        console.error('Push subscription error:', error);
+        setTestResult({ 
+          step: 'Push-Subscription erstellen', 
+          status: 'error',
+          message: `❌ Fehler beim Erstellen der Subscription: ${error.message}`
+        });
+        return;
+      }
 
       // Step 4: Test notification creation
       setTestResult({ step: 'Test-Benachrichtigung senden', status: 'pending', message: 'Sende Test-Benachrichtigung...' });
@@ -66,7 +93,7 @@ export const PushNotificationTest: React.FC = () => {
       const response = await supabase.functions.invoke('send-push-notification', {
         body: { 
           type: 'test',
-          title: 'Push-Test erfolgreich!',
+          title: 'Push-Test erfolgreich! 🎉',
           message: 'Das Push-Notification System funktioniert korrekt.',
           priority: 'high'
         }
@@ -76,18 +103,32 @@ export const PushNotificationTest: React.FC = () => {
 
       if (response.error) {
         console.error('❌ Edge Function error:', response.error);
-        let errorMessage = 'Unbekannter Fehler';
+        let errorMessage = '❌ Unbekannter Fehler beim Senden der Test-Benachrichtigung';
         
         if (response.error.message) {
-          errorMessage = response.error.message;
+          if (response.error.message.includes('401') || response.error.message.includes('Unauthorized')) {
+            errorMessage = '⚠️ Authentifizierungsproblem - Test läuft trotzdem';
+          } else if (response.error.message.includes('VAPID')) {
+            errorMessage = '❌ VAPID-Konfigurationsfehler auf dem Server';
+          } else if (response.error.message.includes('Missing')) {
+            errorMessage = '❌ Server-Konfigurationsfehler';
+          } else {
+            errorMessage = `❌ Edge Function Fehler: ${response.error.message}`;
+          }
         } else if (typeof response.error === 'string') {
-          errorMessage = response.error;
+          errorMessage = `❌ ${response.error}`;
         }
         
         setTestResult({ 
           step: 'Test-Benachrichtigung senden', 
           status: 'error',
-          message: `Edge Function Fehler: ${errorMessage}`
+          message: errorMessage
+        });
+
+        toast({
+          title: "Push-Test fehlgeschlagen",
+          description: errorMessage,
+          variant: "destructive",
         });
         return;
       }
@@ -97,7 +138,13 @@ export const PushNotificationTest: React.FC = () => {
         setTestResult({ 
           step: 'Test-Benachrichtigung senden', 
           status: 'error',
-          message: 'Keine Antwort von der Edge Function erhalten'
+          message: '❌ Keine Antwort von der Edge Function erhalten'
+        });
+
+        toast({
+          title: "Push-Test fehlgeschlagen",
+          description: "Keine Antwort vom Server erhalten",
+          variant: "destructive",
         });
         return;
       }
@@ -109,38 +156,49 @@ export const PushNotificationTest: React.FC = () => {
         setTestResult({ 
           step: 'Test-Benachrichtigung senden', 
           status: 'error',
-          message: `Server Fehler: ${dataError}`
+          message: `❌ Server Fehler: ${dataError}`
+        });
+
+        toast({
+          title: "Push-Test fehlgeschlagen",
+          description: `Server Fehler: ${dataError}`,
+          variant: "destructive",
         });
         return;
       }
 
-      if (!success) {
-        console.error('❌ Push notification test failed');
-        setTestResult({ 
-          step: 'Test-Benachrichtigung senden', 
-          status: 'error',
-          message: 'Push-Notification Test fehlgeschlagen'
-        });
-        return;
-      }
-
-      console.log('✅ Push notification test successful:', { sent, failed, total_subscriptions, results });
+      console.log('✅ Push notification test response:', { success, sent, failed, total_subscriptions, results });
       
-      let message = `✅ Test erfolgreich! Gesendet: ${sent || 0}, Fehlgeschlagen: ${failed || 0}, Gesamt: ${total_subscriptions || 0} Abonnements.`;
+      // Determine success based on actual results
+      const actualSuccess = (sent && sent > 0) || (results && results.success > 0);
+      const totalSubs = total_subscriptions || (results && results.total) || 0;
+      const successCount = sent || (results && results.success) || 0;
+      const failureCount = failed || (results && results.failures) || 0;
       
-      if (results) {
-        message = `✅ Test abgeschlossen! Erfolgreich: ${results.success || 0}, Fehlgeschlagen: ${results.failures || 0}, Gesamt: ${results.total || 0}`;
+      let message;
+      let isSuccess = false;
+      
+      if (totalSubs === 0) {
+        message = '⚠️ Keine aktiven Push-Abonnements gefunden. Bitte registrieren Sie sich zuerst für Push-Notifications.';
+        isSuccess = false;
+      } else if (actualSuccess) {
+        message = `✅ Test erfolgreich! ${successCount} Benachrichtigung(en) gesendet von ${totalSubs} Abonnement(s).`;
+        isSuccess = true;
+      } else {
+        message = `⚠️ Test abgeschlossen, aber keine Benachrichtigungen erfolgreich gesendet. ${failureCount} von ${totalSubs} fehlgeschlagen.`;
+        isSuccess = false;
       }
       
       setTestResult({ 
         step: 'Test-Benachrichtigung senden', 
-        status: sent > 0 || (results && results.success > 0) ? 'success' : 'error',
+        status: isSuccess ? 'success' : 'error',
         message
       });
 
       toast({
-        title: "Push-Test erfolgreich!",
-        description: "Das Push-Notification System funktioniert korrekt.",
+        title: isSuccess ? "Push-Test erfolgreich!" : "Push-Test mit Problemen",
+        description: isSuccess ? "Das Push-Notification System funktioniert korrekt." : message,
+        variant: isSuccess ? "default" : "destructive",
       });
 
     } catch (error) {
@@ -148,7 +206,13 @@ export const PushNotificationTest: React.FC = () => {
       setTestResult({ 
         step: 'Fehler', 
         status: 'error',
-        message: `Unerwarteter Fehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+        message: `❌ Unerwarteter Fehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      });
+
+      toast({
+        title: "Push-Test fehlgeschlagen",
+        description: `Unerwarteter Fehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        variant: "destructive",
       });
     }
   };
