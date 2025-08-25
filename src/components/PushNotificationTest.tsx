@@ -110,6 +110,19 @@ export const PushNotificationTest: React.FC = () => {
           title: 'Echter Push-Test erfolgreich!',
           description: 'Du solltest jetzt eine echte Browser-Push-Notification sehen.',
         });
+      } else if (responseData && responseData.message && responseData.message.includes('noch in Entwicklung')) {
+        // Handle "not implemented yet" response
+        setRealTestResult({
+          step: 'Echte Push-Notifications in Entwicklung',
+          status: 'pending',
+          message: `ℹ️ ${responseData.message}`
+        });
+        
+        toast({
+          title: 'Feature in Entwicklung',
+          description: 'Echte Browser-Push-Notifications werden gerade implementiert.',
+          variant: 'default',
+        });
       } else {
         setRealTestResult({
           step: 'Echter Test fehlgeschlagen',
