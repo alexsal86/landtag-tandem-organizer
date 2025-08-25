@@ -241,7 +241,27 @@ export const useNotifications = () => {
       let subscription = await registration.pushManager.getSubscription();
       console.log('📋 Existing subscription:', !!subscription);
       
-      if (!subscription) {
+      // Always check if we need to create a new subscription
+      // Either no subscription exists OR the database subscription is inactive
+      let needNewSubscription = !subscription;
+      
+      if (subscription) {
+        // Check if current subscription is active in database
+        const { data: dbSubscription } = await supabase
+          .from('push_subscriptions')
+          .select('is_active')
+          .eq('user_id', user.id)
+          .eq('endpoint', subscription.endpoint)
+          .single();
+          
+        if (!dbSubscription || !dbSubscription.is_active) {
+          console.log('🔄 Database subscription is inactive, creating new one...');
+          await subscription.unsubscribe();
+          needNewSubscription = true;
+        }
+      }
+      
+      if (needNewSubscription) {
         console.log('🔧 Creating new push subscription...');
         // Create new subscription with VAPID public key matching the server
         // Use the NEW VAPID public key that matches the server configuration
@@ -252,7 +272,7 @@ export const useNotifications = () => {
         });
         console.log('✅ New subscription created');
       } else {
-        console.log('ℹ️ Using existing subscription');
+        console.log('ℹ️ Using existing active subscription');
       }
 
       if (subscription) {
