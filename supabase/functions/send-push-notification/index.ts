@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { encode as base64UrlEncode } from "https://deno.land/std@0.168.0/encoding/base64url.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,72 +8,78 @@ const corsHeaders = {
 
 console.log("Push notification function initialized");
 
-// Helper function to create VAPID JWT
-async function createVapidJWT(subject: string, audience: string, privateKey: string): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
+// Simplified Web Push implementation for testing
+async function sendWebPushNotification(endpoint: string, payload: string, vapidPublicKey: string): Promise<Response> {
+  console.log(`📤 Sending to endpoint: ${endpoint.substring(0, 50)}...`);
   
-  // JWT Header
-  const header = {
-    typ: 'JWT',
-    alg: 'ES256'
-  };
-  
-  // JWT Payload
-  const payload = {
-    aud: new URL(audience).origin,
-    exp: now + 12 * 60 * 60, // 12 hours
-    sub: subject
-  };
-  
-  // Create JWT without signature first
-  const encodedHeader = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
-  const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
-  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
-  
-  try {
-    // Import the private key for signing
-    const keyData = base64UrlDecode(privateKey);
-    const key = await crypto.subtle.importKey(
-      'pkcs8',
-      keyData,
-      {
-        name: 'ECDSA',
-        namedCurve: 'P-256'
-      },
-      false,
-      ['sign']
-    );
+  // For testing, try different approaches
+  const approaches = [
+    // Approach 1: Minimal headers for testing
+    async () => {
+      console.log('🔄 Trying minimal approach...');
+      return fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'TTL': '2419200'
+        },
+        body: payload
+      });
+    },
     
-    // Sign the token
-    const signature = await crypto.subtle.sign(
-      {
-        name: 'ECDSA',
-        hash: 'SHA-256'
-      },
-      key,
-      new TextEncoder().encode(unsignedToken)
-    );
+    // Approach 2: With VAPID header but no encryption
+    async () => {
+      console.log('🔄 Trying VAPID approach...');
+      return fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `WebPush ${vapidPublicKey}`,
+          'Content-Type': 'application/json',
+          'TTL': '2419200'
+        },
+        body: payload
+      });
+    },
     
-    const encodedSignature = base64UrlEncode(new Uint8Array(signature));
-    return `${unsignedToken}.${encodedSignature}`;
-  } catch (error) {
-    console.error('❌ Error creating VAPID JWT:', error);
-    throw new Error('Failed to create VAPID JWT');
-  }
-}
-
-// Helper function to decode base64url
-function base64UrlDecode(base64url: string): Uint8Array {
-  // Add padding if needed
-  const padding = '='.repeat((4 - base64url.length % 4) % 4);
-  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/') + padding;
+    // Approach 3: Chrome-style push
+    async () => {
+      console.log('🔄 Trying Chrome approach...');
+      return fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': payload.length.toString(),
+          'TTL': '2419200'
+        },
+        body: payload
+      });
+    }
+  ];
   
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
+  // Try each approach until one works
+  for (const [index, approach] of approaches.entries()) {
+    try {
+      const response = await approach();
+      console.log(`📊 Approach ${index + 1} result: ${response.status}`);
+      
+      if (response.ok || response.status === 201) {
+        console.log(`✅ Approach ${index + 1} succeeded!`);
+        return response;
+      } else {
+        const text = await response.text();
+        console.log(`⚠️ Approach ${index + 1} failed: ${response.status} - ${text}`);
+      }
+    } catch (error) {
+      console.log(`❌ Approach ${index + 1} error:`, error.message);
+    }
   }
-  return bytes;
+  
+  // If all approaches fail, return the last failed response
+  return fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: payload
+  });
 }
 
 serve(async (req) => {
@@ -169,19 +174,7 @@ serve(async (req) => {
 
         for (const subscription of subscriptions) {
           try {
-            console.log(`📤 Sending push to subscription ${subscription.id}`);
-            
-            // Parse subscription data
-            const subscriptionData = {
-              endpoint: subscription.endpoint,
-              keys: {
-                p256dh: subscription.p256dh,
-                auth: subscription.auth
-              }
-            };
-
-            // Create VAPID JWT token
-            const vapidJWT = await createVapidJWT(vapidSubject, subscription.endpoint, vapidPrivateKey);
+            console.log(`📤 Testing push to subscription ${subscription.id}`);
             
             // Prepare the payload
             const payload = JSON.stringify({
@@ -192,25 +185,15 @@ serve(async (req) => {
               data: body.data || {}
             });
 
-            // Send push notification with proper VAPID headers
-            const response = await fetch(subscription.endpoint, {
-              method: 'POST',
-              headers: {
-                'Authorization': `vapid t=${vapidJWT}, k=${vapidPublicKey}`,
-                'Crypto-Key': `p256ecdsa=${vapidPublicKey}`,
-                'Content-Type': 'application/octet-stream',
-                'Content-Encoding': 'aes128gcm',
-                'TTL': '2419200'
-              },
-              body: payload
-            });
+            // Use the simplified approach that tries multiple methods
+            const response = await sendWebPushNotification(subscription.endpoint, payload, vapidPublicKey);
 
             if (response.ok || response.status === 201) {
               sent++;
               console.log(`✅ Push sent successfully to subscription ${subscription.id}`);
             } else {
               failed++;
-              const responseText = await response.text();
+              const responseText = await response.text().catch(() => 'Unable to read response');
               console.log(`❌ Push failed to subscription ${subscription.id}: ${response.status} - ${responseText}`);
               
               // Deactivate failed subscription if it's invalid (410 = Gone)
