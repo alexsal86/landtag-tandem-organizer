@@ -65,7 +65,7 @@ export const PushNotificationTest: React.FC = () => {
       
       const response = await supabase.functions.invoke('send-push-notification', {
         body: { 
-          test: true,
+          type: 'test',
           title: 'Push-Test erfolgreich!',
           message: 'Das Push-Notification System funktioniert korrekt.',
           priority: 'high'
@@ -102,7 +102,7 @@ export const PushNotificationTest: React.FC = () => {
         return;
       }
 
-      const { success, sent, failed, total_subscriptions, error: dataError } = response.data;
+      const { success, sent, failed, total_subscriptions, results, error: dataError } = response.data;
       
       if (dataError) {
         console.error('❌ Server error:', dataError);
@@ -124,12 +124,18 @@ export const PushNotificationTest: React.FC = () => {
         return;
       }
 
-      console.log('✅ Push notification test successful:', { sent, failed, total_subscriptions });
+      console.log('✅ Push notification test successful:', { sent, failed, total_subscriptions, results });
+      
+      let message = `✅ Test erfolgreich! Gesendet: ${sent || 0}, Fehlgeschlagen: ${failed || 0}, Gesamt: ${total_subscriptions || 0} Abonnements.`;
+      
+      if (results) {
+        message = `✅ Test abgeschlossen! Erfolgreich: ${results.success || 0}, Fehlgeschlagen: ${results.failures || 0}, Gesamt: ${results.total || 0}`;
+      }
       
       setTestResult({ 
         step: 'Test-Benachrichtigung senden', 
-        status: 'success',
-        message: `✅ Test erfolgreich! Gesendet: ${sent || 0}, Fehlgeschlagen: ${failed || 0}, Gesamt: ${total_subscriptions || 0} Abonnements.`
+        status: sent > 0 || (results && results.success > 0) ? 'success' : 'error',
+        message
       });
 
       toast({

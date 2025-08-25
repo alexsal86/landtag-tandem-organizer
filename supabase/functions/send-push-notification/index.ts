@@ -203,9 +203,9 @@ serve(async (req) => {
     console.log('Received request body:', body);
 
     // Check if this is a test notification
-    if (body.test) {
-      console.log('Processing test notification...');
-      const { title = 'Test Notification', message = 'This is a test notification', priority = 'medium' } = body;
+    if (body.test || body.type === 'test') {
+      console.log('🧪 Processing test notification...');
+      const { title = 'Test Benachrichtigung', message = 'Dies ist eine Test-Push-Benachrichtigung!', priority = 'medium' } = body;
       
       // Get user's push subscriptions
       const { data: subscriptions, error: subError } = await supabaseClient
@@ -283,7 +283,12 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({ 
         success: true, 
-        message: 'Test notification sent successfully',
+        message: `Test notification completed: ${sent} sent, ${failed} failed`,
+        results: {
+          total: subscriptions?.length || 0,
+          success: sent,
+          failures: failed
+        },
         sent,
         failed,
         total_subscriptions: subscriptions?.length || 0
