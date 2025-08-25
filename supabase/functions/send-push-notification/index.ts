@@ -102,26 +102,41 @@ async function sendPushNotification(
   vapidPrivateKey: string, 
   vapidSubject: string
 ): Promise<Response> {
-  // Parse endpoint to get audience
-  const url = new URL(endpoint);
-  const audience = `${url.protocol}//${url.host}`;
+  try {
+    console.log('🚀 Starting sendPushNotification...');
+    console.log('📍 Endpoint:', endpoint.substring(0, 50) + '...');
+    
+    // Parse endpoint to get audience
+    const url = new URL(endpoint);
+    const audience = `${url.protocol}//${url.host}`;
+    console.log('🎯 Audience:', audience);
 
-  // Create VAPID JWT
-  const jwt = await createVapidJWT(audience, vapidSubject, vapidPrivateKey);
+    // Create VAPID JWT
+    console.log('🔐 Creating VAPID JWT...');
+    const jwt = await createVapidJWT(audience, vapidSubject, vapidPrivateKey);
+    console.log('✅ VAPID JWT created successfully');
 
-  // Prepare headers
-  const headers: Record<string, string> = {
-    'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`,
-    'Content-Type': 'application/octet-stream',
-    'TTL': '86400'
-  };
+    // Prepare headers
+    const headers: Record<string, string> = {
+      'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`,
+      'Content-Type': 'application/octet-stream',
+      'TTL': '86400'
+    };
 
-  // Send push notification
-  return await fetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: payload
-  });
+    console.log('📤 Sending push request...');
+    // Send push notification
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: payload
+    });
+    
+    console.log('📥 Push response received:', response.status);
+    return response;
+  } catch (error) {
+    console.error('❌ Error in sendPushNotification:', error);
+    throw error;
+  }
 }
 
 console.log("Push notification function initialized");
