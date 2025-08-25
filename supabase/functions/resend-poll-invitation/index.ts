@@ -59,8 +59,19 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('email', participantEmail)
       .maybeSingle();
 
-    if (participantError || !participant) {
+    if (participantError) {
+      console.error('Database error getting participant:', participantError);
+      throw new Error('Database error');
+    }
+
+    if (!participant) {
+      console.error('Participant not found for email:', participantEmail);
       throw new Error('Participant not found');
+    }
+
+    if (!participant.token) {
+      console.error('No token found for participant:', participantEmail);
+      throw new Error('No token found for participant');
     }
 
     // Get current domain dynamically

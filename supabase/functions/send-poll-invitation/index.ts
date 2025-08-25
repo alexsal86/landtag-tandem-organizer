@@ -54,9 +54,21 @@ const handler = async (req: Request): Promise<Response> => {
           .eq('email', email)
           .maybeSingle();
 
-        if (participantError || !participant) {
-          console.error("Participant not found for", email, ":", participantError);
+        if (participantError) {
+          console.error("Database error getting participant for", email, ":", participantError);
+          emailResults.push({ email, success: false, error: "Database error" });
+          continue;
+        }
+
+        if (!participant) {
+          console.error("Participant not found for", email);
           emailResults.push({ email, success: false, error: "Participant not found" });
+          continue;
+        }
+
+        if (!participant.token) {
+          console.error("No token found for external participant", email);
+          emailResults.push({ email, success: false, error: "No token found" });
           continue;
         }
 

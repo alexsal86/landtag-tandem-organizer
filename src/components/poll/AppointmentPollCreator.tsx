@@ -187,44 +187,54 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
       const creatorName = profile?.display_name || user.email || 'Unbekannt';
 
-      // Create all participants first (internal and external)
+      // Create participants with improved error handling
+      console.log('Creating participants for poll:', poll.id);
       const participantData = [];
       
+      // Process each participant individually to avoid conflicts
       for (const p of participants) {
-        if (p.type === 'external') {
-          // Generate token for external participants
-          const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
-          if (tokenError) {
-            console.error('Error generating token:', tokenError);
-            throw new Error('Token-Generierung fehlgeschlagen');
-          }
+        try {
+          if (p.type === 'external') {
+            // Generate token for external participants
+            const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
+            if (tokenError) {
+              console.error('Error generating token for', p.email, ':', tokenError);
+              throw new Error(`Token-Generierung fehlgeschlagen für ${p.email}`);
+            }
 
-          participantData.push({
-            poll_id: poll.id,
-            email: p.email,
-            name: p.name,
-            is_external: true,
-            token: tokenData
-          });
-        } else {
-          participantData.push({
-            poll_id: poll.id,
-            email: p.email,
-            name: p.name,
-            is_external: false,
-            token: null
-          });
+            participantData.push({
+              poll_id: poll.id,
+              email: p.email,
+              name: p.name,
+              is_external: true,
+              token: tokenData
+            });
+          } else {
+            participantData.push({
+              poll_id: poll.id,
+              email: p.email,
+              name: p.name,
+              is_external: false,
+              token: null
+            });
+          }
+        } catch (error) {
+          console.error('Error processing participant', p.email, ':', error);
+          throw new Error(`Fehler beim Verarbeiten von Teilnehmer ${p.email}`);
         }
       }
       
+      console.log('Inserting participant data:', participantData);
       const { error: participantsError } = await supabase
         .from('poll_participants')
         .insert(participantData);
 
       if (participantsError) {
         console.error('Error creating participants:', participantsError);
-        throw new Error('Teilnehmer konnten nicht erstellt werden');
+        throw new Error(`Teilnehmer konnten nicht erstellt werden: ${participantsError.message}`);
       }
+      
+      console.log('Successfully created', participantData.length, 'participants');
 
       // Send invitations to external participants
       const externalEmails = participants

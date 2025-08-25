@@ -227,25 +227,33 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
   const resendInvitation = async (participantEmail: string) => {
     try {
-      const { error } = await supabase.functions.invoke('resend-poll-invitation', {
+      console.log('Resending invitation to:', participantEmail);
+      
+      const { data, error } = await supabase.functions.invoke('resend-poll-invitation', {
         body: {
           pollId,
           participantEmail
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Function invocation error:', error);
+        throw error;
+      }
+
+      console.log('Resend invitation response:', data);
 
       toast({
         title: "Einladung gesendet",
-        description: `Eine Erinnerung wurde an ${participantEmail} gesendet.`,
+        description: `Eine Erinnerung wurde erfolgreich an ${participantEmail} gesendet.`,
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resending invitation:', error);
+      const errorMessage = error?.message || 'Unbekannter Fehler';
       toast({
         title: "Fehler",
-        description: "Die Einladung konnte nicht erneut gesendet werden.",
+        description: `Die Einladung konnte nicht erneut gesendet werden: ${errorMessage}`,
         variant: "destructive",
       });
     }
