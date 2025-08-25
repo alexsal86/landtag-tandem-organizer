@@ -81,12 +81,70 @@ serve(async (req) => {
 
         console.log(`📋 Found ${subscriptions?.length || 0} active subscriptions`);
 
+        if (!subscriptions || subscriptions.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            sent: 0,
+            failed: 0,
+            total_subscriptions: 0,
+            message: 'No active push subscriptions found'
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Send simple test notifications
+        let sent = 0;
+        let failed = 0;
+
+        for (const subscription of subscriptions) {
+          try {
+            // Simple fetch to the push service
+            const response = await fetch(subscription.endpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'TTL': '2419200'
+              },
+              body: JSON.stringify({
+                title: 'Test-Benachrichtigung',
+                body: 'Dies ist eine Test-Push-Benachrichtigung!',
+                icon: '/favicon.ico'
+              })
+            });
+
+            if (response.ok) {
+              sent++;
+              console.log(`✅ Push sent to subscription ${subscription.id}`);
+            } else {
+              failed++;
+              console.log(`❌ Push failed to subscription ${subscription.id}: ${response.status}`);
+              // Deactivate failed subscription
+              await supabaseAdmin
+                .from('push_subscriptions')
+                .update({ is_active: false })
+                .eq('id', subscription.id);
+            }
+          } catch (pushError) {
+            failed++;
+            console.error(`❌ Push error for subscription ${subscription.id}:`, pushError);
+            // Deactivate failed subscription
+            await supabaseAdmin
+              .from('push_subscriptions')
+              .update({ is_active: false })
+              .eq('id', subscription.id);
+          }
+        }
+
+        console.log(`✅ Test complete: ${sent} sent, ${failed} failed`);
+
         return new Response(JSON.stringify({
-          success: true,
-          sent: subscriptions?.length || 0,
-          failed: 0,
-          total_subscriptions: subscriptions?.length || 0,
-          message: `Test successful - Found ${subscriptions?.length || 0} active subscriptions!`
+          success: sent > 0,
+          sent,
+          failed,
+          total_subscriptions: subscriptions.length,
+          message: sent > 0 ? 'Test notifications sent successfully!' : 'No notifications could be sent'
         }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
