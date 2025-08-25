@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserStatus } from "@/hooks/useUserStatus";
+import { useTenant } from "@/hooks/useTenant";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +35,7 @@ interface NavigationProps {
 export function Navigation({ activeSection, onSectionChange }: NavigationProps) {
   const { signOut, user } = useAuth();
   const { onlineUsers, getStatusDisplay } = useUserStatus();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const { state } = useSidebar();
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
@@ -84,7 +86,8 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
           .from('profiles')
           .select('display_name, avatar_url')
           .eq('user_id', user.id)
-          .single();
+          .eq('tenant_id', currentTenant?.id || '')
+          .maybeSingle();
         
         setUserProfile(profile);
       }
@@ -110,7 +113,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     };
     
     loadData();
-  }, [user]);
+  }, [user, currentTenant]);
 
   // Check admin role and load user role
   useEffect(() => {

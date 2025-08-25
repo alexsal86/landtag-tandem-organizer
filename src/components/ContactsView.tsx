@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { ContactDetailSheet } from "./ContactDetailSheet";
 
@@ -67,14 +68,15 @@ export function ContactsView() {
   const [activeTab, setActiveTab] = useState<"contacts" | "distribution-lists" | "archive">("contacts");
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
+    if (user && currentTenant) {
       fetchContacts();
       fetchDistributionLists();
     }
-  }, [user]);
+  }, [user, currentTenant]);
 
   const fetchContacts = async () => {
     try {
@@ -82,6 +84,7 @@ export function ContactsView() {
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
+        .eq('tenant_id', currentTenant?.id || '')
         .order('name');
 
       if (error) throw error;

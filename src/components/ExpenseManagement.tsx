@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Euro, TrendingUp, Calendar, Upload, Download, FileImage, Repeat, List, PieChart } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -47,6 +48,7 @@ interface ExpenseBudget {
 
 export const ExpenseManagement = () => {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
@@ -78,12 +80,12 @@ export const ExpenseManagement = () => {
   const [budgetAmount, setBudgetAmount] = useState("");
 
   useEffect(() => {
-    if (user) {
+    if (user && currentTenant) {
       loadCategories();
       loadExpenses();
       loadBudgets();
     }
-  }, [user, selectedMonth, selectedYear]);
+  }, [user, currentTenant, selectedMonth, selectedYear]);
 
   const loadCategories = async () => {
     const { data, error } = await supabase
@@ -115,6 +117,7 @@ export const ExpenseManagement = () => {
         *,
         category:expense_categories(*)
       `)
+      .eq("tenant_id", currentTenant?.id || '')
       .gte("expense_date", startDate)
       .lte("expense_date", endDate)
       .order("expense_date", { ascending: false });
@@ -133,6 +136,7 @@ export const ExpenseManagement = () => {
       .from("expense_budgets")
       .select("*")
       .eq("user_id", user?.id)
+      .eq("tenant_id", currentTenant?.id || '')
       .order("year", { ascending: false })
       .order("month", { ascending: false });
     
@@ -190,6 +194,7 @@ export const ExpenseManagement = () => {
       .from("expenses")
       .insert({
         user_id: user?.id,
+        tenant_id: currentTenant?.id,
         amount: parseFloat(newExpense.amount),
         expense_date: newExpense.expense_date,
         description: newExpense.description || null,
@@ -255,6 +260,7 @@ export const ExpenseManagement = () => {
       .from("expense_budgets")
       .upsert({
         user_id: user?.id,
+        tenant_id: currentTenant?.id,
         year: selectedYear,
         month: selectedMonth,
         budget_amount: amount
@@ -279,7 +285,13 @@ export const ExpenseManagement = () => {
       // Check if budget already exists for this month
       const existingBudget = budgets.find(b => b.year === year && b.month === month);
       if (!existingBudget) {
-        futureMonths.push({ user_id: user?.id, year, month, budget_amount: amount });
+        futureMonths.push({ 
+          user_id: user?.id, 
+          tenant_id: currentTenant?.id,
+          year, 
+          month, 
+          budget_amount: amount 
+        });
       }
     }
 
