@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { NewUserForm } from "@/components/NewUserForm";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -1307,7 +1309,25 @@ export default function Administration() {
           <TabsContent value="roles">
             <Card>
               <CardHeader>
-                <CardTitle>Benutzerrollen</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Benutzerrollen</CardTitle>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Neuen Benutzer hinzufügen
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Neuen Benutzer erstellen</DialogTitle>
+                      </DialogHeader>
+                      <NewUserForm onSuccess={() => {
+                        loadData();
+                      }} />
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </CardHeader>
               <CardContent>
                 {loadingData ? (
