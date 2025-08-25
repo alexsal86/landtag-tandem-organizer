@@ -88,9 +88,12 @@ export const ExpenseManagement = () => {
   }, [user, currentTenant, selectedMonth, selectedYear]);
 
   const loadCategories = async () => {
+    if (!currentTenant) return;
+    
     const { data, error } = await supabase
       .from("expense_categories")
       .select("*")
+      .eq("tenant_id", currentTenant.id)
       .eq("is_active", true)
       .order("order_index");
     
@@ -102,6 +105,8 @@ export const ExpenseManagement = () => {
   };
 
   const loadExpenses = async () => {
+    if (!currentTenant) return;
+    
     // Fix date range calculation - ensure we get the actual last day of the month
     const year = selectedYear;
     const month = selectedMonth;
@@ -117,7 +122,7 @@ export const ExpenseManagement = () => {
         *,
         category:expense_categories(*)
       `)
-      .eq("tenant_id", currentTenant?.id || '')
+      .eq("tenant_id", currentTenant.id)
       .gte("expense_date", startDate)
       .lte("expense_date", endDate)
       .order("expense_date", { ascending: false });
@@ -132,11 +137,13 @@ export const ExpenseManagement = () => {
   };
 
   const loadBudgets = async () => {
+    if (!user || !currentTenant) return;
+    
     const { data, error } = await supabase
       .from("expense_budgets")
       .select("*")
-      .eq("user_id", user?.id)
-      .eq("tenant_id", currentTenant?.id || '')
+      .eq("user_id", user.id)
+      .eq("tenant_id", currentTenant.id)
       .order("year", { ascending: false })
       .order("month", { ascending: false });
     
@@ -234,7 +241,8 @@ export const ExpenseManagement = () => {
         name: newCategory.name,
         description: newCategory.description || null,
         color: newCategory.color,
-        order_index: categories.length
+        order_index: categories.length,
+        tenant_id: currentTenant?.id
       });
 
     if (error) {

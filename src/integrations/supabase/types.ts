@@ -1157,6 +1157,7 @@ export type Database = {
           created_at: string
           id: string
           month: number
+          tenant_id: string
           updated_at: string
           user_id: string
           year: number
@@ -1166,6 +1167,7 @@ export type Database = {
           created_at?: string
           id?: string
           month: number
+          tenant_id: string
           updated_at?: string
           user_id: string
           year: number
@@ -1175,11 +1177,20 @@ export type Database = {
           created_at?: string
           id?: string
           month?: number
+          tenant_id?: string
           updated_at?: string
           user_id?: string
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expense_budgets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expense_categories: {
         Row: {
@@ -1190,6 +1201,7 @@ export type Database = {
           is_active: boolean
           name: string
           order_index: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -1200,6 +1212,7 @@ export type Database = {
           is_active?: boolean
           name: string
           order_index?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -1210,9 +1223,18 @@ export type Database = {
           is_active?: boolean
           name?: string
           order_index?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expense_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expenses: {
         Row: {
