@@ -150,9 +150,21 @@ serve(async (req) => {
   try {
     console.log('🚀 Starting push notification function...');
     
-    // Parse request
-    const body = await req.json();
-    console.log('📦 Request body:', body);
+    // Parse request body with error handling
+    let body;
+    try {
+      body = await req.json();
+      console.log('📦 Request body parsed successfully:', JSON.stringify(body, null, 2));
+    } catch (parseError) {
+      console.error('❌ Failed to parse request body:', parseError);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid JSON in request body'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     // Initialize Supabase
     const supabaseAdmin = createClient(
