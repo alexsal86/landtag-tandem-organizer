@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/hooks/useTenant';
 
 interface TimeSlot {
   id: string;
@@ -58,6 +59,7 @@ interface PollResultsDashboardProps {
 
 export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashboardProps) => {
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
   const [poll, setPoll] = useState<Poll | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -188,10 +190,10 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
           end_time: slot.end_time,
           title: poll?.title || 'Bestätigter Termin',
           description: poll?.description,
-          tenant_id: 'default-tenant-id', // TODO: Add proper tenant context
           category: 'meeting',
           status: 'confirmed',
-          priority: 'high'
+          priority: 'high',
+          tenant_id: currentTenant?.id || 'default'
         })
         .select()
         .single();
