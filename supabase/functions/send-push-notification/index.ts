@@ -42,95 +42,119 @@ async function generateVapidJWT(
   privateKey: string,
   expiration = Math.floor(Date.now() / 1000) + 12 * 60 * 60 // 12 hours
 ): Promise<string> {
+  console.log(`🔐 Generating VAPID JWT for audience: ${audience}`);
+  console.log(`🔐 Subject: ${subject}`);
+  console.log(`🔐 Public key length: ${publicKey.length}`);
+  console.log(`🔐 Private key length: ${privateKey.length}`);
+  
   const header = {
     typ: 'JWT',
-    alg: 'ES256'
+    alg: 'ES256',
   };
 
   const payload = {
     aud: audience,
     exp: expiration,
-    sub: subject
+    sub: subject,
   };
+
+  console.log(`🔐 JWT payload:`, payload);
 
   const encodedHeader = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
   const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
-  
-  const signingInput = `${encodedHeader}.${encodedPayload}`;
-  
-  // Import the private key
-  const privateKeyBuffer = new Uint8Array(
-    atob(privateKey.replace(/-/g, '+').replace(/_/g, '/'))
-      .split('')
-      .map(char => char.charCodeAt(0))
-  );
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
 
-  const key = await crypto.subtle.importKey(
-    'pkcs8',
-    privateKeyBuffer,
-    {
-      name: 'ECDSA',
-      namedCurve: 'P-256'
-    },
-    false,
-    ['sign']
-  );
+  console.log(`🔐 Unsigned token prepared (length: ${unsignedToken.length})`);
 
-  // Sign the JWT
-  const signature = await crypto.subtle.sign(
-    {
-      name: 'ECDSA',
-      hash: 'SHA-256'
-    },
-    key,
-    new TextEncoder().encode(signingInput)
-  );
+  try {
+    // Import the private key for signing
+    console.log(`🔐 Decoding private key...`);
+    const privateKeyBytes = Uint8Array.from(atob(privateKey), c => c.charCodeAt(0));
+    console.log(`🔐 Private key decoded (${privateKeyBytes.length} bytes)`);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+      'pkcs8',
+      privateKeyBytes,
+      {
+        name: 'ECDSA',
+        namedCurve: 'P-256',
+      },
+      false,
+      ['sign']
+    );
+    console.log(`🔐 Crypto key imported successfully`);
 
-  const encodedSignature = base64UrlEncode(signature);
-  return `${signingInput}.${encodedSignature}`;
+    // Sign the token
+    console.log(`🔐 Signing token...`);
+    const signature = await crypto.subtle.sign(
+      {
+        name: 'ECDSA',
+        hash: 'SHA-256',
+      },
+      cryptoKey,
+      new TextEncoder().encode(unsignedToken)
+    );
+    console.log(`🔐 Token signed (signature ${signature.byteLength} bytes)`);
+
+    const encodedSignature = base64UrlEncode(signature);
+    const finalJWT = `${unsignedToken}.${encodedSignature}`;
+    
+    console.log(`✅ VAPID JWT generated successfully (total length: ${finalJWT.length})`);
+    return finalJWT;
+  } catch (error) {
+    console.error(`❌ Error generating VAPID JWT:`, error);
+    throw new Error(`VAPID JWT generation failed: ${error.message}`);
+  }
 }
 
 // Web Push Protocol implementation
 async function sendWebPushNotification(
-  subscription: any,
+  subscription: { endpoint: string },
   payload: string,
   vapidJWT: string,
   vapidPublicKey: string
-): Promise<Response> {
-  const endpoint = subscription.endpoint;
+): Promise<void> {
+  console.log(`📡 Starting Web Push request to: ${subscription.endpoint.substring(0, 50)}...`);
   
-  console.log('📤 Sending push notification to:', endpoint);
-  console.log('📦 Payload size:', payload.length);
-  
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     'Content-Type': 'application/octet-stream',
+    'Authorization': `vapid t=${vapidJWT}, k=${vapidPublicKey}`,
     'TTL': '86400',
-    'Authorization': `vapid t=${vapidJWT}, k=${vapidPublicKey}`
-  };
-
-  // Add FCM-specific headers for Chrome/Edge
-  if (endpoint.includes('fcm.googleapis.com')) {
-    headers['Content-Encoding'] = 'aes128gcm';
-  }
-
-  console.log('📋 Request headers:', headers);
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: payload
   });
 
-  console.log(`📨 Push response status: ${response.status}`);
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('❌ Push error response:', errorText);
-    throw new Error(`Push failed with status ${response.status}: ${errorText}`);
+  // Log headers for debugging (without sensitive data)
+  console.log(`📋 Request headers prepared:`, {
+    'Content-Type': headers.get('Content-Type'),
+    'Authorization': `vapid t=<JWT_${vapidJWT.length}_chars>, k=<KEY_${vapidPublicKey.length}_chars>`,
+    'TTL': headers.get('TTL')
+  });
+
+  try {
+    console.log(`🌐 Making fetch request...`);
+    const response = await fetch(subscription.endpoint, {
+      method: 'POST',
+      headers: headers,
+      body: payload,
+    });
+
+    console.log(`📥 Response received:`, {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      headers: Object.fromEntries([...response.headers.entries()])
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Push service error: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`Push service error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    console.log(`✅ Web Push notification sent successfully`);
+  } catch (error) {
+    console.error(`❌ Web Push request failed:`, error);
+    throw error;
   }
-  
-  console.log('✅ Push notification sent successfully');
-  return response;
 }
 
 serve(async (req) => {
@@ -242,18 +266,30 @@ serve(async (req) => {
       for (const subscription of subscriptions) {
         try {
           console.log(`🔔 Sending to subscription ${subscription.id} (endpoint: ${subscription.endpoint.substring(0, 50)}...)`);
+          console.log(`🔍 Subscription details:`, {
+            id: subscription.id,
+            user_id: subscription.user_id,
+            endpoint_start: subscription.endpoint.substring(0, 50),
+            has_p256dh: !!subscription.p256dh_key,
+            has_auth: !!subscription.auth_key,
+            p256dh_length: subscription.p256dh_key?.length,
+            auth_length: subscription.auth_key?.length
+          });
           
           // Extract audience from endpoint for VAPID JWT
           const endpointUrl = new URL(subscription.endpoint);
           const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
+          console.log(`🎯 Audience for VAPID: ${audience}`);
           
           // Generate VAPID JWT
+          console.log(`🔑 Generating VAPID JWT...`);
           const vapidJWT = await generateVapidJWT(
             audience,
             vapidSubject,
             vapidPublicKey,
             vapidPrivateKey
           );
+          console.log(`✅ VAPID JWT generated successfully (length: ${vapidJWT.length})`);
 
           const payload = JSON.stringify({
             title,
@@ -268,7 +304,9 @@ serve(async (req) => {
               priority
             }
           });
+          console.log(`📦 Payload prepared (length: ${payload.length})`);
 
+          console.log(`🚀 Calling sendWebPushNotification...`);
           await sendWebPushNotification(
             { endpoint: subscription.endpoint },
             payload,
@@ -281,10 +319,18 @@ serve(async (req) => {
           console.log(`✅ Successfully sent to subscription ${subscription.id}`);
         } catch (error) {
           failed++;
-          results.push({ subscription_id: subscription.id, status: 'error', error: error.message });
+          const errorDetails = {
+            name: error.name,
+            message: error.message,
+            stack: error.stack?.substring(0, 500),
+            cause: error.cause
+          };
+          results.push({ subscription_id: subscription.id, status: 'error', error: error.message, details: errorDetails });
           console.error(`❌ Failed to send to subscription ${subscription.id}:`, error);
+          console.error(`❌ Error details:`, errorDetails);
           
           // Deactivate failed subscription
+          console.log(`🔄 Deactivating failed subscription ${subscription.id}`);
           await supabaseAdmin
             .from('push_subscriptions')
             .update({ is_active: false })
