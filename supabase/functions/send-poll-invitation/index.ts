@@ -38,8 +38,12 @@ const handler = async (req: Request): Promise<Response> => {
       creatorName 
     }: PollInvitationRequest = await req.json();
 
-    console.log("Sending poll invitations for poll:", pollId);
+    console.log("=== SEND POLL INVITATION DEBUG ===");
+    console.log("Poll ID:", pollId);
     console.log("Participant emails:", participantEmails);
+    console.log("Poll title:", pollTitle);
+    console.log("Creator name:", creatorName);
+    console.log("=== END DEBUG INFO ===");
 
     const emailResults = [];
 
@@ -56,19 +60,25 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (participantError) {
           console.error("Database error getting participant for", email, ":", participantError);
-          emailResults.push({ email, success: false, error: "Database error" });
+          emailResults.push({ email, success: false, error: "Database error: " + participantError.message });
           continue;
         }
 
         if (!participant) {
           console.error("Participant not found for", email);
-          emailResults.push({ email, success: false, error: "Participant not found" });
+          emailResults.push({ email, success: false, error: "Participant not found in database" });
           continue;
         }
 
+        console.log("Found participant for", email, ":", {
+          name: participant.name,
+          hasToken: !!participant.token,
+          tokenLength: participant.token?.length || 0
+        });
+
         if (!participant.token) {
           console.error("No token found for external participant", email);
-          emailResults.push({ email, success: false, error: "No token found" });
+          emailResults.push({ email, success: false, error: "No token found for participant" });
           continue;
         }
 
@@ -79,7 +89,8 @@ const handler = async (req: Request): Promise<Response> => {
         const domain = origin ? new URL(origin).origin : 'https://wawofclbehbkebjivdte.supabase.co';
         const pollUrl = `${domain}/poll-guest/${pollId}?token=${participantToken}`;
         
-        console.log("Sending email to:", email, "with URL:", pollUrl);
+        console.log("About to send email to:", email, "with URL:", pollUrl);
+        console.log("Using Resend API key:", Deno.env.get("RESEND_API_KEY")?.substring(0, 10) + "...");
 
         // Send invitation email
         const emailResponse = await resend.emails.send({
@@ -141,12 +152,16 @@ const handler = async (req: Request): Promise<Response> => {
 
       } catch (emailError) {
         console.error("Error sending email to", email, ":", emailError);
-        emailResults.push({ email, success: false, error: emailError.message });
+        console.error("Error details:", JSON.stringify(emailError, null, 2));
+        emailResults.push({ email, success: false, error: emailError.message || "Unknown error" });
       }
     }
 
     const successCount = emailResults.filter(r => r.success).length;
+    console.log("=== EMAIL RESULTS SUMMARY ===");
     console.log(`Sent ${successCount}/${emailResults.length} emails successfully`);
+    console.log("Results:", JSON.stringify(emailResults, null, 2));
+    console.log("=== END SUMMARY ===");
 
     return new Response(
       JSON.stringify({ 
