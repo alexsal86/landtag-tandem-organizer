@@ -83,7 +83,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Send invitation email
         const emailResponse = await resend.emails.send({
-          from: "Terminabstimmung <onboarding@resend.dev>",
+          from: "Terminabstimmung <noreply@alexander-salomon.de>",
           to: [email],
           subject: `Einladung zur Terminabstimmung: ${pollTitle}`,
           html: `
@@ -120,7 +120,20 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (emailResponse.error) {
           console.error("Email send error:", emailResponse.error);
-          emailResults.push({ email, success: false, error: emailResponse.error });
+          // Check if it's a domain verification issue
+          const isTestModeError = emailResponse.error && 
+            (emailResponse.error.toString().includes('testing emails') || 
+             emailResponse.error.toString().includes('verify a domain'));
+          
+          if (isTestModeError) {
+            emailResults.push({ 
+              email, 
+              success: false, 
+              error: "Domain nicht verifiziert - E-Mails können nur an verifizierte Adressen gesendet werden" 
+            });
+          } else {
+            emailResults.push({ email, success: false, error: emailResponse.error });
+          }
         } else {
           console.log("Email sent successfully to:", email, "ID:", emailResponse.data?.id);
           emailResults.push({ email, success: true, messageId: emailResponse.data?.id });
