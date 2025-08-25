@@ -1,1 +1,19 @@
 project_id = "wawofclbehbkebjivdte"
+
+[functions.send-poll-invitation]
+verify_jwt = true
+
+[functions.resend-poll-invitation]
+verify_jwt = true
+
+[functions.send-poll-notifications]
+verify_jwt = true
+
+[functions.send-push-notification]
+verify_jwt = true
+
+[functions.create-demo-users]
+verify_jwt = true
+
+[functions.create-admin-user]
+verify_jwt = true
