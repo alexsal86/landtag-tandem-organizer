@@ -169,10 +169,10 @@ serve(async (req) => {
     console.log('📥 Request headers:', Object.fromEntries(req.headers.entries()));
     console.log('📥 Request URL:', req.url);
     
-    // Use the NEW VAPID keys consistently - prioritize NEW keys
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY_NEW');
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY_NEW');
-    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com';
+    // Use the CORRECT VAPID keys that match the client
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') || '';
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY') || '';
+    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:mail@alexander-salomon.de';
     
     console.log('🔑 VAPID configuration:', {
       publicKeyExists: !!vapidPublicKey,
