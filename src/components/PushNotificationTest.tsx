@@ -15,9 +15,134 @@ interface TestResult {
 
 export const PushNotificationTest: React.FC = () => {
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [realTestResult, setRealTestResult] = useState<TestResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isRealTestRunning, setIsRealTestRunning] = useState(false);
   const { pushSupported, pushPermission, requestPushPermission, subscribeToPush } = useNotifications();
   const { toast } = useToast();
+
+  const runRealPushTest = async () => {
+    console.log('=== ECHTER PUSH TEST GESTARTET ===');
+    setIsRealTestRunning(true);
+    
+    try {
+      setRealTestResult({ step: 'Starte echten Push-Test...', status: 'pending', message: '' });
+
+      // Check prerequisites
+      if (!pushSupported) {
+        setRealTestResult({ 
+          step: 'Browser-Support fehlt', 
+          status: 'error',
+          message: '❌ Browser unterstützt keine Push-Notifications'
+        });
+        return;
+      }
+
+      if (pushPermission !== 'granted') {
+        setRealTestResult({ 
+          step: 'Berechtigung fehlt', 
+          status: 'error',
+          message: '❌ Push-Berechtigung nicht erteilt. Bitte erst den normalen Test durchführen.'
+        });
+        return;
+      }
+
+      // Step 1: Ensure subscription exists
+      setRealTestResult({ step: 'Subscription prüfen', status: 'pending', message: 'Prüfe Push-Subscription...' });
+      
+      try {
+        await subscribeToPush();
+        setRealTestResult({ 
+          step: 'Subscription bereit', 
+          status: 'success',
+          message: '✅ Push-Subscription ist bereit'
+        });
+      } catch (error) {
+        console.error('❌ Subscription error:', error);
+        setRealTestResult({ 
+          step: 'Subscription Fehler', 
+          status: 'error',
+          message: `❌ Fehler bei Subscription: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+        });
+        return;
+      }
+
+      // Step 2: Send real push notification
+      setRealTestResult({ step: 'Echte Push-Notification senden', status: 'pending', message: 'Sende echte Browser-Push-Notification...' });
+
+      console.log('🚀 Invoking REAL push notification...');
+      
+      const response = await supabase.functions.invoke('send-push-notification', {
+        body: { 
+          title: 'Echte Push-Notification! 🔔',
+          message: 'Dies ist eine echte Browser-Push-Notification!',
+          priority: 'high',
+          data: {
+            real_push: true,
+            test_timestamp: new Date().toISOString()
+          }
+        }
+      });
+
+      console.log('📤 Real Push Edge Function response:', response);
+
+      if (response.error) {
+        console.error('❌ Real Push Edge Function error:', response.error);
+        setRealTestResult({
+          step: 'Echte Push-Notification senden',
+          status: 'error',
+          message: `❌ Edge Function Fehler: ${response.error.message || 'Unbekannter Fehler'}`
+        });
+        return;
+      }
+
+      const responseData = response.data;
+      console.log('📊 Real Push Response data:', responseData);
+      
+      if (responseData && responseData.sent > 0) {
+        setRealTestResult({
+          step: 'Echter Test erfolgreich!',
+          status: 'success',
+          message: `✅ ${responseData.sent} echte Push-Notification(en) erfolgreich gesendet! Schau in deine Browser-Benachrichtigungen.`
+        });
+        
+        toast({
+          title: 'Echter Push-Test erfolgreich!',
+          description: 'Du solltest jetzt eine echte Browser-Push-Notification sehen.',
+        });
+      } else {
+        setRealTestResult({
+          step: 'Echter Test fehlgeschlagen',
+          status: 'error',
+          message: `⚠️ Keine echten Benachrichtigungen erfolgreich gesendet. ${responseData?.failed || 'Unbekannt'} von ${responseData?.total_subscriptions || 'unbekannt'} fehlgeschlagen.`
+        });
+        
+        toast({
+          title: 'Echter Push-Test fehlgeschlagen',
+          description: 'Echte Push-Notifications konnten nicht gesendet werden.',
+          variant: 'destructive',
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Real push test error:', error);
+      setRealTestResult({
+        step: 'Echter Test fehlgeschlagen',
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler beim echten Push-Test',
+      });
+
+      toast({
+        title: 'Echter Push-Test fehlgeschlagen',
+        description: 'Es ist ein unerwarteter Fehler beim echten Push-Test aufgetreten.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRealTestRunning(false);
+    }
+    
+    console.log('=== ECHTER PUSH TEST BEENDET ===');
+  };
 
   const runPushTest = async () => {
     console.log('=== PUSH TEST GESTARTET ===');
@@ -280,16 +405,38 @@ export const PushNotificationTest: React.FC = () => {
           </div>
         )}
 
+        {realTestResult && (
+          <div className={`p-3 rounded-lg border ${getStatusColor(realTestResult.status)}`}>
+            <div className="flex items-center gap-2 mb-2">
+              {getStatusIcon(realTestResult.status)}
+              <span className="font-medium font-bold">🔔 {realTestResult.step}</span>
+            </div>
+            {realTestResult.message && (
+              <p className="text-sm font-medium">{realTestResult.message}</p>
+            )}
+          </div>
+        )}
+
         <Button 
           onClick={runPushTest} 
           disabled={isRunning}
           className="w-full"
         >
-          {isRunning ? 'Test läuft...' : 'Push-Test starten'}
+          {isRunning ? 'Test läuft...' : 'Push-Test starten (Datenbank)'}
+        </Button>
+
+        <Button 
+          onClick={runRealPushTest} 
+          disabled={isRealTestRunning || pushPermission !== 'granted'}
+          className="w-full"
+          variant="outline"
+        >
+          {isRealTestRunning ? 'Echter Test läuft...' : '🔔 Echte Browser-Push-Notification testen'}
         </Button>
 
         <p className="text-xs text-muted-foreground">
-          Dieser Test prüft die vollständige Push-Notification Funktionalität.
+          Der erste Test prüft die Grundfunktionalität und erstellt Datenbank-Benachrichtigungen.
+          Der zweite Test sendet echte Browser-Push-Notifications.
           Öffne die Browser-Konsole (F12) für detaillierte Debug-Informationen.
         </p>
       </CardContent>
