@@ -57,7 +57,7 @@ const handler = async (req: Request): Promise<Response> => {
       .select('token, name')
       .eq('poll_id', pollId)
       .eq('email', participantEmail)
-      .single();
+      .maybeSingle();
 
     if (participantError || !participant) {
       throw new Error('Participant not found');
@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get current domain dynamically
     const origin = req.headers.get('origin') || req.headers.get('referer');
     const domain = origin ? new URL(origin).origin : 'https://wawofclbehbkebjivdte.supabase.co';
-    const pollUrl = `${domain}/poll-guest/${pollId}?token=${participant.token}`;
+    const pollUrl = `${domain}/poll-guest/${pollId}?token=${participant.token || 'guest'}`;
     
     console.log("Sending email to:", participantEmail, "with URL:", pollUrl);
 
@@ -107,9 +107,9 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    if (emailResponse.error) {
+    if (emailResponse.error || !emailResponse.data) {
       console.error("Email send error:", emailResponse.error);
-      throw new Error(`Email send failed: ${emailResponse.error}`);
+      throw new Error(`Email send failed: ${JSON.stringify(emailResponse.error)}`);
     }
 
     console.log("Reminder email sent successfully to:", participantEmail, "ID:", emailResponse.data?.id);

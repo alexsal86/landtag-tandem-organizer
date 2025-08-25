@@ -188,33 +188,34 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
       const creatorName = profile?.display_name || user.email || 'Unbekannt';
 
       // Create all participants first (internal and external)
-      const participantPromises = participants.map(async (p) => {
+      const participantData = [];
+      
+      for (const p of participants) {
         if (p.type === 'external') {
           // Generate token for external participants
           const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
           if (tokenError) {
             console.error('Error generating token:', tokenError);
-            throw tokenError;
+            throw new Error('Token-Generierung fehlgeschlagen');
           }
 
-          return {
+          participantData.push({
             poll_id: poll.id,
             email: p.email,
             name: p.name,
             is_external: true,
             token: tokenData
-          };
+          });
         } else {
-          return {
+          participantData.push({
             poll_id: poll.id,
             email: p.email,
             name: p.name,
-            is_external: false
-          };
+            is_external: false,
+            token: null
+          });
         }
-      });
-
-      const participantData = await Promise.all(participantPromises);
+      }
       
       const { error: participantsError } = await supabase
         .from('poll_participants')
@@ -222,7 +223,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
       if (participantsError) {
         console.error('Error creating participants:', participantsError);
-        throw participantsError;
+        throw new Error('Teilnehmer konnten nicht erstellt werden');
       }
 
       // Send invitations to external participants
