@@ -166,9 +166,25 @@ serve(async (req) => {
   try {
     console.log('🚀 Starting push notification function...');
     console.log('📥 Request method:', req.method);
-    console.log('📥 Request headers:', Object.fromEntries(req.headers.entries()));
     console.log('📥 Request URL:', req.url);
     
+    // Parse the request body
+    let body;
+    try {
+      body = await req.json();
+      console.log('📦 Request body:', JSON.stringify(body));
+    } catch (parseError) {
+      console.error('❌ Failed to parse request body:', parseError);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Invalid JSON in request body',
+        details: parseError.message
+      }), { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Use the FRESH VAPID keys
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY_FRESH') || '';
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY_FRESH') || '';
@@ -214,8 +230,7 @@ serve(async (req) => {
       }
     );
 
-    const body = await req.json();
-    console.log('📥 Received request body:', JSON.stringify(body, null, 2));
+    console.log('📥 Processing request with body:', JSON.stringify(body, null, 2));
 
     // Check if this is a test notification - handle with simplified auth
     if (body.test || body.type === 'test') {
