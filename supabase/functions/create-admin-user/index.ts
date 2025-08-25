@@ -105,6 +105,23 @@ serve(async (req) => {
       // Don't throw here as the user is already created
     }
 
+    // Create user status entry to avoid foreign key constraint issues
+    const { error: statusError } = await supabaseAdmin
+      .from('user_status')
+      .insert({
+        user_id: newUser.user.id,
+        status_type: 'online',
+        notifications_enabled: true,
+        auto_away_enabled: true
+      })
+      .select()
+      .single();
+
+    if (statusError) {
+      console.error('Error creating user status:', statusError);
+      // Don't throw here as the user is already created
+    }
+
     // Assign role if provided
     if (role && role !== 'none') {
       const { error: roleAssignError } = await supabaseAdmin
