@@ -231,7 +231,8 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         .map(p => p.email);
 
       if (externalEmails.length > 0) {
-        const { error: emailError } = await supabase.functions.invoke('send-poll-invitation', {
+        console.log('Sending emails to:', externalEmails);
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-poll-invitation', {
           body: {
             pollId: poll.id,
             participantEmails: externalEmails,
@@ -245,17 +246,22 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
           console.error('Error sending emails:', emailError);
           toast({
             title: "E-Mail-Versendung fehlgeschlagen",
-            description: "Die Abstimmung wurde erstellt, aber E-Mails konnten nicht versendet werden.",
+            description: `Die Abstimmung wurde erstellt, aber E-Mails konnten nicht versendet werden: ${emailError.message}`,
             variant: "destructive",
           });
+        } else {
+          console.log('Email response:', emailData);
+          toast({
+            title: "Abstimmung erstellt",
+            description: "Die Terminabstimmung wurde erfolgreich erstellt und Einladungen versendet.",
+          });
         }
+      } else {
+        toast({
+          title: "Abstimmung erstellt",
+          description: "Die Terminabstimmung wurde erfolgreich erstellt.",
+        });
       }
-
-
-      toast({
-        title: "Abstimmung erstellt",
-        description: "Die Terminabstimmung wurde erfolgreich erstellt und Einladungen versendet.",
-      });
 
       onClose();
     } catch (error) {

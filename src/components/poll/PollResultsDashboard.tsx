@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CalendarIcon, Clock, Users, Check, AlertCircle, X, Trophy } from 'lucide-react';
+import { CalendarIcon, Clock, Users, Check, AlertCircle, X, Trophy, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -225,6 +225,32 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
     }
   };
 
+  const resendInvitation = async (participantEmail: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('resend-poll-invitation', {
+        body: {
+          pollId,
+          participantEmail
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Einladung gesendet",
+        description: `Eine Erinnerung wurde an ${participantEmail} gesendet.`,
+      });
+
+    } catch (error) {
+      console.error('Error resending invitation:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Einladung konnte nicht erneut gesendet werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <Card className="w-full">
@@ -354,6 +380,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
             <TableHeader>
               <TableRow>
                 <TableHead>Teilnehmer</TableHead>
+                <TableHead className="text-center">Aktionen</TableHead>
                 {slotResults.map((result) => (
                   <TableHead key={result.timeSlot.id} className="text-center min-w-32">
                     <div className="text-xs">
@@ -381,11 +408,21 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
                         ) : (
                           <>
                             <span className="h-2 w-2 bg-green-500 rounded-full"></span>
-                            Intern
+                            <span className="truncate max-w-32">{participant.email}</span>
                           </>
                         )}
                       </div>
                     </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => resendInvitation(participant.email)}
+                      title="Erneute Einladung senden"
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                   {slotResults.map((result) => {
                     const response = result.responses.find(r => r.participant_id === participant.id);
