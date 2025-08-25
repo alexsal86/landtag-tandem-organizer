@@ -172,52 +172,87 @@ serve(async (req) => {
         // Send notifications with proper VAPID authentication
         let sent = 0;
         let failed = 0;
+        let detailedResults = [];
 
         for (const subscription of subscriptions) {
           try {
             console.log(`📤 Sending push to subscription ${subscription.id}`);
+            console.log(`🔗 Endpoint: ${subscription.endpoint.substring(0, 100)}...`);
             
-            // Create VAPID JWT for this endpoint
-            const vapidJWT = await createVapidJWT(vapidSubject, subscription.endpoint, vapidPrivateKey);
+            // Test 1: Einfacher Test ohne VAPID
+            console.log('🧪 Test 1: Einfacher POST ohne VAPID...');
+            const simpleTest = await fetch(subscription.endpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'TTL': '2419200'
+              },
+              body: JSON.stringify({
+                title: 'Test ohne VAPID',
+                body: 'Einfacher Test'
+              })
+            });
+            console.log(`📊 Einfacher Test: ${simpleTest.status}`);
             
-            // Prepare the notification payload
-            const notificationPayload = {
-              title: body.title || 'Test-Benachrichtigung',
-              body: body.message || 'Dies ist eine Test-Push-Benachrichtigung!',
-              icon: '/favicon.ico',
-              badge: '/favicon.ico',
-              data: body.data || {}
-            };
+            // Test 2: Mit VAPID aber ohne JWT
+            console.log('🧪 Test 2: Mit VAPID Public Key...');
+            const vapidTest = await fetch(subscription.endpoint, {
+              method: 'POST',
+              headers: {
+                'Authorization': `WebPush ${vapidPublicKey}`,
+                'Content-Type': 'application/json',
+                'TTL': '2419200'
+              },
+              body: JSON.stringify({
+                title: 'Test mit VAPID Key',
+                body: 'Test mit Public Key'
+              })
+            });
+            console.log(`📊 VAPID Test: ${vapidTest.status}`);
 
-            // Send push notification with proper VAPID headers
-            const response = await fetch(subscription.endpoint, {
+            // Test 3: Mit vollständiger VAPID JWT
+            console.log('🧪 Test 3: Mit VAPID JWT...');
+            const vapidJWT = await createVapidJWT(vapidSubject, subscription.endpoint, vapidPrivateKey);
+            console.log('✅ JWT erstellt');
+            
+            const fullVapidTest = await fetch(subscription.endpoint, {
               method: 'POST',
               headers: {
                 'Authorization': `vapid t=${vapidJWT}, k=${vapidPublicKey}`,
                 'Content-Type': 'application/json',
                 'TTL': '2419200'
               },
-              body: JSON.stringify(notificationPayload)
+              body: JSON.stringify({
+                title: body.title || 'Test mit JWT',
+                body: body.message || 'Test mit vollständiger VAPID Authentifizierung'
+              })
             });
+            console.log(`📊 JWT Test: ${fullVapidTest.status}`);
 
-            console.log(`📊 Response status: ${response.status}`);
-
-            if (response.ok || response.status === 201) {
+            // Sammle alle Testergebnisse
+            const results = {
+              subscriptionId: subscription.id,
+              simpleTest: simpleTest.status,
+              vapidTest: vapidTest.status,
+              jwtTest: fullVapidTest.status
+            };
+            
+            detailedResults.push(results);
+            
+            // Erfolg wenn einer der Tests funktioniert
+            if (simpleTest.ok || vapidTest.ok || fullVapidTest.ok) {
               sent++;
-              console.log(`✅ Push sent successfully to subscription ${subscription.id}`);
+              console.log(`✅ Mindestens ein Test erfolgreich für ${subscription.id}`);
             } else {
               failed++;
-              const responseText = await response.text().catch(() => 'Unable to read response');
-              console.log(`❌ Push failed to subscription ${subscription.id}: ${response.status} - ${responseText}`);
+              console.log(`❌ Alle Tests fehlgeschlagen für ${subscription.id}`);
               
-              // Deactivate invalid subscriptions
-              if (response.status === 410 || response.status === 404) {
-                await supabaseAdmin
-                  .from('push_subscriptions')
-                  .update({ is_active: false })
-                  .eq('id', subscription.id);
-                console.log(`🗑️ Deactivated invalid subscription ${subscription.id}`);
-              }
+              // Lese Response-Texte für Debugging
+              const simpleText = await simpleTest.text().catch(() => 'no response');
+              const vapidText = await vapidTest.text().catch(() => 'no response');
+              const jwtText = await fullVapidTest.text().catch(() => 'no response');
+              
+              console.log(`💬 Responses - Simple: ${simpleText}, VAPID: ${vapidText}, JWT: ${jwtText}`);
             }
           } catch (pushError) {
             failed++;
