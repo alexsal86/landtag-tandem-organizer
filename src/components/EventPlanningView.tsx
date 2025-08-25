@@ -170,6 +170,11 @@ export function EventPlanningView() {
   const [loading, setLoading] = useState(false);
   const [newContact, setNewContact] = useState({ name: "", email: "", phone: "" });
   const [newSpeaker, setNewSpeaker] = useState({ name: "", email: "", phone: "", bio: "", topic: "" });
+  const [editingContact, setEditingContact] = useState<EventPlanningContact | null>(null);
+  const [editingSpeaker, setEditingSpeaker] = useState<EventPlanningSpeaker | null>(null);
+  const [availableContacts, setAvailableContacts] = useState<any[]>([]);
+  const [isEditContactDialogOpen, setIsEditContactDialogOpen] = useState(false);
+  const [isEditSpeakerDialogOpen, setIsEditSpeakerDialogOpen] = useState(false);
   const [digitalEvent, setDigitalEvent] = useState({ platform: "", link: "", access_info: "" });
   const [editingTitle, setEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState("");
@@ -195,6 +200,7 @@ export function EventPlanningView() {
     console.log('EventPlanningView mounted, user:', user);
     fetchPlannings();
     fetchAllProfiles();
+    fetchAvailableContacts();
     fetchPlanningTemplates();
   }, [user]);
 
@@ -307,6 +313,23 @@ export function EventPlanningView() {
     }
 
     setAllProfiles(data || []);
+  };
+
+  const fetchAvailableContacts = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("contacts")
+      .select("id, name, email, phone, role, organization")
+      .eq("user_id", user.id)
+      .order("name");
+
+    if (error) {
+      console.error("Error fetching contacts:", error);
+      return;
+    }
+
+    setAvailableContacts(data || []);
   };
 
   const fetchPlanningDetails = async (planningId: string) => {
@@ -910,6 +933,116 @@ export function EventPlanningView() {
       title: "Erfolg",
       description: "Referent wurde entfernt.",
     });
+  };
+
+  // Edit contact functions
+  const editContact = async () => {
+    if (!editingContact || !editingContact.name.trim()) return;
+
+    const { data, error } = await supabase
+      .from("event_planning_contacts")
+      .update({
+        name: editingContact.name,
+        email: editingContact.email || null,
+        phone: editingContact.phone || null,
+      })
+      .eq("id", editingContact.id)
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Ansprechperson konnte nicht bearbeitet werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setContacts(contacts.map(contact => 
+      contact.id === editingContact.id ? data : contact
+    ));
+    setEditingContact(null);
+    setIsEditContactDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Ansprechperson wurde bearbeitet.",
+    });
+  };
+
+  // Edit speaker functions
+  const editSpeaker = async () => {
+    if (!editingSpeaker || !editingSpeaker.name.trim()) return;
+
+    const { data, error } = await supabase
+      .from("event_planning_speakers")
+      .update({
+        name: editingSpeaker.name,
+        email: editingSpeaker.email || null,
+        phone: editingSpeaker.phone || null,
+        bio: editingSpeaker.bio || null,
+        topic: editingSpeaker.topic || null,
+      })
+      .eq("id", editingSpeaker.id)
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Referent konnte nicht bearbeitet werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSpeakers(speakers.map(speaker => 
+      speaker.id === editingSpeaker.id ? data : speaker
+    ));
+    setEditingSpeaker(null);
+    setIsEditSpeakerDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Referent wurde bearbeitet.",
+    });
+  };
+
+  // Helper functions for auto-filling contact/speaker data
+  const fillFromContact = (contactId: string) => {
+    const contact = availableContacts.find(c => c.id === contactId);
+    if (contact) {
+      setNewContact({
+        name: contact.name || "",
+        email: contact.email || "",
+        phone: contact.phone || "",
+      });
+    }
+  };
+
+  const fillFromProfile = (profileId: string) => {
+    const profile = allProfiles.find(p => p.user_id === profileId);
+    if (profile) {
+      setNewContact({
+        name: profile.display_name || "",
+        email: "",
+        phone: "",
+      });
+    }
+  };
+
+  const fillSpeakerFromContact = (contactId: string) => {
+    const contact = availableContacts.find(c => c.id === contactId);
+    if (contact) {
+      setNewSpeaker({
+        name: contact.name || "",
+        email: contact.email || "",
+        phone: contact.phone || "",
+        bio: contact.role || "",
+        topic: "",
+      });
+    }
   };
 
   // Digital event functions
@@ -2054,6 +2187,49 @@ export function EventPlanningView() {
                       <DialogTitle>Ansprechperson hinzufügen</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Aus vorhandenen Kontakten wählen</Label>
+                          <Select onValueChange={(value) => {
+                            if (value !== "none") {
+                              fillFromContact(value);
+                            }
+                          }}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Kontakt auswählen..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Manuell eingeben</SelectItem>
+                              {availableContacts.map((contact) => (
+                                <SelectItem key={contact.id} value={contact.id}>
+                                  {contact.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Aus Büro-Mitarbeitern wählen</Label>
+                          <Select onValueChange={(value) => {
+                            if (value !== "none") {
+                              fillFromProfile(value);
+                            }
+                          }}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Mitarbeiter auswählen..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Manuell eingeben</SelectItem>
+                              {allProfiles.map((profile) => (
+                                <SelectItem key={profile.user_id} value={profile.user_id}>
+                                  {profile.display_name || 'Unbenannt'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <Separator />
                       <div>
                         <Label htmlFor="contact-name">Name</Label>
                         <Input
@@ -2103,13 +2279,25 @@ export function EventPlanningView() {
                           {contact.phone && <p>📞 {contact.phone}</p>}
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeContact(contact.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingContact(contact);
+                            setIsEditContactDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeContact(contact.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2117,6 +2305,54 @@ export function EventPlanningView() {
                 <p className="text-sm text-muted-foreground">Noch keine Ansprechpersonen hinzugefügt</p>
               )}
             </CardContent>
+
+            {/* Edit Contact Dialog */}
+            <Dialog open={isEditContactDialogOpen} onOpenChange={setIsEditContactDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Ansprechperson bearbeiten</DialogTitle>
+                </DialogHeader>
+                {editingContact && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-contact-name">Name</Label>
+                      <Input
+                        id="edit-contact-name"
+                        value={editingContact.name}
+                        onChange={(e) => setEditingContact({ ...editingContact, name: e.target.value })}
+                        placeholder="Name der Ansprechperson"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-contact-email">E-Mail</Label>
+                      <Input
+                        id="edit-contact-email"
+                        type="email"
+                        value={editingContact.email || ""}
+                        onChange={(e) => setEditingContact({ ...editingContact, email: e.target.value })}
+                        placeholder="email@beispiel.de"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-contact-phone">Telefon</Label>
+                      <Input
+                        id="edit-contact-phone"
+                        type="tel"
+                        value={editingContact.phone || ""}
+                        onChange={(e) => setEditingContact({ ...editingContact, phone: e.target.value })}
+                        placeholder="+49 123 456789"
+                      />
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditContactDialogOpen(false)}>
+                    Abbrechen
+                  </Button>
+                  <Button onClick={editContact}>Speichern</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </Card>
 
           {/* Referenten */}
@@ -2136,6 +2372,27 @@ export function EventPlanningView() {
                       <DialogTitle>Referent hinzufügen</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
+                      <div>
+                        <Label>Aus vorhandenen Kontakten wählen</Label>
+                        <Select onValueChange={(value) => {
+                          if (value !== "none") {
+                            fillSpeakerFromContact(value);
+                          }
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Kontakt auswählen..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Manuell eingeben</SelectItem>
+                            {availableContacts.map((contact) => (
+                              <SelectItem key={contact.id} value={contact.id}>
+                                {contact.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Separator />
                       <div>
                         <Label htmlFor="speaker-name">Name</Label>
                         <Input
@@ -2205,13 +2462,25 @@ export function EventPlanningView() {
                           {speaker.bio && <p className="mt-1">{speaker.bio}</p>}
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeSpeaker(speaker.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingSpeaker(speaker);
+                            setIsEditSpeakerDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeSpeaker(speaker.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2219,6 +2488,72 @@ export function EventPlanningView() {
                 <p className="text-sm text-muted-foreground">Noch keine Referenten hinzugefügt</p>
               )}
             </CardContent>
+
+            {/* Edit Speaker Dialog */}
+            <Dialog open={isEditSpeakerDialogOpen} onOpenChange={setIsEditSpeakerDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Referent bearbeiten</DialogTitle>
+                </DialogHeader>
+                {editingSpeaker && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-speaker-name">Name</Label>
+                      <Input
+                        id="edit-speaker-name"
+                        value={editingSpeaker.name}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, name: e.target.value })}
+                        placeholder="Name des Referenten"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-topic">Thema</Label>
+                      <Input
+                        id="edit-speaker-topic"
+                        value={editingSpeaker.topic || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, topic: e.target.value })}
+                        placeholder="Vortragsthema"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-email">E-Mail</Label>
+                      <Input
+                        id="edit-speaker-email"
+                        type="email"
+                        value={editingSpeaker.email || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, email: e.target.value })}
+                        placeholder="email@beispiel.de"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-phone">Telefon</Label>
+                      <Input
+                        id="edit-speaker-phone"
+                        type="tel"
+                        value={editingSpeaker.phone || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, phone: e.target.value })}
+                        placeholder="+49 123 456789"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-bio">Biografie</Label>
+                      <Textarea
+                        id="edit-speaker-bio"
+                        value={editingSpeaker.bio || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, bio: e.target.value })}
+                        placeholder="Kurze Biografie oder Qualifikation"
+                      />
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditSpeakerDialogOpen(false)}>
+                    Abbrechen
+                  </Button>
+                  <Button onClick={editSpeaker}>Speichern</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </Card>
 
           {/* Termine */}
