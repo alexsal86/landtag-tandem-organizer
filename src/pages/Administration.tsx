@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NewUserForm } from "@/components/NewUserForm";
 import { CreateDemoUsers } from "@/components/CreateDemoUsers";
+import { TenantCollaboration } from "@/components/TenantCollaboration";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -473,7 +474,7 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="general">Allgemein</TabsTrigger>
           <TabsTrigger value="status">Status</TabsTrigger>
           <TabsTrigger value="expenses">Kosten</TabsTrigger>
@@ -482,6 +483,7 @@ export default function Administration() {
           <TabsTrigger value="todos">ToDos</TabsTrigger>
           <TabsTrigger value="meetings">Meetings</TabsTrigger>
           <TabsTrigger value="plannings">Planungen</TabsTrigger>
+          <TabsTrigger value="collaboration">Kollaboration</TabsTrigger>
           {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
         </TabsList>
 
@@ -495,6 +497,10 @@ export default function Administration() {
 
         <TabsContent value="expenses" className="space-y-6">
           <ExpenseManagement />
+        </TabsContent>
+
+        <TabsContent value="collaboration" className="space-y-6">
+          <TenantCollaboration />
         </TabsContent>
 
         <TabsContent value="appointments" className="space-y-6">
