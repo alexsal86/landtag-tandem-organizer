@@ -125,9 +125,19 @@ export const PollListView = () => {
     }
   };
 
-  const openPollLink = (pollId: string) => {
-    const pollUrl = `${window.location.origin}/poll-guest/${pollId}`;
-    window.open(pollUrl, '_blank');
+  const openPollLink = async (pollId: string) => {
+    try {
+      // Create a preview URL for the poll creator
+      const pollUrl = `${window.location.origin}/poll-guest/${pollId}?preview=true`;
+      window.open(pollUrl, '_blank');
+    } catch (error) {
+      console.error('Error opening poll link:', error);
+      toast({
+        title: "Fehler",
+        description: "Der Link konnte nicht geöffnet werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const deletePoll = async (pollId: string) => {

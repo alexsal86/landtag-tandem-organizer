@@ -6,6 +6,7 @@ export default function PollGuest() {
   const { pollId } = useParams<{ pollId: string }>();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+  const isPreview = searchParams.get('preview') === 'true';
 
   if (!pollId) {
     return (
@@ -26,6 +27,7 @@ export default function PollGuest() {
         <PollResponseInterface 
           pollId={pollId} 
           token={token || undefined}
+          isPreview={isPreview}
         />
       </div>
     </div>

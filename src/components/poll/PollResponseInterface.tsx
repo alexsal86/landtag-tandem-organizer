@@ -42,9 +42,10 @@ interface PollResponseInterfaceProps {
   pollId: string;
   token?: string;
   participantId?: string;
+  isPreview?: boolean;
 }
 
-export const PollResponseInterface = ({ pollId, token, participantId }: PollResponseInterfaceProps) => {
+export const PollResponseInterface = ({ pollId, token, participantId, isPreview = false }: PollResponseInterfaceProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,7 +65,10 @@ export const PollResponseInterface = ({ pollId, token, participantId }: PollResp
           .eq('id', pollId)
           .single();
 
-        if (pollError) throw pollError;
+        if (pollError) {
+          console.error('Poll loading error:', pollError);
+          throw new Error('Abstimmung nicht gefunden oder ungültiger Link.');
+        }
         setPoll(pollData);
 
         // Load time slots
@@ -74,7 +78,10 @@ export const PollResponseInterface = ({ pollId, token, participantId }: PollResp
           .eq('poll_id', pollId)
           .order('order_index');
 
-        if (slotsError) throw slotsError;
+        if (slotsError) {
+          console.error('Time slots loading error:', slotsError);
+          throw slotsError;
+        }
         setTimeSlots(slotsData || []);
 
         // Load or create participant
@@ -269,11 +276,21 @@ export const PollResponseInterface = ({ pollId, token, participantId }: PollResp
     );
   }
 
-  if (!poll || !participant) {
+  if (!poll) {
     return (
       <Card className="w-full max-w-2xl mx-auto">
         <CardContent className="p-6 text-center">
           <div className="text-red-500">Abstimmung nicht gefunden oder ungültiger Link.</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!participant && !isPreview) {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="p-6 text-center">
+          <div className="text-red-500">Kein gültiger Teilnehmer-Token gefunden.</div>
         </CardContent>
       </Card>
     );
@@ -290,12 +307,19 @@ export const PollResponseInterface = ({ pollId, token, participantId }: PollResp
           {poll.description && (
             <div className="mb-2">{poll.description}</div>
           )}
-          <div className="text-sm">
-            Teilnehmer: <strong>{participant.name}</strong> ({participant.email})
-            {participant.is_external && (
-              <Badge variant="outline" className="ml-2">Extern</Badge>
-            )}
-          </div>
+          {isPreview ? (
+            <div className="text-sm">
+              <Badge variant="outline" className="mr-2">Vorschau-Modus</Badge>
+              Dies ist eine Vorschau der Terminabstimmung.
+            </div>
+          ) : participant ? (
+            <div className="text-sm">
+              Teilnehmer: <strong>{participant.name}</strong> ({participant.email})
+              {participant.is_external && (
+                <Badge variant="outline" className="ml-2">Extern</Badge>
+              )}
+            </div>
+          ) : null}
           {poll.deadline && (
             <div className="text-sm">
               Antwortfrist: {format(new Date(poll.deadline), 'dd. MMMM yyyy', { locale: de })}
@@ -367,11 +391,18 @@ export const PollResponseInterface = ({ pollId, token, participantId }: PollResp
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button onClick={saveResponses} disabled={saving} className="bg-primary hover:bg-primary/90">
-            {saving ? 'Speichert...' : 'Antworten speichern'}
-          </Button>
-        </div>
+        {!isPreview && (
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button onClick={saveResponses} disabled={saving} className="bg-primary hover:bg-primary/90">
+              {saving ? 'Speichert...' : 'Antworten speichern'}
+            </Button>
+          </div>
+        )}
+        {isPreview && (
+          <div className="flex justify-center gap-2 pt-4 border-t">
+            <Badge variant="secondary">Vorschau-Modus - Antworten können nicht gespeichert werden</Badge>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
