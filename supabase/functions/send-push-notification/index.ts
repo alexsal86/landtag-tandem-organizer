@@ -8,78 +8,85 @@ const corsHeaders = {
 
 console.log("Push notification function initialized");
 
-// Simplified Web Push implementation for testing
-async function sendWebPushNotification(endpoint: string, payload: string, vapidPublicKey: string): Promise<Response> {
-  console.log(`📤 Sending to endpoint: ${endpoint.substring(0, 50)}...`);
+// VAPID JWT creation using Web Crypto API
+async function createVapidJWT(subject: string, audience: string, privateKeyBase64: string): Promise<string> {
+  console.log('🔐 Creating VAPID JWT...');
   
-  // For testing, try different approaches
-  const approaches = [
-    // Approach 1: Minimal headers for testing
-    async () => {
-      console.log('🔄 Trying minimal approach...');
-      return fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'TTL': '2419200'
-        },
-        body: payload
-      });
-    },
-    
-    // Approach 2: With VAPID header but no encryption
-    async () => {
-      console.log('🔄 Trying VAPID approach...');
-      return fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `WebPush ${vapidPublicKey}`,
-          'Content-Type': 'application/json',
-          'TTL': '2419200'
-        },
-        body: payload
-      });
-    },
-    
-    // Approach 3: Chrome-style push
-    async () => {
-      console.log('🔄 Trying Chrome approach...');
-      return fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'Content-Length': payload.length.toString(),
-          'TTL': '2419200'
-        },
-        body: payload
-      });
-    }
-  ];
+  const now = Math.floor(Date.now() / 1000);
   
-  // Try each approach until one works
-  for (const [index, approach] of approaches.entries()) {
-    try {
-      const response = await approach();
-      console.log(`📊 Approach ${index + 1} result: ${response.status}`);
-      
-      if (response.ok || response.status === 201) {
-        console.log(`✅ Approach ${index + 1} succeeded!`);
-        return response;
-      } else {
-        const text = await response.text();
-        console.log(`⚠️ Approach ${index + 1} failed: ${response.status} - ${text}`);
-      }
-    } catch (error) {
-      console.log(`❌ Approach ${index + 1} error:`, error.message);
-    }
+  // JWT Header
+  const header = {
+    typ: 'JWT',
+    alg: 'ES256'
+  };
+  
+  // JWT Payload
+  const payload = {
+    aud: new URL(audience).origin,
+    exp: now + (12 * 60 * 60), // 12 hours
+    sub: subject
+  };
+  
+  // Encode header and payload
+  const encodedHeader = base64urlEncode(JSON.stringify(header));
+  const encodedPayload = base64urlEncode(JSON.stringify(payload));
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+  
+  try {
+    // Convert base64url private key to bytes
+    const privateKeyBytes = base64urlDecode(privateKeyBase64);
+    
+    // Import the private key
+    const privateKey = await crypto.subtle.importKey(
+      'pkcs8',
+      privateKeyBytes,
+      {
+        name: 'ECDSA',
+        namedCurve: 'P-256',
+      },
+      false,
+      ['sign']
+    );
+    
+    // Sign the token
+    const signature = await crypto.subtle.sign(
+      {
+        name: 'ECDSA',
+        hash: 'SHA-256',
+      },
+      privateKey,
+      new TextEncoder().encode(unsignedToken)
+    );
+    
+    const encodedSignature = base64urlEncode(new Uint8Array(signature));
+    const jwt = `${unsignedToken}.${encodedSignature}`;
+    
+    console.log('✅ VAPID JWT created successfully');
+    return jwt;
+  } catch (error) {
+    console.error('❌ Error creating VAPID JWT:', error);
+    throw new Error('Failed to create VAPID JWT: ' + error.message);
   }
+}
+
+// Base64URL encoding/decoding helpers
+function base64urlEncode(data: string | Uint8Array): string {
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  const base64 = btoa(String.fromCharCode(...bytes));
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function base64urlDecode(base64url: string): Uint8Array {
+  // Add padding if needed
+  const padding = '='.repeat((4 - base64url.length % 4) % 4);
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/') + padding;
   
-  // If all approaches fail, return the last failed response
-  return fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: payload
-  });
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 serve(async (req) => {
@@ -91,7 +98,7 @@ serve(async (req) => {
   try {
     console.log('🚀 Starting push notification function...');
     
-    // Test VAPID keys first
+    // Get VAPID keys
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY_FRESH') || '';
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY_FRESH') || '';
     const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:mail@alexander-salomon.de';
@@ -108,13 +115,7 @@ serve(async (req) => {
       console.error('❌ VAPID keys missing!');
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'VAPID keys not configured',
-        debug: {
-          publicKeyExists: !!vapidPublicKey,
-          privateKeyExists: !!vapidPrivateKey,
-          publicKeyLength: vapidPublicKey.length,
-          privateKeyLength: vapidPrivateKey.length
-        }
+        error: 'VAPID keys not configured'
       }), { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -131,9 +132,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // For test requests, check subscriptions but don't send yet
+    // For test requests
     if (body.test || body.type === 'test') {
-      console.log('✅ Test request - checking subscriptions...');
+      console.log('✅ Test request - sending push notifications...');
       
       try {
         // Get all active push subscriptions
@@ -168,25 +169,38 @@ serve(async (req) => {
           });
         }
 
-        // Send Web Push notifications with VAPID authentication
+        // Send notifications with proper VAPID authentication
         let sent = 0;
         let failed = 0;
 
         for (const subscription of subscriptions) {
           try {
-            console.log(`📤 Testing push to subscription ${subscription.id}`);
+            console.log(`📤 Sending push to subscription ${subscription.id}`);
             
-            // Prepare the payload
-            const payload = JSON.stringify({
+            // Create VAPID JWT for this endpoint
+            const vapidJWT = await createVapidJWT(vapidSubject, subscription.endpoint, vapidPrivateKey);
+            
+            // Prepare the notification payload
+            const notificationPayload = {
               title: body.title || 'Test-Benachrichtigung',
               body: body.message || 'Dies ist eine Test-Push-Benachrichtigung!',
               icon: '/favicon.ico',
               badge: '/favicon.ico',
               data: body.data || {}
+            };
+
+            // Send push notification with proper VAPID headers
+            const response = await fetch(subscription.endpoint, {
+              method: 'POST',
+              headers: {
+                'Authorization': `vapid t=${vapidJWT}, k=${vapidPublicKey}`,
+                'Content-Type': 'application/json',
+                'TTL': '2419200'
+              },
+              body: JSON.stringify(notificationPayload)
             });
 
-            // Use the simplified approach that tries multiple methods
-            const response = await sendWebPushNotification(subscription.endpoint, payload, vapidPublicKey);
+            console.log(`📊 Response status: ${response.status}`);
 
             if (response.ok || response.status === 201) {
               sent++;
@@ -196,7 +210,7 @@ serve(async (req) => {
               const responseText = await response.text().catch(() => 'Unable to read response');
               console.log(`❌ Push failed to subscription ${subscription.id}: ${response.status} - ${responseText}`);
               
-              // Deactivate failed subscription if it's invalid (410 = Gone)
+              // Deactivate invalid subscriptions
               if (response.status === 410 || response.status === 404) {
                 await supabaseAdmin
                   .from('push_subscriptions')
@@ -208,7 +222,6 @@ serve(async (req) => {
           } catch (pushError) {
             failed++;
             console.error(`❌ Push error for subscription ${subscription.id}:`, pushError);
-            // Don't deactivate on network errors, only on invalid subscriptions
           }
         }
 
