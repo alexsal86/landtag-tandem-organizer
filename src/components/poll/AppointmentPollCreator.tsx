@@ -242,7 +242,13 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         .map(p => p.email);
 
       if (externalEmails.length > 0) {
+        console.log('=== FRONTEND EMAIL DEBUG ===');
         console.log('Sending emails to:', externalEmails);
+        console.log('Poll ID:', poll.id);
+        console.log('Creator name:', creatorName);
+        console.log('Poll title:', title);
+        console.log('=== ATTEMPTING EDGE FUNCTION CALL ===');
+        
         const { data: emailData, error: emailError } = await supabase.functions.invoke('send-poll-invitation', {
           body: {
             pollId: poll.id,
@@ -252,9 +258,15 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
             creatorName
           }
         });
+        
+        console.log('Edge function response:', { emailData, emailError });
 
       if (emailError) {
+        console.error('=== EMAIL ERROR DETAILS ===');
         console.error('Error sending emails:', emailError);
+        console.error('Error message:', emailError.message);
+        console.error('Error details:', JSON.stringify(emailError, null, 2));
+        console.error('=== END ERROR DETAILS ===');
         toast({
           title: "E-Mail-Versendung fehlgeschlagen",
           description: `Die Abstimmung wurde erstellt, aber E-Mails konnten nicht versendet werden: ${emailError.message}`,
