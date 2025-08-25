@@ -54,7 +54,7 @@ const App = () => (
             <Route path="/distribution-lists/new" element={<CreateDistributionList />} />
             <Route path="/distribution-lists/:id/edit" element={<EditDistributionList />} />
             <Route path="/profile/edit" element={<EditProfile />} />
-            <Route path="/poll/:pollId" element={<PollGuest />} />
+            <Route path="/poll-guest/:pollId" element={<PollGuest />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             
             <Route path="*" element={<NotFound />} />

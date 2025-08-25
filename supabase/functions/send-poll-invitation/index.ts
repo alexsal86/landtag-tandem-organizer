@@ -65,7 +65,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       // Send invitation email
-      const pollUrl = `${Deno.env.get("SUPABASE_URL")?.replace('supabase.co', 'vercel.app') || 'https://your-app.vercel.app'}/poll/${pollId}?token=${token}`;
+      const pollUrl = `https://main--app-name.lovableproject.com/poll-guest/${pollId}?token=${token}`;
       
       const emailResponse = await resend.emails.send({
         from: "Terminabstimmung <onboarding@resend.dev>",

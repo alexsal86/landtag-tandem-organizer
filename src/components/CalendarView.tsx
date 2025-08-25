@@ -9,6 +9,7 @@ import { DayView } from "./calendar/DayView";
 import { WeekView } from "./calendar/WeekView";
 import { MonthView } from "./calendar/MonthView";
 import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
+import { PollListView } from "./poll/PollListView";
 
 export interface CalendarEvent {
   id: string;
@@ -32,7 +33,7 @@ export interface CalendarEvent {
 export function CalendarView() {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<"day" | "week" | "month">("day");
+  const [view, setView] = useState<"day" | "week" | "month" | "polls">("day");
   const [appointments, setAppointments] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<CalendarEvent | null>(null);
@@ -373,7 +374,7 @@ export function CalendarView() {
           </div>
 
           <div className="flex gap-2">
-            {["day", "week", "month"].map((viewType) => (
+            {["day", "week", "month", "polls"].map((viewType) => (
               <Button
                 key={viewType}
                 variant={view === viewType ? "default" : "outline"}
@@ -383,6 +384,7 @@ export function CalendarView() {
                 {viewType === "day" && "Tag"}
                 {viewType === "week" && "Woche"}
                 {viewType === "month" && "Monat"}
+                {viewType === "polls" && "Abstimmungen"}
               </Button>
             ))}
           </div>
@@ -399,10 +401,13 @@ export function CalendarView() {
               {view === "day" && "Tagesansicht"}
               {view === "week" && "Wochenansicht"}
               {view === "month" && "Monatsansicht"}
+              {view === "polls" && "Terminabstimmungen"}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {view === "polls" ? (
+              <PollListView />
+            ) : loading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Termine werden geladen...
               </div>
