@@ -17,6 +17,7 @@ import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus } from "l
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NewUserForm } from "@/components/NewUserForm";
+import { CreateDemoUsers } from "@/components/CreateDemoUsers";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -1311,22 +1312,25 @@ export default function Administration() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Benutzerrollen</CardTitle>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Neuen Benutzer hinzufügen
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Neuen Benutzer erstellen</DialogTitle>
-                      </DialogHeader>
-                      <NewUserForm onSuccess={() => {
-                        loadData();
-                      }} />
-                    </DialogContent>
-                  </Dialog>
+                  <div className="flex gap-2">
+                    <CreateDemoUsers />
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Neuen Benutzer hinzufügen
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Neuen Benutzer erstellen</DialogTitle>
+                        </DialogHeader>
+                        <NewUserForm onSuccess={() => {
+                          loadData();
+                        }} />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
