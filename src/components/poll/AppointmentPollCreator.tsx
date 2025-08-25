@@ -241,6 +241,12 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         .filter(p => p.type === 'external')
         .map(p => p.email);
 
+      console.log('=== PARTICIPANT DEBUG ===');
+      console.log('All participants:', participants);
+      console.log('External emails found:', externalEmails);
+      console.log('External emails count:', externalEmails.length);
+      alert(`Externe E-Mails gefunden: ${externalEmails.length} - ${JSON.stringify(externalEmails)}`);
+
       if (externalEmails.length > 0) {
         console.log('=== FRONTEND EMAIL DEBUG ===');
         console.log('Sending emails to:', externalEmails);
