@@ -43,54 +43,24 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResults = [];
 
-    // Create participants and send emails
+    // Send emails to existing participants
     for (const email of participantEmails) {
       try {
-        // Generate unique token for this participant
-        const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
-        
-        if (tokenError) {
-          console.error("Error generating token:", tokenError);
-          emailResults.push({ email, success: false, error: "Token generation failed" });
+        // Get existing participant (should already exist from AppointmentPollCreator)
+        const { data: participant, error: participantError } = await supabase
+          .from('poll_participants')
+          .select('token, name')
+          .eq('poll_id', pollId)
+          .eq('email', email)
+          .maybeSingle();
+
+        if (participantError || !participant) {
+          console.error("Participant not found for", email, ":", participantError);
+          emailResults.push({ email, success: false, error: "Participant not found" });
           continue;
         }
 
-        const token = tokenData;
-        console.log("Generated token for", email, ":", token);
-
-        // Check if participant already exists
-        const { data: existingParticipant } = await supabase
-          .from('poll_participants')
-          .select('id, token')
-          .eq('poll_id', pollId)
-          .eq('email', email)
-          .single();
-
-        let participantToken = token;
-        
-        if (existingParticipant) {
-          // Use existing token
-          participantToken = existingParticipant.token;
-          console.log("Using existing participant token for", email);
-        } else {
-          // Create new participant record
-          const { error: participantError } = await supabase
-            .from('poll_participants')
-            .insert({
-              poll_id: pollId,
-              email: email,
-              name: email.split('@')[0], // Use email prefix as default name
-              token: token,
-              is_external: true
-            });
-
-          if (participantError) {
-            console.error("Error creating participant:", participantError);
-            emailResults.push({ email, success: false, error: "Participant creation failed" });
-            continue;
-          }
-          console.log("Created new participant for", email);
-        }
+        const participantToken = participant.token;
 
         // Get current domain dynamically
         const origin = req.headers.get('origin') || req.headers.get('referer');
