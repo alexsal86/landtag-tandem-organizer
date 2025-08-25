@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Users, Clock, ExternalLink, BarChart3, Trash2, Edit } from 'lucide-react';
+import { Calendar, Users, Clock, ExternalLink, BarChart3, Trash2, Edit, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { PollResultsDashboard } from './PollResultsDashboard';
 import { PollEditDialog } from './PollEditDialog';
+import { AppointmentPollCreator } from './AppointmentPollCreator';
 
 interface Poll {
   id: string;
@@ -30,6 +31,7 @@ export const PollListView = () => {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPoll, setSelectedPoll] = useState<string | null>(null);
+  const [showCreatePoll, setShowCreatePoll] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -167,6 +169,24 @@ export const PollListView = () => {
     }
   };
 
+  if (showCreatePoll) {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="outline"
+          onClick={() => setShowCreatePoll(false)}
+          className="mb-4"
+        >
+          ← Zurück zur Übersicht
+        </Button>
+        <AppointmentPollCreator onClose={() => {
+          setShowCreatePoll(false);
+          loadPolls(); // Refresh the polls list
+        }} />
+      </div>
+    );
+  }
+
   if (selectedPoll) {
     return (
       <div className="space-y-4">
@@ -195,13 +215,24 @@ export const PollListView = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Terminabstimmungen
-        </CardTitle>
-        <CardDescription>
-          Übersicht über alle erstellten Terminabstimmungen
-        </CardDescription>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Terminabstimmungen
+            </CardTitle>
+            <CardDescription>
+              Übersicht über alle erstellten Terminabstimmungen
+            </CardDescription>
+          </div>
+          <Button
+            onClick={() => setShowCreatePoll(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Neue Terminabstimmung
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {polls.length === 0 ? (
