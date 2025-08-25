@@ -89,6 +89,12 @@ export const PushNotificationTest: React.FC = () => {
       setTestResult({ step: 'Test-Benachrichtigung senden', status: 'pending', message: 'Sende Test-Benachrichtigung...' });
 
       console.log('🚀 Invoking push notification test...');
+      console.log('📋 Test payload:', { 
+        type: 'test',
+        title: 'Push-Test erfolgreich! 🎉',
+        message: 'Das Push-Notification System funktioniert korrekt.',
+        priority: 'high'
+      });
       
       const response = await supabase.functions.invoke('send-push-notification', {
         body: { 
@@ -99,7 +105,9 @@ export const PushNotificationTest: React.FC = () => {
         }
       });
 
-      console.log('📤 Edge Function response:', response);
+      console.log('📤 Raw Edge Function response:', response);
+      console.log('📤 Response data:', response.data);
+      console.log('📤 Response error:', response.error);
 
       if (response.error) {
         console.error('❌ Edge Function error:', response.error);

@@ -165,6 +165,9 @@ serve(async (req) => {
 
   try {
     console.log('🚀 Starting push notification function...');
+    console.log('📥 Request method:', req.method);
+    console.log('📥 Request headers:', Object.fromEntries(req.headers.entries()));
+    console.log('📥 Request URL:', req.url);
     
     // Use the NEW VAPID keys consistently - prioritize NEW keys
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY_NEW');
@@ -208,7 +211,7 @@ serve(async (req) => {
     );
 
     const body = await req.json();
-    console.log('📥 Received request body:', body);
+    console.log('📥 Received request body:', JSON.stringify(body, null, 2));
 
     // Check if this is a test notification - handle with simplified auth
     if (body.test || body.type === 'test') {
