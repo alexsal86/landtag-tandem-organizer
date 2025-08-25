@@ -20,7 +20,6 @@ import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Uplo
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -118,6 +117,7 @@ interface Profile {
 export function EventPlanningView() {
   console.log('=== EventPlanningView component loaded ===');
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [plannings, setPlannings] = useState<EventPlanning[]>([]);
   const [selectedPlanning, setSelectedPlanning] = useState<EventPlanning | null>(null);

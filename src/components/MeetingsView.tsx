@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -73,6 +74,7 @@ interface Profile {
 
 export function MeetingsView() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -644,7 +646,10 @@ export function MeetingsView() {
 
       const { data: followUpTask, error: taskError } = await supabase
         .from('tasks')
-        .insert(followUpTaskData)
+        .insert({
+          ...followUpTaskData,
+          tenant_id: currentTenant?.id || ''
+        })
         .select()
         .single();
 

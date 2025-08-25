@@ -282,7 +282,8 @@ export function useDashboardLayout() {
             name: layoutToSave.name,
             description: 'Custom Dashboard',
             layout_data: JSON.parse(JSON.stringify(layoutToSave.widgets)) as any,
-            is_public: false
+            is_public: false,
+            tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
           }, {
             onConflict: 'id',
             ignoreDuplicates: false

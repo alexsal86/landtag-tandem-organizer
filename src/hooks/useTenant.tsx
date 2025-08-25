@@ -6,7 +6,7 @@ interface Tenant {
   id: string;
   name: string;
   description?: string;
-  settings: Record<string, any>;
+  settings: any; // Changed from Record<string, any> to any to match Json type
   created_at: string;
   updated_at: string;
   is_active: boolean;

@@ -200,6 +200,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
           priority: 'medium',
           status: 'todo',
           due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+          tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
         })
         .select()
         .single();

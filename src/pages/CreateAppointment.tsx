@@ -119,6 +119,7 @@ const CreateAppointment = () => {
           status: values.status,
           reminder_minutes: values.reminder_minutes,
           user_id: user.id,
+          tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
         })
         .select()
         .single();

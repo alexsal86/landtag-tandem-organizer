@@ -132,7 +132,8 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
           owner_id: user.id,
           name: currentLayout.name,
           layout_data: JSON.parse(JSON.stringify(currentLayout)),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
         }, {
           onConflict: 'owner_id'
         });

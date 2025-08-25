@@ -179,6 +179,7 @@ export function CreateContact() {
           billing_address: formData.billing_address || null,
           iban: formData.iban || null,
           tags: formData.tags.length > 0 ? formData.tags : null,
+          tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
         });
 
       if (error) throw error;

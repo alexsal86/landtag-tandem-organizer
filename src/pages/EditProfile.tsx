@@ -188,6 +188,7 @@ export function EditProfile() {
             display_name: formData.display_name || null,
             bio: formData.bio || null,
             avatar_url: formData.avatar_url || null,
+            tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
           });
         error = insertError;
       }

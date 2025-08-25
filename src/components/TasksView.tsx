@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { TaskArchiveModal } from "./TaskArchiveModal";
 import { TaskDetailSidebar } from "./TaskDetailSidebar";
 import { SnoozeManagementSidebar } from "./SnoozeManagementSidebar";
@@ -66,6 +67,8 @@ interface Subtask {
 }
 
 export function TasksView() {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [filter, setFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
@@ -128,7 +131,6 @@ export function TasksView() {
   console.log('TodoCreateOpen state:', todoCreateOpen); // Debug log
   
   const { toast } = useToast();
-  const { user } = useAuth();
 
   // Load tasks from database
   useEffect(() => {
@@ -1159,7 +1161,10 @@ export function TasksView() {
 
         const { error: insertError } = await supabase
           .from('contacts')
-          .insert(newContact);
+          .insert({
+            ...newContact,
+            tenant_id: currentTenant?.id || ''
+          });
 
         if (insertError) throw insertError;
 

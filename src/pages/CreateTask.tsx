@@ -105,6 +105,7 @@ export default function CreateTask() {
         assigned_to: formData.assignedTo === "unassigned" ? null : formData.assignedTo || null,
         user_id: user.id,
         status: "todo",
+        tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
       });
 
       if (error) throw error;

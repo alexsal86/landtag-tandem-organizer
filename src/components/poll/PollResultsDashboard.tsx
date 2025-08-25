@@ -188,6 +188,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
           end_time: slot.end_time,
           title: poll?.title || 'Bestätigter Termin',
           description: poll?.description,
+          tenant_id: 'default-tenant-id', // TODO: Add proper tenant context
           category: 'meeting',
           status: 'confirmed',
           priority: 'high'
