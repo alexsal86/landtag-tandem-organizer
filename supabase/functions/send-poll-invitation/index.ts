@@ -72,7 +72,7 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
-        const participantToken = participant.token;
+        const participantToken = participant.token || 'guest';
 
         // Get current domain dynamically
         const origin = req.headers.get('origin') || req.headers.get('referer');
