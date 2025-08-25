@@ -186,50 +186,26 @@ serve(async (req) => {
     const body = await req.json();
     console.log('📥 Received request body:', body);
 
-    // Check if this is a test notification - handle with relaxed auth
+    // Check if this is a test notification - handle with simplified auth
     if (body.test || body.type === 'test') {
       console.log('🧪 Processing test notification...');
       const { title = 'Test Benachrichtigung', message = 'Dies ist eine Test-Push-Benachrichtigung!', priority = 'medium' } = body;
       
-      // Try to get user from Authorization header, but allow fallback for testing
-      let userId = null;
+      // Clean up any invalid subscriptions first
+      const { error: cleanupError } = await supabaseAdmin
+        .from('push_subscriptions')
+        .delete()
+        .or('endpoint.is.null,p256dh_key.is.null,auth_key.is.null');
       
-      try {
-        const authHeader = req.headers.get('Authorization');
-        if (authHeader) {
-          const token = authHeader.replace('Bearer ', '');
-          const userClient = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            {
-              auth: { persistSession: false },
-              global: { headers: { authorization: authHeader } }
-            }
-          );
-          
-          const { data: { user }, error: userError } = await userClient.auth.getUser();
-          if (user && !userError) {
-            userId = user.id;
-            console.log('✅ Test notification for authenticated user:', userId);
-          } else {
-            console.log('⚠️ Auth error for test:', userError?.message);
-          }
-        }
-      } catch (e) {
-        console.log('ℹ️ No valid user auth for test, will use all active subscriptions:', e.message);
+      if (cleanupError) {
+        console.warn('⚠️ Cleanup warning:', cleanupError.message);
       }
 
-      // Get push subscriptions - either for specific user or all active ones for testing
-      const subscriptionQuery = supabaseAdmin
+      // Get all active push subscriptions for test
+      const { data: subscriptions, error: subError } = await supabaseAdmin
         .from('push_subscriptions')
         .select('*')
         .eq('is_active', true);
-      
-      if (userId) {
-        subscriptionQuery.eq('user_id', userId);
-      }
-      
-      const { data: subscriptions, error: subError } = await subscriptionQuery;
 
       if (subError) {
         console.error('❌ Error fetching subscriptions:', subError);
@@ -242,13 +218,13 @@ serve(async (req) => {
         });
       }
 
-      console.log(`📊 Found ${subscriptions?.length || 0} active subscriptions${userId ? ' for user ' + userId : ' (all users)'}`);
+      console.log(`📊 Found ${subscriptions?.length || 0} active subscriptions for test`);
 
       if (!subscriptions || subscriptions.length === 0) {
         console.log('ℹ️ No active push subscriptions found');
         return new Response(JSON.stringify({ 
           success: true, 
-          message: 'No active subscriptions to send to',
+          message: 'No active subscriptions to send to - Try subscribing to push notifications first',
           sent: 0,
           failed: 0,
           total_subscriptions: 0,
@@ -363,100 +339,7 @@ serve(async (req) => {
       });
     }
 
-    // Check if this is a test notification
-    if (body.test || body.type === 'test') {
-      console.log('🧪 Processing test notification...');
-      const { title = 'Test Benachrichtigung', message = 'Dies ist eine Test-Push-Benachrichtigung!', priority = 'medium' } = body;
-      
-      // Get user's push subscriptions
-      const { data: subscriptions, error: subError } = await supabaseClient
-        .from('push_subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-
-      if (subError) {
-        console.error('Error fetching subscriptions:', subError);
-        return new Response(JSON.stringify({ 
-          error: 'Failed to fetch push subscriptions: ' + subError.message 
-        }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      console.log('Found subscriptions:', subscriptions?.length || 0);
-
-      let sent = 0;
-      let failed = 0;
-
-      if (subscriptions && subscriptions.length > 0) {
-        console.log(`🚀 Processing ${subscriptions.length} subscriptions for test notification`);
-        
-        for (const subscription of subscriptions) {
-          try {
-            console.log(`📨 Sending to subscription: ${subscription.id}`);
-            
-            // Extract audience from endpoint for VAPID JWT
-            const endpointUrl = new URL(subscription.endpoint);
-            const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
-            
-            // Generate VAPID JWT
-            const vapidJWT = await generateVapidJWT(
-              audience,
-              vapidSubject,
-              vapidPublicKey,
-              vapidPrivateKey
-            );
-
-            const payload = JSON.stringify({
-              title,
-              body: message,
-              icon: '/favicon.ico',
-              badge: '/favicon.ico',
-              data: {
-                test: true,
-                timestamp: new Date().toISOString()
-              }
-            });
-
-            await sendWebPushNotification(
-              { endpoint: subscription.endpoint },
-              payload,
-              vapidJWT,
-              vapidPublicKey
-            );
-            
-            sent++;
-            console.log(`✅ Successfully sent test notification to subscription ${subscription.id}`);
-          } catch (error) {
-            console.error(`❌ Failed to send test notification to subscription ${subscription.id}:`, error);
-            failed++;
-            
-            // Deactivate failed subscription
-            await supabaseClient
-              .from('push_subscriptions')
-              .update({ is_active: false })
-              .eq('id', subscription.id);
-          }
-        }
-      }
-
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: `Test notification completed: ${sent} sent, ${failed} failed`,
-        results: {
-          total: subscriptions?.length || 0,
-          success: sent,
-          failures: failed
-        },
-        sent,
-        failed,
-        total_subscriptions: subscriptions?.length || 0
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // For regular notifications, process directly (test notifications already handled above)
 
     // Handle regular notifications
     const { notification_id } = body;
