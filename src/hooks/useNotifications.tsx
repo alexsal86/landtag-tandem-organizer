@@ -263,8 +263,8 @@ export const useNotifications = () => {
       
       if (needNewSubscription) {
         console.log('🔧 Creating new push subscription...');
-        // Use the VAPID public key that matches the server
-        const vapidPublicKey = 'BN4HS-d_H4M5nHH5hF5b5d3nOJwKzFgVzn6DQvYVrD5YF5TdFjyOh2FjF5D3hMF9s5fHJsYF5fHsYF5hYMfF5F8';
+        // Use the VAPID public key from the newly updated secret
+        const vapidPublicKey = 'BKxH_m8qS-FQ3J9i5E6fCgV8X4J-LZE3hM6DQwXVZK5rE5TdFjyOh2FjF5D3hMF9s5fHJsYF5fHsYF5hYMfF5F8';
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
