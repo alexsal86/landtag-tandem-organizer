@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ interface TodoCreateDialogProps {
 
 export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCreateDialogProps) {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<TodoCategory[]>([]);
@@ -82,6 +84,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
     try {
       const { error } = await supabase.from('todos').insert({
         user_id: user?.id,
+        tenant_id: currentTenant?.id || '', // Use current tenant ID
         category_id: categoryId,
         title: title.trim(),
         assigned_to: assignedTo || null,

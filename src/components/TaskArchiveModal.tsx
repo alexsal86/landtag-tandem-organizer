@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Archive, Trash2, Download, Flag, Tag, Calendar, RotateCcw } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +48,8 @@ interface Task {
 }
 
 export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiveModalProps) {
+  const { user } = useAuth();  
+  const { currentTenant } = useTenant();
   const [archivedTasks, setArchivedTasks] = useState<ArchivedTask[]>([]);
   const [archiveSettings, setArchiveSettings] = useState<ArchiveSettings>({});
   const [loading, setLoading] = useState(true);
@@ -204,6 +208,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
           .insert({
             id: task.task_id, // Use the original task ID
             user_id: user.id,
+            tenant_id: currentTenant?.id || '', // Use current tenant ID
             title: task.title,
             description: task.description,
             priority: task.priority,

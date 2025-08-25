@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ interface Document {
 
 export function DocumentsView() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
@@ -125,6 +127,7 @@ export function DocumentsView() {
         .from('documents')
         .insert({
           user_id: user.id,
+          tenant_id: currentTenant?.id || '', // Use current tenant ID
           title: uploadTitle,
           description: uploadDescription,
           file_name: uploadFile.name,

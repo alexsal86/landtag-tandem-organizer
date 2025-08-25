@@ -233,7 +233,7 @@ export type Database = {
           reminder_minutes: number | null
           start_time: string
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
           title: string
           updated_at: string
           user_id: string
@@ -253,7 +253,7 @@ export type Database = {
           reminder_minutes?: number | null
           start_time: string
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           title: string
           updated_at?: string
           user_id: string
@@ -273,7 +273,7 @@ export type Database = {
           reminder_minutes?: number | null
           start_time?: string
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           title?: string
           updated_at?: string
           user_id?: string
@@ -560,7 +560,7 @@ export type Database = {
           sustainability_practices: string | null
           tags: string[] | null
           tax_number: string | null
-          tenant_id: string | null
+          tenant_id: string
           time_zone: string | null
           trade_associations: string[] | null
           twitter: string | null
@@ -640,7 +640,7 @@ export type Database = {
           sustainability_practices?: string | null
           tags?: string[] | null
           tax_number?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           time_zone?: string | null
           trade_associations?: string[] | null
           twitter?: string | null
@@ -720,7 +720,7 @@ export type Database = {
           sustainability_practices?: string | null
           tags?: string[] | null
           tax_number?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           time_zone?: string | null
           trade_associations?: string[] | null
           twitter?: string | null
@@ -866,7 +866,7 @@ export type Database = {
           id: string
           status: string | null
           tags: string[] | null
-          tenant_id: string | null
+          tenant_id: string
           title: string
           updated_at: string
           user_id: string
@@ -882,7 +882,7 @@ export type Database = {
           id?: string
           status?: string | null
           tags?: string[] | null
-          tenant_id?: string | null
+          tenant_id: string
           title: string
           updated_at?: string
           user_id: string
@@ -898,7 +898,7 @@ export type Database = {
           id?: string
           status?: string | null
           tags?: string[] | null
-          tenant_id?: string | null
+          tenant_id?: string
           title?: string
           updated_at?: string
           user_id?: string
@@ -2234,7 +2234,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string
           user_id: string
         }
@@ -2244,7 +2244,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string
           user_id: string
         }
@@ -2254,7 +2254,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string
           user_id?: string
         }
@@ -2631,7 +2631,7 @@ export type Database = {
           priority: string
           progress: number | null
           status: string
-          tenant_id: string | null
+          tenant_id: string
           title: string
           updated_at: string
           user_id: string
@@ -2647,7 +2647,7 @@ export type Database = {
           priority?: string
           progress?: number | null
           status?: string
-          tenant_id?: string | null
+          tenant_id: string
           title: string
           updated_at?: string
           user_id: string
@@ -2663,7 +2663,7 @@ export type Database = {
           priority?: string
           progress?: number | null
           status?: string
-          tenant_id?: string | null
+          tenant_id?: string
           title?: string
           updated_at?: string
           user_id?: string
@@ -2718,7 +2718,7 @@ export type Database = {
           layout_data: Json
           name: string
           owner_id: string
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -2729,7 +2729,7 @@ export type Database = {
           layout_data?: Json
           name: string
           owner_id: string
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -2740,7 +2740,7 @@ export type Database = {
           layout_data?: Json
           name?: string
           owner_id?: string
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -2923,7 +2923,7 @@ export type Database = {
           due_date: string | null
           id: string
           is_completed: boolean
-          tenant_id: string | null
+          tenant_id: string
           title: string
           updated_at: string
           user_id: string
@@ -2936,7 +2936,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           is_completed?: boolean
-          tenant_id?: string | null
+          tenant_id: string
           title: string
           updated_at?: string
           user_id: string
@@ -2949,7 +2949,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           is_completed?: boolean
-          tenant_id?: string | null
+          tenant_id?: string
           title?: string
           updated_at?: string
           user_id?: string

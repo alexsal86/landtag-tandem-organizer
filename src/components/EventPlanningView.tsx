@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -464,6 +466,7 @@ export function EventPlanningView() {
       .from("appointments")
       .insert({
         user_id: user?.id,
+        tenant_id: currentTenant?.id || '', // Use current tenant ID
         title: `Geplant: ${selectedPlanning.title}`,
         start_time: dateTime.toISOString(),
         end_time: new Date(dateTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
