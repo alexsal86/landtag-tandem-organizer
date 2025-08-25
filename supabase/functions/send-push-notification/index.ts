@@ -174,27 +174,31 @@ serve(async (req) => {
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY_FRESH') || '';
     const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:mail@alexander-salomon.de';
     
-    console.log('🔑 VAPID configuration:', {
+    console.log('🔑 FRESH VAPID configuration:', {
       publicKeyExists: !!vapidPublicKey,
       privateKeyExists: !!vapidPrivateKey,
       subject: vapidSubject,
       publicKeyLength: vapidPublicKey?.length || 0,
-      privateKeyLength: vapidPrivateKey?.length || 0
+      privateKeyLength: vapidPrivateKey?.length || 0,
+      publicKeyStart: vapidPublicKey.substring(0, 10),
+      privateKeyStart: vapidPrivateKey.substring(0, 10)
     });
 
     if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error('❌ Missing VAPID NEW configuration');
+      const errorMsg = 'Missing VAPID FRESH configuration';
+      console.error('❌', errorMsg);
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Server configuration error: Missing VAPID NEW keys',
+        error: 'Server configuration error: ' + errorMsg,
         details: {
-          publicKey: !!vapidPublicKey,
-          privateKey: !!vapidPrivateKey,
-          subject: !!vapidSubject
+          publicKeyExists: !!vapidPublicKey,
+          privateKeyExists: !!vapidPrivateKey,
+          publicKeyLength: vapidPublicKey?.length || 0,
+          privateKeyLength: vapidPrivateKey?.length || 0
         }
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
