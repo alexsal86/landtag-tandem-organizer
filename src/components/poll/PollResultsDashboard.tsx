@@ -289,15 +289,15 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
         <CardContent>
           <div className="space-y-4">
             {slotResults.map((result, index) => (
-              <Card key={result.timeSlot.id} className={index === 0 ? 'border-green-200 bg-green-50' : ''}>
+              <Card key={result.timeSlot.id} className={index === 0 ? 'border-success bg-success/5 dark:border-success dark:bg-success/10' : ''}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       {index === 0 && (
-                        <Trophy className="h-5 w-5 text-yellow-500" />
+                        <Trophy className="h-5 w-5 text-warning" />
                       )}
                       <div>
-                        <div className="flex items-center gap-2 font-medium">
+                        <div className="flex items-center gap-2 font-medium text-foreground">
                           <CalendarIcon className="h-4 w-4" />
                           {format(new Date(result.timeSlot.start_time), 'dd. MMMM yyyy', { locale: de })}
                           <Clock className="h-4 w-4 ml-2" />
@@ -305,15 +305,15 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
                           {format(new Date(result.timeSlot.end_time), 'HH:mm')}
                         </div>
                         <div className="flex gap-3 mt-2">
-                          <Badge variant="outline" className="text-green-600">
+                          <Badge variant="outline" className="text-success border-success/30">
                             <Check className="h-3 w-3 mr-1" />
                             {result.available} verfügbar
                           </Badge>
-                          <Badge variant="outline" className="text-yellow-600">
+                          <Badge variant="outline" className="text-warning border-warning/30">
                             <AlertCircle className="h-3 w-3 mr-1" />
                             {result.tentative} vorbehalt
                           </Badge>
-                          <Badge variant="outline" className="text-red-600">
+                          <Badge variant="outline" className="text-destructive border-destructive/30">
                             <X className="h-3 w-3 mr-1" />
                             {result.unavailable} nicht verfügbar
                           </Badge>
@@ -322,7 +322,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <div className="font-bold text-lg">Score: {result.score}</div>
+                        <div className="font-bold text-lg text-foreground">Score: {result.score}</div>
                         <div className="text-sm text-muted-foreground">
                           {result.responses.length}/{result.total} Antworten
                         </div>
@@ -376,7 +376,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
                         {participant.is_external ? (
                           <>
                             <span className="h-2 w-2 bg-blue-500 rounded-full"></span>
-                            Extern
+                            <span className="truncate max-w-32">{participant.email}</span>
                           </>
                         ) : (
                           <>

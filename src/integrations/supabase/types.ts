@@ -146,6 +146,7 @@ export type Database = {
       appointment_polls: {
         Row: {
           created_at: string
+          current_version: number | null
           deadline: string | null
           description: string | null
           id: string
@@ -157,6 +158,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          current_version?: number | null
           deadline?: string | null
           description?: string | null
           id?: string
@@ -168,6 +170,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          current_version?: number | null
           deadline?: string | null
           description?: string | null
           id?: string
@@ -2179,6 +2182,51 @@ export type Database = {
           },
         ]
       }
+      poll_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_sent: boolean
+          notification_type: string
+          participant_id: string
+          poll_id: string
+          sent_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_sent?: boolean
+          notification_type: string
+          participant_id: string
+          poll_id: string
+          sent_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_sent?: boolean
+          notification_type?: string
+          participant_id?: string
+          poll_id?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_notifications_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "poll_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_notifications_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poll_participants: {
         Row: {
           created_at: string
@@ -2303,6 +2351,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "poll_time_slots_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_versions: {
+        Row: {
+          changes_summary: string | null
+          created_at: string
+          created_by: string
+          deadline: string | null
+          description: string | null
+          id: string
+          poll_id: string
+          title: string
+          version_number: number
+        }
+        Insert: {
+          changes_summary?: string | null
+          created_at?: string
+          created_by: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          poll_id: string
+          title: string
+          version_number?: number
+        }
+        Update: {
+          changes_summary?: string | null
+          created_at?: string
+          created_by?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          poll_id?: string
+          title?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_versions_poll_id_fkey"
             columns: ["poll_id"]
             isOneToOne: false
             referencedRelation: "appointment_polls"
@@ -3341,6 +3433,14 @@ export type Database = {
           title_param: string
           type_name: string
           user_id_param: string
+        }
+        Returns: string
+      }
+      create_poll_notification: {
+        Args: {
+          _notification_type: string
+          _participant_id: string
+          _poll_id: string
         }
         Returns: string
       }

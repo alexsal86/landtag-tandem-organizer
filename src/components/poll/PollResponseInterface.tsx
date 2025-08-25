@@ -29,6 +29,7 @@ interface Participant {
   id: string;
   name: string;
   email: string;
+  is_external?: boolean;
 }
 
 interface Response {
@@ -96,10 +97,22 @@ export const PollResponseInterface = ({ pollId, token, participantId }: PollResp
             .select('*')
             .eq('poll_id', pollId)
             .eq('token', token)
-            .single();
+            .maybeSingle();
 
           if (participantError) throw participantError;
           currentParticipant = participantData;
+        } else {
+          // Try to find participant without token (fallback for old links)
+          const { data: participantData, error: participantError } = await supabase
+            .from('poll_participants')
+            .select('*')
+            .eq('poll_id', pollId)
+            .eq('is_external', true)
+            .maybeSingle();
+
+          if (!participantError && participantData) {
+            currentParticipant = participantData;
+          }
         }
 
         setParticipant(currentParticipant);
@@ -279,6 +292,9 @@ export const PollResponseInterface = ({ pollId, token, participantId }: PollResp
           )}
           <div className="text-sm">
             Teilnehmer: <strong>{participant.name}</strong> ({participant.email})
+            {participant.is_external && (
+              <Badge variant="outline" className="ml-2">Extern</Badge>
+            )}
           </div>
           {poll.deadline && (
             <div className="text-sm">

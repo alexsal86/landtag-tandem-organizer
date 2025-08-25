@@ -187,6 +187,44 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
       const creatorName = profile?.display_name || user.email || 'Unbekannt';
 
+      // Create all participants first (internal and external)
+      const participantPromises = participants.map(async (p) => {
+        if (p.type === 'external') {
+          // Generate token for external participants
+          const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
+          if (tokenError) {
+            console.error('Error generating token:', tokenError);
+            throw tokenError;
+          }
+
+          return {
+            poll_id: poll.id,
+            email: p.email,
+            name: p.name,
+            is_external: true,
+            token: tokenData
+          };
+        } else {
+          return {
+            poll_id: poll.id,
+            email: p.email,
+            name: p.name,
+            is_external: false
+          };
+        }
+      });
+
+      const participantData = await Promise.all(participantPromises);
+      
+      const { error: participantsError } = await supabase
+        .from('poll_participants')
+        .insert(participantData);
+
+      if (participantsError) {
+        console.error('Error creating participants:', participantsError);
+        throw participantsError;
+      }
+
       // Send invitations to external participants
       const externalEmails = participants
         .filter(p => p.type === 'external')
@@ -213,24 +251,6 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         }
       }
 
-      // Create internal participants
-      const internalParticipants = participants.filter(p => p.type === 'internal');
-      if (internalParticipants.length > 0) {
-        const participantData = internalParticipants.map(p => ({
-          poll_id: poll.id,
-          email: p.email,
-          name: p.name,
-          is_external: false
-        }));
-
-        const { error: participantsError } = await supabase
-          .from('poll_participants')
-          .insert(participantData);
-
-        if (participantsError) {
-          console.error('Error creating internal participants:', participantsError);
-        }
-      }
 
       toast({
         title: "Abstimmung erstellt",

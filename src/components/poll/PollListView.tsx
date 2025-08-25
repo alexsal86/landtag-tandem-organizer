@@ -3,13 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Users, Clock, ExternalLink, BarChart3 } from 'lucide-react';
+import { Calendar, Users, Clock, ExternalLink, BarChart3, Trash2, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { PollResultsDashboard } from './PollResultsDashboard';
+import { PollEditDialog } from './PollEditDialog';
 
 interface Poll {
   id: string;
@@ -127,6 +128,45 @@ export const PollListView = () => {
     window.open(pollUrl, '_blank');
   };
 
+  const deletePoll = async (pollId: string) => {
+    if (!window.confirm('Möchten Sie diese Terminabstimmung wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+      return;
+    }
+
+    try {
+      // Send deletion notifications first
+      await supabase.functions.invoke('send-poll-notifications', {
+        body: {
+          pollId,
+          notificationType: 'poll_deleted'
+        }
+      });
+
+      // Delete the poll (cascade will handle related data)
+      const { error } = await supabase
+        .from('appointment_polls')
+        .delete()
+        .eq('id', pollId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Abstimmung gelöscht",
+        description: "Die Terminabstimmung wurde erfolgreich gelöscht und alle Teilnehmer benachrichtigt.",
+      });
+
+      // Reload polls
+      loadPolls();
+    } catch (error) {
+      console.error('Error deleting poll:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Abstimmung konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (selectedPoll) {
     return (
       <div className="space-y-4">
@@ -231,24 +271,41 @@ export const PollListView = () => {
                       {format(new Date(poll.created_at), 'dd.MM.yyyy', { locale: de })}
                     </div>
                   </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedPoll(poll.id)}
-                      >
-                        <BarChart3 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openPollLink(poll.id)}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                   <TableCell className="text-center">
+                     <div className="flex items-center justify-center gap-1">
+                       <Button
+                         size="sm"
+                         variant="outline"
+                         onClick={() => setSelectedPoll(poll.id)}
+                         title="Ergebnisse anzeigen"
+                       >
+                         <BarChart3 className="h-4 w-4" />
+                       </Button>
+                       <Button
+                         size="sm"
+                         variant="outline"
+                         onClick={() => openPollLink(poll.id)}
+                         title="Link öffnen"
+                       >
+                         <ExternalLink className="h-4 w-4" />
+                       </Button>
+                       <PollEditDialog
+                         pollId={poll.id}
+                         currentTitle={poll.title}
+                         currentDescription={poll.description}
+                         currentDeadline={poll.deadline}
+                         onUpdate={loadPolls}
+                       />
+                       <Button
+                         size="sm"
+                         variant="destructive"
+                         onClick={() => deletePoll(poll.id)}
+                         title="Abstimmung löschen"
+                       >
+                         <Trash2 className="h-4 w-4" />
+                       </Button>
+                     </div>
+                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
