@@ -312,17 +312,21 @@ export function EmployeesView() {
           return;
         }
 
-        // Debug missing settings
+        // Debug missing settings - Updated message
         if (!settingsRes.data) {
           console.warn('IMPORTANT: No employee settings found for user:', user.id, user.email);
-          console.warn('The admin has not yet entered any employee settings for this user');
+          console.warn('If admin has just entered data, try refreshing the page');
           toast({
             title: "Keine Mitarbeitereinstellungen",
-            description: "Der Administrator hat noch keine Einstellungen für Sie eingetragen. Bitte wenden Sie sich an Ihren Administrator.",
+            description: "Falls der Administrator soeben Daten eingetragen hat, laden Sie die Seite neu (F5).",
             variant: "destructive",
           });
         } else {
-          console.log('Employee settings found:', settingsRes.data);
+          console.log('SUCCESS: Employee settings found:', settingsRes.data);
+          toast({
+            title: "Daten geladen",
+            description: "Mitarbeitereinstellungen erfolgreich geladen.",
+          });
         }
 
         setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
@@ -718,10 +722,23 @@ export function EmployeesView() {
                       <span className="text-muted-foreground">–</span>
                     </div>
                   )}
-                  {!selfSettings && (
-                    <div className="text-center text-orange-600 text-sm mt-2 p-2 bg-orange-50 rounded border">
-                      <strong>Hinweis:</strong> Der Administrator hat noch keine Mitarbeitereinstellungen für Sie eingetragen. 
-                      Bitte wenden Sie sich an Ihren Administrator.
+                  {!selfSettings ? (
+                    <div className="text-center text-blue-600 text-sm mt-2 p-3 bg-blue-50 rounded border border-blue-200">
+                      <strong>Hinweis:</strong> Ihre Einstellungen werden geladen... <br/>
+                      Falls Sie soeben vom Administrator eingetragen wurden, laden Sie die Seite neu (F5).
+                      <br/>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                        onClick={() => window.location.reload()}
+                      >
+                        Seite neu laden
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center text-green-600 text-sm mt-1 p-2 bg-green-50 rounded">
+                      ✓ Einstellungen erfolgreich geladen
                     </div>
                   )}
                 </div>
