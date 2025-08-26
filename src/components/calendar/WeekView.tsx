@@ -20,6 +20,7 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
       }
     }
   }, [weekStart]);
+
   const days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(weekStart);
     date.setDate(weekStart.getDate() + i);
@@ -122,111 +123,128 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
   };
 
   return (
-    <div className="overflow-auto h-full">
-      {/* Header with days */}
-      <div className="grid grid-cols-[80px,repeat(7,1fr)] border-b border-border bg-muted/30 sticky top-0 z-10">
-        <div className="p-3 text-sm font-medium"></div>
-        {days.map((day) => (
-          <div key={day.toISOString()} className="p-3 text-center border-l border-border">
-            <div className="text-sm font-medium">{formatDay(day)}</div>
+    <div className="h-full flex bg-background">
+      {/* Hours column */}
+      <div className="w-16 border-r bg-muted/20 sticky left-0 z-20">
+        <div className="h-12 border-b bg-background"></div>
+        {hours.map((hour) => (
+          <div
+            key={hour}
+            id={hour === 9 ? 'week-hour-9' : undefined}
+            className="h-16 border-b text-xs text-muted-foreground p-2 text-right"
+          >
+            {hour.toString().padStart(2, '0')}:00
           </div>
         ))}
       </div>
 
-      {/* Time grid with scrolling */}
-      <div className="overflow-auto" ref={scrollContainerRef} style={{ maxHeight: 'calc(100vh - 300px)' }}>
-        <div className="grid grid-cols-[80px,repeat(7,1fr)] relative">
-          {/* Time column */}
-          {hours.map((hour) => (
-            <div 
-              key={`time-${hour}`}
-              id={hour === 9 ? 'week-hour-9' : undefined}
-              className="p-2 text-sm text-muted-foreground border-b border-border bg-muted/20 sticky left-0 z-10"
+      {/* Calendar content */}
+      <div className="flex-1 overflow-auto">
+        {/* Header with days */}
+        <div className="grid grid-cols-7 border-b sticky top-0 bg-background z-10">
+          {days.map((day, index) => (
+            <div
+              key={index}
+              className="p-2 border-r text-center h-12"
             >
-              {hour.toString().padStart(2, '0')}:00
-            </div>
-          ))}
-          
-          {/* Day columns */}
-          {days.map((day, dayIndex) => (
-            <div key={`day-${day.toISOString()}`} className="relative">
-              {/* Hour cells for this day */}
-              {hours.map((hour) => (
-                <div 
-                  key={`${day.toDateString()}-${hour}`} 
-                  className="min-h-[60px] p-1 border-b border-l border-border hover:bg-accent/20"
-                >
-                </div>
-              ))}
-              
-              {/* Events for this day - rendered on top */}
-              {(() => {
-                const dayEvents = getEventsForDay(day);
-                const eventLayout = getEventLayout(dayEvents);
-                
-                return eventLayout.map(({ event, column, totalColumns }) => {
-                  const widthPercentage = 100 / totalColumns;
-                  const leftOffset = (widthPercentage * column);
-                  
-                  // Calculate precise positioning and height
-                  const [startHour, startMinutes] = event.time.split(':').map(Number);
-                  let topOffset = startHour * 60 + (startMinutes / 60) * 60; // Convert to pixels (60px per hour)
-                  let eventHeight = 58; // Default height
-                  
-                  if (event.endTime) {
-                    // Calculate actual height based on end time
-                    const eventEnd = new Date(event.endTime);
-                    
-                    if (eventEnd.toDateString() === day.toDateString()) {
-                      // Event ends on same day
-                      const endHour = eventEnd.getHours();
-                      const endMinutes = eventEnd.getMinutes();
-                      
-                      // Calculate total duration in pixels
-                      const startTotalMinutes = startHour * 60 + startMinutes;
-                      const endTotalMinutes = endHour * 60 + endMinutes;
-                      const durationMinutes = endTotalMinutes - startTotalMinutes;
-                      eventHeight = Math.max(durationMinutes, 20); // Minimum 20px height
-                    } else {
-                      // Multi-day event - extends to end of day
-                      const hoursToEndOfDay = 24 - startHour;
-                      const minutesToEndOfDay = hoursToEndOfDay * 60 - startMinutes;
-                      eventHeight = minutesToEndOfDay;
-                    }
-                  } else {
-                    // Fallback to duration calculation
-                    const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-                    eventHeight = Math.max(durationMinutes, 20);
-                  }
-                  
-                  return (
-                    <div
-                      key={event.id}
-                      className={`absolute p-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)}`}
-                      style={{ 
-                        width: `${widthPercentage - 1}%`,
-                        left: `${leftOffset}%`,
-                        top: `${topOffset}px`,
-                        height: `${eventHeight}px`,
-                        marginLeft: '4px',
-                        backgroundColor: event.category_color || undefined,
-                        borderLeftColor: event.category_color || undefined,
-                        zIndex: 5
-                      }}
-                      onClick={() => onAppointmentClick?.(event)}
-                    >
-                      <div className="font-medium truncate w-full text-xs">{event.title}</div>
-                      <div className="opacity-80 truncate w-full text-xs">
-                        {formatEventDisplay(event)}
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
+              <div className="font-medium text-sm">{formatDay(day)}</div>
             </div>
           ))}
         </div>
+
+        {/* Time grid with events */}
+        <div 
+          ref={scrollContainerRef}
+          className="relative"
+        >
+          <div className="grid grid-cols-7">
+            {/* Days columns with events */}
+            {days.map((day, dayIndex) => (
+              <div key={dayIndex} className="border-r relative">
+                {/* Hour cells */}
+                {hours.map((hour) => (
+                  <div
+                    key={hour}
+                    className="h-16 border-b hover:bg-accent/50 transition-colors"
+                  />
+                ))}
+
+                {/* Events overlay */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {(() => {
+                    const dayEvents = getEventsForDay(day);
+                    const eventLayout = getEventLayout(dayEvents);
+                    
+                    return eventLayout.map(({ event, column, totalColumns }) => {
+                      const widthPercentage = 100 / totalColumns;
+                      const leftOffset = (widthPercentage * column);
+                      
+                      // Calculate precise positioning and height
+                      const [startHour, startMinutes] = event.time.split(':').map(Number);
+                      let topOffset = startHour * 64 + (startMinutes / 60) * 64; // Convert to pixels (64px per hour)
+                      let eventHeight = 62; // Default height
+                      
+                      if (event.endTime) {
+                        // Calculate actual height based on end time
+                        const eventEnd = new Date(event.endTime);
+                        
+                        if (eventEnd.toDateString() === day.toDateString()) {
+                          // Event ends on same day
+                          const endHour = eventEnd.getHours();
+                          const endMinutes = eventEnd.getMinutes();
+                          
+                          // Calculate total duration in pixels
+                          const startTotalMinutes = startHour * 60 + startMinutes;
+                          const endTotalMinutes = endHour * 60 + endMinutes;
+                          const durationMinutes = endTotalMinutes - startTotalMinutes;
+                          eventHeight = Math.max((durationMinutes * 64) / 60, 20); // Minimum 20px height
+                        } else {
+                          // Multi-day event - extends to end of day
+                          const hoursToEndOfDay = 24 - startHour;
+                          const minutesToEndOfDay = hoursToEndOfDay * 60 - startMinutes;
+                          eventHeight = (minutesToEndOfDay * 64) / 60;
+                        }
+                      } else {
+                        // Fallback to duration calculation
+                        const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+                        eventHeight = Math.max((durationMinutes * 64) / 60, 20);
+                      }
+                      
+                      return (
+                        <div
+                          key={event.id}
+                          className={`absolute p-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto ${getEventTypeColor(event)}`}
+                          style={{ 
+                            width: `${widthPercentage - 1}%`,
+                            left: `${leftOffset}%`,
+                            top: `${topOffset}px`,
+                            height: `${eventHeight}px`,
+                            marginLeft: '4px',
+                            backgroundColor: event.category_color || undefined,
+                            borderLeftColor: event.category_color || undefined,
+                            zIndex: 5
+                          }}
+                          onClick={() => onAppointmentClick?.(event)}
+                        >
+                          <div className="font-medium truncate w-full text-xs">{event.title}</div>
+                          <div className="opacity-80 truncate w-full text-xs">
+                            {formatEventDisplay(event)}
+                          </div>
+                          {event.location && (
+                            <div className="text-xs opacity-75 truncate">
+                              {event.location}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-     </div>
-   );
- }
+    </div>
+  );
+}
