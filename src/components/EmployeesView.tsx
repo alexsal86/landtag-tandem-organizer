@@ -634,11 +634,33 @@ export function EmployeesView() {
                 </div>
               ) : (
                 <div className="space-y-1 text-sm">
-                  <div className="flex justify-between"><span>Stunden/Woche</span><span>{selfSettings?.hours_per_week ?? '–'}</span></div>
-                  <div className="flex justify-between"><span>Arbeitstage/Woche</span><span>{selfSettings?.days_per_week ?? '–'}</span></div>
-                  <div className="flex justify-between"><span>Urlaubstage/Jahr</span><span>{selfSettings?.annual_vacation_days ?? '–'}</span></div>
-                  {selfSettings?.employment_start_date && (
-                    <div className="flex justify-between"><span>Beginn Arbeitsverhältnis</span><span>{new Date(selfSettings.employment_start_date).toLocaleDateString('de-DE')}</span></div>
+                  <div className="flex justify-between">
+                    <span>Stunden/Woche</span>
+                    <span>{selfSettings?.hours_per_week ?? '–'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Arbeitstage/Woche</span>
+                    <span>{selfSettings?.days_per_week ?? '–'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Urlaubstage/Jahr</span>
+                    <span>{selfSettings?.annual_vacation_days ?? '–'}</span>
+                  </div>
+                  {selfSettings?.employment_start_date ? (
+                    <div className="flex justify-between">
+                      <span>Beginn Arbeitsverhältnis</span>
+                      <span>{new Date(selfSettings.employment_start_date).toLocaleDateString('de-DE')}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span>Beginn Arbeitsverhältnis</span>
+                      <span className="text-muted-foreground">–</span>
+                    </div>
+                  )}
+                  {!selfSettings && (
+                    <div className="text-center text-muted-foreground text-sm mt-2">
+                      Keine Einstellungen verfügbar. Bitte wenden Sie sich an Ihren Administrator.
+                    </div>
                   )}
                 </div>
               )}
