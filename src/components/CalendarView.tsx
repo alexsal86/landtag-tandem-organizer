@@ -342,7 +342,7 @@ export function CalendarView() {
           <div className="flex gap-2">
             <Button 
               className="gap-2"
-              onClick={() => navigate("/create-appointment")}
+              onClick={() => navigate("/appointments/new")}
             >
               <Plus className="h-4 w-4" />
               Neuer Termin
