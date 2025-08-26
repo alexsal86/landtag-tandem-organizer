@@ -427,7 +427,7 @@ export function TasksView() {
       const { data: subtasksData, error: subtasksError } = await supabase
         .from('subtasks')
         .select('*')
-        .or(`assigned_to.eq.${user.id},assigned_to.eq.{${user.id}}`)
+        .or(`assigned_to.eq.${user.id},assigned_to.eq.{${user.id}},assigned_to.like.%${user.id}%`)
         .eq('is_completed', false);
 
       if (subtasksError) {
