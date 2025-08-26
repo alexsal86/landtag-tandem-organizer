@@ -583,10 +583,16 @@ export function TasksView() {
         .order('display_name');
 
       if (error) throw error;
+      console.log('Loaded users from profiles:', data);
       setUsers(data || []);
     } catch (error) {
-      console.error('Error loading users:', error);
-    }
+      console.error('Error loading users from profiles:', error);
+      
+      // Fallback: Try to get current user info at least
+      if (user) {
+        console.log('Using fallback user info');
+        setUsers([{ user_id: user.id, display_name: user.email }]);
+      }
   };
 
   const loadTaskComments = async () => {
@@ -1868,20 +1874,23 @@ export function TasksView() {
                                        </div>
                                      </div>
                                    )}
-                                   <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
-                                       {subtask.assigned_to && subtask.assigned_to.length > 0 && (
-                                         <div>
-                                           Zuständig: {typeof subtask.assigned_to === 'string' ? subtask.assigned_to : (Array.isArray(subtask.assigned_to) ? subtask.assigned_to.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ') : '')}
-                                         </div>
-                                       )}
-                                     {subtask.due_date && (
-                                       <div>
-                                         Fällig: {new Date(subtask.due_date).toLocaleDateString('de-DE')}
-                                       </div>
-                                     )}
-                                   </div>
-                                 </div>
-                                 <div className="flex gap-1">
+                                    <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
+                                        {subtask.assigned_to && subtask.assigned_to.length > 0 && (
+                                          <div>
+                                            Zuständig: {typeof subtask.assigned_to === 'string' 
+                                              ? users.find(u => u.user_id === subtask.assigned_to)?.display_name || subtask.assigned_to
+                                              : (Array.isArray(subtask.assigned_to) 
+                                                ? subtask.assigned_to.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ') 
+                                                : '')}
+                                          </div>
+                                        )}
+                                      {subtask.due_date && (
+                                        <div>
+                                          Fällig: {new Date(subtask.due_date).toLocaleDateString('de-DE')}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
                                    <Button
                                      variant="ghost"
                                      size="sm"
