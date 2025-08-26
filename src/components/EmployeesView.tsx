@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { startOfYear, endOfYear } from "date-fns";
 
 // Types derived from DB schema
 type LeaveType = "vacation" | "sick" | "other";
@@ -256,16 +257,58 @@ export function EmployeesView() {
             .from("profiles")
             .select("user_id, display_name, avatar_url")
             .eq("user_id", user.id)
-            .maybeSingle(),
+            .single(),
           supabase
             .from("leave_requests")
-            .select("user_id, type, status, start_date")
-            .eq("user_id", user.id),
+            .select("id, type, status, start_date, end_date")
+            .eq("user_id", user.id)
+            .gte("start_date", startOfYear(new Date()).toISOString())
+            .lte("end_date", endOfYear(new Date()).toISOString())
         ]);
 
-        if (settingsRes.error) throw settingsRes.error;
-        if (profileRes.error) throw profileRes.error;
-        if (leavesRes.error) throw leavesRes.error;
+        console.log('Employee settings loaded for user:', user.id, settingsRes.data);
+        console.log('Profile loaded:', profileRes.data);
+        console.log('Leave requests loaded:', leavesRes.data?.length || 0, 'requests');
+
+        if (settingsRes.error) {
+          console.error("Error loading employee settings:", settingsRes.error);
+          toast({
+            title: "Fehler",
+            description: "Fehler beim Laden der Mitarbeitereinstellungen",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (profileRes.error) {
+          console.error("Error loading profile:", profileRes.error);
+          toast({
+            title: "Fehler",
+            description: "Fehler beim Laden des Profils",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (leavesRes.error) {
+          console.error("Error loading leave requests:", leavesRes.error);
+          toast({
+            title: "Fehler",
+            description: "Fehler beim Laden der Urlaubsanträge",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Debug missing settings
+        if (!settingsRes.data) {
+          console.warn('No employee settings found for user:', user.id);
+          toast({
+            title: "Hinweis",
+            description: "Keine Mitarbeitereinstellungen gefunden. Bitte wenden Sie sich an Ihren Administrator.",
+            variant: "destructive",
+          });
+        }
 
         setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
         setSelfProfile((profileRes.data as Profile) || null);
