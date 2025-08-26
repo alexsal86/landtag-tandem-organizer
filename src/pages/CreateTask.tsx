@@ -115,9 +115,9 @@ export default function CreateTask() {
         title: formData.title,
         description: formData.description,
         priority: formData.priority,
-        category: formData.category,
+        category: formData.category || 'personal',
         due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-        assigned_to: formData.assignedTo.length > 0 ? formData.assignedTo : null,
+        assigned_to: (formData.assignedTo && formData.assignedTo.length > 0) ? formData.assignedTo : null,
         user_id: user.id,
         status: "todo",
         tenant_id: currentTenant.id
@@ -127,9 +127,9 @@ export default function CreateTask() {
         title: formData.title,
         description: formData.description,
         priority: formData.priority,
-        category: formData.category || 'personal', // Ensure valid category
+        category: formData.category || 'personal',
         due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-        assigned_to: formData.assignedTo && formData.assignedTo.length > 0 ? formData.assignedTo : null,
+        assigned_to: (formData.assignedTo && formData.assignedTo.length > 0) ? formData.assignedTo : null,
         user_id: user.id,
         status: "todo",
         tenant_id: currentTenant.id
