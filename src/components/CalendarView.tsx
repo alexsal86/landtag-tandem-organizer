@@ -109,6 +109,8 @@ export function CalendarView() {
 
   const processAppointments = async (appointmentsData: any[], startDate: Date, endDate: Date) => {
     try {
+      console.log('🔍 Processing appointments for date range:', startDate.toISOString(), 'to', endDate.toISOString());
+      
       // Fetch appointment categories to get colors
       const { data: categoriesData } = await supabase
         .from('appointment_categories')
@@ -125,6 +127,7 @@ export function CalendarView() {
       const formattedEvents: CalendarEvent[] = [];
 
       // Process regular appointments
+      console.log('📅 Processing', appointmentsData.length, 'regular appointments');
       for (const appointment of appointmentsData) {
         const startTime = new Date(appointment.start_time);
         const endTime = new Date(appointment.end_time);
@@ -170,24 +173,31 @@ export function CalendarView() {
       }
 
       // Process external calendar events
-      const { data: externalEvents } = await supabase
+      console.log('🔍 Fetching external events for date range...');
+      const { data: externalEvents, error: externalError } = await supabase
         .from('external_events')
         .select(`
           *,
           external_calendars (
             name,
             color,
-            calendar_type
+            calendar_type,
+            user_id
           )
         `)
         .gte('start_time', startDate.toISOString())
         .lte('start_time', endDate.toISOString())
-        .eq('external_calendars.is_active', true)
-        .eq('external_calendars.sync_enabled', true)
         .order('start_time', { ascending: true });
 
+      console.log('📊 External events query result:', {
+        data: externalEvents,
+        error: externalError,
+        count: externalEvents?.length || 0
+      });
+
       // Process external events
-      if (externalEvents) {
+      if (externalEvents && externalEvents.length > 0) {
+        console.log('📅 Processing', externalEvents.length, 'external events');
         for (const externalEvent of externalEvents) {
           const startTime = new Date(externalEvent.start_time);
           const endTime = new Date(externalEvent.end_time);
@@ -210,6 +220,8 @@ export function CalendarView() {
             category_color: externalEvent.external_calendars?.color || '#6b7280'
           });
         }
+      } else {
+        console.log('⚠️ No external events found');
       }
 
       // Get current user

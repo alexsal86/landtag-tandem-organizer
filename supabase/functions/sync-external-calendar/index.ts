@@ -72,8 +72,8 @@ function parseICS(icsContent: string): ICSEvent[] {
       }
       currentEvent = null;
       
-      // Limit to maximum 1000 events to prevent timeout
-      if (events.length >= 1000) {
+      // Limit to maximum 500 events to prevent timeout
+      if (events.length >= 500) {
         console.log(`Limiting to ${events.length} events to prevent timeout`);
         break;
       }
@@ -200,21 +200,32 @@ serve(async (req) => {
     if (eventsToInsert.length > 0) {
       console.log(`Inserting ${eventsToInsert.length} events in batches...`);
       
-      const batchSize = 100;
+      const batchSize = 50; // Smaller batches
+      let successCount = 0;
+      
       for (let i = 0; i < eventsToInsert.length; i += batchSize) {
         const batch = eventsToInsert.slice(i, i + batchSize);
         
-        const { error: insertError } = await supabase
-          .from('external_events')
-          .insert(batch);
+        try {
+          const { error: insertError } = await supabase
+            .from('external_events')
+            .insert(batch);
 
-        if (insertError) {
-          console.error(`Error inserting batch ${i / batchSize + 1}:`, insertError);
-          throw insertError;
+          if (insertError) {
+            console.error(`Error inserting batch ${i / batchSize + 1}:`, insertError);
+            // Continue with other batches instead of throwing
+            continue;
+          }
+          
+          successCount += batch.length;
+          console.log(`✅ Inserted batch ${i / batchSize + 1}/${Math.ceil(eventsToInsert.length / batchSize)} (${batch.length} events)`);
+        } catch (error) {
+          console.error(`❌ Failed batch ${i / batchSize + 1}:`, error);
+          continue;
         }
-        
-        console.log(`Inserted batch ${i / batchSize + 1}/${Math.ceil(eventsToInsert.length / batchSize)}`);
       }
+      
+      console.log(`📊 Successfully inserted ${successCount}/${eventsToInsert.length} events`);
     }
 
     console.log(`Successfully synced ${eventsToInsert.length} events for calendar ${calendar.name}`);
