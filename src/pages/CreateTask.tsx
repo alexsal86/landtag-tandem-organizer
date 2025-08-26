@@ -32,8 +32,10 @@ export default function CreateTask() {
     priority: "medium",
     category: "personal", // Default to valid category
     dueDate: "",
-    assignedTo: [] as string[],
+    assignedTo: [] as string[], // Ensure this is always an array
   });
+
+  console.log('🔍 CreateTask component render - formData:', formData);
 
   // Load user profiles and task configurations
   useEffect(() => {
@@ -128,10 +130,23 @@ export default function CreateTask() {
         return;
       }
 
-      // Prepare task data with proper array handling
-      const assignedToArray = Array.isArray(formData.assignedTo) 
-        ? formData.assignedTo.filter(id => id && id.trim() !== '') 
-        : [];
+      // Debug current formData
+      console.log('📝 Current formData before processing:', formData);
+      console.log('📝 Type of assignedTo:', typeof formData.assignedTo, Array.isArray(formData.assignedTo));
+      
+      // Prepare assigned_to field - ensure it's either null or a proper array
+      let assignedToField = null;
+      if (Array.isArray(formData.assignedTo) && formData.assignedTo.length > 0) {
+        // Filter out any empty strings or invalid values
+        const validAssignments = formData.assignedTo.filter(id => 
+          id && typeof id === 'string' && id.trim() !== ''
+        );
+        if (validAssignments.length > 0) {
+          assignedToField = validAssignments;
+        }
+      }
+      
+      console.log('📝 Processed assigned_to field:', assignedToField);
       
       const taskData = {
         title: formData.title.trim(),
@@ -139,13 +154,11 @@ export default function CreateTask() {
         priority: formData.priority,
         category: formData.category || 'personal',
         due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-        assigned_to: assignedToArray.length > 0 ? assignedToArray : null,
+        assigned_to: assignedToField,
         user_id: user.id,
         status: "todo",
         tenant_id: currentTenant.id
       };
-      
-      console.log('📝 Prepared assigned_to array:', assignedToArray);
 
       console.log('📝 Inserting task with data:', taskData);
 
