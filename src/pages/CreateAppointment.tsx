@@ -27,8 +27,8 @@ const appointmentSchema = z.object({
   end_time: z.string().min(1, "Endzeit ist erforderlich"),
   location: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]),
-  category: z.enum(["meeting", "appointment", "event", "task", "other"]),
-  status: z.enum(["planned", "confirmed", "cancelled", "completed"]),
+  category: z.string().min(1, "Kategorie ist erforderlich"), // Changed to string to accept dynamic categories
+  status: z.string().min(1, "Status ist erforderlich"), // Changed to string to accept dynamic statuses  
   reminder_minutes: z.number().min(0),
 }).refine((data) => {
   const start = new Date(data.start_time);
@@ -51,6 +51,7 @@ const CreateAppointment = () => {
   const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
   const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string }>>([]);
   const [appointmentStatuses, setAppointmentStatuses] = useState<Array<{ name: string; label: string }>>([]);
+  const [appointmentLocations, setAppointmentLocations] = useState<Array<{ id: string; name: string; address?: string }>>([]);
   const [showPollCreator, setShowPollCreator] = useState(false);
 
   const form = useForm<AppointmentFormValues>({
@@ -75,20 +76,24 @@ const CreateAppointment = () => {
       const [
         { data: contactsData, error: contactsError },
         { data: categoriesData, error: categoriesError },
-        { data: statusesData, error: statusesError }
+        { data: statusesData, error: statusesError },
+        { data: locationsData, error: locationsError }
       ] = await Promise.all([
         supabase.from('contacts').select('*').eq('user_id', user.id).order('name'),
         supabase.from('appointment_categories').select('name, label').eq('is_active', true).order('order_index'),
-        supabase.from('appointment_statuses').select('name, label').eq('is_active', true).order('order_index')
+        supabase.from('appointment_statuses').select('name, label').eq('is_active', true).order('order_index'),
+        supabase.from('appointment_locations').select('id, name, address').eq('is_active', true).order('order_index')
       ]);
       
       if (contactsError) console.error('Error fetching contacts:', contactsError);
       if (categoriesError) console.error('Error fetching categories:', categoriesError);
       if (statusesError) console.error('Error fetching statuses:', statusesError);
+      if (locationsError) console.error('Error fetching locations:', locationsError);
       
       setContacts(contactsData || []);
       setAppointmentCategories(categoriesData || []);
       setAppointmentStatuses(statusesData || []);
+      setAppointmentLocations(locationsData || []);
 
       // Set default values if data is available
       if (categoriesData && categoriesData.length > 0) {
@@ -187,21 +192,6 @@ const CreateAppointment = () => {
     medium: "Mittel", 
     high: "Hoch",
     urgent: "Dringend"
-  };
-
-  const categoryLabels = {
-    meeting: "Besprechung",
-    appointment: "Termin",
-    event: "Veranstaltung",
-    task: "Aufgabe",
-    other: "Sonstiges"
-  };
-
-  const statusLabels = {
-    planned: "Geplant",
-    confirmed: "Bestätigt",
-    cancelled: "Abgesagt",
-    completed: "Abgeschlossen"
   };
 
   return (
@@ -323,7 +313,6 @@ const CreateAppointment = () => {
                     )}
                   />
 
-                  <div className="md:col-span-2 space-y-4">
                     <FormField
                       control={form.control}
                       name="location"
@@ -342,7 +331,13 @@ const CreateAppointment = () => {
                                   } else if (value === "custom") {
                                     field.onChange("");
                                   } else {
-                                    field.onChange(value);
+                                    // Find the selected location from the list
+                                    const selectedLocation = appointmentLocations.find(loc => loc.id === value);
+                                    if (selectedLocation) {
+                                      field.onChange(selectedLocation.name + (selectedLocation.address ? ` - ${selectedLocation.address}` : ''));
+                                    } else {
+                                      field.onChange(value);
+                                    }
                                   }
                                 }}
                               >
@@ -352,10 +347,11 @@ const CreateAppointment = () => {
                                 <SelectContent>
                                   <SelectItem value="custom">Benutzerdefiniert eingeben</SelectItem>
                                   <SelectItem value="digital">Digital</SelectItem>
-                                  <SelectItem value="Hauptbüro">Hauptbüro</SelectItem>
-                                  <SelectItem value="Wahlkreisbüro">Wahlkreisbüro</SelectItem>
-                                  <SelectItem value="Bundestag">Bundestag</SelectItem>
-                                  <SelectItem value="Rathaus">Rathaus</SelectItem>
+                                  {appointmentLocations.map((location) => (
+                                    <SelectItem key={location.id} value={location.id}>
+                                      {location.name}{location.address && ` - ${location.address}`}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                               
@@ -380,7 +376,7 @@ const CreateAppointment = () => {
                                 </div>
                               )}
                               
-                              {field.value !== "Digital" && (
+                              {field.value !== "Digital" && !appointmentLocations.find(loc => field.value?.includes(loc.name)) && (
                                 <Input 
                                   placeholder="Genaue Adresse oder Raum"
                                   value={field.value || ""}
@@ -393,7 +389,6 @@ const CreateAppointment = () => {
                         </FormItem>
                       )}
                     />
-                  </div>
 
                   <FormField
                     control={form.control}
