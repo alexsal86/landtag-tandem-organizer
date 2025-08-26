@@ -249,7 +249,7 @@ export function EmployeesView() {
         const [settingsRes, profileRes, leavesRes] = await Promise.all([
           supabase
             .from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays")
+            .select("user_id, hours_per_week, timezone, workdays, days_per_week, annual_vacation_days, employment_start_date")
             .eq("user_id", user.id)
             .maybeSingle(),
           supabase
@@ -634,7 +634,12 @@ export function EmployeesView() {
                 </div>
               ) : (
                 <div className="space-y-1 text-sm">
-                  <div className="flex justify-between"><span>Arbeitstage/Woche</span><span>{selfSettings?.workdays ? selfSettings.workdays.filter((w) => w).length : '–'}</span></div>
+                  <div className="flex justify-between"><span>Stunden/Woche</span><span>{selfSettings?.hours_per_week ?? '–'}</span></div>
+                  <div className="flex justify-between"><span>Arbeitstage/Woche</span><span>{selfSettings?.days_per_week ?? '–'}</span></div>
+                  <div className="flex justify-between"><span>Urlaubstage/Jahr</span><span>{selfSettings?.annual_vacation_days ?? '–'}</span></div>
+                  {selfSettings?.employment_start_date && (
+                    <div className="flex justify-between"><span>Beginn Arbeitsverhältnis</span><span>{new Date(selfSettings.employment_start_date).toLocaleDateString('de-DE')}</span></div>
+                  )}
                 </div>
               )}
             </CardContent>
