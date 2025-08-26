@@ -1544,7 +1544,8 @@ export function MeetingsView() {
                   meeting_id: selectedMeeting.id,
                   title: item.title,
                   description: item.description || '',
-                   assigned_to: item.assigned_to || 'unassigned',
+                    assigned_to: Array.isArray(item.assigned_to) ? item.assigned_to : 
+                      (item.assigned_to ? [item.assigned_to] : []),
                    parent_id: item.parent_id,
                    updated_at: new Date().toISOString()
                 })),

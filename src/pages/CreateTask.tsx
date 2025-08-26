@@ -31,7 +31,7 @@ export default function CreateTask() {
     priority: "medium",
     category: "", // Will be set from loaded categories
     dueDate: "",
-    assignedTo: "",
+    assignedTo: [] as string[],
   });
 
   // Load user profiles and task configurations
@@ -116,7 +116,7 @@ export default function CreateTask() {
         priority: formData.priority,
         category: formData.category,
         due_date: new Date(formData.dueDate).toISOString(),
-        assigned_to: formData.assignedTo === "unassigned" ? null : formData.assignedTo || null,
+        assigned_to: formData.assignedTo.length > 0 ? formData.assignedTo : null,
         user_id: user.id,
         status: "todo",
         tenant_id: currentTenant.id
@@ -248,8 +248,8 @@ export default function CreateTask() {
                 <div className="space-y-2">
                   <Label htmlFor="assignedTo">Zugewiesen an</Label>
                   <Select
-                    value={formData.assignedTo}
-                    onValueChange={(value) => setFormData({ ...formData, assignedTo: value })}
+                    value={formData.assignedTo.length > 0 ? formData.assignedTo[0] : "unassigned"}
+                    onValueChange={(value) => setFormData({ ...formData, assignedTo: value === "unassigned" ? [] : [value] })}
                   >
                     <SelectTrigger className="bg-background">
                       <SelectValue placeholder="Person auswählen..." />
@@ -257,7 +257,7 @@ export default function CreateTask() {
                     <SelectContent className="bg-background border-border z-50">
                       <SelectItem value="unassigned">Niemand zugewiesen</SelectItem>
                       {userProfiles.map((profile) => (
-                        <SelectItem key={profile.id} value={profile.display_name || profile.user_id}>
+                        <SelectItem key={profile.id} value={profile.user_id}>
                           {profile.isCurrentUser ? "Ich" : (profile.display_name || "Unbekannter Nutzer")}
                           {profile.isCurrentUser && " (Aktueller Nutzer)"}
                         </SelectItem>

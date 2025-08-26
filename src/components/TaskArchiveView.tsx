@@ -17,7 +17,7 @@ interface ArchivedTask {
   description: string;
   priority: "low" | "medium" | "high";
   category: "legislation" | "constituency" | "committee" | "personal";
-  assigned_to?: string;
+  assigned_to?: string[];
   progress?: number;
   due_date: string;
   completed_at: string;
@@ -157,7 +157,7 @@ export function TaskArchiveView() {
         `"${task.description || ''}"`,
         task.priority,
         task.category,
-        `"${task.assigned_to || ''}"`,
+        `"${task.assigned_to ? task.assigned_to.join(', ') : ''}"`,
         task.due_date,
         task.completed_at,
         task.archived_at
@@ -353,8 +353,8 @@ export function TaskArchiveView() {
                         <Archive className="h-4 w-4" />
                         {getTaskDeleteInfo(task)}
                       </div>
-                      {task.assigned_to && (
-                        <div>Zugewiesen an: {task.assigned_to}</div>
+                      {task.assigned_to && task.assigned_to.length > 0 && (
+                        <div>Zugewiesen an: {task.assigned_to.join(', ')}</div>
                       )}
                     </div>
                   </div>

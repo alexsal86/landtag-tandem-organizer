@@ -19,7 +19,7 @@ interface Task {
   status: "todo" | "in-progress" | "completed";
   dueDate: string;
   category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
-  assignedTo?: string;
+  assignedTo?: string[];
   progress?: number;
   call_log_id?: string;
 }
@@ -52,7 +52,7 @@ interface Subtask {
   task_id: string;
   user_id: string;
   description: string;
-  assigned_to?: string;
+  assigned_to?: string[];
   due_date?: string;
   is_completed: boolean;
   order_index: number;
@@ -90,7 +90,7 @@ export function TaskDetailSidebar({
   const [taskDocuments, setTaskDocuments] = useState<TaskDocument[]>([]);
   const [uploading, setUploading] = useState(false);
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
-  const [newSubtask, setNewSubtask] = useState({ description: '', assigned_to: '', due_date: '' });
+  const [newSubtask, setNewSubtask] = useState({ description: '', assigned_to: [] as string[], due_date: '' });
   const [editingSubtask, setEditingSubtask] = useState<{ [id: string]: Partial<Subtask> }>({});
   const { toast } = useToast();
   const { user } = useAuth();
@@ -209,7 +209,7 @@ export function TaskDetailSidebar({
           status: editFormData.status,
           due_date: editFormData.dueDate,
           category: editFormData.category,
-          assigned_to: editFormData.assignedTo,
+          assigned_to: editFormData.assignedTo && editFormData.assignedTo.length > 0 ? editFormData.assignedTo : null,
           progress: editFormData.progress,
         })
         .eq('id', task.id);
@@ -474,14 +474,14 @@ export function TaskDetailSidebar({
           task_id: task.id,
           user_id: user.id,
           description: newSubtask.description.trim(),
-          assigned_to: newSubtask.assigned_to || null,
+          assigned_to: newSubtask.assigned_to.length > 0 ? newSubtask.assigned_to : null,
           due_date: newSubtask.due_date || null,
           order_index: nextOrderIndex,
         });
 
       if (error) throw error;
 
-      setNewSubtask({ description: '', assigned_to: '', due_date: '' });
+      setNewSubtask({ description: '', assigned_to: [], due_date: '' });
       loadSubtasks(task.id);
 
       toast({
@@ -685,10 +685,10 @@ export function TaskDetailSidebar({
             <div>
               <Label htmlFor="assignedTo">Zugewiesen an</Label>
               <Select
-                value={editFormData.assignedTo || 'unassigned'}
+                value={editFormData.assignedTo && editFormData.assignedTo.length > 0 ? editFormData.assignedTo[0] : 'unassigned'}
                 onValueChange={(value) => setEditFormData(prev => ({ 
                   ...prev, 
-                  assignedTo: value === 'unassigned' ? undefined : value 
+                  assignedTo: value === 'unassigned' ? [] : [value] 
                 }))}
               >
                 <SelectTrigger>
@@ -766,8 +766,8 @@ export function TaskDetailSidebar({
                 <div>
                   <Label htmlFor="subtask-assigned">Zuständig</Label>
                   <Select
-                    value={newSubtask.assigned_to}
-                    onValueChange={(value) => setNewSubtask(prev => ({ ...prev, assigned_to: value === 'unassigned' ? '' : value }))}
+                    value={newSubtask.assigned_to.length > 0 ? newSubtask.assigned_to[0] : 'unassigned'}
+                    onValueChange={(value) => setNewSubtask(prev => ({ ...prev, assigned_to: value === 'unassigned' ? [] : [value] }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Optional" />
@@ -817,10 +817,16 @@ export function TaskDetailSidebar({
                       
                       <div className="grid grid-cols-2 gap-2">
                         <Select
-                          value={editingSubtask[subtask.id]?.assigned_to || subtask.assigned_to || 'unassigned'}
+                          value={(() => {
+                            const editing = editingSubtask[subtask.id]?.assigned_to;
+                            if (editing) {
+                              return Array.isArray(editing) && editing.length > 0 ? editing[0] : 'unassigned';
+                            }
+                            return subtask.assigned_to && subtask.assigned_to.length > 0 ? subtask.assigned_to[0] : 'unassigned';
+                          })()}
                           onValueChange={(value) => setEditingSubtask(prev => ({
                             ...prev,
-                            [subtask.id]: { ...prev[subtask.id], assigned_to: value === 'unassigned' ? null : value }
+                            [subtask.id]: { ...prev[subtask.id], assigned_to: value === 'unassigned' ? [] : [value] }
                           }))}
                         >
                           <SelectTrigger>
@@ -898,9 +904,9 @@ export function TaskDetailSidebar({
                            </div>
                          )}
                          <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                           {subtask.assigned_to && (
-                             <span>Zuständig: {users.find(u => u.user_id === subtask.assigned_to)?.display_name || subtask.assigned_to}</span>
-                           )}
+                            {subtask.assigned_to && subtask.assigned_to.length > 0 && (
+                              <span>Zuständig: {subtask.assigned_to.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ')}</span>
+                            )}
                            {subtask.due_date && (
                              <span>Fällig: {formatDate(subtask.due_date)}</span>
                            )}

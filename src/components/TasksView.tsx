@@ -340,7 +340,7 @@ export function TasksView() {
       const { data: subtasksData, error } = await supabase
         .from('subtasks')
         .select('*, result_text, completed_at')
-        .eq('assigned_to', user.id)
+        .contains('assigned_to', [user.id])
         .eq('is_completed', false);
 
       if (error) throw error;
@@ -1637,12 +1637,12 @@ export function TasksView() {
                            <span>Wiedervorlage</span>
                          </div>
                          
-                         {task.assignedTo && (
-                           <div className="flex items-center gap-1">
-                             <User className="h-4 w-4" />
-                             <span>{users.find(u => u.user_id === task.assignedTo)?.display_name || task.assignedTo}</span>
-                           </div>
-                         )}
+                          {task.assignedTo && task.assignedTo.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <User className="h-4 w-4" />
+                              <span>{task.assignedTo.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ')}</span>
+                            </div>
+                          )}
                          
                          <div 
                            className="flex items-center gap-1 cursor-pointer hover:text-primary"
@@ -1770,11 +1770,11 @@ export function TasksView() {
                                      </div>
                                    )}
                                    <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
-                                     {subtask.assigned_to && (
-                                       <div>
-                                         Zuständig: {users.find(u => u.user_id === subtask.assigned_to)?.display_name || subtask.assigned_to}
-                                       </div>
-                                     )}
+                                      {subtask.assigned_to && subtask.assigned_to.length > 0 && (
+                                        <div>
+                                          Zuständig: {subtask.assigned_to.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ')}
+                                        </div>
+                                      )}
                                      {subtask.due_date && (
                                        <div>
                                          Fällig: {new Date(subtask.due_date).toLocaleDateString('de-DE')}

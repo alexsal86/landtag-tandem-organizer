@@ -12,7 +12,7 @@ interface AgendaItem {
   description?: string;
   notes?: string;
   result_text?: string;
-  assigned_to?: string;
+  assigned_to?: string[];
   order_index: number;
 }
 
@@ -90,10 +90,13 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
     }
   };
 
-  const getAssignedUserName = (userId?: string) => {
-    if (!userId) return null;
-    const profile = profiles.find(p => p.user_id === userId);
-    return profile?.display_name || 'Unbekannter Benutzer';
+  const getAssignedUserNames = (userIds?: string[]) => {
+    if (!userIds || userIds.length === 0) return null;
+    const names = userIds.map(userId => {
+      const profile = profiles.find(p => p.user_id === userId);
+      return profile?.display_name || 'Unbekannter Benutzer';
+    });
+    return names.join(', ');
   };
 
   const handlePrint = () => {
@@ -194,11 +197,11 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
                       </div>
                     )}
 
-                    {/* Assigned User */}
-                    {item.assigned_to && (
+                    {/* Assigned Users */}
+                    {item.assigned_to && item.assigned_to.length > 0 && (
                       <div>
                         <p className="text-sm font-medium text-muted-foreground mb-1">Zugewiesen an:</p>
-                        <p className="text-sm">{getAssignedUserName(item.assigned_to)}</p>
+                        <p className="text-sm">{getAssignedUserNames(item.assigned_to)}</p>
                       </div>
                     )}
 
