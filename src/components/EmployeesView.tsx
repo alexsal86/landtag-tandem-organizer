@@ -266,9 +266,13 @@ export function EmployeesView() {
             .lte("end_date", endOfYear(new Date()).toISOString())
         ]);
 
-        console.log('Employee settings loaded for user:', user.id, settingsRes.data);
+        console.log('=== DEBUGGING FOR USER ===');
+        console.log('User ID:', user.id);
+        console.log('User Email:', user.email);
+        console.log('Employee settings loaded:', settingsRes.data);
         console.log('Profile loaded:', profileRes.data);
         console.log('Leave requests loaded:', leavesRes.data?.length || 0, 'requests');
+        console.log('=== END DEBUG ===');
 
         if (settingsRes.error) {
           console.error("Error loading employee settings:", settingsRes.error);
@@ -302,12 +306,15 @@ export function EmployeesView() {
 
         // Debug missing settings
         if (!settingsRes.data) {
-          console.warn('No employee settings found for user:', user.id);
+          console.warn('IMPORTANT: No employee settings found for user:', user.id, user.email);
+          console.warn('The admin has not yet entered any employee settings for this user');
           toast({
-            title: "Hinweis",
-            description: "Keine Mitarbeitereinstellungen gefunden. Bitte wenden Sie sich an Ihren Administrator.",
+            title: "Keine Mitarbeitereinstellungen",
+            description: "Der Administrator hat noch keine Einstellungen für Sie eingetragen. Bitte wenden Sie sich an Ihren Administrator.",
             variant: "destructive",
           });
+        } else {
+          console.log('Employee settings found:', settingsRes.data);
         }
 
         setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
@@ -701,8 +708,9 @@ export function EmployeesView() {
                     </div>
                   )}
                   {!selfSettings && (
-                    <div className="text-center text-muted-foreground text-sm mt-2">
-                      Keine Einstellungen verfügbar. Bitte wenden Sie sich an Ihren Administrator.
+                    <div className="text-center text-orange-600 text-sm mt-2 p-2 bg-orange-50 rounded border">
+                      <strong>Hinweis:</strong> Der Administrator hat noch keine Mitarbeitereinstellungen für Sie eingetragen. 
+                      Bitte wenden Sie sich an Ihren Administrator.
                     </div>
                   )}
                 </div>
