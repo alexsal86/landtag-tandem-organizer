@@ -334,6 +334,7 @@ export function TasksView() {
     }
     
     console.log('Loading assigned subtasks for user:', user.id);
+    console.log('Current user object:', user);
     
     try {
       // Get regular subtasks assigned to this user
@@ -507,6 +508,7 @@ export function TasksView() {
       }
 
       console.log('All assigned subtasks:', allSubtasks);
+      console.log('Setting assignedSubtasks state with', allSubtasks.length, 'items');
       setAssignedSubtasks(allSubtasks);
     } catch (error) {
       console.error('Error loading assigned subtasks:', error);
