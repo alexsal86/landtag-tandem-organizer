@@ -291,17 +291,12 @@ export default function CreateTask() {
                   />
                 </div>
 
+                {/* TEMPORARILY REMOVED: MultiSelect for testing array issues */}
                 <div className="space-y-2">
-                  <Label htmlFor="assignedTo">Zugewiesen an (optional)</Label>
-                   <MultiSelect
-                    options={(userProfiles || []).map(profile => ({
-                      value: profile.user_id,
-                      label: profile.isCurrentUser ? "Ich" : (profile.display_name || "Unbekannter Nutzer")
-                    }))}
-                    selected={formData.assignedTo}
-                    onChange={(value) => setFormData({ ...formData, assignedTo: Array.isArray(value) ? value.filter(id => id && id.trim() !== '') : [] })}
-                    placeholder="Personen auswählen..."
-                  />
+                  <Label className="text-muted-foreground">Zuweisungen (temporär deaktiviert)</Label>
+                  <div className="p-3 bg-muted/50 rounded-md text-sm text-muted-foreground">
+                    Feld temporär entfernt um Array-Fehler zu testen
+                  </div>
                 </div>
               </div>
 
