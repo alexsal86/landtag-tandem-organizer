@@ -2034,25 +2034,29 @@ export function TasksView() {
                                    <div className={`font-medium ${subtask.is_completed ? "line-through text-muted-foreground" : ""}`}>
                                      {subtask.title}
                                    </div>
-                                   {subtask.is_completed && subtask.result_text && (
-                                     <div className="mt-2 p-3 bg-emerald-500/10 border-l-4 border-emerald-500 rounded">
-                                       <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400 mb-1">
-                                         Ergebnis:
-                                       </div>
-                                       <div className="text-sm text-emerald-600 dark:text-emerald-300">
-                                         {subtask.result_text}
-                                       </div>
-                                       <div className="text-xs text-emerald-500 dark:text-emerald-400 mt-2">
-                                         Erledigt am: {subtask.completed_at ? new Date(subtask.completed_at).toLocaleDateString('de-DE', {
-                                           day: '2-digit',
-                                           month: '2-digit',
-                                           year: 'numeric',
-                                           hour: '2-digit',
-                                           minute: '2-digit'
-                                         }) : ''}
-                                       </div>
-                                     </div>
-                                   )}
+                                    {subtask.is_completed && (
+                                      <div className="mt-2 p-3 bg-emerald-500/10 border-l-4 border-emerald-500 rounded">
+                                        {subtask.result_text && (
+                                          <>
+                                            <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400 mb-1">
+                                              Ergebnis:
+                                            </div>
+                                            <div className="text-sm text-emerald-600 dark:text-emerald-300 mb-2">
+                                              {subtask.result_text}
+                                            </div>
+                                          </>
+                                        )}
+                                        <div className="text-xs text-emerald-500 dark:text-emerald-400">
+                                          Erledigt am: {subtask.completed_at ? new Date(subtask.completed_at).toLocaleDateString('de-DE', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          }) : ''}
+                                        </div>
+                                      </div>
+                                    )}
                                     <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
                                          {(subtask.assigned_to_names || (subtask.assigned_to && subtask.assigned_to.length > 0)) && (
                                            <div>
