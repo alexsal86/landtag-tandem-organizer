@@ -1681,22 +1681,37 @@ export function TasksView() {
                            <div className="text-sm text-muted-foreground">unbefristet</div>
                          )}
                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSnoozeDialogOpen({ type: 'subtask', id: subtask.id });
-                                setSnoozeDate('');
-                              }}
-                              className="h-8 w-8 p-0"
-                              title="Auf Wiedervorlage setzen"
-                            >
-                              <AlarmClock className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                         <TableCell>
+                           <div className="flex gap-1">
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => {
+                                 setSnoozeDialogOpen({ type: 'subtask', id: subtask.id });
+                                 setSnoozeDate('');
+                               }}
+                               className="h-8 w-8 p-0"
+                               title="Auf Wiedervorlage setzen"
+                             >
+                               <AlarmClock className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={async () => {
+                                 // Find and open the parent task
+                                 const parentTask = tasks.find(task => task.id === subtask.task_id);
+                                 if (parentTask) {
+                                   handleTaskClick(parentTask);
+                                 }
+                               }}
+                               className="h-8 w-8 p-0"
+                               title="Übergeordnete Aufgabe bearbeiten"
+                             >
+                               <Edit2 className="h-4 w-4" />
+                             </Button>
+                           </div>
+                         </TableCell>
                       </TableRow>
                     );
                   })}
