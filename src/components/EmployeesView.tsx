@@ -719,7 +719,7 @@ export function EmployeesView() {
                   ) : (
                     <div className="flex justify-between">
                       <span>Beginn Arbeitsverhältnis</span>
-                      <span className="text-muted-foreground">–</span>
+                      <span className="text-orange-600">Noch nicht eingetragen</span>
                     </div>
                   )}
                   {!selfSettings ? (
