@@ -1,6 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CalendarEvent } from "../CalendarView";
 import { formatEventDisplay, isMultiDayEvent, getEventDays } from "@/lib/timeUtils";
+import { FileText } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WeekViewProps {
   weekStart: Date;
@@ -10,6 +12,7 @@ interface WeekViewProps {
 
 export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
   
   useEffect(() => {
     // Scroll to 9 AM on mount
@@ -20,6 +23,31 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
       }
     }
   }, [weekStart]);
+
+  useEffect(() => {
+    // Fetch document counts for all events
+    const fetchDocumentCounts = async () => {
+      const appointmentIds = events.map(event => event.id).filter(Boolean);
+      if (appointmentIds.length === 0) return;
+
+      try {
+        const { data } = await supabase
+          .from('appointment_documents')
+          .select('appointment_id')
+          .in('appointment_id', appointmentIds);
+
+        const counts: Record<string, number> = {};
+        data?.forEach(doc => {
+          counts[doc.appointment_id] = (counts[doc.appointment_id] || 0) + 1;
+        });
+        setDocumentCounts(counts);
+      } catch (error) {
+        console.error('Error fetching document counts:', error);
+      }
+    };
+
+    fetchDocumentCounts();
+  }, [events]);
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(weekStart);
@@ -226,7 +254,15 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                           }}
                           onClick={() => onAppointmentClick?.(event)}
                         >
-                          <div className="font-medium truncate w-full text-xs">{event.title}</div>
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium truncate text-xs">{event.title}</div>
+                            {documentCounts[event.id] > 0 && (
+                              <div className="flex items-center space-x-1 ml-1">
+                                <FileText className="h-3 w-3" />
+                                <span className="text-xs">{documentCounts[event.id]}</span>
+                              </div>
+                            )}
+                          </div>
                           <div className="opacity-80 truncate w-full text-xs">
                             {formatEventDisplay(event)}
                           </div>

@@ -1,6 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CalendarEvent } from "../CalendarView";
 import { formatEventDisplay, isMultiDayEvent, getEventDays } from "@/lib/timeUtils";
+import { FileText } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DayViewProps {
   date: Date;
@@ -10,6 +12,7 @@ interface DayViewProps {
 
 export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
   
   useEffect(() => {
     // Scroll to 9 AM on mount
@@ -20,6 +23,31 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
       }
     }
   }, [date]);
+
+  useEffect(() => {
+    // Fetch document counts for all events
+    const fetchDocumentCounts = async () => {
+      const appointmentIds = events.map(event => event.id).filter(Boolean);
+      if (appointmentIds.length === 0) return;
+
+      try {
+        const { data } = await supabase
+          .from('appointment_documents')
+          .select('appointment_id')
+          .in('appointment_id', appointmentIds);
+
+        const counts: Record<string, number> = {};
+        data?.forEach(doc => {
+          counts[doc.appointment_id] = (counts[doc.appointment_id] || 0) + 1;
+        });
+        setDocumentCounts(counts);
+      } catch (error) {
+        console.error('Error fetching document counts:', error);
+      }
+    };
+
+    fetchDocumentCounts();
+  }, [events]);
   const hours = Array.from({ length: 24 }, (_, i) => i);
   
   
@@ -300,20 +328,28 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
                              zIndex: isEventStart || isEventContinuation ? 2 : 1
                            }}
                            onClick={() => onAppointmentClick?.(event)}
-                         >
-                           <div className="font-medium truncate">
-                             {isEventContinuation ? `→ ${event.title}` : event.title}
-                           </div>
-                           <div className="opacity-80 text-xs">
-                             {isEventContinuation 
-                               ? `→ ${formatEventDisplay(event)}`
-                               : formatEventDisplay(event)
-                             }
-                           </div>
-                          {event.location && (
-                            <div className="opacity-70 truncate text-xs">{event.location}</div>
-                          )}
-                        </div>
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="font-medium truncate">
+                                {isEventContinuation ? `→ ${event.title}` : event.title}
+                              </div>
+                              {documentCounts[event.id] > 0 && (
+                                <div className="flex items-center space-x-1 ml-1">
+                                  <FileText className="h-3 w-3" />
+                                  <span className="text-xs">{documentCounts[event.id]}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="opacity-80 text-xs">
+                              {isEventContinuation 
+                                ? `→ ${formatEventDisplay(event)}`
+                                : formatEventDisplay(event)
+                              }
+                            </div>
+                           {event.location && (
+                             <div className="opacity-70 truncate text-xs">{event.location}</div>
+                           )}
+                         </div>
                       );
                     }).filter(Boolean); // Remove null entries
                  })()}

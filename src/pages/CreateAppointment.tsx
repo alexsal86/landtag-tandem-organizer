@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { AppointmentPollCreator } from "@/components/poll/AppointmentPollCreator";
+import { AppointmentFileUpload } from "@/components/appointments/AppointmentFileUpload";
 
 const appointmentSchema = z.object({
   title: z.string().min(1, "Titel ist erforderlich"),
@@ -65,6 +66,7 @@ const CreateAppointment = () => {
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [isAllDay, setIsAllDay] = useState(false);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -581,6 +583,18 @@ const CreateAppointment = () => {
                     />
                   </div>
                 )}
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    <h3 className="text-lg font-semibold">Dokumente</h3>
+                  </div>
+                  <AppointmentFileUpload 
+                    onFilesChange={setUploadedFiles}
+                  />
+                </div>
 
                 <Separator />
 
