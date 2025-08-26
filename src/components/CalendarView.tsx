@@ -339,13 +339,22 @@ export function CalendarView() {
             <h1 className="text-3xl font-bold text-foreground mb-2">Terminkalender</h1>
             <p className="text-muted-foreground">{formatDate(currentDate)}</p>
           </div>
-          <Button 
-            className="gap-2"
-            onClick={() => navigate("/appointments/new")}
-          >
-            <Plus className="h-4 w-4" />
-            Neuer Termin
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              className="gap-2"
+              onClick={() => navigate("/create-appointment")}
+            >
+              <Plus className="h-4 w-4" />
+              Neuer Termin
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setView("polls")}
+            >
+              Abstimmungen
+            </Button>
+          </div>
         </div>
 
         {/* View Controls */}
@@ -375,20 +384,6 @@ export function CalendarView() {
           </div>
 
           <div className="flex gap-2">
-            <Button
-              onClick={() => navigate("/create-appointment")}
-              className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4" />
-              Neuer Termin
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() => setView("polls")}
-            >
-              Abstimmungen
-            </Button>
             {["day", "week", "month"].map((viewType) => (
               <Button
                 key={viewType}
