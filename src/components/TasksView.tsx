@@ -1850,9 +1850,9 @@ export function TasksView() {
                       <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          <span className={isOverdue(task.dueDate) ? "text-red-600" : ""}>
-                            {new Date(task.dueDate).toLocaleDateString('de-DE')}
-                          </span>
+                           <span className={isOverdue(task.dueDate) ? "text-red-600" : ""}>
+                             {task.dueDate ? new Date(task.dueDate).toLocaleDateString('de-DE') : 'unbefristet'}
+                           </span>
                         </div>
                         
                          {(subtaskCounts[task.id] || 0) > 0 && (
