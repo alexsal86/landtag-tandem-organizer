@@ -63,8 +63,7 @@ export const TaskDecisionList = () => {
           )
         `)
         .eq('user_id', currentUserId)
-        .eq('task_decisions.status', 'active')
-        .order('task_decisions.created_at', { ascending: false });
+        .eq('task_decisions.status', 'active');
 
       if (participantError) throw participantError;
 
