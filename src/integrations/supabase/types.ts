@@ -2879,7 +2879,7 @@ export type Database = {
           category: string
           created_at: string
           description: string | null
-          due_date: string
+          due_date: string | null
           id: string
           priority: string
           progress: number | null
@@ -2895,7 +2895,7 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string | null
-          due_date: string
+          due_date?: string | null
           id?: string
           priority?: string
           progress?: number | null
@@ -2911,7 +2911,7 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string | null
-          due_date?: string
+          due_date?: string | null
           id?: string
           priority?: string
           progress?: number | null
