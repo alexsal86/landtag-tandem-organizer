@@ -409,7 +409,7 @@ export function TasksView() {
       const { data: subtasksData, error: subtasksError } = await supabase
         .from('subtasks')
         .select('*')
-        .contains('assigned_to', [user.id])
+        .eq('assigned_to', user.id)
         .eq('is_completed', false);
 
       if (subtasksError) {
@@ -429,13 +429,14 @@ export function TasksView() {
                 .eq('id', subtask.task_id)
                 .single();
 
-              const resolvedAssignedTo = await resolveUserNamesAsync(subtask.assigned_to);
+              const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to]);
               
               allSubtasks.push({
                 ...subtask,
                 task_title: taskData?.title || 'Unbekannte Aufgabe',
                 source_type: 'task' as const,
-                assigned_to_names: resolvedAssignedTo
+                assigned_to_names: resolvedAssignedTo,
+                assigned_to: [subtask.assigned_to] // Convert single value to array for consistency
               });
               
               console.log('✅ Added regular subtask:', subtask.id);
