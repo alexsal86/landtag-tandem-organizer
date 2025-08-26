@@ -30,7 +30,7 @@ export default function CreateTask() {
     title: "",
     description: "",
     priority: "medium",
-    category: "", // Will be set from loaded categories
+    category: "personal", // Default to valid category
     dueDate: "",
     assignedTo: [] as string[],
   });
@@ -259,13 +259,13 @@ export default function CreateTask() {
 
                 <div className="space-y-2">
                   <Label htmlFor="assignedTo">Zugewiesen an (optional)</Label>
-                  <MultiSelect
+                   <MultiSelect
                     options={(userProfiles || []).map(profile => ({
                       value: profile.user_id,
                       label: profile.isCurrentUser ? "Ich" : (profile.display_name || "Unbekannter Nutzer")
                     }))}
-                    selected={formData.assignedTo || []}
-                    onChange={(value) => setFormData({ ...formData, assignedTo: value || [] })}
+                    selected={formData.assignedTo}
+                    onChange={(value) => setFormData({ ...formData, assignedTo: Array.isArray(value) ? value : [] })}
                     placeholder="Personen auswählen..."
                   />
                 </div>
