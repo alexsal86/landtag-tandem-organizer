@@ -330,11 +330,74 @@ export function AppointmentDetailsSidebar({
                 />
               ) : (
                 <div className="text-sm text-muted-foreground">
-                  {appointment.location || "Kein Ort angegeben"}
+                  {appointment.location ? (
+                    appointment.location.startsWith("Digital") ? (
+                      <div className="space-y-1">
+                        <div className="font-medium text-blue-600">🔗 Online-Meeting</div>
+                        <div className="text-xs">{appointment.location.replace("Digital - ", "")}</div>
+                      </div>
+                    ) : (
+                      appointment.location
+                    )
+                  ) : (
+                    "Kein Ort angegeben"
+                  )}
                 </div>
               )}
             </div>
           </div>
+
+          {/* Description */}
+          <div className="flex items-start gap-3">
+            <div className="w-5 h-5 flex items-center justify-center mt-0.5">
+              <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
+            </div>
+            <div className="flex-1">
+              <div className="font-medium">Beschreibung</div>
+              {isEditing ? (
+                <Textarea
+                  value={editData.description}
+                  onChange={(e) => setEditData({...editData, description: e.target.value})}
+                  placeholder="Beschreibung eingeben"
+                  className="mt-1 min-h-[60px]"
+                />
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  {appointment.description || "Keine Beschreibung"}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Category */}
+          {!appointment.id.startsWith('blocked-') && (
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 flex items-center justify-center mt-0.5">
+                <div className="w-3 h-3 bg-primary rounded"></div>
+              </div>
+              <div className="flex-1">
+                <div className="font-medium">Kategorie</div>
+                {isEditing ? (
+                  <Select value={editData.category} onValueChange={(value: CalendarEvent["type"]) => setEditData({...editData, category: value})}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="meeting">Besprechung</SelectItem>
+                      <SelectItem value="appointment">Termin</SelectItem>
+                      <SelectItem value="session">Sitzung</SelectItem>
+                      <SelectItem value="deadline">Frist</SelectItem>
+                      <SelectItem value="veranstaltung">Veranstaltung</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    {getEventTypeLabel(appointment.type)}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Participants */}
           {appointment.participants && appointment.participants.length > 0 && (

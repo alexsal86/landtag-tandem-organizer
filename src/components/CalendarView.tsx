@@ -14,6 +14,7 @@ import { PollListView } from "./poll/PollListView";
 export interface CalendarEvent {
   id: string;
   title: string;
+  description?: string; // Add description field
   time: string;
   duration: string;
   date: Date; // Add date field for proper filtering

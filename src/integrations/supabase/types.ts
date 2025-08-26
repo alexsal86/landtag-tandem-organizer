@@ -230,7 +230,9 @@ export type Database = {
           end_time: string
           id: string
           location: string | null
+          meeting_details: string | null
           meeting_id: string | null
+          meeting_link: string | null
           poll_id: string | null
           priority: string | null
           reminder_minutes: number | null
@@ -250,7 +252,9 @@ export type Database = {
           end_time: string
           id?: string
           location?: string | null
+          meeting_details?: string | null
           meeting_id?: string | null
+          meeting_link?: string | null
           poll_id?: string | null
           priority?: string | null
           reminder_minutes?: number | null
@@ -270,7 +274,9 @@ export type Database = {
           end_time?: string
           id?: string
           location?: string | null
+          meeting_details?: string | null
           meeting_id?: string | null
+          meeting_link?: string | null
           poll_id?: string | null
           priority?: string | null
           reminder_minutes?: number | null
