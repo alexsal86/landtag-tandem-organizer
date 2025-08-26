@@ -31,15 +31,26 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     const fetchProfiles = async () => {
+      // Fetch other users' profiles
       const { data } = await supabase
         .from('profiles')
         .select('user_id, display_name, avatar_url')
         .neq('user_id', user?.id);
       
       setProfiles(data || []);
+
+      // Fetch current user's profile
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .eq('user_id', user?.id)
+        .single();
+      
+      setCurrentUserProfile(currentProfile);
     };
 
     if (user) {
@@ -85,6 +96,36 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
           is_for_all_param: isForAllUsers,
           recipient_ids_param: isForAllUsers ? [] : selectedRecipients
         });
+
+      // Send push notification for new message
+      console.log('📨 Sending push notification for new message...');
+      try {
+        const authorName = currentUserProfile?.display_name || user.user_metadata?.display_name || user.email;
+        const response = await supabase.functions.invoke('send-push-notification', {
+          body: {
+            title: `📧 Neue Nachricht: ${title.trim() || "Ohne Betreff"}`,
+            message: `Von ${authorName}: ${content.trim().substring(0, 100)}${content.trim().length > 100 ? '...' : ''}`,
+            priority: 'medium',
+            data: {
+              type: 'new_message',
+              message_title: title.trim() || "Ohne Betreff",
+              message_content: content.trim(),
+              author_name: authorName,
+              is_for_all_users: isForAllUsers,
+              timestamp: new Date().toISOString()
+            }
+          }
+        });
+
+        if (response.data?.success) {
+          console.log('✅ Push notification sent successfully:', response.data);
+        } else {
+          console.log('⚠️ Push notification failed:', response.data);
+        }
+      } catch (pushError) {
+        console.error('❌ Push notification error:', pushError);
+        // Don't fail the entire message sending process if push fails
+      }
 
       toast({
         title: "Nachricht gesendet",
