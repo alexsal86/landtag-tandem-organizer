@@ -26,12 +26,22 @@ export function MultiSelect({
   placeholder = "Auswählen...",
   className
 }: MultiSelectProps) {
-  console.log('🔍 MultiSelect render:', { options, selected, placeholder });
+  console.log('🔍 MultiSelect render:', { options, selected, placeholder, optionsType: typeof options, optionsLength: options?.length });
   const [open, setOpen] = React.useState(false)
 
   const handleUnselect = (item: string) => {
     onChange((selected || []).filter((i) => i !== item))
   }
+
+  // Ensure options is always an array
+  const safeOptions = React.useMemo(() => {
+    return Array.isArray(options) ? options : []
+  }, [options])
+
+  // Ensure selected is always an array
+  const safeSelected = React.useMemo(() => {
+    return Array.isArray(selected) ? selected : []
+  }, [selected])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -46,9 +56,9 @@ export function MultiSelect({
           )}
         >
           <div className="flex gap-1 flex-wrap">
-            {(selected || []).length > 0 ? (
-              (selected || []).map((item) => {
-                const option = (options || []).find((opt) => opt.value === item)
+            {safeSelected.length > 0 ? (
+              safeSelected.map((item) => {
+                const option = safeOptions.find((opt) => opt.value === item)
                 return (
                   <Badge
                     variant="secondary"
@@ -86,11 +96,11 @@ export function MultiSelect({
           <CommandInput placeholder="Suchen..." />
           <CommandEmpty>Keine Optionen gefunden.</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-auto">
-            {(options || []).map((option) => (
+            {safeOptions.map((option) => (
               <CommandItem
                 key={option.value}
                 onSelect={() => {
-                  const currentSelected = selected || [];
+                  const currentSelected = safeSelected;
                   if (currentSelected.includes(option.value)) {
                     handleUnselect(option.value)
                   } else {
@@ -101,7 +111,7 @@ export function MultiSelect({
                 <div
                   className={cn(
                     "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                    (selected || []).includes(option.value)
+                    safeSelected.includes(option.value)
                       ? "bg-primary text-primary-foreground"
                       : "opacity-50 [&_svg]:invisible"
                   )}
