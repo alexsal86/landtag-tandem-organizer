@@ -71,15 +71,18 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
   const loadUsers = async () => {
     try {
+      console.log('Loading users for TodoCreateDialog...');
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name')
         .order('display_name');
 
       if (error) throw error;
+      console.log('Users loaded for TodoCreateDialog:', data);
       setUsers(data || []);
     } catch (error) {
       console.error('Error loading users:', error);
+      setUsers([]); // Ensure users is always an array
     }
   };
 
@@ -186,12 +189,12 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
           <div className="space-y-2">
             <Label htmlFor="assignedTo">Zuweisung (optional) - Mehrfach-Auswahl möglich</Label>
             <MultiSelect
-              options={(users || []).map(user => ({
+              options={Array.isArray(users) ? users.map(user => ({
                 value: user.user_id,
                 label: user.display_name || user.user_id
-              }))}
-              selected={assignedTo || []}
-              onChange={(value) => setAssignedTo(value || [])}
+              })) : []}
+              selected={Array.isArray(assignedTo) ? assignedTo : []}
+              onChange={(value) => setAssignedTo(Array.isArray(value) ? value : [])}
               placeholder="Benutzer auswählen..."
             />
           </div>
