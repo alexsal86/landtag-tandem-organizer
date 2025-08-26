@@ -10,7 +10,7 @@ const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive>
 >(({ className, ...props }, ref) => {
-  console.log('🔴 Command component render:', { props, children: props.children });
+  
   return (
     <CommandPrimitive
       ref={ref}
@@ -20,7 +20,7 @@ const Command = React.forwardRef<
       )}
       {...props}
     />
-  );
+  )
 })
 Command.displayName = CommandPrimitive.displayName
 

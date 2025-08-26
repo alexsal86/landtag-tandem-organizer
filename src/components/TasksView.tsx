@@ -1883,10 +1883,10 @@ export function TasksView() {
                           >
                             <StickyNote className="h-4 w-4" />
                           </Button>
-                          {/* Temporarily disabled: <TaskDecisionCreator 
+                          <TaskDecisionCreator 
                             taskId={task.id} 
                             onDecisionCreated={() => loadTasks()} 
-                          /> */}
+                          />
                           <Badge variant="secondary">
                             {task.category === "legislation" ? "Gesetzgebung" :
                              task.category === "committee" ? "Ausschuss" :
