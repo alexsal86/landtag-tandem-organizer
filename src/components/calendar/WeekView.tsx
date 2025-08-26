@@ -148,8 +148,30 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
               
                {/* Day columns for this hour */}
                {days.map((day) => {
-                 const dayEvents = getEventsForDay(day).filter(event => parseInt(event.time.split(':')[0]) === hour);
-                 const eventLayout = getEventLayout(dayEvents);
+                 const dayEvents = getEventsForDay(day);
+                 
+                 // Find events that should be displayed in this hour slot
+                 const hourEvents = dayEvents.filter(event => {
+                   const [startHour] = event.time.split(':').map(Number);
+                   
+                   if (event.endTime) {
+                     // Use actual end time
+                     const eventStart = new Date(event.date);
+                     const eventEnd = new Date(event.endTime);
+                     const hourStart = new Date(day);
+                     hourStart.setHours(hour, 0, 0, 0);
+                     const hourEnd = new Date(day);
+                     hourEnd.setHours(hour + 1, 0, 0, 0);
+                     
+                     // Event overlaps with this hour slot
+                     return eventStart < hourEnd && eventEnd > hourStart;
+                   } else {
+                     // Fallback to start hour check
+                     return startHour === hour;
+                   }
+                 });
+                 
+                 const eventLayout = getEventLayout(hourEvents);
                  
                  return (
                    <div 
@@ -160,6 +182,31 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                        const widthPercentage = 100 / totalColumns;
                        const leftOffset = (widthPercentage * column);
                        
+                       // Calculate precise positioning and height
+                       const [startHour, startMinutes] = event.time.split(':').map(Number);
+                       let topOffset = 0;
+                       let eventHeight = 58; // Default height
+                       
+                       // Only calculate precise positioning for events starting in this hour
+                       if (startHour === hour) {
+                         topOffset = (startMinutes / 60) * 60; // Convert minutes to pixels
+                         
+                         if (event.endTime) {
+                           const eventStart = new Date(event.date);
+                           const eventEnd = new Date(event.endTime);
+                           const durationMs = eventEnd.getTime() - eventStart.getTime();
+                           const durationHours = durationMs / (1000 * 60 * 60);
+                           eventHeight = Math.max(durationHours * 60, 20); // Minimum 20px
+                         } else {
+                           // Fallback to duration calculation
+                           const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+                           eventHeight = Math.max(durationMinutes, 20);
+                         }
+                       } else {
+                         // This event continues from a previous hour, don't render it again
+                         return null;
+                       }
+                       
                        return (
                           <div
                             key={event.id}
@@ -167,44 +214,54 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                             style={{ 
                               width: `${widthPercentage - 1}%`,
                               left: `${leftOffset}%`,
-                              marginBottom: '4px',
+                              top: `${topOffset}px`,
+                              height: `${eventHeight}px`,
+                              marginBottom: '2px',
                               backgroundColor: event.category_color || undefined,
-                              borderLeftColor: event.category_color || undefined
+                              borderLeftColor: event.category_color || undefined,
+                              zIndex: 2
                             }}
                             onClick={() => onAppointmentClick?.(event)}
                           >
-                           <div className="font-medium truncate w-full">{event.title}</div>
-                            <div className="opacity-80 truncate w-full">
+                           <div className="font-medium truncate w-full text-xs">{event.title}</div>
+                            <div className="opacity-80 truncate w-full text-xs">
                               {(() => {
                                 if (event.endTime) {
                                   // Use actual end time from database
+                                  const startTimeStr = event.time;
                                   const endTimeStr = event.endTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
                                   const startDate = event.date.toDateString();
                                   const endDate = event.endTime.toDateString();
                                   
                                   if (startDate === endDate) {
-                                    // Same day
-                                    return `${event.time} - ${endTimeStr} (${event.duration})`;
+                                    // Same day - calculate precise duration
+                                    const durationMs = event.endTime.getTime() - event.date.getTime();
+                                    const durationMinutes = Math.round(durationMs / (1000 * 60));
+                                    const hours = Math.floor(durationMinutes / 60);
+                                    const mins = durationMinutes % 60;
+                                    const durationStr = hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
+                                    
+                                    return `${startTimeStr} - ${endTimeStr}`;
                                   } else {
                                     // Multi-day event
                                     const endDateStr = event.endTime.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-                                    return `${event.time} - ${endDateStr} ${endTimeStr} (${event.duration})`;
+                                    return `${startTimeStr} - ${endDateStr} ${endTimeStr}`;
                                   }
                                 } else {
-                                  // Fallback to old calculation
+                                  // Fallback to duration calculation
                                   const [hours, minutes] = event.time.split(':').map(Number);
                                   const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-                                  const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
-                                  const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
-                                  const durationHours = (durationMinutes / 60).toFixed(1);
+                                  const endTotalMinutes = hours * 60 + minutes + durationMinutes;
+                                  const endHours = Math.floor(endTotalMinutes / 60);
+                                  const endMinutes = endTotalMinutes % 60;
                                   
-                                  return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')} (${durationHours}h)`;
+                                  return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
                                 }
                               })()}
                             </div>
                          </div>
                        );
-                     })}
+                     }).filter(Boolean)} {/* Remove null entries */}
                    </div>
                  );
                })}
