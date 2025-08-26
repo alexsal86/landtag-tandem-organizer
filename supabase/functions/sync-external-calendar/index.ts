@@ -45,6 +45,12 @@ function parseICS(icsContent: string): ICSEvent[] {
   const lines = icsContent.split(/\r?\n/);
   let currentEvent: Partial<ICSEvent> | null = null;
   
+  // Only process events from 3 months ago to 6 months in the future
+  const threeMonthsAgo = new Date();
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const sixMonthsLater = new Date();
+  sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+  
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim();
     
@@ -58,9 +64,19 @@ function parseICS(icsContent: string): ICSEvent[] {
       currentEvent = {};
     } else if (line === 'END:VEVENT' && currentEvent) {
       if (currentEvent.uid && currentEvent.summary && currentEvent.dtstart) {
-        events.push(currentEvent as ICSEvent);
+        // Filter by date range
+        const eventDate = parseICSDate(currentEvent.dtstart);
+        if (eventDate >= threeMonthsAgo && eventDate <= sixMonthsLater) {
+          events.push(currentEvent as ICSEvent);
+        }
       }
       currentEvent = null;
+      
+      // Limit to maximum 1000 events to prevent timeout
+      if (events.length >= 1000) {
+        console.log(`Limiting to ${events.length} events to prevent timeout`);
+        break;
+      }
     } else if (currentEvent) {
       if (line.startsWith('UID:')) {
         currentEvent.uid = line.substring(4);
@@ -180,14 +196,24 @@ serve(async (req) => {
       };
     });
 
+    // Insert new events in batches to prevent timeout
     if (eventsToInsert.length > 0) {
-      const { error: insertError } = await supabase
-        .from('external_events')
-        .insert(eventsToInsert);
+      console.log(`Inserting ${eventsToInsert.length} events in batches...`);
+      
+      const batchSize = 100;
+      for (let i = 0; i < eventsToInsert.length; i += batchSize) {
+        const batch = eventsToInsert.slice(i, i + batchSize);
+        
+        const { error: insertError } = await supabase
+          .from('external_events')
+          .insert(batch);
 
-      if (insertError) {
-        console.error('Error inserting events:', insertError);
-        throw insertError;
+        if (insertError) {
+          console.error(`Error inserting batch ${i / batchSize + 1}:`, insertError);
+          throw insertError;
+        }
+        
+        console.log(`Inserted batch ${i / batchSize + 1}/${Math.ceil(eventsToInsert.length / batchSize)}`);
       }
     }
 
