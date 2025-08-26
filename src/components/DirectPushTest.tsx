@@ -31,6 +31,28 @@ export const DirectPushTest: React.FC = () => {
       // Send real push notification directly
       console.log('🚀 Calling send-push-notification Edge Function directly...');
       
+      // First check if we have valid push subscriptions
+      const { data: subscriptions, error: subError } = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .eq('is_active', true);
+        
+      console.log('📋 Current active subscriptions:', subscriptions);
+      
+      if (subError) {
+        console.error('❌ Subscription check error:', subError);
+      }
+      
+      if (!subscriptions || subscriptions.length === 0) {
+        setTestResult({
+          step: 'Direkter Push-Test',
+          status: 'error',
+          message: '❌ Keine aktiven Push-Subscriptions gefunden. Aktiviere zuerst Browser-Benachrichtigungen!',
+          logs: ['❌ Keine Push-Subscriptions in der Datenbank']
+        });
+        return;
+      }
+      
       const response = await supabase.functions.invoke('send-push-notification', {
         body: { 
           title: 'Direkter Push-Test! 🔥🔔',
