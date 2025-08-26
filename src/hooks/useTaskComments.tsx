@@ -28,17 +28,21 @@ export const useTaskComments = () => {
 
       if (error) throw error;
 
-      // Get user display names separately
+      // Get user display names separately  
       const userIds = [...new Set((data || []).map(comment => comment.user_id))];
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .in('user_id', userIds);
+      let profilesMap: Record<string, string> = {};
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', userIds);
 
-      const profilesMap = (profilesData || []).reduce((acc, profile) => {
-        acc[profile.user_id] = profile.display_name;
-        return acc;
-      }, {} as Record<string, string>);
+        profilesMap = (profilesData || []).reduce((acc, profile) => {
+          acc[profile.user_id] = profile.display_name || 'Unbekannter Benutzer';
+          return acc;
+        }, {} as Record<string, string>);
+      }
 
       const commentsByTask: { [taskId: string]: TaskComment[] } = {};
       

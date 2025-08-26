@@ -48,12 +48,21 @@ export const useSubtasks = () => {
       setSubtasks(prev => ({
         ...prev,
         [taskId]: (data || []).map(item => ({
-          ...item,
+          id: item.id,
+          task_id: item.task_id,
           title: item.description || 'Unbenannte Unteraufgabe',
+          description: item.description,
+          is_completed: item.is_completed,
           assigned_to: item.assigned_to 
             ? (typeof item.assigned_to === 'string' ? [item.assigned_to] : item.assigned_to)
             : [],
-        }))
+          due_date: item.due_date,
+          order_index: item.order_index,
+          completed_at: item.completed_at,
+          result_text: item.result_text,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+        } as Subtask))
       }));
     } catch (error) {
       console.error('Error loading subtasks:', error);
