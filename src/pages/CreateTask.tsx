@@ -88,12 +88,27 @@ export default function CreateTask() {
     e.preventDefault();
     setLoading(true);
 
-    console.log('📝 Creating task with current tenant:', currentTenant);
+    console.log('📝 Starting task creation process');
+    console.log('📝 Current tenant:', currentTenant);
     console.log('📝 Form data:', formData);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Validate required fields
+      if (!formData.title.trim()) {
+        toast({
+          title: "Fehler",
+          description: "Bitte geben Sie einen Titel für die Aufgabe ein.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      console.log('📝 User auth check:', { user: user?.id, error: userError });
+      
+      if (userError || !user) {
+        console.error('❌ Auth error:', userError);
         toast({
           title: "Fehler",
           description: "Sie müssen angemeldet sein, um Aufgaben zu erstellen.",
@@ -102,52 +117,81 @@ export default function CreateTask() {
         return;
       }
 
-      if (!currentTenant) {
+      // Validate tenant
+      if (!currentTenant?.id) {
+        console.error('❌ No tenant available:', currentTenant);
         toast({
           title: "Fehler", 
-          description: "Kein Tenant ausgewählt. Bitte wählen Sie einen Tenant aus.",
+          description: "Kein Tenant ausgewählt. Bitte laden Sie die Seite neu.",
           variant: "destructive",
         });
         return;
       }
 
-      console.log('📝 About to insert task with data:', {
-        title: formData.title,
-        description: formData.description,
+      // Prepare task data
+      const taskData = {
+        title: formData.title.trim(),
+        description: formData.description?.trim() || null,
         priority: formData.priority,
         category: formData.category || 'personal',
         due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-        assigned_to: (formData.assignedTo && formData.assignedTo.length > 0) ? formData.assignedTo : null,
+        assigned_to: formData.assignedTo.length > 0 ? formData.assignedTo : null,
         user_id: user.id,
         status: "todo",
         tenant_id: currentTenant.id
-      });
+      };
 
-      const { error } = await supabase.from('tasks').insert({
-        title: formData.title,
-        description: formData.description,
-        priority: formData.priority,
-        category: formData.category || 'personal',
-        due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-        assigned_to: (formData.assignedTo && formData.assignedTo.length > 0) ? formData.assignedTo : null,
-        user_id: user.id,
-        status: "todo",
-        tenant_id: currentTenant.id
-      });
+      console.log('📝 Inserting task with data:', taskData);
 
-      if (error) {
-        console.error('❌ Task creation error:', error);
-        throw error;
+      // Insert task
+      const { data: insertedTask, error: insertError } = await supabase
+        .from('tasks')
+        .insert(taskData)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('❌ Task creation error:', insertError);
+        console.error('❌ Error details:', {
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
+          code: insertError.code
+        });
+        
+        // Provide more specific error messages
+        let errorMessage = 'Unbekannter Fehler';
+        if (insertError.message.includes('violates row-level security')) {
+          errorMessage = 'Berechtigung verweigert. Überprüfen Sie Ihre Anmeldung.';
+        } else if (insertError.message.includes('duplicate key')) {
+          errorMessage = 'Eine Aufgabe mit diesem Namen existiert bereits.';
+        } else if (insertError.message.includes('foreign key')) {
+          errorMessage = 'Ungültige Zuordnung. Bitte überprüfen Sie die ausgewählten Benutzer.';
+        } else {
+          errorMessage = insertError.message;
+        }
+        
+        throw new Error(errorMessage);
       }
 
-      console.log('✅ Task created successfully');
+      console.log('✅ Task created successfully:', insertedTask);
       
       toast({
         title: "Aufgabe erstellt",
         description: "Die neue Aufgabe wurde erfolgreich erstellt.",
       });
 
-      navigate("/");
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        priority: "medium",
+        category: "personal",
+        dueDate: "",
+        assignedTo: [],
+      });
+
+      navigate("/tasks");
     } catch (error) {
       console.error('❌ Error creating task:', error);
       toast({
