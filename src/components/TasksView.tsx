@@ -20,6 +20,9 @@ import { TaskArchiveModal } from "./TaskArchiveModal";
 import { TaskDetailSidebar } from "./TaskDetailSidebar";
 import { SnoozeManagementSidebar } from "./SnoozeManagementSidebar";
 import { TodoCreateDialog } from "./TodoCreateDialog";
+import { TaskDecisionCreator } from "./task-decisions/TaskDecisionCreator";
+import { TaskDecisionStatus } from "./task-decisions/TaskDecisionStatus";
+import { TaskDecisionList } from "./task-decisions/TaskDecisionList";
 
 interface Task {
   id: string;
@@ -1823,6 +1826,9 @@ export function TasksView() {
           </Card>
         )}
 
+        {/* Task Decision Requests */}
+        <TaskDecisionList />
+
         {/* Main Tasks List */}
         <div className="space-y-4">
           {loading ? (
@@ -1877,6 +1883,10 @@ export function TasksView() {
                           >
                             <StickyNote className="h-4 w-4" />
                           </Button>
+                          <TaskDecisionCreator 
+                            taskId={task.id} 
+                            onDecisionCreated={() => loadTasks()} 
+                          />
                           <Badge variant="secondary">
                             {task.category === "legislation" ? "Gesetzgebung" :
                              task.category === "committee" ? "Ausschuss" :
@@ -2447,11 +2457,17 @@ export function TasksView() {
                              </div>
                            )}
                          </div>
-                       )}
-                     </div>
-                   </div>
-                 </CardContent>
-               </Card>
+                        )}
+                        
+                        {/* Task Decision Status */}
+                        <TaskDecisionStatus 
+                          taskId={task.id} 
+                          createdBy={task.user_id || ''} 
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
             ))
           )}
         </div>

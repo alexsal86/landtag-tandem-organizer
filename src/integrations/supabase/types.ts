@@ -2930,6 +2930,133 @@ export type Database = {
           },
         ]
       }
+      task_decision_participants: {
+        Row: {
+          decision_id: string
+          id: string
+          invited_at: string
+          token: string | null
+          user_id: string
+        }
+        Insert: {
+          decision_id: string
+          id?: string
+          invited_at?: string
+          token?: string | null
+          user_id: string
+        }
+        Update: {
+          decision_id?: string
+          id?: string
+          invited_at?: string
+          token?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_decision_participants_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_decision_responses: {
+        Row: {
+          comment: string | null
+          created_at: string
+          decision_id: string
+          id: string
+          participant_id: string
+          response_type: string
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          decision_id: string
+          id?: string
+          participant_id: string
+          response_type: string
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          decision_id?: string
+          id?: string
+          participant_id?: string
+          response_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_decision_responses_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decision_responses_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "task_decision_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_decisions: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          status: string
+          subtask_id: string | null
+          task_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          status?: string
+          subtask_id?: string | null
+          task_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          status?: string
+          subtask_id?: string | null
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_decisions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_documents: {
         Row: {
           created_at: string

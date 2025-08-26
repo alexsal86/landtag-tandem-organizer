@@ -29,8 +29,23 @@ interface ArchiveSettings {
   auto_delete_after_days?: number;
 }
 
+interface ArchivedDecision {
+  id: string;
+  task_id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+  archived_at: string;
+  archived_by: string;
+  task_title: string;
+  yes_count: number;
+  no_count: number;
+  question_count: number;
+}
+
 export function TaskArchiveView() {
   const [archivedTasks, setArchivedTasks] = useState<ArchivedTask[]>([]);
+  const [archivedDecisions, setArchivedDecisions] = useState<ArchivedDecision[]>([]);
   const [archiveSettings, setArchiveSettings] = useState<ArchiveSettings>({});
   
   const [loading, setLoading] = useState(true);
@@ -38,6 +53,7 @@ export function TaskArchiveView() {
 
   useEffect(() => {
     loadArchivedTasks();
+    loadArchivedDecisions();
     loadArchiveSettings();
   }, []);
 
@@ -75,6 +91,63 @@ export function TaskArchiveView() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadArchivedDecisions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('task_decisions')
+        .select(`
+          id,
+          task_id,
+          title,
+          description,
+          created_at,
+          archived_at,
+          archived_by,
+          tasks!inner (
+            title
+          )
+        `)
+        .eq('status', 'archived')
+        .order('archived_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Get response counts for each decision
+      const decisionIds = data?.map(d => d.id) || [];
+      const { data: responses } = await supabase
+        .from('task_decision_responses')
+        .select('decision_id, response_type')
+        .in('decision_id', decisionIds);
+
+      const responseCounts = (responses || []).reduce((acc, response) => {
+        const decisionId = response.decision_id;
+        if (!acc[decisionId]) {
+          acc[decisionId] = { yes: 0, no: 0, question: 0 };
+        }
+        acc[decisionId][response.response_type]++;
+        return acc;
+      }, {} as Record<string, { yes: number; no: number; question: number }>);
+
+      const formattedDecisions: ArchivedDecision[] = (data || []).map(decision => ({
+        id: decision.id,
+        task_id: decision.task_id,
+        title: decision.title,
+        description: decision.description,
+        created_at: decision.created_at,
+        archived_at: decision.archived_at || '',
+        archived_by: decision.archived_by || '',
+        task_title: decision.tasks.title,
+        yes_count: responseCounts[decision.id]?.yes || 0,
+        no_count: responseCounts[decision.id]?.no || 0,
+        question_count: responseCounts[decision.id]?.question || 0,
+      }));
+
+      setArchivedDecisions(formattedDecisions);
+    } catch (error) {
+      console.error('Error loading archived decisions:', error);
     }
   };
 
@@ -144,6 +217,30 @@ export function TaskArchiveView() {
       toast({
         title: "Fehler",
         description: "Aufgabe konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteArchivedDecision = async (decisionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .delete()
+        .eq('id', decisionId);
+
+      if (error) throw error;
+
+      setArchivedDecisions(prev => prev.filter(d => d.id !== decisionId));
+      toast({
+        title: "Entscheidung gelöscht",
+        description: "Die archivierte Entscheidung wurde endgültig gelöscht.",
+      });
+    } catch (error) {
+      console.error('Error deleting archived decision:', error);
+      toast({
+        title: "Fehler",
+        description: "Entscheidung konnte nicht gelöscht werden.",
         variant: "destructive",
       });
     }
@@ -305,6 +402,65 @@ export function TaskArchiveView() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Archived Decisions Section */}
+      {archivedDecisions.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Archive className="h-5 w-5" />
+            Archivierte Entscheidungen ({archivedDecisions.length})
+          </h2>
+          <div className="space-y-3">
+            {archivedDecisions.map((decision) => (
+              <Card key={decision.id} className="border-l-4 border-l-orange-500 bg-card shadow-card">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-medium text-muted-foreground line-through">{decision.title}</h3>
+                        <Badge variant="outline" className="text-orange-600 border-orange-600">
+                          Entscheidung
+                        </Badge>
+                      </div>
+                      
+                      {decision.description && (
+                        <p className="text-sm text-muted-foreground mb-2">{decision.description}</p>
+                      )}
+                      
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
+                        <span>Aufgabe: {decision.task_title}</span>
+                        <span>Erstellt: {formatDate(decision.created_at)}</span>
+                        <span>Archiviert: {formatDate(decision.archived_at)}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="flex items-center text-green-600">
+                          ✓ {decision.yes_count} Ja
+                        </span>
+                        <span className="flex items-center text-orange-600">
+                          ? {decision.question_count} Rückfragen
+                        </span>
+                        <span className="flex items-center text-red-600">
+                          ✗ {decision.no_count} Nein
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteArchivedDecision(decision.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Archived Tasks List */}
       <div className="space-y-4">
