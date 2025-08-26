@@ -493,6 +493,7 @@ export function MeetingsView() {
         location: newMeeting.location || null,
         status: newMeeting.status,
         user_id: user.id,
+        tenant_id: currentTenant?.id,
         template_id: newMeeting.template_id || null
       };
 
