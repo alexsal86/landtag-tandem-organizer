@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,7 @@ export function AppointmentDetailsSidebar({
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string; color: string }>>([]);
   const [editData, setEditData] = useState({
     title: "",
     description: "",
@@ -37,6 +38,22 @@ export function AppointmentDetailsSidebar({
     startTime: "",
     endTime: ""
   });
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data: categoriesData, error } = await supabase
+        .from('appointment_categories')
+        .select('name, label, color')
+        .eq('is_active', true)
+        .order('order_index');
+      
+      if (!error && categoriesData) {
+        setAppointmentCategories(categoriesData);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleEdit = () => {
     if (!appointment) return;
@@ -88,6 +105,7 @@ export function AppointmentDetailsSidebar({
           description: editData.description || null,
           location: editData.location || null,
           priority: editData.priority,
+          category: editData.category,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString()
         })
@@ -175,6 +193,13 @@ export function AppointmentDetailsSidebar({
   };
 
   const getEventTypeLabel = (type: CalendarEvent["type"]) => {
+    // Try to find the category in the loaded appointment categories first
+    const category = appointmentCategories.find(cat => cat.name === type);
+    if (category) {
+      return category.label;
+    }
+    
+    // Fallback to hardcoded labels
     switch (type) {
       case "session":
         return "Sitzung";
@@ -422,11 +447,11 @@ export function AppointmentDetailsSidebar({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="meeting">Besprechung</SelectItem>
-                      <SelectItem value="appointment">Termin</SelectItem>
-                      <SelectItem value="session">Sitzung</SelectItem>
-                      <SelectItem value="deadline">Frist</SelectItem>
-                      <SelectItem value="veranstaltung">Veranstaltung</SelectItem>
+                      {appointmentCategories.map((category) => (
+                        <SelectItem key={category.name} value={category.name}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 ) : (
