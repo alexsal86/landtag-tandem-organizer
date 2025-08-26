@@ -29,7 +29,7 @@ export default function CreateTask() {
     title: "",
     description: "",
     priority: "medium",
-    category: "personal",
+    category: "", // Will be set from loaded categories
     dueDate: "",
     assignedTo: "",
   });
