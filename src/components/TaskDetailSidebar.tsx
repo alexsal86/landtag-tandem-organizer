@@ -212,7 +212,7 @@ export function TaskDetailSidebar({
           status: editFormData.status,
           due_date: editFormData.dueDate,
           category: editFormData.category,
-          assigned_to: typeof editFormData.assignedTo === 'string' ? editFormData.assignedTo : (Array.isArray(editFormData.assignedTo) ? editFormData.assignedTo.join(',') : ''),
+          assigned_to: editFormData.assignedTo || '',
           progress: editFormData.progress,
         })
         .eq('id', task.id);
@@ -477,7 +477,7 @@ export function TaskDetailSidebar({
           task_id: task.id,
           user_id: user.id,
           description: newSubtask.description.trim(),
-          assigned_to: newSubtask.assigned_to || null,
+          assigned_to: newSubtask.assigned_to || '',
           due_date: newSubtask.due_date || null,
           order_index: nextOrderIndex,
         });

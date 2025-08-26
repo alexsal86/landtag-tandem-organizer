@@ -765,7 +765,7 @@ export function TasksView() {
             description: task.description,
             priority: task.priority,
             category: task.category,
-            assigned_to: typeof task.assignedTo === 'string' ? task.assignedTo : (Array.isArray(task.assignedTo) ? task.assignedTo.join(',') : ''),
+            assigned_to: task.assignedTo || '',
             progress: 100,
             due_date: task.dueDate,
             completed_at: new Date().toISOString()
