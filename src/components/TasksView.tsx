@@ -135,16 +135,31 @@ export function TasksView() {
 
   // Load tasks from database
   useEffect(() => {
-    loadTasks();
-    loadRecentActivities();
-    loadTaskConfiguration();
-    loadUsers();
-    loadTaskDocumentCounts();
-    loadSubtaskCounts();
-    loadAssignedSubtasks();
-    loadTaskSnoozes();
-    loadTodos();
-    loadTaskComments(); // Ensure comments are loaded on mount
+    const loadAllData = async () => {
+      console.log('Starting to load all data...');
+      
+      // Load users first, since we need them for UUID resolution
+      await loadUsers();
+      
+      // Then load everything else
+      await Promise.all([
+        loadTasks(),
+        loadRecentActivities(),
+        loadTaskConfiguration(),
+        loadTaskDocumentCounts(),
+        loadSubtaskCounts(),
+        loadTaskSnoozes(),
+        loadTodos(),
+        loadTaskComments()
+      ]);
+      
+      // Load assigned subtasks last, after users are loaded
+      await loadAssignedSubtasks();
+      
+      console.log('All data loaded');
+    };
+    
+    loadAllData();
   }, []);
 
   // Load all snoozes when snooze management is opened
@@ -602,6 +617,7 @@ export function TasksView() {
 
   const loadUsers = async () => {
     try {
+      console.log('Loading users...');
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name')
@@ -610,6 +626,7 @@ export function TasksView() {
       if (error) throw error;
       console.log('Loaded users for UUID resolution:', data);
       setUsers(data || []);
+      console.log('Users state updated with', (data || []).length, 'users');
     } catch (error) {
       console.error('Error loading users:', error);
     }
@@ -1475,9 +1492,10 @@ export function TasksView() {
                   ))}
                   
                   {/* Show subtasks based on visibility setting */}
-                  {filteredAssignedSubtasks.map((subtask) => {
-                    const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
-                    return (
+                         {filteredAssignedSubtasks.map((subtask) => {
+                     const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
+                     console.log('Rendering subtask:', subtask.id, 'assigned_to:', subtask.assigned_to);
+                     return (
                       <TableRow key={subtask.id} className={isSnoozed ? "opacity-50" : ""}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -1500,11 +1518,16 @@ export function TasksView() {
                            {subtask.description && subtask.title && (
                              <div className="text-sm text-muted-foreground">{subtask.description}</div>
                            )}
-                           {subtask.assigned_to && (
-                             <div className="text-sm text-muted-foreground">
-                               Zuständig: {resolveUserNames(subtask.assigned_to)}
-                             </div>
-                           )}
+                            {subtask.assigned_to && (
+                              <div className="text-sm text-muted-foreground">
+                                Zuständig: {(() => {
+                                  console.log('About to resolve names for subtask', subtask.id, 'with assigned_to:', subtask.assigned_to);
+                                  const resolved = resolveUserNames(subtask.assigned_to);
+                                  console.log('Resolved to:', resolved);
+                                  return resolved;
+                                })()}
+                              </div>
+                            )}
                            {isSnoozed && (
                              <Badge variant="secondary" className="text-xs">
                                Wiedervorlage: {new Date(subtaskSnoozes[subtask.id]).toLocaleDateString('de-DE')}
@@ -1900,11 +1923,16 @@ export function TasksView() {
                                      </div>
                                    )}
                                     <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
-                                        {subtask.assigned_to && subtask.assigned_to.length > 0 && (
-                                          <div>
-                                            Zuständig: {resolveUserNames(subtask.assigned_to)}
-                                          </div>
-                                        )}
+                                         {subtask.assigned_to && subtask.assigned_to.length > 0 && (
+                                           <div>
+                                             Zuständig: {(() => {
+                                               console.log('Card subtask resolve for', subtask.id, 'assigned_to:', subtask.assigned_to);
+                                               const resolved = resolveUserNames(subtask.assigned_to);
+                                               console.log('Card resolved to:', resolved);
+                                               return resolved;
+                                             })()}
+                                           </div>
+                                         )}
                                      {subtask.due_date && (
                                        <div>
                                          Fällig: {new Date(subtask.due_date).toLocaleDateString('de-DE')}
