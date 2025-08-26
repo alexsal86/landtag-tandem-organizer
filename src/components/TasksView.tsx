@@ -337,9 +337,19 @@ export function TasksView() {
         ? assignedToField.split(',').map(id => id.trim())
         : [];
     
-    return userIds
-      .map(userId => users.find(u => u.user_id === userId)?.display_name || userId)
+    console.log('Resolving user names for IDs:', userIds);
+    console.log('Available users:', users);
+    
+    const resolved = userIds
+      .map(userId => {
+        const user = users.find(u => u.user_id === userId);
+        console.log(`Resolving ${userId} to:`, user?.display_name || userId);
+        return user?.display_name || userId;
+      })
       .join(', ');
+    
+    console.log('Final resolved names:', resolved);
+    return resolved;
   };
 
   const loadAssignedSubtasks = async () => {
@@ -598,6 +608,7 @@ export function TasksView() {
         .order('display_name');
 
       if (error) throw error;
+      console.log('Loaded users for UUID resolution:', data);
       setUsers(data || []);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -1888,12 +1899,12 @@ export function TasksView() {
                                        </div>
                                      </div>
                                    )}
-                                   <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
-                                       {subtask.assigned_to && subtask.assigned_to.length > 0 && (
-                                         <div>
-                                           Zuständig: {typeof subtask.assigned_to === 'string' ? subtask.assigned_to : (Array.isArray(subtask.assigned_to) ? subtask.assigned_to.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ') : '')}
-                                         </div>
-                                       )}
+                                    <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
+                                        {subtask.assigned_to && subtask.assigned_to.length > 0 && (
+                                          <div>
+                                            Zuständig: {resolveUserNames(subtask.assigned_to)}
+                                          </div>
+                                        )}
                                      {subtask.due_date && (
                                        <div>
                                          Fällig: {new Date(subtask.due_date).toLocaleDateString('de-DE')}
