@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import webpush from 'https://esm.sh/web-push@3.6.7'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -148,17 +149,149 @@ serve(async (req) => {
       // Real push notification request
       console.log('🔔 Processing REAL push notification request...');
       
-      return new Response(JSON.stringify({
-        success: false,
-        sent: 0,
-        failed: 0,
-        total_subscriptions: 0,
-        message: 'Echte Browser-Push-Notifications sind noch in Entwicklung. Bitte nutze vorerst den normalen Test-Button (ohne 🔔).',
-        error: 'Real push notifications not implemented yet'
-      }), {
-        status: 200, // 200 instead of 501 to avoid FunctionsHttpError
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      // Configure web-push with VAPID details
+      const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+      const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+      const vapidSubject = Deno.env.get('VAPID_SUBJECT');
+      
+      if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
+        console.error('❌ Missing VAPID configuration');
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'VAPID configuration missing'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      console.log('🔧 Configuring web-push with VAPID...');
+      webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+      
+      try {
+        // Get all active push subscriptions
+        const { data: subscriptions, error } = await supabaseAdmin
+          .from('push_subscriptions')
+          .select('*')
+          .eq('is_active', true);
+
+        if (error) {
+          console.error('❌ Database error:', error);
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Database error: ' + error.message
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        console.log(`📋 Found ${subscriptions?.length || 0} active subscriptions`);
+
+        if (!subscriptions || subscriptions.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            sent: 0,
+            failed: 0,
+            total_subscriptions: 0,
+            message: 'No active push subscriptions found'
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Prepare notification payload
+        const notificationPayload = JSON.stringify({
+          title: body.title || 'Test Push Notification 🔔',
+          body: body.message || 'Dies ist eine echte Browser-Push-Benachrichtigung!',
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          data: body.data || { timestamp: new Date().toISOString() },
+          actions: [
+            {
+              action: 'open',
+              title: 'Öffnen'
+            }
+          ],
+          requireInteraction: false,
+          silent: false
+        });
+        
+        console.log('📨 Sending push notifications...');
+        let sentCount = 0;
+        let failedCount = 0;
+        
+        // Send push notifications to all subscriptions
+        for (const subscription of subscriptions) {
+          try {
+            console.log(`📤 Sending push to user ${subscription.user_id}...`);
+            
+            const pushSubscription = {
+              endpoint: subscription.endpoint,
+              keys: {
+                p256dh: subscription.p256dh_key,
+                auth: subscription.auth_key
+              }
+            };
+            
+            await webpush.sendNotification(pushSubscription, notificationPayload);
+            sentCount++;
+            console.log(`✅ Push sent successfully to user ${subscription.user_id}`);
+            
+            // Also create a database notification for consistency
+            if (subscription.user_id) {
+              await supabaseAdmin
+                .from('notifications')
+                .insert({
+                  user_id: subscription.user_id,
+                  notification_type_id: '380fab61-2f1a-40d1-bed8-d34925544397',
+                  title: body.title || 'Push Notification erhalten 🔔',
+                  message: body.message || 'Eine Browser-Push-Benachrichtigung wurde gesendet.',
+                  data: { ...body.data, pushed: true, timestamp: new Date().toISOString() },
+                  priority: body.priority || 'medium'
+                });
+            }
+            
+          } catch (pushError) {
+            console.error(`❌ Failed to send push to user ${subscription.user_id}:`, pushError);
+            failedCount++;
+            
+            // If the subscription is invalid, mark it as inactive
+            if (pushError.statusCode === 410 || pushError.statusCode === 404) {
+              console.log(`🗑️ Marking invalid subscription as inactive for user ${subscription.user_id}`);
+              await supabaseAdmin
+                .from('push_subscriptions')
+                .update({ is_active: false })
+                .eq('id', subscription.id);
+            }
+          }
+        }
+        
+        const totalSubscriptions = subscriptions.length;
+        console.log(`📊 Push notification results: ${sentCount} sent, ${failedCount} failed out of ${totalSubscriptions} total`);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          sent: sentCount,
+          failed: failedCount,
+          total_subscriptions: totalSubscriptions,
+          message: `Browser-Push erfolgreich! ${sentCount} Benachrichtigung(en) gesendet, ${failedCount} fehlgeschlagen.`
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+
+      } catch (dbError) {
+        console.error('❌ Database connection error:', dbError);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Database connection failed: ' + dbError.message
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
   } catch (error) {
