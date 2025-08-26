@@ -9,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/useTenant";
 
 export default function CreateTask() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(false);
   const [userProfiles, setUserProfiles] = useState<Array<{
     id: string;
@@ -96,6 +98,15 @@ export default function CreateTask() {
         return;
       }
 
+      if (!currentTenant) {
+        toast({
+          title: "Fehler", 
+          description: "Kein Tenant ausgewählt. Bitte wählen Sie einen Tenant aus.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase.from('tasks').insert({
         title: formData.title,
         description: formData.description,
@@ -105,7 +116,7 @@ export default function CreateTask() {
         assigned_to: formData.assignedTo === "unassigned" ? null : formData.assignedTo || null,
         user_id: user.id,
         status: "todo",
-        tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+        tenant_id: currentTenant.id
       });
 
       if (error) throw error;

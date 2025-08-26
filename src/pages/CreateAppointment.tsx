@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { AppointmentPollCreator } from "@/components/poll/AppointmentPollCreator";
 
 const appointmentSchema = z.object({
@@ -43,6 +44,7 @@ type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 const CreateAppointment = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [contacts, setContacts] = useState<any[]>([]);
@@ -103,6 +105,15 @@ const CreateAppointment = () => {
   const onSubmit = async (values: AppointmentFormValues) => {
     if (!user) return;
 
+    if (!currentTenant) {
+      toast({
+        title: "Fehler",
+        description: "Kein Tenant ausgewählt. Bitte wählen Sie einen Tenant aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       // Create appointment
@@ -119,7 +130,7 @@ const CreateAppointment = () => {
           status: values.status,
           reminder_minutes: values.reminder_minutes,
           user_id: user.id,
-          tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+          tenant_id: currentTenant.id
         })
         .select()
         .single();
