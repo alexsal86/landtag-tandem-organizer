@@ -361,7 +361,7 @@ export type Database = {
       archived_tasks: {
         Row: {
           archived_at: string
-          assigned_to: string[] | null
+          assigned_to: string | null
           auto_delete_after_days: number | null
           category: string
           completed_at: string
@@ -377,7 +377,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string
-          assigned_to?: string[] | null
+          assigned_to?: string | null
           auto_delete_after_days?: number | null
           category: string
           completed_at?: string
@@ -393,7 +393,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string
-          assigned_to?: string[] | null
+          assigned_to?: string | null
           auto_delete_after_days?: number | null
           category?: string
           completed_at?: string
@@ -2636,7 +2636,7 @@ export type Database = {
       }
       subtasks: {
         Row: {
-          assigned_to: string[] | null
+          assigned_to: string | null
           completed_at: string | null
           created_at: string
           description: string
@@ -2650,7 +2650,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          assigned_to?: string[] | null
+          assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
           description: string
@@ -2664,7 +2664,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          assigned_to?: string[] | null
+          assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string

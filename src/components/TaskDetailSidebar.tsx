@@ -480,7 +480,8 @@ export function TaskDetailSidebar({
           assigned_to: newSubtask.assigned_to || '',
           due_date: newSubtask.due_date || null,
           order_index: nextOrderIndex,
-        });
+          is_completed: false,
+        } as any);
 
       if (error) throw error;
 
@@ -505,7 +506,7 @@ export function TaskDetailSidebar({
     try {
       const { error } = await supabase
         .from('subtasks')
-        .update(updates)
+        .update(updates as any)
         .eq('id', subtaskId);
 
       if (error) throw error;

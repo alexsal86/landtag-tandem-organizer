@@ -719,7 +719,7 @@ export function TasksView() {
         [taskId]: (data || []).map(subtask => ({
           ...subtask,
           title: subtask.description || 'Unnamed subtask'
-        }))
+        })) as any
       }));
     } catch (error) {
       console.error('Error loading subtasks:', error);
@@ -768,8 +768,9 @@ export function TasksView() {
             assigned_to: task.assignedTo || '',
             progress: 100,
             due_date: task.dueDate,
-            completed_at: new Date().toISOString()
-          });
+            completed_at: new Date().toISOString(),
+            auto_delete_after_days: null,
+          } as any);
 
         if (archiveError) {
           console.error('Error archiving task:', archiveError);
