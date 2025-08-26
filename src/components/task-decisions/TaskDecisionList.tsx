@@ -90,7 +90,7 @@ export const TaskDecisionList = () => {
           )
         `)
         .eq('status', 'active')
-        .filter('tasks.assigned_to', 'cs', `{${currentUserId}}`);
+        .ilike('tasks.assigned_to', `%${currentUserId}%`);
 
       if (assignedError) throw assignedError;
 
