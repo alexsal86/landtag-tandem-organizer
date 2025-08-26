@@ -50,9 +50,9 @@ export const useSubtasks = () => {
         [taskId]: (data || []).map(item => ({
           ...item,
           title: item.description || 'Unbenannte Unteraufgabe',
-          assigned_to: Array.isArray(item.assigned_to) 
-            ? item.assigned_to 
-            : (item.assigned_to ? [item.assigned_to] : []),
+          assigned_to: item.assigned_to 
+            ? (typeof item.assigned_to === 'string' ? [item.assigned_to] : item.assigned_to)
+            : [],
         }))
       }));
     } catch (error) {
