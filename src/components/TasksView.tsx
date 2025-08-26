@@ -108,7 +108,14 @@ export function TasksView() {
   const [snoozeDialogOpen, setSnoozeDialogOpen] = useState<{ type: 'task' | 'subtask'; id: string } | null>(null);
   const [snoozeDate, setSnoozeDate] = useState<string>('');
   const [snoozeManagementOpen, setSnoozeManagementOpen] = useState(false);
-  const [hideSnoozeSubtasks, setHideSnoozeSubtasks] = useState(false);
+  const [hideSnoozeSubtasks, setHideSnoozeSubtasks] = useState(() => {
+    try {
+      const saved = localStorage.getItem('hideSnoozeSubtasks');
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
   const [allSnoozes, setAllSnoozes] = useState<Array<{
     id: string;
     task_id?: string;
@@ -1450,6 +1457,16 @@ export function TasksView() {
     overdue: filteredTasksWithSnooze.filter(t => isOverdue(t.dueDate)).length,
   };
 
+  // Handle hideSnoozeSubtasks toggle with persistence
+  const handleToggleHideSnoozeSubtasks = (hide: boolean) => {
+    setHideSnoozeSubtasks(hide);
+    try {
+      localStorage.setItem('hideSnoozeSubtasks', JSON.stringify(hide));
+    } catch (error) {
+      console.error('Failed to save hideSnoozeSubtasks setting:', error);
+    }
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gradient-subtle p-6">
@@ -1561,7 +1578,7 @@ export function TasksView() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setHideSnoozeSubtasks(!hideSnoozeSubtasks)}
+                    onClick={() => handleToggleHideSnoozeSubtasks(!hideSnoozeSubtasks)}
                     className="ml-2 h-6 px-2 text-xs"
                   >
                     {hideSnoozeSubtasks ? 'Alle anzeigen' : 'Wiedervorlagen ausblenden'}
@@ -2548,7 +2565,7 @@ export function TasksView() {
         onUpdateSnooze={updateSnooze}
         onDeleteSnooze={deleteSnooze}
         hideSnoozeSubtasks={hideSnoozeSubtasks}
-        onToggleHideSnoozeSubtasks={setHideSnoozeSubtasks}
+        onToggleHideSnoozeSubtasks={handleToggleHideSnoozeSubtasks}
       />
 
       {/* Todo Create Dialog */}
