@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,10 +105,13 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
     }
   };
 
-  const userOptions = profiles.map(profile => ({
-    value: profile.user_id,
-    label: profile.display_name || 'Unbekannter Benutzer',
-  }));
+  const userOptions = useMemo(() => {
+    if (!Array.isArray(profiles)) return [];
+    return profiles.map(profile => ({
+      value: profile.user_id,
+      label: profile.display_name || 'Unbekannter Benutzer',
+    }));
+  }, [profiles]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
