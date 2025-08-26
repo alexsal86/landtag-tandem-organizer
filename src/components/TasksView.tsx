@@ -394,184 +394,254 @@ export function TasksView() {
 
   const loadAssignedSubtasks = async () => {
     if (!user) {
-      console.log('No user found for assigned subtasks');
+      console.log('❌ No user found for assigned subtasks');
       return;
     }
     
-    console.log('Loading assigned subtasks for user:', user.id);
+    console.log('🔄 Loading assigned subtasks for user:', user.id, 'email:', user.email);
+    setAssignedSubtasks([]); // Clear existing data
     
     try {
-      // Get regular subtasks assigned to this user
-      const { data: subtasksData, error } = await supabase
+      const allSubtasks = [];
+
+      // 1. Get regular subtasks assigned to this user
+      console.log('📋 Loading regular subtasks...');
+      const { data: subtasksData, error: subtasksError } = await supabase
         .from('subtasks')
-        .select(`
-          *,
-          result_text,
-          completed_at
-        `)
+        .select('*')
         .contains('assigned_to', [user.id])
         .eq('is_completed', false);
 
-      if (error) throw error;
+      if (subtasksError) {
+        console.error('❌ Error loading regular subtasks:', subtasksError);
+      } else {
+        console.log('✅ Raw regular subtasks data:', subtasksData);
+        
+        if (subtasksData) {
+          for (const subtask of subtasksData) {
+            console.log('📝 Processing regular subtask:', subtask.id, 'assigned_to:', subtask.assigned_to);
+            
+            try {
+              // Get task title separately
+              const { data: taskData } = await supabase
+                .from('tasks')
+                .select('title')
+                .eq('id', subtask.task_id)
+                .single();
 
-      // Get planning subtasks assigned to this user
+              const resolvedAssignedTo = await resolveUserNamesAsync(subtask.assigned_to);
+              
+              allSubtasks.push({
+                ...subtask,
+                task_title: taskData?.title || 'Unbekannte Aufgabe',
+                source_type: 'task' as const,
+                assigned_to_names: resolvedAssignedTo
+              });
+              
+              console.log('✅ Added regular subtask:', subtask.id);
+            } catch (resolveError) {
+              console.error('❌ Error resolving names for subtask:', subtask.id, resolveError);
+              // Add without resolved names as fallback
+              allSubtasks.push({
+                ...subtask,
+                task_title: 'Unbekannte Aufgabe',
+                source_type: 'task' as const,
+                assigned_to_names: resolveUserNames(subtask.assigned_to)
+              });
+            }
+          }
+        }
+      }
+
+      // 2. Get planning subtasks assigned to this user
+      console.log('📅 Loading planning subtasks...');
       const { data: planningSubtasksData, error: planningError } = await supabase
         .from('planning_item_subtasks')
-        .select('*, result_text, completed_at')
+        .select('*')
         .eq('assigned_to', user.id)
         .eq('is_completed', false);
 
-      if (planningError) throw planningError;
+      if (planningError) {
+        console.error('❌ Error loading planning subtasks:', planningError);
+      } else {
+        console.log('✅ Raw planning subtasks data:', planningSubtasksData);
+        
+        if (planningSubtasksData) {
+          for (const subtask of planningSubtasksData) {
+            console.log('📝 Processing planning subtask:', subtask.id, 'assigned_to:', subtask.assigned_to);
+            
+            try {
+              const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to]);
+              
+              // Get checklist item and planning title separately
+              const { data: checklistItemData } = await supabase
+                .from('event_planning_checklist_items')
+                .select('title, event_planning_id')
+                .eq('id', subtask.planning_item_id)
+                .single();
 
-      // Get call follow-up tasks assigned to this user
+              let planningTitle = 'Unbekannte Planung';
+              if (checklistItemData?.event_planning_id) {
+                const { data: planningData } = await supabase
+                  .from('event_plannings')
+                  .select('title')
+                  .eq('id', checklistItemData.event_planning_id)
+                  .single();
+                
+                planningTitle = planningData?.title || 'Unbekannte Planung';
+              }
+              
+              allSubtasks.push({
+                ...subtask,
+                task_title: planningTitle,
+                source_type: 'planning' as const,
+                checklist_item_title: checklistItemData?.title,
+                planning_item_id: subtask.planning_item_id,
+                assigned_to_names: resolvedAssignedTo,
+                assigned_to: [subtask.assigned_to] // Convert single value to array for consistency
+              });
+              
+              console.log('✅ Added planning subtask:', subtask.id);
+            } catch (resolveError) {
+              console.error('❌ Error resolving names for planning subtask:', subtask.id, resolveError);
+              // Add without resolved names as fallback
+              allSubtasks.push({
+                ...subtask,
+                task_title: 'Unbekannte Planung',
+                source_type: 'planning' as const,
+                planning_item_id: subtask.planning_item_id,
+                assigned_to_names: resolveUserNames([subtask.assigned_to]),
+                assigned_to: [subtask.assigned_to]
+              });
+            }
+          }
+        }
+      }
+
+      // 3. Get call follow-up tasks assigned to this user
+      console.log('📞 Loading call follow-up tasks...');
       const { data: callFollowupData, error: callFollowupError } = await supabase
         .from('tasks')
-        .select('*, call_log_id')
+        .select('*')
         .eq('category', 'call_follow_up')
         .neq('status', 'completed');
       
-      // Filter those assigned to current user
-      const userCallFollowups = (callFollowupData || []).filter(task => 
-        (Array.isArray(task.assigned_to) && (task.assigned_to.includes(user.email) || task.assigned_to.includes(user.id))) ||
-        task.user_id === user.id
-      );
-
-      console.log('Regular subtasks loaded:', subtasksData?.length || 0);
-      console.log('Planning subtasks loaded:', planningSubtasksData?.length || 0);
-      console.log('Call follow-up tasks loaded:', userCallFollowups?.length || 0);
-
-      // Combine subtasks with task titles and try to resolve user names
-      const allSubtasks = [];
-
-      // Process regular subtasks
-      if (subtasksData) {
-        for (const subtask of subtasksData) {
-          // Skip subtasks not assigned to current user
-          if (!Array.isArray(subtask.assigned_to) || !subtask.assigned_to.includes(user.id)) {
-            continue;
-          }
-
-          // Resolve assigned_to UUIDs to names
-          const resolvedAssignedTo = await resolveUserNamesAsync(subtask.assigned_to);
-
-          const { data: taskData } = await supabase
-            .from('tasks')
-            .select('title')
-            .eq('id', subtask.task_id)
-            .single();
-
-          allSubtasks.push({
-            ...subtask,
-            task_title: taskData?.title || 'Unbekannte Aufgabe',
-            source_type: 'task' as const,
-            assigned_to_names: resolvedAssignedTo
-          });
-        }
-      }
-
-      // Process planning subtasks
-      if (planningSubtasksData) {
-        for (const subtask of planningSubtasksData) {
-          // Skip subtasks not assigned to current user
-          if (subtask.assigned_to !== user.id) {
-            continue;
-          }
-
-          // Resolve assigned_to UUID to name
-          const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to]);
-
-          const { data: checklistItemData } = await supabase
-            .from('event_planning_checklist_items')
-            .select('title, event_planning_id')
-            .eq('id', subtask.planning_item_id)
-            .single();
-
-          let planningTitle = 'Unbekannte Planung';
-          if (checklistItemData) {
-            const { data: planningData } = await supabase
-              .from('event_plannings')
-              .select('title')
-              .eq('id', checklistItemData.event_planning_id)
-              .single();
-            
-            planningTitle = planningData?.title || 'Unbekannte Planung';
-          }
-
-          allSubtasks.push({
-            ...subtask,
-            task_title: planningTitle,
-            source_type: 'planning' as const,
-            checklist_item_title: checklistItemData?.title,
-            planning_item_id: subtask.planning_item_id,
-            assigned_to_names: resolvedAssignedTo,
-            assigned_to: [subtask.assigned_to] // Convert single value to array for consistency
-          });
-        }
-      }
-
-      // Process call follow-up tasks as pseudo-subtasks
-      if (userCallFollowups && userCallFollowups.length > 0) {
-        for (const followupTask of userCallFollowups) {
-          // Skip if not assigned to current user
-          const assignees = Array.isArray(followupTask.assigned_to) 
-            ? followupTask.assigned_to 
-            : (followupTask.assigned_to || '').split(',').map(a => a.trim());
+      if (callFollowupError) {
+        console.error('❌ Error loading call follow-up tasks:', callFollowupError);
+      } else {
+        console.log('✅ Raw call follow-up data:', callFollowupData);
+        
+        // Filter those assigned to current user
+        const userCallFollowups = (callFollowupData || []).filter(task => {
+          const assignees = Array.isArray(task.assigned_to) 
+            ? task.assigned_to 
+            : (task.assigned_to || '').split(',').map(a => a.trim());
           
-          if (!assignees.includes(user.id) && !assignees.includes(user.email)) {
-            continue;
-          }
+          const isAssigned = assignees.includes(user.id) || 
+                           assignees.includes(user.email) || 
+                           task.user_id === user.id;
+          
+          console.log('📝 Checking call follow-up task:', task.id, 'assignees:', assignees, 'isAssigned:', isAssigned);
+          return isAssigned;
+        });
 
-          // Get contact name from call log
-          let contactName = 'Unbekannter Kontakt';
-          if (followupTask.call_log_id) {
-            const { data: callLogData } = await supabase
-              .from('call_logs')
-              .select('contact_id')
-              .eq('id', followupTask.call_log_id)
-              .single();
+        console.log('📞 Filtered call follow-up tasks for user:', userCallFollowups.length);
 
-            if (callLogData?.contact_id) {
-              const { data: contactData } = await supabase
-                .from('contacts')
-                .select('name')
-                .eq('id', callLogData.contact_id)
+        for (const followupTask of userCallFollowups) {
+          console.log('📝 Processing call follow-up task:', followupTask.id);
+          
+          try {
+            const assignees = Array.isArray(followupTask.assigned_to) 
+              ? followupTask.assigned_to 
+              : (followupTask.assigned_to || '').split(',').map(a => a.trim());
+            
+            const resolvedAssignedTo = await resolveUserNamesAsync(assignees);
+            
+            // Get contact name from call log
+            let contactName = 'Unbekannter Kontakt';
+            if (followupTask.call_log_id) {
+              const { data: callLogData } = await supabase
+                .from('call_logs')
+                .select('contact_id')
+                .eq('id', followupTask.call_log_id)
                 .single();
-              
-              contactName = contactData?.name || contactName;
+
+              if (callLogData?.contact_id) {
+                const { data: contactData } = await supabase
+                  .from('contacts')
+                  .select('name')
+                  .eq('id', callLogData.contact_id)
+                  .single();
+                
+                contactName = contactData?.name || contactName;
+              }
             }
+
+            allSubtasks.push({
+              id: followupTask.id,
+              title: followupTask.title,
+              description: followupTask.description,
+              task_id: followupTask.id,
+              task_title: `Follow-Up: ${contactName}`,
+              source_type: 'call_followup' as const,
+              assigned_to: followupTask.assigned_to,
+              due_date: followupTask.due_date,
+              is_completed: followupTask.status === 'completed',
+              created_at: followupTask.created_at,
+              updated_at: followupTask.updated_at,
+              priority: followupTask.priority,
+              call_log_id: followupTask.call_log_id,
+              contact_name: contactName,
+              order_index: 0,
+              assigned_to_names: resolvedAssignedTo
+            });
+            
+            console.log('✅ Added call follow-up task:', followupTask.id);
+          } catch (resolveError) {
+            console.error('❌ Error resolving names for call follow-up:', followupTask.id, resolveError);
+            // Add without resolved names as fallback
+            const assignees = Array.isArray(followupTask.assigned_to) 
+              ? followupTask.assigned_to 
+              : (followupTask.assigned_to || '').split(',').map(a => a.trim());
+            
+            allSubtasks.push({
+              id: followupTask.id,
+              title: followupTask.title,
+              description: followupTask.description,
+              task_id: followupTask.id,
+              task_title: `Follow-Up: Unbekannter Kontakt`,
+              source_type: 'call_followup' as const,
+              assigned_to: followupTask.assigned_to,
+              due_date: followupTask.due_date,
+              is_completed: followupTask.status === 'completed',
+              created_at: followupTask.created_at,
+              updated_at: followupTask.updated_at,
+              priority: followupTask.priority,
+              call_log_id: followupTask.call_log_id,
+              contact_name: 'Unbekannter Kontakt',
+              order_index: 0,
+              assigned_to_names: resolveUserNames(assignees)
+            });
           }
-
-          // Resolve assigned_to UUIDs to names for call follow-ups
-          const resolvedAssignedTo = await resolveUserNamesAsync(assignees);
-
-          // Convert task to subtask format
-          allSubtasks.push({
-            id: followupTask.id,
-            title: followupTask.title,
-            description: followupTask.description,
-            task_id: followupTask.id,
-            task_title: `Follow-Up: ${contactName}`,
-            source_type: 'call_followup' as const,
-            assigned_to: followupTask.assigned_to,
-            due_date: followupTask.due_date,
-            is_completed: followupTask.status === 'completed',
-            created_at: followupTask.created_at,
-            updated_at: followupTask.updated_at,
-            priority: followupTask.priority,
-            call_log_id: followupTask.call_log_id,
-            contact_name: contactName,
-            order_index: 0,
-            assigned_to_names: resolvedAssignedTo
-          });
         }
       }
 
-      console.log('Final subtasks assigned to user:', allSubtasks);
-      console.log('Number of assigned subtasks found:', allSubtasks.length);
-      console.log('User ID for filtering:', user.id);
+      console.log('🎯 FINAL RESULT - Total assigned subtasks found:', allSubtasks.length);
+      console.log('📊 Breakdown:');
+      console.log('  - Regular subtasks:', allSubtasks.filter(s => s.source_type === 'task').length);
+      console.log('  - Planning subtasks:', allSubtasks.filter(s => s.source_type === 'planning').length);  
+      console.log('  - Call follow-ups:', allSubtasks.filter(s => s.source_type === 'call_followup').length);
+      console.log('📋 All subtasks details:', allSubtasks.map(s => ({
+        id: s.id,
+        title: s.title,
+        source_type: s.source_type,
+        assigned_to: s.assigned_to,
+        assigned_to_names: s.assigned_to_names
+      })));
+
       setAssignedSubtasks(allSubtasks);
     } catch (error) {
-      console.error('Error loading assigned subtasks:', error);
+      console.error('💥 Critical error loading assigned subtasks:', error);
     }
   };
 
@@ -1328,11 +1398,24 @@ export function TasksView() {
   });
 
   const filteredAssignedSubtasks = assignedSubtasks.filter(subtask => {
+    console.log('🔍 Filtering subtask:', subtask.id, 'hideSnoozeSubtasks:', hideSnoozeSubtasks, 'snoozed:', !!subtaskSnoozes[subtask.id]);
+    
     if (hideSnoozeSubtasks) {
-      return !subtaskSnoozes[subtask.id] || new Date(subtaskSnoozes[subtask.id]) <= new Date();
+      const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
+      if (isSnoozed) {
+        console.log('❌ Hiding snoozed subtask:', subtask.id, 'until:', subtaskSnoozes[subtask.id]);
+        return false;
+      }
     }
+    
+    console.log('✅ Including subtask in filtered list:', subtask.id);
     return true;
   });
+
+  console.log('🎯 FILTERING RESULTS:');
+  console.log('  - Total assigned subtasks:', assignedSubtasks.length);
+  console.log('  - Filtered assigned subtasks:', filteredAssignedSubtasks.length);
+  console.log('  - Hide snooze subtasks enabled:', hideSnoozeSubtasks);
 
   const taskCounts = {
     all: filteredTasksWithSnooze.length,
@@ -1449,6 +1532,16 @@ export function TasksView() {
               </CardTitle>
               <div className="text-sm text-muted-foreground">
                 Aufgaben: {assignedTasks.length} | Unteraufgaben: {assignedSubtasks.length} (sichtbar: {filteredAssignedSubtasks.length}) | ToDos: {todos.length}
+                {assignedSubtasks.length !== filteredAssignedSubtasks.length && (  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setHideSnoozeSubtasks(!hideSnoozeSubtasks)}
+                    className="ml-2 h-6 px-2 text-xs"
+                  >
+                    {hideSnoozeSubtasks ? 'Alle anzeigen' : 'Wiedervorlagen ausblenden'}
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
