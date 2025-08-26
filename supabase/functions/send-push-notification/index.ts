@@ -17,6 +17,30 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Handle GET request for VAPID public key
+  if (req.method === 'GET') {
+    console.log('🔑 Providing VAPID public key...');
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    
+    if (!vapidPublicKey) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'VAPID public key not configured'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    return new Response(JSON.stringify({
+      success: true,
+      publicKey: vapidPublicKey
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   try {
     console.log('📦 Starting to parse request body...');
     

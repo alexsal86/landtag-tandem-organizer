@@ -263,8 +263,19 @@ export const useNotifications = () => {
       
       if (needNewSubscription) {
         console.log('🔧 Creating new push subscription...');
-        // Fresh VAPID public key for the new system
-        const vapidPublicKey = 'BM7vQqK8TGnQz5YzF9Cg7M2XjB3vNL6K9D4tWrS5EaF2nY8cV1xR6uH3zA4eJ0mP9sQ7wI2yO5dG8bK3cF6nS2E';
+        
+        // Fetch VAPID public key from Edge Function
+        const vapidResponse = await supabase.functions.invoke('send-push-notification', {
+          method: 'GET'
+        });
+        
+        if (vapidResponse.error || !vapidResponse.data?.success) {
+          throw new Error('Failed to fetch VAPID public key: ' + (vapidResponse.error?.message || 'Unknown error'));
+        }
+        
+        const vapidPublicKey = vapidResponse.data.publicKey;
+        console.log('🔑 Got VAPID public key from server');
+        
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
