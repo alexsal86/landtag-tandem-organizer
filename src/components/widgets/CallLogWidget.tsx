@@ -736,7 +736,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
             currentCallLogs.map(log => (
               <div
                 key={log.id}
-                className="p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                className="group p-3 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-2 flex-1 min-w-0">
