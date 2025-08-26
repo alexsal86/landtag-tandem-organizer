@@ -1449,8 +1449,8 @@ export function TasksView() {
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            <div className="font-medium">{subtask.title}</div>
-                            {subtask.description && (
+                            <div className="font-medium">{subtask.title || subtask.description}</div>
+                            {subtask.description && subtask.title && (
                               <div className="text-sm text-muted-foreground">{subtask.description}</div>
                             )}
                             {isSnoozed && (
@@ -1460,7 +1460,16 @@ export function TasksView() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{subtask.task_title}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            Unteraufgabe
+                          </Badge>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {subtask.source_type === 'call_followup' ? 'Call Follow-up' : 
+                             subtask.source_type === 'planning' ? 'Planung' :
+                             'Aufgabe'}: {subtask.task_title}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {subtask.due_date && (
                             <div className={`text-sm ${isOverdue(subtask.due_date) ? 'text-red-600' : ''}`}>
