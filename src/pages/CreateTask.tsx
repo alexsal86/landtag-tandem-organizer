@@ -90,127 +90,98 @@ export default function CreateTask() {
     e.preventDefault();
     setLoading(true);
 
-    console.log('📝 Starting task creation process');
-    console.log('📝 Current tenant:', currentTenant);
-    console.log('📝 Form data:', formData);
+      console.log('📝 Starting task creation process');
+      console.log('📝 Current tenant:', currentTenant);
+      console.log('📝 Form data:', formData);
 
-    try {
-      // Validate required fields
-      if (!formData.title.trim()) {
-        toast({
-          title: "Fehler",
-          description: "Bitte geben Sie einen Titel für die Aufgabe ein.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      console.log('📝 User auth check:', { user: user?.id, error: userError });
-      
-      if (userError || !user) {
-        console.error('❌ Auth error:', userError);
-        toast({
-          title: "Fehler",
-          description: "Sie müssen angemeldet sein, um Aufgaben zu erstellen.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validate tenant
-      if (!currentTenant?.id) {
-        console.error('❌ No tenant available:', currentTenant);
-        toast({
-          title: "Fehler", 
-          description: "Kein Tenant ausgewählt. Bitte laden Sie die Seite neu.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Debug current formData
-      console.log('📝 Current formData before processing:', formData);
-      console.log('📝 Type of assignedTo:', typeof formData.assignedTo, Array.isArray(formData.assignedTo));
-      
-      // Prepare assigned_to field - ensure it's either null or a proper array
-      let assignedToField = null;
-      if (Array.isArray(formData.assignedTo) && formData.assignedTo.length > 0) {
-        // Filter out any empty strings or invalid values
-        const validAssignments = formData.assignedTo.filter(id => 
-          id && typeof id === 'string' && id.trim() !== ''
-        );
-        if (validAssignments.length > 0) {
-          assignedToField = validAssignments;
+      try {
+        // Validate required fields
+        if (!formData.title.trim()) {
+          toast({
+            title: "Fehler",
+            description: "Bitte geben Sie einen Titel für die Aufgabe ein.",
+            variant: "destructive",
+          });
+          return;
         }
-      }
-      
-      console.log('📝 Processed assigned_to field:', assignedToField);
-      
-      const taskData = {
-        title: formData.title.trim(),
-        description: formData.description?.trim() || null,
-        priority: formData.priority,
-        category: formData.category || 'personal',
-        due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-        assigned_to: assignedToField,
-        user_id: user.id,
-        status: "todo",
-        tenant_id: currentTenant.id
-      };
 
-      console.log('📝 Inserting task with data:', taskData);
-
-      // Insert task
-      const { data: insertedTask, error: insertError } = await supabase
-        .from('tasks')
-        .insert(taskData)
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('❌ Task creation error:', insertError);
-        console.error('❌ Error details:', {
-          message: insertError.message,
-          details: insertError.details,
-          hint: insertError.hint,
-          code: insertError.code
-        });
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        console.log('📝 User auth check:', { user: user?.id, error: userError });
         
-        // Provide more specific error messages
-        let errorMessage = 'Unbekannter Fehler';
-        if (insertError.message.includes('violates row-level security')) {
-          errorMessage = 'Berechtigung verweigert. Überprüfen Sie Ihre Anmeldung.';
-        } else if (insertError.message.includes('duplicate key')) {
-          errorMessage = 'Eine Aufgabe mit diesem Namen existiert bereits.';
-        } else if (insertError.message.includes('foreign key')) {
-          errorMessage = 'Ungültige Zuordnung. Bitte überprüfen Sie die ausgewählten Benutzer.';
-        } else {
-          errorMessage = insertError.message;
+        if (userError || !user) {
+          console.error('❌ Auth error:', userError);
+          toast({
+            title: "Fehler",
+            description: "Sie müssen angemeldet sein, um Aufgaben zu erstellen.",
+            variant: "destructive",
+          });
+          return;
         }
+
+        // Validate tenant
+        if (!currentTenant?.id) {
+          console.error('❌ No tenant available:', currentTenant);
+          toast({
+            title: "Fehler", 
+            description: "Kein Tenant ausgewählt. Bitte laden Sie die Seite neu.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // TEST: Create task WITHOUT assigned_to field to isolate the problem
+        const taskData = {
+          title: formData.title.trim(),
+          description: formData.description?.trim() || null,
+          priority: formData.priority,
+          category: formData.category || 'personal',
+          due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
+          user_id: user.id,
+          status: "todo",
+          tenant_id: currentTenant.id
+          // TEMPORARILY REMOVED: assigned_to field to test
+        };
+
+        console.log('📝 Inserting task WITHOUT assigned_to field:', taskData);
+
+        // Insert task
+        const { data: insertedTask, error: insertError } = await supabase
+          .from('tasks')
+          .insert(taskData)
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('❌ Task creation error:', insertError);
+          console.error('❌ Error details:', {
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint,
+            code: insertError.code
+          });
+          
+          throw new Error(insertError.message);
+        }
+
+        console.log('✅ Task created successfully WITHOUT assigned_to:', insertedTask);
         
-        throw new Error(errorMessage);
-      }
+        toast({
+          title: "Aufgabe erstellt",
+          description: "Die neue Aufgabe wurde erfolgreich erstellt (ohne Zuweisungen).",
+        });
 
-      console.log('✅ Task created successfully:', insertedTask);
-      
-      toast({
-        title: "Aufgabe erstellt",
-        description: "Die neue Aufgabe wurde erfolgreich erstellt.",
-      });
+        // Reset form
+        setFormData({
+          title: "",
+          description: "",
+          priority: "medium",
+          category: "personal",
+          dueDate: "",
+          assignedTo: [],
+        });
 
-      // Reset form
-      setFormData({
-        title: "",
-        description: "",
-        priority: "medium",
-        category: "personal",
-        dueDate: "",
-        assignedTo: [],
-      });
-
-      navigate("/tasks");
+        navigate("/tasks");
     } catch (error) {
       console.error('❌ Error creating task:', error);
       toast({
