@@ -92,49 +92,55 @@ export function MultiSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Suchen..." />
-          <CommandEmpty>Keine Optionen gefunden.</CommandEmpty>
-          <CommandGroup className="max-h-64 overflow-auto">
-            {safeOptions.map((option) => (
-              <CommandItem
-                key={option.value}
-                onSelect={() => {
-                  const currentSelected = safeSelected;
-                  if (currentSelected.includes(option.value)) {
-                    handleUnselect(option.value)
-                  } else {
-                    onChange([...currentSelected, option.value])
-                  }
-                }}
-              >
-                <div
-                  className={cn(
-                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                    safeSelected.includes(option.value)
-                      ? "bg-primary text-primary-foreground"
-                      : "opacity-50 [&_svg]:invisible"
-                  )}
+        {safeOptions.length > 0 ? (
+          <Command>
+            <CommandInput placeholder="Suchen..." />
+            <CommandEmpty>Keine Optionen gefunden.</CommandEmpty>
+            <CommandGroup className="max-h-64 overflow-auto">
+              {safeOptions.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  onSelect={() => {
+                    const currentSelected = safeSelected;
+                    if (currentSelected.includes(option.value)) {
+                      handleUnselect(option.value)
+                    } else {
+                      onChange([...currentSelected, option.value])
+                    }
+                  }}
                 >
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                  <div
+                    className={cn(
+                      "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                      safeSelected.includes(option.value)
+                        ? "bg-primary text-primary-foreground"
+                        : "opacity-50 [&_svg]:invisible"
+                    )}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                {option.label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </Command>
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                  {option.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </Command>
+        ) : (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            Keine Optionen verfügbar
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )
