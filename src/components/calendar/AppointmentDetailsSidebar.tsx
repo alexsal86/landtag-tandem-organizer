@@ -42,8 +42,10 @@ export function AppointmentDetailsSidebar({
     if (!appointment) return;
     setEditData({
       title: appointment.title,
+      description: "", // Add description field
       location: appointment.location || "",
       priority: appointment.priority,
+      category: appointment.type, // Map type to category
       date: appointment.date.toISOString().split('T')[0],
       time: appointment.time,
       duration: appointment.duration
@@ -306,21 +308,9 @@ export function AppointmentDetailsSidebar({
                     />
                   </div>
                 ) : (
-                  <>
-                    <div className="font-medium">
-                      {(() => {
-                        const [hours, minutes] = appointment.time.split(':').map(Number);
-                        const durationMinutes = parseInt(appointment.duration.replace(/\D/g, ''));
-                        const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
-                        const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
-                        
-                        return `${appointment.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
-                      })()}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Dauer: {appointment.duration}
-                    </div>
-                  </>
+                  <div className="text-sm text-muted-foreground">
+                    {formatEventDisplay(appointment)}
+                  </div>
                 )}
               </div>
             </div>
