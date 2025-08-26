@@ -153,7 +153,13 @@ serve(async (req) => {
       // Configure web-push with VAPID details
       const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
       const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-      const vapidSubject = Deno.env.get('VAPID_SUBJECT');
+      let vapidSubject = Deno.env.get('VAPID_SUBJECT');
+      
+      // Ensure VAPID subject is properly formatted as mailto: URL
+      if (vapidSubject && !vapidSubject.startsWith('mailto:') && !vapidSubject.startsWith('http')) {
+        vapidSubject = `mailto:${vapidSubject}`;
+        console.log('🔧 Fixed VAPID subject format to:', vapidSubject);
+      }
       
       if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) {
         console.error('❌ Missing VAPID configuration');
