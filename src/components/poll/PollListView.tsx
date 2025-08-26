@@ -99,7 +99,26 @@ export const PollListView = () => {
         })
       );
 
-      setPolls(transformedPolls);
+      // Sort polls: active polls first, then completed/cancelled at the bottom
+      const sortedPolls = transformedPolls.sort((a, b) => {
+        // First, sort by status priority (active first, then others)
+        const getStatusPriority = (status: string) => {
+          switch (status) {
+            case 'active': return 1;
+            case 'completed': return 3;
+            case 'cancelled': return 4;
+            default: return 2;
+          }
+        };
+        
+        const statusDiff = getStatusPriority(a.status) - getStatusPriority(b.status);
+        if (statusDiff !== 0) return statusDiff;
+        
+        // Within same status, sort by created_at (newest first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      setPolls(sortedPolls);
     } catch (error) {
       console.error('Error loading polls:', error);
       toast({
@@ -265,11 +284,18 @@ export const PollListView = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {polls.map((poll) => (
-                <TableRow key={poll.id}>
+              {polls.map((poll) => {
+                const isInactive = poll.status === 'completed' || poll.status === 'cancelled';
+                return (
+                <TableRow 
+                  key={poll.id} 
+                  className={isInactive ? 'opacity-60 bg-muted/30' : ''}
+                >
                   <TableCell>
                     <div>
-                      <div className="font-medium">{poll.title}</div>
+                      <div className={`font-medium ${isInactive ? 'text-muted-foreground' : ''}`}>
+                        {poll.title}
+                      </div>
                       {poll.description && (
                         <div className="text-sm text-muted-foreground truncate max-w-xs">
                           {poll.description}
@@ -345,10 +371,11 @@ export const PollListView = () => {
                        >
                          <Trash2 className="h-4 w-4" />
                        </Button>
-                     </div>
-                   </TableCell>
+                      </div>
+                    </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         )}
