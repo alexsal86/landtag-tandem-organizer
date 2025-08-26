@@ -761,6 +761,31 @@ export function EventPlanningView() {
     setNewChecklistItem("");
   };
 
+  const deleteChecklistItem = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from("event_planning_checklist_items")
+        .delete()
+        .eq("id", itemId);
+
+      if (error) throw error;
+
+      setChecklistItems(items => items.filter(item => item.id !== itemId));
+      
+      toast({
+        title: "Erfolg",
+        description: "Checklisten-Punkt wurde gelöscht.",
+      });
+    } catch (error) {
+      console.error('Error deleting checklist item:', error);
+      toast({
+        title: "Fehler",
+        description: "Checklisten-Punkt konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const addCollaborator = async (userId: string, canEdit: boolean) => {
     if (!selectedPlanning) return;
 
@@ -2697,7 +2722,7 @@ export function EventPlanningView() {
                                 )}
                               >
                                 {item.type === 'separator' ? (
-                                  <div className="flex items-center gap-2 py-3">
+                                  <div className="flex items-center gap-2 py-3 group">
                                     <div {...provided.dragHandleProps} className="text-muted-foreground">
                                       <GripVertical className="h-4 w-4" />
                                     </div>
@@ -2709,6 +2734,15 @@ export function EventPlanningView() {
                                       placeholder="Trenner-Text eingeben..."
                                     />
                                     <div className="flex-1 border-t border-dashed border-border"></div>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => deleteChecklistItem(item.id)}
+                                      className="text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Trenner löschen"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
                                   </div>
                                 ) : (
                                   <div className="space-y-2">
@@ -2797,9 +2831,18 @@ export function EventPlanningView() {
                                            title="Dokument hinzufügen"
                                          >
                                           <Paperclip className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
+                                         </Button>
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => deleteChecklistItem(item.id)}
+                                           className="text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                           title="Punkt löschen"
+                                         >
+                                           <Trash2 className="h-3 w-3" />
+                                         </Button>
+                                       </div>
+                                     </div>
 
                                     {/* Expanded Subtasks */}
                                     {showItemSubtasks[item.id] && (

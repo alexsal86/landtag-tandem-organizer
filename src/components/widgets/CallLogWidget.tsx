@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, PhoneCall, PhoneIncoming, PhoneMissed, Plus, Clock, AlertCircle } from 'lucide-react';
+import { Phone, PhoneCall, PhoneIncoming, PhoneMissed, Plus, Clock, AlertCircle, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -259,6 +259,23 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
     } catch (error) {
       console.error('Error creating call log:', error);
       toast.error('Fehler beim Protokollieren des Anrufs');
+    }
+  };
+
+  const deleteCallLog = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('call_logs')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await loadCallLogs();
+      toast.success('Anruf aus Liste entfernt');
+    } catch (error) {
+      console.error('Error deleting call log:', error);
+      toast.error('Fehler beim Entfernen des Anrufs');
     }
   };
 
@@ -757,6 +774,15 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                       )}
                     </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteCallLog(log.id)}
+                    className="h-6 w-6 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Aus Liste entfernen"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
               </div>
             ))
