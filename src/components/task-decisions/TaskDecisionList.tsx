@@ -67,7 +67,7 @@ export const TaskDecisionList = () => {
 
       if (participantError) throw participantError;
 
-      // Load decisions for tasks assigned to user (where user is not necessarily a participant)
+      // Load decisions for tasks assigned to user 
       const { data: assignedTaskDecisions, error: assignedError } = await supabase
         .from('task_decisions')
         .select(`
@@ -90,8 +90,7 @@ export const TaskDecisionList = () => {
           )
         `)
         .eq('status', 'active')
-        .contains('tasks.assigned_to', currentUserId)
-        .order('created_at', { ascending: false });
+        .filter('tasks.assigned_to', 'cs', `{${currentUserId}}`);
 
       if (assignedError) throw assignedError;
 
