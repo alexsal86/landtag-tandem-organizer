@@ -399,6 +399,11 @@ export function TasksView() {
       // Process regular subtasks
       if (subtasksData) {
         for (const subtask of subtasksData) {
+          // Skip subtasks not assigned to current user
+          if (!Array.isArray(subtask.assigned_to) || !subtask.assigned_to.includes(user.id)) {
+            continue;
+          }
+
           const { data: taskData } = await supabase
             .from('tasks')
             .select('title')
@@ -416,6 +421,11 @@ export function TasksView() {
       // Process planning subtasks
       if (planningSubtasksData) {
         for (const subtask of planningSubtasksData) {
+          // Skip subtasks not assigned to current user
+          if (subtask.assigned_to !== user.id) {
+            continue;
+          }
+
           const { data: checklistItemData } = await supabase
             .from('event_planning_checklist_items')
             .select('title, event_planning_id')
@@ -446,6 +456,15 @@ export function TasksView() {
       // Process call follow-up tasks as pseudo-subtasks
       if (userCallFollowups && userCallFollowups.length > 0) {
         for (const followupTask of userCallFollowups) {
+          // Skip if not assigned to current user
+          const assignees = Array.isArray(followupTask.assigned_to) 
+            ? followupTask.assigned_to 
+            : (followupTask.assigned_to || '').split(',').map(a => a.trim());
+          
+          if (!assignees.includes(user.id) && !assignees.includes(user.email)) {
+            continue;
+          }
+
           // Get contact name from call log
           let contactName = 'Unbekannter Kontakt';
           if (followupTask.call_log_id) {
@@ -469,7 +488,8 @@ export function TasksView() {
           // Convert task to subtask format
           allSubtasks.push({
             id: followupTask.id,
-            description: followupTask.title,
+            title: followupTask.title,
+            description: followupTask.description,
             task_id: followupTask.id,
             task_title: `Follow-Up: ${contactName}`,
               source_type: 'call_followup' as const,
@@ -1397,19 +1417,18 @@ export function TasksView() {
                           </div>
                         )}
                       </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            Aufgabe
+                          </Badge>
+                        </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                          Aufgabe
-                        </Badge>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {task.category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {task.dueDate && (
+                        {task.dueDate && task.dueDate !== '1970-01-01T00:00:00.000Z' && task.dueDate !== '1970-01-01' ? (
                           <div className={`text-sm ${isOverdue(task.dueDate) ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
                             {new Date(task.dueDate).toLocaleDateString('de-DE')}
                           </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">unbefristet</div>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1464,18 +1483,15 @@ export function TasksView() {
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                             Unteraufgabe
                           </Badge>
-                          <div className="text-sm text-muted-foreground mt-1">
-                            {subtask.source_type === 'call_followup' ? 'Call Follow-up' : 
-                             subtask.source_type === 'planning' ? 'Planung' :
-                             'Aufgabe'}: {subtask.task_title}
-                          </div>
                         </TableCell>
                         <TableCell>
-                          {subtask.due_date && (
+                          {subtask.due_date && subtask.due_date !== '1970-01-01T00:00:00.000Z' && subtask.due_date !== '1970-01-01' ? (
                             <div className={`text-sm ${isOverdue(subtask.due_date) ? 'text-red-600' : ''}`}>
                               {new Date(subtask.due_date).toLocaleDateString('de-DE')}
                               {isOverdue(subtask.due_date) && ' (überfällig)'}
                             </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">unbefristet</div>
                           )}
                         </TableCell>
                         <TableCell>
@@ -1543,11 +1559,13 @@ export function TasksView() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {todo.due_date && (
+                        {todo.due_date && todo.due_date !== '1970-01-01T00:00:00.000Z' && todo.due_date !== '1970-01-01' ? (
                           <div className={`text-sm ${isOverdue(todo.due_date) ? 'text-red-600' : ''}`}>
                             {new Date(todo.due_date).toLocaleDateString('de-DE')}
                             {isOverdue(todo.due_date) && ' (überfällig)'}
                           </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">unbefristet</div>
                         )}
                       </TableCell>
                       <TableCell>
