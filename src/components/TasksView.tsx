@@ -1590,6 +1590,10 @@ export function TasksView() {
               </div>
             </CardHeader>
             <CardContent>
+              {/* Task Decision Requests for assigned tasks */}
+              <TaskDecisionList />
+            </CardContent>
+            <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
