@@ -384,10 +384,14 @@ export function TasksView() {
         ? assignedToField.split(',').map(id => id.trim())
         : [];
     
+    console.log('🔍 Resolving user names for:', userIds, 'from users cache:', users.length, 'users');
+    
     return userIds
       .map(userId => {
         const user = users.find(u => u.user_id === userId);
-        return user?.display_name || userId;
+        const result = user?.display_name || userId;
+        console.log(`📝 User ${userId} resolved to: ${result}`);
+        return result;
       })
       .join(', ');
   };
