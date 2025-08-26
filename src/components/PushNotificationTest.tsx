@@ -23,10 +23,11 @@ export const PushNotificationTest: React.FC = () => {
 
   const runRealPushTest = async () => {
     console.log('=== ECHTER PUSH TEST GESTARTET ===');
+    console.log('🔧 Testing with updated VAPID keys and full system...');
     setIsRealTestRunning(true);
     
     try {
-      setRealTestResult({ step: 'Starte echten Push-Test...', status: 'pending', message: '' });
+      setRealTestResult({ step: 'Starte echten Push-Test mit neuen VAPID-Keys...', status: 'pending', message: 'VAPID-Konfiguration wird getestet...' });
 
       // Check prerequisites
       if (!pushSupported) {
