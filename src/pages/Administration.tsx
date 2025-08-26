@@ -673,10 +673,10 @@ export default function Administration() {
                       </>
                     ) : (
                       <>
-                        <span className="flex-1">{item.label}</span>
-                        <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'appointment_locations', id: item.id, value: item.label })}>
-                          <Edit className="h-3 w-3" />
-                        </Button>
+                        <span className="flex-1">{item.name}</span>
+                         <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'appointment_locations', id: item.id, value: item.name })}>
+                           <Edit className="h-3 w-3" />
+                         </Button>
                         <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('appointment_locations', item.id)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
