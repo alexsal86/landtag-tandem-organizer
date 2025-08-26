@@ -128,18 +128,24 @@ export default function CreateTask() {
         return;
       }
 
-      // Prepare task data
+      // Prepare task data with proper array handling
+      const assignedToArray = Array.isArray(formData.assignedTo) 
+        ? formData.assignedTo.filter(id => id && id.trim() !== '') 
+        : [];
+      
       const taskData = {
         title: formData.title.trim(),
         description: formData.description?.trim() || null,
         priority: formData.priority,
         category: formData.category || 'personal',
         due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-        assigned_to: formData.assignedTo.length > 0 ? formData.assignedTo : null,
+        assigned_to: assignedToArray.length > 0 ? assignedToArray : null,
         user_id: user.id,
         status: "todo",
         tenant_id: currentTenant.id
       };
+      
+      console.log('📝 Prepared assigned_to array:', assignedToArray);
 
       console.log('📝 Inserting task with data:', taskData);
 
@@ -309,7 +315,7 @@ export default function CreateTask() {
                       label: profile.isCurrentUser ? "Ich" : (profile.display_name || "Unbekannter Nutzer")
                     }))}
                     selected={formData.assignedTo}
-                    onChange={(value) => setFormData({ ...formData, assignedTo: Array.isArray(value) ? value : [] })}
+                    onChange={(value) => setFormData({ ...formData, assignedTo: Array.isArray(value) ? value.filter(id => id && id.trim() !== '') : [] })}
                     placeholder="Personen auswählen..."
                   />
                 </div>
