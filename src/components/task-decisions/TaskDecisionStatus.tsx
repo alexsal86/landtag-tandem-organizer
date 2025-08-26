@@ -156,17 +156,24 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
     <div className="space-y-3">
       {decisions.map((decision) => {
         const summary = getResponseSummary(decision.participants);
+        const allResponsesReceived = summary.pending === 0;
         
         return (
-          <Card key={decision.id} className="border-l-4 border-l-orange-500">
+          <Card key={decision.id} className={`border-l-4 ${allResponsesReceived ? 'border-l-green-500' : 'border-l-orange-500'}`}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">
                   {decision.title}
                 </CardTitle>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="outline" className="text-orange-600 border-orange-600">
-                    Entscheidung
+                  <Badge 
+                    variant="outline" 
+                    className={`${allResponsesReceived 
+                      ? 'text-green-600 border-green-600' 
+                      : 'text-orange-600 border-orange-600'
+                    }`}
+                  >
+                    {allResponsesReceived ? 'Ergebnis verfügbar' : 'Entscheidung'}
                   </Badge>
                   {isCreator && (
                     <Button
