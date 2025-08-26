@@ -1417,6 +1417,11 @@ export function TasksView() {
     return !taskSnoozes[task.id] || new Date(taskSnoozes[task.id]) <= new Date();
   });
 
+  // Filter out snoozed tasks from assigned tasks
+  const filteredAssignedTasksWithSnooze = assignedTasks.filter(task => {
+    return !taskSnoozes[task.id] || new Date(taskSnoozes[task.id]) <= new Date();
+  });
+
   const filteredAssignedSubtasks = assignedSubtasks.filter(subtask => {
     console.log('🔍 Filtering subtask:', subtask.id, 'hideSnoozeSubtasks:', hideSnoozeSubtasks, 'snoozed:', !!subtaskSnoozes[subtask.id]);
     
@@ -1577,8 +1582,10 @@ export function TasksView() {
                 </TableHeader>
                 <TableBody>
                   {/* Show assigned tasks */}
-                  {assignedTasks.map((task) => (
-                    <TableRow key={`task-${task.id}`}>
+                  {filteredAssignedTasksWithSnooze.map((task) => {
+                    const isSnoozed = taskSnoozes[task.id] && new Date(taskSnoozes[task.id]) > new Date();
+                    return (
+                     <TableRow key={`task-${task.id}`} className={isSnoozed ? "opacity-50" : ""}>
                       <TableCell>
                         <Checkbox
                           checked={task.status === "completed"}
@@ -1641,8 +1648,9 @@ export function TasksView() {
                            </Button>
                          </div>
                        </TableCell>
-                    </TableRow>
-                  ))}
+                     </TableRow>
+                   );
+                  })}
                   
                   {/* Show subtasks based on visibility setting */}
                          {filteredAssignedSubtasks.map((subtask) => {
