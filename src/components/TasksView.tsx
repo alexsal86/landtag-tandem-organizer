@@ -566,7 +566,9 @@ export function TasksView() {
         }
       }
 
-      console.log('Final subtasks with names:', allSubtasks);
+      console.log('Final subtasks assigned to user:', allSubtasks);
+      console.log('Number of assigned subtasks found:', allSubtasks.length);
+      console.log('User ID for filtering:', user.id);
       setAssignedSubtasks(allSubtasks);
     } catch (error) {
       console.error('Error loading assigned subtasks:', error);
@@ -1445,6 +1447,9 @@ export function TasksView() {
                   </span>
                 )}
               </CardTitle>
+              <div className="text-sm text-muted-foreground">
+                Aufgaben: {assignedTasks.length} | Unteraufgaben: {assignedSubtasks.length} (sichtbar: {filteredAssignedSubtasks.length}) | ToDos: {todos.length}
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
