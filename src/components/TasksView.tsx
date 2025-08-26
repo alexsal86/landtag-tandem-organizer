@@ -1225,17 +1225,16 @@ export function TasksView() {
     return true;
   });
 
-  // Get tasks assigned to current user (not created by them)
+  // Get tasks assigned to current user (including self-assigned)
   const assignedTasks = tasks.filter(task => {
-    // Only show tasks where user is assigned but not the creator
     if (!task.assignedTo || !user) return false;
     const assignees = task.assignedTo.split(',').map(id => id.trim());
     const isAssignedToUser = assignees.includes(user.id) || 
                             assignees.includes(user.email) ||
                             assignees.includes(user.email?.toLowerCase());
-    const isNotCreator = task.user_id !== user.id;
     const isNotCompleted = task.status !== 'completed';
-    return isAssignedToUser && isNotCreator && isNotCompleted;
+    // Show all assigned tasks, even if user is the creator
+    return isAssignedToUser && isNotCompleted;
   });
 
   // Filter out snoozed tasks and subtasks for current user
