@@ -243,6 +243,7 @@ serve(async (req) => {
         for (const subscription of subscriptions) {
           try {
             console.log(`📤 Sending push to user ${subscription.user_id}...`);
+            console.log(`🔗 Endpoint: ${subscription.endpoint.substring(0, 50)}...`);
             
             const pushSubscription = {
               endpoint: subscription.endpoint,
@@ -252,13 +253,25 @@ serve(async (req) => {
               }
             };
             
-            await webpush.sendNotification(pushSubscription, notificationPayload);
+            console.log('🔧 Push subscription object created, keys present:', {
+              hasEndpoint: !!pushSubscription.endpoint,
+              hasP256dh: !!pushSubscription.keys.p256dh,
+              hasAuth: !!pushSubscription.keys.auth,
+              p256dhLength: pushSubscription.keys.p256dh?.length || 0,
+              authLength: pushSubscription.keys.auth?.length || 0
+            });
+            
+            console.log('📨 Calling webpush.sendNotification...');
+            const result = await webpush.sendNotification(pushSubscription, notificationPayload);
+            console.log('✅ WebPush result:', result);
+            
             sentCount++;
             console.log(`✅ Push sent successfully to user ${subscription.user_id}`);
             
             // Also create a database notification for consistency
             if (subscription.user_id) {
-              await supabaseAdmin
+              console.log('💾 Creating database notification...');
+              const dbResult = await supabaseAdmin
                 .from('notifications')
                 .insert({
                   user_id: subscription.user_id,
@@ -268,10 +281,17 @@ serve(async (req) => {
                   data: { ...body.data, pushed: true, timestamp: new Date().toISOString() },
                   priority: body.priority || 'medium'
                 });
+              console.log('💾 Database notification result:', dbResult);
             }
             
           } catch (pushError) {
             console.error(`❌ Failed to send push to user ${subscription.user_id}:`, pushError);
+            console.error('❌ Push error details:', {
+              message: pushError.message,
+              statusCode: pushError.statusCode,
+              headers: pushError.headers,
+              body: pushError.body
+            });
             failedCount++;
             
             // If the subscription is invalid, mark it as inactive
