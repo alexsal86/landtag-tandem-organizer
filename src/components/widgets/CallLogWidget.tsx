@@ -778,7 +778,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => deleteCallLog(log.id)}
-                    className="h-6 w-6 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
                     title="Aus Liste entfernen"
                   >
                     <Trash2 className="h-3 w-3" />
