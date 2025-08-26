@@ -51,6 +51,8 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
+      console.log('🏢 Fetching tenant memberships for user:', user.id);
+      
       // Fetch user's tenant memberships with tenant details
       const { data: membershipData, error: membershipError } = await supabase
         .from('user_tenant_memberships')
@@ -62,9 +64,11 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('is_active', true);
 
       if (membershipError) {
-        console.error('Error fetching tenant memberships:', membershipError);
+        console.error('❌ Error fetching tenant memberships:', membershipError);
         return;
       }
+
+      console.log('🏢 Tenant memberships:', membershipData);
 
       const membershipsWithTenants = membershipData || [];
       const tenantsData = membershipsWithTenants
@@ -74,21 +78,28 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
       setMemberships(membershipsWithTenants);
       setTenants(tenantsData);
 
+      console.log('🏢 Available tenants:', tenantsData);
+
       // Set current tenant from localStorage or default to first tenant
       const savedTenantId = localStorage.getItem('currentTenantId');
       let currentTenantToSet = null;
 
       if (savedTenantId) {
         currentTenantToSet = tenantsData.find(t => t.id === savedTenantId) || null;
+        console.log('🏢 Restored tenant from localStorage:', currentTenantToSet);
       }
 
       if (!currentTenantToSet && tenantsData.length > 0) {
         currentTenantToSet = tenantsData[0];
+        console.log('🏢 Using first available tenant:', currentTenantToSet);
       }
 
       setCurrentTenant(currentTenantToSet);
       if (currentTenantToSet) {
         localStorage.setItem('currentTenantId', currentTenantToSet.id);
+        console.log('🏢 Current tenant set to:', currentTenantToSet.name);
+      } else {
+        console.warn('⚠️ No tenant available for user');
       }
     } catch (error) {
       console.error('Error in fetchTenants:', error);

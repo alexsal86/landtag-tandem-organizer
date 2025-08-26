@@ -87,6 +87,9 @@ export default function CreateTask() {
     e.preventDefault();
     setLoading(true);
 
+    console.log('📝 Creating task with current tenant:', currentTenant);
+    console.log('📝 Form data:', formData);
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -119,8 +122,13 @@ export default function CreateTask() {
         tenant_id: currentTenant.id
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Task creation error:', error);
+        throw error;
+      }
 
+      console.log('✅ Task created successfully');
+      
       toast({
         title: "Aufgabe erstellt",
         description: "Die neue Aufgabe wurde erfolgreich erstellt.",
@@ -128,10 +136,10 @@ export default function CreateTask() {
 
       navigate("/");
     } catch (error) {
-      console.error('Error creating task:', error);
+      console.error('❌ Error creating task:', error);
       toast({
         title: "Fehler",
-        description: "Aufgabe konnte nicht erstellt werden.",
+        description: `Aufgabe konnte nicht erstellt werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
         variant: "destructive",
       });
     } finally {
