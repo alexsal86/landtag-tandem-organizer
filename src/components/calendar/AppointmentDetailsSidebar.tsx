@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarEvent } from "../CalendarView";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { formatEventDisplay } from "@/lib/timeUtils";
 
 interface AppointmentDetailsSidebarProps {
   appointment: CalendarEvent | null;
@@ -28,8 +29,10 @@ export function AppointmentDetailsSidebar({
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     title: "",
+    description: "",
     location: "",
     priority: "medium" as CalendarEvent["priority"],
+    category: "meeting" as CalendarEvent["type"],
     date: "",
     time: "",
     duration: ""

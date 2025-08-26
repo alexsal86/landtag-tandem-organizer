@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { CalendarEvent } from "../CalendarView";
+import { formatEventDisplay, isMultiDayEvent, getEventDays } from "@/lib/timeUtils";
 
 interface WeekViewProps {
   weekStart: Date;
@@ -216,33 +217,7 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                     >
                       <div className="font-medium truncate w-full text-xs">{event.title}</div>
                       <div className="opacity-80 truncate w-full text-xs">
-                        {(() => {
-                          if (event.endTime) {
-                            // Use actual end time from database
-                            const startTimeStr = event.time;
-                            const endTimeStr = event.endTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                            const startDate = event.date.toDateString();
-                            const endDate = event.endTime.toDateString();
-                            
-                            if (startDate === endDate) {
-                              // Same day - show precise duration
-                              return `${startTimeStr} - ${endTimeStr}`;
-                            } else {
-                              // Multi-day event
-                              const endDateStr = event.endTime.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-                              return `${startTimeStr} - ${endDateStr} ${endTimeStr}`;
-                            }
-                          } else {
-                            // Fallback to duration calculation
-                            const [hours, minutes] = event.time.split(':').map(Number);
-                            const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-                            const endTotalMinutes = hours * 60 + minutes + durationMinutes;
-                            const endHours = Math.floor(endTotalMinutes / 60);
-                            const endMinutes = endTotalMinutes % 60;
-                            
-                            return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
-                          }
-                        })()}
+                        {formatEventDisplay(event)}
                       </div>
                     </div>
                   );

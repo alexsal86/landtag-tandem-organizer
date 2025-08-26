@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { CalendarEvent } from "../CalendarView";
+import { formatEventDisplay, isMultiDayEvent, getEventDays } from "@/lib/timeUtils";
 
 interface DayViewProps {
   date: Date;
@@ -302,46 +303,12 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
                           <div className="font-medium truncate">
                             {isEventContinuation ? `→ ${event.title}` : event.title}
                           </div>
-                          <div className="opacity-80 text-xs">
-                            {(() => {
-                              if (event.endTime) {
-                                // Use actual end time from database
-                                const startTimeStr = event.time;
-                                const endTimeStr = event.endTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                                const startDate = event.date.toDateString();
-                                const endDate = event.endTime.toDateString();
-                                
-                                if (startDate === endDate) {
-                                  // Same day - show exact duration
-                                  const durationMs = event.endTime.getTime() - event.date.getTime();
-                                  const durationMinutes = Math.round(durationMs / (1000 * 60));
-                                  const hours = Math.floor(durationMinutes / 60);
-                                  const mins = durationMinutes % 60;
-                                  const durationStr = hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
-                                  
-                                  return `${startTimeStr} - ${endTimeStr} (${durationStr})`;
-                                } else {
-                                  // Multi-day event
-                                  const endDateStr = event.endTime.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-                                  return isEventContinuation 
-                                    ? `bis ${endDateStr} ${endTimeStr}`
-                                    : `${startTimeStr} - ${endDateStr} ${endTimeStr}`;
-                                }
-                              } else {
-                                // Fallback to duration calculation
-                                const [hours, minutes] = event.time.split(':').map(Number);
-                                const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-                                const endTotalMinutes = hours * 60 + minutes + durationMinutes;
-                                const endHours = Math.floor(endTotalMinutes / 60);
-                                const endMinutes = endTotalMinutes % 60;
-                                const durationHours = Math.floor(durationMinutes / 60);
-                                const durationMins = durationMinutes % 60;
-                                const durationStr = durationHours > 0 ? `${durationHours}h ${durationMins}min` : `${durationMins}min`;
-                                
-                                return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')} (${durationStr})`;
-                              }
-                            })()}
-                          </div>
+                           <div className="opacity-80 text-xs">
+                             {isEventContinuation 
+                               ? `→ ${formatEventDisplay(event)}`
+                               : formatEventDisplay(event)
+                             }
+                           </div>
                           {event.location && (
                             <div className="opacity-70 truncate text-xs">{event.location}</div>
                           )}

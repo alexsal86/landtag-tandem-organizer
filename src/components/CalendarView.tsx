@@ -374,7 +374,21 @@ export function CalendarView() {
           </div>
 
           <div className="flex gap-2">
-            {["day", "week", "month", "polls"].map((viewType) => (
+            <Button
+              onClick={() => navigate("/create-appointment")}
+              className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              Neuer Termin
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setView("polls")}
+            >
+              Abstimmungen
+            </Button>
+            {["day", "week", "month"].map((viewType) => (
               <Button
                 key={viewType}
                 variant={view === viewType ? "default" : "outline"}
@@ -384,7 +398,6 @@ export function CalendarView() {
                 {viewType === "day" && "Tag"}
                 {viewType === "week" && "Woche"}
                 {viewType === "month" && "Monat"}
-                {viewType === "polls" && "Abstimmungen"}
               </Button>
             ))}
           </div>
@@ -392,9 +405,9 @@ export function CalendarView() {
       </div>
 
       {/* Calendar Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="w-full">
         {/* Main Calendar */}
-        <Card className="lg:col-span-3 bg-card shadow-card border-border">
+        <Card className="bg-card shadow-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
@@ -421,50 +434,6 @@ export function CalendarView() {
           </CardContent>
         </Card>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Quick Stats */}
-          <Card className="bg-card shadow-card border-border">
-            <CardHeader>
-              <CardTitle className="text-lg">Heute</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Termine gesamt</span>
-                  <span className="font-semibold">{appointments.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sitzungen</span>
-                  <span className="font-semibold">{appointments.filter(e => e.type === "session").length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Termine</span>
-                  <span className="font-semibold">{appointments.filter(e => e.type === "appointment").length}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Upcoming */}
-          <Card className="bg-card shadow-card border-border">
-            <CardHeader>
-              <CardTitle className="text-lg">Nächste Termine</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="text-sm">
-                  <div className="font-medium">Morgen</div>
-                  <div className="text-muted-foreground">Plenarsitzung - 09:00</div>
-                </div>
-                <div className="text-sm">
-                  <div className="font-medium">Übermorgen</div>
-                  <div className="text-muted-foreground">Wahlkreistermin - 14:00</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       {/* Appointment Details Sidebar */}

@@ -323,22 +323,77 @@ const CreateAppointment = () => {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          Ort
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder="Veranstaltungsort" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="md:col-span-2 space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="location"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            Ort
+                          </FormLabel>
+                          <FormControl>
+                            <div className="space-y-3">
+                              <Select
+                                onValueChange={(value) => {
+                                  if (value === "digital") {
+                                    field.onChange("Digital");
+                                  } else if (value === "custom") {
+                                    field.onChange("");
+                                  } else {
+                                    field.onChange(value);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Veranstaltungsort auswählen" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="custom">Benutzerdefiniert eingeben</SelectItem>
+                                  <SelectItem value="digital">Digital</SelectItem>
+                                  <SelectItem value="Hauptbüro">Hauptbüro</SelectItem>
+                                  <SelectItem value="Wahlkreisbüro">Wahlkreisbüro</SelectItem>
+                                  <SelectItem value="Bundestag">Bundestag</SelectItem>
+                                  <SelectItem value="Rathaus">Rathaus</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              
+                              {field.value === "Digital" && (
+                                <div className="space-y-2 p-3 bg-muted/50 rounded-md">
+                                  <Input
+                                    placeholder="Meeting-Link (z.B. Zoom, Teams)"
+                                    onChange={(e) => {
+                                      const digitalInfo = `Digital - ${e.target.value}`;
+                                      field.onChange(digitalInfo);
+                                    }}
+                                  />
+                                  <Input
+                                    placeholder="Meeting-ID oder Zugangsdetails"
+                                    onChange={(e) => {
+                                      const currentValue = field.value || "Digital";
+                                      const parts = currentValue.split(" - ");
+                                      const link = parts[1] || "";
+                                      field.onChange(`Digital - ${link} - ${e.target.value}`);
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              
+                              {field.value !== "Digital" && (
+                                <Input 
+                                  placeholder="Genaue Adresse oder Raum"
+                                  value={field.value || ""}
+                                  onChange={field.onChange}
+                                />
+                              )}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <FormField
                     control={form.control}

@@ -2,6 +2,7 @@ import React from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarEvent } from "../CalendarView";
 import { Badge } from "@/components/ui/badge";
+import { formatEventDisplay } from "@/lib/timeUtils";
 
 interface MonthViewProps {
   date: Date;
@@ -68,7 +69,7 @@ export function MonthView({ date, events, onDateSelect }: MonthViewProps) {
                 <div className="flex-1">
                   <div className="font-medium">{event.title}</div>
                   <div className="text-sm text-muted-foreground">
-                    {event.time} ({event.duration})
+                    {formatEventDisplay(event)}
                     {event.location && ` • ${event.location}`}
                   </div>
                 </div>
