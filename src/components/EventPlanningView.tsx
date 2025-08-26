@@ -1400,28 +1400,33 @@ export function EventPlanningView() {
     }
   };
 
-  const addItemSubtask = async () => {
-    if (!newSubtask.description.trim() || !selectedItemId || !user) return;
+  const addItemSubtask = async (description?: string, assignedTo?: string, dueDate?: string, itemId?: string) => {
+    const desc = description || newSubtask.description.trim();
+    const assigned = assignedTo || newSubtask.assigned_to;
+    const due = dueDate || newSubtask.due_date;
+    const planningItemId = itemId || selectedItemId;
+    
+    if (!desc || !planningItemId || !user) return;
 
     try {
-      const currentSubtasks = itemSubtasks[selectedItemId] || [];
+      const currentSubtasks = itemSubtasks[planningItemId] || [];
       const nextOrderIndex = Math.max(...currentSubtasks.map(s => s.order_index), -1) + 1;
       
       const { error } = await supabase
         .from('planning_item_subtasks')
         .insert({
-          planning_item_id: selectedItemId,
+          planning_item_id: planningItemId,
           user_id: user.id,
-          description: newSubtask.description.trim(),
-          assigned_to: newSubtask.assigned_to === 'unassigned' ? null : newSubtask.assigned_to,
-          due_date: newSubtask.due_date || null,
+          description: desc,
+          assigned_to: assigned === 'unassigned' ? null : assigned,
+          due_date: due || null,
           order_index: nextOrderIndex,
         });
 
       if (error) throw error;
 
       setNewSubtask({ description: '', assigned_to: 'unassigned', due_date: '' });
-      loadItemSubtasks(selectedItemId);
+      loadItemSubtasks(planningItemId);
       loadAllItemCounts(); // Refresh counts
 
       toast({
@@ -2921,39 +2926,28 @@ export function EventPlanningView() {
                                            <Input
                                              placeholder="Neue Unteraufgabe..."
                                              className="text-sm"
-                                             onKeyPress={(e) => {
-                                               if (e.key === 'Enter') {
-                                                 const input = e.target as HTMLInputElement;
-                                                 if (input.value.trim() && user) {
-                                                   setNewSubtask({ 
-                                                     description: input.value.trim(), 
-                                                     assigned_to: 'unassigned', 
-                                                     due_date: '' 
-                                                   });
-                                                   setSelectedItemId(item.id);
-                                                    addItemSubtask();
-                                                   input.value = '';
-                                                 }
-                                               }
-                                             }}
+                                              onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  const input = e.target as HTMLInputElement;
+                                                  if (input.value.trim() && user) {
+                                                    addItemSubtask(input.value.trim(), 'unassigned', '', item.id);
+                                                    input.value = '';
+                                                  }
+                                                }
+                                              }}
                                            />
                                            {/* Quick assignment dropdown */}
                                            <div className="flex gap-2">
                                              <Select
                                                value=""
-                                               onValueChange={(value) => {
-                                                 const description = (document.querySelector(`input[placeholder="Neue Unteraufgabe..."]`) as HTMLInputElement)?.value;
-                                                 if (description?.trim() && user) {
-                                                   setNewSubtask({ 
-                                                     description: description.trim(), 
-                                                     assigned_to: value === 'unassigned' ? '' : value, 
-                                                     due_date: '' 
-                                                   });
-                                                   setSelectedItemId(item.id);
-                                                   addItemSubtask();
-                                                   (document.querySelector(`input[placeholder="Neue Unteraufgabe..."]`) as HTMLInputElement).value = '';
-                                                 }
-                                               }}
+                                                onValueChange={(value) => {
+                                                  const description = (document.querySelector(`input[placeholder="Neue Unteraufgabe..."]`) as HTMLInputElement)?.value;
+                                                  if (description?.trim() && user) {
+                                                    const assignedTo = value === 'unassigned' ? '' : value;
+                                                    addItemSubtask(description.trim(), assignedTo, '', item.id);
+                                                    (document.querySelector(`input[placeholder="Neue Unteraufgabe..."]`) as HTMLInputElement).value = '';
+                                                  }
+                                                }}
                                              >
                                                <SelectTrigger className="w-[200px] h-8 text-xs">
                                                  <SelectValue placeholder="Schnell zuweisen..." />
