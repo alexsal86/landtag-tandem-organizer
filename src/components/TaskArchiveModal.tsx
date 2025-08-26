@@ -43,7 +43,7 @@ interface Task {
   status: "todo" | "in-progress" | "completed";
   dueDate: string;
   category: "legislation" | "constituency" | "committee" | "personal";
-  assignedTo?: string[];
+  assignedTo?: string; // Changed from string[] to string
   progress?: number;
 }
 
@@ -192,7 +192,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
             description: task.description,
             priority: task.priority,
             category: task.category,
-        assigned_to: task.assigned_to || [],
+        assigned_to: Array.isArray(task.assigned_to) ? task.assigned_to.join(',') : (task.assigned_to || ''),
             progress: task.progress || 0,
             due_date: task.due_date,
             status: 'todo',
@@ -213,7 +213,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
             description: task.description,
             priority: task.priority,
             category: task.category,
-            assigned_to: task.assigned_to || [],
+            assigned_to: Array.isArray(task.assigned_to) ? task.assigned_to.join(',') : (task.assigned_to || ''),
             progress: task.progress || 0,
             due_date: task.due_date,
             status: 'todo'
@@ -241,7 +241,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         status: 'todo',
         dueDate: task.due_date,
         category: task.category,
-        assignedTo: task.assigned_to || [],
+        assignedTo: Array.isArray(task.assigned_to) ? task.assigned_to.join(',') : (task.assigned_to || ''),
         progress: task.progress || 0,
       };
       

@@ -29,7 +29,7 @@ interface Task {
   status: "todo" | "in-progress" | "completed";
   dueDate: string;
   category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
-  assignedTo?: string[];
+  assignedTo?: string; // Changed from string[] to string (comma-separated values)
   progress?: number;
   created_at?: string;
   updated_at?: string;
@@ -122,7 +122,7 @@ export function TasksView() {
     title: string;
     category_label: string;
     category_color: string;
-    assigned_to: string[] | null;
+    assigned_to: string | null; // Changed from string[] to string
     due_date: string | null;
     is_completed: boolean;
   }>>([]);
@@ -316,7 +316,7 @@ export function TasksView() {
         title: todo.title,
         category_label: todo.todo_categories.label,
         category_color: todo.todo_categories.color,
-        assigned_to: todo.assigned_to,
+        assigned_to: Array.isArray(todo.assigned_to) ? todo.assigned_to.join(',') : (todo.assigned_to || ''),
         due_date: todo.due_date,
         is_completed: todo.is_completed
       }));
@@ -511,7 +511,7 @@ export function TasksView() {
         status: task.status as "todo" | "in-progress" | "completed",
         dueDate: task.due_date,
         category: task.category as "legislation" | "constituency" | "committee" | "personal" | "call_followup",
-        assignedTo: task.assigned_to,
+        assignedTo: Array.isArray(task.assigned_to) ? task.assigned_to.join(',') : (task.assigned_to || ''),
         progress: task.progress,
         created_at: task.created_at,
         updated_at: task.updated_at,
@@ -765,7 +765,7 @@ export function TasksView() {
             description: task.description,
             priority: task.priority,
             category: task.category,
-            assigned_to: task.assignedTo,
+            assigned_to: typeof task.assignedTo === 'string' ? task.assignedTo : (Array.isArray(task.assignedTo) ? task.assignedTo.join(',') : ''),
             progress: 100,
             due_date: task.dueDate,
             completed_at: new Date().toISOString()
@@ -1637,12 +1637,17 @@ export function TasksView() {
                            <span>Wiedervorlage</span>
                          </div>
                          
-                          {task.assignedTo && task.assignedTo.length > 0 && (
-                            <div className="flex items-center gap-1">
-                              <User className="h-4 w-4" />
-                              <span>{task.assignedTo.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ')}</span>
-                            </div>
-                          )}
+                           {task.assignedTo && task.assignedTo.length > 0 && (
+                             <div className="flex items-center gap-1">
+                               <User className="h-4 w-4" />
+                               <span>
+                                 {Array.isArray(task.assignedTo) 
+                                   ? task.assignedTo.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ')
+                                   : task.assignedTo.split(',').filter(id => id.trim()).map(userId => users.find(u => u.user_id === userId.trim())?.display_name || userId.trim()).join(', ')
+                                 }
+                               </span>
+                             </div>
+                           )}
                          
                          <div 
                            className="flex items-center gap-1 cursor-pointer hover:text-primary"
@@ -1770,11 +1775,11 @@ export function TasksView() {
                                      </div>
                                    )}
                                    <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
-                                      {subtask.assigned_to && subtask.assigned_to.length > 0 && (
-                                        <div>
-                                          Zuständig: {subtask.assigned_to.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ')}
-                                        </div>
-                                      )}
+                                       {subtask.assigned_to && subtask.assigned_to.length > 0 && (
+                                         <div>
+                                           Zuständig: {typeof subtask.assigned_to === 'string' ? subtask.assigned_to : (Array.isArray(subtask.assigned_to) ? subtask.assigned_to.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ') : '')}
+                                         </div>
+                                       )}
                                      {subtask.due_date && (
                                        <div>
                                          Fällig: {new Date(subtask.due_date).toLocaleDateString('de-DE')}
