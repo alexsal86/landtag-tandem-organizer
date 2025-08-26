@@ -1225,6 +1225,16 @@ export function TasksView() {
     return true;
   });
 
+  // Get tasks assigned to current user (not created by them)
+  const assignedTasks = tasks.filter(task => {
+    // Only show tasks where user is assigned but not the creator
+    if (!task.assignedTo || !user) return false;
+    const isAssignedToUser = task.assignedTo.split(',').map(id => id.trim()).includes(user.id);
+    const isNotCreator = task.user_id !== user.id;
+    const isNotCompleted = task.status !== 'completed';
+    return isAssignedToUser && isNotCreator && isNotCompleted;
+  });
+
   // Filter out snoozed tasks and subtasks for current user
   const filteredTasksWithSnooze = filteredTasks.filter(task => {
     return !taskSnoozes[task.id] || new Date(taskSnoozes[task.id]) <= new Date();
@@ -1337,16 +1347,16 @@ export function TasksView() {
           </div>
         </div>
 
-        {/* Assigned Subtasks and ToDos Table */}
-        {(assignedSubtasks.length > 0 || todos.length > 0) && (
+        {/* Assigned Tasks, Subtasks and ToDos Table */}
+        {(assignedTasks.length > 0 || assignedSubtasks.length > 0 || todos.length > 0) && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <ListTodo className="h-5 w-5" />
-                Mir zugewiesene Unteraufgaben & ToDos ({assignedSubtasks.length + todos.length})
+                Mir zugewiesene Aufgaben & Unteraufgaben ({assignedTasks.length + assignedSubtasks.length + todos.length})
                 {hideSnoozeSubtasks && assignedSubtasks.length !== filteredAssignedSubtasks.length && (
                   <span className="text-sm text-muted-foreground">
-                    ({filteredAssignedSubtasks.length + todos.length} sichtbar)
+                    ({assignedTasks.length + filteredAssignedSubtasks.length + todos.length} sichtbar)
                   </span>
                 )}
               </CardTitle>
@@ -1357,12 +1367,64 @@ export function TasksView() {
                   <TableRow>
                     <TableHead className="w-[50px]"></TableHead>
                     <TableHead>Aufgabe/ToDo</TableHead>
-                    <TableHead>Übergeordnete Aufgabe/Kategorie</TableHead>
+                    <TableHead>Typ/Kategorie</TableHead>
                     <TableHead>Fälligkeitsdatum</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {/* Show assigned tasks */}
+                  {assignedTasks.map((task) => (
+                    <TableRow key={`task-${task.id}`}>
+                      <TableCell>
+                        <Checkbox
+                          checked={task.status === "completed"}
+                          onCheckedChange={() => {
+                            toggleTaskStatus(task.id);
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{task.title}</div>
+                        {task.description && (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {task.description.length > 100 
+                              ? `${task.description.substring(0, 100)}...` 
+                              : task.description
+                            }
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          Aufgabe
+                        </Badge>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {task.category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {task.dueDate && (
+                          <div className={`text-sm ${isOverdue(task.dueDate) ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                            {new Date(task.dueDate).toLocaleDateString('de-DE')}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTaskClick(task);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  
                   {/* Show subtasks based on visibility setting */}
                   {filteredAssignedSubtasks.map((subtask) => {
                     const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
