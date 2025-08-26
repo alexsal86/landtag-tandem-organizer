@@ -343,7 +343,38 @@ export function TasksView() {
     }
   };
 
-  // Helper function to resolve UUIDs to display names
+  // Helper function to resolve UUIDs to display names using Supabase
+  const resolveUserNamesAsync = async (assignedToField: string | string[] | null): Promise<string> => {
+    if (!assignedToField) return '';
+    
+    const userIds = Array.isArray(assignedToField) 
+      ? assignedToField 
+      : typeof assignedToField === 'string' 
+        ? assignedToField.split(',').map(id => id.trim())
+        : [];
+    
+    if (userIds.length === 0) return '';
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', userIds);
+
+      if (error) throw error;
+
+      const nameMap = new Map(data?.map(profile => [profile.user_id, profile.display_name]) || []);
+      
+      return userIds
+        .map(userId => nameMap.get(userId) || userId)
+        .join(', ');
+    } catch (error) {
+      console.error('Error resolving user names:', error);
+      return userIds.join(', '); // Fallback to showing UUIDs
+    }
+  };
+
+  // Synchronous helper that uses cached user data
   const resolveUserNames = (assignedToField: string | string[] | null): string => {
     if (!assignedToField) return '';
     
@@ -353,19 +384,12 @@ export function TasksView() {
         ? assignedToField.split(',').map(id => id.trim())
         : [];
     
-    console.log('Resolving user names for IDs:', userIds);
-    console.log('Available users:', users);
-    
-    const resolved = userIds
+    return userIds
       .map(userId => {
         const user = users.find(u => u.user_id === userId);
-        console.log(`Resolving ${userId} to:`, user?.display_name || userId);
         return user?.display_name || userId;
       })
       .join(', ');
-    
-    console.log('Final resolved names:', resolved);
-    return resolved;
   };
 
   const loadAssignedSubtasks = async () => {
@@ -427,26 +451,8 @@ export function TasksView() {
             continue;
           }
 
-          // Try to resolve assigned_to UUIDs to names (but keep original as fallback)
-          let resolvedAssignedTo = '';
-          try {
-            const resolvedNames = await Promise.all(
-              subtask.assigned_to.map(async (userId: string) => {
-                if (!userId) return '';
-                const { data: profileData } = await supabase
-                  .from('profiles')
-                  .select('display_name')
-                  .eq('user_id', userId)
-                  .single();
-                
-                return profileData?.display_name || userId;
-              })
-            );
-            resolvedAssignedTo = resolvedNames.join(', ');
-          } catch (error) {
-            console.error('Error resolving user names for subtask:', subtask.id, error);
-            resolvedAssignedTo = ''; // Will fall back to resolveUserNames function
-          }
+          // Resolve assigned_to UUIDs to names
+          const resolvedAssignedTo = await resolveUserNamesAsync(subtask.assigned_to);
 
           const { data: taskData } = await supabase
             .from('tasks')
@@ -471,19 +477,8 @@ export function TasksView() {
             continue;
           }
 
-          // Try to resolve assigned_to UUID to name
-          let resolvedAssignedTo = '';
-          try {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('display_name')
-              .eq('user_id', subtask.assigned_to)
-              .single();
-            resolvedAssignedTo = profileData?.display_name || subtask.assigned_to;
-          } catch (error) {
-            console.error('Error resolving user name for planning subtask:', subtask.id, error);
-            resolvedAssignedTo = '';
-          }
+          // Resolve assigned_to UUID to name
+          const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to]);
 
           const { data: checklistItemData } = await supabase
             .from('event_planning_checklist_items')
@@ -546,26 +541,8 @@ export function TasksView() {
             }
           }
 
-          // Try to resolve assigned_to UUIDs to names for call follow-ups
-          let resolvedAssignedTo = '';
-          try {
-            const resolvedNames = await Promise.all(
-              assignees.map(async (assignee: string) => {
-                if (!assignee || assignee.includes('@')) return assignee; // Skip emails
-                const { data: profileData } = await supabase
-                  .from('profiles')
-                  .select('display_name')
-                  .eq('user_id', assignee)
-                  .single();
-                
-                return profileData?.display_name || assignee;
-              })
-            );
-            resolvedAssignedTo = resolvedNames.join(', ');
-          } catch (error) {
-            console.error('Error resolving user names for call follow-up:', followupTask.id, error);
-            resolvedAssignedTo = '';
-          }
+          // Resolve assigned_to UUIDs to names for call follow-ups
+          const resolvedAssignedTo = await resolveUserNamesAsync(assignees);
 
           // Convert task to subtask format
           allSubtasks.push({
@@ -1559,11 +1536,11 @@ export function TasksView() {
                            {subtask.description && subtask.title && (
                              <div className="text-sm text-muted-foreground">{subtask.description}</div>
                            )}
-                            {(subtask.assigned_to_names || subtask.assigned_to) && (
-                              <div className="text-sm text-muted-foreground">
-                                Zuständig: {subtask.assigned_to_names || resolveUserNames(subtask.assigned_to)}
-                              </div>
-                            )}
+                             {(subtask.assigned_to_names || subtask.assigned_to) && (
+                               <div className="text-sm text-muted-foreground">
+                                 Zuständig: {subtask.assigned_to_names || resolveUserNames(subtask.assigned_to)}
+                               </div>
+                             )}
                            {isSnoozed && (
                              <Badge variant="secondary" className="text-xs">
                                Wiedervorlage: {new Date(subtaskSnoozes[subtask.id]).toLocaleDateString('de-DE')}
