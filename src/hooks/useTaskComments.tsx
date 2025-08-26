@@ -15,25 +15,30 @@ export const useTaskComments = () => {
     if (!user) return;
     
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('task_comments')
         .select(`
           id,
           task_id,
           content,
           user_id,
-          created_at,
-          profiles!inner(display_name)
+          created_at
         `)
         .order('created_at', { ascending: true });
 
-      if (taskId) {
-        query = query.eq('task_id', taskId);
-      }
-
-      const { data, error } = await query;
-
       if (error) throw error;
+
+      // Get user display names separately
+      const userIds = [...new Set((data || []).map(comment => comment.user_id))];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', userIds);
+
+      const profilesMap = (profilesData || []).reduce((acc, profile) => {
+        acc[profile.user_id] = profile.display_name;
+        return acc;
+      }, {} as Record<string, string>);
 
       const commentsByTask: { [taskId: string]: TaskComment[] } = {};
       
@@ -47,7 +52,7 @@ export const useTaskComments = () => {
           taskId: comment.task_id,
           content: comment.content,
           userId: comment.user_id,
-          userName: comment.profiles?.display_name || 'Unbekannter Benutzer',
+          userName: profilesMap[comment.user_id] || 'Unbekannter Benutzer',
           createdAt: comment.created_at
         });
       });

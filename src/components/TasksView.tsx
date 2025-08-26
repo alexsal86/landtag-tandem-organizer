@@ -17,6 +17,7 @@ import { useSubtasks } from "@/hooks/useSubtasks";
 import { Task, User, TaskConfiguration, Todo } from "@/types/taskTypes";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { TaskCard } from "@/components/tasks/TaskCard";
+import { TasksTable } from "@/components/tasks/TasksTable";
 import { AssignedTasksWidget } from "@/components/tasks/AssignedTasksWidget";
 import { TaskArchiveModal } from "./TaskArchiveModal";
 import { TaskDetailSidebar } from "./TaskDetailSidebar";
@@ -275,32 +276,26 @@ export function TasksView() {
         setPriorityFilter={setPriorityFilter}
       />
 
-      <div className="space-y-4">
-        {filteredTasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            taskCategories={taskCategories}
-            taskStatuses={taskStatuses}
-            users={users}
-            taskDocumentCounts={taskDocumentCounts}
-            taskCommentCounts={taskCommentCounts}
-            subtaskCounts={subtaskCounts}
-            taskSnoozes={taskSnoozes}
-            onComplete={() => completeTask(task.id)}
-            onEdit={() => {
-              setEditingTask(task);
-              setEditFormData(task);
-            }}
-            onShowComments={() => handleShowComments(task.id)}
-            onShowDocuments={() => handleShowDocuments(task.id)}
-            onShowSubtasks={() => handleShowSubtasks(task.id)}
-            onSetSnooze={() => handleSetSnooze(task.id)}
-            onQuickNote={() => handleQuickNote(task.id)}
-            onSelect={() => setSelectedTask(task)}
-          />
-        ))}
-      </div>
+      <TasksTable
+        tasks={filteredTasks}
+        taskCategories={taskCategories}
+        taskStatuses={taskStatuses}
+        users={users}
+        taskDocumentCounts={taskDocumentCounts}
+        taskCommentCounts={taskCommentCounts}
+        subtaskCounts={subtaskCounts}
+        taskSnoozes={taskSnoozes}
+        onComplete={completeTask}
+        onEdit={(task) => {
+          setEditingTask(task);
+          setEditFormData(task);
+        }}
+        onShowComments={handleShowComments}
+        onShowDocuments={handleShowDocuments}
+        onShowSubtasks={handleShowSubtasks}
+        onSetSnooze={handleSetSnooze}
+        onSelect={setSelectedTask}
+      />
 
       {/* Dialogs and Modals */}
       <TaskArchiveModal
@@ -309,9 +304,9 @@ export function TasksView() {
       />
 
       <TodoCreateDialog
-        todoCreateOpen={todoCreateOpen}
-        setTodoCreateOpen={setTodoCreateOpen}
-        onTaskCreated={loadTodos}
+        open={todoCreateOpen}
+        onOpenChange={setTodoCreateOpen}
+        onTodoCreated={loadTodos}
       />
 
       <SnoozeManagementSidebar
@@ -321,7 +316,7 @@ export function TasksView() {
         onUpdateSnooze={async () => {}}
         onDeleteSnooze={async () => {}}
         hideSnoozeSubtasks={hideSnoozeSubtasks}
-        setHideSnoozeSubtasks={setHideSnoozeSubtasks}
+        onToggleHideSnoozeSubtasks={setHideSnoozeSubtasks}
       />
 
       {selectedTask && (
@@ -333,6 +328,9 @@ export function TasksView() {
             setSelectedTask(null);
           }}
           onTaskUpdate={loadTasks}
+          onTaskRestored={loadTasks}
+          taskCategories={taskCategories}
+          taskStatuses={taskStatuses}
         />
       )}
     </div>
