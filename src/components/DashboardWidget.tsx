@@ -2,9 +2,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, CheckSquare, Clock, FileText, Phone, AlertCircle, Circle, GripVertical, MessageCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar, Users, CheckSquare, Clock, FileText, Phone, AlertCircle, Circle, GripVertical, MessageCircle, AlarmClock, Edit2 } from "lucide-react";
 import { DashboardWidget as WidgetType } from '@/hooks/useDashboardLayout';
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { MessageSystem } from './MessageSystem';
 import { BlackBoard } from './BlackBoard';
 import { CombinedMessagesWidget } from './CombinedMessagesWidget';
@@ -32,6 +35,33 @@ interface UpcomingEvent {
   time: string;
   type: "meeting" | "appointment" | "deadline";
   location?: string;
+}
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  priority: "low" | "medium" | "high";
+  status: "todo" | "in-progress" | "completed";
+  due_date?: string;
+  category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
+  assigned_to?: string;
+  progress?: number;
+  created_at?: string;
+  updated_at?: string;
+  user_id?: string;
+  call_log_id?: string;
+}
+
+interface Subtask {
+  id: string;
+  task_id: string;
+  title?: string;
+  description: string;
+  is_completed: boolean;
+  due_date?: string;
+  assigned_to?: string;
+  assigned_to_names?: string;
 }
 
 interface PendingTask {
@@ -131,6 +161,109 @@ const getCategoryIcon = (category: PendingTask["category"]) => {
 export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps) {
   const [todayAppointmentsCount, setTodayAppointmentsCount] = useState(0);
   const [openTasksCount, setOpenTasksCount] = useState(0);
+  const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
+  const [assignedSubtasks, setAssignedSubtasks] = useState<Subtask[]>([]);
+  const [taskSnoozes, setTaskSnoozes] = useState<{[key: string]: string}>({});
+  const [subtaskSnoozes, setSubtaskSnoozes] = useState<{[key: string]: string}>({});
+  const [users, setUsers] = useState<{[key: string]: string}>({});
+  
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  // Helper function to check if a date is overdue
+  const isOverdue = (dueDate: string) => {
+    if (!dueDate || dueDate === '1970-01-01T00:00:00.000Z' || dueDate === '1970-01-01') {
+      return false;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0);
+    return due < today;
+  };
+
+  // Helper function to resolve user names
+  const resolveUserNames = (assignedTo: string) => {
+    if (!assignedTo) return '';
+    const assignees = assignedTo.split(',').map(id => id.trim());
+    return assignees.map(id => users[id] || id).join(', ');
+  };
+
+  // Load assigned tasks and subtasks
+  const loadAssignedTasksAndSubtasks = async () => {
+    if (!user) return;
+
+    try {
+      // Load users for name resolution
+      const { data: usersData } = await supabase
+        .from('profiles')
+        .select('user_id, display_name');
+      
+      if (usersData) {
+        const userMap: {[key: string]: string} = {};
+        usersData.forEach(profile => {
+          userMap[profile.user_id] = profile.display_name || profile.user_id;
+        });
+        setUsers(userMap);
+      }
+
+      // Load tasks
+      const { data: tasksData } = await supabase
+        .from('tasks')
+        .select('*')
+        .neq('status', 'completed')
+        .order('due_date', { ascending: true, nullsFirst: false });
+
+      if (tasksData) {
+        const userAssignedTasks = tasksData.filter(task => {
+          if (!task.assigned_to) return false;
+          const assignees = task.assigned_to.split(',').map((id: string) => id.trim());
+          return assignees.includes(user.id) || 
+                 assignees.includes(user.email) ||
+                 assignees.includes(user.email?.toLowerCase());
+        });
+        setAssignedTasks(userAssignedTasks as Task[]);
+      }
+
+      // Load subtasks
+      const { data: subtasksData } = await supabase
+        .from('subtasks')
+        .select('*')
+        .eq('assigned_to', user.id)
+        .eq('is_completed', false)
+        .order('due_date', { ascending: true, nullsFirst: false });
+
+      if (subtasksData) {
+        setAssignedSubtasks(subtasksData as Subtask[]);
+      }
+
+      // Load snoozes
+      const { data: snoozesData } = await supabase
+        .from('task_snoozes')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('snoozed_until', new Date().toISOString());
+
+      if (snoozesData) {
+        const taskSnoozesMap: {[key: string]: string} = {};
+        const subtaskSnoozesMap: {[key: string]: string} = {};
+        
+        snoozesData.forEach(snooze => {
+          if (snooze.task_id) {
+            taskSnoozesMap[snooze.task_id] = snooze.snoozed_until;
+          }
+          if (snooze.subtask_id) {
+            subtaskSnoozesMap[snooze.subtask_id] = snooze.snoozed_until;
+          }
+        });
+        
+        setTaskSnoozes(taskSnoozesMap);
+        setSubtaskSnoozes(subtaskSnoozesMap);
+      }
+    } catch (error) {
+      console.error('Error loading assigned tasks and subtasks:', error);
+    }
+  };
 
   useEffect(() => {
     const fetchTodayAppointments = async () => {
@@ -165,7 +298,8 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
 
     fetchTodayAppointments();
     fetchOpenTasks();
-  }, []);
+    loadAssignedTasksAndSubtasks();
+  }, [user]);
 
   const renderWidgetContent = () => {
     switch (widget.type) {
@@ -203,49 +337,160 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
         );
 
       case 'tasks':
+        // Filter out snoozed tasks and subtasks
+        const filteredAssignedTasks = assignedTasks.filter(task => {
+          return !taskSnoozes[task.id] || new Date(taskSnoozes[task.id]) <= new Date();
+        });
+        
+        const filteredAssignedSubtasks = assignedSubtasks.filter(subtask => {
+          return !subtaskSnoozes[subtask.id] || new Date(subtaskSnoozes[subtask.id]) <= new Date();
+        });
+
+        const allItems = [
+          ...filteredAssignedTasks.map(task => ({ ...task, type: 'task' })),
+          ...filteredAssignedSubtasks.map(subtask => ({ ...subtask, type: 'subtask' }))
+        ].slice(0, 6);
+
         return (
-          <div className="space-y-3">
-            {sampleTasks.slice(0, 5).map((task) => {
-              const CategoryIcon = getCategoryIcon(task.category);
-              return (
-                <div
-                  key={task.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-accent hover:bg-accent/80 transition-colors group"
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <CategoryIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-accent-foreground truncate">{task.title}</span>
-                        <Badge 
-                          className={`${getPriorityColor(task.priority)} text-xs`}
-                          variant="secondary"
-                        >
-                          {task.priority === "high" ? "Hoch" : task.priority === "medium" ? "Mittel" : "Niedrig"}
-                        </Badge>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {allItems.length === 0 ? (
+              <div className="text-center text-muted-foreground py-4">
+                Keine ausstehenden Aufgaben
+              </div>
+            ) : (
+              allItems.map((item) => {
+                const isTask = item.type === 'task';
+                const isSnoozed = isTask ? 
+                  (taskSnoozes[item.id] && new Date(taskSnoozes[item.id]) > new Date()) :
+                  (subtaskSnoozes[item.id] && new Date(subtaskSnoozes[item.id]) > new Date());
+
+                return (
+                  <div
+                    key={`${item.type}-${item.id}`}
+                    className={`flex items-center justify-between p-3 rounded-lg bg-accent hover:bg-accent/80 transition-colors group ${isSnoozed ? "opacity-50" : ""}`}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Checkbox
+                        checked={isTask ? (item as any).status === "completed" : (item as any).is_completed}
+                        onCheckedChange={async (checked) => {
+                          if (checked) {
+                            if (isTask) {
+                              await supabase
+                                .from('tasks')
+                                .update({ status: 'completed' })
+                                .eq('id', item.id);
+                            } else {
+                              await supabase
+                                .from('subtasks')
+                                .update({ is_completed: true })
+                                .eq('id', item.id);
+                            }
+                            loadAssignedTasksAndSubtasks();
+                          }
+                        }}
+                        className="flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-accent-foreground truncate">
+                            {item.title || item.description}
+                          </span>
+                          <Badge 
+                            variant="outline" 
+                            className={isTask ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-green-50 text-green-700 border-green-200"}
+                          >
+                            {isTask ? "Aufgabe" : "Unteraufgabe"}
+                          </Badge>
+                        </div>
+                        {item.description && item.title && (
+                          <p className="text-sm text-muted-foreground truncate">{item.description}</p>
+                        )}
+                        {!isTask && ((item as any).assigned_to_names || (item as any).assigned_to) && (
+                          <div className="text-sm text-muted-foreground truncate">
+                            Zuständig: {(item as any).assigned_to_names || resolveUserNames((item as any).assigned_to)}
+                          </div>
+                        )}
+                        {isSnoozed && (
+                          <Badge variant="secondary" className="text-xs mt-1">
+                            Wiedervorlage: {new Date(isTask ? taskSnoozes[item.id] : subtaskSnoozes[item.id]).toLocaleDateString('de-DE')}
+                          </Badge>
+                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">{task.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex flex-col items-end gap-1">
+                        {item.due_date && (item.due_date !== '1970-01-01T00:00:00.000Z') && (item.due_date !== '1970-01-01') ? (
+                          <div className={`text-sm font-medium ${
+                            isOverdue(item.due_date) ? "text-destructive" : "text-muted-foreground"
+                          }`}>
+                            {new Date(item.due_date).toLocaleDateString('de-DE')}
+                            {isOverdue(item.due_date) && (
+                              <Circle className="inline-block ml-1 h-2 w-2 fill-destructive text-destructive" />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">unbefristet</div>
+                        )}
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              const snoozeDate = prompt('Wiedervorlage bis (YYYY-MM-DD):');
+                              if (snoozeDate) {
+                                try {
+                                  await supabase
+                                    .from('task_snoozes')
+                                    .upsert({
+                                      user_id: user?.id,
+                                      [isTask ? 'task_id' : 'subtask_id']: item.id,
+                                      snoozed_until: snoozeDate + 'T00:00:00.000Z'
+                                    });
+                                  loadAssignedTasksAndSubtasks();
+                                  toast({
+                                    title: "Wiedervorlage gesetzt",
+                                    description: `${isTask ? 'Aufgabe' : 'Unteraufgabe'} wird bis ${new Date(snoozeDate).toLocaleDateString('de-DE')} ausgeblendet.`
+                                  });
+                                } catch (error) {
+                                  console.error('Error setting snooze:', error);
+                                }
+                              }
+                            }}
+                            className="h-6 w-6 p-0"
+                            title="Auf Wiedervorlage setzen"
+                          >
+                            <AlarmClock className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (isTask) {
+                                window.location.href = `/tasks`;
+                              } else {
+                                window.location.href = `/tasks`;
+                              }
+                            }}
+                            className="h-6 w-6 p-0"
+                            title={isTask ? "Aufgabe bearbeiten" : "Übergeordnete Aufgabe bearbeiten"}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`text-sm font-medium ${
-                      task.daysUntilDue === 0 ? "text-destructive" :
-                      task.daysUntilDue <= 2 ? "text-government-gold" :
-                      "text-muted-foreground"
-                    }`}>
-                      {task.dueDate}
-                    </span>
-                    {task.daysUntilDue === 0 && (
-                      <Circle className="h-2 w-2 fill-destructive text-destructive" />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {sampleTasks.length > 5 && (
+                );
+              })
+            )}
+            {allItems.length > 0 && (
               <div className="mt-4 pt-3 border-t border-border">
-                <Button variant="outline" className="w-full text-sm">
-                  Alle {sampleTasks.length} Aufgaben anzeigen
+                <Button 
+                  variant="outline" 
+                  className="w-full text-sm"
+                  onClick={() => window.location.href = '/tasks'}
+                >
+                  Alle Aufgaben anzeigen
                 </Button>
               </div>
             )}
