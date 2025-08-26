@@ -26,6 +26,7 @@ export function MultiSelect({
   placeholder = "Auswählen...",
   className
 }: MultiSelectProps) {
+  console.log('🔍 MultiSelect render:', { options, selected, placeholder });
   const [open, setOpen] = React.useState(false)
 
   const handleUnselect = (item: string) => {

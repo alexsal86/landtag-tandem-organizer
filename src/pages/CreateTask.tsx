@@ -260,12 +260,12 @@ export default function CreateTask() {
                 <div className="space-y-2">
                   <Label htmlFor="assignedTo">Zugewiesen an (optional)</Label>
                   <MultiSelect
-                    options={userProfiles.map(profile => ({
+                    options={(userProfiles || []).map(profile => ({
                       value: profile.user_id,
                       label: profile.isCurrentUser ? "Ich" : (profile.display_name || "Unbekannter Nutzer")
                     }))}
-                    selected={formData.assignedTo}
-                    onChange={(value) => setFormData({ ...formData, assignedTo: value })}
+                    selected={formData.assignedTo || []}
+                    onChange={(value) => setFormData({ ...formData, assignedTo: value || [] })}
                     placeholder="Personen auswählen..."
                   />
                 </div>

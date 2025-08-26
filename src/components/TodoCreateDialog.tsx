@@ -186,12 +186,12 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
           <div className="space-y-2">
             <Label htmlFor="assignedTo">Zuweisung (optional) - Mehrfach-Auswahl möglich</Label>
             <MultiSelect
-              options={users.map(user => ({
+              options={(users || []).map(user => ({
                 value: user.user_id,
                 label: user.display_name || user.user_id
               }))}
-              selected={assignedTo}
-              onChange={setAssignedTo}
+              selected={assignedTo || []}
+              onChange={(value) => setAssignedTo(value || [])}
               placeholder="Benutzer auswählen..."
             />
           </div>
