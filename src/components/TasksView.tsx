@@ -377,7 +377,7 @@ export function TasksView() {
     console.log('Loading assigned subtasks for user:', user.id);
     
     try {
-      // Get regular subtasks assigned to this user with resolved user names
+      // Get regular subtasks assigned to this user
       const { data: subtasksData, error } = await supabase
         .from('subtasks')
         .select(`
@@ -412,11 +412,11 @@ export function TasksView() {
         task.user_id === user.id
       );
 
-      console.log('Regular subtasks:', subtasksData);
-      console.log('Planning subtasks:', planningSubtasksData);
-      console.log('User assigned call follow-ups:', userCallFollowups);
+      console.log('Regular subtasks loaded:', subtasksData?.length || 0);
+      console.log('Planning subtasks loaded:', planningSubtasksData?.length || 0);
+      console.log('Call follow-up tasks loaded:', userCallFollowups?.length || 0);
 
-      // Combine subtasks with task titles and resolve user names
+      // Combine subtasks with task titles and try to resolve user names
       const allSubtasks = [];
 
       // Process regular subtasks
@@ -427,19 +427,26 @@ export function TasksView() {
             continue;
           }
 
-          // Resolve assigned_to UUIDs to names
-          const resolvedAssignedTo = await Promise.all(
-            subtask.assigned_to.map(async (userId: string) => {
-              if (!userId) return '';
-              const { data: profileData } = await supabase
-                .from('profiles')
-                .select('display_name')
-                .eq('user_id', userId)
-                .single();
-              
-              return profileData?.display_name || userId;
-            })
-          );
+          // Try to resolve assigned_to UUIDs to names (but keep original as fallback)
+          let resolvedAssignedTo = '';
+          try {
+            const resolvedNames = await Promise.all(
+              subtask.assigned_to.map(async (userId: string) => {
+                if (!userId) return '';
+                const { data: profileData } = await supabase
+                  .from('profiles')
+                  .select('display_name')
+                  .eq('user_id', userId)
+                  .single();
+                
+                return profileData?.display_name || userId;
+              })
+            );
+            resolvedAssignedTo = resolvedNames.join(', ');
+          } catch (error) {
+            console.error('Error resolving user names for subtask:', subtask.id, error);
+            resolvedAssignedTo = ''; // Will fall back to resolveUserNames function
+          }
 
           const { data: taskData } = await supabase
             .from('tasks')
@@ -451,7 +458,7 @@ export function TasksView() {
             ...subtask,
             task_title: taskData?.title || 'Unbekannte Aufgabe',
             source_type: 'task' as const,
-            assigned_to_names: resolvedAssignedTo.join(', ')
+            assigned_to_names: resolvedAssignedTo
           });
         }
       }
@@ -464,12 +471,19 @@ export function TasksView() {
             continue;
           }
 
-          // Resolve assigned_to UUID to name
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('user_id', subtask.assigned_to)
-            .single();
+          // Try to resolve assigned_to UUID to name
+          let resolvedAssignedTo = '';
+          try {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('user_id', subtask.assigned_to)
+              .single();
+            resolvedAssignedTo = profileData?.display_name || subtask.assigned_to;
+          } catch (error) {
+            console.error('Error resolving user name for planning subtask:', subtask.id, error);
+            resolvedAssignedTo = '';
+          }
 
           const { data: checklistItemData } = await supabase
             .from('event_planning_checklist_items')
@@ -494,7 +508,8 @@ export function TasksView() {
             source_type: 'planning' as const,
             checklist_item_title: checklistItemData?.title,
             planning_item_id: subtask.planning_item_id,
-            assigned_to_names: profileData?.display_name || subtask.assigned_to
+            assigned_to_names: resolvedAssignedTo,
+            assigned_to: [subtask.assigned_to] // Convert single value to array for consistency
           });
         }
       }
@@ -531,19 +546,26 @@ export function TasksView() {
             }
           }
 
-          // Resolve assigned_to UUIDs to names for call follow-ups
-          const resolvedAssignedTo = await Promise.all(
-            assignees.map(async (assignee: string) => {
-              if (!assignee || assignee.includes('@')) return assignee; // Skip emails
-              const { data: profileData } = await supabase
-                .from('profiles')
-                .select('display_name')
-                .eq('user_id', assignee)
-                .single();
-              
-              return profileData?.display_name || assignee;
-            })
-          );
+          // Try to resolve assigned_to UUIDs to names for call follow-ups
+          let resolvedAssignedTo = '';
+          try {
+            const resolvedNames = await Promise.all(
+              assignees.map(async (assignee: string) => {
+                if (!assignee || assignee.includes('@')) return assignee; // Skip emails
+                const { data: profileData } = await supabase
+                  .from('profiles')
+                  .select('display_name')
+                  .eq('user_id', assignee)
+                  .single();
+                
+                return profileData?.display_name || assignee;
+              })
+            );
+            resolvedAssignedTo = resolvedNames.join(', ');
+          } catch (error) {
+            console.error('Error resolving user names for call follow-up:', followupTask.id, error);
+            resolvedAssignedTo = '';
+          }
 
           // Convert task to subtask format
           allSubtasks.push({
@@ -552,22 +574,22 @@ export function TasksView() {
             description: followupTask.description,
             task_id: followupTask.id,
             task_title: `Follow-Up: ${contactName}`,
-              source_type: 'call_followup' as const,
-              assigned_to: followupTask.assigned_to,
-              due_date: followupTask.due_date,
-              is_completed: followupTask.status === 'completed',
-              created_at: followupTask.created_at,
-              updated_at: followupTask.updated_at,
-              priority: followupTask.priority,
-              call_log_id: followupTask.call_log_id,
-              contact_name: contactName,
-              order_index: 0,
-              assigned_to_names: resolvedAssignedTo.join(', ')
+            source_type: 'call_followup' as const,
+            assigned_to: followupTask.assigned_to,
+            due_date: followupTask.due_date,
+            is_completed: followupTask.status === 'completed',
+            created_at: followupTask.created_at,
+            updated_at: followupTask.updated_at,
+            priority: followupTask.priority,
+            call_log_id: followupTask.call_log_id,
+            contact_name: contactName,
+            order_index: 0,
+            assigned_to_names: resolvedAssignedTo
           });
         }
       }
 
-      console.log('All assigned subtasks with resolved names:', allSubtasks);
+      console.log('Final subtasks with names:', allSubtasks);
       setAssignedSubtasks(allSubtasks);
     } catch (error) {
       console.error('Error loading assigned subtasks:', error);
@@ -1537,9 +1559,9 @@ export function TasksView() {
                            {subtask.description && subtask.title && (
                              <div className="text-sm text-muted-foreground">{subtask.description}</div>
                            )}
-                            {subtask.assigned_to_names && (
+                            {(subtask.assigned_to_names || subtask.assigned_to) && (
                               <div className="text-sm text-muted-foreground">
-                                Zuständig: {subtask.assigned_to_names}
+                                Zuständig: {subtask.assigned_to_names || resolveUserNames(subtask.assigned_to)}
                               </div>
                             )}
                            {isSnoozed && (
@@ -1937,9 +1959,9 @@ export function TasksView() {
                                      </div>
                                    )}
                                     <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
-                                         {subtask.assigned_to_names && (
+                                         {(subtask.assigned_to_names || (subtask.assigned_to && subtask.assigned_to.length > 0)) && (
                                            <div>
-                                             Zuständig: {subtask.assigned_to_names}
+                                             Zuständig: {subtask.assigned_to_names || resolveUserNames(subtask.assigned_to)}
                                            </div>
                                          )}
                                      {subtask.due_date && (
