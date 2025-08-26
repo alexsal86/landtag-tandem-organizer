@@ -49,6 +49,7 @@ export function TimeTrackingView() {
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState<string>("09:00");
   const [endTime, setEndTime] = useState<string>("17:00");
+  const [pauseMinutes, setPauseMinutes] = useState<string>("30");
   const [notes, setNotes] = useState<string>("");
 
   // Urlaub beantragen – Formularzustand
@@ -222,17 +223,22 @@ export function TimeTrackingView() {
       const end = new Date(`${date}T${endTime}:00`);
       if (end <= start) throw new Error("Ende muss nach Start liegen.");
 
+      // Calculate total minutes worked minus pause
+      const totalMinutes = Math.floor((end.getTime() - start.getTime()) / (1000 * 60));
+      const pause = parseInt(pauseMinutes) || 0;
+      const workedMinutes = Math.max(0, totalMinutes - pause);
+
       const { error } = await supabase.from("time_entries").insert({
         user_id: user.id,
         work_date: date,
         started_at: start.toISOString(),
         ended_at: end.toISOString(),
-        minutes: 0,
-        notes: notes || null,
+        minutes: workedMinutes,
+        notes: notes ? `${notes} (Pause: ${pause} Min)` : `Pause: ${pause} Min`,
       });
       if (error) throw error;
 
-      toast({ title: "Erfasst", description: "Zeit wurde gespeichert (Dauer automatisch berechnet)." });
+      toast({ title: "Erfasst", description: `Zeit wurde gespeichert. Arbeitszeit: ${workedMinutes} Min (${pause} Min Pause abgezogen)` });
 
       // reload entries
       const { data: entriesData, error: entriesErr } = await supabase
@@ -247,6 +253,7 @@ export function TimeTrackingView() {
 
       // reset form
       setNotes("");
+      setPauseMinutes("30");
     } catch (e: any) {
       toast({ title: "Fehler", description: e.message, variant: "destructive" });
     } finally {
@@ -374,10 +381,10 @@ export function TimeTrackingView() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Neue Zeit erfassen</CardTitle>
-            <CardDescription>Start/Ende eingeben, Dauer wird automatisch berechnet.</CardDescription>
+            <CardDescription>Start/Ende eingeben, Pause wird abgezogen, Nettodauer wird gespeichert.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
               <div>
                 <Label htmlFor="date">Datum</Label>
                 <Input id="date" type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -390,11 +397,23 @@ export function TimeTrackingView() {
                 <Label htmlFor="end">Ende</Label>
                 <Input id="end" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
               </div>
+              <div>
+                <Label htmlFor="pause">Pause (Min)</Label>
+                <Input 
+                  id="pause" 
+                  type="number" 
+                  min="0" 
+                  max="480" 
+                  value={pauseMinutes} 
+                  onChange={e => setPauseMinutes(e.target.value)} 
+                  placeholder="30"
+                />
+              </div>
               <div className="md:col-span-1">
                 <Label htmlFor="notes">Notiz</Label>
                 <Input id="notes" placeholder="optional" value={notes} onChange={e => setNotes(e.target.value)} />
               </div>
-              <div className="md:col-span-4">
+              <div className="md:col-span-5">
                 <Button onClick={onSubmit} disabled={submitting} className="w-full">
                   {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                   Speichern
