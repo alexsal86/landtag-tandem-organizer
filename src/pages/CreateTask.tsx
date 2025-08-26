@@ -115,7 +115,7 @@ export default function CreateTask() {
         description: formData.description,
         priority: formData.priority,
         category: formData.category,
-        due_date: new Date(formData.dueDate).toISOString(),
+        due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
         assigned_to: formData.assignedTo.length > 0 ? formData.assignedTo : null,
         user_id: user.id,
         status: "todo",
@@ -235,13 +235,12 @@ export default function CreateTask() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dueDate">Fälligkeitsdatum *</Label>
+                  <Label htmlFor="dueDate">Fälligkeitsdatum (optional)</Label>
                   <Input
                     id="dueDate"
                     type="date"
                     value={formData.dueDate}
                     onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                    required
                   />
                 </div>
 
