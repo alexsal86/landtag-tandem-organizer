@@ -266,15 +266,34 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
                         }
                       }
                       
-                      return (
-                         <div
+                        // Calculate precise positioning within the hour
+                        let topOffset = 0;
+                        let preciseHeight = eventHeight;
+                        
+                        if (eventDate === viewDate && hour === startHour) {
+                          // Calculate exact position within the hour
+                          const [startHours, startMinutes] = event.time.split(':').map(Number);
+                          topOffset = (startMinutes / 60) * 60; // Convert minutes to pixels (60px per hour)
+                          
+                          if (event.endTime) {
+                            const eventStart = new Date(event.date);
+                            const eventEnd = new Date(event.endTime);
+                            const durationMs = eventEnd.getTime() - eventStart.getTime();
+                            const durationHours = durationMs / (1000 * 60 * 60);
+                            preciseHeight = Math.max(durationHours * 60, 20); // Minimum 20px height
+                          }
+                        }
+
+                        return (
+                          <div
                            key={`${event.id}-${hour}`}
                            className={`absolute p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)} ${isEventContinuation ? 'border-l-4 border-l-yellow-400' : ''}`}
                            style={{ 
                              width: `${widthPercentage - 1}%`,
                              left: `${leftOffset}%`,
-                             height: `${eventHeight}px`,
-                             marginBottom: '4px',
+                             height: `${preciseHeight}px`,
+                             top: `${topOffset}px`,
+                             marginBottom: '2px',
                              backgroundColor: event.category_color || undefined,
                              zIndex: isEventStart || isEventContinuation ? 2 : 1
                            }}
@@ -283,38 +302,48 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
                           <div className="font-medium truncate">
                             {isEventContinuation ? `→ ${event.title}` : event.title}
                           </div>
-                           <div className="opacity-80">
-                             {(() => {
-                               if (event.endTime) {
-                                 // Use actual end time from database
-                                 const endTimeStr = event.endTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                                 const startDate = event.date.toDateString();
-                                 const endDate = event.endTime.toDateString();
-                                 
-                                 if (startDate === endDate) {
-                                   // Same day
-                                   return `${event.time} - ${endTimeStr} (${event.duration})`;
-                                 } else {
-                                   // Multi-day event
-                                   const endDateStr = event.endTime.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-                                   return isEventContinuation 
-                                     ? `bis ${endDateStr} ${endTimeStr}`
-                                     : `${event.time} - ${endDateStr} ${endTimeStr}`;
-                                 }
-                               } else {
-                                 // Fallback to old calculation
-                                 const [hours, minutes] = event.time.split(':').map(Number);
-                                 const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-                                 const endHours = Math.floor((hours * 60 + minutes + durationMinutes) / 60);
-                                 const endMinutes = (hours * 60 + minutes + durationMinutes) % 60;
-                                 const durationHours = (durationMinutes / 60).toFixed(1);
-                                 
-                                 return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')} (${durationHours}h)`;
-                               }
-                             })()}
-                           </div>
+                          <div className="opacity-80 text-xs">
+                            {(() => {
+                              if (event.endTime) {
+                                // Use actual end time from database
+                                const startTimeStr = event.time;
+                                const endTimeStr = event.endTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                const startDate = event.date.toDateString();
+                                const endDate = event.endTime.toDateString();
+                                
+                                if (startDate === endDate) {
+                                  // Same day - show exact duration
+                                  const durationMs = event.endTime.getTime() - event.date.getTime();
+                                  const durationMinutes = Math.round(durationMs / (1000 * 60));
+                                  const hours = Math.floor(durationMinutes / 60);
+                                  const mins = durationMinutes % 60;
+                                  const durationStr = hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
+                                  
+                                  return `${startTimeStr} - ${endTimeStr} (${durationStr})`;
+                                } else {
+                                  // Multi-day event
+                                  const endDateStr = event.endTime.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+                                  return isEventContinuation 
+                                    ? `bis ${endDateStr} ${endTimeStr}`
+                                    : `${startTimeStr} - ${endDateStr} ${endTimeStr}`;
+                                }
+                              } else {
+                                // Fallback to duration calculation
+                                const [hours, minutes] = event.time.split(':').map(Number);
+                                const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+                                const endTotalMinutes = hours * 60 + minutes + durationMinutes;
+                                const endHours = Math.floor(endTotalMinutes / 60);
+                                const endMinutes = endTotalMinutes % 60;
+                                const durationHours = Math.floor(durationMinutes / 60);
+                                const durationMins = durationMinutes % 60;
+                                const durationStr = durationHours > 0 ? `${durationHours}h ${durationMins}min` : `${durationMins}min`;
+                                
+                                return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')} (${durationStr})`;
+                              }
+                            })()}
+                          </div>
                           {event.location && (
-                            <div className="opacity-70 truncate">{event.location}</div>
+                            <div className="opacity-70 truncate text-xs">{event.location}</div>
                           )}
                         </div>
                       );
