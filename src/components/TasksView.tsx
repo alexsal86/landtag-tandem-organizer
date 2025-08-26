@@ -1229,7 +1229,10 @@ export function TasksView() {
   const assignedTasks = tasks.filter(task => {
     // Only show tasks where user is assigned but not the creator
     if (!task.assignedTo || !user) return false;
-    const isAssignedToUser = task.assignedTo.split(',').map(id => id.trim()).includes(user.id);
+    const assignees = task.assignedTo.split(',').map(id => id.trim());
+    const isAssignedToUser = assignees.includes(user.id) || 
+                            assignees.includes(user.email) ||
+                            assignees.includes(user.email?.toLowerCase());
     const isNotCreator = task.user_id !== user.id;
     const isNotCompleted = task.status !== 'completed';
     return isAssignedToUser && isNotCreator && isNotCompleted;
