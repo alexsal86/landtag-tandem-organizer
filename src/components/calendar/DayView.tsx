@@ -131,12 +131,12 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
   };
 
   const getEventTypeColor = (event: CalendarEvent) => {
-    // If the event has a category color from the database, use it
+    // Always use white text when we have a custom category color
     if (event.category_color) {
       return `text-white`;
     }
     
-    // Fallback to hardcoded colors for built-in types
+    // Fallback to hardcoded colors for built-in types without category colors
     switch (event.type) {
       case "session":
         return "bg-primary text-primary-foreground";
@@ -290,19 +290,20 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
                            key={`${event.id}-${hour}`}
                            className={`absolute p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)} ${isEventContinuation ? 'border-l-4 border-l-yellow-400' : ''}`}
                            style={{ 
-                             width: `${widthPercentage - 1}%`,
-                             left: `${leftOffset}%`,
+                             width: `${widthPercentage - 2}%`, // Reduced width to create spacing
+                             left: `${leftOffset + 1}%`, // Add left margin for spacing
                              height: `${preciseHeight}px`,
                              top: `${topOffset}px`,
                              marginBottom: '2px',
+                             marginLeft: `${column * 4}px`, // Additional left indent for overlapping events
                              backgroundColor: event.category_color || undefined,
                              zIndex: isEventStart || isEventContinuation ? 2 : 1
                            }}
                            onClick={() => onAppointmentClick?.(event)}
                          >
-                          <div className="font-medium truncate">
-                            {isEventContinuation ? `→ ${event.title}` : event.title}
-                          </div>
+                           <div className="font-medium truncate">
+                             {isEventContinuation ? `→ ${event.title}` : event.title}
+                           </div>
                            <div className="opacity-80 text-xs">
                              {isEventContinuation 
                                ? `→ ${formatEventDisplay(event)}`
