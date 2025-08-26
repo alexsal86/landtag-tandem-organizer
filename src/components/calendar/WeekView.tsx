@@ -166,8 +166,10 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                      // Event overlaps with this hour slot
                      return eventStart < hourEnd && eventEnd > hourStart;
                    } else {
-                     // Fallback to start hour check
-                     return startHour === hour;
+                     // Fallback to duration calculation
+                     const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+                     const endHour = Math.floor((startHour * 60 + durationMinutes) / 60);
+                     return hour >= startHour && hour < endHour;
                    }
                  });
                  
@@ -186,9 +188,10 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                        const [startHour, startMinutes] = event.time.split(':').map(Number);
                        let topOffset = 0;
                        let eventHeight = 58; // Default height
+                       let isEventStart = hour === startHour;
                        
-                       // Only calculate precise positioning for events starting in this hour
-                       if (startHour === hour) {
+                       if (isEventStart) {
+                         // This is the starting hour - calculate precise positioning
                          topOffset = (startMinutes / 60) * 60; // Convert minutes to pixels
                          
                          if (event.endTime) {
@@ -203,14 +206,29 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                            eventHeight = Math.max(durationMinutes, 20);
                          }
                        } else {
-                         // This event continues from a previous hour, don't render it again
-                         return null;
+                         // This event continues from a previous hour
+                         // Only render it if the start hour is not visible in this grid
+                         const eventsInStartHour = dayEvents.filter(e => {
+                           const [eStartHour] = e.time.split(':').map(Number);
+                           return eStartHour === startHour;
+                         });
+                         
+                         if (eventsInStartHour.some(e => 
+                           eventLayout.some(({ event: layoutEvent }) => layoutEvent.id === e.id)
+                         )) {
+                           // The start hour is visible, don't render here to avoid duplicates
+                           return null;
+                         }
+                         
+                         // Render continuation
+                         topOffset = 0;
+                         eventHeight = 58;
                        }
                        
                        return (
                           <div
-                            key={event.id}
-                            className={`absolute p-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)}`}
+                            key={`${event.id}-${hour}`}
+                            className={`absolute p-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)} ${!isEventStart ? 'border-l-4 border-l-yellow-400' : ''}`}
                             style={{ 
                               width: `${widthPercentage - 1}%`,
                               left: `${leftOffset}%`,
@@ -219,11 +237,13 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                               marginBottom: '2px',
                               backgroundColor: event.category_color || undefined,
                               borderLeftColor: event.category_color || undefined,
-                              zIndex: 2
+                              zIndex: isEventStart ? 3 : 2
                             }}
                             onClick={() => onAppointmentClick?.(event)}
                           >
-                           <div className="font-medium truncate w-full text-xs">{event.title}</div>
+                           <div className="font-medium truncate w-full text-xs">
+                             {!isEventStart ? `→ ${event.title}` : event.title}
+                           </div>
                             <div className="opacity-80 truncate w-full text-xs">
                               {(() => {
                                 if (event.endTime) {
@@ -234,18 +254,12 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                                   const endDate = event.endTime.toDateString();
                                   
                                   if (startDate === endDate) {
-                                    // Same day - calculate precise duration
-                                    const durationMs = event.endTime.getTime() - event.date.getTime();
-                                    const durationMinutes = Math.round(durationMs / (1000 * 60));
-                                    const hours = Math.floor(durationMinutes / 60);
-                                    const mins = durationMinutes % 60;
-                                    const durationStr = hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
-                                    
-                                    return `${startTimeStr} - ${endTimeStr}`;
+                                    // Same day - show different info based on whether this is start or continuation
+                                    return isEventStart ? `${startTimeStr} - ${endTimeStr}` : `bis ${endTimeStr}`;
                                   } else {
                                     // Multi-day event
                                     const endDateStr = event.endTime.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-                                    return `${startTimeStr} - ${endDateStr} ${endTimeStr}`;
+                                    return isEventStart ? `${startTimeStr} - ${endDateStr} ${endTimeStr}` : `bis ${endDateStr} ${endTimeStr}`;
                                   }
                                 } else {
                                   // Fallback to duration calculation
@@ -255,7 +269,7 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                                   const endHours = Math.floor(endTotalMinutes / 60);
                                   const endMinutes = endTotalMinutes % 60;
                                   
-                                  return `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+                                  return isEventStart ? `${event.time} - ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}` : `bis ${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
                                 }
                               })()}
                             </div>
