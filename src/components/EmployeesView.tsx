@@ -266,10 +266,18 @@ export function EmployeesView() {
             .lte("end_date", endOfYear(new Date()).toISOString())
         ]);
 
+        // FORCE REFRESH: Check if data exists now
+        const freshCheck = await supabase
+          .from("employee_settings")
+          .select("user_id, hours_per_week, days_per_week, annual_vacation_days, employment_start_date")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
         console.log('=== DEBUGGING FOR USER ===');
         console.log('User ID:', user.id);
         console.log('User Email:', user.email);
-        console.log('Employee settings loaded:', settingsRes.data);
+        console.log('Fresh check result:', freshCheck.data);
+        console.log('Original settings result:', settingsRes.data);
         console.log('Profile loaded:', profileRes.data);
         console.log('Leave requests loaded:', leavesRes.data?.length || 0, 'requests');
         console.log('=== END DEBUG ===');
@@ -379,6 +387,7 @@ export function EmployeesView() {
 
   // Inline edit functions
   const updateHours = async (userId: string, newHours: number) => {
+    console.log('SAVING HOURS:', userId, newHours);
     if (newHours < 1 || newHours > 60) {
       toast({
         title: "Ungültige Eingabe",
@@ -389,7 +398,7 @@ export function EmployeesView() {
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("employee_settings")
         .upsert({ 
           user_id: userId, 
@@ -398,9 +407,11 @@ export function EmployeesView() {
         }, { 
           onConflict: 'user_id',
           ignoreDuplicates: false 
-        });
+        })
+        .select();
 
       if (error) throw error;
+      console.log('HOURS SAVED SUCCESS:', data);
 
       // Update local state
       setEmployees(prev => prev.map(emp => 
@@ -412,7 +423,7 @@ export function EmployeesView() {
         description: "Stunden pro Woche wurden aktualisiert.",
       });
     } catch (e: any) {
-      console.error(e);
+      console.error('HOURS SAVE ERROR:', e);
       toast({
         title: "Fehler",
         description: e?.message ?? "Stunden konnten nicht aktualisiert werden.",
