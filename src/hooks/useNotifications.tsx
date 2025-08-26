@@ -264,23 +264,39 @@ export const useNotifications = () => {
       if (needNewSubscription) {
         console.log('🔧 Creating new push subscription...');
         
-        // Fetch VAPID public key from Edge Function
-        const vapidResponse = await supabase.functions.invoke('send-push-notification', {
-          method: 'GET'
-        });
+        // Fetch VAPID public key from Edge Function using GET request
+        try {
+          const vapidResponse = await fetch(`https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification`, {
+            method: 'GET',
+            headers: {
+              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhd29mY2xiZWhia2Viaml2ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwOTMxNTEsImV4cCI6MjA2ODY2OTE1MX0.Bc5Jf1Uyvl_i8ooX-IK2kYNJMxpdCT1mKCwfFPVTI50',
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhd29mY2xiZWhia2Viaml2ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwOTMxNTEsImV4cCI6MjA2ODY2OTE1MX0.Bc5Jf1Uyvl_i8ooX-IK2kYNJMxpdCT1mKCwfFPVTI50',
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!vapidResponse.ok) {
+            throw new Error(`HTTP error! status: ${vapidResponse.status}`);
+          }
+          
+          const vapidData = await vapidResponse.json();
+          
+          if (!vapidData.success) {
+            throw new Error('Failed to fetch VAPID public key: ' + (vapidData.error || 'Unknown error'));
+          }
+          
+          const vapidPublicKey = vapidData.publicKey;
+          console.log('🔑 Got VAPID public key from server');
         
-        if (vapidResponse.error || !vapidResponse.data?.success) {
-          throw new Error('Failed to fetch VAPID public key: ' + (vapidResponse.error?.message || 'Unknown error'));
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          });
+          console.log('✅ New subscription created');
+        } catch (error) {
+          console.error('❌ Failed to get VAPID key or create subscription:', error);
+          throw error;
         }
-        
-        const vapidPublicKey = vapidResponse.data.publicKey;
-        console.log('🔑 Got VAPID public key from server');
-        
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-        });
-        console.log('✅ New subscription created');
       } else {
         console.log('ℹ️ Using existing active subscription');
       }
