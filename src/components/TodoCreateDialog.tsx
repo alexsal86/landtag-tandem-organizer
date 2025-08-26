@@ -184,7 +184,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="assignedTo">Zuweisung (optional)</Label>
+            <Label htmlFor="assignedTo">Zuweisung (optional) - Mehrfach-Auswahl möglich</Label>
             <MultiSelect
               options={users.map(user => ({
                 value: user.user_id,

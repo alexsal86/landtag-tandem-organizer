@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/hooks/useTenant";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 export default function CreateTask() {
   const navigate = useNavigate();
@@ -257,24 +258,16 @@ export default function CreateTask() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="assignedTo">Zugewiesen an</Label>
-                  <Select
-                    value={formData.assignedTo.length > 0 ? formData.assignedTo[0] : "unassigned"}
-                    onValueChange={(value) => setFormData({ ...formData, assignedTo: value === "unassigned" ? [] : [value] })}
-                  >
-                    <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Person auswählen..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border-border z-50">
-                      <SelectItem value="unassigned">Niemand zugewiesen</SelectItem>
-                      {userProfiles.map((profile) => (
-                        <SelectItem key={profile.id} value={profile.user_id}>
-                          {profile.isCurrentUser ? "Ich" : (profile.display_name || "Unbekannter Nutzer")}
-                          {profile.isCurrentUser && " (Aktueller Nutzer)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="assignedTo">Zugewiesen an (optional)</Label>
+                  <MultiSelect
+                    options={userProfiles.map(profile => ({
+                      value: profile.user_id,
+                      label: profile.isCurrentUser ? "Ich" : (profile.display_name || "Unbekannter Nutzer")
+                    }))}
+                    selected={formData.assignedTo}
+                    onChange={(value) => setFormData({ ...formData, assignedTo: value })}
+                    placeholder="Personen auswählen..."
+                  />
                 </div>
               </div>
 
