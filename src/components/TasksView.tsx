@@ -347,10 +347,17 @@ export function TasksView() {
   const resolveUserNamesAsync = async (assignedToField: string | string[] | null): Promise<string> => {
     if (!assignedToField) return '';
     
-    const userIds = Array.isArray(assignedToField) 
-      ? assignedToField 
-      : typeof assignedToField === 'string' 
-        ? assignedToField.split(',').map(id => id.trim())
+    // Clean up the field - remove curly braces and handle different formats
+    let cleanField = assignedToField;
+    if (typeof assignedToField === 'string') {
+      // Remove curly braces and clean up
+      cleanField = assignedToField.replace(/[{}]/g, '').trim();
+    }
+    
+    const userIds = Array.isArray(cleanField) 
+      ? cleanField 
+      : typeof cleanField === 'string' 
+        ? cleanField.split(',').map(id => id.trim()).filter(id => id)
         : [];
     
     if (userIds.length === 0) return '';
@@ -378,13 +385,20 @@ export function TasksView() {
   const resolveUserNames = (assignedToField: string | string[] | null): string => {
     if (!assignedToField) return '';
     
-    const userIds = Array.isArray(assignedToField) 
-      ? assignedToField 
-      : typeof assignedToField === 'string' 
-        ? assignedToField.split(',').map(id => id.trim())
+    // Clean up the field - remove curly braces and handle different formats
+    let cleanField = assignedToField;
+    if (typeof assignedToField === 'string') {
+      // Remove curly braces and clean up
+      cleanField = assignedToField.replace(/[{}]/g, '').trim();
+    }
+    
+    const userIds = Array.isArray(cleanField) 
+      ? cleanField 
+      : typeof cleanField === 'string' 
+        ? cleanField.split(',').map(id => id.trim()).filter(id => id)
         : [];
     
-    console.log('🔍 Resolving user names for:', userIds, 'from users cache:', users.length, 'users');
+    console.log('🔍 Resolving user names for:', userIds, 'from original field:', assignedToField);
     
     return userIds
       .map(userId => {
