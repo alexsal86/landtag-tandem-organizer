@@ -1612,18 +1612,35 @@ export function TasksView() {
                           <div className="text-sm text-muted-foreground">unbefristet</div>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleTaskClick(task);
-                          }}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+                       <TableCell>
+                         <div className="flex gap-1">
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setSnoozeDialogOpen({ type: 'task', id: task.id });
+                               setSnoozeDate('');
+                             }}
+                             className="h-8 w-8 p-0"
+                             title="Auf Wiedervorlage setzen"
+                           >
+                             <AlarmClock className="h-4 w-4" />
+                           </Button>
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               handleTaskClick(task);
+                             }}
+                             className="h-8 w-8 p-0"
+                             title="Aufgabe bearbeiten"
+                           >
+                             <Edit2 className="h-4 w-4" />
+                           </Button>
+                         </div>
+                       </TableCell>
                     </TableRow>
                   ))}
                   
