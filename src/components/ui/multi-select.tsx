@@ -12,16 +12,16 @@ interface Option {
 }
 
 interface MultiSelectProps {
-  options: Option[]
-  selected: string[]
+  options?: Option[]
+  selected?: string[]
   onChange: (value: string[]) => void
   placeholder?: string
   className?: string
 }
 
 export function MultiSelect({
-  options,
-  selected,
+  options = [],
+  selected = [],
   onChange,
   placeholder = "Auswählen...",
   className
@@ -29,7 +29,7 @@ export function MultiSelect({
   const [open, setOpen] = React.useState(false)
 
   const handleUnselect = (item: string) => {
-    onChange(selected.filter((i) => i !== item))
+    onChange((selected || []).filter((i) => i !== item))
   }
 
   return (
@@ -45,9 +45,9 @@ export function MultiSelect({
           )}
         >
           <div className="flex gap-1 flex-wrap">
-            {selected.length > 0 ? (
-              selected.map((item) => {
-                const option = options.find((opt) => opt.value === item)
+            {(selected || []).length > 0 ? (
+              (selected || []).map((item) => {
+                const option = (options || []).find((opt) => opt.value === item)
                 return (
                   <Badge
                     variant="secondary"
@@ -85,21 +85,22 @@ export function MultiSelect({
           <CommandInput placeholder="Suchen..." />
           <CommandEmpty>Keine Optionen gefunden.</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-auto">
-            {options.map((option) => (
+            {(options || []).map((option) => (
               <CommandItem
                 key={option.value}
                 onSelect={() => {
-                  if (selected.includes(option.value)) {
+                  const currentSelected = selected || [];
+                  if (currentSelected.includes(option.value)) {
                     handleUnselect(option.value)
                   } else {
-                    onChange([...selected, option.value])
+                    onChange([...currentSelected, option.value])
                   }
                 }}
               >
                 <div
                   className={cn(
                     "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                    selected.includes(option.value)
+                    (selected || []).includes(option.value)
                       ? "bg-primary text-primary-foreground"
                       : "opacity-50 [&_svg]:invisible"
                   )}
