@@ -102,16 +102,17 @@ export default function Administration() {
     if (!user) return;
     
     try {
-      const { data: adminCheck } = await supabase.rpc('is_admin', { _user_id: user.id });
-      setIsAdmin(!!adminCheck);
-      
-      // Check for super admin (abgeordneter role)
+      // Check if user has abgeordneter or bueroleitung role for admin access
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .single();
       
+      // Both abgeordneter and bueroleitung can access administration
+      setIsAdmin(roleData?.role === 'abgeordneter' || roleData?.role === 'bueroleitung');
+      
+      // Only abgeordneter can see the rights tab
       setIsSuperAdmin(roleData?.role === 'abgeordneter');
     } catch (error) {
       console.error('Error checking admin status:', error);
