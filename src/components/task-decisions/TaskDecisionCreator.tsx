@@ -24,6 +24,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
   const [description, setDescription] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -36,8 +37,10 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
       
       if (error) throw error;
       setProfiles(data || []);
+      setProfilesLoaded(true);
     } catch (error) {
       console.error('Error loading profiles:', error);
+      setProfilesLoaded(true);
     }
   };
 
@@ -143,12 +146,18 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
           </div>
           <div>
             <label className="text-sm font-medium">Benutzer auswählen</label>
-            <MultiSelect
-              options={userOptions}
-              selected={selectedUsers}
-              onChange={setSelectedUsers}
-              placeholder="Benutzer auswählen"
-            />
+            {profilesLoaded ? (
+              <MultiSelect
+                options={userOptions}
+                selected={selectedUsers}
+                onChange={setSelectedUsers}
+                placeholder="Benutzer auswählen"
+              />
+            ) : (
+              <div className="w-full h-10 bg-muted rounded-md flex items-center px-3 text-muted-foreground">
+                Lade Benutzer...
+              </div>
+            )}
           </div>
           <div className="flex justify-end space-x-2 pt-4">
             <Button 
