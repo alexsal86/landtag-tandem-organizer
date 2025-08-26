@@ -23,6 +23,8 @@ import { TaskArchiveModal } from "./TaskArchiveModal";
 import { TaskDetailSidebar } from "./TaskDetailSidebar";
 import { SnoozeManagementSidebar } from "./SnoozeManagementSidebar";
 import { TodoCreateDialog } from "./TodoCreateDialog";
+import { TaskCreateDialog } from "./TaskCreateDialog";
+import { TaskEditDialog } from "./TaskEditDialog";
 import { filterTasksByStatus, filterTasksByCategory, filterTasksByPriority } from "@/utils/taskUtils";
 
 export function TasksView() {
@@ -52,6 +54,8 @@ export function TasksView() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [snoozeManagementOpen, setSnoozeManagementOpen] = useState(false);
   const [todoCreateOpen, setTodoCreateOpen] = useState(false);
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [editTaskOpen, setEditTaskOpen] = useState(false);
 
   // Data state
   const [users, setUsers] = useState<User[]>([]);
@@ -247,6 +251,10 @@ export function TasksView() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Aufgaben</h1>
         <div className="flex gap-2">
+          <Button onClick={() => setCreateTaskOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Neue Aufgabe
+          </Button>
           <Button onClick={() => setTodoCreateOpen(true)}>
             <ListTodo className="h-4 w-4 mr-2" />
             TODO erstellen
@@ -289,18 +297,35 @@ export function TasksView() {
         onEdit={(task) => {
           setEditingTask(task);
           setEditFormData(task);
+          setEditTaskOpen(true);
         }}
         onShowComments={handleShowComments}
         onShowDocuments={handleShowDocuments}
         onShowSubtasks={handleShowSubtasks}
         onSetSnooze={handleSetSnooze}
-        onSelect={setSelectedTask}
+        onSelect={(task) => {
+          setSelectedTask(task);
+          setSidebarOpen(true);
+        }}
       />
 
       {/* Dialogs and Modals */}
       <TaskArchiveModal
         isOpen={archiveModalOpen}
         onClose={() => setArchiveModalOpen(false)}
+      />
+
+      <TaskCreateDialog
+        open={createTaskOpen}
+        onOpenChange={setCreateTaskOpen}
+        onTaskCreated={loadTasks}
+      />
+
+      <TaskEditDialog
+        open={editTaskOpen}
+        onOpenChange={setEditTaskOpen}
+        task={editingTask}
+        onTaskUpdated={loadTasks}
       />
 
       <TodoCreateDialog
