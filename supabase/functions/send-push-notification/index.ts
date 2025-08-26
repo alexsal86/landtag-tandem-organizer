@@ -296,13 +296,24 @@ serve(async (req) => {
               message: pushError.message,
               statusCode: pushError.statusCode,
               headers: pushError.headers,
-              body: pushError.body
+              body: pushError.body,
+              stack: pushError.stack
             });
             failedCount++;
             
+            // Log subscription details for debugging
+            console.error('❌ Failed subscription details:', {
+              subscriptionId: subscription.id,
+              endpoint: subscription.endpoint.substring(0, 100) + '...',
+              p256dhKeyLength: subscription.p256dh_key?.length || 0,
+              authKeyLength: subscription.auth_key?.length || 0,
+              isActive: subscription.is_active,
+              createdAt: subscription.created_at
+            });
+            
             // If the subscription is invalid, mark it as inactive
-            if (pushError.statusCode === 410 || pushError.statusCode === 404) {
-              console.log(`🗑️ Marking invalid subscription as inactive for user ${subscription.user_id}`);
+            if (pushError.statusCode === 410 || pushError.statusCode === 404 || pushError.statusCode === 400) {
+              console.log(`🗑️ Marking invalid subscription as inactive for user ${subscription.user_id} (status: ${pushError.statusCode})`);
               await supabaseAdmin
                 .from('push_subscriptions')
                 .update({ is_active: false })
