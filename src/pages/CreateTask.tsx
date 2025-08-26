@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/hooks/useTenant";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { MultiSelect } from "@/components/ui/multi-select-simple";
 
 export default function CreateTask() {
   const navigate = useNavigate();
