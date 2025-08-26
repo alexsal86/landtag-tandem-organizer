@@ -690,10 +690,10 @@ export function TaskDetailSidebar({
             <div>
               <Label htmlFor="assignedTo">Zugewiesen an</Label>
               <MultiSelect
-                options={users.map(user => ({
+                options={Array.isArray(users) ? users.map(user => ({
                   value: user.user_id,
                   label: user.display_name || `User ${user.user_id.slice(0, 8)}`
-                }))}
+                })) : []}
                 selected={editFormData.assignedTo ? editFormData.assignedTo.split(',').map(s => s.trim()).filter(Boolean) : []}
                 onChange={(selected) => setEditFormData(prev => ({ 
                   ...prev, 
@@ -764,10 +764,10 @@ export function TaskDetailSidebar({
                 <div>
                   <Label htmlFor="subtask-assigned">Zuständig</Label>
                   <MultiSelect
-                    options={users.map(user => ({
+                    options={Array.isArray(users) ? users.map(user => ({
                       value: user.user_id,
                       label: user.display_name || `User ${user.user_id.slice(0, 8)}`
-                    }))}
+                    })) : []}
                     selected={newSubtask.assigned_to ? newSubtask.assigned_to.split(',').map(s => s.trim()).filter(Boolean) : []}
                     onChange={(selected) => setNewSubtask(prev => ({ ...prev, assigned_to: selected.length > 0 ? selected.join(', ') : '' }))}
                     placeholder="Optional"
@@ -808,10 +808,10 @@ export function TaskDetailSidebar({
                       
                       <div className="grid grid-cols-2 gap-2">
                         <MultiSelect
-                          options={users.map(user => ({
+                          options={Array.isArray(users) ? users.map(user => ({
                             value: user.user_id,
                             label: user.display_name || `User ${user.user_id.slice(0, 8)}`
-                          }))}
+                          })) : []}
                           selected={(() => {
                             const editing = editingSubtask[subtask.id]?.assigned_to;
                             const current = editing || subtask.assigned_to || '';
