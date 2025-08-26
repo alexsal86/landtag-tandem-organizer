@@ -1830,8 +1830,6 @@ export function TasksView() {
           </Card>
         )}
 
-        {/* Task Decision Requests */}
-        <TaskDecisionList />
 
         {/* Main Tasks List */}
         <div className="space-y-4">
