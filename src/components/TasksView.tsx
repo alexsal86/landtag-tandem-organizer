@@ -1840,7 +1840,7 @@ export function TasksView() {
                                    <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
                                        {subtask.assigned_to && subtask.assigned_to.length > 0 && (
                                          <div>
-                                           Zuständig: {typeof subtask.assigned_to === 'string' ? subtask.assigned_to : (Array.isArray(subtask.assigned_to) ? subtask.assigned_to.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ') : '')}
+                                           bestehende Benutzer: {typeof subtask.assigned_to === 'string' ? subtask.assigned_to : (Array.isArray(subtask.assigned_to) ? subtask.assigned_to.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ') : '')}
                                          </div>
                                        )}
                                      {subtask.due_date && (
