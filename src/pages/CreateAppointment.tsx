@@ -14,6 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,13 +28,22 @@ const appointmentSchema = z.object({
   end_time: z.string().min(1, "Endzeit ist erforderlich"),
   location: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]),
-  category: z.string().min(1, "Kategorie ist erforderlich"), // Changed to string to accept dynamic categories
-  status: z.string().min(1, "Status ist erforderlich"), // Changed to string to accept dynamic statuses  
+  category: z.string().min(1, "Kategorie ist erforderlich"),
+  status: z.string().min(1, "Status ist erforderlich"),
   reminder_minutes: z.number().min(0),
+  is_all_day: z.boolean().default(false),
 }).refine((data) => {
-  const start = new Date(data.start_time);
-  const end = new Date(data.end_time);
-  return end > start;
+  if (data.is_all_day) {
+    // For all-day events, only check dates
+    const startDate = new Date(data.start_time);
+    const endDate = new Date(data.end_time);
+    return endDate >= startDate;
+  } else {
+    // For regular events, check full datetime
+    const startTime = new Date(data.start_time);
+    const endTime = new Date(data.end_time);
+    return endTime > startTime;
+  }
 }, {
   message: "Endzeit muss nach der Startzeit liegen",
   path: ["end_time"],
@@ -53,6 +63,8 @@ const CreateAppointment = () => {
   const [appointmentStatuses, setAppointmentStatuses] = useState<Array<{ name: string; label: string }>>([]);
   const [appointmentLocations, setAppointmentLocations] = useState<Array<{ id: string; name: string; address?: string }>>([]);
   const [showPollCreator, setShowPollCreator] = useState(false);
+  const [isAllDay, setIsAllDay] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -66,6 +78,7 @@ const CreateAppointment = () => {
       category: "meeting",
       status: "planned",
       reminder_minutes: 15,
+      is_all_day: false,
     },
   });
 
@@ -121,21 +134,31 @@ const CreateAppointment = () => {
 
     setLoading(true);
     try {
+      let startTime = values.start_time;
+      let endTime = values.end_time;
+      
+      // For all-day events, set proper times
+      if (values.is_all_day) {
+        startTime = values.start_time + "T00:00:00";
+        endTime = values.end_time + "T23:59:59";
+      }
+
       // Create appointment
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert({
           title: values.title,
           description: values.description,
-          start_time: new Date(values.start_time).toISOString(),
-          end_time: new Date(values.end_time).toISOString(),
+          start_time: new Date(startTime).toISOString(),
+          end_time: new Date(endTime).toISOString(),
           location: values.location,
           priority: values.priority,
           category: values.category,
           status: values.status,
           reminder_minutes: values.reminder_minutes,
           user_id: user.id,
-          tenant_id: currentTenant.id
+          tenant_id: currentTenant.id,
+          is_all_day: values.is_all_day,
         })
         .select()
         .single();
@@ -185,6 +208,43 @@ const CreateAppointment = () => {
 
   const removeContact = (contactId: string) => {
     setSelectedContacts(selectedContacts.filter(c => c.id !== contactId));
+  };
+
+  const handleAllDayChange = (checked: boolean) => {
+    setIsAllDay(checked);
+    form.setValue("is_all_day", checked);
+    
+    if (checked) {
+      // Convert datetime-local to date format
+      const currentStartTime = form.getValues("start_time");
+      const currentEndTime = form.getValues("end_time");
+      
+      if (currentStartTime) {
+        const startDate = currentStartTime.split("T")[0];
+        form.setValue("start_time", startDate);
+      }
+      
+      if (currentEndTime) {
+        const endDate = currentEndTime.split("T")[0];
+        form.setValue("end_time", endDate);
+      } else if (currentStartTime) {
+        // Set end date to same as start date if not set
+        const startDate = currentStartTime.split("T")[0];
+        form.setValue("end_time", startDate);
+      }
+    } else {
+      // Convert date back to datetime-local format
+      const currentStartTime = form.getValues("start_time");
+      const currentEndTime = form.getValues("end_time");
+      
+      if (currentStartTime && !currentStartTime.includes("T")) {
+        form.setValue("start_time", currentStartTime + "T09:00");
+      }
+      
+      if (currentEndTime && !currentEndTime.includes("T")) {
+        form.setValue("end_time", currentEndTime + "T10:00");
+      }
+    }
   };
 
   const priorityLabels = {
@@ -284,11 +344,29 @@ const CreateAppointment = () => {
                         </FormLabel>
                         <FormControl>
                           <Input 
-                            type="datetime-local" 
+                            type={isAllDay ? "date" : "datetime-local"}
                             {...field} 
                           />
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="is_all_day"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0 md:col-span-2">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={handleAllDayChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="text-sm font-normal cursor-pointer">
+                          Ganztägige Veranstaltung
+                        </FormLabel>
                       </FormItem>
                     )}
                   />
@@ -300,11 +378,11 @@ const CreateAppointment = () => {
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
                           <Clock className="h-4 w-4" />
-                          Endzeit *
+                          {isAllDay ? "Enddatum *" : "Endzeit *"}
                         </FormLabel>
                         <FormControl>
                           <Input 
-                            type="datetime-local" 
+                            type={isAllDay ? "date" : "datetime-local"}
                             {...field} 
                           />
                         </FormControl>
@@ -414,77 +492,95 @@ const CreateAppointment = () => {
                       </FormItem>
                     )}
                   />
-
-                  <FormField
-                    control={form.control}
-                    name="priority"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Priorität</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Priorität auswählen" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {Object.entries(priorityLabels).map(([value, label]) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Status auswählen" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {appointmentStatuses.map((status) => (
-                              <SelectItem key={status.name} value={status.name}>
-                                {status.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="reminder_minutes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Erinnerung (Minuten vorher)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            placeholder="15" 
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
+
+                {/* Advanced Options Toggle */}
+                <div className="flex items-center space-x-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                    className="text-primary hover:text-primary/80"
+                  >
+                    {showAdvancedOptions ? "Weitere Details ausblenden" : "Weitere Details anzeigen"}
+                  </Button>
+                </div>
+
+                {/* Advanced Options - Collapsible */}
+                {showAdvancedOptions && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="priority"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Priorität</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Priorität auswählen" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Object.entries(priorityLabels).map(([value, label]) => (
+                                <SelectItem key={value} value={value}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Status auswählen" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {appointmentStatuses.map((status) => (
+                                <SelectItem key={status.name} value={status.name}>
+                                  {status.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="reminder_minutes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Erinnerung (Minuten vorher)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="0" 
+                              placeholder="15" 
+                              {...field}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
 
                 <Separator />
 

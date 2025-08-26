@@ -262,6 +262,7 @@ export type Database = {
           description: string | null
           end_time: string
           id: string
+          is_all_day: boolean
           location: string | null
           meeting_details: string | null
           meeting_id: string | null
@@ -284,6 +285,7 @@ export type Database = {
           description?: string | null
           end_time: string
           id?: string
+          is_all_day?: boolean
           location?: string | null
           meeting_details?: string | null
           meeting_id?: string | null
@@ -306,6 +308,7 @@ export type Database = {
           description?: string | null
           end_time?: string
           id?: string
+          is_all_day?: boolean
           location?: string | null
           meeting_details?: string | null
           meeting_id?: string | null
