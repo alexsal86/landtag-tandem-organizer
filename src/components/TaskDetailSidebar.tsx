@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -688,25 +689,18 @@ export function TaskDetailSidebar({
 
             <div>
               <Label htmlFor="assignedTo">Zugewiesen an</Label>
-              <Select
-                value={editFormData.assignedTo || 'unassigned'}
-                onValueChange={(value) => setEditFormData(prev => ({ 
-                  ...prev, 
-                  assignedTo: value === 'unassigned' ? '' : value 
+              <MultiSelect
+                options={users.map(user => ({
+                  value: user.user_id,
+                  label: user.display_name || `User ${user.user_id.slice(0, 8)}`
                 }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Benutzer auswählen..." />
-                </SelectTrigger>
-                <SelectContent className="bg-background border border-border z-50">
-                  <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
-                  {users.map((user) => (
-                    <SelectItem key={user.user_id} value={user.user_id}>
-                      {user.display_name || 'Unbekannter Benutzer'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                selected={editFormData.assignedTo ? editFormData.assignedTo.split(',').map(s => s.trim()).filter(Boolean) : []}
+                onChange={(selected) => setEditFormData(prev => ({ 
+                  ...prev, 
+                  assignedTo: selected.length > 0 ? selected.join(', ') : ''
+                }))}
+                placeholder="Personen auswählen..."
+              />
             </div>
 
             <div>
@@ -769,22 +763,15 @@ export function TaskDetailSidebar({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label htmlFor="subtask-assigned">Zuständig</Label>
-                  <Select
-                    value={newSubtask.assigned_to || 'unassigned'}
-                    onValueChange={(value) => setNewSubtask(prev => ({ ...prev, assigned_to: value === 'unassigned' ? '' : value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Optional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
-                      {users.map((user) => (
-                        <SelectItem key={user.user_id} value={user.user_id}>
-                          {user.display_name || 'Unbekannter Benutzer'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <MultiSelect
+                    options={users.map(user => ({
+                      value: user.user_id,
+                      label: user.display_name || `User ${user.user_id.slice(0, 8)}`
+                    }))}
+                    selected={newSubtask.assigned_to ? newSubtask.assigned_to.split(',').map(s => s.trim()).filter(Boolean) : []}
+                    onChange={(selected) => setNewSubtask(prev => ({ ...prev, assigned_to: selected.length > 0 ? selected.join(', ') : '' }))}
+                    placeholder="Optional"
+                  />
                 </div>
                 
                 <div>
@@ -820,28 +807,22 @@ export function TaskDetailSidebar({
                       />
                       
                       <div className="grid grid-cols-2 gap-2">
-                        <Select
-                          value={(() => {
-                            const editing = editingSubtask[subtask.id]?.assigned_to;
-                            return editing || subtask.assigned_to || 'unassigned';
-                          })()}
-                          onValueChange={(value) => setEditingSubtask(prev => ({
-                            ...prev,
-                            [subtask.id]: { ...prev[subtask.id], assigned_to: value === 'unassigned' ? '' : value }
+                        <MultiSelect
+                          options={users.map(user => ({
+                            value: user.user_id,
+                            label: user.display_name || `User ${user.user_id.slice(0, 8)}`
                           }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Zuständig" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
-                            {users.map((user) => (
-                              <SelectItem key={user.user_id} value={user.user_id}>
-                                {user.display_name || 'Unbekannter Benutzer'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          selected={(() => {
+                            const editing = editingSubtask[subtask.id]?.assigned_to;
+                            const current = editing || subtask.assigned_to || '';
+                            return current ? current.split(',').map(s => s.trim()).filter(Boolean) : [];
+                          })()}
+                          onChange={(selected) => setEditingSubtask(prev => ({
+                            ...prev,
+                            [subtask.id]: { ...prev[subtask.id], assigned_to: selected.length > 0 ? selected.join(', ') : '' }
+                          }))}
+                          placeholder="Zuständig"
+                        />
                         
                         <Input
                           type="date"
@@ -905,13 +886,18 @@ export function TaskDetailSidebar({
                            </div>
                          )}
                            <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                             {subtask.assigned_to && subtask.assigned_to.trim() && (
-                               <span>Zuständig: {users.find(u => u.user_id === subtask.assigned_to)?.display_name || subtask.assigned_to}</span>
+                              {subtask.assigned_to && subtask.assigned_to.trim() && (
+                                <span>Zuständig: {
+                                  subtask.assigned_to.split(',').map(userId => {
+                                    const userName = users.find(u => u.user_id === userId.trim())?.display_name;
+                                    return userName || userId.trim();
+                                  }).join(', ')
+                                }</span>
+                              )}
+                             {subtask.due_date && (
+                               <span>Fällig: {formatDate(subtask.due_date)}</span>
                              )}
-                            {subtask.due_date && (
-                              <span>Fällig: {formatDate(subtask.due_date)}</span>
-                            )}
-                          </div>
+                           </div>
                        </div>
                       <div className="flex gap-1">
                         <Button

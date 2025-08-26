@@ -1638,17 +1638,17 @@ export function TasksView() {
                            <span>Wiedervorlage</span>
                          </div>
                          
-                           {task.assignedTo && task.assignedTo.length > 0 && (
-                             <div className="flex items-center gap-1">
-                               <User className="h-4 w-4" />
-                               <span>
-                                 {Array.isArray(task.assignedTo) 
-                                   ? task.assignedTo.map(userId => users.find(u => u.user_id === userId)?.display_name || userId).join(', ')
-                                   : task.assignedTo.split(',').filter(id => id.trim()).map(userId => users.find(u => u.user_id === userId.trim())?.display_name || userId.trim()).join(', ')
-                                 }
-                               </span>
-                             </div>
-                           )}
+                            {task.assignedTo && task.assignedTo.trim() && (
+                              <div className="flex items-center gap-1">
+                                <User className="h-4 w-4" />
+                                <span>
+                                  {task.assignedTo.split(',').map(userId => {
+                                    const userName = users.find(u => u.user_id === userId.trim())?.display_name;
+                                    return userName || userId.trim();
+                                  }).join(', ')}
+                                </span>
+                              </div>
+                            )}
                          
                          <div 
                            className="flex items-center gap-1 cursor-pointer hover:text-primary"

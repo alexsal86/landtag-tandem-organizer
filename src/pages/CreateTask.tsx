@@ -130,7 +130,7 @@ export default function CreateTask() {
           return;
         }
 
-        // TEST: Create task WITHOUT assigned_to field to isolate the problem
+        // Create task with assigned_to as comma-separated string
         const taskData = {
           title: formData.title.trim(),
           description: formData.description?.trim() || null,
@@ -139,11 +139,11 @@ export default function CreateTask() {
           due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
           user_id: user.id,
           status: "todo",
-          tenant_id: currentTenant.id
-          // TEMPORARILY REMOVED: assigned_to field to test
+          tenant_id: currentTenant.id,
+          assigned_to: formData.assignedTo.length > 0 ? formData.assignedTo.join(', ') : null
         };
 
-        console.log('📝 Inserting task WITHOUT assigned_to field:', taskData);
+        console.log('📝 Inserting task with assigned_to field:', taskData);
 
         // Insert task
         const { data: insertedTask, error: insertError } = await supabase
@@ -164,11 +164,11 @@ export default function CreateTask() {
           throw new Error(insertError.message);
         }
 
-        console.log('✅ Task created successfully WITHOUT assigned_to:', insertedTask);
+        console.log('✅ Task created successfully:', insertedTask);
         
         toast({
           title: "Aufgabe erstellt",
-          description: "Die neue Aufgabe wurde erfolgreich erstellt (ohne Zuweisungen).",
+          description: "Die neue Aufgabe wurde erfolgreich erstellt.",
         });
 
         // Reset form
@@ -291,12 +291,17 @@ export default function CreateTask() {
                   />
                 </div>
 
-                {/* TEMPORARILY REMOVED: MultiSelect for testing array issues */}
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">Zuweisungen (temporär deaktiviert)</Label>
-                  <div className="p-3 bg-muted/50 rounded-md text-sm text-muted-foreground">
-                    Feld temporär entfernt um Array-Fehler zu testen
-                  </div>
+                  <Label htmlFor="assignedTo">Zuweisungen (optional)</Label>
+                  <MultiSelect
+                    options={userProfiles.map(profile => ({
+                      value: profile.user_id,
+                      label: profile.display_name || `User ${profile.user_id.slice(0, 8)}`
+                    }))}
+                    selected={formData.assignedTo}
+                    onChange={(selected) => setFormData({ ...formData, assignedTo: selected })}
+                    placeholder="Personen auswählen..."
+                  />
                 </div>
               </div>
 
