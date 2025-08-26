@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'https://esm.sh/web-push@3.6.7'
+// Use a more compatible version of web-push that works with Deno
+import webpush from 'npm:web-push@3.6.7'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -166,7 +167,23 @@ serve(async (req) => {
       }
       
       console.log('🔧 Configuring web-push with VAPID...');
-      webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+      console.log('🔑 VAPID Subject:', vapidSubject);
+      console.log('🔑 VAPID Public Key length:', vapidPublicKey.length);
+      console.log('🔑 VAPID Private Key length:', vapidPrivateKey.length);
+      
+      try {
+        webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+        console.log('✅ VAPID configuration successful');
+      } catch (vapidError) {
+        console.error('❌ VAPID configuration failed:', vapidError);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'VAPID configuration failed: ' + vapidError.message
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
       
       try {
         // Get all active push subscriptions
