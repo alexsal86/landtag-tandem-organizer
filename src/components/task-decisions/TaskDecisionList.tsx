@@ -154,7 +154,7 @@ export const TaskDecisionList = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <>
       <div className="border-t-4 border-t-destructive my-6"></div>
       <h3 className="text-lg font-semibold text-foreground">Entscheidungsanfragen</h3>
       <div className="space-y-3">
@@ -198,6 +198,6 @@ export const TaskDecisionList = () => {
           </Card>
         ))}
       </div>
-    </div>
+    </>
   );
 };
