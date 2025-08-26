@@ -10,6 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -26,7 +27,7 @@ interface AgendaItem {
   meeting_id?: string;
   title: string;
   description?: string;
-  assigned_to?: string | null;
+  assigned_to?: string[] | null;
   notes?: string | null;
   is_completed: boolean;
   is_recurring: boolean;
@@ -979,7 +980,7 @@ export function MeetingsView() {
     const newItem: AgendaItem = {
       title: "",
       description: "",
-      assigned_to: "unassigned",
+      assigned_to: [],
       notes: "",
       is_completed: false,
       is_recurring: false,
@@ -1041,7 +1042,7 @@ export function MeetingsView() {
         meeting_id: selectedMeeting.id,
         title: p.title,
         description: p.description,
-        assigned_to: p.assigned_to === 'unassigned' ? null : p.assigned_to || null,
+        assigned_to: (p.assigned_to && Array.isArray(p.assigned_to) && p.assigned_to.length > 0) ? p.assigned_to : null,
         notes: p.notes || null,
         is_completed: p.is_completed,
         is_recurring: p.is_recurring,
@@ -1068,7 +1069,7 @@ export function MeetingsView() {
           meeting_id: selectedMeeting.id,
           title: c.title,
           description: c.description,
-          assigned_to: c.assigned_to === 'unassigned' ? null : c.assigned_to || null,
+          assigned_to: (c.assigned_to && Array.isArray(c.assigned_to) && c.assigned_to.length > 0) ? c.assigned_to : null,
           notes: c.notes || null,
           is_completed: c.is_completed,
           is_recurring: c.is_recurring,

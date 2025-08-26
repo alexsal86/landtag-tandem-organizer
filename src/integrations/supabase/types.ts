@@ -361,7 +361,7 @@ export type Database = {
       archived_tasks: {
         Row: {
           archived_at: string
-          assigned_to: string | null
+          assigned_to: string[] | null
           auto_delete_after_days: number | null
           category: string
           completed_at: string
@@ -377,7 +377,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           auto_delete_after_days?: number | null
           category: string
           completed_at?: string
@@ -393,7 +393,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           auto_delete_after_days?: number | null
           category?: string
           completed_at?: string
@@ -482,7 +482,7 @@ export type Database = {
       }
       carryover_items: {
         Row: {
-          assigned_to: string | null
+          assigned_to: string[] | null
           created_at: string
           description: string | null
           id: string
@@ -498,7 +498,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           created_at?: string
           description?: string | null
           id?: string
@@ -514,7 +514,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1687,7 +1687,7 @@ export type Database = {
       }
       meeting_agenda_items: {
         Row: {
-          assigned_to: string | null
+          assigned_to: string[] | null
           carried_over_from: string | null
           carry_over_to_next: boolean | null
           carryover_notes: string | null
@@ -1710,7 +1710,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
           carryover_notes?: string | null
@@ -1733,7 +1733,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
           carryover_notes?: string | null
@@ -2636,7 +2636,7 @@ export type Database = {
       }
       subtasks: {
         Row: {
-          assigned_to: string | null
+          assigned_to: string[] | null
           completed_at: string | null
           created_at: string
           description: string
@@ -2650,7 +2650,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           completed_at?: string | null
           created_at?: string
           description: string
@@ -2664,7 +2664,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           completed_at?: string | null
           created_at?: string
           description?: string
@@ -2874,7 +2874,7 @@ export type Database = {
       }
       tasks: {
         Row: {
-          assigned_to: string | null
+          assigned_to: string[] | null
           call_log_id: string | null
           category: string
           created_at: string
@@ -2890,7 +2890,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           call_log_id?: string | null
           category?: string
           created_at?: string
@@ -2906,7 +2906,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           call_log_id?: string | null
           category?: string
           created_at?: string
@@ -3169,7 +3169,7 @@ export type Database = {
       }
       todos: {
         Row: {
-          assigned_to: string | null
+          assigned_to: string[] | null
           category_id: string
           completed_at: string | null
           created_at: string
@@ -3182,7 +3182,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           category_id: string
           completed_at?: string | null
           created_at?: string
@@ -3195,7 +3195,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          assigned_to?: string | null
+          assigned_to?: string[] | null
           category_id?: string
           completed_at?: string | null
           created_at?: string

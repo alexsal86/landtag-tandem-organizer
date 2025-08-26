@@ -17,7 +17,7 @@ interface ArchivedTask {
   description: string;
   priority: "low" | "medium" | "high";
   category: "legislation" | "constituency" | "committee" | "personal";
-  assigned_to?: string;
+  assigned_to?: string[];
   progress?: number;
   due_date: string;
   completed_at: string;
@@ -43,7 +43,7 @@ interface Task {
   status: "todo" | "in-progress" | "completed";
   dueDate: string;
   category: "legislation" | "constituency" | "committee" | "personal";
-  assignedTo?: string;
+  assignedTo?: string[];
   progress?: number;
 }
 
@@ -77,7 +77,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         description: task.description || '',
         priority: task.priority as ArchivedTask['priority'],
         category: task.category as ArchivedTask['category'],
-        assigned_to: task.assigned_to || undefined,
+        assigned_to: Array.isArray(task.assigned_to) ? task.assigned_to : (task.assigned_to ? [task.assigned_to] : undefined),
         progress: task.progress || undefined,
         due_date: task.due_date,
         completed_at: task.completed_at,
@@ -192,7 +192,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
             description: task.description,
             priority: task.priority,
             category: task.category,
-            assigned_to: task.assigned_to,
+        assigned_to: task.assigned_to || [],
             progress: task.progress || 0,
             due_date: task.due_date,
             status: 'todo',
@@ -213,7 +213,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
             description: task.description,
             priority: task.priority,
             category: task.category,
-            assigned_to: task.assigned_to,
+            assigned_to: task.assigned_to || [],
             progress: task.progress || 0,
             due_date: task.due_date,
             status: 'todo'
@@ -241,7 +241,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         status: 'todo',
         dueDate: task.due_date,
         category: task.category,
-        assignedTo: task.assigned_to,
+        assignedTo: task.assigned_to || [],
         progress: task.progress || 0,
       };
       
@@ -272,7 +272,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         `"${task.description || ''}"`,
         task.priority,
         task.category,
-        `"${task.assigned_to || ''}"`,
+        `"${task.assigned_to?.join(', ') || ''}"`,
         task.due_date,
         task.completed_at,
         task.archived_at
@@ -467,9 +467,9 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
                             <Archive className="h-4 w-4" />
                             {getTaskDeleteInfo(task)}
                           </div>
-                          {task.assigned_to && (
-                            <div>Zugewiesen an: {task.assigned_to}</div>
-                          )}
+                           {task.assigned_to && task.assigned_to.length > 0 && (
+                             <div>Zugewiesen an: {task.assigned_to.join(', ')}</div>
+                           )}
                         </div>
                       </div>
                       

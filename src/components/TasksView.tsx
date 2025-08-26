@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,7 +29,7 @@ interface Task {
   status: "todo" | "in-progress" | "completed";
   dueDate: string;
   category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
-  assignedTo?: string;
+  assignedTo?: string[];
   progress?: number;
   created_at?: string;
   updated_at?: string;
@@ -51,7 +52,7 @@ interface Subtask {
   title: string;
   description?: string;
   is_completed: boolean;
-  assigned_to?: string;
+  assigned_to?: string[];
   due_date?: string;
   order_index: number;
   completed_at?: string;
@@ -121,7 +122,7 @@ export function TasksView() {
     title: string;
     category_label: string;
     category_color: string;
-    assigned_to: string | null;
+    assigned_to: string[] | null;
     due_date: string | null;
     is_completed: boolean;
   }>>([]);
@@ -384,8 +385,7 @@ export function TasksView() {
       
       // Filter those assigned to current user
       const userCallFollowups = (callFollowupData || []).filter(task => 
-        task.assigned_to === user.email || 
-        task.assigned_to === user.id ||
+        (Array.isArray(task.assigned_to) && (task.assigned_to.includes(user.email) || task.assigned_to.includes(user.id))) ||
         task.user_id === user.id
       );
 

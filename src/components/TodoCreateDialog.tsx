@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 interface TodoCategory {
   id: string;
@@ -32,7 +33,8 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [assignedTo, setAssignedTo] = useState("");
+  const [assignedTo, setAssignedTo] = useState<string[]>([]);
+  const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
 
   console.log('TodoCreateDialog render - open:', open, 'user:', user?.id);
 
@@ -40,6 +42,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
     if (open) {
       console.log('Dialog opened, loading categories...');
       loadCategories();
+      loadUsers();
     }
   }, [open]);
 
@@ -66,6 +69,20 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
     }
   };
 
+  const loadUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .order('display_name');
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submitted:', { title, categoryId });
@@ -87,7 +104,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
         tenant_id: currentTenant?.id || '', // Use current tenant ID
         category_id: categoryId,
         title: title.trim(),
-        assigned_to: assignedTo || null,
+        assigned_to: assignedTo.length > 0 ? assignedTo : null,
         due_date: dueDate || null
       });
       
@@ -101,7 +118,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
       setTitle("");
       setCategoryId("");
       setDueDate("");
-      setAssignedTo("");
+      setAssignedTo([]);
       onTodoCreated();
       onOpenChange(false);
     } catch (error: any) {
@@ -168,11 +185,14 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
           <div className="space-y-2">
             <Label htmlFor="assignedTo">Zuweisung (optional)</Label>
-            <Input
-              id="assignedTo"
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              placeholder="An wen soll das ToDo zugewiesen werden?"
+            <MultiSelect
+              options={users.map(user => ({
+                value: user.user_id,
+                label: user.display_name || user.user_id
+              }))}
+              selected={assignedTo}
+              onChange={setAssignedTo}
+              placeholder="Benutzer auswählen..."
             />
           </div>
 
