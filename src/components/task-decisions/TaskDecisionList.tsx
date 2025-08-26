@@ -153,6 +153,8 @@ export const TaskDecisionList = () => {
     return null;
   }
 
+  return null;
+
   return (
     <>
       <div className="border-t-4 border-t-destructive my-6"></div>
