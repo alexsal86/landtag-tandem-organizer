@@ -1827,7 +1827,7 @@ export function TasksView() {
         )}
 
         {/* Task Decision Requests */}
-        {/* Temporarily disabled: <TaskDecisionList /> */}
+        <TaskDecisionList />
 
         {/* Main Tasks List */}
         <div className="space-y-4">
