@@ -110,6 +110,18 @@ export default function CreateTask() {
         return;
       }
 
+      console.log('📝 About to insert task with data:', {
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        category: formData.category,
+        due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
+        assigned_to: formData.assignedTo.length > 0 ? formData.assignedTo : null,
+        user_id: user.id,
+        status: "todo",
+        tenant_id: currentTenant.id
+      });
+
       const { error } = await supabase.from('tasks').insert({
         title: formData.title,
         description: formData.description,
