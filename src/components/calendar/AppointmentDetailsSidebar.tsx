@@ -34,12 +34,26 @@ export function AppointmentDetailsSidebar({
     priority: "medium" as CalendarEvent["priority"],
     category: "meeting" as CalendarEvent["type"],
     date: "",
-    time: "",
-    duration: ""
+    startTime: "",
+    endTime: ""
   });
 
   const handleEdit = () => {
     if (!appointment) return;
+    
+    // Calculate end time from start time and duration
+    let endTime = "";
+    if (appointment.endTime) {
+      endTime = appointment.endTime.toTimeString().slice(0, 5);
+    } else if (appointment.duration) {
+      const [hours, minutes] = appointment.time.split(':').map(Number);
+      const durationMinutes = parseInt(appointment.duration.replace(/\D/g, ''));
+      const endTotalMinutes = hours * 60 + minutes + durationMinutes;
+      const endHours = Math.floor(endTotalMinutes / 60);
+      const endMinutes = endTotalMinutes % 60;
+      endTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+    }
+    
     setEditData({
       title: appointment.title,
       description: "", // Add description field
@@ -47,8 +61,8 @@ export function AppointmentDetailsSidebar({
       priority: appointment.priority,
       category: appointment.type, // Map type to category
       date: appointment.date.toISOString().split('T')[0],
-      time: appointment.time,
-      duration: appointment.duration
+      startTime: appointment.time,
+      endTime: endTime
     });
     setIsEditing(true);
   };
@@ -58,19 +72,20 @@ export function AppointmentDetailsSidebar({
     
     try {
       // Calculate new start and end times
-      const [hours, minutes] = editData.time.split(':').map(Number);
-      const durationMinutes = parseInt(editData.duration.replace(/\D/g, ''));
+      const [startHours, startMinutes] = editData.startTime.split(':').map(Number);
+      const [endHours, endMinutes] = editData.endTime.split(':').map(Number);
       
       const startTime = new Date(editData.date);
-      startTime.setHours(hours, minutes, 0, 0);
+      startTime.setHours(startHours, startMinutes, 0, 0);
       
-      const endTime = new Date(startTime);
-      endTime.setMinutes(endTime.getMinutes() + durationMinutes);
+      const endTime = new Date(editData.date);
+      endTime.setHours(endHours, endMinutes, 0, 0);
 
       const { error } = await supabase
         .from('appointments')
         .update({
           title: editData.title,
+          description: editData.description || null,
           location: editData.location || null,
           priority: editData.priority,
           start_time: startTime.toISOString(),
@@ -295,17 +310,41 @@ export function AppointmentDetailsSidebar({
                 <div className="font-medium">Uhrzeit</div>
                 {isEditing ? (
                   <div className="space-y-2 mt-1">
-                    <Input
-                      type="time"
-                      value={editData.time}
-                      onChange={(e) => setEditData({...editData, time: e.target.value})}
-                      placeholder="Startzeit"
-                    />
-                    <Input
-                      value={editData.duration}
-                      onChange={(e) => setEditData({...editData, duration: e.target.value})}
-                      placeholder="Dauer (z.B. 60min)"
-                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Startzeit</label>
+                        <Input
+                          type="time"
+                          value={editData.startTime}
+                          onChange={(e) => setEditData({...editData, startTime: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Endzeit</label>
+                        <Input
+                          type="time"
+                          value={editData.endTime}
+                          onChange={(e) => setEditData({...editData, endTime: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    {editData.startTime && editData.endTime && (
+                      <div className="text-xs text-muted-foreground">
+                        Dauer: {(() => {
+                          const [startHours, startMinutes] = editData.startTime.split(':').map(Number);
+                          const [endHours, endMinutes] = editData.endTime.split(':').map(Number);
+                          const startTotalMinutes = startHours * 60 + startMinutes;
+                          const endTotalMinutes = endHours * 60 + endMinutes;
+                          const durationMinutes = endTotalMinutes - startTotalMinutes;
+                          
+                          if (durationMinutes <= 0) return "Ungültige Zeitspanne";
+                          
+                          const hours = Math.floor(durationMinutes / 60);
+                          const minutes = durationMinutes % 60;
+                          return hours > 0 ? `${hours} Std. ${minutes} Min.` : `${minutes} Min.`;
+                        })()}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground">
