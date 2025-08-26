@@ -1448,6 +1448,113 @@ export type Database = {
           },
         ]
       }
+      external_calendars: {
+        Row: {
+          calendar_type: string
+          color: string | null
+          created_at: string
+          ics_url: string
+          id: string
+          is_active: boolean
+          last_sync: string | null
+          name: string
+          sync_enabled: boolean
+          sync_interval: number
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calendar_type?: string
+          color?: string | null
+          created_at?: string
+          ics_url: string
+          id?: string
+          is_active?: boolean
+          last_sync?: string | null
+          name: string
+          sync_enabled?: boolean
+          sync_interval?: number
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calendar_type?: string
+          color?: string | null
+          created_at?: string
+          ics_url?: string
+          id?: string
+          is_active?: boolean
+          last_sync?: string | null
+          name?: string
+          sync_enabled?: boolean
+          sync_interval?: number
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      external_events: {
+        Row: {
+          all_day: boolean
+          created_at: string
+          description: string | null
+          end_time: string
+          external_calendar_id: string
+          external_uid: string
+          id: string
+          last_modified: string | null
+          location: string | null
+          raw_ics_data: Json | null
+          recurrence_rule: string | null
+          start_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          created_at?: string
+          description?: string | null
+          end_time: string
+          external_calendar_id: string
+          external_uid: string
+          id?: string
+          last_modified?: string | null
+          location?: string | null
+          raw_ics_data?: Json | null
+          recurrence_rule?: string | null
+          start_time: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          external_calendar_id?: string
+          external_uid?: string
+          id?: string
+          last_modified?: string | null
+          location?: string | null
+          raw_ics_data?: Json | null
+          recurrence_rule?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_events_external_calendar_id_fkey"
+            columns: ["external_calendar_id"]
+            isOneToOne: false
+            referencedRelation: "external_calendars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       habit_completions: {
         Row: {
           completion_date: string

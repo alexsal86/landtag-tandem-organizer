@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2 } from "lucide-react";
+import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar } from "lucide-react";
 import { NotificationSettings } from "./NotificationSettings";
+import { ExternalCalendarSettings } from "./ExternalCalendarSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -229,6 +230,24 @@ export function SettingsView() {
                 <Save className="h-4 w-4 mr-2" />
                 Alle Daten löschen
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* External Calendar Settings - Full Width */}
+        <div className="mt-6">
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Externe Kalender
+              </CardTitle>
+              <CardDescription>
+                Verwalten Sie Ihre Google Calendar, Outlook und andere ICS-Kalender Integration
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ExternalCalendarSettings />
             </CardContent>
           </Card>
         </div>

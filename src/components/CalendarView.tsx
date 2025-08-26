@@ -155,6 +155,7 @@ export function CalendarView() {
         formattedEvents.push({
           id: appointment.id,
           title: appointment.title,
+          description: appointment.description || undefined,
           time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
           duration: `${durationHours}h`,
           date: startTime, // Add the actual date
@@ -166,6 +167,49 @@ export function CalendarView() {
           attendees: participants.length,
           category_color: categoryColor
         });
+      }
+
+      // Process external calendar events
+      const { data: externalEvents } = await supabase
+        .from('external_events')
+        .select(`
+          *,
+          external_calendars (
+            name,
+            color,
+            calendar_type
+          )
+        `)
+        .gte('start_time', startDate.toISOString())
+        .lte('start_time', endDate.toISOString())
+        .eq('external_calendars.is_active', true)
+        .eq('external_calendars.sync_enabled', true)
+        .order('start_time', { ascending: true });
+
+      // Process external events
+      if (externalEvents) {
+        for (const externalEvent of externalEvents) {
+          const startTime = new Date(externalEvent.start_time);
+          const endTime = new Date(externalEvent.end_time);
+          const durationMs = endTime.getTime() - startTime.getTime();
+          const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(1);
+
+          formattedEvents.push({
+            id: `external-${externalEvent.id}`,
+            title: `📅 ${externalEvent.title}`,
+            description: externalEvent.description || undefined,
+            time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+            duration: externalEvent.all_day ? 'Ganztägig' : `${durationHours}h`,
+            date: startTime,
+            endTime: endTime,
+            location: externalEvent.location || undefined,
+            type: "appointment",
+            priority: "medium",
+            participants: [],
+            attendees: 0,
+            category_color: externalEvent.external_calendars?.color || '#6b7280'
+          });
+        }
       }
 
       // Get current user
