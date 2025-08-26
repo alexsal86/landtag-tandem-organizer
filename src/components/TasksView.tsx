@@ -327,6 +327,21 @@ export function TasksView() {
     }
   };
 
+  // Helper function to resolve UUIDs to display names
+  const resolveUserNames = (assignedToField: string | string[] | null): string => {
+    if (!assignedToField) return '';
+    
+    const userIds = Array.isArray(assignedToField) 
+      ? assignedToField 
+      : typeof assignedToField === 'string' 
+        ? assignedToField.split(',').map(id => id.trim())
+        : [];
+    
+    return userIds
+      .map(userId => users.find(u => u.user_id === userId)?.display_name || userId)
+      .join(', ');
+  };
+
   const loadAssignedSubtasks = async () => {
     if (!user) {
       console.log('No user found for assigned subtasks');
@@ -1468,34 +1483,39 @@ export function TasksView() {
                             />
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="font-medium">{subtask.title || subtask.description}</div>
-                            {subtask.description && subtask.title && (
-                              <div className="text-sm text-muted-foreground">{subtask.description}</div>
-                            )}
-                            {isSnoozed && (
-                              <Badge variant="secondary" className="text-xs">
-                                Wiedervorlage: {new Date(subtaskSnoozes[subtask.id]).toLocaleDateString('de-DE')}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            Unteraufgabe
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {subtask.due_date && subtask.due_date !== '1970-01-01T00:00:00.000Z' && subtask.due_date !== '1970-01-01' ? (
-                            <div className={`text-sm ${isOverdue(subtask.due_date) ? 'text-red-600' : ''}`}>
-                              {new Date(subtask.due_date).toLocaleDateString('de-DE')}
-                              {isOverdue(subtask.due_date) && ' (überfällig)'}
-                            </div>
-                          ) : (
-                            <div className="text-sm text-muted-foreground">unbefristet</div>
-                          )}
-                        </TableCell>
+                       <TableCell>
+                         <div className="space-y-1">
+                           <div className="font-medium">{subtask.title || subtask.description}</div>
+                           {subtask.description && subtask.title && (
+                             <div className="text-sm text-muted-foreground">{subtask.description}</div>
+                           )}
+                           {subtask.assigned_to && (
+                             <div className="text-sm text-muted-foreground">
+                               Zuständig: {resolveUserNames(subtask.assigned_to)}
+                             </div>
+                           )}
+                           {isSnoozed && (
+                             <Badge variant="secondary" className="text-xs">
+                               Wiedervorlage: {new Date(subtaskSnoozes[subtask.id]).toLocaleDateString('de-DE')}
+                             </Badge>
+                           )}
+                         </div>
+                       </TableCell>
+                       <TableCell>
+                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                           Unteraufgabe
+                         </Badge>
+                       </TableCell>
+                       <TableCell>
+                         {subtask.due_date && subtask.due_date !== '1970-01-01T00:00:00.000Z' && subtask.due_date !== '1970-01-01' ? (
+                           <div className={`text-sm ${isOverdue(subtask.due_date) ? 'text-red-600' : ''}`}>
+                             {new Date(subtask.due_date).toLocaleDateString('de-DE')}
+                             {isOverdue(subtask.due_date) && ' (überfällig)'}
+                           </div>
+                         ) : (
+                           <div className="text-sm text-muted-foreground">unbefristet</div>
+                         )}
+                       </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button
