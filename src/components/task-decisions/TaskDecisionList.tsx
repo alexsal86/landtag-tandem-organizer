@@ -255,12 +255,12 @@ export const TaskDecisionList = () => {
         description: "Antwort wurde gesendet.",
       });
 
-      setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
-      
-      // Reload decisions
+      // Reload decisions first, then clear the input
       if (user?.id) {
-        loadDecisionRequests(user.id);
+        await loadDecisionRequests(user.id);
       }
+      
+      setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
     } catch (error) {
       console.error('Error sending creator response:', error);
       toast({
