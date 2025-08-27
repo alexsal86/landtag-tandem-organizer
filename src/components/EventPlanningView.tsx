@@ -17,7 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List } from "lucide-react";
+import AppointmentPreparationSidebar from "@/components/AppointmentPreparationSidebar";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -214,6 +216,14 @@ export function EventPlanningView() {
   const [archivedPreparations, setArchivedPreparations] = useState<AppointmentPreparation[]>([]);
   const [showArchived, setShowArchived] = useState(false);
 
+  // View preferences
+  const [eventPlanningView, setEventPlanningView] = useState<'card' | 'table'>('card');
+  const [appointmentPreparationView, setAppointmentPreparationView] = useState<'card' | 'table'>('card');
+
+  // Appointment preparation sidebar
+  const [selectedPreparationId, setSelectedPreparationId] = useState<string | null>(null);
+  const [isPreparationSidebarOpen, setIsPreparationSidebarOpen] = useState(false);
+
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user);
     fetchPlannings();
@@ -221,7 +231,28 @@ export function EventPlanningView() {
     fetchAvailableContacts();
     fetchPlanningTemplates();
     fetchAppointmentPreparations();
+    loadViewPreferences();
   }, [user]);
+
+  // Load view preferences from localStorage
+  const loadViewPreferences = () => {
+    const eventView = localStorage.getItem('eventPlanningView') as 'card' | 'table' | null;
+    const appointmentView = localStorage.getItem('appointmentPreparationView') as 'card' | 'table' | null;
+    
+    if (eventView) setEventPlanningView(eventView);
+    if (appointmentView) setAppointmentPreparationView(appointmentView);
+  };
+
+  // Save view preferences to localStorage
+  const saveViewPreferences = (section: 'event' | 'appointment', view: 'card' | 'table') => {
+    if (section === 'event') {
+      setEventPlanningView(view);
+      localStorage.setItem('eventPlanningView', view);
+    } else {
+      setAppointmentPreparationView(view);
+      localStorage.setItem('appointmentPreparationView', view);
+    }
+  };
 
   const fetchPlanningTemplates = async () => {
     if (!user) return;
@@ -384,6 +415,115 @@ export function EventPlanningView() {
       console.error("Error in fetchAppointmentPreparations:", error);
     }
   };
+
+  const handlePreparationClick = (preparation: AppointmentPreparation) => {
+    setSelectedPreparationId(preparation.id);
+    setIsPreparationSidebarOpen(true);
+  };
+
+  const EventPlanningTable = ({ plannings }: { plannings: EventPlanning[] }) => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Titel</TableHead>
+          <TableHead>Beschreibung</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Datum</TableHead>
+          <TableHead>Privat</TableHead>
+          <TableHead>Erstellt</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {plannings.map((planning) => (
+          <TableRow 
+            key={planning.id} 
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => setSelectedPlanning(planning)}
+          >
+            <TableCell className="font-medium">{planning.title}</TableCell>
+            <TableCell className="max-w-xs truncate">{planning.description || '-'}</TableCell>
+            <TableCell>
+              <Badge variant={planning.confirmed_date ? "default" : "secondary"}>
+                {planning.confirmed_date ? "Bestätigt" : "In Planung"}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              {planning.confirmed_date 
+                ? format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })
+                : "-"
+              }
+            </TableCell>
+            <TableCell>
+              <Badge variant={planning.is_private ? "secondary" : "outline"}>
+                {planning.is_private ? "Privat" : "Öffentlich"}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+
+  const AppointmentPreparationTable = ({ 
+    preparations, 
+    isArchived = false 
+  }: { 
+    preparations: AppointmentPreparation[], 
+    isArchived?: boolean 
+  }) => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Titel</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Notizen</TableHead>
+          <TableHead>{isArchived ? "Archiviert" : "Erstellt"}</TableHead>
+          <TableHead>Zuletzt bearbeitet</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {preparations.map((preparation) => (
+          <TableRow 
+            key={preparation.id} 
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => handlePreparationClick(preparation)}
+          >
+            <TableCell className="font-medium">{preparation.title}</TableCell>
+            <TableCell>
+              <Badge 
+                variant={
+                  preparation.status === 'completed' ? 'default' : 
+                  preparation.status === 'in_progress' ? 'secondary' : 'outline'
+                }
+              >
+                {preparation.status === 'completed' ? 'Abgeschlossen' :
+                 preparation.status === 'in_progress' ? 'In Bearbeitung' : 'Entwurf'}
+              </Badge>
+            </TableCell>
+            <TableCell className="max-w-xs truncate">
+              {preparation.notes || '-'}
+            </TableCell>
+            <TableCell>
+              {format(
+                new Date(isArchived && preparation.archived_at ? preparation.archived_at : preparation.created_at), 
+                "dd.MM.yyyy", 
+                { locale: de }
+              )}
+            </TableCell>
+            <TableCell>
+              {preparation.updated_at !== preparation.created_at 
+                ? format(new Date(preparation.updated_at), "dd.MM.yyyy HH:mm", { locale: de })
+                : "-"
+              }
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
 
   const fetchPlanningDetails = async (planningId: string) => {
     // Fetch dates
@@ -1901,84 +2041,86 @@ export function EventPlanningView() {
             </Dialog>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {plannings.map((planning) => {
-              // Get collaborators for this planning
-              const planningCollaborators = collaborators.filter(c => c.event_planning_id === planning.id);
-              
-              return (
-                <Card
-                  key={planning.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedPlanning(planning)}
-                >
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      {planning.title}
-                      {planning.is_private && (
-                        <Badge variant="secondary">Privat</Badge>
+          {eventPlanningView === 'card' ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {plannings.map((planning) => {
+                // Get collaborators for this planning
+                const planningCollaborators = collaborators.filter(c => c.event_planning_id === planning.id);
+                
+                return (
+                  <Card
+                    key={planning.id}
+                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => setSelectedPlanning(planning)}
+                  >
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between">
+                        <span className="truncate">{planning.title}</span>
+                        {planning.is_private && (
+                          <Badge variant="outline" className="ml-2">
+                            Privat
+                          </Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {planning.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {planning.description}
+                        </p>
                       )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {planning.description && (
-                      <p className="text-sm text-muted-foreground">
-                        {planning.description}
-                      </p>
-                    )}
-                    
-                    {planning.location && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{planning.location}</span>
-                      </div>
-                    )}
+                      
+                      {planning.location && (
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <MapPin className="mr-2 h-3 w-3" />
+                          {planning.location}
+                        </div>
+                      )}
 
-                    {planning.confirmed_date && (
-                      <p className="text-sm font-medium text-primary">
-                        Bestätigter Termin: {format(new Date(planning.confirmed_date), "dd.MM.yyyy HH:mm", { locale: de })}
-                      </p>
-                    )}
+                      {planning.confirmed_date && (
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <CalendarIcon className="mr-2 h-3 w-3" />
+                          {format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })}
+                        </div>
+                      )}
 
-                    {(planningCollaborators.length > 0 || planning.user_id) && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Bearbeiter:</span>
-                        <div className="flex -space-x-2">
-                          {/* Show creator first */}
-                          {planning.user_id && (
-                            <Avatar className="h-6 w-6 border-2 border-background">
-                              <AvatarImage src={allProfiles.find(p => p.user_id === planning.user_id)?.avatar_url} />
-                              <AvatarFallback className="text-xs">
-                                {allProfiles.find(p => p.user_id === planning.user_id)?.display_name?.charAt(0) || 'E'}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                          {/* Then show other collaborators */}
-                          {planningCollaborators.filter(c => c.user_id !== planning.user_id).slice(0, planning.user_id ? 2 : 3).map((collaborator) => (
-                            <Avatar key={collaborator.id} className="h-6 w-6 border-2 border-background">
-                              <AvatarImage src={collaborator.profiles?.avatar_url} />
-                              <AvatarFallback className="text-xs">
-                                {collaborator.profiles?.display_name?.charAt(0) || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                          ))}
-                          {(planningCollaborators.filter(c => c.user_id !== planning.user_id).length + (planning.user_id ? 1 : 0)) > 3 && (
-                            <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                              <span className="text-xs text-muted-foreground">+{(planningCollaborators.filter(c => c.user_id !== planning.user_id).length + (planning.user_id ? 1 : 0)) - 3}</span>
-                            </div>
-                          )}
+                      <div className="flex items-center justify-between">
+                        <Badge variant={planning.confirmed_date ? "default" : "secondary"}>
+                          {planning.confirmed_date ? "Bestätigt" : "In Planung"}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground">
+                          {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
                         </div>
                       </div>
-                    )}
 
-                    <p className="text-sm text-muted-foreground">
-                      Erstellt am {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
-                    </p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                      {planningCollaborators.length > 0 && (
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Users className="mr-2 h-3 w-3" />
+                          <div className="flex -space-x-2">
+                            {planningCollaborators.slice(0, 3).map((collab) => (
+                              <Avatar key={collab.id} className="h-6 w-6 border-2 border-background">
+                                <AvatarImage src={collab.profiles?.avatar_url} />
+                                <AvatarFallback className="text-xs">
+                                  {collab.profiles?.display_name?.[0] || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                            ))}
+                            {planningCollaborators.length > 3 && (
+                              <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs">
+                                +{planningCollaborators.length - 3}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <EventPlanningTable plannings={plannings} />
+          )}
 
           {/* Separator */}
           <div className="flex items-center my-8">
@@ -1993,107 +2135,169 @@ export function EventPlanningView() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">Terminplanungen</h2>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={showArchived ? "outline" : "default"}
-                  onClick={() => setShowArchived(false)}
-                >
-                  Aktive ({appointmentPreparations.length})
-                </Button>
-                <Button
-                  variant={showArchived ? "default" : "outline"}
-                  onClick={() => setShowArchived(true)}
-                >
-                  <Archive className="mr-2 h-4 w-4" />
-                  Archiv ({archivedPreparations.length})
-                </Button>
+              <div className="flex items-center gap-4">
+                {/* View Toggle */}
+                <div className="flex items-center border rounded-lg p-1">
+                  <Button
+                    variant={appointmentPreparationView === 'card' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => saveViewPreferences('appointment', 'card')}
+                    className="h-8 px-2"
+                  >
+                    <Grid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={appointmentPreparationView === 'table' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => saveViewPreferences('appointment', 'table')}
+                    className="h-8 px-2"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={showArchived ? "outline" : "default"}
+                    onClick={() => setShowArchived(false)}
+                  >
+                    Aktive ({appointmentPreparations.length})
+                  </Button>
+                  <Button
+                    variant={showArchived ? "default" : "outline"}
+                    onClick={() => setShowArchived(true)}
+                  >
+                    <Archive className="mr-2 h-4 w-4" />
+                    Archiv ({archivedPreparations.length})
+                  </Button>
+                </div>
               </div>
             </div>
 
             {/* Active Preparations */}
             {!showArchived && (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {appointmentPreparations.length === 0 ? (
-                  <div className="col-span-full text-center py-8 text-muted-foreground">
+              appointmentPreparationView === 'card' ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {appointmentPreparations.length === 0 ? (
+                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                      Keine aktiven Terminplanungen vorhanden
+                    </div>
+                  ) : (
+                    appointmentPreparations.map((preparation) => (
+                      <Card 
+                        key={preparation.id} 
+                        className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => handlePreparationClick(preparation)}
+                      >
+                        <CardHeader>
+                          <CardTitle className="flex items-center justify-between">
+                            <span className="truncate">{preparation.title}</span>
+                            <Badge 
+                              variant={preparation.status === 'completed' ? 'default' : 
+                                     preparation.status === 'in_progress' ? 'secondary' : 'outline'}
+                            >
+                              {preparation.status === 'completed' ? 'Abgeschlossen' :
+                               preparation.status === 'in_progress' ? 'In Bearbeitung' : 'Entwurf'}
+                            </Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {preparation.notes && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {preparation.notes}
+                            </p>
+                          )}
+                          <p className="text-sm text-muted-foreground">
+                            Erstellt am {format(new Date(preparation.created_at), "dd.MM.yyyy", { locale: de })}
+                          </p>
+                          {preparation.updated_at !== preparation.created_at && (
+                            <p className="text-xs text-muted-foreground">
+                              Zuletzt bearbeitet am {format(new Date(preparation.updated_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              ) : (
+                appointmentPreparations.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
                     Keine aktiven Terminplanungen vorhanden
                   </div>
                 ) : (
-                  appointmentPreparations.map((preparation) => (
-                    <Card key={preparation.id} className="hover:shadow-md transition-shadow">
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span className="truncate">{preparation.title}</span>
-                          <Badge 
-                            variant={preparation.status === 'completed' ? 'default' : 
-                                   preparation.status === 'in_progress' ? 'secondary' : 'outline'}
-                          >
-                            {preparation.status === 'completed' ? 'Abgeschlossen' :
-                             preparation.status === 'in_progress' ? 'In Bearbeitung' : 'Entwurf'}
-                          </Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {preparation.notes && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {preparation.notes}
-                          </p>
-                        )}
-                        <p className="text-sm text-muted-foreground">
-                          Erstellt am {format(new Date(preparation.created_at), "dd.MM.yyyy", { locale: de })}
-                        </p>
-                        {preparation.updated_at !== preparation.created_at && (
-                          <p className="text-xs text-muted-foreground">
-                            Zuletzt bearbeitet am {format(new Date(preparation.updated_at), "dd.MM.yyyy HH:mm", { locale: de })}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
+                  <AppointmentPreparationTable preparations={appointmentPreparations} />
+                )
+              )
             )}
 
             {/* Archived Preparations */}
             {showArchived && (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {archivedPreparations.length === 0 ? (
-                  <div className="col-span-full text-center py-8 text-muted-foreground">
+              appointmentPreparationView === 'card' ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {archivedPreparations.length === 0 ? (
+                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                      Keine archivierten Terminplanungen vorhanden
+                    </div>
+                  ) : (
+                    archivedPreparations.map((preparation) => (
+                      <Card 
+                        key={preparation.id} 
+                        className="cursor-pointer opacity-75 hover:opacity-100 hover:shadow-md transition-all"
+                        onClick={() => handlePreparationClick(preparation)}
+                      >
+                        <CardHeader>
+                          <CardTitle className="flex items-center justify-between">
+                            <span className="truncate">{preparation.title}</span>
+                            <Badge variant="secondary">
+                              Archiviert
+                            </Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {preparation.notes && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {preparation.notes}
+                            </p>
+                          )}
+                          <p className="text-sm text-muted-foreground">
+                            Erstellt am {format(new Date(preparation.created_at), "dd.MM.yyyy", { locale: de })}
+                          </p>
+                          {preparation.archived_at && (
+                            <p className="text-xs text-muted-foreground">
+                              Archiviert am {format(new Date(preparation.archived_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              ) : (
+                archivedPreparations.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
                     Keine archivierten Terminplanungen vorhanden
                   </div>
                 ) : (
-                  archivedPreparations.map((preparation) => (
-                    <Card key={preparation.id} className="opacity-75 hover:opacity-100 hover:shadow-md transition-all">
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span className="truncate">{preparation.title}</span>
-                          <Badge variant="secondary">
-                            Archiviert
-                          </Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {preparation.notes && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {preparation.notes}
-                          </p>
-                        )}
-                        <p className="text-sm text-muted-foreground">
-                          Erstellt am {format(new Date(preparation.created_at), "dd.MM.yyyy", { locale: de })}
-                        </p>
-                        {preparation.archived_at && (
-                          <p className="text-xs text-muted-foreground">
-                            Archiviert am {format(new Date(preparation.archived_at), "dd.MM.yyyy HH:mm", { locale: de })}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
+                  <AppointmentPreparationTable preparations={archivedPreparations} isArchived />
+                )
+              )
             )}
           </div>
         </div>
       </div>
+
+      {/* Appointment Preparation Sidebar */}
+      <AppointmentPreparationSidebar
+        appointmentId={selectedPreparationId}
+        isOpen={isPreparationSidebarOpen}
+        onClose={() => {
+          setIsPreparationSidebarOpen(false);
+          setSelectedPreparationId(null);
+          fetchAppointmentPreparations(); // Refresh data after closing
+        }}
+      />
+    </div>
     );
   }
 
