@@ -45,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Decision title:", decisionTitle);
     console.log("=== END DEBUG INFO ===");
 
-    // Get email template
+    // Get email template from administration settings
     const { data: template, error: templateError } = await supabase
       .from('decision_email_templates')
       .select('*')
@@ -55,7 +55,7 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error getting email template:", templateError);
     }
 
-    // Use default template if none exists
+    // Use template from administration or fallback to defaults
     const emailTemplate = template || {
       subject: 'Entscheidungsanfrage',
       greeting: 'Hallo {participant_name},',
@@ -65,6 +65,11 @@ const handler = async (req: Request): Promise<Response> => {
       closing: 'Vielen Dank für Ihre Teilnahme!',
       signature: 'Ihr Team'
     };
+
+    console.log("Using email template:", {
+      subject: emailTemplate.subject,
+      hasCustomTemplate: !!template
+    });
 
     // Get task info
     const { data: taskData, error: taskError } = await supabase
@@ -165,51 +170,65 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log("About to send email to:", participantEmail, "for participant:", participantName);
 
-        // Prepare email content
+        // Prepare email content using template from administration
         const greeting = emailTemplate.greeting.replace('{participant_name}', participantName);
+        const introduction = emailTemplate.introduction;
+        const instruction = emailTemplate.instruction;
+        const questionPrompt = emailTemplate.question_prompt;
+        const closing = emailTemplate.closing;
+        const signature = emailTemplate.signature;
         
-        // Send decision email
+        // Send decision email with customized template
         const emailResponse = await resend.emails.send({
           from: "Entscheidungsanfrage <noreply@alexander-salomon.de>",
           to: [participantEmail],
           subject: emailTemplate.subject,
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h1 style="color: #333; font-size: 24px;">${emailTemplate.subject}</h1>
-              <p style="color: #666; font-size: 16px;">${greeting}</p>
-              <p style="color: #666; font-size: 16px;">
-                ${creatorName} ${emailTemplate.introduction}
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">${emailTemplate.subject}</h1>
+              
+              <p style="color: #666; font-size: 16px; margin-bottom: 16px;">${greeting}</p>
+              
+              <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+                ${creatorName} ${introduction}
               </p>
-              <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0;">
-                <h3 style="margin: 0 0 8px 0; color: #333;">Aufgabe: ${taskTitle}</h3>
-                <h4 style="margin: 0 0 8px 0; color: #333;">Entscheidung: ${decisionTitle}</h4>
-                ${decisionDescription ? `<p style="margin: 0; color: #666;">${decisionDescription}</p>` : ''}
+              
+              <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 4px;">
+                <h3 style="margin: 0 0 8px 0; color: #333; font-size: 18px;">Aufgabe: ${taskTitle}</h3>
+                <h4 style="margin: 0 0 8px 0; color: #333; font-size: 16px;">Entscheidung: ${decisionTitle}</h4>
+                ${decisionDescription ? `<p style="margin: 0; color: #666; font-size: 14px;">${decisionDescription}</p>` : ''}
               </div>
-              <p style="color: #666; font-size: 16px;">
-                ${emailTemplate.instruction}
+              
+              <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
+                ${instruction}
               </p>
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${yesUrl}" 
-                   style="background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px;">
+                   style="background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px; box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);">
                   ✓ Ja
                 </a>
                 <a href="${questionUrl}" 
-                   style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px;">
+                   style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);">
                   ? Frage
                 </a>
                 <a href="${noUrl}" 
-                   style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px;">
+                   style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);">
                   ✗ Nein
                 </a>
               </div>
-              <p style="color: #666; font-size: 14px;">
-                ${emailTemplate.question_prompt}
+              
+              <div style="background: #fafafa; padding: 16px; border-radius: 4px; margin: 20px 0;">
+                <p style="color: #666; font-size: 14px; margin: 0; font-style: italic;">
+                  ${questionPrompt}
+                </p>
+              </div>
+              
+              <p style="color: #666; font-size: 16px; margin-bottom: 10px;">
+                ${closing}
               </p>
-              <p style="color: #666; font-size: 16px;">
-                ${emailTemplate.closing}
-              </p>
-              <p style="color: #666; font-size: 16px;">
-                ${emailTemplate.signature}
+              
+              <p style="color: #666; font-size: 16px; font-weight: 500;">
+                ${signature}
               </p>
               <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
               <p style="color: #999; font-size: 12px;">
