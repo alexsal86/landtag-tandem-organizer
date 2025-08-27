@@ -19,7 +19,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List } from "lucide-react";
-import AppointmentPreparationSidebar from "@/components/AppointmentPreparationSidebar";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -220,10 +219,6 @@ export function EventPlanningView() {
   const [eventPlanningView, setEventPlanningView] = useState<'card' | 'table'>('card');
   const [appointmentPreparationView, setAppointmentPreparationView] = useState<'card' | 'table'>('card');
 
-  // Appointment preparation sidebar
-  const [selectedPreparationId, setSelectedPreparationId] = useState<string | null>(null);
-  const [isPreparationSidebarOpen, setIsPreparationSidebarOpen] = useState(false);
-
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user);
     fetchPlannings();
@@ -417,8 +412,8 @@ export function EventPlanningView() {
   };
 
   const handlePreparationClick = (preparation: AppointmentPreparation) => {
-    setSelectedPreparationId(preparation.id);
-    setIsPreparationSidebarOpen(true);
+    // TODO: Implement sidebar functionality
+    console.log('Clicked preparation:', preparation.title);
   };
 
   const EventPlanningTable = ({ plannings }: { plannings: EventPlanning[] }) => (
@@ -2286,23 +2281,10 @@ export function EventPlanningView() {
           </div>
         </div>
       </div>
+    );
+  }
 
-      {/* Appointment Preparation Sidebar */}
-      <AppointmentPreparationSidebar
-        appointmentId={selectedPreparationId}
-        isOpen={isPreparationSidebarOpen}
-        onClose={() => {
-          setIsPreparationSidebarOpen(false);
-          setSelectedPreparationId(null);
-          fetchAppointmentPreparations(); // Refresh data after closing
-        }}
-      />
-    </div>
-  );
-
-  // Detail view for selected planning  
-  if (selectedPlanning) {
-    return (
+  return (
       <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
