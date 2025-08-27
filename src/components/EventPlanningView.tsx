@@ -157,7 +157,6 @@ interface AppointmentPreparation {
 
 export function EventPlanningView() {
   console.log('=== EventPlanningView component loaded ===');
-  console.log('View toggle functionality is active for both sections');
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -1984,34 +1983,13 @@ export function EventPlanningView() {
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">Veranstaltungsplanung</h1>
-            <div className="flex items-center gap-4">
-              {/* View Toggle */}
-              <div className="flex items-center border rounded-lg p-1">
-                <Button
-                  variant={eventPlanningView === 'card' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => saveViewPreferences('event', 'card')}
-                  className="h-8 px-2"
-                >
-                  <Grid className="h-4 w-4" />
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Neue Planung
                 </Button>
-                <Button
-                  variant={eventPlanningView === 'table' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => saveViewPreferences('event', 'table')}
-                  className="h-8 px-2"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Neue Planung
-                  </Button>
-                </DialogTrigger>
+              </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Neue Veranstaltungsplanung</DialogTitle>
@@ -2307,7 +2285,7 @@ export function EventPlanningView() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
+      <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
