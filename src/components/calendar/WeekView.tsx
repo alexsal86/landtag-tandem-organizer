@@ -332,7 +332,7 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                         return (
                           <div
                             key={event.id}
-                            className={`absolute p-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto ${getEventTypeColor(event)}`}
+                            className={`absolute pt-1 pb-1 pl-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto ${getEventTypeColor(event)}`}
                             style={{ 
                               width: `${widthPercentage - 1}%`,
                               left: `${leftOffset}%`,
