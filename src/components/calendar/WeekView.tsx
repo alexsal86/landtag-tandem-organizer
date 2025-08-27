@@ -192,9 +192,9 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
           <div className="border-r text-xs text-muted-foreground p-2 text-right bg-muted/30 flex items-center justify-end">
             Ganztägig
           </div>
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 p-1 space-y-1">
             {days.map((day, dayIndex) => (
-              <div key={`allday-${dayIndex}`} className="border-r p-1 h-12">
+              <div key={`allday-${dayIndex}`} className="border-r px-1">
                 {getAllDayEventsForDay(day).map((event) => {
                   // Calculate span for multi-day events
                   let spanDays = 1;
@@ -221,13 +221,14 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                   return (
                     <div
                       key={event.id}
-                      className={`text-xs p-1 mb-1 rounded cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)}`}
+                      className={`text-xs p-2 mb-1 rounded cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)}`}
                       style={{ 
                         backgroundColor: event.category_color || undefined,
                         gridColumn: spanDays > 1 ? `span ${spanDays}` : undefined,
-                        width: spanDays > 1 ? `${spanDays * 100}%` : undefined,
+                        width: spanDays > 1 ? `calc(${spanDays * 100}% + ${spanDays - 1}px)` : undefined,
                         position: spanDays > 1 ? 'relative' : undefined,
-                        zIndex: spanDays > 1 ? 10 : undefined
+                        zIndex: spanDays > 1 ? 10 : undefined,
+                        marginBottom: '4px'
                       }}
                       onClick={() => onAppointmentClick?.(event)}
                     >
@@ -251,8 +252,8 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
         </div>
       )}
 
-      {/* Scrollable time grid */}
-      <div className="flex-1 flex bg-background overflow-hidden">
+      {/* Scrollable time grid with margin */}
+      <div className="flex-1 flex bg-background overflow-hidden mt-2">
         {/* Hours column - sticky */}
         <div className="w-16 border-r bg-muted/20 sticky left-0 z-10">
           {hours.map((hour) => (
