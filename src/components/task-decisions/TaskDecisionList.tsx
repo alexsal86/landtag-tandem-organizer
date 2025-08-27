@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
+import { Check, X, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DecisionRequest {
@@ -16,6 +17,15 @@ interface DecisionRequest {
   };
   hasResponded: boolean;
   isParticipant?: boolean;
+  participants?: Array<{
+    id: string;
+    user_id: string;
+    responses: Array<{
+      response_type: 'yes' | 'no' | 'question';
+      comment: string | null;
+      created_at: string;
+    }>;
+  }>;
 }
 
 export const TaskDecisionList = () => {
@@ -136,6 +146,51 @@ export const TaskDecisionList = () => {
         }
       });
 
+      // Now load all participants and responses for each decision
+      if (allDecisions.length > 0) {
+        const decisionIds = allDecisions.map(d => d.id);
+
+        // Get participants for these decisions
+        const { data: participantsData, error: participantsError } = await supabase
+          .from('task_decision_participants')
+          .select(`
+            id,
+            user_id,
+            decision_id,
+            task_decision_responses (
+              response_type,
+              comment,
+              created_at
+            )
+          `)
+          .in('decision_id', decisionIds);
+
+        if (participantsError) throw participantsError;
+
+        // Group participants by decision
+        const participantsByDecision = new Map();
+        participantsData?.forEach(participant => {
+          if (!participantsByDecision.has(participant.decision_id)) {
+            participantsByDecision.set(participant.decision_id, []);
+          }
+          participantsByDecision.get(participant.decision_id).push({
+            id: participant.id,
+            user_id: participant.user_id,
+            responses: (participant.task_decision_responses || [])
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .map(response => ({
+                ...response,
+                response_type: response.response_type as 'yes' | 'no' | 'question'
+              })),
+          });
+        });
+
+        // Add participants data to decisions
+        allDecisions.forEach((decision: any) => {
+          decision.participants = participantsByDecision.get(decision.id) || [];
+        });
+      }
+
       // Sort by creation date
       allDecisions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
@@ -149,6 +204,36 @@ export const TaskDecisionList = () => {
     loadDecisionRequests();
   };
 
+  const getResponseSummary = (participants: DecisionRequest['participants'] = []) => {
+    const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
+    const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
+    const questionCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'question').length;
+    const totalResponses = yesCount + noCount + questionCount;
+    const pending = participants.length - totalResponses;
+
+    return { yesCount, noCount, questionCount, pending, total: participants.length };
+  };
+
+  const getBorderColor = (summary: ReturnType<typeof getResponseSummary>) => {
+    const allResponsesReceived = summary.pending === 0;
+    const hasQuestions = summary.questionCount > 0;
+    
+    if (hasQuestions) {
+      return 'border-l-orange-500'; // Es gibt Rückfragen
+    }
+    
+    if (!allResponsesReceived) {
+      return 'border-l-gray-400'; // Noch nicht alle haben abgestimmt
+    }
+    
+    // Alle haben abgestimmt, keine Rückfragen
+    if (summary.yesCount > summary.noCount) {
+      return 'border-l-green-500'; // Mehr ja als nein
+    } else {
+      return 'border-l-red-600'; // Mehr nein als ja (oder gleich)
+    }
+  };
+
   if (decisions.length === 0) {
     return null;
   }
@@ -157,45 +242,70 @@ export const TaskDecisionList = () => {
     <>
       <h3 className="text-lg font-semibold text-foreground">Entscheidungsanfragen</h3>
       <div className="space-y-3">
-        {decisions.map((decision) => (
-          <Card key={decision.id} className="border-l-4 border-l-destructive">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-sm font-medium">{decision.title}</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Aufgabe: {decision.task.title}
-                  </p>
-                </div>
-                <Badge variant="destructive">
-                  Entscheidung
-                </Badge>
-              </div>
-              {decision.description && (
-                <p className="text-xs text-muted-foreground mt-1">{decision.description}</p>
-              )}
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {new Date(decision.created_at).toLocaleDateString('de-DE')}
-                </span>
-                {decision.isParticipant && decision.participant_id ? (
-                  <TaskDecisionResponse
-                    decisionId={decision.id}
-                    participantId={decision.participant_id}
-                    onResponseSubmitted={handleResponseSubmitted}
-                    hasResponded={decision.hasResponded}
-                  />
-                ) : (
-                  <Badge variant="secondary" className="text-xs">
-                    Zur Info
+        {decisions.map((decision) => {
+          const summary = getResponseSummary(decision.participants);
+          return (
+            <Card key={decision.id} className={`border-l-4 ${getBorderColor(summary)}`}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-sm font-medium">{decision.title}</CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Aufgabe: {decision.task.title}
+                    </p>
+                  </div>
+                  <Badge variant="destructive">
+                    Entscheidung
                   </Badge>
+                </div>
+                {decision.description && (
+                  <p className="text-xs text-muted-foreground mt-1">{decision.description}</p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-2">
+                  {/* Voting Results */}
+                  {decision.participants && decision.participants.length > 0 && (
+                    <div className="flex items-center space-x-4 text-xs">
+                      <span className="flex items-center text-green-600">
+                        <Check className="h-3 w-3 mr-1" />
+                        {summary.yesCount}
+                      </span>
+                      <span className="flex items-center text-orange-600">
+                        <MessageCircle className="h-3 w-3 mr-1" />
+                        {summary.questionCount}
+                      </span>
+                      <span className="flex items-center text-red-600">
+                        <X className="h-3 w-3 mr-1" />
+                        {summary.noCount}
+                      </span>
+                      <span className="text-muted-foreground">
+                        ({summary.pending} ausstehend)
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(decision.created_at).toLocaleDateString('de-DE')}
+                    </span>
+                    {decision.isParticipant && decision.participant_id ? (
+                      <TaskDecisionResponse
+                        decisionId={decision.id}
+                        participantId={decision.participant_id}
+                        onResponseSubmitted={handleResponseSubmitted}
+                        hasResponded={decision.hasResponded}
+                      />
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">
+                        Zur Info
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
       <div className="border-t-4 border-t-destructive my-6"></div>
     </>
