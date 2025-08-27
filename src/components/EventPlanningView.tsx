@@ -408,6 +408,49 @@ export function EventPlanningView() {
     }
   };
 
+  const createPlanning = async () => {
+    console.log('createPlanning called, user:', user, 'title:', newPlanningTitle);
+    if (!user || !newPlanningTitle.trim()) return;
+
+    const { data, error } = await supabase
+      .from("event_plannings")
+      .insert({
+        title: newPlanningTitle,
+        user_id: user.id,
+        is_private: newPlanningIsPrivate,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Planung konnte nicht erstellt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create checklist items based on selected template
+    const templateParam = selectedTemplateId === "none" ? null : selectedTemplateId;
+    await supabase.rpc("create_default_checklist_items", {
+      planning_id: data.id,
+      template_id_param: templateParam,
+    });
+
+    setNewPlanningTitle("");
+    setNewPlanningIsPrivate(false);
+    setSelectedTemplateId("none");
+    setIsCreateDialogOpen(false);
+    fetchPlannings();
+    setSelectedPlanning(data);
+
+    toast({
+      title: "Erfolg",
+      description: "Planung wurde erfolgreich erstellt.",
+    });
+  };
+
   // Type guard function
   const isAppointmentsTab = activeTab === 'appointments';
   const isEventsTab = activeTab === 'events';
@@ -438,38 +481,159 @@ export function EventPlanningView() {
     );
   }
 
-  // For now, just return a simple view for events
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Planungen</h2>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant={isEventsTab ? 'default' : 'outline'}
-            onClick={() => setActiveTab('events')}
-          >
-            Veranstaltungen
-          </Button>
-          <Button
-            variant={isAppointmentsTab ? 'default' : 'outline'}
-            onClick={() => setActiveTab('appointments')}
-          >
-            Terminvorbereitungen
-          </Button>
+  // Show events planning view
+  if (!selectedPlanning) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Planungen</h2>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant={isEventsTab ? 'default' : 'outline'}
+              onClick={() => setActiveTab('events')}
+            >
+              Veranstaltungen
+            </Button>
+            <Button
+              variant={isAppointmentsTab ? 'default' : 'outline'}
+              onClick={() => setActiveTab('appointments')}
+            >
+              Terminvorbereitungen
+            </Button>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Neue Planung
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Neue Veranstaltungsplanung erstellen</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="planning-title">Titel</Label>
+                    <Input
+                      id="planning-title"
+                      value={newPlanningTitle}
+                      onChange={(e) => setNewPlanningTitle(e.target.value)}
+                      placeholder="Titel der Veranstaltung..."
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="template-select">Vorlage (optional)</Label>
+                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Vorlage auswählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Keine Vorlage</SelectItem>
+                        {planningTemplates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="is-private"
+                      checked={newPlanningIsPrivate}
+                      onCheckedChange={setNewPlanningIsPrivate}
+                    />
+                    <Label htmlFor="is-private">Private Planung</Label>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                    Abbrechen
+                  </Button>
+                  <Button onClick={createPlanning} disabled={!newPlanningTitle.trim()}>
+                    Erstellen
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+        
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {loading ? (
+            <div className="col-span-full text-center py-4">
+              <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          ) : plannings.length === 0 ? (
+            <Card className="col-span-full">
+              <CardContent className="py-8">
+                <p className="text-center text-muted-foreground">
+                  Noch keine Planungen vorhanden.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            plannings.map((planning) => {
+              const planningCollaborators = collaborators.filter(c => c.event_planning_id === planning.id);
+              
+              return (
+                <Card
+                  key={planning.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => setSelectedPlanning(planning)}
+                >
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      {planning.title}
+                      {planning.is_private && (
+                        <Badge variant="secondary">Privat</Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <CalendarIcon className="h-4 w-4" />
+                        <span>{format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}</span>
+                      </div>
+                      
+                      {planningCollaborators.length > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex -space-x-2">
+                            {planningCollaborators.slice(0, 3).map((collab) => (
+                              <Avatar key={collab.id} className="h-6 w-6 border-2 border-background">
+                                <AvatarFallback className="text-xs">
+                                  {collab.profiles?.display_name?.charAt(0) || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                            ))}
+                            {planningCollaborators.length > 3 && (
+                              <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted border-2 border-background text-xs">
+                                +{planningCollaborators.length - 3}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {planning.location && (
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                          <MapPin className="h-4 w-4" />
+                          <span className="truncate">{planning.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </div>
       </div>
-      
-      <Separator />
-      
-      <Card>
-        <CardContent className="py-8">
-          <p className="text-center text-muted-foreground">
-            Veranstaltungsplanungen werden hier angezeigt.
-            <br />
-            <span className="text-xs">Diese Funktion ist in Entwicklung.</span>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+    );
+  }
+
+  // Show detailed event planning view for selected planning
+  return <div>Detailansicht für {selectedPlanning.title} wird hier implementiert.</div>;
 }
