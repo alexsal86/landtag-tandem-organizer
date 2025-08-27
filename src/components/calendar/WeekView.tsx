@@ -14,6 +14,10 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
   
+  // Separate all-day and timed events
+  const allDayEvents = events.filter(event => event.is_all_day);
+  const timedEvents = events.filter(event => !event.is_all_day);
+  
   useEffect(() => {
     // Scroll to 9 AM on mount
     if (scrollContainerRef.current) {
@@ -58,8 +62,23 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
   const hours = Array.from({ length: 24 }, (_, i) => i); // 0:00 to 23:00
   
   const getEventsForDay = (day: Date) => {
-    return events.filter(event => {
+    return timedEvents.filter(event => {
       // Filter by the actual event date
+      return event.date.toDateString() === day.toDateString();
+    });
+  };
+
+  const getAllDayEventsForDay = (day: Date) => {
+    return allDayEvents.filter(event => {
+      // Check if this day is within the event's span for multi-day events
+      if (event.endTime) {
+        const eventStart = new Date(event.date);
+        const eventEnd = new Date(event.endTime);
+        eventStart.setHours(0, 0, 0, 0);
+        eventEnd.setHours(23, 59, 59, 999);
+        day.setHours(12, 0, 0, 0); // Middle of day for comparison
+        return day >= eventStart && day <= eventEnd;
+      }
       return event.date.toDateString() === day.toDateString();
     });
   };
@@ -155,6 +174,12 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
       {/* Hours column */}
       <div className="w-16 border-r bg-muted/20 sticky left-0 z-20">
         <div className="h-12 border-b bg-background"></div>
+        {/* All-day events label */}
+        {allDayEvents.length > 0 && (
+          <div className="h-auto min-h-[40px] border-b text-xs text-muted-foreground p-2 text-right bg-muted/30">
+            Ganztägig
+          </div>
+        )}
         {hours.map((hour) => (
           <div
             key={hour}
@@ -180,6 +205,64 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
           ))}
         </div>
 
+        {/* All-day events section */}
+        {allDayEvents.length > 0 && (
+          <div className="grid grid-cols-7 border-b bg-muted/10">
+            {days.map((day, dayIndex) => (
+              <div key={`allday-${dayIndex}`} className="border-r p-1 min-h-[40px]">
+                {getAllDayEventsForDay(day).map((event) => {
+                  // Calculate span for multi-day events
+                  let spanDays = 1;
+                  let isEventStart = event.date.toDateString() === day.toDateString();
+                  
+                  if (event.endTime && isEventStart) {
+                    const eventStart = new Date(event.date);
+                    const eventEnd = new Date(event.endTime);
+                    const timeDiff = eventEnd.getTime() - eventStart.getTime();
+                    spanDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                    
+                    // Limit span to remaining days in the week
+                    const remainingDays = 7 - dayIndex;
+                    spanDays = Math.min(spanDays, remainingDays);
+                  }
+                  
+                  // Only render at the start of the event to avoid duplicates
+                  if (!isEventStart && event.endTime) {
+                    return null;
+                  }
+                  
+                  return (
+                    <div
+                      key={event.id}
+                      className={`text-xs p-1 mb-1 rounded cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)}`}
+                      style={{ 
+                        backgroundColor: event.category_color || undefined,
+                        gridColumn: spanDays > 1 ? `span ${spanDays}` : undefined,
+                        width: spanDays > 1 ? `${spanDays * 100}%` : undefined,
+                        position: spanDays > 1 ? 'relative' : undefined,
+                        zIndex: spanDays > 1 ? 10 : undefined
+                      }}
+                      onClick={() => onAppointmentClick?.(event)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium truncate">
+                          {event.title}
+                        </div>
+                        {documentCounts[event.id] > 0 && (
+                          <div className="flex items-center space-x-1 ml-1">
+                            <FileText className="h-3 w-3" />
+                            <span className="text-xs">{documentCounts[event.id]}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Time grid with events */}
         <div 
           ref={scrollContainerRef}
@@ -197,7 +280,7 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                   />
                 ))}
 
-                {/* Events overlay */}
+                {/* Timed events overlay */}
                 <div className="absolute inset-0 pointer-events-none">
                   {(() => {
                     const dayEvents = getEventsForDay(day);

@@ -14,6 +14,10 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
   
+  // Separate all-day and timed events
+  const allDayEvents = events.filter(event => event.is_all_day);
+  const timedEvents = events.filter(event => !event.is_all_day);
+  
   useEffect(() => {
     // Scroll to 9 AM on mount
     if (scrollContainerRef.current) {
@@ -52,7 +56,7 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
   
   
   const getEventsForHour = (hour: number) => {
-    return events.filter(event => {
+    return timedEvents.filter(event => {
       const eventDate = event.date.toDateString();
       const viewDate = date.toDateString();
       
@@ -185,6 +189,48 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* All-day events section */}
+      {allDayEvents.length > 0 && (
+        <div className="border-b border-border bg-muted/10">
+          <div className="grid grid-cols-[80px,1fr]">
+            <div className="p-2 text-sm font-medium text-muted-foreground bg-muted/30">
+              Ganztägig
+            </div>
+            <div className="p-1 space-y-1">
+              {allDayEvents.map((event, index) => (
+                <div
+                  key={event.id}
+                  className={`p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)}`}
+                  style={{ 
+                    backgroundColor: event.category_color || undefined,
+                    marginBottom: '4px'
+                  }}
+                  onClick={() => onAppointmentClick?.(event)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium truncate">
+                      {event.title}
+                    </div>
+                    {documentCounts[event.id] > 0 && (
+                      <div className="flex items-center space-x-1 ml-1">
+                        <FileText className="h-3 w-3" />
+                        <span className="text-xs">{documentCounts[event.id]}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="opacity-80 text-xs">
+                    {event.duration}
+                  </div>
+                  {event.location && (
+                    <div className="opacity-70 truncate text-xs">{event.location}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Time grid */}
       <div className="flex-1 overflow-auto" ref={scrollContainerRef} style={{ maxHeight: 'calc(100vh - 200px)' }}>
         <div className="grid grid-cols-[80px,1fr] border border-border">

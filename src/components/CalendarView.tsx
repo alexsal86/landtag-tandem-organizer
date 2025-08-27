@@ -29,6 +29,7 @@ export interface CalendarEvent {
   type: "meeting" | "appointment" | "deadline" | "session" | "blocked" | "veranstaltung";
   priority: "low" | "medium" | "high";
   category_color?: string;
+  is_all_day?: boolean; // Add all-day flag
 }
 
 export function CalendarView() {
@@ -168,7 +169,8 @@ export function CalendarView() {
           priority: appointment.priority as CalendarEvent["priority"] || "medium",
           participants,
           attendees: participants.length,
-          category_color: categoryColor
+          category_color: categoryColor,
+          is_all_day: appointment.is_all_day || false
         });
       }
 
@@ -217,7 +219,8 @@ export function CalendarView() {
             priority: "medium",
             participants: [],
             attendees: 0,
-            category_color: externalEvent.external_calendars?.color || '#6b7280'
+            category_color: externalEvent.external_calendars?.color || '#6b7280',
+            is_all_day: externalEvent.all_day || false
           });
         }
       } else {
@@ -292,7 +295,8 @@ export function CalendarView() {
               priority: "medium",
               participants,
               attendees: participants.length,
-              category_color: categoryColor
+              category_color: categoryColor,
+              is_all_day: false // Event planning dates are usually timed
             });
           }
         }
