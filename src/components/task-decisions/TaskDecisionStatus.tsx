@@ -102,10 +102,12 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
           id: participant.id,
           user_id: participant.user_id,
           profile: profileMap.get(participant.user_id) || { display_name: null },
-          responses: (participant.task_decision_responses || []).map(response => ({
-            ...response,
-            response_type: response.response_type as 'yes' | 'no' | 'question'
-          })),
+          responses: (participant.task_decision_responses || [])
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .map(response => ({
+              ...response,
+              response_type: response.response_type as 'yes' | 'no' | 'question'
+            })),
         })),
       })) || [];
 
