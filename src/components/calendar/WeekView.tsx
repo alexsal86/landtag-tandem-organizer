@@ -189,7 +189,7 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
       {/* All-day events section - sticky */}
       {allDayEvents.length > 0 && (
         <div className="grid grid-cols-[64px,1fr] border-b bg-background sticky top-12 z-10">
-          <div className="border-r text-xs text-muted-foreground p-2 text-right bg-muted flex items-center justify-end">
+          <div className="border-r text-xs text-muted-foreground p-2 text-right bg-background border-b flex items-center justify-end">
             Ganztägig
           </div>
           <div className="grid grid-cols-7">
