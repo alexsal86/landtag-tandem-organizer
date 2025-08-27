@@ -170,14 +170,6 @@ export function EventPlanningView() {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   
-  // Tab constants
-  const TABS = {
-    EVENTS: 'events',
-    APPOINTMENTS: 'appointments'
-  } as const;
-  
-  type TabType = typeof TABS[keyof typeof TABS];
-  
   const [plannings, setPlannings] = useState<EventPlanning[]>([]);
   const [selectedPlanning, setSelectedPlanning] = useState<EventPlanning | null>(null);
   const [planningDates, setPlanningDates] = useState<EventPlanningDate[]>([]);
@@ -187,7 +179,7 @@ export function EventPlanningView() {
   const [appointmentPreparations, setAppointmentPreparations] = useState<AppointmentPreparation[]>([]);
   const [archivedPreparations, setArchivedPreparations] = useState<AppointmentPreparation[]>([]);
   const [showArchive, setShowArchive] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>(TABS.EVENTS);
+  const [activeTab, setActiveTab] = useState<'events' | 'appointments'>('events');
   const [contacts, setContacts] = useState<EventPlanningContact[]>([]);
   const [speakers, setSpeakers] = useState<EventPlanningSpeaker[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -416,22 +408,26 @@ export function EventPlanningView() {
     }
   };
 
+  // Type guard function
+  const isAppointmentsTab = activeTab === 'appointments';
+  const isEventsTab = activeTab === 'events';
+
   // Show appointment preparations view
-  if (activeTab === TABS.APPOINTMENTS) {
+  if (isAppointmentsTab) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">Planungen</h2>
           <div className="flex items-center space-x-2">
             <Button
-              variant={activeTab === TABS.EVENTS ? 'default' : 'outline'}
-              onClick={() => setActiveTab(TABS.EVENTS)}
+              variant={isEventsTab ? 'default' : 'outline'}
+              onClick={() => setActiveTab('events')}
             >
               Veranstaltungen
             </Button>
             <Button
-              variant={activeTab === TABS.APPOINTMENTS ? 'default' : 'outline'}
-              onClick={() => setActiveTab(TABS.APPOINTMENTS)}
+              variant={isAppointmentsTab ? 'default' : 'outline'}
+              onClick={() => setActiveTab('appointments')}
             >
               Terminvorbereitungen
             </Button>
@@ -449,14 +445,14 @@ export function EventPlanningView() {
         <h2 className="text-2xl font-bold">Planungen</h2>
         <div className="flex items-center space-x-2">
           <Button
-            variant={activeTab === TABS.EVENTS ? 'default' : 'outline'}
-            onClick={() => setActiveTab(TABS.EVENTS)}
+            variant={isEventsTab ? 'default' : 'outline'}
+            onClick={() => setActiveTab('events')}
           >
             Veranstaltungen
           </Button>
           <Button
-            variant={activeTab === TABS.APPOINTMENTS ? 'default' : 'outline'}
-            onClick={() => setActiveTab(TABS.APPOINTMENTS)}
+            variant={isAppointmentsTab ? 'default' : 'outline'}
+            onClick={() => setActiveTab('appointments')}
           >
             Terminvorbereitungen
           </Button>
