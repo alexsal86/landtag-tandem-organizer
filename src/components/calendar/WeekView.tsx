@@ -170,31 +170,11 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
   };
 
   return (
-    <div className="h-full flex bg-background">
-      {/* Hours column */}
-      <div className="w-16 border-r bg-muted/20 sticky left-0 z-20">
-        <div className="h-12 border-b bg-background"></div>
-        {/* All-day events label */}
-        {allDayEvents.length > 0 && (
-          <div className="h-12 border-b text-xs text-muted-foreground p-2 text-right bg-muted/30 flex items-center justify-end">
-            Ganztägig
-          </div>
-        )}
-        {hours.map((hour) => (
-          <div
-            key={hour}
-            id={hour === 9 ? 'week-hour-9' : undefined}
-            className="h-16 border-b text-xs text-muted-foreground p-2 text-right"
-          >
-            {hour.toString().padStart(2, '0')}:00
-          </div>
-        ))}
-      </div>
-
-      {/* Calendar content */}
-      <div className="flex-1 overflow-auto">
-        {/* Header with days */}
-        <div className="grid grid-cols-7 border-b sticky top-0 bg-background z-10">
+    <div className="h-full flex flex-col bg-background">
+      {/* Header with days - sticky */}
+      <div className="grid grid-cols-[64px,1fr] border-b sticky top-0 bg-background z-20">
+        <div className="border-r bg-muted/20"></div>
+        <div className="grid grid-cols-7">
           {days.map((day, index) => (
             <div
               key={index}
@@ -204,10 +184,15 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
             </div>
           ))}
         </div>
+      </div>
 
-        {/* All-day events section */}
-        {allDayEvents.length > 0 && (
-          <div className="grid grid-cols-7 border-b bg-muted/10">
+      {/* All-day events section - sticky */}
+      {allDayEvents.length > 0 && (
+        <div className="grid grid-cols-[64px,1fr] border-b bg-muted/10 sticky top-12 z-10">
+          <div className="border-r text-xs text-muted-foreground p-2 text-right bg-muted/30 flex items-center justify-end">
+            Ganztägig
+          </div>
+          <div className="grid grid-cols-7">
             {days.map((day, dayIndex) => (
               <div key={`allday-${dayIndex}`} className="border-r p-1 h-12">
                 {getAllDayEventsForDay(day).map((event) => {
@@ -219,7 +204,7 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                     const eventStart = new Date(event.date);
                     const eventEnd = new Date(event.endTime);
                     eventStart.setHours(0, 0, 0, 0);
-                    eventEnd.setHours(0, 0, 0, 0);
+                    eventEnd.setHours(23, 59, 59, 999);
                     const timeDiff = eventEnd.getTime() - eventStart.getTime();
                     spanDays = Math.floor(timeDiff / (1000 * 3600 * 24)) + 1;
                     
@@ -263,106 +248,123 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
               </div>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Time grid with events */}
-        <div 
-          ref={scrollContainerRef}
-          className="relative"
-        >
-          <div className="grid grid-cols-7">
-            {/* Days columns with events */}
-            {days.map((day, dayIndex) => (
-              <div key={dayIndex} className="border-r relative">
-                {/* Hour cells */}
-                {hours.map((hour) => (
-                  <div
-                    key={hour}
-                    className="h-16 border-b hover:bg-accent/50 transition-colors"
-                  />
-                ))}
+      {/* Scrollable time grid */}
+      <div className="flex-1 flex bg-background overflow-hidden">
+        {/* Hours column - sticky */}
+        <div className="w-16 border-r bg-muted/20 sticky left-0 z-10">
+          {hours.map((hour) => (
+            <div
+              key={hour}
+              id={hour === 9 ? 'week-hour-9' : undefined}
+              className="h-16 border-b text-xs text-muted-foreground p-2 text-right"
+            >
+              {hour.toString().padStart(2, '0')}:00
+            </div>
+          ))}
+        </div>
 
-                {/* Timed events overlay */}
-                <div className="absolute inset-0 pointer-events-none">
-                  {(() => {
-                    const dayEvents = getEventsForDay(day);
-                    const eventLayout = getEventLayout(dayEvents);
-                    
-                    return eventLayout.map(({ event, column, totalColumns }) => {
-                      const widthPercentage = 100 / totalColumns;
-                      const leftOffset = (widthPercentage * column);
+        {/* Calendar content - scrollable */}
+        <div className="flex-1 overflow-auto" ref={scrollContainerRef}>
+          <div 
+            className="relative"
+          >
+            <div className="grid grid-cols-7">
+              {/* Days columns with events */}
+              {days.map((day, dayIndex) => (
+                <div key={dayIndex} className="border-r relative">
+                  {/* Hour cells */}
+                  {hours.map((hour) => (
+                    <div
+                      key={hour}
+                      className="h-16 border-b hover:bg-accent/50 transition-colors"
+                    />
+                  ))}
+
+                  {/* Timed events overlay */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    {(() => {
+                      const dayEvents = getEventsForDay(day);
+                      const eventLayout = getEventLayout(dayEvents);
                       
-                      // Calculate precise positioning and height
-                      const [startHour, startMinutes] = event.time.split(':').map(Number);
-                      let topOffset = startHour * 64 + (startMinutes / 60) * 64; // Convert to pixels (64px per hour)
-                      let eventHeight = 62; // Default height
-                      
-                      if (event.endTime) {
-                        // Calculate actual height based on end time
-                        const eventEnd = new Date(event.endTime);
+                      return eventLayout.map(({ event, column, totalColumns }) => {
+                        const widthPercentage = 100 / totalColumns;
+                        const leftOffset = (widthPercentage * column);
                         
-                        if (eventEnd.toDateString() === day.toDateString()) {
-                          // Event ends on same day
-                          const endHour = eventEnd.getHours();
-                          const endMinutes = eventEnd.getMinutes();
+                        // Calculate precise positioning and height
+                        const [startHour, startMinutes] = event.time.split(':').map(Number);
+                        let topOffset = startHour * 64 + (startMinutes / 60) * 64; // Convert to pixels (64px per hour)
+                        let eventHeight = 62; // Default height
+                        
+                        if (event.endTime) {
+                          // Calculate actual height based on end time
+                          const eventEnd = new Date(event.endTime);
                           
-                          // Calculate total duration in pixels
-                          const startTotalMinutes = startHour * 60 + startMinutes;
-                          const endTotalMinutes = endHour * 60 + endMinutes;
-                          const durationMinutes = endTotalMinutes - startTotalMinutes;
-                          eventHeight = Math.max((durationMinutes * 64) / 60, 20); // Minimum 20px height
+                          if (eventEnd.toDateString() === day.toDateString()) {
+                            // Event ends on same day
+                            const endHour = eventEnd.getHours();
+                            const endMinutes = eventEnd.getMinutes();
+                            
+                            // Calculate total duration in pixels
+                            const startTotalMinutes = startHour * 60 + startMinutes;
+                            const endTotalMinutes = endHour * 60 + endMinutes;
+                            const durationMinutes = endTotalMinutes - startTotalMinutes;
+                            eventHeight = Math.max((durationMinutes * 64) / 60, 20); // Minimum 20px height
+                          } else {
+                            // Multi-day event - extends to end of day
+                            const hoursToEndOfDay = 24 - startHour;
+                            const minutesToEndOfDay = hoursToEndOfDay * 60 - startMinutes;
+                            eventHeight = (minutesToEndOfDay * 64) / 60;
+                          }
                         } else {
-                          // Multi-day event - extends to end of day
-                          const hoursToEndOfDay = 24 - startHour;
-                          const minutesToEndOfDay = hoursToEndOfDay * 60 - startMinutes;
-                          eventHeight = (minutesToEndOfDay * 64) / 60;
+                          // Fallback to duration calculation
+                          const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+                          eventHeight = Math.max((durationMinutes * 64) / 60, 20);
                         }
-                      } else {
-                        // Fallback to duration calculation
-                        const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-                        eventHeight = Math.max((durationMinutes * 64) / 60, 20);
-                      }
-                      
-                      return (
-                        <div
-                          key={event.id}
-                          className={`absolute p-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto ${getEventTypeColor(event)}`}
-                          style={{ 
-                            width: `${widthPercentage - 1}%`,
-                            left: `${leftOffset}%`,
-                            top: `${topOffset}px`,
-                            height: `${eventHeight}px`,
-                            marginLeft: '4px',
-                            backgroundColor: event.category_color || undefined,
-                            borderLeftColor: event.category_color || undefined,
-                            zIndex: 5
-                          }}
-                          onClick={() => onAppointmentClick?.(event)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="font-medium truncate text-xs">{event.title}</div>
-                            {documentCounts[event.id] > 0 && (
-                              <div className="flex items-center space-x-1 ml-1">
-                                <FileText className="h-3 w-3" />
-                                <span className="text-xs">{documentCounts[event.id]}</span>
+                        
+                        return (
+                          <div
+                            key={event.id}
+                            className={`absolute p-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto ${getEventTypeColor(event)}`}
+                            style={{ 
+                              width: `${widthPercentage - 1}%`,
+                              left: `${leftOffset}%`,
+                              top: `${topOffset}px`,
+                              height: `${eventHeight}px`,
+                              marginLeft: '4px',
+                              backgroundColor: event.category_color || undefined,
+                              borderLeftColor: event.category_color || undefined,
+                              zIndex: 5
+                            }}
+                            onClick={() => onAppointmentClick?.(event)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="font-medium truncate text-xs">{event.title}</div>
+                              {documentCounts[event.id] > 0 && (
+                                <div className="flex items-center space-x-1 ml-1">
+                                  <FileText className="h-3 w-3" />
+                                  <span className="text-xs">{documentCounts[event.id]}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="opacity-80 truncate w-full text-xs">
+                              {formatEventDisplay(event)}
+                            </div>
+                            {event.location && (
+                              <div className="text-xs opacity-75 truncate">
+                                {event.location}
                               </div>
                             )}
                           </div>
-                          <div className="opacity-80 truncate w-full text-xs">
-                            {formatEventDisplay(event)}
-                          </div>
-                          {event.location && (
-                            <div className="text-xs opacity-75 truncate">
-                              {event.location}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    });
-                  })()}
+                        );
+                      });
+                    })()}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
