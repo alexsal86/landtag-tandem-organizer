@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { startOfYear, endOfYear } from "date-fns";
+import { startOfYear, endOfYear, eachDayOfInterval, isWeekend } from "date-fns";
 
 // Types derived from DB schema
 type LeaveType = "vacation" | "sick" | "other";
@@ -186,7 +186,7 @@ export function EmployeesView() {
         });
         setEmployees(joined);
 
-        // Abwesenheiten aggregieren (RLS erlaubt nur Zugriff auf zugewiesene Nutzer)
+        // Abwesenheiten aggregieren mit Arbeitstagen (RLS erlaubt nur Zugriff auf zugewiesene Nutzer)
         const agg: Record<string, LeaveAgg> = {};
         const initAgg = (): LeaveAgg => ({
           counts: { vacation: 0, sick: 0, other: 0 },
@@ -195,13 +195,30 @@ export function EmployeesView() {
           lastDates: {},
         });
 
-        ((leaveRes.data as LeaveRow[] | null) || []).forEach((lr) => {
+        // Get full leave data with end dates for all users
+        const { data: fullLeaveData } = await supabase
+          .from("leave_requests")
+          .select("user_id, type, status, start_date, end_date")
+          .in("user_id", managedIds)
+          .gte("start_date", startOfYear(new Date()).toISOString())
+          .lte("end_date", endOfYear(new Date()).toISOString());
+
+        (fullLeaveData || []).forEach((lr: any) => {
           if (!agg[lr.user_id]) agg[lr.user_id] = initAgg();
-          agg[lr.user_id].counts[lr.type]++;
-          if (lr.status === "approved") agg[lr.user_id].approved[lr.type]++;
-          if (lr.status === "pending") agg[lr.user_id].pending[lr.type]++;
+          
+          const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
+          
+          // Benutze Arbeitstage für die Berechnung
+          if (lr.status === "approved") {
+            agg[lr.user_id].approved[lr.type] += workingDays;
+          }
+          if (lr.status === "pending") {
+            agg[lr.user_id].pending[lr.type] += workingDays;
+          }
+          agg[lr.user_id].counts[lr.type] += workingDays;
+          
           const curr = agg[lr.user_id].lastDates[lr.type];
-          if (!curr || new Date(lr.start_date) > new Date(curr as string)) {
+          if (!curr || new Date(lr.start_date) > new Date(curr)) {
             agg[lr.user_id].lastDates[lr.type] = lr.start_date;
           }
         });
@@ -332,21 +349,38 @@ export function EmployeesView() {
         setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
         setSelfProfile((profileRes.data as Profile) || null);
 
-        const agg: LeaveAgg = {
-          counts: { vacation: 0, sick: 0, other: 0 },
-          approved: { vacation: 0, sick: 0, other: 0 },
-          pending: { vacation: 0, sick: 0, other: 0 },
-          lastDates: {},
-        };
-        (leavesRes.data as LeaveRow[] | null)?.forEach((lr) => {
-          agg.counts[lr.type]++;
-          if (lr.status === "approved") agg.approved[lr.type]++;
-          if (lr.status === "pending") agg.pending[lr.type]++;
-          const curr = agg.lastDates[lr.type];
-          if (!curr || new Date(lr.start_date) > new Date(curr)) {
-            agg.lastDates[lr.type] = lr.start_date;
-          }
-        });
+                  const agg: LeaveAgg = {
+           counts: { vacation: 0, sick: 0, other: 0 },
+           approved: { vacation: 0, sick: 0, other: 0 },
+           pending: { vacation: 0, sick: 0, other: 0 },
+           lastDates: {},
+         };
+         
+         // Get full leave data with end dates for calculation
+         const { data: fullLeaveData } = await supabase
+           .from("leave_requests")
+           .select("type, status, start_date, end_date")
+           .eq("user_id", user.id)
+           .gte("start_date", startOfYear(new Date()).toISOString())
+           .lte("end_date", endOfYear(new Date()).toISOString());
+         
+         (fullLeaveData || []).forEach((lr: any) => {
+           const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
+           
+           // Benutze Arbeitstage für die Berechnung statt einfacher Zählung
+           if (lr.status === "approved") {
+             agg.approved[lr.type] += workingDays;
+           }
+           if (lr.status === "pending") {
+             agg.pending[lr.type] += workingDays;
+           }
+           agg.counts[lr.type] += workingDays;
+           
+           const curr = agg.lastDates[lr.type];
+           if (!curr || new Date(lr.start_date) > new Date(curr)) {
+             agg.lastDates[lr.type] = lr.start_date;
+           }
+         });
         setSelfLeaveAgg(agg);
       } catch (e: any) {
         console.error(e);
@@ -362,9 +396,64 @@ export function EmployeesView() {
     loadSelf();
   }, [user, isAdmin, toast]);
 
+  // Berechne Arbeitstage zwischen zwei Daten (exklusive Wochenenden)
+  const calculateWorkingDays = (startDate: string, endDate: string): number => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const days = eachDayOfInterval({ start, end });
+    return days.filter(day => !isWeekend(day)).length;
+  };
+
+  // Erstelle Kalendereintrag für genehmigten Urlaub
+  const createVacationCalendarEntry = async (leaveRequest: PendingLeaveRequest, userId: string) => {
+    try {
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", userId)
+        .single();
+
+      const { data: tenantData } = await supabase
+        .from("user_tenant_memberships")
+        .select("tenant_id")
+        .eq("user_id", user?.id)
+        .eq("is_active", true)
+        .limit(1)
+        .single();
+
+      if (!tenantData) {
+        console.error("No tenant found for user");
+        return;
+      }
+
+      const userName = userProfile?.display_name || "Mitarbeiter";
+      const workingDays = calculateWorkingDays(leaveRequest.start_date, leaveRequest.end_date);
+      
+      await supabase
+        .from("appointments")
+        .insert({
+          user_id: user?.id,
+          tenant_id: tenantData.tenant_id,
+          start_time: new Date(leaveRequest.start_date).toISOString(),
+          end_time: new Date(leaveRequest.end_date + "T23:59:59").toISOString(),
+          title: `${userName} - ${leaveRequest.type === "vacation" ? "Urlaub" : leaveRequest.type === "sick" ? "Krank" : "Abwesenheit"}`,
+          description: `${leaveRequest.type === "vacation" ? "Urlaubsantrag" : leaveRequest.type === "sick" ? "Krankmeldung" : "Abwesenheitsantrag"} genehmigt (${workingDays} Arbeitstage)`,
+          category: leaveRequest.type === "vacation" ? "vacation" : leaveRequest.type === "sick" ? "sick" : "other",
+          priority: "medium",
+          status: "confirmed",
+          is_all_day: true
+        });
+    } catch (error) {
+      console.error("Fehler beim Erstellen des Kalendereintrags:", error);
+    }
+  };
+
   // Urlaubsantrag freigeben/ablehnen
   const handleLeaveAction = async (leaveId: string, action: "approved" | "rejected") => {
     try {
+      const leaveRequest = pendingLeaves.find(req => req.id === leaveId);
+      
       const { error } = await supabase
         .from("leave_requests")
         .update({ status: action })
@@ -372,9 +461,16 @@ export function EmployeesView() {
 
       if (error) throw error;
 
+      // Bei Genehmigung: Kalendereintrag erstellen
+      if (action === "approved" && leaveRequest) {
+        await createVacationCalendarEntry(leaveRequest, leaveRequest.user_id);
+      }
+
       toast({
         title: action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt",
-        description: "Der Urlaubsantrag wurde aktualisiert.",
+        description: action === "approved" 
+          ? "Der Urlaubsantrag wurde genehmigt und in den Kalender eingetragen." 
+          : "Der Urlaubsantrag wurde abgelehnt.",
       });
 
       // Reload data
@@ -825,23 +921,29 @@ export function EmployeesView() {
                   <TableRow>
                     <TableHead>Mitarbeiter</TableHead>
                     <TableHead>Typ</TableHead>
-                    <TableHead>Von</TableHead>
-                    <TableHead>Bis</TableHead>
-                    <TableHead>Aktionen</TableHead>
+                     <TableHead>Von</TableHead>
+                     <TableHead>Bis</TableHead>
+                     <TableHead>Arbeitstage</TableHead>
+                     <TableHead>Aktionen</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pendingLeaves.map((req) => (
-                    <TableRow key={req.id}>
-                      <TableCell>{req.user_name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {req.type === "vacation" ? "Urlaub" : req.type === "sick" ? "Krank" : "Sonstiges"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{new Date(req.start_date).toLocaleDateString("de-DE")}</TableCell>
-                      <TableCell>{new Date(req.end_date).toLocaleDateString("de-DE")}</TableCell>
-                      <TableCell>
+                   {pendingLeaves.map((req) => {
+                     const workingDays = calculateWorkingDays(req.start_date, req.end_date);
+                     return (
+                     <TableRow key={req.id}>
+                       <TableCell>{req.user_name}</TableCell>
+                       <TableCell>
+                         <Badge variant="outline">
+                           {req.type === "vacation" ? "Urlaub" : req.type === "sick" ? "Krank" : "Sonstiges"}
+                         </Badge>
+                       </TableCell>
+                       <TableCell>{new Date(req.start_date).toLocaleDateString("de-DE")}</TableCell>
+                       <TableCell>{new Date(req.end_date).toLocaleDateString("de-DE")}</TableCell>
+                       <TableCell>
+                         <Badge variant="secondary">{workingDays} Tage</Badge>
+                       </TableCell>
+                       <TableCell>
                         <div className="flex gap-2">
                           <Button
                             size="sm"
@@ -858,9 +960,9 @@ export function EmployeesView() {
                             Ablehnen
                           </Button>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                       </TableCell>
+                     </TableRow>
+                   )})}
                 </TableBody>
               </Table>
             </CardContent>
@@ -988,15 +1090,15 @@ export function EmployeesView() {
                         <TableCell>
                           <Badge variant="outline">{sickDays[e.user_id] || 0} Tage</Badge>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {vacApproved} von {e.annual_vacation_days} Tagen
-                          </Badge>
-                          {remainingVacationDays > 0 && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {remainingVacationDays} Resttage
-                            </div>
-                          )}
+                         <TableCell>
+                           <Badge variant="secondary">
+                             {vacApproved} von {e.annual_vacation_days} Arbeitstagen
+                           </Badge>
+                           {remainingVacationDays > 0 && (
+                             <div className="text-xs text-muted-foreground mt-1">
+                               {remainingVacationDays} verbleibende Arbeitstage
+                             </div>
+                           )}
                         </TableCell>
                       </TableRow>
                     );
