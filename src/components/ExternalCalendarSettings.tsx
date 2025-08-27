@@ -64,7 +64,7 @@ export function ExternalCalendarSettings() {
       // Fetch all calendars in the tenant (visible to all office users)
       const { data, error } = await supabase
         .from('external_calendars')
-        .select('*, profiles!external_calendars_user_id_fkey(display_name)')
+        .select('*')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 
