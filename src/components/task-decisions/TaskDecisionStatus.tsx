@@ -209,12 +209,20 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
                 <div className="flex items-center space-x-2">
                   <Badge 
                     variant="outline" 
-                    className={`${allResponsesReceived 
-                      ? 'text-green-600 border-green-600' 
-                      : 'text-orange-600 border-orange-600'
+                    className={`${
+                      summary.questionCount > 0 
+                        ? 'text-orange-600 border-orange-600'
+                        : allResponsesReceived 
+                          ? 'text-green-600 border-green-600' 
+                          : 'text-orange-600 border-orange-600'
                     }`}
                   >
-                    {allResponsesReceived ? 'Ergebnis verfügbar' : 'Entscheidung'}
+                    {summary.questionCount > 0 
+                      ? 'Rückfragen stehen aus' 
+                      : allResponsesReceived 
+                        ? 'Ergebnis verfügbar' 
+                        : 'Entscheidung'
+                    }
                   </Badge>
                   {isCreator && (
                     <Button
