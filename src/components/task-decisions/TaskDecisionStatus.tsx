@@ -53,6 +53,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
     console.log('TaskDecisionStatus: createdBy:', createdBy);
     
     try {
+      // Load decisions for this specific task using similar approach as TaskDecisionList
       const { data, error } = await supabase
         .from('task_decisions')
         .select(`
@@ -61,7 +62,9 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
           description,
           status,
           created_at,
-          task_decision_participants!inner (
+          task_id,
+          created_by,
+          task_decision_participants (
             id,
             user_id,
             task_decision_responses (
@@ -95,7 +98,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       const formattedData = data?.map(decision => ({
         ...decision,
-        participants: decision.task_decision_participants?.map(participant => ({
+        participants: (decision.task_decision_participants || []).map(participant => ({
           id: participant.id,
           user_id: participant.user_id,
           profile: profileMap.get(participant.user_id) || { display_name: null },
@@ -103,7 +106,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
             ...response,
             response_type: response.response_type as 'yes' | 'no' | 'question'
           })),
-        })) || [],
+        })),
       })) || [];
 
       console.log('TaskDecisionStatus: Formatted decisions:', formattedData);
