@@ -50,32 +50,42 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
   const loadDecisions = async () => {
     try {
-      const { data, error } = await supabase
+      // First get the decisions
+      const { data: decisionsData, error: decisionsError } = await supabase
         .from('task_decisions')
-        .select(`
-          id,
-          title,
-          description,
-          status,
-          created_at,
-          task_decision_participants!inner (
-            id,
-            user_id,
-            task_decision_responses (
-              response_type,
-              comment,
-              created_at
-            )
-          )
-        `)
+        .select('id, title, description, status, created_at')
         .eq('task_id', taskId)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (decisionsError) throw decisionsError;
 
-      // Get user profiles separately
-      const userIds = data?.flatMap(d => d.task_decision_participants?.map(p => p.user_id) || []) || [];
+      if (!decisionsData || decisionsData.length === 0) {
+        setDecisions([]);
+        return;
+      }
+
+      const decisionIds = decisionsData.map(d => d.id);
+
+      // Get participants for these decisions
+      const { data: participantsData, error: participantsError } = await supabase
+        .from('task_decision_participants')
+        .select(`
+          id,
+          user_id,
+          decision_id,
+          task_decision_responses (
+            response_type,
+            comment,
+            created_at
+          )
+        `)
+        .in('decision_id', decisionIds);
+
+      if (participantsError) throw participantsError;
+
+      // Get user profiles
+      const userIds = participantsData?.map(p => p.user_id) || [];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, display_name')
@@ -85,18 +95,29 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
-      const formattedData = data?.map(decision => ({
-        ...decision,
-        participants: decision.task_decision_participants?.map(participant => ({
+      // Group participants by decision
+      const participantsByDecision = new Map();
+      participantsData?.forEach(participant => {
+        if (!participantsByDecision.has(participant.decision_id)) {
+          participantsByDecision.set(participant.decision_id, []);
+        }
+        participantsByDecision.get(participant.decision_id).push({
           id: participant.id,
           user_id: participant.user_id,
           profile: profileMap.get(participant.user_id) || { display_name: null },
-          responses: (participant.task_decision_responses || []).map(response => ({
-            ...response,
-            response_type: response.response_type as 'yes' | 'no' | 'question'
-          })),
-        })) || [],
-      })) || [];
+          responses: (participant.task_decision_responses || [])
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .map(response => ({
+              ...response,
+              response_type: response.response_type as 'yes' | 'no' | 'question'
+            })),
+        });
+      });
+
+      const formattedData = decisionsData.map(decision => ({
+        ...decision,
+        participants: participantsByDecision.get(decision.id) || [],
+      }));
 
       setDecisions(formattedData);
     } catch (error) {
@@ -137,9 +158,9 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
   };
 
   const getResponseSummary = (participants: DecisionWithResponses['participants']) => {
-    const yesCount = participants.filter(p => p.responses.some(r => r.response_type === 'yes')).length;
-    const noCount = participants.filter(p => p.responses.some(r => r.response_type === 'no')).length;
-    const questionCount = participants.filter(p => p.responses.some(r => r.response_type === 'question')).length;
+    const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
+    const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
+    const questionCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'question').length;
     const totalResponses = yesCount + noCount + questionCount;
     const pending = participants.length - totalResponses;
 
