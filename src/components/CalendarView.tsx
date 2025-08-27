@@ -9,6 +9,7 @@ import { DayView } from "./calendar/DayView";
 import { WeekView } from "./calendar/WeekView";
 import { MonthView } from "./calendar/MonthView";
 import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
+import AppointmentPreparationSidebar from "./AppointmentPreparationSidebar";
 import { PollListView } from "./poll/PollListView";
 import { useTenant } from "@/hooks/useTenant";
 
@@ -42,6 +43,7 @@ export function CalendarView() {
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<CalendarEvent | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [preparationSidebarOpen, setPreparationSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (view === 'week') {
@@ -385,8 +387,18 @@ export function CalendarView() {
     setSidebarOpen(true);
   };
 
+  const handlePreparationClick = (appointment: CalendarEvent) => {
+    setSelectedAppointment(appointment);
+    setPreparationSidebarOpen(true);
+  };
+
   const handleSidebarClose = () => {
     setSidebarOpen(false);
+    setSelectedAppointment(null);
+  };
+
+  const handlePreparationSidebarClose = () => {
+    setPreparationSidebarOpen(false);
     setSelectedAppointment(null);
   };
 
@@ -491,8 +503,8 @@ export function CalendarView() {
               </div>
             ) : (
               <>
-                {view === "day" && <DayView date={currentDate} events={appointments} onAppointmentClick={handleAppointmentClick} />}
-                {view === "week" && <WeekView weekStart={getWeekStart(currentDate)} events={appointments} onAppointmentClick={handleAppointmentClick} />}
+                {view === "day" && <DayView date={currentDate} events={appointments} onAppointmentClick={handleAppointmentClick} onPreparationClick={handlePreparationClick} />}
+                {view === "week" && <WeekView weekStart={getWeekStart(currentDate)} events={appointments} onAppointmentClick={handleAppointmentClick} onPreparationClick={handlePreparationClick} />}
                 {view === "month" && <MonthView date={currentDate} events={appointments} onDateSelect={setCurrentDate} />}
               </>
             )}
@@ -507,6 +519,15 @@ export function CalendarView() {
         open={sidebarOpen}
         onClose={handleSidebarClose}
         onUpdate={handleAppointmentUpdate}
+      />
+
+      {/* Appointment Preparation Sidebar */}
+      <AppointmentPreparationSidebar
+        appointmentId={selectedAppointment?.id || null}
+        appointmentTitle={selectedAppointment?.title}
+        appointmentDate={selectedAppointment?.date ? selectedAppointment.date.toISOString() : undefined}
+        isOpen={preparationSidebarOpen}
+        onClose={handlePreparationSidebarClose}
       />
     </div>
   );

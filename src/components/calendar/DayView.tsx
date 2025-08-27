@@ -8,9 +8,10 @@ interface DayViewProps {
   date: Date;
   events: CalendarEvent[];
   onAppointmentClick?: (appointment: CalendarEvent) => void;
+  onPreparationClick?: (appointment: CalendarEvent) => void;
 }
 
-export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
+export function DayView({ date, events, onAppointmentClick, onPreparationClick }: DayViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
   

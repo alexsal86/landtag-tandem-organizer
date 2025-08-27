@@ -267,6 +267,167 @@ export type Database = {
           },
         ]
       }
+      appointment_preparation_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          preparation_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          preparation_id: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          preparation_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_appointment_preparation_documents_preparation"
+            columns: ["preparation_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_preparations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_preparation_templates: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          template_data: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          template_data?: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          template_data?: Json
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_appointment_preparation_templates_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_preparations: {
+        Row: {
+          appointment_id: string
+          archived_at: string | null
+          checklist_items: Json
+          created_at: string
+          created_by: string
+          id: string
+          is_archived: boolean
+          notes: string | null
+          preparation_data: Json
+          status: string
+          template_id: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          archived_at?: string | null
+          checklist_items?: Json
+          created_at?: string
+          created_by: string
+          id?: string
+          is_archived?: boolean
+          notes?: string | null
+          preparation_data?: Json
+          status?: string
+          template_id?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          archived_at?: string | null
+          checklist_items?: Json
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_archived?: boolean
+          notes?: string | null
+          preparation_data?: Json
+          status?: string
+          template_id?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_appointment_preparations_appointment"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_appointment_preparations_template"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_preparation_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_appointment_preparations_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_statuses: {
         Row: {
           created_at: string
@@ -3760,6 +3921,10 @@ export type Database = {
       _meeting_default_start: {
         Args: { _date: string }
         Returns: string
+      }
+      auto_archive_completed_preparations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       can_access_knowledge_document: {
         Args: { _document_id: string; _user_id: string }
