@@ -239,28 +239,40 @@ export const TaskDecisionList = () => {
 
   const sendCreatorResponse = async (responseId: string) => {
     const responseText = creatorResponses[responseId];
+    console.log('sendCreatorResponse called with:', { responseId, responseText, creatorResponses });
+    
     if (!responseText?.trim()) return;
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      console.log('Updating task_decision_responses with:', { responseId, responseText });
+      
+      const { data, error } = await supabase
         .from('task_decision_responses')
         .update({ creator_response: responseText })
-        .eq('id', responseId);
+        .eq('id', responseId)
+        .select('*');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating creator response:', error);
+        throw error;
+      }
+
+      console.log('Updated response data:', data);
 
       toast({
         title: "Erfolgreich",
         description: "Antwort wurde gesendet.",
       });
 
-      // Reload decisions first, then clear the input
+      // Clear the input first
+      setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
+      
+      // Then reload decisions
       if (user?.id) {
+        console.log('Reloading decisions after creator response');
         await loadDecisionRequests(user.id);
       }
-      
-      setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
     } catch (error) {
       console.error('Error sending creator response:', error);
       toast({
@@ -419,7 +431,10 @@ export const TaskDecisionList = () => {
                                 />
                                 <Button
                                   size="sm"
-                                  onClick={() => sendCreatorResponse(latestResponse.id)}
+                                  onClick={() => {
+                                    console.log('Sending creator response for responseId:', latestResponse.id, 'Text:', creatorResponses[latestResponse.id]);
+                                    sendCreatorResponse(latestResponse.id);
+                                  }}
                                   disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}
                                   className="self-end"
                                 >
