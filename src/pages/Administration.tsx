@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { NewUserForm } from "@/components/NewUserForm";
 import { CreateDemoUsers } from "@/components/CreateDemoUsers";
 import { TenantCollaboration } from "@/components/TenantCollaboration";
+import { DecisionEmailTemplates } from "@/components/task-decisions/DecisionEmailTemplates";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -488,6 +489,7 @@ export default function Administration() {
           <TabsTrigger value="todos">ToDos</TabsTrigger>
           <TabsTrigger value="meetings">Meetings</TabsTrigger>
           <TabsTrigger value="plannings">Planungen</TabsTrigger>
+          <TabsTrigger value="decisions">Entscheidungen</TabsTrigger>
           <TabsTrigger value="collaboration">Kollaboration</TabsTrigger>
           {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
         </TabsList>
@@ -502,6 +504,10 @@ export default function Administration() {
 
         <TabsContent value="expenses" className="space-y-6">
           <ExpenseManagement />
+        </TabsContent>
+
+        <TabsContent value="decisions" className="space-y-6">
+          <DecisionEmailTemplates />
         </TabsContent>
 
         <TabsContent value="collaboration" className="space-y-6">

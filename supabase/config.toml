@@ -23,3 +23,9 @@ verify_jwt = true
 
 [functions.auto-sync-calendars]
 verify_jwt = true
+
+[functions.send-decision-email]
+verify_jwt = true
+
+[functions.process-decision-response]
+verify_jwt = false

@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
-import { Vote } from "lucide-react";
+import { Vote, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,6 +27,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [sendByEmail, setSendByEmail] = useState(false);
   const { toast } = useToast();
 
   const loadProfiles = async () => {
@@ -102,6 +104,32 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
         }
       }
 
+      // Send email invitations if requested
+      if (sendByEmail) {
+        try {
+          const { error: emailError } = await supabase.functions.invoke('send-decision-email', {
+            body: {
+              decisionId: decision.id,
+              taskId: taskId,
+              participantIds: selectedUsers,
+              decisionTitle: title.trim(),
+              decisionDescription: description.trim() || null,
+            },
+          });
+
+          if (emailError) {
+            console.error('Error sending decision emails:', emailError);
+            toast({
+              title: "Warnung",
+              description: "Entscheidung erstellt, aber E-Mails konnten nicht versendet werden.",
+              variant: "destructive",
+            });
+          }
+        } catch (emailError) {
+          console.error('Error sending decision emails:', emailError);
+        }
+      }
+
       toast({
         title: "Erfolgreich",
         description: "Entscheidungsanfrage wurde erstellt.",
@@ -111,6 +139,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
       setTitle("");
       setDescription("");
       setSelectedUsers([]);
+      setSendByEmail(false);
       setIsOpen(false);
       onDecisionCreated();
     } catch (error) {
@@ -182,6 +211,19 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
               </div>
             )}
           </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="send-by-email"
+              checked={sendByEmail}
+              onCheckedChange={(checked) => setSendByEmail(checked === true)}
+            />
+            <label htmlFor="send-by-email" className="text-sm font-medium flex items-center">
+              <Mail className="h-4 w-4 mr-1" />
+              Auch per E-Mail versenden
+            </label>
+          </div>
+          
           <div className="flex justify-end space-x-2 pt-4">
             <Button 
               variant="outline" 

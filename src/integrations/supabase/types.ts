@@ -866,6 +866,48 @@ export type Database = {
         }
         Relationships: []
       }
+      decision_email_templates: {
+        Row: {
+          closing: string
+          created_at: string
+          greeting: string
+          id: string
+          instruction: string
+          introduction: string
+          question_prompt: string
+          signature: string
+          subject: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          closing?: string
+          created_at?: string
+          greeting?: string
+          id?: string
+          instruction?: string
+          introduction?: string
+          question_prompt?: string
+          signature?: string
+          subject?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          closing?: string
+          created_at?: string
+          greeting?: string
+          id?: string
+          instruction?: string
+          introduction?: string
+          question_prompt?: string
+          signature?: string
+          subject?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       distribution_list_members: {
         Row: {
           added_at: string
@@ -3762,6 +3804,10 @@ export type Database = {
           _participant_id: string
           _poll_id: string
         }
+        Returns: string
+      }
+      generate_decision_participant_token: {
+        Args: Record<PropertyKey, never>
         Returns: string
       }
       generate_participant_token: {
