@@ -235,4 +235,9 @@ All colors MUST be HSL.
   .z-background {
     z-index: 1;
   }
+
+  /* Custom padding for calendar events */
+  .p-1 {
+    padding: 0.25rem 0 0.25rem 0.25rem;
+  }
 }
