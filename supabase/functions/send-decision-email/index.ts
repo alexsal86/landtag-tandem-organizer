@@ -45,11 +45,14 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Decision title:", decisionTitle);
     console.log("=== END DEBUG INFO ===");
 
-    // Get email template from administration settings
-    const { data: template, error: templateError } = await supabase
+    // Get email template from administration settings (get the first/latest one)
+    const { data: templates, error: templateError } = await supabase
       .from('decision_email_templates')
       .select('*')
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const template = templates && templates.length > 0 ? templates[0] : null;
 
     if (templateError) {
       console.error("Error getting email template:", templateError);
