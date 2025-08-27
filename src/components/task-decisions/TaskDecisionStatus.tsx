@@ -49,11 +49,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
   };
 
   const loadDecisions = async () => {
-    console.log('TaskDecisionStatus: Loading decisions for taskId:', taskId);
-    console.log('TaskDecisionStatus: createdBy:', createdBy);
-    
     try {
-      // Load decisions for this specific task using similar approach as TaskDecisionList
       const { data, error } = await supabase
         .from('task_decisions')
         .select(`
@@ -62,9 +58,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
           description,
           status,
           created_at,
-          task_id,
-          created_by,
-          task_decision_participants (
+          task_decision_participants!inner (
             id,
             user_id,
             task_decision_responses (
@@ -78,12 +72,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('TaskDecisionStatus: Query error:', error);
-        throw error;
-      }
-      
-      console.log('TaskDecisionStatus: Raw data from query:', data);
+      if (error) throw error;
 
       // Get user profiles separately
       const userIds = data?.flatMap(d => d.task_decision_participants?.map(p => p.user_id) || []) || [];
@@ -98,31 +87,24 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       const formattedData = data?.map(decision => ({
         ...decision,
-        participants: (decision.task_decision_participants || []).map(participant => ({
+        participants: decision.task_decision_participants?.map(participant => ({
           id: participant.id,
           user_id: participant.user_id,
           profile: profileMap.get(participant.user_id) || { display_name: null },
-          responses: (participant.task_decision_responses || [])
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .map(response => ({
-              ...response,
-              response_type: response.response_type as 'yes' | 'no' | 'question'
-            })),
-        })),
+          responses: (participant.task_decision_responses || []).map(response => ({
+            ...response,
+            response_type: response.response_type as 'yes' | 'no' | 'question'
+          })),
+        })) || [],
       })) || [];
 
-      console.log('TaskDecisionStatus: Formatted decisions:', formattedData);
       setDecisions(formattedData);
     } catch (error) {
-      console.error('TaskDecisionStatus: Error loading decisions:', error);
+      console.error('Error loading decisions:', error);
     }
   };
 
   const archiveDecision = async (decisionId: string) => {
-    console.log('TaskDecisionStatus: Archiving decision:', decisionId);
-    console.log('TaskDecisionStatus: Current user (archiving):', currentUserId);
-    console.log('TaskDecisionStatus: Is creator:', currentUserId === createdBy);
-    
     setIsLoading(true);
     try {
       const { error } = await supabase
@@ -134,12 +116,8 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
         })
         .eq('id', decisionId);
 
-      if (error) {
-        console.error('TaskDecisionStatus: Archive error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('TaskDecisionStatus: Successfully archived decision');
       toast({
         title: "Erfolgreich",
         description: "Entscheidung wurde archiviert.",
@@ -147,7 +125,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       loadDecisions();
     } catch (error) {
-      console.error('TaskDecisionStatus: Error archiving decision:', error);
+      console.error('Error archiving decision:', error);
       toast({
         title: "Fehler",
         description: "Entscheidung konnte nicht archiviert werden.",
@@ -159,47 +137,16 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
   };
 
   const getResponseSummary = (participants: DecisionWithResponses['participants']) => {
-    let yesCount = 0;
-    let noCount = 0; 
-    let questionCount = 0;
-    let pending = 0;
-
-    participants.forEach(participant => {
-      if (participant.responses.length === 0) {
-        pending++;
-      } else {
-        // Get the latest response (responses are ordered by created_at DESC)
-        const latestResponse = participant.responses[0];
-        switch (latestResponse.response_type) {
-          case 'yes':
-            yesCount++;
-            break;
-          case 'no':
-            noCount++;
-            break;
-          case 'question':
-            questionCount++;
-            break;
-        }
-      }
-    });
+    const yesCount = participants.filter(p => p.responses.some(r => r.response_type === 'yes')).length;
+    const noCount = participants.filter(p => p.responses.some(r => r.response_type === 'no')).length;
+    const questionCount = participants.filter(p => p.responses.some(r => r.response_type === 'question')).length;
+    const totalResponses = yesCount + noCount + questionCount;
+    const pending = participants.length - totalResponses;
 
     return { yesCount, noCount, questionCount, pending, total: participants.length };
   };
 
-  console.log('TaskDecisionStatus: Rendering with decisions:', decisions.length);
-  console.log('TaskDecisionStatus: Current user ID:', currentUserId);
-  console.log('TaskDecisionStatus: Task creator ID:', createdBy);
-  
   if (decisions.length === 0) {
-    // Temporary debug: show when no decisions are found
-    if (currentUserId === createdBy) {
-      return (
-        <div className="text-xs text-muted-foreground p-2 border border-dashed rounded">
-          Debug: Keine Entscheidungen gefunden für Task {taskId}
-        </div>
-      );
-    }
     return null;
   }
 
