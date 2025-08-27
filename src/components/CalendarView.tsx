@@ -44,6 +44,7 @@ export function CalendarView() {
   const [selectedAppointment, setSelectedAppointment] = useState<CalendarEvent | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [preparationSidebarOpen, setPreparationSidebarOpen] = useState(false);
+  const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<CalendarEvent | null>(null);
 
   useEffect(() => {
     if (view === 'week') {
@@ -388,17 +389,17 @@ export function CalendarView() {
   };
 
   const handlePreparationClick = (appointment: CalendarEvent) => {
-    setSelectedAppointment(appointment);
+    setSelectedAppointmentForPreparation(appointment);
     setPreparationSidebarOpen(true);
-  };
-
-  const handleSidebarClose = () => {
-    setSidebarOpen(false);
-    setSelectedAppointment(null);
   };
 
   const handlePreparationSidebarClose = () => {
     setPreparationSidebarOpen(false);
+    setSelectedAppointmentForPreparation(null);
+  };
+
+  const handleSidebarClose = () => {
+    setSidebarOpen(false);
     setSelectedAppointment(null);
   };
 
@@ -523,9 +524,9 @@ export function CalendarView() {
 
       {/* Appointment Preparation Sidebar */}
       <AppointmentPreparationSidebar
-        appointmentId={selectedAppointment?.id || null}
-        appointmentTitle={selectedAppointment?.title}
-        appointmentDate={selectedAppointment?.date ? selectedAppointment.date.toISOString() : undefined}
+        appointmentId={selectedAppointmentForPreparation?.id || null}
+        appointmentTitle={selectedAppointmentForPreparation?.title}
+        appointmentDate={selectedAppointmentForPreparation?.date.toISOString()}
         isOpen={preparationSidebarOpen}
         onClose={handlePreparationSidebarClose}
       />

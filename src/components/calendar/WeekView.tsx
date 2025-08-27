@@ -225,7 +225,7 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
                   return (
                     <div
                       key={event.id}
-                      className={`text-xs p-2 mb-1 rounded cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)}`}
+                      className={`text-xs p-2 mb-1 rounded cursor-pointer hover:opacity-80 transition-opacity group ${getEventTypeColor(event)}`}
                       style={{ 
                         backgroundColor: event.category_color || undefined,
                         gridColumn: spanDays > 1 ? `span ${spanDays}` : undefined,
@@ -237,17 +237,29 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
                       }}
                       onClick={() => onAppointmentClick?.(event)}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium truncate">
-                          {event.title}
-                        </div>
-                        {documentCounts[event.id] > 0 && (
-                          <div className="flex items-center space-x-1 ml-1">
-                            <FileText className="h-3 w-3" />
-                            <span className="text-xs">{documentCounts[event.id]}</span>
-                          </div>
-                        )}
-                      </div>
+                       <div className="flex items-center justify-between">
+                         <div className="font-medium truncate">
+                           {event.title}
+                         </div>
+                         <div className="flex items-center space-x-1">
+                           {documentCounts[event.id] > 0 && (
+                             <div className="flex items-center space-x-1">
+                               <FileText className="h-3 w-3" />
+                               <span className="text-xs">{documentCounts[event.id]}</span>
+                             </div>
+                           )}
+                           <button
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               onPreparationClick?.(event);
+                             }}
+                             className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
+                             title="Vorbereitung erstellen/bearbeiten"
+                           >
+                             📋
+                           </button>
+                         </div>
+                       </div>
                     </div>
                   );
                 })}
@@ -333,7 +345,7 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
                         return (
                           <div
                             key={event.id}
-                            className={`absolute pt-1 pb-1 pl-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto ${getEventTypeColor(event)}`}
+                            className={`absolute pt-1 pb-1 pl-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto group ${getEventTypeColor(event)}`}
                             style={{ 
                               width: `${widthPercentage - 1}%`,
                               left: `${leftOffset}%`,
@@ -348,12 +360,24 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
                           >
                             <div className="flex items-center justify-between">
                               <div className="font-medium truncate text-xs">{event.title}</div>
-                              {documentCounts[event.id] > 0 && (
-                                <div className="flex items-center space-x-1 ml-1">
-                                  <FileText className="h-3 w-3" />
-                                  <span className="text-xs">{documentCounts[event.id]}</span>
-                                </div>
-                              )}
+                              <div className="flex items-center space-x-1">
+                                {documentCounts[event.id] > 0 && (
+                                  <div className="flex items-center space-x-1">
+                                    <FileText className="h-3 w-3" />
+                                    <span className="text-xs">{documentCounts[event.id]}</span>
+                                  </div>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPreparationClick?.(event);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
+                                  title="Vorbereitung erstellen/bearbeiten"
+                                >
+                                  📋
+                                </button>
+                              </div>
                             </div>
                             <div className="opacity-80 truncate w-full text-xs">
                               {formatEventDisplay(event)}

@@ -20,6 +20,7 @@ import { NewUserForm } from "@/components/NewUserForm";
 import { CreateDemoUsers } from "@/components/CreateDemoUsers";
 import { TenantCollaboration } from "@/components/TenantCollaboration";
 import { DecisionEmailTemplates } from "@/components/task-decisions/DecisionEmailTemplates";
+import AppointmentPreparationTemplateAdmin from "@/components/AppointmentPreparationTemplateAdmin";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -480,11 +481,12 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-10">
+        <TabsList className="grid w-full grid-cols-11">
           <TabsTrigger value="general">Allgemein</TabsTrigger>
           <TabsTrigger value="status">Status</TabsTrigger>
           <TabsTrigger value="expenses">Kosten</TabsTrigger>
           <TabsTrigger value="appointments">Termine</TabsTrigger>
+          <TabsTrigger value="preparation">Vorbereitung</TabsTrigger>
           <TabsTrigger value="tasks">Aufgaben</TabsTrigger>
           <TabsTrigger value="todos">ToDos</TabsTrigger>
           <TabsTrigger value="meetings">Meetings</TabsTrigger>
@@ -504,6 +506,10 @@ export default function Administration() {
 
         <TabsContent value="expenses" className="space-y-6">
           <ExpenseManagement />
+        </TabsContent>
+
+        <TabsContent value="preparation" className="space-y-6">
+          <AppointmentPreparationTemplateAdmin />
         </TabsContent>
 
         <TabsContent value="decisions" className="space-y-6">

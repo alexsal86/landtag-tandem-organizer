@@ -15,6 +15,8 @@ import { Separator } from '@/components/ui/separator';
 import { FileText, Download, Save, Archive, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface AppointmentPreparationSidebarProps {
   appointmentId: string | null;
@@ -245,11 +247,150 @@ export default function AppointmentPreparationSidebar({
   };
 
   const handleExportPDF = async () => {
-    // TODO: Implement PDF export functionality
-    toast({
-      title: 'Feature in Entwicklung',
-      description: 'PDF-Export wird bald verfügbar sein.',
-    });
+    if (!preparation) return;
+
+    try {
+      // Create a hidden div with the content to print
+      const printElement = document.createElement('div');
+      printElement.style.position = 'absolute';
+      printElement.style.left = '-9999px';
+      printElement.style.width = '210mm';
+      printElement.style.minHeight = '297mm';
+      printElement.style.padding = '20mm';
+      printElement.style.backgroundColor = 'white';
+      printElement.style.fontFamily = 'Arial, sans-serif';
+      printElement.style.fontSize = '12px';
+      printElement.style.lineHeight = '1.4';
+
+      const template = templates.find(t => t.id === preparation.template_id);
+      
+      printElement.innerHTML = `
+        <div>
+          <h1 style="font-size: 20px; margin-bottom: 20px; color: #1f2937;">
+            ${preparation.title}
+          </h1>
+          
+          <div style="margin-bottom: 20px; padding: 10px; background-color: #f3f4f6; border-radius: 6px;">
+            <p><strong>Termin:</strong> ${appointmentTitle || 'Unbenannt'}</p>
+            ${appointmentDate ? `<p><strong>Datum:</strong> ${format(new Date(appointmentDate), 'dd.MM.yyyy HH:mm', { locale: de })}</p>` : ''}
+            <p><strong>Status:</strong> ${preparation.status === 'completed' ? 'Abgeschlossen' : 'In Bearbeitung'}</p>
+            <p><strong>Erstellt:</strong> ${format(new Date(preparation.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}</p>
+          </div>
+
+          ${template?.template_data.map((section: any) => {
+            if (section.type === 'section' && section.fields) {
+              return `
+                <div style="margin-bottom: 25px;">
+                  <h2 style="font-size: 16px; margin-bottom: 15px; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">
+                    ${section.title}
+                  </h2>
+                  ${section.fields.map((field: any) => {
+                    const value = preparation.preparation_data[field.id] || '';
+                    if (!value) return '';
+                    return `
+                      <div style="margin-bottom: 10px;">
+                        <p style="font-weight: bold; margin-bottom: 5px;">${field.label}:</p>
+                        <p style="margin-left: 10px; color: #374151;">${value}</p>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `;
+            }
+            
+            if (section.type === 'checklist') {
+              const completedItems = preparation.checklist_items.filter((item: any) => item.completed);
+              const totalItems = preparation.checklist_items.length;
+              
+              return `
+                <div style="margin-bottom: 25px;">
+                  <h2 style="font-size: 16px; margin-bottom: 15px; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">
+                    ${section.title} (${completedItems.length}/${totalItems})
+                  </h2>
+                  ${preparation.checklist_items.map((item: any) => `
+                    <div style="margin-bottom: 8px; display: flex; align-items: center;">
+                      <span style="margin-right: 8px; font-weight: bold;">
+                        ${item.completed ? '✓' : '☐'}
+                      </span>
+                      <span style="${item.completed ? 'text-decoration: line-through; color: #6b7280;' : ''}">
+                        ${item.label}
+                      </span>
+                    </div>
+                  `).join('')}
+                </div>
+              `;
+            }
+            
+            return '';
+          }).join('')}
+
+          ${preparation.notes ? `
+            <div style="margin-bottom: 25px;">
+              <h2 style="font-size: 16px; margin-bottom: 15px; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">
+                Notizen
+              </h2>
+              <p style="color: #374151; white-space: pre-wrap;">${preparation.notes}</p>
+            </div>
+          ` : ''}
+          
+          <div style="margin-top: 40px; text-align: center; color: #6b7280; font-size: 10px;">
+            Erstellt am ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: de })} | Terminvorbereitung
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(printElement);
+
+      // Generate PDF
+      const canvas = await html2canvas(printElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      // Add additional pages if needed
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      // Clean up
+      document.body.removeChild(printElement);
+
+      // Download PDF
+      const filename = `Terminvorbereitung_${appointmentTitle?.replace(/[^a-zA-Z0-9]/g, '_') || 'Termin'}_${format(new Date(), 'yyyy-MM-dd', { locale: de })}.pdf`;
+      pdf.save(filename);
+
+      toast({
+        title: 'Erfolg',
+        description: 'PDF wurde erfolgreich erstellt und heruntergeladen.',
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: 'Fehler',
+        description: 'PDF konnte nicht erstellt werden.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (loading) {

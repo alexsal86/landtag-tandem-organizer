@@ -201,24 +201,36 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
               {allDayEvents.map((event, index) => (
                 <div
                   key={event.id}
-                  className={`p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)}`}
+                  className={`p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity group ${getEventTypeColor(event)}`}
                   style={{ 
                     backgroundColor: event.category_color || undefined,
                     marginBottom: '4px'
                   }}
                   onClick={() => onAppointmentClick?.(event)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium truncate">
-                      {event.title}
-                    </div>
-                    {documentCounts[event.id] > 0 && (
-                      <div className="flex items-center space-x-1 ml-1">
-                        <FileText className="h-3 w-3" />
-                        <span className="text-xs">{documentCounts[event.id]}</span>
-                      </div>
-                    )}
-                  </div>
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium truncate">
+                            {event.title}
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            {documentCounts[event.id] > 0 && (
+                              <div className="flex items-center space-x-1">
+                                <FileText className="h-3 w-3" />
+                                <span className="text-xs">{documentCounts[event.id]}</span>
+                              </div>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onPreparationClick?.(event);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
+                              title="Vorbereitung erstellen/bearbeiten"
+                            >
+                              📋
+                            </button>
+                          </div>
+                        </div>
                   {event.location && (
                     <div className="opacity-70 truncate text-xs">{event.location}</div>
                   )}
@@ -360,7 +372,7 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                         return (
                           <div
                            key={`${event.id}-${hour}`}
-                           className={`absolute p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity ${getEventTypeColor(event)} ${isEventContinuation ? 'border-l-4 border-l-yellow-400' : ''}`}
+                           className={`absolute p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity group ${getEventTypeColor(event)} ${isEventContinuation ? 'border-l-4 border-l-yellow-400' : ''}`}
                            style={{ 
                              width: `${widthPercentage - 2}%`, // Reduced width to create spacing
                              left: `${leftOffset + 1}%`, // Add left margin for spacing
@@ -373,17 +385,29 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                            }}
                            onClick={() => onAppointmentClick?.(event)}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="font-medium truncate">
-                                {isEventContinuation ? `→ ${event.title}` : event.title}
-                              </div>
-                              {documentCounts[event.id] > 0 && (
-                                <div className="flex items-center space-x-1 ml-1">
-                                  <FileText className="h-3 w-3" />
-                                  <span className="text-xs">{documentCounts[event.id]}</span>
-                                </div>
-                              )}
-                            </div>
+                             <div className="flex items-center justify-between">
+                               <div className="font-medium truncate">
+                                 {isEventContinuation ? `→ ${event.title}` : event.title}
+                               </div>
+                               <div className="flex items-center space-x-1">
+                                 {documentCounts[event.id] > 0 && (
+                                   <div className="flex items-center space-x-1">
+                                     <FileText className="h-3 w-3" />
+                                     <span className="text-xs">{documentCounts[event.id]}</span>
+                                   </div>
+                                 )}
+                                 <button
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     onPreparationClick?.(event);
+                                   }}
+                                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
+                                   title="Vorbereitung erstellen/bearbeiten"
+                                 >
+                                   📋
+                                 </button>
+                               </div>
+                             </div>
                             <div className="opacity-80 text-xs">
                               {isEventContinuation 
                                 ? `→ ${formatEventDisplay(event)}`
