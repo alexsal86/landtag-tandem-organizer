@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, startTransition } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, MapPin, Users, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -364,7 +364,10 @@ export function CalendarView() {
         break;
     }
     
-    setCurrentDate(newDate);
+    // Use startTransition for smoother updates
+    startTransition(() => {
+      setCurrentDate(newDate);
+    });
   };
 
   const handleAppointmentClick = (appointment: CalendarEvent) => {
