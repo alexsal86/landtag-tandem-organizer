@@ -8,9 +8,10 @@ interface WeekViewProps {
   weekStart: Date;
   events: CalendarEvent[];
   onAppointmentClick?: (appointment: CalendarEvent) => void;
+  onPreparationClick?: (appointment: CalendarEvent) => void;
 }
 
-export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProps) {
+export function WeekView({ weekStart, events, onAppointmentClick, onPreparationClick }: WeekViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
   
