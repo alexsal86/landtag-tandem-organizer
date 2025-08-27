@@ -38,6 +38,45 @@ export const TaskDecisionResponse = ({
 
       if (error) throw error;
 
+      // Check if all participants have responded
+      const { data: participants } = await supabase
+        .from('task_decision_participants')
+        .select('*')
+        .eq('decision_id', decisionId);
+
+      const { data: responses } = await supabase
+        .from('task_decision_responses')
+        .select('participant_id')
+        .eq('decision_id', decisionId);
+
+      // If all participants have responded, notify the creator
+      if (participants && responses && participants.length === responses.length) {
+        // Get decision details and creator
+        const { data: decision } = await supabase
+          .from('task_decisions')
+          .select('title, created_by')
+          .eq('id', decisionId)
+          .single();
+
+        if (decision) {
+          const { error: notificationError } = await supabase.rpc('create_notification', {
+            user_id_param: decision.created_by,
+            type_name: 'task_decision_completed',
+            title_param: 'Entscheidungsergebnis verfügbar',
+            message_param: `Alle Antworten für "${decision.title}" sind eingegangen.`,
+            data_param: {
+              decision_id: decisionId,
+              decision_title: decision.title
+            },
+            priority_param: 'medium'
+          });
+
+          if (notificationError) {
+            console.error('Error creating completion notification:', notificationError);
+          }
+        }
+      }
+
       toast({
         title: "Erfolgreich",
         description: "Ihre Antwort wurde gespeichert.",

@@ -82,6 +82,26 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
 
       if (participantsError) throw participantsError;
 
+      // Send notifications to participants
+      for (const userId of selectedUsers) {
+        const { error: notificationError } = await supabase.rpc('create_notification', {
+          user_id_param: userId,
+          type_name: 'task_decision_request',
+          title_param: 'Neue Entscheidungsanfrage',
+          message_param: `Sie wurden um eine Entscheidung gebeten: "${title.trim()}"`,
+          data_param: {
+            decision_id: decision.id,
+            task_id: taskId,
+            decision_title: title.trim()
+          },
+          priority_param: 'medium'
+        });
+
+        if (notificationError) {
+          console.error('Error creating notification for user:', userId, notificationError);
+        }
+      }
+
       toast({
         title: "Erfolgreich",
         description: "Entscheidungsanfrage wurde erstellt.",
