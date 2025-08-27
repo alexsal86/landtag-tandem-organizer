@@ -23,7 +23,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { AppointmentPreparationsView } from "./AppointmentPreparationsView";
 
 interface EventPlanning {
   id: string;
@@ -142,44 +141,17 @@ interface Profile {
   avatar_url?: string;
 }
 
-interface AppointmentPreparation {
-  id: string;
-  appointment_id: string;
-  template_id?: string;
-  tenant_id: string;
-  created_by: string;
-  title: string;
-  status: string;
-  notes?: string;
-  preparation_data: any;
-  checklist_items: any;
-  is_archived: boolean;
-  archived_at?: string;
-  created_at: string;
-  updated_at: string;
-  appointment?: {
-    title: string;
-    category: string;
-    start_time: string;
-  };
-}
-
 export function EventPlanningView() {
   console.log('=== EventPlanningView component loaded ===');
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
-  
   const [plannings, setPlannings] = useState<EventPlanning[]>([]);
   const [selectedPlanning, setSelectedPlanning] = useState<EventPlanning | null>(null);
   const [planningDates, setPlanningDates] = useState<EventPlanningDate[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
-  const [appointmentPreparations, setAppointmentPreparations] = useState<AppointmentPreparation[]>([]);
-  const [archivedPreparations, setArchivedPreparations] = useState<AppointmentPreparation[]>([]);
-  const [showArchive, setShowArchive] = useState(false);
-  const [activeTab, setActiveTab] = useState<'events' | 'appointments'>('events');
   const [contacts, setContacts] = useState<EventPlanningContact[]>([]);
   const [speakers, setSpeakers] = useState<EventPlanningSpeaker[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -227,7 +199,6 @@ export function EventPlanningView() {
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user);
     fetchPlannings();
-    fetchAppointmentPreparations();
     fetchAllProfiles();
     fetchAvailableContacts();
     fetchPlanningTemplates();
@@ -249,15 +220,29 @@ export function EventPlanningView() {
     setPlanningTemplates(data || []);
   };
 
+  useEffect(() => {
+    if (selectedPlanning) {
+      fetchPlanningDetails(selectedPlanning.id);
+      loadAllItemCounts(); // Load counts for all items
+    }
+  }, [selectedPlanning]);
+
   const fetchPlannings = async () => {
-    if (!user) return;
+    console.log('fetchPlannings called, user:', user);
+    if (!user) {
+      console.log('No user found, returning early');
+      return;
+    }
 
     try {
       setLoading(true);
+      console.log('Fetching plannings from Supabase...');
       const { data, error } = await supabase
         .from("event_plannings")
         .select("*")
         .order("created_at", { ascending: false });
+
+      console.log('Supabase response:', { data, error });
 
       if (error) {
         console.error('Error fetching plannings:', error);
@@ -269,7 +254,13 @@ export function EventPlanningView() {
         return;
       }
 
+      console.log('Successfully fetched plannings:', data);
       setPlannings(data || []);
+      
+      // Also fetch all collaborators for all plannings
+      if (data && data.length > 0) {
+        await fetchAllCollaborators(data.map(p => p.id));
+      }
     } catch (err) {
       console.error('Unexpected error in fetchPlannings:', err);
       toast({
@@ -279,6 +270,35 @@ export function EventPlanningView() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllCollaborators = async (planningIds: string[]) => {
+    const { data: collabs } = await supabase
+      .from("event_planning_collaborators")
+      .select("*")
+      .in("event_planning_id", planningIds);
+
+    if (collabs) {
+      // Fetch profile data separately
+      const collabsWithProfiles = await Promise.all(
+        collabs.map(async (collab) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name, avatar_url")
+            .eq("user_id", collab.user_id)
+            .single();
+          
+          return {
+            ...collab,
+            profiles: profile
+          };
+        })
+      );
+      
+      setCollaborators(collabsWithProfiles);
+    } else {
+      setCollaborators([]);
     }
   };
 
@@ -312,100 +332,115 @@ export function EventPlanningView() {
     setAvailableContacts(data || []);
   };
 
-  const fetchAppointmentPreparations = async () => {
-    if (!user) return;
+  const fetchPlanningDetails = async (planningId: string) => {
+    // Fetch dates
+    const { data: dates } = await supabase
+      .from("event_planning_dates")
+      .select("*")
+      .eq("event_planning_id", planningId)
+      .order("date_time");
 
-    try {
-      // Fetch active preparations
-      const { data: activeData, error: activeError } = await supabase
-        .from("appointment_preparations")
-        .select(`
-          *,
-          appointment:appointments(title, category, start_time)
-        `)
-        .eq("is_archived", false)
-        .order("created_at", { ascending: false });
+    setPlanningDates(dates || []);
 
-      if (activeError) {
-        console.error("Error fetching appointment preparations:", activeError);
-        return;
-      }
+    // Fetch checklist items
+    const { data: checklist } = await supabase
+      .from("event_planning_checklist_items")
+      .select("*")
+      .eq("event_planning_id", planningId)
+      .order("order_index");
 
-      setAppointmentPreparations((activeData || []).map(item => ({
-        ...item,
-        checklist_items: Array.isArray(item.checklist_items) ? item.checklist_items : 
-                        (typeof item.checklist_items === 'string' ? JSON.parse(item.checklist_items) : []),
-        preparation_data: typeof item.preparation_data === 'string' ? JSON.parse(item.preparation_data) : item.preparation_data
-      })));
+    // Transform the data to match our interface
+    const transformedChecklist = (checklist || []).map((item: any) => ({
+      ...item,
+      sub_items: Array.isArray(item.sub_items) ? item.sub_items : 
+                 (item.sub_items ? JSON.parse(item.sub_items as string) : [])
+    }));
+    setChecklistItems(transformedChecklist);
+    loadAllItemCounts(transformedChecklist); // Load counts after checklist is loaded
 
-      // Fetch archived preparations
-      const { data: archivedData, error: archivedError } = await supabase
-        .from("appointment_preparations")
-        .select(`
-          *,
-          appointment:appointments(title, category, start_time)
-        `)
-        .eq("is_archived", true)
-        .order("archived_at", { ascending: false });
+    // Fetch collaborators
+    const { data: collabs } = await supabase
+      .from("event_planning_collaborators")
+      .select("*")
+      .eq("event_planning_id", planningId);
 
-      if (archivedError) {
-        console.error("Error fetching archived preparations:", archivedError);
-        return;
-      }
-
-      setArchivedPreparations((archivedData || []).map(item => ({
-        ...item,
-        checklist_items: Array.isArray(item.checklist_items) ? item.checklist_items : 
-                        (typeof item.checklist_items === 'string' ? JSON.parse(item.checklist_items) : []),
-        preparation_data: typeof item.preparation_data === 'string' ? JSON.parse(item.preparation_data) : item.preparation_data
-      })));
-
-    } catch (error) {
-      console.error("Unexpected error fetching preparations:", error);
+    if (collabs) {
+      // Fetch profile data separately
+      const collabsWithProfiles = await Promise.all(
+        collabs.map(async (collab) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name, avatar_url")
+            .eq("user_id", collab.user_id)
+            .single();
+          
+          return {
+            ...collab,
+            profiles: profile
+          };
+        })
+      );
+      
+      setCollaborators(collabsWithProfiles);
+    } else {
+      setCollaborators([]);
     }
+
+    // Fetch contacts
+    const { data: contactsData } = await supabase
+      .from("event_planning_contacts")
+      .select("*")
+      .eq("event_planning_id", planningId)
+      .order("created_at");
+
+    setContacts(contactsData || []);
+
+    // Fetch speakers
+    const { data: speakersData } = await supabase
+      .from("event_planning_speakers")
+      .select("*")
+      .eq("event_planning_id", planningId)
+      .order("order_index");
+
+    setSpeakers(speakersData || []);
   };
 
-  // Function to sync appointment category with preparation
-  const syncPreparationWithAppointment = async () => {
-    if (!user) return;
+  // Utility function for debouncing
+  function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
+    let timeout: NodeJS.Timeout;
+    return ((...args: any[]) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    }) as T;
+  }
 
-    try {
-      const { data: preparations, error } = await supabase
-        .from("appointment_preparations")
-        .select(`
-          id,
-          appointment_id,
-          preparation_data,
-          appointment:appointments(category)
-        `)
-        .eq("is_archived", false);
+  // Debounced auto-save function
+  const debouncedUpdate = useCallback(
+    debounce(async (field: string, value: any, planningId: string) => {
+      const { error } = await supabase
+        .from("event_plannings")
+        .update({ [field]: value })
+        .eq("id", planningId);
 
-      if (error || !preparations) return;
-
-      for (const prep of preparations) {
-        if (prep.appointment && prep.preparation_data) {
-          const prepData = typeof prep.preparation_data === 'string' ? 
-                          JSON.parse(prep.preparation_data) : prep.preparation_data;
-          const currentEventType = prepData?.event_type;
-          const appointmentCategory = prep.appointment.category;
-          
-          // Update if category changed
-          if (currentEventType !== appointmentCategory) {
-            const updatedData = {
-              ...prepData,
-              event_type: appointmentCategory
-            };
-
-            await supabase
-              .from("appointment_preparations")
-              .update({ preparation_data: updatedData })
-              .eq("id", prep.id);
-          }
-        }
+      if (error) {
+        toast({
+          title: "Fehler",
+          description: "Änderung konnte nicht gespeichert werden.",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      console.error("Error syncing preparations with appointments:", error);
-    }
+    }, 500),
+    []
+  );
+
+  const updatePlanningField = async (field: string, value: any) => {
+    if (!selectedPlanning) return;
+
+    // Update local state immediately
+    setSelectedPlanning({ ...selectedPlanning, [field]: value });
+    
+    // Debounced save to database
+    debouncedUpdate(field, value, selectedPlanning.id);
   };
 
   const createPlanning = async () => {
@@ -451,55 +486,1315 @@ export function EventPlanningView() {
     });
   };
 
-  // Type guard function
-  const isAppointmentsTab = activeTab === 'appointments';
-  const isEventsTab = activeTab === 'events';
+  const deletePlanning = async (planningId: string) => {
+    const { error } = await supabase
+      .from("event_plannings")
+      .delete()
+      .eq("id", planningId);
 
-  // Show appointment preparations view
-  if (isAppointmentsTab) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Planungen</h2>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant={isEventsTab ? 'default' : 'outline'}
-              onClick={() => setActiveTab('events')}
-            >
-              Veranstaltungen
-            </Button>
-            <Button
-              variant={isAppointmentsTab ? 'default' : 'outline'}
-              onClick={() => setActiveTab('appointments')}
-            >
-              Terminvorbereitungen
-            </Button>
-          </div>
-        </div>
-        <AppointmentPreparationsView />
-      </div>
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Planung konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    fetchPlannings();
+    if (selectedPlanning?.id === planningId) {
+      setSelectedPlanning(null);
+    }
+
+    toast({
+      title: "Erfolg",
+      description: "Planung wurde gelöscht.",
+    });
+  };
+
+  const addPlanningDate = async () => {
+    if (!selectedPlanning || !selectedDate) return;
+
+    const dateTime = new Date(selectedDate);
+    const [hours, minutes] = selectedTime.split(":").map(Number);
+    dateTime.setHours(hours, minutes);
+
+    const { data, error } = await supabase
+      .from("event_planning_dates")
+      .insert({
+        event_planning_id: selectedPlanning.id,
+        date_time: dateTime.toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Termin konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create blocked appointment and store appointment_id
+    const { data: appointment, error: appointmentError } = await supabase
+      .from("appointments")
+      .insert({
+        user_id: user?.id,
+        tenant_id: currentTenant?.id || '', // Use current tenant ID
+        title: `Geplant: ${selectedPlanning.title}`,
+        start_time: dateTime.toISOString(),
+        end_time: new Date(dateTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+        category: "blocked",
+        status: "planned",
+      })
+      .select()
+      .single();
+
+    if (!appointmentError && appointment) {
+      // Update the planning date with the appointment_id
+      await supabase
+        .from("event_planning_dates")
+        .update({ appointment_id: appointment.id })
+        .eq("id", data.id);
+    }
+
+    fetchPlanningDetails(selectedPlanning.id);
+    setSelectedDate(undefined);
+    setIsDateDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Termin wurde hinzugefügt und im Kalender geblockt.",
+    });
+  };
+
+  const confirmDate = async (dateId: string) => {
+    if (!selectedPlanning) return;
+
+    // First, unconfirm all other dates
+    await supabase
+      .from("event_planning_dates")
+      .update({ is_confirmed: false })
+      .eq("event_planning_id", selectedPlanning.id);
+
+    // Confirm the selected date
+    const { data, error } = await supabase
+      .from("event_planning_dates")
+      .update({ is_confirmed: true })
+      .eq("id", dateId)
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Termin konnte nicht bestätigt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Update planning with confirmed date
+    await updatePlanningField("confirmed_date", data.date_time);
+
+    // Update the appointment to be confirmed instead of blocked
+    const confirmedDate = planningDates.find(d => d.id === dateId);
+    if (confirmedDate?.appointment_id) {
+      await supabase
+        .from("appointments")
+        .update({
+          title: selectedPlanning.title,
+          category: "appointment",
+          status: "confirmed",
+        })
+        .eq("id", confirmedDate.appointment_id);
+    }
+
+    // Delete all other planning dates and their appointments
+    const otherDates = planningDates.filter(d => d.id !== dateId);
+    for (const date of otherDates) {
+      if (date.appointment_id) {
+        await supabase
+          .from("appointments")
+          .delete()
+          .eq("id", date.appointment_id);
+      }
+    }
+
+    await supabase
+      .from("event_planning_dates")
+      .delete()
+      .eq("event_planning_id", selectedPlanning.id)
+      .neq("id", dateId);
+
+    fetchPlanningDetails(selectedPlanning.id);
+
+    toast({
+      title: "Erfolg",
+      description: "Termin wurde bestätigt und andere Termine entfernt.",
+    });
+  };
+
+  const updateConfirmedDate = async (dateId: string, newDateTime: string) => {
+    if (!selectedPlanning) return;
+
+    const { error } = await supabase
+      .from("event_planning_dates")
+      .update({ date_time: newDateTime })
+      .eq("id", dateId);
+
+    if (error) {
+      toast({
+        title: "Fehler", 
+        description: "Termin konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Update the associated appointment
+    const dateToUpdate = planningDates.find(d => d.id === dateId);
+    if (dateToUpdate?.appointment_id) {
+      const newDate = new Date(newDateTime);
+      await supabase
+        .from("appointments")
+        .update({
+          start_time: newDate.toISOString(),
+          end_time: new Date(newDate.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+        })
+        .eq("id", dateToUpdate.appointment_id);
+    }
+
+    // Update planning confirmed date
+    await updatePlanningField("confirmed_date", newDateTime);
+    
+    fetchPlanningDetails(selectedPlanning.id);
+
+    toast({
+      title: "Erfolg",
+      description: "Termin wurde aktualisiert.",
+    });
+  };
+
+  const toggleChecklistItem = async (itemId: string, isCompleted: boolean) => {
+    const { error } = await supabase
+      .from("event_planning_checklist_items")
+      .update({ is_completed: !isCompleted })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Checkliste konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChecklistItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, is_completed: !isCompleted } : item
+      )
     );
-  }
+  };
 
-  // Show events planning view
+  const updateChecklistItemTitle = async (itemId: string, title: string) => {
+    const { error } = await supabase
+      .from("event_planning_checklist_items")
+      .update({ title })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Checkliste konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChecklistItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, title } : item
+      )
+    );
+  };
+
+  const addChecklistItem = async () => {
+    if (!selectedPlanning || !newChecklistItem.trim()) return;
+
+    const maxOrder = Math.max(...checklistItems.map(item => item.order_index), -1);
+    
+    // Determine if it's a separator (starts with ---)
+    const itemType = newChecklistItem.startsWith('---') ? 'separator' : 'item';
+    const title = itemType === 'separator' ? newChecklistItem.replace(/^---\s*/, '') : newChecklistItem;
+
+    const { data, error } = await supabase
+      .from("event_planning_checklist_items")
+      .insert({
+        event_planning_id: selectedPlanning.id,
+        title: title,
+        order_index: maxOrder + 1,
+        type: itemType,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Checklisten-Punkt konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Transform the new data to match our interface
+    const transformedData = {
+      ...data,
+      sub_items: Array.isArray(data.sub_items) ? data.sub_items : 
+                 (data.sub_items ? JSON.parse(data.sub_items as string) : [])
+    };
+    setChecklistItems([...checklistItems, transformedData]);
+    setNewChecklistItem("");
+  };
+
+  const deleteChecklistItem = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from("event_planning_checklist_items")
+        .delete()
+        .eq("id", itemId);
+
+      if (error) throw error;
+
+      setChecklistItems(items => items.filter(item => item.id !== itemId));
+      
+      toast({
+        title: "Erfolg",
+        description: "Checklisten-Punkt wurde gelöscht.",
+      });
+    } catch (error) {
+      console.error('Error deleting checklist item:', error);
+      toast({
+        title: "Fehler",
+        description: "Checklisten-Punkt konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addCollaborator = async (userId: string, canEdit: boolean) => {
+    if (!selectedPlanning) return;
+
+    const { error } = await supabase
+      .from("event_planning_collaborators")
+      .insert({
+        event_planning_id: selectedPlanning.id,
+        user_id: userId,
+        can_edit: canEdit,
+      });
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Mitarbeiter konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    fetchPlanningDetails(selectedPlanning.id);
+    setIsCollaboratorDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Mitarbeiter wurde hinzugefügt.",
+    });
+  };
+
+  const updateCollaboratorPermission = async (collaboratorId: string, canEdit: boolean) => {
+    const { error } = await supabase
+      .from("event_planning_collaborators")
+      .update({ can_edit: canEdit })
+      .eq("id", collaboratorId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Berechtigung konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCollaborators(collaborators.map(collab =>
+      collab.id === collaboratorId ? { ...collab, can_edit: canEdit } : collab
+    ));
+
+    toast({
+      title: "Erfolg",
+      description: "Berechtigung wurde aktualisiert.",
+    });
+  };
+
+  // Add contact functions
+  const addContact = async () => {
+    if (!selectedPlanning || !newContact.name.trim()) return;
+
+    const { data, error } = await supabase
+      .from("event_planning_contacts")
+      .insert({
+        event_planning_id: selectedPlanning.id,
+        name: newContact.name,
+        email: newContact.email || null,
+        phone: newContact.phone || null,
+        role: "contact_person",
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Ansprechperson konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setContacts([...contacts, data]);
+    setNewContact({ name: "", email: "", phone: "" });
+    setIsContactDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Ansprechperson wurde hinzugefügt.",
+    });
+  };
+
+  const removeContact = async (contactId: string) => {
+    const { error } = await supabase
+      .from("event_planning_contacts")
+      .delete()
+      .eq("id", contactId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Ansprechperson konnte nicht entfernt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setContacts(contacts.filter(contact => contact.id !== contactId));
+
+    toast({
+      title: "Erfolg",
+      description: "Ansprechperson wurde entfernt.",
+    });
+  };
+
+  // Add speaker functions
+  const addSpeaker = async () => {
+    if (!selectedPlanning || !newSpeaker.name.trim()) return;
+
+    const maxOrder = Math.max(...speakers.map(speaker => speaker.order_index), -1);
+
+    const { data, error } = await supabase
+      .from("event_planning_speakers")
+      .insert({
+        event_planning_id: selectedPlanning.id,
+        name: newSpeaker.name,
+        email: newSpeaker.email || null,
+        phone: newSpeaker.phone || null,
+        bio: newSpeaker.bio || null,
+        topic: newSpeaker.topic || null,
+        order_index: maxOrder + 1,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Referent konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSpeakers([...speakers, data]);
+    setNewSpeaker({ name: "", email: "", phone: "", bio: "", topic: "" });
+    setIsSpeakerDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Referent wurde hinzugefügt.",
+    });
+  };
+
+  const removeSpeaker = async (speakerId: string) => {
+    const { error } = await supabase
+      .from("event_planning_speakers")
+      .delete()
+      .eq("id", speakerId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Referent konnte nicht entfernt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSpeakers(speakers.filter(speaker => speaker.id !== speakerId));
+
+    toast({
+      title: "Erfolg",
+      description: "Referent wurde entfernt.",
+    });
+  };
+
+  // Edit contact functions
+  const editContact = async () => {
+    if (!editingContact || !editingContact.name.trim()) return;
+
+    const { data, error } = await supabase
+      .from("event_planning_contacts")
+      .update({
+        name: editingContact.name,
+        email: editingContact.email || null,
+        phone: editingContact.phone || null,
+      })
+      .eq("id", editingContact.id)
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Ansprechperson konnte nicht bearbeitet werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setContacts(contacts.map(contact => 
+      contact.id === editingContact.id ? data : contact
+    ));
+    setEditingContact(null);
+    setIsEditContactDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Ansprechperson wurde bearbeitet.",
+    });
+  };
+
+  // Edit speaker functions
+  const editSpeaker = async () => {
+    if (!editingSpeaker || !editingSpeaker.name.trim()) return;
+
+    const { data, error } = await supabase
+      .from("event_planning_speakers")
+      .update({
+        name: editingSpeaker.name,
+        email: editingSpeaker.email || null,
+        phone: editingSpeaker.phone || null,
+        bio: editingSpeaker.bio || null,
+        topic: editingSpeaker.topic || null,
+      })
+      .eq("id", editingSpeaker.id)
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Referent konnte nicht bearbeitet werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSpeakers(speakers.map(speaker => 
+      speaker.id === editingSpeaker.id ? data : speaker
+    ));
+    setEditingSpeaker(null);
+    setIsEditSpeakerDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Referent wurde bearbeitet.",
+    });
+  };
+
+  // Helper functions for auto-filling contact/speaker data
+  const fillFromContact = (contactId: string) => {
+    const contact = availableContacts.find(c => c.id === contactId);
+    if (contact) {
+      setNewContact({
+        name: contact.name || "",
+        email: contact.email || "",
+        phone: contact.phone || "",
+      });
+    }
+  };
+
+  const fillFromProfile = (profileId: string) => {
+    const profile = allProfiles.find(p => p.user_id === profileId);
+    if (profile) {
+      setNewContact({
+        name: profile.display_name || "",
+        email: "",
+        phone: "",
+      });
+    }
+  };
+
+  const fillSpeakerFromContact = (contactId: string) => {
+    const contact = availableContacts.find(c => c.id === contactId);
+    if (contact) {
+      setNewSpeaker({
+        name: contact.name || "",
+        email: contact.email || "",
+        phone: contact.phone || "",
+        bio: contact.role || "",
+        topic: "",
+      });
+    }
+  };
+
+  // Digital event functions
+  const updateDigitalEventSettings = async () => {
+    if (!selectedPlanning) return;
+
+    const { error } = await supabase
+      .from("event_plannings")
+      .update({
+        is_digital: true,
+        digital_platform: digitalEvent.platform || null,
+        digital_link: digitalEvent.link || null,
+        digital_access_info: digitalEvent.access_info || null,
+      })
+      .eq("id", selectedPlanning.id);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Digitale Einstellungen konnten nicht gespeichert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedPlanning({
+      ...selectedPlanning,
+      is_digital: true,
+      digital_platform: digitalEvent.platform,
+      digital_link: digitalEvent.link,
+      digital_access_info: digitalEvent.access_info,
+    });
+
+    setIsDigitalDialogOpen(false);
+
+    toast({
+      title: "Erfolg",
+      description: "Digitale Einstellungen wurden gespeichert.",
+    });
+  };
+
+  const removeDigitalEventSettings = async () => {
+    if (!selectedPlanning) return;
+
+    const { error } = await supabase
+      .from("event_plannings")
+      .update({
+        is_digital: false,
+        digital_platform: null,
+        digital_link: null,
+        digital_access_info: null,
+      })
+      .eq("id", selectedPlanning.id);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Digitale Einstellungen konnten nicht entfernt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedPlanning({
+      ...selectedPlanning,
+      is_digital: false,
+      digital_platform: undefined,
+      digital_link: undefined,
+      digital_access_info: undefined,
+    });
+
+    toast({
+      title: "Erfolg",
+      description: "Digitale Einstellungen wurden entfernt.",
+    });
+  };
+
+  const removeCollaborator = async (collaboratorId: string) => {
+    const { error } = await supabase
+      .from("event_planning_collaborators")
+      .delete()
+      .eq("id", collaboratorId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Mitarbeiter konnte nicht entfernt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCollaborators(collaborators.filter(collab => collab.id !== collaboratorId));
+
+    toast({
+      title: "Erfolg",
+      description: "Mitarbeiter wurde entfernt.",
+    });
+  };
+
+  const addSubItem = async (itemId: string) => {
+    const currentItem = checklistItems.find(item => item.id === itemId);
+    if (!currentItem) return;
+
+    const currentSubItems = currentItem.sub_items || [];
+    const newSubItems = [...currentSubItems, { title: '', is_completed: false }];
+
+    const { error } = await supabase
+      .from("event_planning_checklist_items")
+      .update({ sub_items: newSubItems })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Unterpunkt konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChecklistItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, sub_items: newSubItems } : item
+      )
+    );
+  };
+
+  const toggleSubItem = async (itemId: string, subItemIndex: number, isCompleted: boolean) => {
+    const currentItem = checklistItems.find(item => item.id === itemId);
+    if (!currentItem || !currentItem.sub_items) return;
+
+    const updatedSubItems = currentItem.sub_items.map((subItem: any, index: number) =>
+      index === subItemIndex ? { ...subItem, is_completed: !isCompleted } : subItem
+    );
+
+    const { error } = await supabase
+      .from("event_planning_checklist_items")
+      .update({ sub_items: updatedSubItems })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Unterpunkt konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChecklistItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, sub_items: updatedSubItems } : item
+      )
+    );
+  };
+
+  const updateSubItemTitle = async (itemId: string, subItemIndex: number, title: string) => {
+    const currentItem = checklistItems.find(item => item.id === itemId);
+    if (!currentItem || !currentItem.sub_items) return;
+
+    const updatedSubItems = currentItem.sub_items.map((subItem: any, index: number) =>
+      index === subItemIndex ? { ...subItem, title } : subItem
+    );
+
+    const { error } = await supabase
+      .from("event_planning_checklist_items")
+      .update({ sub_items: updatedSubItems })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Unterpunkt konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChecklistItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, sub_items: updatedSubItems } : item
+      )
+    );
+  };
+
+  const removeSubItem = async (itemId: string, subItemIndex: number) => {
+    const currentItem = checklistItems.find(item => item.id === itemId);
+    if (!currentItem || !currentItem.sub_items) return;
+
+    const updatedSubItems = currentItem.sub_items.filter((_: any, index: number) => index !== subItemIndex);
+
+    const { error } = await supabase
+      .from("event_planning_checklist_items")
+      .update({ sub_items: updatedSubItems })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({
+        title: "Fehler",
+        description: "Unterpunkt konnte nicht entfernt werden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChecklistItems(items =>
+      items.map(item =>
+        item.id === itemId ? { ...item, sub_items: updatedSubItems } : item
+      )
+    );
+  };
+
+  // Drag and drop functionality
+  const onDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+
+    const items = Array.from(checklistItems);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    // Update local state immediately
+    setChecklistItems(items);
+
+    // Update order_index for all items
+    const updates = items.map((item, index) => ({
+      id: item.id,
+      order_index: index,
+    }));
+
+    try {
+      for (const update of updates) {
+        await supabase
+          .from("event_planning_checklist_items")
+          .update({ order_index: update.order_index })
+          .eq("id", update.id);
+      }
+    } catch (error) {
+      console.error('Error updating item order:', error);
+      toast({
+        title: "Fehler",
+        description: "Reihenfolge konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+      // Revert local state on error
+      fetchPlanningDetails(selectedPlanning!.id);
+    }
+  };
+
+  // Load item details when item is selected
+  useEffect(() => {
+    if (selectedItemId) {
+      loadItemComments(selectedItemId);
+      loadItemSubtasks(selectedItemId);
+      loadItemDocuments(selectedItemId);
+    }
+  }, [selectedItemId]);
+
+  const loadItemComments = async (itemId: string) => {
+    try {
+      const { data: comments, error } = await supabase
+        .from('planning_item_comments')
+        .select('*')
+        .eq('planning_item_id', itemId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const userIds = [...new Set(comments?.map(c => c.user_id) || [])];
+      let profiles: any[] = [];
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', userIds);
+        
+        profiles = profilesData || [];
+      }
+
+      const formattedComments: PlanningComment[] = (comments || []).map(comment => ({
+        id: comment.id,
+        planning_item_id: comment.planning_item_id,
+        user_id: comment.user_id,
+        content: comment.content,
+        created_at: comment.created_at,
+        profile: profiles.find(p => p.user_id === comment.user_id) || null,
+      }));
+
+      setItemComments(prev => ({ ...prev, [itemId]: formattedComments }));
+    } catch (error) {
+      console.error('Error loading item comments:', error);
+    }
+  };
+
+  const loadItemSubtasks = async (itemId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('planning_item_subtasks')
+        .select('*')
+        .eq('planning_item_id', itemId)
+        .order('order_index', { ascending: true });
+
+      if (error) throw error;
+      setItemSubtasks(prev => ({ ...prev, [itemId]: data || [] }));
+    } catch (error) {
+      console.error('Error loading item subtasks:', error);
+    }
+  };
+
+  const loadItemDocuments = async (itemId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('planning_item_documents')
+        .select('*')
+        .eq('planning_item_id', itemId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setItemDocuments(prev => ({ ...prev, [itemId]: data || [] }));
+    } catch (error) {
+      console.error('Error loading item documents:', error);
+    }
+  };
+
+  const addItemComment = async () => {
+    if (!newComment.trim() || !selectedItemId || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('planning_item_comments')
+        .insert({
+          planning_item_id: selectedItemId,
+          user_id: user.id,
+          content: newComment.trim(),
+        });
+
+      if (error) throw error;
+
+      setNewComment('');
+      loadItemComments(selectedItemId);
+      loadAllItemCounts(); // Refresh counts
+
+      toast({
+        title: "Kommentar hinzugefügt",
+        description: "Ihr Kommentar wurde erfolgreich hinzugefügt.",
+      });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addItemSubtask = async (description?: string, assignedTo?: string, dueDate?: string, itemId?: string) => {
+    const desc = description || newSubtask.description.trim();
+    const assigned = assignedTo || newSubtask.assigned_to;
+    const due = dueDate || newSubtask.due_date;
+    const planningItemId = itemId || selectedItemId;
+    
+    if (!desc || !planningItemId || !user) return;
+
+    try {
+      const currentSubtasks = itemSubtasks[planningItemId] || [];
+      const nextOrderIndex = Math.max(...currentSubtasks.map(s => s.order_index), -1) + 1;
+      
+      const { error } = await supabase
+        .from('planning_item_subtasks')
+        .insert({
+          planning_item_id: planningItemId,
+          user_id: user.id,
+          description: desc,
+          assigned_to: assigned === 'unassigned' ? null : assigned,
+          due_date: due || null,
+          order_index: nextOrderIndex,
+        });
+
+      if (error) throw error;
+
+      setNewSubtask({ description: '', assigned_to: 'unassigned', due_date: '' });
+      loadItemSubtasks(planningItemId);
+      loadAllItemCounts(); // Refresh counts
+
+      toast({
+        title: "Unteraufgabe hinzugefügt",
+        description: "Die Unteraufgabe wurde erfolgreich erstellt.",
+      });
+    } catch (error) {
+      console.error('Error adding subtask:', error);
+      toast({
+        title: "Fehler",
+        description: "Unteraufgabe konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addItemCommentForItem = async (itemId: string, comment: string) => {
+    if (!comment.trim() || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('planning_item_comments')
+        .insert({
+          planning_item_id: itemId,
+          user_id: user.id,
+          content: comment.trim(),
+        });
+
+      if (error) throw error;
+
+      loadItemComments(itemId);
+      loadAllItemCounts(); // Refresh counts
+
+      toast({
+        title: "Kommentar hinzugefügt",
+        description: "Ihr Kommentar wurde erfolgreich hinzugefügt.",
+      });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Load counts for all items
+  const loadAllItemCounts = async (items?: ChecklistItem[]) => {
+    if (!selectedPlanning) return;
+
+    try {
+      // Get all item IDs - use provided items or current state
+      const currentItems = items || checklistItems;
+      const itemIds = currentItems.map(item => item.id);
+      if (itemIds.length === 0) return;
+
+      // Load subtasks counts
+      const { data: subtasksData } = await supabase
+        .from('planning_item_subtasks')
+        .select('planning_item_id, id, description, is_completed, assigned_to, due_date, order_index, created_at, updated_at, result_text, completed_at, user_id')
+        .in('planning_item_id', itemIds);
+
+      const subtasksMap: { [itemId: string]: PlanningSubtask[] } = {};
+      (subtasksData || []).forEach(subtask => {
+        if (!subtasksMap[subtask.planning_item_id]) {
+          subtasksMap[subtask.planning_item_id] = [];
+        }
+        subtasksMap[subtask.planning_item_id].push({
+          ...subtask,
+          user_id: subtask.user_id || user?.id || ''
+        });
+      });
+      setItemSubtasks(subtasksMap);
+
+      // Load comments counts
+      const { data: commentsData } = await supabase
+        .from('planning_item_comments')
+        .select('planning_item_id, id, content, user_id, created_at')
+        .in('planning_item_id', itemIds);
+
+      // Get profile data for comments
+      const userIds = [...new Set(commentsData?.map(c => c.user_id) || [])];
+      let profiles: any[] = [];
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', userIds);
+        profiles = profilesData || [];
+      }
+
+      const commentsMap: { [itemId: string]: PlanningComment[] } = {};
+      (commentsData || []).forEach(comment => {
+        if (!commentsMap[comment.planning_item_id]) {
+          commentsMap[comment.planning_item_id] = [];
+        }
+        commentsMap[comment.planning_item_id].push({
+          ...comment,
+          profile: profiles.find(p => p.user_id === comment.user_id) || null,
+        });
+      });
+      setItemComments(commentsMap);
+
+      // Load documents counts
+      const { data: documentsData } = await supabase
+        .from('planning_item_documents')
+        .select('planning_item_id, id, file_name, file_path, file_size, file_type, created_at, user_id')
+        .in('planning_item_id', itemIds);
+
+      const documentsMap: { [itemId: string]: PlanningDocument[] } = {};
+      (documentsData || []).forEach(doc => {
+        if (!documentsMap[doc.planning_item_id]) {
+          documentsMap[doc.planning_item_id] = [];
+        }
+        documentsMap[doc.planning_item_id].push({
+          ...doc,
+          user_id: doc.user_id || user?.id || ''
+        });
+      });
+      setItemDocuments(documentsMap);
+    } catch (error) {
+      console.error('Error loading item counts:', error);
+    }
+  };
+
+  const handleItemFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploading(true);
+    try {
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExtension}`;
+      const filePath = `planning-items/${user.id}/${itemId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('planning-documents')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase
+        .from('planning_item_documents')
+        .insert({
+          planning_item_id: itemId,
+          user_id: user.id,
+          file_name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+          file_type: file.type,
+        });
+
+      if (dbError) throw dbError;
+
+      loadItemDocuments(itemId);
+      loadAllItemCounts(); // Refresh counts
+      
+      toast({
+        title: "Dokument hochgeladen",
+        description: "Das Dokument wurde erfolgreich hinzugefügt.",
+      });
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      toast({
+        title: "Fehler",
+        description: "Das Dokument konnte nicht hochgeladen werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const deleteItemDocument = async (doc: PlanningDocument) => {
+    try {
+      const { error: storageError } = await supabase.storage
+        .from('planning-documents')
+        .remove([doc.file_path]);
+
+      if (storageError) throw storageError;
+
+      const { error: dbError } = await supabase
+        .from('planning_item_documents')
+        .delete()
+        .eq('id', doc.id);
+
+      if (dbError) throw dbError;
+
+      loadItemDocuments(selectedItemId!);
+      loadAllItemCounts(); // Refresh counts
+      
+      toast({
+        title: "Dokument gelöscht",
+        description: "Das Dokument wurde erfolgreich entfernt.",
+      });
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: "Fehler",
+        description: "Das Dokument konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadItemDocument = async (doc: PlanningDocument) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('planning-documents')
+        .download(doc.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.file_name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast({
+        title: "Fehler",
+        description: "Das Dokument konnte nicht heruntergeladen werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteItemComment = async (comment: PlanningComment) => {
+    if (!user || comment.user_id !== user.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('planning_item_comments')
+        .delete()
+        .eq('id', comment.id);
+
+      if (error) throw error;
+
+      loadItemComments(comment.planning_item_id);
+      loadAllItemCounts();
+
+      toast({
+        title: "Kommentar gelöscht",
+        description: "Der Kommentar wurde erfolgreich entfernt.",
+      });
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string, itemId: string) => {
+    try {
+      const updateData = isCompleted 
+        ? { 
+            is_completed: true, 
+            result_text: result || null,
+            completed_at: new Date().toISOString()
+          }
+        : { 
+            is_completed: false, 
+            result_text: null,
+            completed_at: null
+          };
+
+      const { error } = await supabase
+        .from('planning_item_subtasks')
+        .update(updateData)
+        .eq('id', subtaskId);
+
+      if (error) throw error;
+
+      loadItemSubtasks(itemId);
+      loadAllItemCounts();
+
+      if (isCompleted) {
+        toast({
+          title: "Unteraufgabe abgeschlossen",
+          description: "Die Unteraufgabe wurde erfolgreich als erledigt markiert.",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating subtask:', error);
+      toast({
+        title: "Fehler",
+        description: "Unteraufgabe konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateItemComment = async (commentId: string, newContent: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('planning_item_comments')
+        .update({ content: newContent, updated_at: new Date().toISOString() })
+        .eq('id', commentId)
+        .eq('user_id', user.id); // Ensure user can only edit their own comments
+
+      if (error) throw error;
+
+      // Find the comment to get the planning_item_id
+      const comment = Object.values(itemComments).flat().find(c => c.id === commentId);
+      if (comment) {
+        loadItemComments(comment.planning_item_id);
+        loadAllItemCounts();
+      }
+
+      setEditingComment(prev => ({ ...prev, [commentId]: '' }));
+
+      toast({
+        title: "Kommentar aktualisiert",
+        description: "Der Kommentar wurde erfolgreich bearbeitet.",
+      });
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht bearbeitet werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   if (!selectedPlanning) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Planungen</h2>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant={isEventsTab ? 'default' : 'outline'}
-              onClick={() => setActiveTab('events')}
-            >
-              Veranstaltungen
-            </Button>
-            <Button
-              variant={isAppointmentsTab ? 'default' : 'outline'}
-              onClick={() => setActiveTab('appointments')}
-            >
-              Terminvorbereitungen
-            </Button>
+      <div className="min-h-screen bg-gradient-subtle p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">Veranstaltungsplanung</h1>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -509,26 +1804,26 @@ export function EventPlanningView() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Neue Veranstaltungsplanung erstellen</DialogTitle>
+                  <DialogTitle>Neue Veranstaltungsplanung</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="planning-title">Titel</Label>
+                    <Label htmlFor="title">Titel</Label>
                     <Input
-                      id="planning-title"
+                      id="title"
                       value={newPlanningTitle}
                       onChange={(e) => setNewPlanningTitle(e.target.value)}
-                      placeholder="Titel der Veranstaltung..."
+                      placeholder="Veranstaltungstitel eingeben..."
                     />
                   </div>
                   <div>
-                    <Label htmlFor="template-select">Vorlage (optional)</Label>
+                    <Label htmlFor="template">Template</Label>
                     <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Vorlage auswählen" />
+                        <SelectValue placeholder="Template auswählen" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Keine Vorlage</SelectItem>
+                        <SelectItem value="none">Kein Template</SelectItem>
                         {planningTemplates.map((template) => (
                           <SelectItem key={template.id} value={template.id}>
                             {template.name}
@@ -539,41 +1834,23 @@ export function EventPlanningView() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Switch
-                      id="is-private"
+                      id="private"
                       checked={newPlanningIsPrivate}
                       onCheckedChange={setNewPlanningIsPrivate}
                     />
-                    <Label htmlFor="is-private">Private Planung</Label>
+                    <Label htmlFor="private">Nur für mich sichtbar</Label>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                    Abbrechen
-                  </Button>
-                  <Button onClick={createPlanning} disabled={!newPlanningTitle.trim()}>
-                    Erstellen
-                  </Button>
+                  <Button onClick={createPlanning}>Erstellen</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
-        </div>
-        
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {loading ? (
-            <div className="col-span-full text-center py-4">
-              <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            </div>
-          ) : plannings.length === 0 ? (
-            <Card className="col-span-full">
-              <CardContent className="py-8">
-                <p className="text-center text-muted-foreground">
-                  Noch keine Planungen vorhanden.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            plannings.map((planning) => {
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {plannings.map((planning) => {
+              // Get collaborators for this planning
               const planningCollaborators = collaborators.filter(c => c.event_planning_id === planning.id);
               
               return (
@@ -590,50 +1867,1455 @@ export function EventPlanningView() {
                       )}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <CalendarIcon className="h-4 w-4" />
-                        <span>{format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}</span>
+                  <CardContent className="space-y-3">
+                    {planning.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {planning.description}
+                      </p>
+                    )}
+                    
+                    {planning.location && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span>{planning.location}</span>
                       </div>
-                      
-                      {planningCollaborators.length > 0 && (
-                        <div className="flex items-center space-x-2">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <div className="flex -space-x-2">
-                            {planningCollaborators.slice(0, 3).map((collab) => (
-                              <Avatar key={collab.id} className="h-6 w-6 border-2 border-background">
-                                <AvatarFallback className="text-xs">
-                                  {collab.profiles?.display_name?.charAt(0) || '?'}
-                                </AvatarFallback>
-                              </Avatar>
-                            ))}
-                            {planningCollaborators.length > 3 && (
-                              <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted border-2 border-background text-xs">
-                                +{planningCollaborators.length - 3}
-                              </div>
-                            )}
-                          </div>
+                    )}
+
+                    {planning.confirmed_date && (
+                      <p className="text-sm font-medium text-primary">
+                        Bestätigter Termin: {format(new Date(planning.confirmed_date), "dd.MM.yyyy HH:mm", { locale: de })}
+                      </p>
+                    )}
+
+                    {(planningCollaborators.length > 0 || planning.user_id) && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Bearbeiter:</span>
+                        <div className="flex -space-x-2">
+                          {/* Show creator first */}
+                          {planning.user_id && (
+                            <Avatar className="h-6 w-6 border-2 border-background">
+                              <AvatarImage src={allProfiles.find(p => p.user_id === planning.user_id)?.avatar_url} />
+                              <AvatarFallback className="text-xs">
+                                {allProfiles.find(p => p.user_id === planning.user_id)?.display_name?.charAt(0) || 'E'}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          {/* Then show other collaborators */}
+                          {planningCollaborators.filter(c => c.user_id !== planning.user_id).slice(0, planning.user_id ? 2 : 3).map((collaborator) => (
+                            <Avatar key={collaborator.id} className="h-6 w-6 border-2 border-background">
+                              <AvatarImage src={collaborator.profiles?.avatar_url} />
+                              <AvatarFallback className="text-xs">
+                                {collaborator.profiles?.display_name?.charAt(0) || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {(planningCollaborators.filter(c => c.user_id !== planning.user_id).length + (planning.user_id ? 1 : 0)) > 3 && (
+                            <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                              <span className="text-xs text-muted-foreground">+{(planningCollaborators.filter(c => c.user_id !== planning.user_id).length + (planning.user_id ? 1 : 0)) - 3}</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      
-                      {planning.location && (
-                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4" />
-                          <span className="truncate">{planning.location}</span>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
+
+                    <p className="text-sm text-muted-foreground">
+                      Erstellt am {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
+                    </p>
                   </CardContent>
                 </Card>
               );
-            })
-          )}
+            })}
+          </div>
         </div>
       </div>
     );
   }
 
-  // Show detailed event planning view for selected planning
-  return <div>Detailansicht für {selectedPlanning.title} wird hier implementiert.</div>;
+  return (
+    <div className="min-h-screen bg-gradient-subtle p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" onClick={() => setSelectedPlanning(null)}>
+              ← Zurück
+            </Button>
+            <h1 className="text-3xl font-bold text-foreground">
+              Veranstaltungsplanung
+            </h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Löschen
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Planung löschen</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Sind Sie sicher, dass Sie diese Planung löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deletePlanning(selectedPlanning.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Löschen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Grunddaten */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle>Grunddaten</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="title">Titel der Veranstaltung</Label>
+                <div className="flex items-center space-x-2">
+                  {editingTitle ? (
+                    <Input
+                      value={tempTitle}
+                      onChange={(e) => setTempTitle(e.target.value)}
+                      onBlur={() => {
+                        updatePlanningField("title", tempTitle);
+                        setEditingTitle(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updatePlanningField("title", tempTitle);
+                          setEditingTitle(false);
+                        }
+                        if (e.key === "Escape") {
+                          setTempTitle(selectedPlanning.title);
+                          setEditingTitle(false);
+                        }
+                      }}
+                      className="flex-1"
+                      autoFocus
+                    />
+                  ) : (
+                    <Input
+                      value={selectedPlanning.title}
+                      onClick={() => {
+                        setTempTitle(selectedPlanning.title);
+                        setEditingTitle(true);
+                      }}
+                      readOnly
+                      className="flex-1 cursor-pointer"
+                    />
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTempTitle(selectedPlanning.title);
+                      setEditingTitle(true);
+                    }}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="description">Beschreibung</Label>
+                <Textarea
+                  id="description"
+                  value={selectedPlanning.description || ""}
+                  onChange={(e) => updatePlanningField("description", e.target.value)}
+                  placeholder="Beschreibung der Veranstaltung..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="location">Ort</Label>
+                <Input
+                  id="location"
+                  value={selectedPlanning.location || ""}
+                  onChange={(e) => updatePlanningField("location", e.target.value)}
+                  placeholder="Veranstaltungsort..."
+                />
+                {!selectedPlanning.is_digital && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDigitalEvent({
+                        platform: selectedPlanning.digital_platform || "",
+                        link: selectedPlanning.digital_link || "",
+                        access_info: selectedPlanning.digital_access_info || "",
+                      });
+                      setIsDigitalDialogOpen(true);
+                    }}
+                    className="mt-2"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Digital
+                  </Button>
+                )}
+                {selectedPlanning.is_digital && (
+                  <div className="mt-2 p-2 bg-muted rounded-md">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Digital: {selectedPlanning.digital_platform}</p>
+                        {selectedPlanning.digital_link && (
+                          <p className="text-xs text-muted-foreground">{selectedPlanning.digital_link}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setDigitalEvent({
+                              platform: selectedPlanning.digital_platform || "",
+                              link: selectedPlanning.digital_link || "",
+                              access_info: selectedPlanning.digital_access_info || "",
+                            });
+                            setIsDigitalDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={removeDigitalEventSettings}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="background">Hintergründe</Label>
+                <Textarea
+                  id="background"
+                  value={selectedPlanning.background_info || ""}
+                  onChange={(e) => updatePlanningField("background_info", e.target.value)}
+                  placeholder="Hintergrundinformationen..."
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Mitarbeiter */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Mitarbeiter
+                <Dialog open={isCollaboratorDialogOpen} onOpenChange={setIsCollaboratorDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Users className="mr-2 h-4 w-4" />
+                      Hinzufügen
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Mitarbeiter hinzufügen</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {allProfiles
+                        .filter(profile => 
+                          profile.user_id !== user?.id && 
+                          !collaborators.some(c => c.user_id === profile.user_id)
+                        )
+                        .map((profile) => (
+                          <div key={profile.user_id} className="flex items-center justify-between">
+                            <span>{profile.display_name || 'Unbenannt'}</span>
+                            <div className="space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => addCollaborator(profile.user_id, false)}
+                              >
+                                Nur ansehen
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => addCollaborator(profile.user_id, true)}
+                              >
+                                Bearbeiten
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {collaborators.length > 0 ? (
+                <div className="space-y-2">
+                  {collaborators.map((collaborator) => (
+                    <div key={collaborator.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={collaborator.profiles?.avatar_url} />
+                          <AvatarFallback>
+                            {collaborator.profiles?.display_name?.charAt(0) || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>{collaborator.profiles?.display_name || 'Unbenannt'}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Select
+                          value={collaborator.can_edit ? "edit" : "view"}
+                          onValueChange={(value) => updateCollaboratorPermission(collaborator.id, value === "edit")}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="view">Ansehen</SelectItem>
+                            <SelectItem value="edit">Bearbeiten</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeCollaborator(collaborator.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Noch keine Mitarbeiter hinzugefügt</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Ansprechpersonen */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Ansprechpersonen
+                <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ansprechperson
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Ansprechperson hinzufügen</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Aus vorhandenen Kontakten wählen</Label>
+                          <Select onValueChange={(value) => {
+                            if (value !== "none") {
+                              fillFromContact(value);
+                            }
+                          }}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Kontakt auswählen..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Manuell eingeben</SelectItem>
+                              {availableContacts.map((contact) => (
+                                <SelectItem key={contact.id} value={contact.id}>
+                                  {contact.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Aus Büro-Mitarbeitern wählen</Label>
+                          <Select onValueChange={(value) => {
+                            if (value !== "none") {
+                              fillFromProfile(value);
+                            }
+                          }}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Mitarbeiter auswählen..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Manuell eingeben</SelectItem>
+                              {allProfiles.map((profile) => (
+                                <SelectItem key={profile.user_id} value={profile.user_id}>
+                                  {profile.display_name || 'Unbenannt'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <Separator />
+                      <div>
+                        <Label htmlFor="contact-name">Name</Label>
+                        <Input
+                          id="contact-name"
+                          value={newContact.name}
+                          onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                          placeholder="Name der Ansprechperson"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-email">E-Mail</Label>
+                        <Input
+                          id="contact-email"
+                          type="email"
+                          value={newContact.email}
+                          onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                          placeholder="email@beispiel.de"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-phone">Telefon</Label>
+                        <Input
+                          id="contact-phone"
+                          type="tel"
+                          value={newContact.phone}
+                          onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                          placeholder="+49 123 456789"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={addContact}>Hinzufügen</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {contacts.length > 0 ? (
+                <div className="space-y-2">
+                  {contacts.map((contact) => (
+                    <div key={contact.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div>
+                        <p className="font-medium">{contact.name}</p>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {contact.email && <p>📧 {contact.email}</p>}
+                          {contact.phone && <p>📞 {contact.phone}</p>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingContact(contact);
+                            setIsEditContactDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeContact(contact.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Noch keine Ansprechpersonen hinzugefügt</p>
+              )}
+            </CardContent>
+
+            {/* Edit Contact Dialog */}
+            <Dialog open={isEditContactDialogOpen} onOpenChange={setIsEditContactDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Ansprechperson bearbeiten</DialogTitle>
+                </DialogHeader>
+                {editingContact && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-contact-name">Name</Label>
+                      <Input
+                        id="edit-contact-name"
+                        value={editingContact.name}
+                        onChange={(e) => setEditingContact({ ...editingContact, name: e.target.value })}
+                        placeholder="Name der Ansprechperson"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-contact-email">E-Mail</Label>
+                      <Input
+                        id="edit-contact-email"
+                        type="email"
+                        value={editingContact.email || ""}
+                        onChange={(e) => setEditingContact({ ...editingContact, email: e.target.value })}
+                        placeholder="email@beispiel.de"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-contact-phone">Telefon</Label>
+                      <Input
+                        id="edit-contact-phone"
+                        type="tel"
+                        value={editingContact.phone || ""}
+                        onChange={(e) => setEditingContact({ ...editingContact, phone: e.target.value })}
+                        placeholder="+49 123 456789"
+                      />
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditContactDialogOpen(false)}>
+                    Abbrechen
+                  </Button>
+                  <Button onClick={editContact}>Speichern</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </Card>
+
+          {/* Referenten */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Referenten
+                <Dialog open={isSpeakerDialogOpen} onOpenChange={setIsSpeakerDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Referent
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Referent hinzufügen</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Aus vorhandenen Kontakten wählen</Label>
+                        <Select onValueChange={(value) => {
+                          if (value !== "none") {
+                            fillSpeakerFromContact(value);
+                          }
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Kontakt auswählen..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Manuell eingeben</SelectItem>
+                            {availableContacts.map((contact) => (
+                              <SelectItem key={contact.id} value={contact.id}>
+                                {contact.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Separator />
+                      <div>
+                        <Label htmlFor="speaker-name">Name</Label>
+                        <Input
+                          id="speaker-name"
+                          value={newSpeaker.name}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, name: e.target.value })}
+                          placeholder="Name des Referenten"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-topic">Thema</Label>
+                        <Input
+                          id="speaker-topic"
+                          value={newSpeaker.topic}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, topic: e.target.value })}
+                          placeholder="Vortragsthema"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-email">E-Mail</Label>
+                        <Input
+                          id="speaker-email"
+                          type="email"
+                          value={newSpeaker.email}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, email: e.target.value })}
+                          placeholder="email@beispiel.de"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-phone">Telefon</Label>
+                        <Input
+                          id="speaker-phone"
+                          type="tel"
+                          value={newSpeaker.phone}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, phone: e.target.value })}
+                          placeholder="+49 123 456789"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-bio">Biografie</Label>
+                        <Textarea
+                          id="speaker-bio"
+                          value={newSpeaker.bio}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, bio: e.target.value })}
+                          placeholder="Kurze Biografie oder Qualifikation"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={addSpeaker}>Hinzufügen</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {speakers.length > 0 ? (
+                <div className="space-y-2">
+                  {speakers.map((speaker) => (
+                    <div key={speaker.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div>
+                        <p className="font-medium">{speaker.name}</p>
+                        {speaker.topic && <p className="text-sm font-medium text-primary">{speaker.topic}</p>}
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {speaker.email && <p>📧 {speaker.email}</p>}
+                          {speaker.phone && <p>📞 {speaker.phone}</p>}
+                          {speaker.bio && <p className="mt-1">{speaker.bio}</p>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingSpeaker(speaker);
+                            setIsEditSpeakerDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeSpeaker(speaker.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Noch keine Referenten hinzugefügt</p>
+              )}
+            </CardContent>
+
+            {/* Edit Speaker Dialog */}
+            <Dialog open={isEditSpeakerDialogOpen} onOpenChange={setIsEditSpeakerDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Referent bearbeiten</DialogTitle>
+                </DialogHeader>
+                {editingSpeaker && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-speaker-name">Name</Label>
+                      <Input
+                        id="edit-speaker-name"
+                        value={editingSpeaker.name}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, name: e.target.value })}
+                        placeholder="Name des Referenten"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-topic">Thema</Label>
+                      <Input
+                        id="edit-speaker-topic"
+                        value={editingSpeaker.topic || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, topic: e.target.value })}
+                        placeholder="Vortragsthema"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-email">E-Mail</Label>
+                      <Input
+                        id="edit-speaker-email"
+                        type="email"
+                        value={editingSpeaker.email || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, email: e.target.value })}
+                        placeholder="email@beispiel.de"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-phone">Telefon</Label>
+                      <Input
+                        id="edit-speaker-phone"
+                        type="tel"
+                        value={editingSpeaker.phone || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, phone: e.target.value })}
+                        placeholder="+49 123 456789"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-bio">Biografie</Label>
+                      <Textarea
+                        id="edit-speaker-bio"
+                        value={editingSpeaker.bio || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, bio: e.target.value })}
+                        placeholder="Kurze Biografie oder Qualifikation"
+                      />
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditSpeakerDialogOpen(false)}>
+                    Abbrechen
+                  </Button>
+                  <Button onClick={editSpeaker}>Speichern</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </Card>
+
+          {/* Termine */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Termine
+                {!planningDates.some(d => d.is_confirmed) && (
+                  <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Termin hinzufügen
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Neuen Termin hinzufügen</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Datum</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !selectedDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {selectedDate ? format(selectedDate, "dd.MM.yyyy", { locale: de }) : "Datum wählen"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={selectedDate}
+                                onSelect={setSelectedDate}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div>
+                          <Label htmlFor="time">Uhrzeit</Label>
+                          <Input
+                            id="time"
+                            type="time"
+                            value={selectedTime}
+                            onChange={(e) => setSelectedTime(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={addPlanningDate}>Hinzufügen</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {planningDates.map((date) => (
+                  <div key={date.id}>
+                    {date.is_confirmed ? (
+                      <div className="flex items-center justify-between p-3 rounded-md border bg-primary/10 border-primary">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4" />
+                          <input
+                            type="datetime-local"
+                            value={new Date(date.date_time).toISOString().slice(0, 16)}
+                            onChange={(e) => updateConfirmedDate(date.id, new Date(e.target.value).toISOString())}
+                            className="bg-transparent border-none outline-none font-medium"
+                          />
+                          <Badge variant="default">Bestätigt</Badge>
+                        </div>
+                        <Button variant="ghost" size="sm">
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between p-3 rounded-md border">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4" />
+                          <span>
+                            {format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => confirmDate(date.id)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {planningDates.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Noch keine Termine hinzugefügt
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Checkliste */}
+          <Card className="lg:col-span-2 bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle>Checkliste</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="checklist">
+                    {(provided) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className="space-y-2"
+                      >
+                        {checklistItems.map((item: any, index: number) => (
+                          <Draggable key={item.id} draggableId={item.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={cn(
+                                  "group",
+                                  snapshot.isDragging && "z-50"
+                                )}
+                              >
+                                {item.type === 'separator' ? (
+                                  <div className="flex items-center gap-2 py-3 group">
+                                    <div {...provided.dragHandleProps} className="text-muted-foreground">
+                                      <GripVertical className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex-1 border-t border-dashed border-border"></div>
+                                    <Input
+                                      value={item.title || 'Trenner'}
+                                      onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
+                                      className="text-muted-foreground italic text-sm px-2 border-none bg-transparent text-center w-32"
+                                      placeholder="Trenner-Text eingeben..."
+                                    />
+                                    <div className="flex-1 border-t border-dashed border-border"></div>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => deleteChecklistItem(item.id)}
+                                      className="text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Trenner löschen"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <div className="flex items-center space-x-2 p-3 border border-border rounded-md bg-background hover:bg-muted/50 transition-colors">
+                                      <div {...provided.dragHandleProps} className="text-muted-foreground hover:text-foreground">
+                                        <GripVertical className="h-4 w-4" />
+                                      </div>
+                                      <Checkbox
+                                        checked={item.is_completed}
+                                        onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)}
+                                      />
+                                      <Input
+                                        value={item.title}
+                                        onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
+                                        className={cn(
+                                          "flex-1 border-none bg-transparent focus:bg-background",
+                                          item.is_completed && "line-through text-muted-foreground"
+                                        )}
+                                      />
+                                      <div className="flex items-center space-x-1">
+                                        {/* Clickable badges to expand sections */}
+                                        {(itemSubtasks[item.id]?.length || 0) > 0 && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                            className="h-auto p-1"
+                                          >
+                                            <Badge variant="secondary" className="text-xs">
+                                              <ListTodo className="h-3 w-3 mr-1" />
+                                              {itemSubtasks[item.id].length}
+                                            </Badge>
+                                          </Button>
+                                        )}
+                                        {(itemComments[item.id]?.length || 0) > 0 && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowItemComments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                            className="h-auto p-1"
+                                          >
+                                            <Badge variant="secondary" className="text-xs">
+                                              <MessageCircle className="h-3 w-3 mr-1" />
+                                              {itemComments[item.id].length}
+                                            </Badge>
+                                          </Button>
+                                        )}
+                                        {(itemDocuments[item.id]?.length || 0) > 0 && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowItemDocuments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                            className="h-auto p-1"
+                                          >
+                                            <Badge variant="secondary" className="text-xs">
+                                              <Paperclip className="h-3 w-3 mr-1" />
+                                              {itemDocuments[item.id].length}
+                                            </Badge>
+                                          </Button>
+                                        )}
+                                        
+                                         {/* Add new subtask/comment/document buttons - always visible when there are items */}
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                           className="text-muted-foreground hover:text-foreground transition-opacity"
+                                           title="Unteraufgabe hinzufügen"
+                                         >
+                                           <ListTodo className="h-3 w-3" />
+                                         </Button>
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => setShowItemComments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                           className="text-muted-foreground hover:text-foreground transition-opacity"
+                                           title="Kommentar hinzufügen"
+                                         >
+                                           <MessageCircle className="h-3 w-3" />
+                                         </Button>
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => setShowItemDocuments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                           className="text-muted-foreground hover:text-foreground transition-opacity"
+                                           title="Dokument hinzufügen"
+                                         >
+                                          <Paperclip className="h-3 w-3" />
+                                         </Button>
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => deleteChecklistItem(item.id)}
+                                           className="text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                           title="Punkt löschen"
+                                         >
+                                           <Trash2 className="h-3 w-3" />
+                                         </Button>
+                                       </div>
+                                     </div>
+
+                                    {/* Expanded Subtasks */}
+                                    {showItemSubtasks[item.id] && (
+                                      <div className="ml-8 space-y-2 border-l-2 border-border pl-4">
+                                        <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+                                          <ListTodo className="h-4 w-4" />
+                                          Unteraufgaben
+                                        </div>
+                                         {itemSubtasks[item.id]?.map((subtask) => (
+                                           <div key={subtask.id} className="space-y-2 p-2 border border-border rounded bg-muted/30">
+                                             <div className="flex items-center space-x-2">
+                                               <Checkbox
+                                                 checked={subtask.is_completed}
+                                                 onCheckedChange={(checked) => {
+                                                   if (checked) {
+                                                     setCompletingSubtask(subtask.id);
+                                                     setCompletionResult('');
+                                                   } else {
+                                                     // When unchecking, directly update
+                                                     supabase
+                                                       .from('planning_item_subtasks')
+                                                       .update({ 
+                                                         is_completed: false,
+                                                         result_text: null,
+                                                         completed_at: null
+                                                       })
+                                                       .eq('id', subtask.id)
+                                                       .then(() => {
+                                                         loadItemSubtasks(item.id);
+                                                         loadAllItemCounts();
+                                                       });
+                                                   }
+                                                 }}
+                                               />
+                                               <Input
+                                                 value={subtask.description}
+                                                 onChange={(e) => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .update({ description: e.target.value })
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                     });
+                                                 }}
+                                                 className={cn(
+                                                   "flex-1 text-sm border-none bg-transparent focus:bg-background",
+                                                   subtask.is_completed && "line-through text-muted-foreground"
+                                                 )}
+                                               />
+                                               <Select
+                                                 value={subtask.assigned_to || 'unassigned'}
+                                                 onValueChange={(value) => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .update({ assigned_to: value === 'unassigned' ? null : value })
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                     });
+                                                 }}
+                                               >
+                                                 <SelectTrigger className="w-[140px] h-8 text-xs">
+                                                   <SelectValue placeholder="Zuweisen..." />
+                                                 </SelectTrigger>
+                                                 <SelectContent>
+                                                   <SelectItem value="unassigned">Niemand</SelectItem>
+                                                   {allProfiles.map((profile) => (
+                                                     <SelectItem key={profile.user_id} value={profile.user_id}>
+                                                       {profile.display_name || 'Unbekannt'}
+                                                     </SelectItem>
+                                                   ))}
+                                                 </SelectContent>
+                                               </Select>
+                                               <Input
+                                                 type="date"
+                                                 value={subtask.due_date ? format(new Date(subtask.due_date), "yyyy-MM-dd") : ''}
+                                                 onChange={(e) => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .update({ due_date: e.target.value || null })
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                     });
+                                                 }}
+                                                 className="w-[130px] h-8 text-xs"
+                                                 placeholder="Frist..."
+                                               />
+                                               <Button
+                                                 variant="ghost"
+                                                 size="sm"
+                                                 onClick={() => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .delete()
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                       loadAllItemCounts();
+                                                     });
+                                                 }}
+                                                 className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                               >
+                                                 <Trash2 className="h-3 w-3" />
+                                               </Button>
+                                             </div>
+                                             {/* Result text display */}
+                                             {subtask.result_text && (
+                                               <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
+                                                 <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
+                                                 <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
+                                                 {subtask.completed_at && (
+                                                   <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                                     Abgeschlossen: {format(new Date(subtask.completed_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                                                   </p>
+                                                 )}
+                                               </div>
+                                             )}
+                                           </div>
+                                         ))}
+                                         {/* Add new subtask form */}
+                                         <div className="space-y-2 pt-2">
+                                           <Input
+                                             placeholder="Neue Unteraufgabe..."
+                                             className="text-sm"
+                                              onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  const input = e.target as HTMLInputElement;
+                                                  if (input.value.trim() && user) {
+                                                    addItemSubtask(input.value.trim(), 'unassigned', '', item.id);
+                                                    input.value = '';
+                                                  }
+                                                }
+                                              }}
+                                           />
+                                           {/* Quick assignment dropdown */}
+                                           <div className="flex gap-2">
+                                             <Select
+                                               value=""
+                                                onValueChange={(value) => {
+                                                  const description = (document.querySelector(`input[placeholder="Neue Unteraufgabe..."]`) as HTMLInputElement)?.value;
+                                                  if (description?.trim() && user) {
+                                                    const assignedTo = value === 'unassigned' ? '' : value;
+                                                    addItemSubtask(description.trim(), assignedTo, '', item.id);
+                                                    (document.querySelector(`input[placeholder="Neue Unteraufgabe..."]`) as HTMLInputElement).value = '';
+                                                  }
+                                                }}
+                                             >
+                                               <SelectTrigger className="w-[200px] h-8 text-xs">
+                                                 <SelectValue placeholder="Schnell zuweisen..." />
+                                               </SelectTrigger>
+                                               <SelectContent>
+                                                 <SelectItem value="unassigned">Niemand</SelectItem>
+                                                 {allProfiles.map((profile) => (
+                                                   <SelectItem key={profile.user_id} value={profile.user_id}>
+                                                     {profile.display_name || 'Unbekannt'}
+                                                   </SelectItem>
+                                                 ))}
+                                               </SelectContent>
+                                             </Select>
+                                           </div>
+                                         </div>
+                                      </div>
+                                    )}
+
+                                    {/* Expanded Comments */}
+                                    {showItemComments[item.id] && (
+                                      <div className="ml-8 space-y-2 border-l-2 border-border pl-4">
+                                        <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+                                          <MessageCircle className="h-4 w-4" />
+                                          Kommentare
+                                        </div>
+                                         {itemComments[item.id]?.map((comment) => (
+                                           <div key={comment.id} className="p-2 border border-border rounded bg-muted/30">
+                                             <div className="flex items-center justify-between mb-1">
+                                               <div className="flex items-center space-x-2">
+                                                 <span className="text-xs font-medium">
+                                                   {comment.profile?.display_name || 'Unbekannt'}
+                                                 </span>
+                                                 <span className="text-xs text-muted-foreground">
+                                                   {format(new Date(comment.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                                                 </span>
+                                               </div>
+                                               {comment.user_id === user?.id && (
+                                                 <div className="flex space-x-1">
+                                                   <Button
+                                                     variant="ghost"
+                                                     size="sm"
+                                                     onClick={() => {
+                                                       setEditingComment(prev => ({ 
+                                                         ...prev, 
+                                                         [comment.id]: comment.content 
+                                                       }));
+                                                     }}
+                                                     className="h-6 w-6 p-0"
+                                                   >
+                                                     <Edit2 className="h-3 w-3" />
+                                                   </Button>
+                                                   <Button
+                                                     variant="ghost"
+                                                     size="sm"
+                                                     onClick={() => deleteItemComment(comment)}
+                                                     className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                                   >
+                                                     <Trash2 className="h-3 w-3" />
+                                                   </Button>
+                                                 </div>
+                                               )}
+                                             </div>
+                                             {editingComment[comment.id] !== undefined ? (
+                                               <div className="space-y-2">
+                                                 <Input
+                                                   value={editingComment[comment.id]}
+                                                   onChange={(e) => setEditingComment(prev => ({
+                                                     ...prev,
+                                                     [comment.id]: e.target.value
+                                                   }))}
+                                                   className="text-sm"
+                                                   onKeyPress={(e) => {
+                                                     if (e.key === 'Enter') {
+                                                       updateItemComment(comment.id, editingComment[comment.id]);
+                                                     }
+                                                     if (e.key === 'Escape') {
+                                                       setEditingComment(prev => {
+                                                         const newState = { ...prev };
+                                                         delete newState[comment.id];
+                                                         return newState;
+                                                       });
+                                                     }
+                                                   }}
+                                                 />
+                                                 <div className="flex space-x-2">
+                                                   <Button
+                                                     size="sm"
+                                                     onClick={() => updateItemComment(comment.id, editingComment[comment.id])}
+                                                     className="h-6 text-xs"
+                                                   >
+                                                     Speichern
+                                                   </Button>
+                                                   <Button
+                                                     size="sm"
+                                                     variant="outline"
+                                                     onClick={() => {
+                                                       setEditingComment(prev => {
+                                                         const newState = { ...prev };
+                                                         delete newState[comment.id];
+                                                         return newState;
+                                                       });
+                                                     }}
+                                                     className="h-6 text-xs"
+                                                   >
+                                                     Abbrechen
+                                                   </Button>
+                                                 </div>
+                                               </div>
+                                             ) : (
+                                               <p className="text-sm">{comment.content}</p>
+                                             )}
+                                           </div>
+                                         ))}
+                                        {/* Add new comment form */}
+                                        <div className="pt-2">
+                                          <Input
+                                            placeholder="Kommentar hinzufügen..."
+                                            className="text-sm"
+                                            onKeyPress={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const input = e.target as HTMLInputElement;
+                                                if (input.value.trim()) {
+                                                  addItemCommentForItem(item.id, input.value);
+                                                  input.value = '';
+                                                }
+                                              }
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Expanded Documents */}
+                                    {showItemDocuments[item.id] && (
+                                      <div className="ml-8 space-y-2 border-l-2 border-border pl-4">
+                                        <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+                                          <Paperclip className="h-4 w-4" />
+                                          Dokumente
+                                        </div>
+                                        {itemDocuments[item.id]?.map((doc) => (
+                                          <div key={doc.id} className="flex items-center justify-between p-2 border border-border rounded bg-muted/30">
+                                            <div className="flex items-center space-x-2">
+                                              <Paperclip className="h-3 w-3" />
+                                              <span className="text-sm truncate">{doc.file_name}</span>
+                                            </div>
+                                            <div className="flex space-x-1">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => downloadItemDocument(doc)}
+                                              >
+                                                <Download className="h-3 w-3" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => deleteItemDocument(doc)}
+                                                className="text-destructive hover:text-destructive"
+                                              >
+                                                <Trash2 className="h-3 w-3" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ))}
+                                        {/* Add new document form */}
+                                        <div className="pt-2">
+                                          <Input
+                                            type="file"
+                                            onChange={(e) => handleItemFileUpload(e, item.id)}
+                                            className="text-sm"
+                                            disabled={uploading}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Legacy sub-items (will be migrated to new system) */}
+                                    {item.sub_items && Array.isArray(item.sub_items) && item.sub_items.length > 0 && (
+                                      <div className="ml-12 space-y-1">
+                                        {item.sub_items.map((subItem: any, index: number) => (
+                                          <div key={index} className="flex items-center space-x-2">
+                                            <Checkbox
+                                              checked={subItem.is_completed || false}
+                                              onCheckedChange={() => toggleSubItem(item.id, index, subItem.is_completed || false)}
+                                            />
+                                            <Input
+                                              value={subItem.title || ''}
+                                              onChange={(e) => updateSubItemTitle(item.id, index, e.target.value)}
+                                              className={cn(
+                                                "flex-1 text-sm",
+                                                subItem.is_completed && "line-through text-muted-foreground"
+                                              )}
+                                              placeholder="Unterpunkt..."
+                                            />
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => removeSubItem(item.id, index)}
+                                              className="text-muted-foreground hover:text-destructive"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+                
+                <div className="flex items-center space-x-2 mt-4">
+                  <Input
+                    value={newChecklistItem}
+                    onChange={(e) => setNewChecklistItem(e.target.value)}
+                    placeholder="Neuen Punkt hinzufügen (--- für Trenner)..."
+                    onKeyPress={(e) => e.key === "Enter" && addChecklistItem()}
+                  />
+                  <Button onClick={addChecklistItem}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Result Dialog for Subtasks */}
+      <Dialog open={!!completingSubtask} onOpenChange={() => setCompletingSubtask(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unteraufgabe abschließen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Wie wurde die Unteraufgabe gelöst?</Label>
+              <Textarea
+                placeholder="Beschreiben Sie, wie die Unteraufgabe erledigt wurde..."
+                value={completionResult}
+                onChange={(e) => setCompletionResult(e.target.value)}
+                className="mt-2"
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCompletingSubtask(null);
+                  setCompletionResult('');
+                }}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={() => {
+                  if (completingSubtask) {
+                    // Find the parent item for this subtask
+                    const parentItemId = Object.keys(itemSubtasks).find(itemId =>
+                      itemSubtasks[itemId].some(subtask => subtask.id === completingSubtask)
+                    );
+                    if (parentItemId) {
+                      handleSubtaskComplete(completingSubtask, true, completionResult, parentItemId);
+                      setCompletingSubtask(null);
+                      setCompletionResult('');
+                    }
+                  }
+                }}
+                disabled={!completionResult.trim()}
+              >
+                Als erledigt markieren
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Digital Event Dialog */}
+      <Dialog open={isDigitalDialogOpen} onOpenChange={setIsDigitalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Digitale Veranstaltung einrichten</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="digital-platform">Plattform</Label>
+              <Input
+                id="digital-platform"
+                value={digitalEvent.platform}
+                onChange={(e) => setDigitalEvent({ ...digitalEvent, platform: e.target.value })}
+                placeholder="z.B. Zoom, Microsoft Teams, etc."
+              />
+            </div>
+            <div>
+              <Label htmlFor="digital-link">Meeting-Link</Label>
+              <Input
+                id="digital-link"
+                value={digitalEvent.link}
+                onChange={(e) => setDigitalEvent({ ...digitalEvent, link: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="digital-access">Einwahldaten</Label>
+              <Textarea
+                id="digital-access"
+                value={digitalEvent.access_info}
+                onChange={(e) => setDigitalEvent({ ...digitalEvent, access_info: e.target.value })}
+                placeholder="Meeting-ID, Passwort, Telefonnummer etc."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={updateDigitalEventSettings}>Speichern</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
