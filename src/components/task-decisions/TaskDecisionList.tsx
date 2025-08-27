@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { TaskDecisionDetails } from "./TaskDecisionDetails";
-import { Check, X, MessageCircle } from "lucide-react";
+import { Check, X, MessageCircle, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface DecisionRequest {
   id: string;
@@ -13,6 +16,7 @@ interface DecisionRequest {
   title: string;
   description: string | null;
   created_at: string;
+  created_by: string;
   participant_id: string | null;
   task: {
     title: string;
@@ -22,9 +26,14 @@ interface DecisionRequest {
   participants?: Array<{
     id: string;
     user_id: string;
+    profile?: {
+      display_name: string | null;
+    };
     responses: Array<{
+      id: string;
       response_type: 'yes' | 'no' | 'question';
       comment: string | null;
+      creator_response: string | null;
       created_at: string;
     }>;
   }>;
@@ -32,9 +41,12 @@ interface DecisionRequest {
 
 export const TaskDecisionList = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [decisions, setDecisions] = useState<DecisionRequest[]>([]);
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
+  const [isLoading, setIsLoading] = useState(false);
 
   console.log('TaskDecisionList component rendered - user from useAuth:', user?.id);
 
@@ -63,6 +75,7 @@ export const TaskDecisionList = () => {
             title,
             description,
             created_at,
+            created_by,
             status,
             tasks!inner (
               title
@@ -88,6 +101,7 @@ export const TaskDecisionList = () => {
           title,
           description,
           created_at,
+          created_by,
           status,
           tasks!inner (
             title,
@@ -115,6 +129,7 @@ export const TaskDecisionList = () => {
         title: item.task_decisions.title,
         description: item.task_decisions.description,
         created_at: item.task_decisions.created_at,
+        created_by: item.task_decisions.created_by,
         participant_id: item.id,
         task: {
           title: item.task_decisions.tasks.title,
@@ -132,6 +147,7 @@ export const TaskDecisionList = () => {
           title: item.title,
           description: item.description,
           created_at: item.created_at,
+          created_by: item.created_by,
           participant_id: userParticipant?.id || null,
           task: {
             title: item.tasks.title,
@@ -162,14 +178,25 @@ export const TaskDecisionList = () => {
             user_id,
             decision_id,
             task_decision_responses (
+              id,
               response_type,
               comment,
+              creator_response,
               created_at
             )
           `)
           .in('decision_id', decisionIds);
 
         if (participantsError) throw participantsError;
+
+        // Get user profiles for participants
+        const userIds = [...new Set(participantsData?.map(p => p.user_id) || [])];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', userIds);
+
+        const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
         // Group participants by decision
         const participantsByDecision = new Map();
@@ -180,6 +207,9 @@ export const TaskDecisionList = () => {
           participantsByDecision.get(participant.decision_id).push({
             id: participant.id,
             user_id: participant.user_id,
+            profile: {
+              display_name: profileMap.get(participant.user_id)?.display_name || null,
+            },
             responses: (participant.task_decision_responses || [])
               .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
               .map(response => ({
@@ -204,6 +234,42 @@ export const TaskDecisionList = () => {
       setDecisions(allDecisions);
     } catch (error) {
       console.error('Error loading decision requests:', error);
+    }
+  };
+
+  const sendCreatorResponse = async (responseId: string) => {
+    const responseText = creatorResponses[responseId];
+    if (!responseText?.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('task_decision_responses')
+        .update({ creator_response: responseText })
+        .eq('id', responseId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Erfolgreich",
+        description: "Antwort wurde gesendet.",
+      });
+
+      setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
+      
+      // Reload decisions
+      if (user?.id) {
+        loadDecisionRequests(user.id);
+      }
+    } catch (error) {
+      console.error('Error sending creator response:', error);
+      toast({
+        title: "Fehler",
+        description: "Antwort konnte nicht gesendet werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -314,6 +380,59 @@ export const TaskDecisionList = () => {
                       </span>
                     </div>
                   )}
+
+                  {/* Show questions and responses for creators */}
+                  {user?.id === decision.created_by && decision.participants && (
+                    <div className="space-y-2 mb-3" onClick={(e) => e.stopPropagation()}>
+                      {decision.participants.map(participant => {
+                        const latestResponse = participant.responses[0];
+                        if (!latestResponse || latestResponse.response_type !== 'question') return null;
+                        
+                        return (
+                          <div key={participant.id} className="bg-orange-50 p-2 rounded text-xs space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-orange-700">
+                                Rückfrage von {participant.profile?.display_name || 'Unbekannt'}:
+                              </span>
+                              <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">
+                                <MessageCircle className="h-2 w-2 mr-1" />
+                                Rückfrage
+                              </Badge>
+                            </div>
+                            <p className="text-muted-foreground">{latestResponse.comment}</p>
+                            
+                            {latestResponse.creator_response ? (
+                              <div className="bg-white p-2 rounded border">
+                                <strong className="text-green-700">Ihre Antwort:</strong> {latestResponse.creator_response}
+                              </div>
+                            ) : (
+                              <div className="flex space-x-2 mt-2">
+                                <Textarea
+                                  placeholder="Antwort eingeben..."
+                                  value={creatorResponses[latestResponse.id] || ''}
+                                  onChange={(e) => setCreatorResponses(prev => ({
+                                    ...prev,
+                                    [latestResponse.id]: e.target.value
+                                  }))}
+                                  className="flex-1 text-xs min-h-[60px]"
+                                  rows={2}
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={() => sendCreatorResponse(latestResponse.id)}
+                                  disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}
+                                  className="self-end"
+                                >
+                                  <Send className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
                       {new Date(decision.created_at).toLocaleDateString('de-DE')}
