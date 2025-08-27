@@ -167,6 +167,26 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
     return { yesCount, noCount, questionCount, pending, total: participants.length };
   };
 
+  const getBorderColor = (summary: ReturnType<typeof getResponseSummary>) => {
+    const allResponsesReceived = summary.pending === 0;
+    const hasQuestions = summary.questionCount > 0;
+    
+    if (hasQuestions) {
+      return 'border-l-orange-500'; // Es gibt Rückfragen
+    }
+    
+    if (!allResponsesReceived) {
+      return 'border-l-gray-400'; // Noch nicht alle haben abgestimmt
+    }
+    
+    // Alle haben abgestimmt, keine Rückfragen
+    if (summary.yesCount > summary.noCount) {
+      return 'border-l-green-500'; // Mehr ja als nein
+    } else {
+      return 'border-l-red-600'; // Mehr nein als ja (oder gleich)
+    }
+  };
+
   if (decisions.length === 0) {
     return null;
   }
@@ -180,7 +200,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
         const allResponsesReceived = summary.pending === 0;
         
         return (
-          <Card key={decision.id} className={`border-l-4 ${allResponsesReceived ? 'border-l-green-500' : 'border-l-orange-500'}`}>
+          <Card key={decision.id} className={`border-l-4 ${getBorderColor(summary)}`}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">
