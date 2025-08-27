@@ -5,6 +5,7 @@ import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { Check, X, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DecisionRequest {
   id: string;
@@ -30,43 +31,23 @@ interface DecisionRequest {
 }
 
 export const TaskDecisionList = () => {
+  const { user } = useAuth();
   const [decisions, setDecisions] = useState<DecisionRequest[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  console.log('TaskDecisionList component rendered');
+  console.log('TaskDecisionList component rendered - user from useAuth:', user?.id);
 
   useEffect(() => {
-    console.log('TaskDecisionList useEffect triggered - getting current user');
-    getCurrentUser();
-  }, []);
-
-  useEffect(() => {
-    console.log('TaskDecisionList useEffect for user ID change:', currentUserId);
-    if (currentUserId) {
-      loadDecisionRequests();
+    console.log('TaskDecisionList useEffect triggered - user from hook:', user?.id);
+    if (user?.id) {
+      loadDecisionRequests(user.id);
     } else {
-      console.log('No currentUserId yet, skipping loadDecisionRequests');
+      console.log('No user yet, skipping loadDecisionRequests');
     }
-  }, [currentUserId]);
+  }, [user?.id]);
 
-  const getCurrentUser = async () => {
-    console.log('Getting current user...');
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      console.log('Auth user result:', { user, error });
-      if (error) throw error;
-      setCurrentUserId(user?.id || null);
-      console.log('Set currentUserId to:', user?.id || null);
-    } catch (error) {
-      console.error('Error getting current user:', error);
-    }
-  };
-
-  const loadDecisionRequests = async () => {
-    if (!currentUserId) return;
-
+  const loadDecisionRequests = async (currentUserId: string) => {
     console.log('Loading decision requests for user:', currentUserId);
 
     try {
@@ -227,7 +208,9 @@ export const TaskDecisionList = () => {
   };
 
   const handleResponseSubmitted = () => {
-    loadDecisionRequests();
+    if (user?.id) {
+      loadDecisionRequests(user.id);
+    }
   };
 
   const handleOpenDetails = (decisionId: string) => {
@@ -241,7 +224,9 @@ export const TaskDecisionList = () => {
   };
 
   const handleDecisionArchived = () => {
-    loadDecisionRequests();
+    if (user?.id) {
+      loadDecisionRequests(user.id);
+    }
     handleCloseDetails();
   };
 
