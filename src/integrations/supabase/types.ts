@@ -4076,6 +4076,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      user_can_access_task_decision: {
+        Args: { _decision_id: string; _user_id: string }
+        Returns: boolean
+      }
       user_has_tenant_access: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
