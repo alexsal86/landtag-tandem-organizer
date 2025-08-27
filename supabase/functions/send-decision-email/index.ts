@@ -53,13 +53,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (templateError) {
       console.error("Error getting email template:", templateError);
-      return new Response(
-        JSON.stringify({ error: "Failed to get email template" }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
-      );
     }
 
     // Use default template if none exists
@@ -73,59 +66,91 @@ const handler = async (req: Request): Promise<Response> => {
       signature: 'Ihr Team'
     };
 
-    // Get creator info
-    const { data: creatorProfile, error: creatorError } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-      .single();
-
-    const creatorName = creatorProfile?.display_name || 'Ein Teammitglied';
-
     // Get task info
     const { data: taskData, error: taskError } = await supabase
       .from('tasks')
-      .select('title')
+      .select('title, user_id')
       .eq('id', taskId)
-      .single();
+      .maybeSingle();
+
+    if (taskError) {
+      console.error("Error getting task data:", taskError);
+    }
 
     const taskTitle = taskData?.title || 'Aufgabe';
+    const creatorUserId = taskData?.user_id;
+
+    // Get creator info
+    let creatorName = 'Ein Teammitglied';
+    if (creatorUserId) {
+      const { data: creatorProfile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', creatorUserId)
+        .maybeSingle();
+      
+      creatorName = creatorProfile?.display_name || 'Ein Teammitglied';
+    }
 
     const emailResults = [];
 
     // Send emails to participants
     for (const participantId of participantIds) {
       try {
+        console.log("Processing participant:", participantId);
+
         // Get participant info and token
         const { data: participant, error: participantError } = await supabase
           .from('task_decision_participants')
           .select(`
             id,
             token,
-            user_id,
-            profiles!inner(display_name, user_id)
+            user_id
           `)
           .eq('decision_id', decisionId)
           .eq('user_id', participantId)
-          .single();
+          .maybeSingle();
 
         if (participantError) {
           console.error("Error getting participant:", participantError);
-          emailResults.push({ participantId, success: false, error: "Participant not found" });
+          emailResults.push({ participantId, success: false, error: "Teilnehmer nicht gefunden" });
           continue;
+        }
+
+        if (!participant) {
+          console.error("Participant not found for user ID:", participantId);
+          emailResults.push({ participantId, success: false, error: "Teilnehmer nicht in Datenbank gefunden" });
+          continue;
+        }
+
+        if (!participant.token) {
+          console.error("No token found for participant:", participantId);
+          emailResults.push({ participantId, success: false, error: "Kein Token gefunden" });
+          continue;
+        }
+
+        // Get participant profile info
+        const { data: participantProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', participantId)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error("Error getting participant profile:", profileError);
         }
 
         // Get user email from auth.users (we need service role for this)
-        const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(participantId);
+        const { data: authUserData, error: authError } = await supabase.auth.admin.getUserById(participantId);
         
-        if (authError || !authUser.user?.email) {
+        if (authError || !authUserData.user?.email) {
           console.error("Error getting user email:", authError);
-          emailResults.push({ participantId, success: false, error: "User email not found" });
+          emailResults.push({ participantId, success: false, error: "E-Mail-Adresse nicht gefunden" });
           continue;
         }
 
-        const participantName = participant.profiles.display_name || 'Team-Mitglied';
-        const participantEmail = authUser.user.email;
+        const participantName = participantProfile?.display_name || 'Team-Mitglied';
+        const participantEmail = authUserData.user.email;
         const participantToken = participant.token;
 
         // Get current domain dynamically
@@ -196,9 +221,10 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (emailResponse.error) {
           console.error("Email send error:", emailResponse.error);
-          const isTestModeError = emailResponse.error && 
-            (emailResponse.error.toString().includes('testing emails') || 
-             emailResponse.error.toString().includes('verify a domain'));
+          const errorMessage = emailResponse.error.toString();
+          const isTestModeError = errorMessage.includes('testing emails') || 
+                                 errorMessage.includes('verify a domain') ||
+                                 errorMessage.includes('Domain not found');
           
           if (isTestModeError) {
             emailResults.push({ 
@@ -207,16 +233,16 @@ const handler = async (req: Request): Promise<Response> => {
               error: "Domain nicht verifiziert - E-Mails können nur an verifizierte Adressen gesendet werden" 
             });
           } else {
-            emailResults.push({ participantId, success: false, error: emailResponse.error });
+            emailResults.push({ participantId, success: false, error: errorMessage });
           }
         } else {
           console.log("Email sent successfully to:", participantEmail, "ID:", emailResponse.data?.id);
           emailResults.push({ participantId, success: true, messageId: emailResponse.data?.id });
         }
 
-      } catch (emailError) {
+      } catch (emailError: any) {
         console.error("Error sending email to participant", participantId, ":", emailError);
-        emailResults.push({ participantId, success: false, error: emailError.message || "Unknown error" });
+        emailResults.push({ participantId, success: false, error: emailError.message || "Unbekannter Fehler" });
       }
     }
 
@@ -233,7 +259,7 @@ const handler = async (req: Request): Promise<Response> => {
         results: emailResults
       }),
       {
-        status: successCount > 0 ? 200 : 500,
+        status: 200, // Always return 200 for better debugging
         headers: {
           "Content-Type": "application/json",
           ...corsHeaders,
@@ -244,7 +270,12 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-decision-email function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        stack: error.stack,
+        success: false,
+        message: "Fehler beim E-Mail-Versand"
+      }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
