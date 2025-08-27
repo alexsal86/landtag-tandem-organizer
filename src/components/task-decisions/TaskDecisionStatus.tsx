@@ -117,6 +117,10 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
   };
 
   const archiveDecision = async (decisionId: string) => {
+    console.log('TaskDecisionStatus: Archiving decision:', decisionId);
+    console.log('TaskDecisionStatus: Current user (archiving):', currentUserId);
+    console.log('TaskDecisionStatus: Is creator:', currentUserId === createdBy);
+    
     setIsLoading(true);
     try {
       const { error } = await supabase
@@ -128,8 +132,12 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
         })
         .eq('id', decisionId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('TaskDecisionStatus: Archive error:', error);
+        throw error;
+      }
 
+      console.log('TaskDecisionStatus: Successfully archived decision');
       toast({
         title: "Erfolgreich",
         description: "Entscheidung wurde archiviert.",
@@ -137,7 +145,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       loadDecisions();
     } catch (error) {
-      console.error('Error archiving decision:', error);
+      console.error('TaskDecisionStatus: Error archiving decision:', error);
       toast({
         title: "Fehler",
         description: "Entscheidung konnte nicht archiviert werden.",
@@ -149,11 +157,30 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
   };
 
   const getResponseSummary = (participants: DecisionWithResponses['participants']) => {
-    const yesCount = participants.filter(p => p.responses.some(r => r.response_type === 'yes')).length;
-    const noCount = participants.filter(p => p.responses.some(r => r.response_type === 'no')).length;
-    const questionCount = participants.filter(p => p.responses.some(r => r.response_type === 'question')).length;
-    const totalResponses = yesCount + noCount + questionCount;
-    const pending = participants.length - totalResponses;
+    let yesCount = 0;
+    let noCount = 0; 
+    let questionCount = 0;
+    let pending = 0;
+
+    participants.forEach(participant => {
+      if (participant.responses.length === 0) {
+        pending++;
+      } else {
+        // Get the latest response (responses are ordered by created_at DESC)
+        const latestResponse = participant.responses[0];
+        switch (latestResponse.response_type) {
+          case 'yes':
+            yesCount++;
+            break;
+          case 'no':
+            noCount++;
+            break;
+          case 'question':
+            questionCount++;
+            break;
+        }
+      }
+    });
 
     return { yesCount, noCount, questionCount, pending, total: participants.length };
   };
