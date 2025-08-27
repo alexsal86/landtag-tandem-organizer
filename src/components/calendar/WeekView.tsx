@@ -176,7 +176,7 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
         <div className="h-12 border-b bg-background"></div>
         {/* All-day events label */}
         {allDayEvents.length > 0 && (
-          <div className="h-auto min-h-[40px] border-b text-xs text-muted-foreground p-2 text-right bg-muted/30">
+          <div className="h-12 border-b text-xs text-muted-foreground p-2 text-right bg-muted/30 flex items-center justify-end">
             Ganztägig
           </div>
         )}
@@ -209,7 +209,7 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
         {allDayEvents.length > 0 && (
           <div className="grid grid-cols-7 border-b bg-muted/10">
             {days.map((day, dayIndex) => (
-              <div key={`allday-${dayIndex}`} className="border-r p-1 min-h-[40px]">
+              <div key={`allday-${dayIndex}`} className="border-r p-1 h-12">
                 {getAllDayEventsForDay(day).map((event) => {
                   // Calculate span for multi-day events
                   let spanDays = 1;
@@ -218,8 +218,10 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                   if (event.endTime && isEventStart) {
                     const eventStart = new Date(event.date);
                     const eventEnd = new Date(event.endTime);
+                    eventStart.setHours(0, 0, 0, 0);
+                    eventEnd.setHours(0, 0, 0, 0);
                     const timeDiff = eventEnd.getTime() - eventStart.getTime();
-                    spanDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                    spanDays = Math.floor(timeDiff / (1000 * 3600 * 24)) + 1;
                     
                     // Limit span to remaining days in the week
                     const remainingDays = 7 - dayIndex;

@@ -332,7 +332,7 @@ export function AppointmentDetailsSidebar({
             <div className="flex items-center gap-3">
               <Clock className="h-5 w-5 text-muted-foreground" />
               <div className="flex-1">
-                <div className="font-medium">Uhrzeit</div>
+                <div className="font-medium">{appointment.is_all_day ? "Ganztägig" : "Uhrzeit"}</div>
                 {isEditing ? (
                   <div className="space-y-2 mt-1">
                     <div className="grid grid-cols-2 gap-2">
@@ -373,7 +373,15 @@ export function AppointmentDetailsSidebar({
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground">
-                    {formatEventDisplay(appointment)}
+                    {appointment.is_all_day ? (
+                      appointment.endTime ? (
+                        `${appointment.date.toLocaleDateString('de-DE')} - ${appointment.endTime.toLocaleDateString('de-DE')}`
+                      ) : (
+                        appointment.date.toLocaleDateString('de-DE')
+                      )
+                    ) : (
+                      formatEventDisplay(appointment)
+                    )}
                   </div>
                 )}
               </div>

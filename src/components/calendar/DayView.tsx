@@ -218,9 +218,6 @@ export function DayView({ date, events, onAppointmentClick }: DayViewProps) {
                       </div>
                     )}
                   </div>
-                  <div className="opacity-80 text-xs">
-                    {event.duration}
-                  </div>
                   {event.location && (
                     <div className="opacity-70 truncate text-xs">{event.location}</div>
                   )}
