@@ -10,6 +10,7 @@ import { WeekView } from "./calendar/WeekView";
 import { MonthView } from "./calendar/MonthView";
 import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
 import { PollListView } from "./poll/PollListView";
+import { useTenant } from "@/hooks/useTenant";
 
 export interface CalendarEvent {
   id: string;
@@ -34,6 +35,7 @@ export interface CalendarEvent {
 
 export function CalendarView() {
   const navigate = useNavigate();
+  const { currentTenant } = useTenant();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"day" | "week" | "month" | "polls">("day");
   const [appointments, setAppointments] = useState<CalendarEvent[]>([]);
@@ -174,57 +176,61 @@ export function CalendarView() {
         });
       }
 
-      // Process external calendar events
-      console.log('🔍 Fetching external events for date range...');
-      const { data: externalEvents, error: externalError } = await supabase
-        .from('external_events')
-        .select(`
-          *,
-          external_calendars (
-            name,
-            color,
-            calendar_type,
-            user_id
-          )
-        `)
-        .gte('start_time', startDate.toISOString())
-        .lte('start_time', endDate.toISOString())
-        .order('start_time', { ascending: true });
+      // Process external calendar events (from all tenant calendars)
+      if (currentTenant) {
+        console.log('🔍 Fetching external events for date range...');
+        const { data: externalEvents, error: externalError } = await supabase
+          .from('external_events')
+          .select(`
+            *,
+            external_calendars!inner (
+              name,
+              color,
+              calendar_type,
+              user_id,
+              tenant_id
+            )
+          `)
+          .gte('start_time', startDate.toISOString())
+          .lte('start_time', endDate.toISOString())
+          .eq('external_calendars.tenant_id', currentTenant.id)
+          .order('start_time', { ascending: true });
 
-      console.log('📊 External events query result:', {
-        data: externalEvents,
-        error: externalError,
-        count: externalEvents?.length || 0
-      });
+        console.log('📊 External events query result:', {
+          data: externalEvents,
+          error: externalError,
+          count: externalEvents?.length || 0
+        });
 
-      // Process external events
-      if (externalEvents && externalEvents.length > 0) {
-        console.log('📅 Processing', externalEvents.length, 'external events');
-        for (const externalEvent of externalEvents) {
-          const startTime = new Date(externalEvent.start_time);
-          const endTime = new Date(externalEvent.end_time);
-          const durationMs = endTime.getTime() - startTime.getTime();
-          const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(1);
+        // Process external events
+        if (externalEvents && externalEvents.length > 0) {
+          console.log('📅 Processing', externalEvents.length, 'external events');
+          for (const externalEvent of externalEvents) {
+            const startTime = new Date(externalEvent.start_time);
+            const endTime = new Date(externalEvent.end_time);
+            const durationMs = endTime.getTime() - startTime.getTime();
+            const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(1);
 
-          formattedEvents.push({
-            id: `external-${externalEvent.id}`,
-            title: `📅 ${externalEvent.title}`,
-            description: externalEvent.description || undefined,
-            time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-            duration: externalEvent.all_day ? 'Ganztägig' : `${durationHours}h`,
-            date: startTime,
-            endTime: endTime,
-            location: externalEvent.location || undefined,
-            type: "appointment",
-            priority: "medium",
-            participants: [],
-            attendees: 0,
-            category_color: externalEvent.external_calendars?.color || '#6b7280',
-            is_all_day: externalEvent.all_day || false
-          });
+            formattedEvents.push({
+              id: `external-${externalEvent.id}`,
+              title: `📅 ${externalEvent.title}`,
+              description: externalEvent.description || undefined,
+              time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+              duration: externalEvent.all_day ? 'Ganztägig' : `${durationHours}h`,
+              date: startTime,
+              endTime: endTime,
+              location: externalEvent.location || undefined,
+              type: "appointment",
+              priority: "medium",
+              participants: [],
+              attendees: 0,
+              category_color: externalEvent.external_calendars?.color || '#6b7280',
+              is_all_day: externalEvent.all_day || false
+            });
+          }
+        } else {
+          console.log('⚠️ No external events found');
         }
-      } else {
-        console.log('⚠️ No external events found');
       }
 
       // Get current user

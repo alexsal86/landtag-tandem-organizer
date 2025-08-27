@@ -22,6 +22,10 @@ interface ExternalCalendar {
   sync_interval: number;
   color: string;
   is_active: boolean;
+  user_id?: string;
+  profiles?: {
+    display_name: string | null;
+  } | null;
 }
 
 const CALENDAR_COLORS = [
@@ -57,15 +61,15 @@ export function ExternalCalendarSettings() {
     
     setIsLoading(true);
     try {
+      // Fetch all calendars in the tenant (visible to all office users)
       const { data, error } = await supabase
         .from('external_calendars')
-        .select('*')
-        .eq('user_id', user.id)
+        .select('*, profiles!external_calendars_user_id_fkey(display_name)')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCalendars(data || []);
+      setCalendars((data as unknown) as ExternalCalendar[] || []);
     } catch (error) {
       console.error('Error fetching calendars:', error);
       toast.error('Fehler beim Laden der externen Kalender');
@@ -309,6 +313,9 @@ export function ExternalCalendarSettings() {
                           {calendar.calendar_type === 'google' && 'Google Calendar'}
                           {calendar.calendar_type === 'outlook' && 'Outlook'}
                           {calendar.calendar_type === 'generic' && 'ICS Kalender'}
+                          {calendar.profiles?.display_name && (
+                            <span className="ml-2 text-xs">• von {calendar.profiles.display_name}</span>
+                          )}
                         </CardDescription>
                       </div>
                     </div>
@@ -340,22 +347,28 @@ export function ExternalCalendarSettings() {
                           <RefreshCw className={`h-4 w-4 mr-2 ${syncingCalendars.has(calendar.id) ? 'animate-spin' : ''}`} />
                           Synchronisieren
                         </Button>
+                        {calendar.user_id === user?.id && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleSync(calendar.id, !calendar.sync_enabled)}
+                            >
+                              {calendar.sync_enabled ? 'Deaktivieren' : 'Aktivieren'}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                      {calendar.user_id === user?.id && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => toggleSync(calendar.id, !calendar.sync_enabled)}
+                          onClick={() => handleDelete(calendar.id)}
                         >
-                          {calendar.sync_enabled ? 'Deaktivieren' : 'Aktivieren'}
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Entfernen
                         </Button>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(calendar.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Entfernen
-                      </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
