@@ -107,7 +107,12 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
       // Send email invitations if requested
       if (sendByEmail) {
         try {
-          const { error: emailError } = await supabase.functions.invoke('send-decision-email', {
+          toast({
+            title: "E-Mails werden versendet...",
+            description: "Die E-Mail-Einladungen werden an die ausgewählten Teilnehmer gesendet.",
+          });
+
+          const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-decision-email', {
             body: {
               decisionId: decision.id,
               taskId: taskId,
@@ -120,19 +125,42 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
           if (emailError) {
             console.error('Error sending decision emails:', emailError);
             toast({
-              title: "Warnung",
-              description: "Entscheidung erstellt, aber E-Mails konnten nicht versendet werden.",
+              title: "E-Mail-Fehler",
+              description: `E-Mails konnten nicht versendet werden: ${emailError.message}`,
               variant: "destructive",
             });
+          } else if (emailResult) {
+            const successCount = emailResult.results?.filter((r: any) => r.success).length || 0;
+            const totalCount = emailResult.results?.length || selectedUsers.length;
+            
+            if (successCount > 0) {
+              toast({
+                title: "E-Mails versendet",
+                description: `${successCount}/${totalCount} E-Mail-Einladungen erfolgreich versendet.`,
+              });
+            } else {
+              toast({
+                title: "E-Mail-Warnung",
+                description: "Keine E-Mails konnten versendet werden. Überprüfen Sie die E-Mail-Konfiguration.",
+                variant: "destructive",
+              });
+            }
           }
-        } catch (emailError) {
+        } catch (emailError: any) {
           console.error('Error sending decision emails:', emailError);
+          toast({
+            title: "E-Mail-Fehler",
+            description: `Unerwarteter Fehler beim E-Mail-Versand: ${emailError.message}`,
+            variant: "destructive",
+          });
         }
       }
 
       toast({
         title: "Erfolgreich",
-        description: "Entscheidungsanfrage wurde erstellt.",
+        description: sendByEmail 
+          ? "Entscheidungsanfrage wurde erstellt und E-Mail-Versand wird geprüft."
+          : "Entscheidungsanfrage wurde erstellt.",
       });
 
       // Reset form
