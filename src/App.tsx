@@ -15,6 +15,7 @@ import EditProfile from "./pages/EditProfile";
 import CreateDistributionList from "./pages/CreateDistributionList";
 import EditDistributionList from "./pages/EditDistributionList";
 import PollGuest from "./pages/PollGuest";
+import DecisionResponse from "./pages/DecisionResponse";
 
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import Auth from "./pages/Auth";
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/distribution-lists/:id/edit" element={<EditDistributionList />} />
             <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/poll-guest/:pollId" element={<PollGuest />} />
+            <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             
             <Route path="*" element={<NotFound />} />
