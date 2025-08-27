@@ -189,7 +189,7 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
       {/* All-day events section - sticky */}
       {allDayEvents.length > 0 && (
         <div className="grid grid-cols-[64px,1fr] border-b bg-background sticky top-12 z-10">
-          <div className="border-r text-xs text-muted-foreground p-2 text-right bg-muted/30 flex items-center justify-end">
+          <div className="border-r text-xs text-muted-foreground p-2 text-right bg-muted/20 flex items-center justify-end">
             Ganztägig
           </div>
           <div className="grid grid-cols-7">
@@ -204,11 +204,11 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                     const eventStart = new Date(event.date);
                     const eventEnd = new Date(event.endTime);
                     eventStart.setHours(0, 0, 0, 0);
-                    eventEnd.setHours(23, 59, 59, 999);
+                    eventEnd.setHours(0, 0, 0, 0);
                     
-                    // Calculate the actual days between start and end
+                    // Calculate the actual days between start and end (inclusive)
                     const timeDiff = eventEnd.getTime() - eventStart.getTime();
-                    const daysDiff = Math.round(timeDiff / (1000 * 3600 * 24));
+                    const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
                     spanDays = daysDiff + 1;
                     
                     // Limit span to remaining days in the week
