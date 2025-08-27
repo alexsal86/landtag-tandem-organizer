@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
+import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { Check, X, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,6 +32,8 @@ interface DecisionRequest {
 export const TaskDecisionList = () => {
   const [decisions, setDecisions] = useState<DecisionRequest[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   useEffect(() => {
     getCurrentUser();
@@ -204,6 +207,21 @@ export const TaskDecisionList = () => {
     loadDecisionRequests();
   };
 
+  const handleOpenDetails = (decisionId: string) => {
+    setSelectedDecisionId(decisionId);
+    setIsDetailsOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setIsDetailsOpen(false);
+    setSelectedDecisionId(null);
+  };
+
+  const handleDecisionArchived = () => {
+    loadDecisionRequests();
+    handleCloseDetails();
+  };
+
   const getResponseSummary = (participants: DecisionRequest['participants'] = []) => {
     const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
     const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
@@ -245,7 +263,11 @@ export const TaskDecisionList = () => {
         {decisions.map((decision) => {
           const summary = getResponseSummary(decision.participants);
           return (
-            <Card key={decision.id} className={`border-l-4 ${getBorderColor(summary)}`}>
+            <Card 
+              key={decision.id} 
+              className={`border-l-4 ${getBorderColor(summary)} cursor-pointer hover:bg-muted/50 transition-colors`}
+              onClick={() => handleOpenDetails(decision.id)}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div>
@@ -289,12 +311,14 @@ export const TaskDecisionList = () => {
                       {new Date(decision.created_at).toLocaleDateString('de-DE')}
                     </span>
                     {decision.isParticipant && decision.participant_id ? (
-                      <TaskDecisionResponse
-                        decisionId={decision.id}
-                        participantId={decision.participant_id}
-                        onResponseSubmitted={handleResponseSubmitted}
-                        hasResponded={decision.hasResponded}
-                      />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <TaskDecisionResponse
+                          decisionId={decision.id}
+                          participantId={decision.participant_id}
+                          onResponseSubmitted={handleResponseSubmitted}
+                          hasResponded={decision.hasResponded}
+                        />
+                      </div>
                     ) : (
                       <Badge variant="secondary" className="text-xs">
                         Zur Info
@@ -308,6 +332,13 @@ export const TaskDecisionList = () => {
         })}
       </div>
       <div className="border-t-4 border-t-destructive my-6"></div>
+      
+      <TaskDecisionDetails
+        decisionId={selectedDecisionId}
+        isOpen={isDetailsOpen}
+        onClose={handleCloseDetails}
+        onArchived={handleDecisionArchived}
+      />
     </>
   );
 

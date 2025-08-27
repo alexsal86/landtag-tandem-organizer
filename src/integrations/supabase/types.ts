@@ -3169,6 +3169,7 @@ export type Database = {
         Row: {
           comment: string | null
           created_at: string
+          creator_response: string | null
           decision_id: string
           id: string
           participant_id: string
@@ -3178,6 +3179,7 @@ export type Database = {
         Insert: {
           comment?: string | null
           created_at?: string
+          creator_response?: string | null
           decision_id: string
           id?: string
           participant_id: string
@@ -3187,6 +3189,7 @@ export type Database = {
         Update: {
           comment?: string | null
           created_at?: string
+          creator_response?: string | null
           decision_id?: string
           id?: string
           participant_id?: string

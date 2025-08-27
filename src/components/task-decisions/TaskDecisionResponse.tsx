@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, X, MessageCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Check, X, MessageCircle, Edit2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -11,6 +12,14 @@ interface TaskDecisionResponseProps {
   participantId: string;
   onResponseSubmitted: () => void;
   hasResponded?: boolean;
+}
+
+interface ResponseData {
+  id: string;
+  response_type: 'yes' | 'no' | 'question';
+  comment: string | null;
+  creator_response: string | null;
+  created_at: string;
 }
 
 export const TaskDecisionResponse = ({ 
@@ -22,7 +31,37 @@ export const TaskDecisionResponse = ({
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [questionComment, setQuestionComment] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentResponse, setCurrentResponse] = useState<ResponseData | null>(null);
+  const [showEdit, setShowEdit] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (hasResponded) {
+      loadCurrentResponse();
+    }
+  }, [hasResponded, participantId]);
+
+  const loadCurrentResponse = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('task_decision_responses')
+        .select('*')
+        .eq('participant_id', participantId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setCurrentResponse({
+          ...data,
+          response_type: data.response_type as 'yes' | 'no' | 'question'
+        });
+      }
+    } catch (error) {
+      console.error('Error loading current response:', error);
+    }
+  };
 
   const handleResponse = async (responseType: 'yes' | 'no' | 'question', comment?: string) => {
     setIsLoading(true);
@@ -87,6 +126,7 @@ export const TaskDecisionResponse = ({
         setIsQuestionDialogOpen(false);
       }
       
+      setShowEdit(false);
       onResponseSubmitted();
     } catch (error) {
       console.error('Error submitting response:', error);
@@ -112,14 +152,58 @@ export const TaskDecisionResponse = ({
     handleResponse('question', questionComment.trim());
   };
 
-  if (hasResponded) {
+  // Show current response if already responded
+  if (hasResponded && currentResponse && !showEdit) {
     return (
-      <div className="text-sm text-muted-foreground">
-        Bereits beantwortet
+      <div className="space-y-2">
+        <div className="flex items-center space-x-2">
+          {currentResponse.response_type === 'yes' && (
+            <Badge variant="outline" className="text-green-600 border-green-600">
+              <Check className="h-3 w-3 mr-1" />
+              Ja
+            </Badge>
+          )}
+          {currentResponse.response_type === 'no' && (
+            <Badge variant="outline" className="text-red-600 border-red-600">
+              <X className="h-3 w-3 mr-1" />
+              Nein
+            </Badge>
+          )}
+          {currentResponse.response_type === 'question' && (
+            <Badge variant="outline" className="text-orange-600 border-orange-600">
+              <MessageCircle className="h-3 w-3 mr-1" />
+              Rückfrage
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowEdit(true)}
+            className="text-xs"
+          >
+            <Edit2 className="h-3 w-3 mr-1" />
+            Ändern
+          </Button>
+        </div>
+        
+        {/* Show participant comment */}
+        {currentResponse.comment && (
+          <div className="text-xs text-muted-foreground">
+            <strong>Ihr Kommentar:</strong> {currentResponse.comment}
+          </div>
+        )}
+        
+        {/* Show creator response */}
+        {currentResponse.creator_response && (
+          <div className="bg-muted p-2 rounded text-xs">
+            <strong>Antwort:</strong> {currentResponse.creator_response}
+          </div>
+        )}
       </div>
     );
   }
 
+  // Show response buttons (for new responses or when editing)
   return (
     <div className="flex items-center space-x-2">
       <Button
@@ -182,6 +266,17 @@ export const TaskDecisionResponse = ({
       >
         <X className="h-4 w-4" />
       </Button>
+      
+      {showEdit && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowEdit(false)}
+          className="text-xs"
+        >
+          Abbrechen
+        </Button>
+      )}
     </div>
   );
 };

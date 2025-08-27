@@ -83,9 +83,6 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
         .select(`
           id,
           user_id,
-          profiles!inner (
-            display_name
-          ),
           task_decision_responses (
             id,
             response_type,
@@ -98,14 +95,29 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
 
       if (participantsError) throw participantsError;
 
+      // Get user profiles separately
+      const userIds = participantsData?.map(p => p.user_id) || [];
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+
       const formattedParticipants = participantsData?.map(participant => ({
         id: participant.id,
         user_id: participant.user_id,
         profile: {
-          display_name: participant.profiles?.display_name || null,
+          display_name: profileMap.get(participant.user_id)?.display_name || null,
         },
         responses: (participant.task_decision_responses || [])
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .map(response => ({
+            ...response,
+            response_type: response.response_type as 'yes' | 'no' | 'question'
+          })),
       })) || [];
 
       setDecision(decisionData);
