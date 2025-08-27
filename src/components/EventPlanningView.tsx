@@ -16,7 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -141,6 +142,18 @@ interface Profile {
   avatar_url?: string;
 }
 
+interface AppointmentPreparation {
+  id: string;
+  title: string;
+  appointment_id?: string;
+  status: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  is_archived: boolean;
+  archived_at?: string;
+}
+
 export function EventPlanningView() {
   console.log('=== EventPlanningView component loaded ===');
   const { user } = useAuth();
@@ -196,12 +209,18 @@ export function EventPlanningView() {
   const [completingSubtask, setCompletingSubtask] = useState<string | null>(null);
   const [completionResult, setCompletionResult] = useState('');
 
+  // States for appointment preparations
+  const [appointmentPreparations, setAppointmentPreparations] = useState<AppointmentPreparation[]>([]);
+  const [archivedPreparations, setArchivedPreparations] = useState<AppointmentPreparation[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user);
     fetchPlannings();
     fetchAllProfiles();
     fetchAvailableContacts();
     fetchPlanningTemplates();
+    fetchAppointmentPreparations();
   }, [user]);
 
   const fetchPlanningTemplates = async () => {
@@ -330,6 +349,40 @@ export function EventPlanningView() {
     }
 
     setAvailableContacts(data || []);
+  };
+
+  const fetchAppointmentPreparations = async () => {
+    if (!user) return;
+
+    try {
+      // Fetch active preparations
+      const { data: activeData, error: activeError } = await supabase
+        .from("appointment_preparations")
+        .select("*")
+        .eq("is_archived", false)
+        .order("created_at", { ascending: false });
+
+      if (activeError) {
+        console.error("Error fetching active preparations:", activeError);
+      } else {
+        setAppointmentPreparations(activeData || []);
+      }
+
+      // Fetch archived preparations
+      const { data: archivedData, error: archivedError } = await supabase
+        .from("appointment_preparations")
+        .select("*")
+        .eq("is_archived", true)
+        .order("archived_at", { ascending: false });
+
+      if (archivedError) {
+        console.error("Error fetching archived preparations:", archivedError);
+      } else {
+        setArchivedPreparations(archivedData || []);
+      }
+    } catch (error) {
+      console.error("Error in fetchAppointmentPreparations:", error);
+    }
   };
 
   const fetchPlanningDetails = async (planningId: string) => {
@@ -1925,6 +1978,119 @@ export function EventPlanningView() {
                 </Card>
               );
             })}
+          </div>
+
+          {/* Separator */}
+          <div className="flex items-center my-8">
+            <Separator className="flex-1" />
+            <div className="px-4 text-muted-foreground text-sm font-medium">
+              Terminplanungen
+            </div>
+            <Separator className="flex-1" />
+          </div>
+
+          {/* Appointment Preparations Section */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Terminplanungen</h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={showArchived ? "outline" : "default"}
+                  onClick={() => setShowArchived(false)}
+                >
+                  Aktive ({appointmentPreparations.length})
+                </Button>
+                <Button
+                  variant={showArchived ? "default" : "outline"}
+                  onClick={() => setShowArchived(true)}
+                >
+                  <Archive className="mr-2 h-4 w-4" />
+                  Archiv ({archivedPreparations.length})
+                </Button>
+              </div>
+            </div>
+
+            {/* Active Preparations */}
+            {!showArchived && (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {appointmentPreparations.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    Keine aktiven Terminplanungen vorhanden
+                  </div>
+                ) : (
+                  appointmentPreparations.map((preparation) => (
+                    <Card key={preparation.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span className="truncate">{preparation.title}</span>
+                          <Badge 
+                            variant={preparation.status === 'completed' ? 'default' : 
+                                   preparation.status === 'in_progress' ? 'secondary' : 'outline'}
+                          >
+                            {preparation.status === 'completed' ? 'Abgeschlossen' :
+                             preparation.status === 'in_progress' ? 'In Bearbeitung' : 'Entwurf'}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {preparation.notes && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {preparation.notes}
+                          </p>
+                        )}
+                        <p className="text-sm text-muted-foreground">
+                          Erstellt am {format(new Date(preparation.created_at), "dd.MM.yyyy", { locale: de })}
+                        </p>
+                        {preparation.updated_at !== preparation.created_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Zuletzt bearbeitet am {format(new Date(preparation.updated_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Archived Preparations */}
+            {showArchived && (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {archivedPreparations.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    Keine archivierten Terminplanungen vorhanden
+                  </div>
+                ) : (
+                  archivedPreparations.map((preparation) => (
+                    <Card key={preparation.id} className="opacity-75 hover:opacity-100 hover:shadow-md transition-all">
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span className="truncate">{preparation.title}</span>
+                          <Badge variant="secondary">
+                            Archiviert
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {preparation.notes && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {preparation.notes}
+                          </p>
+                        )}
+                        <p className="text-sm text-muted-foreground">
+                          Erstellt am {format(new Date(preparation.created_at), "dd.MM.yyyy", { locale: de })}
+                        </p>
+                        {preparation.archived_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Archiviert am {format(new Date(preparation.archived_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
