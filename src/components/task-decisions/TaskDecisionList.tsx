@@ -53,6 +53,8 @@ export const TaskDecisionList = () => {
   const loadDecisionRequests = async () => {
     if (!currentUserId) return;
 
+    console.log('Loading decision requests for user:', currentUserId);
+
     try {
       // Load decisions where user is a participant
       const { data: participantDecisions, error: participantError } = await supabase
@@ -77,6 +79,8 @@ export const TaskDecisionList = () => {
         `)
         .eq('user_id', currentUserId)
         .eq('task_decisions.status', 'active');
+
+      console.log('Participant decisions query result:', { participantDecisions, participantError });
 
       if (participantError) throw participantError;
 
@@ -104,6 +108,8 @@ export const TaskDecisionList = () => {
         `)
         .eq('status', 'active')
         .ilike('tasks.assigned_to', `%${currentUserId}%`);
+
+      console.log('Assigned task decisions query result:', { assignedTaskDecisions, assignedError });
 
       if (assignedError) throw assignedError;
 
@@ -196,6 +202,9 @@ export const TaskDecisionList = () => {
 
       // Sort by creation date
       allDecisions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      console.log('Final decisions list:', allDecisions);
+      console.log('Total decisions found:', allDecisions.length);
 
       setDecisions(allDecisions);
     } catch (error) {
