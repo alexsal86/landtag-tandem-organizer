@@ -35,19 +35,33 @@ export const TaskDecisionList = () => {
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
+  console.log('TaskDecisionList component rendered');
+
   useEffect(() => {
+    console.log('TaskDecisionList useEffect triggered - getting current user');
     getCurrentUser();
   }, []);
 
   useEffect(() => {
+    console.log('TaskDecisionList useEffect for user ID change:', currentUserId);
     if (currentUserId) {
       loadDecisionRequests();
+    } else {
+      console.log('No currentUserId yet, skipping loadDecisionRequests');
     }
   }, [currentUserId]);
 
   const getCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUserId(user?.id || null);
+    console.log('Getting current user...');
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      console.log('Auth user result:', { user, error });
+      if (error) throw error;
+      setCurrentUserId(user?.id || null);
+      console.log('Set currentUserId to:', user?.id || null);
+    } catch (error) {
+      console.error('Error getting current user:', error);
+    }
   };
 
   const loadDecisionRequests = async () => {
