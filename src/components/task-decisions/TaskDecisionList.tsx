@@ -38,3 +38,4 @@ export const TaskDecisionList = () => {
       <p>Wenn du das siehst, wird die Komponente gerendert.</p>
     </div>
   );
+};
