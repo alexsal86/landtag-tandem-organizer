@@ -1591,10 +1591,7 @@ export function TasksView() {
             </CardHeader>
             <CardContent>
               {/* Task Decision Requests for assigned tasks */}
-              <div style={{border: '2px solid red', padding: '10px', margin: '10px'}}>
-                TEST: TaskDecisionList Bereich - sollte sichtbar sein
-                <TaskDecisionList />
-              </div>
+              <TaskDecisionList />
             </CardContent>
             <CardContent>
               <Table>
