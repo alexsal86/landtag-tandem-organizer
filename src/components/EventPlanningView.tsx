@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { AppointmentPreparationsView } from "./AppointmentPreparationsView";
 
 interface EventPlanning {
   id: string;
@@ -141,6 +142,28 @@ interface Profile {
   avatar_url?: string;
 }
 
+interface AppointmentPreparation {
+  id: string;
+  appointment_id: string;
+  template_id?: string;
+  tenant_id: string;
+  created_by: string;
+  title: string;
+  status: string;
+  notes?: string;
+  preparation_data: any;
+  checklist_items: any;
+  is_archived: boolean;
+  archived_at?: string;
+  created_at: string;
+  updated_at: string;
+  appointment?: {
+    title: string;
+    category: string;
+    start_time: string;
+  };
+}
+
 export function EventPlanningView() {
   console.log('=== EventPlanningView component loaded ===');
   const { user } = useAuth();
@@ -152,6 +175,10 @@ export function EventPlanningView() {
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+  const [appointmentPreparations, setAppointmentPreparations] = useState<AppointmentPreparation[]>([]);
+  const [archivedPreparations, setArchivedPreparations] = useState<AppointmentPreparation[]>([]);
+  const [showArchive, setShowArchive] = useState(false);
+  const [activeTab, setActiveTab] = useState<'events' | 'appointments'>('events');
   const [contacts, setContacts] = useState<EventPlanningContact[]>([]);
   const [speakers, setSpeakers] = useState<EventPlanningSpeaker[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -199,6 +226,7 @@ export function EventPlanningView() {
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user);
     fetchPlannings();
+    fetchAppointmentPreparations();
     fetchAllProfiles();
     fetchAvailableContacts();
     fetchPlanningTemplates();
@@ -220,12 +248,117 @@ export function EventPlanningView() {
     setPlanningTemplates(data || []);
   };
 
+  const fetchAppointmentPreparations = async () => {
+    if (!user) return;
+
+    try {
+      // Fetch active preparations
+      const { data: activeData, error: activeError } = await supabase
+        .from("appointment_preparations")
+        .select(`
+          *,
+          appointment:appointments(title, category, start_time)
+        `)
+        .eq("is_archived", false)
+        .order("created_at", { ascending: false });
+
+      if (activeError) {
+        console.error("Error fetching appointment preparations:", activeError);
+        return;
+      }
+
+      setAppointmentPreparations((activeData || []).map(item => ({
+        ...item,
+        checklist_items: Array.isArray(item.checklist_items) ? item.checklist_items : 
+                        (typeof item.checklist_items === 'string' ? JSON.parse(item.checklist_items) : []),
+        preparation_data: typeof item.preparation_data === 'string' ? JSON.parse(item.preparation_data) : item.preparation_data
+      })));
+
+      // Fetch archived preparations
+      const { data: archivedData, error: archivedError } = await supabase
+        .from("appointment_preparations")
+        .select(`
+          *,
+          appointment:appointments(title, category, start_time)
+        `)
+        .eq("is_archived", true)
+        .order("archived_at", { ascending: false });
+
+      if (archivedError) {
+        console.error("Error fetching archived preparations:", archivedError);
+        return;
+      }
+
+      setArchivedPreparations((archivedData || []).map(item => ({
+        ...item,
+        checklist_items: Array.isArray(item.checklist_items) ? item.checklist_items : 
+                        (typeof item.checklist_items === 'string' ? JSON.parse(item.checklist_items) : []),
+        preparation_data: typeof item.preparation_data === 'string' ? JSON.parse(item.preparation_data) : item.preparation_data
+      })));
+
+    } catch (error) {
+      console.error("Unexpected error fetching preparations:", error);
+    }
+  };
+
+  // Function to sync appointment category with preparation
+  const syncPreparationWithAppointment = async () => {
+    if (!user) return;
+
+    try {
+      const { data: preparations, error } = await supabase
+        .from("appointment_preparations")
+        .select(`
+          id,
+          appointment_id,
+          preparation_data,
+          appointment:appointments(category)
+        `)
+        .eq("is_archived", false);
+
+      if (error || !preparations) return;
+
+      for (const prep of preparations) {
+        if (prep.appointment && prep.preparation_data) {
+          const prepData = typeof prep.preparation_data === 'string' ? 
+                          JSON.parse(prep.preparation_data) : prep.preparation_data;
+          const currentEventType = prepData?.event_type;
+          const appointmentCategory = prep.appointment.category;
+          
+          // Update if category changed
+          if (currentEventType !== appointmentCategory) {
+            const updatedData = {
+              ...prepData,
+              event_type: appointmentCategory
+            };
+
+            await supabase
+              .from("appointment_preparations")
+              .update({ preparation_data: updatedData })
+              .eq("id", prep.id);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error syncing preparations with appointments:", error);
+    }
+  };
+
   useEffect(() => {
     if (selectedPlanning) {
       fetchPlanningDetails(selectedPlanning.id);
       loadAllItemCounts(); // Load counts for all items
     }
   }, [selectedPlanning]);
+
+  // Sync appointment categories periodically
+  useEffect(() => {
+    if (user && activeTab === 'appointments') {
+      syncPreparationWithAppointment();
+      const interval = setInterval(syncPreparationWithAppointment, 30000); // Every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [user, activeTab]);
 
   const fetchPlannings = async () => {
     console.log('fetchPlannings called, user:', user);
@@ -1789,8 +1922,107 @@ export function EventPlanningView() {
   };
 
 
+  // Show appointment preparations view
+  if (activeTab === 'appointments') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Planungen</h2>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant={activeTab === 'events' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('events')}
+            >
+              Veranstaltungen
+            </Button>
+            <Button
+              variant={activeTab === 'appointments' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('appointments')}
+            >
+              Terminvorbereitungen
+            </Button>
+          </div>
+        </div>
+        <AppointmentPreparationsView />
+      </div>
+    );
+  }
+
+  // Show event plannings list  
   if (!selectedPlanning) {
     return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Planungen</h2>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant={activeTab === 'events' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('events')}
+            >
+              Veranstaltungen
+            </Button>
+            <Button
+              variant={activeTab === 'appointments' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('appointments')}
+            >
+              Terminvorbereitungen
+            </Button>
+          </div>
+        </div>
+        
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {plannings.map((planning) => {
+            const planningCollaborators = collaborators.filter(c => c.event_planning_id === planning.id);
+            
+            return (
+              <Card
+                key={planning.id}
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setSelectedPlanning(planning)}
+              >
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    {planning.title}
+                    {planning.is_private && (
+                      <Badge variant="secondary">Privat</Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <CalendarIcon className="h-4 w-4" />
+                      <span>{format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}</span>
+                    </div>
+                    
+                    {planningCollaborators.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex -space-x-2">
+                          {planningCollaborators.slice(0, 3).map((collab) => (
+                            <Avatar key={collab.id} className="h-6 w-6 border-2 border-background">
+                              <AvatarFallback className="text-xs">
+                                {collab.profiles?.display_name?.charAt(0) || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {planningCollaborators.length > 3 && (
+                            <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted border-2 border-background text-xs">
+                              +{planningCollaborators.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
       <div className="min-h-screen bg-gradient-subtle p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
