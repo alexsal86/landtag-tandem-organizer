@@ -2298,11 +2298,12 @@ export function EventPlanningView() {
         }}
       />
     </div>
-    );
-  }
+  );
 
-  return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
+  // Detail view for selected planning  
+  if (selectedPlanning) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
