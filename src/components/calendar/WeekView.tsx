@@ -228,10 +228,11 @@ export function WeekView({ weekStart, events, onAppointmentClick }: WeekViewProp
                       style={{ 
                         backgroundColor: event.category_color || undefined,
                         gridColumn: spanDays > 1 ? `span ${spanDays}` : undefined,
-                        width: spanDays > 1 ? `calc(${spanDays * 100}% + ${spanDays - 1}px)` : undefined,
+                        width: spanDays > 1 ? `calc(${spanDays * 100}% + ${spanDays * 0.25}rem)` : undefined,
                         position: spanDays > 1 ? 'relative' : undefined,
                         zIndex: spanDays > 1 ? 10 : undefined,
-                        marginBottom: '4px'
+                        marginBottom: '4px',
+                        paddingRight: '0.5rem'
                       }}
                       onClick={() => onAppointmentClick?.(event)}
                     >
