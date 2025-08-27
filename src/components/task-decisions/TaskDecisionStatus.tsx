@@ -49,6 +49,9 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
   };
 
   const loadDecisions = async () => {
+    console.log('TaskDecisionStatus: Loading decisions for taskId:', taskId);
+    console.log('TaskDecisionStatus: createdBy:', createdBy);
+    
     try {
       const { data, error } = await supabase
         .from('task_decisions')
@@ -72,7 +75,12 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('TaskDecisionStatus: Query error:', error);
+        throw error;
+      }
+      
+      console.log('TaskDecisionStatus: Raw data from query:', data);
 
       // Get user profiles separately
       const userIds = data?.flatMap(d => d.task_decision_participants?.map(p => p.user_id) || []) || [];
@@ -98,9 +106,10 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
         })) || [],
       })) || [];
 
+      console.log('TaskDecisionStatus: Formatted decisions:', formattedData);
       setDecisions(formattedData);
     } catch (error) {
-      console.error('Error loading decisions:', error);
+      console.error('TaskDecisionStatus: Error loading decisions:', error);
     }
   };
 
@@ -146,7 +155,19 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
     return { yesCount, noCount, questionCount, pending, total: participants.length };
   };
 
+  console.log('TaskDecisionStatus: Rendering with decisions:', decisions.length);
+  console.log('TaskDecisionStatus: Current user ID:', currentUserId);
+  console.log('TaskDecisionStatus: Task creator ID:', createdBy);
+  
   if (decisions.length === 0) {
+    // Temporary debug: show when no decisions are found
+    if (currentUserId === createdBy) {
+      return (
+        <div className="text-xs text-muted-foreground p-2 border border-dashed rounded">
+          Debug: Keine Entscheidungen gefunden für Task {taskId}
+        </div>
+      );
+    }
     return null;
   }
 
