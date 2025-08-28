@@ -347,12 +347,6 @@ function HybridDashboardContent() {
                 widget={widget} 
                 isDragging={draggedWidget === widget.id}
                 isEditMode={isEditMode}
-                onResize={(widgetId, newSize) => handleWidgetResize(widgetId, newSize)}
-                onMinimize={(widgetId) => handleWidgetMinimize(widgetId)}
-                onHide={(widgetId) => handleWidgetHide(widgetId)}
-                onDelete={(widgetId) => handleWidgetDelete(widgetId)}
-                onConfigure={(widgetId) => console.log('Configure widget:', widgetId)}
-                containerWidth={containerWidth}
               />
             </div>
           );

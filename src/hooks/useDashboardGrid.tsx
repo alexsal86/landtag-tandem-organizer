@@ -28,29 +28,10 @@ export const getWidgetHeight = (widgetSize: WidgetSize): number => {
   return (rows * 200) + ((rows - 1) * 16);
 };
 
-// Get responsive column count based on screen width
 export function getResponsiveColumns(containerWidth: number): number {
   if (containerWidth >= 1024) return GRID_COLUMNS_DESKTOP;
   if (containerWidth >= 768) return GRID_COLUMNS_TABLET;
   return GRID_COLUMNS_MOBILE;
-}
-
-export const GRID_COLUMNS = GRID_COLUMNS_DESKTOP; // Default for compatibility
-
-export function getGridColumns(widgetSize: WidgetSize): number {
-  if (!widgetSize || typeof widgetSize !== 'string') {
-    return 2; // Default fallback
-  }
-  const [width] = widgetSize.split('x').map(Number);
-  return width || 2; // Fallback if parsing fails
-}
-
-export function getGridRows(widgetSize: WidgetSize): number {
-  if (!widgetSize || typeof widgetSize !== 'string') {
-    return 2; // Default fallback
-  }
-  const [, height] = widgetSize.split('x').map(Number);
-  return height || 2; // Fallback if parsing fails
 }
 
 // Get CSS Grid unit size - Pure CSS Grid 1fr calculation (no horizontal padding)

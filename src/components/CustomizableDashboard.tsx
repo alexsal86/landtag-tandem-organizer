@@ -52,11 +52,10 @@ export const CustomizableDashboard: React.FC = () => {
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('classic');
 
   const handleWidgetMove = (widgetId: string, newPosition: { x: number; y: number }) => {
-    updateWidget(widgetId, newPosition);
-  };
-
-  const handleRemoveWidget = (widgetId: string) => {
-    removeWidget(widgetId);
+    updateWidget(widgetId, { 
+      x: newPosition.x, 
+      y: newPosition.y 
+    } as any);
   };
 
   // Widget management handlers
@@ -266,9 +265,9 @@ export const CustomizableDashboard: React.FC = () => {
               key={widget.id}
               widget={widget}
               isEditMode={isEditMode}
-              onResize={(widgetId, newSize) => updateWidget(widgetId, { size: newSize })}
-              onMinimize={(widgetId) => updateWidget(widgetId, { minimized: true })}
-              onHide={(widgetId) => updateWidget(widgetId, { hidden: true })}
+              onResize={(widgetId, newSize) => updateWidget(widgetId, { size: newSize } as any)}
+              onMinimize={(widgetId) => updateWidget(widgetId, { configuration: { minimized: true } } as any)}
+              onHide={(widgetId) => updateWidget(widgetId, { configuration: { hidden: true } } as any)}
               onDelete={(widgetId) => handleRemoveWidget(widgetId)}
               onConfigure={(widgetId) => console.log('Configure widget:', widgetId)}
               containerWidth={1200}

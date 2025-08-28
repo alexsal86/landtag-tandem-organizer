@@ -13,7 +13,7 @@ interface ResponsiveGridSystemProps {
 }
 
 export const ResponsiveGridSystem = forwardRef<HTMLDivElement, ResponsiveGridSystemProps>(
-  ({ widgets, children, onWidgetDrop, onDragOver, isEditMode = false, gridSnap = true }, ref) => {
+  ({ widgets, children, onWidgetMove, isEditMode = false, containerWidth, gridColumns }, ref) => {
     const [containerWidth, setContainerWidth] = useState(1200);
     const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
     const [dragPreview, setDragPreview] = useState<{ x: number; y: number } | null>(null);

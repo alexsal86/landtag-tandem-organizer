@@ -224,12 +224,6 @@ export function RealTimeDashboard() {
               widget={widget} 
               isDragging={draggedWidget === widget.id}
               isEditMode={true}
-              onResize={(widgetId, newSize) => handleWidgetResize(widgetId, newSize)}
-              onMinimize={(widgetId) => handleWidgetMinimize(widgetId)}
-              onHide={(widgetId) => handleWidgetHide(widgetId)}
-              onDelete={(widgetId) => handleWidgetHide(widgetId)}
-              onConfigure={(widgetId) => console.log('Configure widget:', widgetId)}
-              containerWidth={1200}
             />
           </div>
         ))}
