@@ -1,223 +1,101 @@
 export type WidgetSize = '1x1' | '2x1' | '3x1' | '1x2' | '2x2' | '3x2' | '1x3' | '2x3' | '3x3';
 
-// Grid configuration - Responsive breakpoints
-export const GRID_COLUMNS_DESKTOP = 8;
-export const GRID_COLUMNS_TABLET = 6;
-export const GRID_COLUMNS_MOBILE = 2;
-export const GRID_ROW_HEIGHT = 120; // Reduced for better fit
-export const GRID_GAP = 16; // Gap in px
+// Grid constants
+const DESKTOP_COLUMNS = 6;
+const TABLET_COLUMNS = 4;
+const MOBILE_COLUMNS = 2;
+export const ROW_HEIGHT = 200;
+export const GRID_GAP = 16;
 
-// Get grid columns/rows from widget size
+// Get responsive columns based on container width
+export const getResponsiveColumns = (containerWidth: number): number => {
+  if (containerWidth >= 1024) return DESKTOP_COLUMNS;
+  if (containerWidth >= 768) return TABLET_COLUMNS;
+  return MOBILE_COLUMNS;
+};
+
+// Get grid columns from widget size
 export const getGridColumns = (widgetSize: WidgetSize): number => {
   return parseInt(widgetSize.split('x')[0]);
 };
 
+// Get grid rows from widget size
 export const getGridRows = (widgetSize: WidgetSize): number => {
   return parseInt(widgetSize.split('x')[1]);
 };
 
-// Get CSS Grid area for widget
-export const getWidgetGridArea = (widget: { x: number; y: number; size: WidgetSize }): string => {
-  const cols = getGridColumns(widget.size);
-  const rows = getGridRows(widget.size);
-  return `${widget.y + 1} / ${widget.x + 1} / ${widget.y + rows + 1} / ${widget.x + cols + 1}`;
-};
-
+// Get pixel height for widget
 export const getWidgetHeight = (widgetSize: WidgetSize): number => {
   const rows = getGridRows(widgetSize);
-  return (rows * 200) + ((rows - 1) * 16);
+  return (rows * ROW_HEIGHT) + ((rows - 1) * GRID_GAP);
 };
 
-export function getResponsiveColumns(containerWidth: number): number {
-  if (containerWidth >= 1024) return GRID_COLUMNS_DESKTOP;
-  if (containerWidth >= 768) return GRID_COLUMNS_TABLET;
-  return GRID_COLUMNS_MOBILE;
-}
-
-// Get CSS Grid unit size - Pure CSS Grid 1fr calculation (no horizontal padding)
-export function getCSSGridUnit(containerWidth: number): number {
-  const columns = getResponsiveColumns(containerWidth);
-  // Pure CSS Grid 1fr calculation - no container padding, gaps handled by CSS Grid
-  // Container has full width, gaps only between columns
-  const availableWidth = containerWidth - (GRID_GAP * (columns - 1));
-  return availableWidth / columns;
-}
-
-// Convert pixel coordinates to CSS Grid position
-export function pixelToGridPosition(
-  x: number,
-  y: number,
-  containerWidth: number
-): { column: number; row: number } {
-  const columns = getResponsiveColumns(containerWidth);
-  const gridUnit = getCSSGridUnit(containerWidth);
-  
-  // Direct CSS Grid mapping - no horizontal padding offset
-  const adjustedX = Math.max(0, x);
-  const adjustedY = Math.max(0, y - GRID_GAP); // Keep vertical padding
-  
-  const column = Math.max(0, Math.min(columns - 1, Math.floor(adjustedX / (gridUnit + GRID_GAP))));
-  const row = Math.max(0, Math.floor(adjustedY / (GRID_ROW_HEIGHT + GRID_GAP)));
-  
-  return { column, row };
-}
-
-// Convert mouse delta to CSS Grid columns/rows
-export function deltaToGridSize(
-  deltaX: number,
-  deltaY: number,
-  containerWidth: number
-): { deltaColumns: number; deltaRows: number } {
-  const gridUnit = getCSSGridUnit(containerWidth);
-  
-  // CSS Grid-based delta with smaller threshold for responsiveness
-  const colThreshold = gridUnit * 0.25;
-  const rowThreshold = GRID_ROW_HEIGHT * 0.25;
-  
-  const deltaColumns = Math.abs(deltaX) > colThreshold ? Math.round(deltaX / (gridUnit + GRID_GAP)) : 0;
-  const deltaRows = Math.abs(deltaY) > rowThreshold ? Math.round(deltaY / (GRID_ROW_HEIGHT + GRID_GAP)) : 0;
-  
-  return { deltaColumns, deltaRows };
-}
-
-export function findAvailablePosition(
+// Find available position for new widget
+export const findAvailablePosition = (
   existingPositions: Array<{ x: number; y: number; w: number; h: number }>,
   newWidgetSize: WidgetSize = '2x2',
   containerWidth: number = 1200
-): { x: number; y: number } {
-  const cols = getGridColumns(newWidgetSize);
-  const rows = getGridRows(newWidgetSize);
+): { x: number; y: number } => {
   const gridColumns = getResponsiveColumns(containerWidth);
-  
-  // Create a grid to track occupied positions
-  const grid: boolean[][] = Array(20).fill(null).map(() => Array(gridColumns).fill(false));
-  
-  // Mark occupied positions
-  existingPositions.forEach(({ x, y, w, h }) => {
-    for (let row = y; row < y + h && row < 20; row++) {
-      for (let col = x; col < x + w && col < gridColumns; col++) {
-        grid[row][col] = true;
-      }
-    }
-  });
-  
-  // Find first available position
-  for (let y = 0; y < 20 - rows + 1; y++) {
-    for (let x = 0; x < gridColumns - cols + 1; x++) {
-      let canPlace = true;
-      
-      // Check if widget can fit at this position
-      for (let row = y; row < y + rows && canPlace; row++) {
-        for (let col = x; col < x + cols && canPlace; col++) {
-          if (grid[row][col]) {
-            canPlace = false;
-          }
-        }
-      }
-      
-      if (canPlace) {
+  const newW = getGridColumns(newWidgetSize);
+  const newH = getGridRows(newWidgetSize);
+
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x <= gridColumns - newW; x++) {
+      const wouldCollide = existingPositions.some(pos => {
+        return !(x >= pos.x + pos.w || x + newW <= pos.x || y >= pos.y + pos.h || y + newH <= pos.y);
+      });
+
+      if (!wouldCollide) {
         return { x, y };
       }
     }
   }
-  
-  // Fallback to bottom-right if no space found
-  return { x: 0, y: Math.max(0, Math.max(...existingPositions.map(p => p.y + p.h), 0)) };
-}
 
-export function getWidgetDimensions(widgetSize: WidgetSize, containerWidth: number) {
-  const cols = getGridColumns(widgetSize);
-  const rows = getGridRows(widgetSize);
-  const gridUnit = getCSSGridUnit(containerWidth);
-  
-  // CSS Grid handles gaps automatically, so we calculate the exact widget size
-  return {
-    width: cols * gridUnit + (cols - 1) * GRID_GAP,
-    height: rows * GRID_ROW_HEIGHT + (rows - 1) * GRID_GAP
-  };
-}
+  return { x: 0, y: Math.max(0, ...existingPositions.map(p => p.y + p.h)) };
+};
 
-export function isValidPosition(
+// Check if position is valid
+export const isValidPosition = (
   x: number,
   y: number,
   widgetSize: WidgetSize,
   existingWidgets: Array<{ x: number; y: number; w: number; h: number; id?: string }>,
   excludeId?: string,
   containerWidth: number = 1200
-): boolean {
-  const cols = getGridColumns(widgetSize);
-  const rows = getGridRows(widgetSize);
+): boolean => {
   const gridColumns = getResponsiveColumns(containerWidth);
-  
-  // Check grid boundaries
-  if (x < 0 || y < 0 || x + cols > gridColumns) {
-    return false;
-  }
-  
-  // Check for collisions with other widgets
-  for (const widget of existingWidgets) {
-    if (excludeId && widget.id === excludeId) continue;
-    
-    if (
-      x < widget.x + widget.w &&
-      x + cols > widget.x &&
-      y < widget.y + widget.h &&
-      y + rows > widget.y
-    ) {
-      return false;
-    }
-  }
-  
-  return true;
-}
+  const w = getGridColumns(widgetSize);
+  const h = getGridRows(widgetSize);
 
-// Validate and clamp widget size to allowed boundaries
-export function validateWidgetSize(
+  if (x < 0 || y < 0 || x + w > gridColumns) return false;
+
+  return !existingWidgets.some(widget => {
+    if (excludeId && widget.id === excludeId) return false;
+    return !(x >= widget.x + widget.w || x + w <= widget.x || y >= widget.y + widget.h || y + h <= widget.y);
+  });
+};
+
+// Validate widget size
+export const validateWidgetSize = (
   currentSize: WidgetSize,
   newWidth: number,
   newHeight: number,
   containerWidth: number = 1200,
-  maxHeight: number = 4
-): WidgetSize {
-  const maxWidth = getResponsiveColumns(containerWidth);
-  const validSizes: WidgetSize[] = [
-    '1x1', '2x1', '1x2', '2x2', '3x1', '1x3', '3x2', '2x3', '3x3', 
-    '4x1', '1x4', '4x2', '2x4', '5x1', '5x2', '6x1', '6x2', 
-    '7x1', '7x2', '8x1', '8x2'
-  ];
+  maxHeight: number = 3
+): WidgetSize => {
+  const gridColumns = getResponsiveColumns(containerWidth);
+  const clampedWidth = Math.max(1, Math.min(gridColumns, newWidth));
+  const clampedHeight = Math.max(1, Math.min(maxHeight, newHeight));
   
-  // Clamp to boundaries
-  const clampedW = Math.max(1, Math.min(maxWidth, newWidth));
-  const clampedH = Math.max(1, Math.min(maxHeight, newHeight));
+  const validSizes: WidgetSize[] = ['1x1', '2x1', '3x1', '1x2', '2x2', '3x2', '1x3', '2x3', '3x3'];
+  const newSize = `${clampedWidth}x${clampedHeight}` as WidgetSize;
   
-  const newSizeStr = `${clampedW}x${clampedH}` as WidgetSize;
-  
-  if (validSizes.includes(newSizeStr)) {
-    return newSizeStr;
-  }
-  
-  // Find nearest valid size
-  const nearest = validSizes.find(size => {
-    if (!size || typeof size !== 'string') return false;
-    const [w, h] = size.split('x').map(Number);
-    return Math.abs(w - clampedW) + Math.abs(h - clampedH) <= 1;
-  });
-  
-  return nearest || currentSize;
-}
+  return validSizes.includes(newSize) ? newSize : currentSize;
+};
 
-// Get widget pixel dimensions based on pure CSS Grid calculation
-export function getWidgetPixelDimensions(
-  widgetSize: WidgetSize, 
-  containerWidth: number
-): { width: number; height: number } {
-  const cols = getGridColumns(widgetSize);
-  const rows = getGridRows(widgetSize);
-  const gridUnit = getCSSGridUnit(containerWidth);
-  
-  // Pure CSS Grid dimensions - widgets will use exactly the space CSS Grid allocates
-  return {
-    width: cols * gridUnit + (cols - 1) * GRID_GAP,
-    height: rows * GRID_ROW_HEIGHT + (rows - 1) * GRID_GAP
-  };
-}
+// Additional helper for grid calculations
+export const getCSSGridUnit = (containerWidth: number): number => {
+  const columns = getResponsiveColumns(containerWidth);
+  return (containerWidth - (GRID_GAP * (columns - 1))) / columns;
+};

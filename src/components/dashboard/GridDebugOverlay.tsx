@@ -1,5 +1,5 @@
 import React from 'react';
-import { getResponsiveColumns, GRID_ROW_HEIGHT, GRID_GAP, getCSSGridUnit } from '@/hooks/useDashboardGrid';
+import { getResponsiveColumns, ROW_HEIGHT, GRID_GAP, getCSSGridUnit } from '@/hooks/useDashboardGrid';
 
 interface GridDebugOverlayProps {
   containerWidth: number;

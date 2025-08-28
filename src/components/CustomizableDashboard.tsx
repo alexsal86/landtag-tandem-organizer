@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { getResponsiveColumns } from '@/hooks/useDashboardGrid';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -13,10 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
-import { ResponsiveGridSystem } from './dashboard/ResponsiveGridSystem';
 import { DashboardWidget } from './DashboardWidget';
-import { HybridDashboard } from './dashboard/HybridDashboard';
-import { RealTimeDashboard } from './dashboard/RealTimeDashboard';
+// import { HybridDashboard } from './dashboard/HybridDashboard';
+// import { RealTimeDashboard } from './dashboard/RealTimeDashboard';
 import { toast } from 'sonner';
 import {
   Settings,
@@ -51,11 +50,16 @@ export const CustomizableDashboard: React.FC = () => {
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('classic');
 
-  const handleWidgetMove = (widgetId: string, newPosition: { x: number; y: number }) => {
-    updateWidget(widgetId, { 
-      x: newPosition.x, 
-      y: newPosition.y 
-    } as any);
+  const onDragEnd = (result: any) => {
+    if (!result.destination) return;
+
+    const newWidgets = Array.from(currentLayout?.widgets || []);
+    const [reorderedWidget] = newWidgets.splice(result.source.index, 1);
+    newWidgets.splice(result.destination.index, 0, reorderedWidget);
+
+    if (currentLayout) {
+      updateWidget(reorderedWidget.id, {} as any);
+    }
   };
 
   // Widget management handlers
@@ -145,11 +149,11 @@ export const CustomizableDashboard: React.FC = () => {
 
   // Render different dashboard modes
   if (dashboardMode === 'hybrid') {
-    return <HybridDashboard />;
+    return <div className="p-6 text-center">Hybrid Dashboard wird noch entwickelt...</div>;
   }
 
   if (dashboardMode === 'realtime') {
-    return <RealTimeDashboard />;
+    return <div className="p-6 text-center">Real-Time Dashboard wird noch entwickelt...</div>;
   }
 
   // Classic dashboard mode
@@ -251,34 +255,54 @@ export const CustomizableDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Dashboard Content */}
-      {currentLayout ? (
-        <ResponsiveGridSystem
-          widgets={currentLayout?.widgets || []}
-          onWidgetMove={handleWidgetMove}
-          isEditMode={isEditMode}
-          containerWidth={1200}
-          gridColumns={getResponsiveColumns(1200)}
-        >
-          {currentLayout?.widgets.map((widget) => (
-            <DashboardWidget
-              key={widget.id}
-              widget={widget}
-              isEditMode={isEditMode}
-              onResize={(widgetId, newSize) => updateWidget(widgetId, { size: newSize } as any)}
-              onMinimize={(widgetId) => updateWidget(widgetId, { configuration: { minimized: true } } as any)}
-              onHide={(widgetId) => updateWidget(widgetId, { configuration: { hidden: true } } as any)}
-              onDelete={(widgetId) => handleRemoveWidget(widgetId)}
-              onConfigure={(widgetId) => console.log('Configure widget:', widgetId)}
-              containerWidth={1200}
-            />
-          ))}
-        </ResponsiveGridSystem>
-      ) : (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-muted-foreground">Kein Layout ausgewählt</div>
-        </div>
-      )}
+      {/* Dashboard Content with Drag and Drop */}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="dashboard-widgets" isDropDisabled={!isEditMode}>
+          {(provided, snapshot) => (
+            <div
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+              className={`space-y-6 ${snapshot.isDraggingOver ? 'bg-muted/30 rounded-lg p-2' : ''}`}
+            >
+              {/* Responsive Grid Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-min">
+                {currentLayout?.widgets.map((widget, index) => (
+                  <Draggable 
+                    key={widget.id} 
+                    draggableId={widget.id} 
+                    index={index}
+                    isDragDisabled={!isEditMode}
+                  >
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className={cn(
+                          "transition-all duration-200",
+                          snapshot.isDragging && "scale-105 rotate-2 z-10",
+                          isEditMode && "ring-2 ring-primary/20 hover:ring-primary/40"
+                        )}
+                        style={{
+                          ...provided.draggableProps.style,
+                          height: "200px",
+                        }}
+                      >
+                        <DashboardWidget
+                          widget={widget}
+                          isDragging={snapshot.isDragging}
+                          isEditMode={isEditMode}
+                        />
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
     </div>
   );
 };

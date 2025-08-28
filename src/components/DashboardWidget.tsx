@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { WidgetOverlayMenu } from './dashboard/WidgetOverlayMenu';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -166,6 +167,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
   const [taskSnoozes, setTaskSnoozes] = useState<{[key: string]: string}>({});
   const [subtaskSnoozes, setSubtaskSnoozes] = useState<{[key: string]: string}>({});
   const [users, setUsers] = useState<{[key: string]: string}>({});
+  const [showOverlayMenu, setShowOverlayMenu] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -556,14 +558,29 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
   if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages'].includes(widget.type)) {
     return (
       <div 
-        className={`h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}
+        className={`relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}
         draggable={isEditMode}
+        onClick={() => isEditMode && setShowOverlayMenu(true)}
         style={{ 
           width: '100%', 
           height: '100%', 
           boxSizing: 'border-box'
         }}
       >
+        {/* Widget Overlay Menu */}
+        {isEditMode && showOverlayMenu && (
+          <WidgetOverlayMenu
+            widget={widget}
+            isVisible={showOverlayMenu}
+            onClose={() => setShowOverlayMenu(false)}
+            onResize={() => {}}
+            onMinimize={() => {}}
+            onHide={() => {}}
+            onDelete={() => {}}
+            onConfigure={() => {}}
+          />
+        )}
+        
         <div className="w-full h-full overflow-hidden">
           {renderWidgetContent()}
         </div>
@@ -573,16 +590,31 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
 
   return (
     <Card 
-      className={`bg-card shadow-card border-border h-full w-full max-w-full overflow-hidden ${
+      className={`relative bg-card shadow-card border-border h-full w-full max-w-full overflow-hidden ${
         isDragging ? 'rotate-3 shadow-lg' : 'hover:shadow-elegant'
       } transition-all duration-300 ${isEditMode ? 'cursor-move' : ''}`}
       draggable={isEditMode}
+      onClick={() => isEditMode && setShowOverlayMenu(true)}
       style={{ 
         width: '100%', 
         height: '100%', 
         boxSizing: 'border-box'
       }}
     >
+      {/* Widget Overlay Menu */}
+      {isEditMode && showOverlayMenu && (
+        <WidgetOverlayMenu
+          widget={widget}
+          isVisible={showOverlayMenu}
+          onClose={() => setShowOverlayMenu(false)}
+          onResize={() => {}}
+          onMinimize={() => {}}
+          onHide={() => {}}
+          onDelete={() => {}}
+          onConfigure={() => {}}
+        />
+      )}
+      
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 truncate">

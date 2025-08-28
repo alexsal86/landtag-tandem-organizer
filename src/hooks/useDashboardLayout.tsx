@@ -364,8 +364,8 @@ export function useDashboardLayout() {
     const existingPositions = currentLayout.widgets.map(w => ({
       x: w.position.x,
       y: w.position.y,
-      w: getGridColumns(w.widgetSize),
-      h: getGridRows(w.widgetSize)
+      w: 2, // Default width
+      h: 2  // Default height
     }));
 
     const defaultPosition = position || findAvailablePosition(existingPositions);
