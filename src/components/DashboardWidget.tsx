@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { WidgetOverlayMenu } from './dashboard/WidgetOverlayMenu';
+import { WidgetResizeHandles } from './dashboard/WidgetResizeHandles';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ interface WidgetProps {
   widget: WidgetType;
   isDragging?: boolean;
   isEditMode: boolean;
+  onResize?: (widgetId: string, newSize: string) => void;
 }
 
 interface QuickStats {
@@ -159,7 +161,7 @@ const getCategoryIcon = (category: PendingTask["category"]) => {
   }
 };
 
-export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps) {
+export function DashboardWidget({ widget, isDragging, isEditMode, onResize }: WidgetProps) {
   const [todayAppointmentsCount, setTodayAppointmentsCount] = useState(0);
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
@@ -573,11 +575,23 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
             widget={widget}
             isVisible={showOverlayMenu}
             onClose={() => setShowOverlayMenu(false)}
-            onResize={() => {}}
+            onResize={(widgetId, newSize) => {
+              if (onResize) onResize(widgetId, newSize);
+              setShowOverlayMenu(false);
+            }}
             onMinimize={() => {}}
             onHide={() => {}}
             onDelete={() => {}}
             onConfigure={() => {}}
+          />
+        )}
+
+        {/* Widget Resize Handles */}
+        {isEditMode && !showOverlayMenu && onResize && (
+          <WidgetResizeHandles
+            widget={widget}
+            onResize={onResize}
+            isEditMode={isEditMode}
           />
         )}
         
@@ -607,11 +621,23 @@ export function DashboardWidget({ widget, isDragging, isEditMode }: WidgetProps)
           widget={widget}
           isVisible={showOverlayMenu}
           onClose={() => setShowOverlayMenu(false)}
-          onResize={() => {}}
+          onResize={(widgetId, newSize) => {
+            if (onResize) onResize(widgetId, newSize);
+            setShowOverlayMenu(false);
+          }}
           onMinimize={() => {}}
           onHide={() => {}}
           onDelete={() => {}}
           onConfigure={() => {}}
+        />
+      )}
+
+      {/* Widget Resize Handles */}
+      {isEditMode && !showOverlayMenu && onResize && (
+        <WidgetResizeHandles
+          widget={widget}
+          onResize={onResize}
+          isEditMode={isEditMode}
         />
       )}
       
