@@ -25,6 +25,13 @@ import {
   Download,
   Upload,
   Grid3X3,
+  CheckSquare,
+  Calendar,
+  MessageSquare,
+  FileText,
+  Clock,
+  Phone,
+  Users
 } from 'lucide-react';
 
 // CSS imports for react-grid-layout
@@ -50,6 +57,7 @@ export const CustomizableDashboard: React.FC = () => {
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showAddWidgetDialog, setShowAddWidgetDialog] = useState(false);
   const [newLayoutName, setNewLayoutName] = useState('');
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('classic');
@@ -150,6 +158,46 @@ export const CustomizableDashboard: React.FC = () => {
   const handleWidgetResize = (widgetId: string, newSize: string) => {
     console.log('Manual resize:', widgetId, newSize);
     updateWidget(widgetId, { widgetSize: newSize } as any);
+  };
+
+  // Available widget types for adding
+  const availableWidgets = [
+    { type: 'stats', title: 'Statistiken', icon: CheckSquare, description: 'Zeigt wichtige Statistiken und KPIs' },
+    { type: 'tasks', title: 'Aufgaben', icon: CheckSquare, description: 'Zeigt ausstehende Aufgaben' },
+    { type: 'schedule', title: 'Terminplan', icon: Calendar, description: 'Zeigt anstehende Termine' },
+    { type: 'quickactions', title: 'Schnellzugriff', icon: Plus, description: 'Schnelle Aktionen und Links' },
+    { type: 'messages', title: 'Nachrichten', icon: MessageSquare, description: 'Nachrichtensystem' },
+    { type: 'combined-messages', title: 'Chat', icon: MessageSquare, description: 'Kombinierte Nachrichten' },
+    { type: 'quicknotes', title: 'Notizen', icon: FileText, description: 'Schnelle Notizen' },
+    { type: 'pomodoro', title: 'Pomodoro Timer', icon: Clock, description: 'Produktivitäts-Timer' },
+    { type: 'habits', title: 'Gewohnheiten', icon: CheckSquare, description: 'Habit Tracker' },
+    { type: 'calllog', title: 'Anrufliste', icon: Phone, description: 'Anruf-Protokoll' }
+  ];
+
+  const handleAddWidget = (widgetType: string) => {
+    const widgetInfo = availableWidgets.find(w => w.type === widgetType);
+    if (!widgetInfo) return;
+
+    // Find a good position for the new widget
+    const existingWidgets = currentLayout?.widgets || [];
+    let x = 0, y = 0;
+    
+    // Simple positioning: try to place at the end of existing widgets
+    if (existingWidgets.length > 0) {
+      const lastWidget = existingWidgets[existingWidgets.length - 1];
+      x = lastWidget.position.x + lastWidget.size.width;
+      y = lastWidget.position.y;
+      
+      // If it would go off screen, start new row
+      if (x + 2 > 12) {
+        x = 0;
+        y = Math.max(...existingWidgets.map(w => w.position.y + w.size.height));
+      }
+    }
+
+    addWidget(widgetType as any, { x, y });
+    setShowAddWidgetDialog(false);
+    toast.success(`${widgetInfo.title} Widget hinzugefügt`);
   };
 
   useEffect(() => {
@@ -269,6 +317,38 @@ export const CustomizableDashboard: React.FC = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Add Widget Button */}
+          {isEditMode && (
+            <Dialog open={showAddWidgetDialog} onOpenChange={setShowAddWidgetDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Widget hinzufügen
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Widget hinzufügen</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                  {availableWidgets.map((widget) => (
+                    <Card key={widget.type} className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => handleAddWidget(widget.type)}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <widget.icon className="h-5 w-5 mt-1 text-primary" />
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{widget.title}</h4>
+                            <p className="text-xs text-muted-foreground mt-1">{widget.description}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
 
           {/* Edit Mode Toggle */}
           <Button
