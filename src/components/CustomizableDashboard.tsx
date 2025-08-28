@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-
+import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -14,8 +14,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
 import { DashboardWidget } from './DashboardWidget';
-// import { HybridDashboard } from './dashboard/HybridDashboard';
-// import { RealTimeDashboard } from './dashboard/RealTimeDashboard';
 import { toast } from 'sonner';
 import {
   Settings,
@@ -28,6 +26,12 @@ import {
   Upload,
   Grid3X3,
 } from 'lucide-react';
+
+// CSS imports for react-grid-layout
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 type DashboardMode = 'classic' | 'hybrid' | 'realtime';
 
@@ -50,42 +54,63 @@ export const CustomizableDashboard: React.FC = () => {
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('classic');
 
-  // Grid-based drag handling
-  const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
-  const [dragOverPosition, setDragOverPosition] = useState<{x: number, y: number} | null>(null);
-
-  const handleDragStart = (e: React.DragEvent, widgetId: string) => {
-    if (!isEditMode) return;
-    setDraggedWidget(widgetId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+  // Convert our widget format to react-grid-layout format
+  const gridLayouts = useMemo(() => {
+    if (!currentLayout?.widgets) return { lg: [] };
     
-    // Calculate grid position based on mouse position
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / (rect.width / 6));
-    const y = Math.floor((e.clientY - rect.top) / 216); // 200px + 16px gap
-    setDragOverPosition({ x: Math.max(0, Math.min(5, x)), y: Math.max(0, y) });
-  };
+    const gridItems: Layout[] = currentLayout.widgets.map(widget => {
+      // Parse size string (e.g., "3x2" -> {w: 3, h: 2})
+      const sizeString = widget.widgetSize || '2x2';
+      const [w, h] = sizeString.split('x').map(Number);
+      
+      return {
+        i: widget.id,
+        x: widget.position.x,
+        y: widget.position.y,
+        w: w || 2,
+        h: h || 2,
+        minW: 1,
+        minH: 1,
+        maxW: 6,
+        maxH: 4,
+      };
+    });
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!draggedWidget || !dragOverPosition) return;
-    
-    updateWidget(draggedWidget, { 
-      position: { x: dragOverPosition.x, y: dragOverPosition.y } 
-    } as any);
-    
-    setDraggedWidget(null);
-    setDragOverPosition(null);
-  };
+    return {
+      lg: gridItems,
+      md: gridItems,
+      sm: gridItems,
+      xs: gridItems.map(item => ({ ...item, w: Math.min(item.w, 4) })),
+      xxs: gridItems.map(item => ({ ...item, w: Math.min(item.w, 2) })),
+    };
+  }, [currentLayout?.widgets]);
 
-  const handleDragEnd = () => {
-    setDraggedWidget(null);
-    setDragOverPosition(null);
+  // Handle layout changes (drag & drop, resize)
+  const handleLayoutChange = (layout: Layout[], layouts: { [key: string]: Layout[] }) => {
+    if (!currentLayout || !isEditMode) return;
+
+    // Update widgets with new positions and sizes
+    const updatedWidgets = currentLayout.widgets.map(widget => {
+      const gridItem = layout.find(item => item.i === widget.id);
+      if (!gridItem) return widget;
+
+      return {
+        ...widget,
+        position: { x: gridItem.x, y: gridItem.y },
+        widgetSize: `${gridItem.w}x${gridItem.h}` as any,
+      };
+    });
+
+    // Update all widgets at once
+    updatedWidgets.forEach(widget => {
+      const gridItem = layout.find(item => item.i === widget.id);
+      if (gridItem) {
+        updateWidget(widget.id, {
+          position: { x: gridItem.x, y: gridItem.y },
+          widgetSize: `${gridItem.w}x${gridItem.h}`,
+        } as any);
+      }
+    });
   };
 
   // Widget management handlers
@@ -121,34 +146,10 @@ export const CustomizableDashboard: React.FC = () => {
     }
   };
 
-  const getWidgetGridClass = (size: string) => {
-    const gridClasses = {
-      '1x1': 'col-span-1 row-span-1',
-      '2x1': 'col-span-2 row-span-1',
-      '3x1': 'col-span-3 row-span-1',
-      '1x2': 'col-span-1 row-span-2',
-      '2x2': 'col-span-2 row-span-2',
-      '3x2': 'col-span-3 row-span-2',
-      '1x3': 'col-span-1 row-span-3',
-      '2x3': 'col-span-2 row-span-3',
-      '3x3': 'col-span-3 row-span-3',
-    };
-    return gridClasses[size as keyof typeof gridClasses] || 'col-span-1 row-span-1';
-  };
-
-  const getWidgetHeight = (size: string) => {
-    const heights = {
-      '1x1': '200px',
-      '2x1': '200px',
-      '3x1': '200px',
-      '1x2': '416px',
-      '2x2': '416px',
-      '3x2': '416px',
-      '1x3': '632px',
-      '2x3': '632px',
-      '3x3': '632px',
-    };
-    return heights[size as keyof typeof heights] || '200px';
+  // Handle manual resize from widget overlay
+  const handleWidgetResize = (widgetId: string, newSize: string) => {
+    console.log('Manual resize:', widgetId, newSize);
+    updateWidget(widgetId, { widgetSize: newSize } as any);
   };
 
   useEffect(() => {
@@ -281,65 +282,34 @@ export const CustomizableDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Dashboard Content with Grid-based Drag and Drop */}
-      <div 
-        className="relative"
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        onDragLeave={handleDragEnd}
-      >
-        {/* Grid Layout with proper widget sizing */}
-        <div className="grid grid-cols-6 gap-4 auto-rows-[200px] relative">
-          {/* Drop zone indicator */}
-          {draggedWidget && dragOverPosition && (
-            <div 
-              className="absolute bg-primary/20 border-2 border-primary border-dashed rounded-lg z-10"
-              style={{
-                gridColumn: `${dragOverPosition.x + 1} / span 1`,
-                gridRow: `${dragOverPosition.y + 1} / span 1`,
-                width: '100%',
-                height: '200px',
-              }}
-            />
-          )}
-          
-          {currentLayout?.widgets.map((widget) => {
-            // Get the size from either widgetSize or size property
-            const widgetSizeString = widget.widgetSize || (typeof widget.size === 'string' ? widget.size : '2x2');
-            const gridClass = getWidgetGridClass(widgetSizeString);
-            const height = getWidgetHeight(widgetSizeString);
-            
-            return (
-              <div
-                key={widget.id}
-                className={cn(
-                  "transition-all duration-200",
-                  gridClass,
-                  isEditMode && "cursor-move ring-2 ring-primary/20 hover:ring-primary/40",
-                  draggedWidget === widget.id && "opacity-50 scale-95"
-                )}
-                style={{
-                  gridColumnStart: widget.position.x + 1,
-                  gridRowStart: widget.position.y + 1,
-                  height: height,
-                }}
-                draggable={isEditMode}
-                onDragStart={(e) => handleDragStart(e, widget.id)}
-                onDragEnd={handleDragEnd}
-              >
-                <DashboardWidget
-                  widget={widget}
-                  isDragging={draggedWidget === widget.id}
-                  isEditMode={isEditMode}
-                  onResize={(widgetId, newSize) => {
-                    console.log('Dashboard resize called:', widgetId, newSize);
-                    updateWidget(widgetId, { widgetSize: newSize } as any);
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
+      {/* Dashboard Content with React Grid Layout */}
+      <div className="relative">
+        <ResponsiveGridLayout
+          className="layout"
+          layouts={gridLayouts}
+          onLayoutChange={handleLayoutChange}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 6, md: 6, sm: 4, xs: 2, xxs: 1 }}
+          rowHeight={180}
+          isDraggable={isEditMode}
+          isResizable={isEditMode}
+          margin={[16, 16]}
+          containerPadding={[0, 0]}
+          useCSSTransforms={true}
+          preventCollision={false}
+          compactType="vertical"
+        >
+          {currentLayout?.widgets.map((widget) => (
+            <div key={widget.id} className="grid-item">
+              <DashboardWidget
+                widget={widget}
+                isDragging={false}
+                isEditMode={isEditMode}
+                onResize={handleWidgetResize}
+              />
+            </div>
+          ))}
+        </ResponsiveGridLayout>
       </div>
     </div>
   );

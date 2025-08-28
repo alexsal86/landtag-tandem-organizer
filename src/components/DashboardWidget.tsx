@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { WidgetOverlayMenu } from './dashboard/WidgetOverlayMenu';
-import { WidgetResizeHandles } from './dashboard/WidgetResizeHandles';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -591,14 +590,6 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize }: Wi
           />
         )}
 
-        {/* Widget Resize Handles */}
-        {isEditMode && !showOverlayMenu && onResize && (
-          <WidgetResizeHandles
-            widget={widget}
-            onResize={onResize}
-            isEditMode={isEditMode}
-          />
-        )}
         
         <div className="w-full h-full overflow-hidden">
           {renderWidgetContent()}
@@ -642,14 +633,6 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize }: Wi
         />
       )}
 
-      {/* Widget Resize Handles */}
-      {isEditMode && !showOverlayMenu && onResize && (
-        <WidgetResizeHandles
-          widget={widget}
-          onResize={onResize}
-          isEditMode={isEditMode}
-        />
-      )}
       
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
