@@ -58,6 +58,12 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
 
     setIsLoading(true);
     try {
+      // Get current user first
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        throw new Error('User not authenticated');
+      }
+
       // Create the decision
       const { data: decision, error: decisionError } = await supabase
         .from('task_decisions')
@@ -65,7 +71,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
           task_id: taskId,
           title: title.trim(),
           description: description.trim() || null,
-          created_by: (await supabase.auth.getUser()).data.user?.id,
+          created_by: userData.user.id,
         })
         .select()
         .single();
