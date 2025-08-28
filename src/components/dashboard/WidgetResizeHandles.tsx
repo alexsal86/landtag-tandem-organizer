@@ -26,8 +26,25 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
   if (!isEditMode) return null;
 
   const getCurrentSize = () => {
-    const [w, h] = widget.size.split('x').map(Number);
-    return { w, h };
+    // Add debugging and safety checks
+    console.log('Widget object:', widget);
+    console.log('Widget size property:', widget.size, typeof widget.size);
+    
+    // Handle different possible formats for widget.size
+    let sizeString = '2x2'; // Default fallback
+    
+    if (typeof widget.size === 'string' && widget.size.includes('x')) {
+      sizeString = widget.size;
+    } else if (typeof widget.size === 'object' && widget.size) {
+      // Handle case where size might be an object like {width: 2, height: 2}
+      sizeString = `${widget.size.width || widget.size.w || 2}x${widget.size.height || widget.size.h || 2}`;
+    } else if (widget.widgetSize && typeof widget.widgetSize === 'string') {
+      // Check alternative property name
+      sizeString = widget.widgetSize;
+    }
+    
+    const [w, h] = sizeString.split('x').map(Number);
+    return { w: w || 2, h: h || 2 };
   };
 
   const handleMouseDown = (e: React.MouseEvent, direction: 'se' | 'e' | 's') => {
@@ -60,8 +77,14 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
       }
       
       const newSize = `${newW}x${newH}`;
-      if (WIDGET_SIZES.includes(newSize) && newSize !== widget.size) {
-        onResize(widget.id, newSize);
+      console.log('Attempting to resize to:', newSize, 'from current:', widget.size);
+      if (WIDGET_SIZES.includes(newSize)) {
+        // Get current size string for comparison
+        const currentSizeString = typeof widget.size === 'string' ? widget.size : 
+                                 typeof widget.widgetSize === 'string' ? widget.widgetSize : '2x2';
+        if (newSize !== currentSizeString) {
+          onResize(widget.id, newSize);
+        }
       }
     };
 
