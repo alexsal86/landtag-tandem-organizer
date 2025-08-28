@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -55,6 +56,7 @@ type ConfigItem = {
 
 export default function Administration() {
   const { user, loading } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
@@ -94,11 +96,11 @@ export default function Administration() {
   }, [roles, user?.id]);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && currentTenant) {
       checkAdminStatus();
       loadData();
     }
-  }, [loading, user]);
+  }, [loading, user, currentTenant]);
 
   const checkAdminStatus = async () => {
     if (!user) return;
@@ -122,19 +124,40 @@ export default function Administration() {
   };
 
   const loadData = async () => {
+    if (!currentTenant?.id) return;
+    
     try {
       setLoadingData(true);
       
-      // Load profiles
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, avatar_url')
-        .order('display_name');
+      // Get users for current tenant first
+      const { data: tenantMemberships } = await supabase
+        .from('user_tenant_memberships')
+        .select('user_id')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true);
       
-      // Load roles
-      const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
+      if (!tenantMemberships?.length) {
+        setProfiles([]);
+        setRoles([]);
+      } else {
+        const userIds = tenantMemberships.map(m => m.user_id);
+        
+        // Load profiles for tenant users only
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', userIds)
+          .order('display_name');
+        
+        // Load roles for tenant users only
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', userIds);
+        
+        setProfiles(profilesData || []);
+        setRoles(rolesData || []);
+      }
       
       // Load configuration items
       const [categoriesRes, statusesRes, locationsRes, taskCatRes, taskStatRes, todoCatRes, meetingTemplatesRes, planningTemplatesRes] = await Promise.all([
@@ -148,8 +171,6 @@ export default function Administration() {
         supabase.from('planning_templates').select('*').order('name')
       ]);
       
-      setProfiles(profilesData || []);
-      setRoles(rolesData || []);
       setAppointmentCategories(categoriesRes.data || []);
       setAppointmentStatuses(statusesRes.data || []);
       setAppointmentLocations(locationsRes.data?.map(item => ({ ...item, label: item.name })) || []);
