@@ -197,7 +197,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
       {decisions.map((decision) => {
         const summary = getResponseSummary(decision.participants);
         const allResponsesReceived = summary.pending === 0;
-        const isDecisionCreator = currentUserId === decision.created_by; // Check if user created this specific decision
+        const isDecisionCreator = currentUserId && decision.created_by && currentUserId === decision.created_by; // Check if user created this specific decision
         
         return (
           <Card key={decision.id} className={`border-l-4 ${getBorderColor(summary)}`}>
