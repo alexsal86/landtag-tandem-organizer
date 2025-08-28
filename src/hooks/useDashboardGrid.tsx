@@ -17,13 +17,19 @@ export function getResponsiveColumns(containerWidth: number): number {
 export const GRID_COLUMNS = GRID_COLUMNS_DESKTOP; // Default for compatibility
 
 export function getGridColumns(widgetSize: WidgetSize): number {
+  if (!widgetSize || typeof widgetSize !== 'string') {
+    return 2; // Default fallback
+  }
   const [width] = widgetSize.split('x').map(Number);
-  return width;
+  return width || 2; // Fallback if parsing fails
 }
 
 export function getGridRows(widgetSize: WidgetSize): number {
+  if (!widgetSize || typeof widgetSize !== 'string') {
+    return 2; // Default fallback
+  }
   const [, height] = widgetSize.split('x').map(Number);
-  return height;
+  return height || 2; // Fallback if parsing fails
 }
 
 // Get CSS Grid unit size - Pure CSS Grid 1fr calculation (no horizontal padding)
@@ -190,6 +196,7 @@ export function validateWidgetSize(
   
   // Find nearest valid size
   const nearest = validSizes.find(size => {
+    if (!size || typeof size !== 'string') return false;
     const [w, h] = size.split('x').map(Number);
     return Math.abs(w - clampedW) + Math.abs(h - clampedH) <= 1;
   });
