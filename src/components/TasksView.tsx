@@ -1887,7 +1887,11 @@ export function TasksView() {
                           </Button>
                           <TaskDecisionCreator 
                             taskId={task.id} 
-                            onDecisionCreated={() => loadTasks()} 
+                            onDecisionCreated={() => {
+                              loadTasks();
+                              // Reload decision list as well  
+                              window.location.reload();
+                            }} 
                           />
                           <Badge variant="secondary">
                             {task.category === "legislation" ? "Gesetzgebung" :
