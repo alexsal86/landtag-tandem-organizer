@@ -22,6 +22,7 @@ interface WidgetProps {
   isDragging?: boolean;
   isEditMode: boolean;
   onResize?: (widgetId: string, newSize: string) => void;
+  onDelete?: (widgetId: string) => void;
 }
 
 interface QuickStats {
@@ -160,7 +161,7 @@ const getCategoryIcon = (category: PendingTask["category"]) => {
   }
 };
 
-export function DashboardWidget({ widget, isDragging, isEditMode, onResize }: WidgetProps) {
+export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDelete }: WidgetProps) {
   const [todayAppointmentsCount, setTodayAppointmentsCount] = useState(0);
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
@@ -561,13 +562,28 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize }: Wi
       <div 
         className={`relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}
         draggable={isEditMode}
-        onClick={() => isEditMode && setShowOverlayMenu(true)}
         style={{ 
           width: '100%', 
           height: '100%', 
           boxSizing: 'border-box'
         }}
       >
+        {/* Edit Icon - nur im Edit-Modus sichtbar */}
+        {isEditMode && !showOverlayMenu && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-background/80 backdrop-blur-sm"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowOverlayMenu(true);
+            }}
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+        )}
+
         {/* Widget Overlay Menu */}
         {isEditMode && showOverlayMenu && (
           <WidgetOverlayMenu
@@ -585,7 +601,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize }: Wi
             }}
             onMinimize={() => {}}
             onHide={() => {}}
-            onDelete={() => {}}
+            onDelete={onDelete || (() => console.log('Delete function not provided'))}
             onConfigure={() => {}}
           />
         )}
@@ -604,13 +620,29 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize }: Wi
         isDragging ? 'rotate-3 shadow-lg' : 'hover:shadow-elegant'
       } transition-all duration-300 ${isEditMode ? 'cursor-move' : ''}`}
       draggable={isEditMode}
-      onClick={() => isEditMode && setShowOverlayMenu(true)}
+      
       style={{ 
         width: '100%', 
         height: '100%', 
         boxSizing: 'border-box'
       }}
     >
+      {/* Edit Icon - nur im Edit-Modus sichtbar */}
+      {isEditMode && !showOverlayMenu && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-background/80 backdrop-blur-sm"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowOverlayMenu(true);
+          }}
+        >
+          <Edit2 className="h-4 w-4" />
+        </Button>
+      )}
+
       {/* Widget Overlay Menu */}
       {isEditMode && showOverlayMenu && (
         <WidgetOverlayMenu
@@ -628,7 +660,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize }: Wi
           }}
           onMinimize={() => {}}
           onHide={() => {}}
-          onDelete={() => {}}
+          onDelete={onDelete || (() => console.log('Delete function not provided'))}
           onConfigure={() => {}}
         />
       )}

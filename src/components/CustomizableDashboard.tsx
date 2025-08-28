@@ -306,6 +306,7 @@ export const CustomizableDashboard: React.FC = () => {
                 isDragging={false}
                 isEditMode={isEditMode}
                 onResize={handleWidgetResize}
+                onDelete={removeWidget}
               />
             </div>
           ))}
