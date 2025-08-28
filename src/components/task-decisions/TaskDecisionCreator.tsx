@@ -87,24 +87,22 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
         throw new Error('Unable to determine user tenant');
       }
 
-      console.log('Creating decision with data:', {
+      const insertData = {
         task_id: taskId,
         title: title.trim(),
         description: description.trim() || null,
         created_by: userData.user.id,
         tenant_id: tenantData.tenant_id,
-      });
+      };
+      
+      console.log('Creating decision with data:', insertData);
+      console.log('Current user ID:', userData.user.id);
+      console.log('User auth role:', userData.user.role);
 
       // Create the decision
       const { data: decision, error: decisionError } = await supabase
         .from('task_decisions')
-        .insert({
-          task_id: taskId,
-          title: title.trim(),
-          description: description.trim() || null,
-          created_by: userData.user.id,
-          tenant_id: tenantData.tenant_id,
-        })
+        .insert(insertData)
         .select()
         .single();
 
