@@ -73,11 +73,26 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
       }
 
       console.log('User authenticated:', userData.user.id);
+
+      // Get user's tenant
+      const { data: tenantData, error: tenantError } = await supabase
+        .from('user_tenant_memberships')
+        .select('tenant_id')
+        .eq('user_id', userData.user.id)
+        .eq('is_active', true)
+        .single();
+
+      if (tenantError || !tenantData) {
+        console.error('Tenant lookup error:', tenantError);
+        throw new Error('Unable to determine user tenant');
+      }
+
       console.log('Creating decision with data:', {
         task_id: taskId,
         title: title.trim(),
         description: description.trim() || null,
         created_by: userData.user.id,
+        tenant_id: tenantData.tenant_id,
       });
 
       // Create the decision
@@ -88,6 +103,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
           title: title.trim(),
           description: description.trim() || null,
           created_by: userData.user.id,
+          tenant_id: tenantData.tenant_id,
         })
         .select()
         .single();
