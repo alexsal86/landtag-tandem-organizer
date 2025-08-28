@@ -281,21 +281,28 @@ export function useDashboardLayout() {
       return;
     }
 
-    if (!user) {
-      toast.error('Benutzer nicht angemeldet');
+    if (!user?.id) {
+      toast.error('Benutzer nicht angemeldet oder User-ID fehlt');
       return;
     }
 
-    // Use a default tenant ID if currentTenant is not available
-    const tenantId = currentTenant?.id || 'default-tenant-id';
-    
     try {
+      // Generate a valid UUID for the layout if it doesn't have one
+      const layoutId = currentLayout.id && currentLayout.id !== '' 
+        ? currentLayout.id 
+        : crypto.randomUUID();
+
+      // Use a default tenant ID if currentTenant is not available or invalid
+      const tenantId = currentTenant?.id && currentTenant.id !== '' 
+        ? currentTenant.id 
+        : 'default-tenant-id';
+
       const layoutToSave = name 
         ? { ...currentLayout, name, id: crypto.randomUUID() }
-        : { ...currentLayout, id: currentLayout.id || crypto.randomUUID() };
+        : { ...currentLayout, id: layoutId };
 
       // Ensure we have a valid name
-      if (!layoutToSave.name) {
+      if (!layoutToSave.name || layoutToSave.name === '') {
         layoutToSave.name = 'Standard Layout';
       }
 
@@ -310,8 +317,19 @@ export function useDashboardLayout() {
         configuration: widget.configuration || {}
       }));
 
-      // Save to Supabase
-      const { error } = await supabase
+      // Validate all required fields before saving
+      if (!layoutToSave.id || layoutToSave.id === '') {
+        throw new Error('Layout ID is missing');
+      }
+      if (!user.id || user.id === '') {
+        throw new Error('User ID is missing');
+      }
+      if (!tenantId || tenantId === '') {
+        throw new Error('Tenant ID is missing');
+      }
+
+      // Save to Supabase with validated data
+      const { data, error } = await supabase
         .from('team_dashboards')
         .upsert({
           id: layoutToSave.id,
@@ -323,15 +341,24 @@ export function useDashboardLayout() {
           tenant_id: tenantId
         }, {
           onConflict: 'id'
-        });
+        })
+        .select();
 
       if (error) {
+        console.error('Database error:', error);
         throw error;
       }
 
-      // Update local state
+      if (!data || data.length === 0) {
+        throw new Error('No data returned from database');
+      }
+
+      // Update local state only if database save was successful
       if (name) {
         setLayouts(prev => [...prev, layoutToSave]);
+        setCurrentLayout(layoutToSave);
+      } else {
+        // Update current layout with the saved ID
         setCurrentLayout(layoutToSave);
       }
 
@@ -339,6 +366,7 @@ export function useDashboardLayout() {
       localStorage.setItem(`dashboard-layout-${user.id}`, JSON.stringify(layoutToSave));
       
       toast.success('Layout erfolgreich gespeichert');
+      return true;
       
     } catch (error) {
       console.error('Save error:', error);
@@ -348,8 +376,9 @@ export function useDashboardLayout() {
         localStorage.setItem(`dashboard-layout-${user.id}`, JSON.stringify(currentLayout));
         toast.error('Layout nur lokal gespeichert - Server-Fehler');
       } catch (localError) {
-        toast.error('Speichern fehlgeschlagen');
+        toast.error('Speichern komplett fehlgeschlagen');
       }
+      return false;
     }
   };
 
