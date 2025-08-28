@@ -18,6 +18,7 @@ interface DecisionWithResponses {
   description: string | null;
   status: string;
   created_at: string;
+  created_by: string; // Add this field
   participants: {
     id: string;
     user_id: string;
@@ -53,7 +54,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
       // First get the decisions
       const { data: decisionsData, error: decisionsError } = await supabase
         .from('task_decisions')
-        .select('id, title, description, status, created_at')
+        .select('id, title, description, status, created_at, created_by')
         .eq('task_id', taskId)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
@@ -191,13 +192,12 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
     return null;
   }
 
-  const isCreator = currentUserId === createdBy;
-
   return (
     <div className="space-y-3">
       {decisions.map((decision) => {
         const summary = getResponseSummary(decision.participants);
         const allResponsesReceived = summary.pending === 0;
+        const isDecisionCreator = currentUserId === decision.created_by; // Check if user created this specific decision
         
         return (
           <Card key={decision.id} className={`border-l-4 ${getBorderColor(summary)}`}>
@@ -224,13 +224,14 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
                         : 'Entscheidung'
                     }
                   </Badge>
-                  {isCreator && (
+                  {isDecisionCreator && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => archiveDecision(decision.id)}
                       disabled={isLoading}
                       className="text-muted-foreground hover:text-foreground"
+                      title="Entscheidung archivieren"
                     >
                       <Archive className="h-3 w-3" />
                     </Button>
@@ -260,7 +261,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
                     ({summary.pending} ausstehend)
                   </span>
                 </div>
-                {isCreator && (
+                {isDecisionCreator && (
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-xs">
