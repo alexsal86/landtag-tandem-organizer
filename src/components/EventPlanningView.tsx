@@ -220,14 +220,18 @@ export function EventPlanningView() {
   const [appointmentPreparationView, setAppointmentPreparationView] = useState<'card' | 'table'>('card');
 
   useEffect(() => {
-    console.log('EventPlanningView mounted, user:', user);
+    console.log('EventPlanningView mounted, user:', user, 'currentTenant:', currentTenant);
+    if (!currentTenant) {
+      console.log('No currentTenant available, skipping data fetching');
+      return;
+    }
     fetchPlannings();
     fetchAllProfiles();
     fetchAvailableContacts();
     fetchPlanningTemplates();
     fetchAppointmentPreparations();
     loadViewPreferences();
-  }, [user]);
+  }, [user, currentTenant]);
 
   // Load view preferences from localStorage
   const loadViewPreferences = () => {
@@ -273,15 +277,19 @@ export function EventPlanningView() {
   }, [selectedPlanning]);
 
   const fetchPlannings = async () => {
-    console.log('fetchPlannings called, user:', user);
+    console.log('fetchPlannings called, user:', user, 'currentTenant:', currentTenant);
     if (!user) {
       console.log('No user found, returning early');
+      return;
+    }
+    if (!currentTenant) {
+      console.log('No currentTenant found, returning early');
       return;
     }
 
     try {
       setLoading(true);
-      console.log('Fetching plannings from Supabase...');
+      console.log('Fetching plannings from Supabase for tenant:', currentTenant.id);
       const { data, error } = await supabase
         .from("event_plannings")
         .select("*")
