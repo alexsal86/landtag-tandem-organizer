@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
+import { useTenant } from './useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { getGridColumns, getGridRows, findAvailablePosition } from './useDashboardGrid';
 
@@ -40,6 +41,7 @@ export function useDashboardLayout() {
   const [currentLayout, setCurrentLayout] = useState<DashboardLayout | null>(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
 
   // Default layout
   const defaultLayout: DashboardLayout = {
@@ -132,7 +134,7 @@ export function useDashboardLayout() {
 
   // Initialize with default layout and load from database with fallback
   useEffect(() => {
-    if (user) {
+    if (user && currentTenant) {
       loadLayoutFromDatabase();
     } else {
       // Try to load from localStorage for anonymous users
@@ -152,11 +154,11 @@ export function useDashboardLayout() {
         setLayouts([defaultLayout]);
       }
     }
-  }, [user]);
+  }, [user, currentTenant]);
 
   // Load layout from database with localStorage fallback
   const loadLayoutFromDatabase = async () => {
-    if (!user) return;
+    if (!user || !currentTenant) return;
 
     try {
       setLoading(true);
@@ -166,6 +168,7 @@ export function useDashboardLayout() {
         .from('team_dashboards')
         .select('id, name, description, layout_data, is_public')
         .eq('owner_id', user.id)
+        .eq('tenant_id', currentTenant.id)
         .order('updated_at', { ascending: false })
         .limit(1)
         .single();
@@ -262,7 +265,11 @@ export function useDashboardLayout() {
 
   // Save current layout to database with retry mechanism
   const saveCurrentLayout = async (name?: string) => {
-    if (!currentLayout || !user) return;
+    if (!currentLayout || !user || !currentTenant) {
+      console.error('Cannot save: missing currentLayout, user, or currentTenant');
+      toast.error('Layout kann nicht gespeichert werden: Fehlende Daten');
+      return;
+    }
     
     let retryCount = 0;
     const maxRetries = 3;
@@ -283,7 +290,7 @@ export function useDashboardLayout() {
             description: 'Custom Dashboard',
             layout_data: JSON.parse(JSON.stringify(layoutToSave.widgets)) as any,
             is_public: false,
-            tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+            tenant_id: currentTenant.id
           }, {
             onConflict: 'id',
             ignoreDuplicates: false
