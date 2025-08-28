@@ -264,43 +264,51 @@ export const CustomizableDashboard: React.FC = () => {
               ref={provided.innerRef}
               className={`space-y-6 ${snapshot.isDraggingOver ? 'bg-muted/30 rounded-lg p-2' : ''}`}
             >
-              {/* Responsive Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-min">
-                {currentLayout?.widgets.map((widget, index) => (
-                  <Draggable 
-                    key={widget.id} 
-                    draggableId={widget.id} 
-                    index={index}
-                    isDragDisabled={!isEditMode}
-                  >
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        className={cn(
-                          "transition-all duration-200",
-                          snapshot.isDragging && "scale-105 rotate-2 z-10",
-                          isEditMode && "ring-2 ring-primary/20 hover:ring-primary/40"
-                        )}
-                        style={{
-                          ...provided.draggableProps.style,
-                          height: "200px",
-                        }}
-                      >
-                        <DashboardWidget
-                          widget={widget}
-                          isDragging={snapshot.isDragging}
-                          isEditMode={isEditMode}
-                          onResize={(widgetId, newSize) => {
-                            console.log('Dashboard resize called:', widgetId, newSize);
-                            updateWidget(widgetId, { size: newSize } as any);
+              {/* Grid Layout with proper widget sizing */}
+              <div className="grid grid-cols-6 gap-4 auto-rows-[200px]">
+                {currentLayout?.widgets.map((widget, index) => {
+                  // Get the size from either widgetSize or size property
+                  const widgetSizeString = widget.widgetSize || (typeof widget.size === 'string' ? widget.size : '2x2');
+                  const gridClass = getWidgetGridClass(widgetSizeString);
+                  const height = getWidgetHeight(widgetSizeString);
+                  
+                  return (
+                    <Draggable 
+                      key={widget.id} 
+                      draggableId={widget.id} 
+                      index={index}
+                      isDragDisabled={!isEditMode}
+                    >
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className={cn(
+                            "transition-all duration-200",
+                            gridClass,
+                            snapshot.isDragging && "scale-105 rotate-2 z-10",
+                            isEditMode && "ring-2 ring-primary/20 hover:ring-primary/40"
+                          )}
+                          style={{
+                            ...provided.draggableProps.style,
+                            height: height,
                           }}
-                        />
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
+                        >
+                          <DashboardWidget
+                            widget={widget}
+                            isDragging={snapshot.isDragging}
+                            isEditMode={isEditMode}
+                            onResize={(widgetId, newSize) => {
+                              console.log('Dashboard resize called:', widgetId, newSize);
+                              updateWidget(widgetId, { widgetSize: newSize } as any);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  );
+                })}
                 {provided.placeholder}
               </div>
             </div>
