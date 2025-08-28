@@ -103,7 +103,7 @@ export const TaskDecisionList = () => {
           created_at,
           created_by,
           status,
-          tasks!inner (
+          tasks (
             title,
             assigned_to
           ),
@@ -115,8 +115,9 @@ export const TaskDecisionList = () => {
             )
           )
         `)
-        .eq('status', 'active')
-        .ilike('tasks.assigned_to', `%${currentUserId}%`);
+        .eq('status', 'active');
+
+      console.log('All task decisions before filtering:', { assignedTaskDecisions, assignedError });
 
       console.log('Assigned task decisions query result:', { assignedTaskDecisions, assignedError });
 
@@ -138,24 +139,33 @@ export const TaskDecisionList = () => {
         isParticipant: true,
       })) || [];
 
-      // Format assigned task decisions
-      const formattedAssignedData = assignedTaskDecisions?.map(item => {
-        const userParticipant = item.task_decision_participants.find(p => p.user_id === currentUserId);
-        return {
-          id: item.id,
-          task_id: item.task_id,
-          title: item.title,
-          description: item.description,
-          created_at: item.created_at,
-          created_by: item.created_by,
-          participant_id: userParticipant?.id || null,
-          task: {
-            title: item.tasks.title,
-          },
-          hasResponded: userParticipant ? userParticipant.task_decision_responses.length > 0 : false,
-          isParticipant: !!userParticipant,
-        };
-      }) || [];
+      // Format assigned task decisions - filter for tasks assigned to current user
+      const formattedAssignedData = assignedTaskDecisions
+        ?.filter(item => {
+          // Check if user is assigned to this task
+          const isAssigned = item.tasks?.assigned_to?.includes(currentUserId);
+          console.log('Task:', item.tasks?.title, 'assigned_to:', item.tasks?.assigned_to, 'isAssigned:', isAssigned);
+          return isAssigned;
+        })
+        ?.map(item => {
+          const userParticipant = item.task_decision_participants.find(p => p.user_id === currentUserId);
+          return {
+            id: item.id,
+            task_id: item.task_id,
+            title: item.title,
+            description: item.description,
+            created_at: item.created_at,
+            created_by: item.created_by,
+            participant_id: userParticipant?.id || null,
+            task: {
+              title: item.tasks?.title || 'Unbekannte Aufgabe',
+            },
+            hasResponded: userParticipant ? userParticipant.task_decision_responses.length > 0 : false,
+            isParticipant: !!userParticipant,
+          };
+        }) || [];
+
+      console.log('Formatted assigned data after filtering:', formattedAssignedData);
 
       // Combine and deduplicate (participant decisions take priority)
       const allDecisions = [...formattedParticipantData];
