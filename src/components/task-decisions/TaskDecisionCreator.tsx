@@ -98,6 +98,12 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
       console.log('Creating decision with data:', insertData);
       console.log('Current user ID:', userData.user.id);
       console.log('User auth role:', userData.user.role);
+      
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Current session exists:', !!session);
+      console.log('Session user ID:', session?.user?.id);
+      console.log('Session user aud:', session?.user?.aud);
 
       // Create the decision
       const { data: decision, error: decisionError } = await supabase
