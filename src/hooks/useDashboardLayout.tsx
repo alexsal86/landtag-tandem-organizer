@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
@@ -42,6 +42,7 @@ export function useDashboardLayout() {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Default layout
   const defaultLayout: DashboardLayout = {
@@ -258,16 +259,17 @@ export function useDashboardLayout() {
       console.warn('Failed to save to localStorage:', error);
     }
     
-    // Debounced Supabase save with retry mechanism
-    setTimeout(async () => {
+    // Clear existing timeout and set new one for debounced save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(async () => {
       try {
         await saveCurrentLayout();
       } catch (error) {
-        console.error('Failed to save to Supabase, retrying...', error);
-        // Retry once after 2 seconds
-        setTimeout(() => {
-          saveCurrentLayout().catch(console.error);
-        }, 2000);
+        console.error('Failed to save to Supabase:', error);
+        toast.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
       }
     }, 1000);
   };
@@ -415,6 +417,15 @@ export function useDashboardLayout() {
       saveCurrentLayout();
     }, 100);
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return {
     layouts,
