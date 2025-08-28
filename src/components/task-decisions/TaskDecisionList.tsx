@@ -142,10 +142,13 @@ export const TaskDecisionList = () => {
       // Format assigned task decisions - filter for tasks assigned to current user
       const formattedAssignedData = assignedTaskDecisions
         ?.filter(item => {
-          // Check if user is assigned to this task
-          const isAssigned = item.tasks?.assigned_to?.includes(currentUserId);
-          console.log('Task:', item.tasks?.title, 'assigned_to:', item.tasks?.assigned_to, 'isAssigned:', isAssigned);
-          return isAssigned;
+          // Check if user is assigned to this task or if user is a participant
+          const assignedTo = item.tasks?.assigned_to;
+          const isAssigned = assignedTo ? assignedTo.includes(currentUserId) : false;
+          const isParticipant = item.task_decision_participants.some(p => p.user_id === currentUserId);
+          const shouldInclude = isAssigned || isParticipant;
+          console.log('Task:', item.tasks?.title, 'assigned_to:', assignedTo, 'isAssigned:', isAssigned, 'isParticipant:', isParticipant, 'shouldInclude:', shouldInclude);
+          return shouldInclude;
         })
         ?.map(item => {
           const userParticipant = item.task_decision_participants.find(p => p.user_id === currentUserId);
