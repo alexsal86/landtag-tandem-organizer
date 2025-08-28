@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -64,6 +65,7 @@ type LeaveAgg = {
 
 export function EmployeesView() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
@@ -113,13 +115,31 @@ export function EmployeesView() {
   // Load employees and leave data
   useEffect(() => {
     const load = async () => {
-      if (!user) return;
+      if (!user || !currentTenant) return;
       setLoading(true);
       try {
-        // Alle Nicht-Admin-Benutzer (Rollen: Mitarbeiter, Praktikant, Büroleitung)
+        // Get users for current tenant first
+        const { data: tenantMemberships } = await supabase
+          .from('user_tenant_memberships')
+          .select('user_id')
+          .eq('tenant_id', currentTenant.id)
+          .eq('is_active', true);
+
+        if (!tenantMemberships?.length) {
+          setEmployees([]);
+          setLeaves({});
+          setPendingLeaves([]);
+          setLoading(false);
+          return;
+        }
+
+        const tenantUserIds = tenantMemberships.map(m => m.user_id);
+
+        // Get roles for tenant users and filter for employee roles
         const { data: roles, error: rErr } = await supabase
           .from("user_roles")
-          .select("user_id, role");
+          .select("user_id, role")
+          .in("user_id", tenantUserIds);
         if (rErr) throw rErr;
 
         const managedIds = (roles || [])
@@ -256,7 +276,7 @@ export function EmployeesView() {
     };
 
     load();
-  }, [user, toast]);
+  }, [user, currentTenant, toast]);
 
   // Load self data for non-admin users
   useEffect(() => {
