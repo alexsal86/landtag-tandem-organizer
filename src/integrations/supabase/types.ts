@@ -3224,6 +3224,7 @@ export type Database = {
           status: string
           subtask_id: string | null
           task_id: string | null
+          tenant_id: string | null
           title: string
           updated_at: string
         }
@@ -3237,6 +3238,7 @@ export type Database = {
           status?: string
           subtask_id?: string | null
           task_id?: string | null
+          tenant_id?: string | null
           title: string
           updated_at?: string
         }
@@ -3250,6 +3252,7 @@ export type Database = {
           status?: string
           subtask_id?: string | null
           task_id?: string | null
+          tenant_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -3259,6 +3262,13 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decisions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
