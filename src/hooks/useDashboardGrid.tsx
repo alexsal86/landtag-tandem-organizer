@@ -1,4 +1,4 @@
-import { WidgetSize } from './useDashboardLayout';
+export type WidgetSize = '1x1' | '2x1' | '3x1' | '1x2' | '2x2' | '3x2' | '1x3' | '2x3' | '3x3';
 
 // Grid configuration - Responsive breakpoints
 export const GRID_COLUMNS_DESKTOP = 8;
@@ -6,6 +6,27 @@ export const GRID_COLUMNS_TABLET = 6;
 export const GRID_COLUMNS_MOBILE = 2;
 export const GRID_ROW_HEIGHT = 120; // Reduced for better fit
 export const GRID_GAP = 16; // Gap in px
+
+// Get grid columns/rows from widget size
+export const getGridColumns = (widgetSize: WidgetSize): number => {
+  return parseInt(widgetSize.split('x')[0]);
+};
+
+export const getGridRows = (widgetSize: WidgetSize): number => {
+  return parseInt(widgetSize.split('x')[1]);
+};
+
+// Get CSS Grid area for widget
+export const getWidgetGridArea = (widget: { x: number; y: number; size: WidgetSize }): string => {
+  const cols = getGridColumns(widget.size);
+  const rows = getGridRows(widget.size);
+  return `${widget.y + 1} / ${widget.x + 1} / ${widget.y + rows + 1} / ${widget.x + cols + 1}`;
+};
+
+export const getWidgetHeight = (widgetSize: WidgetSize): number => {
+  const rows = getGridRows(widgetSize);
+  return (rows * 200) + ((rows - 1) * 16);
+};
 
 // Get responsive column count based on screen width
 export function getResponsiveColumns(containerWidth: number): number {

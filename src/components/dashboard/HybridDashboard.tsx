@@ -5,8 +5,8 @@ import { Settings, Save, Layout, Plus, Grid3X3, Zap } from 'lucide-react';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
 import { DashboardWidget } from '../DashboardWidget';
 import { WidgetPalette } from './WidgetPalette';
-import { WidgetResizeHandle } from './WidgetResizeHandle';
-import { WidgetHoverControls } from './WidgetHoverControls';
+import { WidgetResizeSystem } from './WidgetResizeSystem';
+import { WidgetOverlayMenu } from './WidgetOverlayMenu';
 import { ResponsiveGridSystem } from './ResponsiveGridSystem';
 import { PerformanceMonitor } from './PerformanceMonitor';
 import { ContextAwareSuggestions } from './ContextAwareSuggestions';
@@ -340,33 +340,19 @@ function HybridDashboardContent() {
               onMouseEnter={() => isEditMode && setHoveredWidget(widget.id)}
               onMouseLeave={() => isEditMode && setHoveredWidget(null)}
             >
-              {/* Widget Hover Controls - Only in Edit Mode */}
-              {isEditMode && hoveredWidget === widget.id && (
-                <WidgetHoverControls
-                  widget={widget}
-                  onResize={(size) => handleWidgetResize(widget.id, size)}
-                  onMinimize={() => handleWidgetMinimize(widget.id)}
-                  onHide={() => handleWidgetHide(widget.id)}
-                  onDelete={() => handleWidgetDelete(widget.id)}
-                  onConfigure={() => {}}
-                />
-              )}
-
-              {/* Widget Resize Handles - Only in Edit Mode */}
-              {isEditMode && hoveredWidget === widget.id && !widget.configuration?.minimized && (
-                  <WidgetResizeHandle
-                    widget={widget}
-                    onResize={(widgetId: string, size: WidgetSize) => handleWidgetResize(widgetId, size)}
-                    gridSnap={gridSnap}
-                    containerWidth={containerWidth}
-                  />
-              )}
+              {/* Widget controls are now handled within DashboardWidget */}
 
               {/* Widget Content */}
               <DashboardWidget 
                 widget={widget} 
                 isDragging={draggedWidget === widget.id}
                 isEditMode={isEditMode}
+                onResize={(widgetId, newSize) => handleWidgetResize(widgetId, newSize)}
+                onMinimize={(widgetId) => handleWidgetMinimize(widgetId)}
+                onHide={(widgetId) => handleWidgetHide(widgetId)}
+                onDelete={(widgetId) => handleWidgetDelete(widgetId)}
+                onConfigure={(widgetId) => console.log('Configure widget:', widgetId)}
+                containerWidth={containerWidth}
               />
             </div>
           );

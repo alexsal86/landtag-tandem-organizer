@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
 import { DashboardWidget } from '../DashboardWidget';
 import { WidgetPalette } from './WidgetPalette';
-import { WidgetResizeHandle } from './WidgetResizeHandle';
-import { WidgetHoverControls } from './WidgetHoverControls';
+import { WidgetResizeSystem } from './WidgetResizeSystem';
+import { WidgetOverlayMenu } from './WidgetOverlayMenu';
 import { AutoLayoutEngine } from './AutoLayoutEngine';
 import { UndoRedoSystem } from './UndoRedoSystem';
 import { RealTimeSync } from './RealTimeSync';
@@ -217,32 +217,19 @@ export function RealTimeDashboard() {
             onMouseEnter={() => setHoveredWidget(widget.id)}
             onMouseLeave={() => setHoveredWidget(null)}
           >
-            {/* Widget Hover Controls */}
-            {hoveredWidget === widget.id && (
-              <WidgetHoverControls
-                widget={widget}
-                onResize={(size) => handleWidgetResize(widget.id, size)}
-                onMinimize={() => handleWidgetMinimize(widget.id)}
-                onHide={() => handleWidgetHide(widget.id)}
-                onDelete={() => handleWidgetHide(widget.id)}
-                onConfigure={() => {}}
-              />
-            )}
-
-            {/* Widget Resize Handles */}
-            {hoveredWidget === widget.id && !widget.configuration?.minimized && (
-              <WidgetResizeHandle
-                widget={widget}
-                onResize={(widgetId: string, size: WidgetSize) => handleWidgetResize(widgetId, size)}
-                gridSnap={gridSnap}
-              />
-            )}
+            {/* Widget controls are now handled within DashboardWidget */}
 
             {/* Widget Content */}
             <DashboardWidget 
               widget={widget} 
               isDragging={draggedWidget === widget.id}
               isEditMode={true}
+              onResize={(widgetId, newSize) => handleWidgetResize(widgetId, newSize)}
+              onMinimize={(widgetId) => handleWidgetMinimize(widgetId)}
+              onHide={(widgetId) => handleWidgetHide(widgetId)}
+              onDelete={(widgetId) => handleWidgetHide(widgetId)}
+              onConfigure={(widgetId) => console.log('Configure widget:', widgetId)}
+              containerWidth={1200}
             />
           </div>
         ))}

@@ -1,32 +1,38 @@
-import React, { useState } from 'react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Card, CardContent } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
+import { getResponsiveColumns } from '@/hooks/useDashboardGrid';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Settings, 
-  Save, 
-  Layout, 
-  Trash2, 
-  GripVertical,
-  Sparkles
-} from 'lucide-react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import { DashboardWidget } from './DashboardWidget';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useDashboardLayout } from '@/hooks/useDashboardLayout';
-import { RealTimeDashboard } from './dashboard/RealTimeDashboard';
+import { ResponsiveGridSystem } from './dashboard/ResponsiveGridSystem';
+import { DashboardWidget } from './DashboardWidget';
 import { HybridDashboard } from './dashboard/HybridDashboard';
+import { RealTimeDashboard } from './dashboard/RealTimeDashboard';
 import { toast } from 'sonner';
+import {
+  Settings,
+  Save,
+  LayoutGrid,
+  Plus,
+  Edit,
+  Trash2,
+  Download,
+  Upload,
+  Grid3X3,
+} from 'lucide-react';
 
-export function CustomizableDashboard() {
+type DashboardMode = 'classic' | 'hybrid' | 'realtime';
+
+export const CustomizableDashboard: React.FC = () => {
   const {
     layouts,
     currentLayout,
@@ -34,70 +40,33 @@ export function CustomizableDashboard() {
     updateWidget,
     saveCurrentLayout,
     switchLayout,
-    deleteLayout
+    deleteLayout,
+    addWidget,
+    removeWidget,
   } = useDashboardLayout();
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newLayoutName, setNewLayoutName] = useState('');
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
-  const [useRealTimeDashboard, setUseRealTimeDashboard] = useState(false);
-  const [useHybridDashboard, setUseHybridDashboard] = useState(true);
+  const [dashboardMode, setDashboardMode] = useState<DashboardMode>('classic');
 
-  // If hybrid dashboard is enabled, use the new component
-  if (useHybridDashboard) {
-    return <HybridDashboard />;
-  }
-
-  // If real-time dashboard is enabled, use the real-time component
-  if (useRealTimeDashboard) {
-    return <RealTimeDashboard />;
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
-        <div>Dashboard wird geladen...</div>
-      </div>
-    );
-  }
-
-  if (!currentLayout) {
-    return (
-      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
-        <div>Kein Layout verfügbar</div>
-      </div>
-    );
-  }
-
-  // Drag and Drop Handler with proper reordering
-  const onDragEnd = (result: any) => {
-    if (!result.destination || !currentLayout) return;
-
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
-
-    if (sourceIndex === destinationIndex) return;
-
-    const widgets = Array.from(currentLayout.widgets);
-    const [reorderedWidget] = widgets.splice(sourceIndex, 1);
-    widgets.splice(destinationIndex, 0, reorderedWidget);
-
-    // Update positions for all widgets
-    widgets.forEach((widget, index) => {
-      updateWidget(widget.id, { position: { ...widget.position, y: index } });
-    });
-
-    toast.success('Widget-Reihenfolge aktualisiert');
+  const handleWidgetMove = (widgetId: string, newPosition: { x: number; y: number }) => {
+    updateWidget(widgetId, newPosition);
   };
 
-  const handleSaveLayout = async () => {
-    if (newLayoutName.trim()) {
-      await saveCurrentLayout(newLayoutName);
-      setNewLayoutName('');
+  const handleRemoveWidget = (widgetId: string) => {
+    removeWidget(widgetId);
+  };
+
+  // Widget management handlers
+  const handleSaveLayout = async (name?: string) => {
+    try {
+      await saveCurrentLayout(name);
+      toast.success('Layout gespeichert');
       setShowSaveDialog(false);
-    } else {
-      await saveCurrentLayout();
+    } catch (error) {
+      toast.error('Fehler beim Speichern des Layouts');
     }
   };
 
@@ -106,139 +75,133 @@ export function CustomizableDashboard() {
       toast.error('Bitte geben Sie einen Namen ein');
       return;
     }
-    await saveCurrentLayout(newLayoutName);
+    await handleSaveLayout(newLayoutName.trim());
     setNewLayoutName('');
-    setShowSaveDialog(false);
   };
 
   const handleDeleteLayout = async (layoutId: string) => {
     if (layouts.length <= 1) {
-      toast.error('Sie können nicht das letzte Layout löschen');
+      toast.error('Das letzte Layout kann nicht gelöscht werden');
       return;
     }
-    await deleteLayout(layoutId);
+    try {
+      await deleteLayout(layoutId);
+      toast.success('Layout gelöscht');
+    } catch (error) {
+      toast.error('Fehler beim Löschen des Layouts');
+    }
   };
 
-  // Helper functions for responsive grid classes
-  function getWidgetGridClass(size: string): string {
-    switch (size) {
-      case '1x1': return 'col-span-1 row-span-1';
-      case '2x1': return 'col-span-1 md:col-span-2 row-span-1';
-      case '1x2': return 'col-span-1 row-span-2';
-      case '2x2': return 'col-span-1 md:col-span-2 row-span-2';
-      case '3x1': return 'col-span-1 md:col-span-2 lg:col-span-3 row-span-1';
-      case '1x3': return 'col-span-1 row-span-3';
-      case '3x2': return 'col-span-1 md:col-span-2 lg:col-span-3 row-span-2';
-      case '2x3': return 'col-span-1 md:col-span-2 row-span-3';
-      case '3x3': return 'col-span-1 md:col-span-2 lg:col-span-3 row-span-3';
-      case '4x1': return 'col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 row-span-1';
-      case '1x4': return 'col-span-1 row-span-4';
-      case '4x2': return 'col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 row-span-2';
-      case '2x4': return 'col-span-1 md:col-span-2 row-span-4';
-      default: return 'col-span-1 row-span-1';
+  const getWidgetGridClass = (size: string) => {
+    const gridClasses = {
+      '1x1': 'col-span-1 row-span-1',
+      '2x1': 'col-span-2 row-span-1',
+      '3x1': 'col-span-3 row-span-1',
+      '1x2': 'col-span-1 row-span-2',
+      '2x2': 'col-span-2 row-span-2',
+      '3x2': 'col-span-3 row-span-2',
+      '1x3': 'col-span-1 row-span-3',
+      '2x3': 'col-span-2 row-span-3',
+      '3x3': 'col-span-3 row-span-3',
+    };
+    return gridClasses[size as keyof typeof gridClasses] || 'col-span-1 row-span-1';
+  };
+
+  const getWidgetHeight = (size: string) => {
+    const heights = {
+      '1x1': '200px',
+      '2x1': '200px',
+      '3x1': '200px',
+      '1x2': '416px',
+      '2x2': '416px',
+      '3x2': '416px',
+      '1x3': '632px',
+      '2x3': '632px',
+      '3x3': '632px',
+    };
+    return heights[size as keyof typeof heights] || '200px';
+  };
+
+  useEffect(() => {
+    if (!isEditMode) {
+      setShowLayoutDialog(false);
     }
+  }, [isEditMode]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg text-muted-foreground">Dashboard wird geladen...</div>
+      </div>
+    );
   }
 
-  function getWidgetHeight(size: string): string {
-    switch (size) {
-      case '1x1': return '200px';
-      case '2x1': return '200px'; 
-      case '1x2': return '400px';
-      case '2x2': return '400px';
-      case '3x1': return '200px';
-      case '1x3': return '600px';
-      case '3x2': return '400px';
-      case '2x3': return '600px';
-      case '3x3': return '600px';
-      case '4x1': return '200px';
-      case '1x4': return '800px';
-      case '4x2': return '400px';
-      case '2x4': return '800px';
-      default: return '200px';
-    }
+  if (!layouts.length) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg text-muted-foreground">Keine Layouts verfügbar</div>
+      </div>
+    );
   }
 
+  // Render different dashboard modes
+  if (dashboardMode === 'hybrid') {
+    return <HybridDashboard />;
+  }
+
+  if (dashboardMode === 'realtime') {
+    return <RealTimeDashboard />;
+  }
+
+  // Classic dashboard mode
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
-      {/* Header */}
+    <div className="min-h-screen bg-background p-6">
+      {/* Dashboard Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Dashboard {isEditMode && '(Bearbeitungsmodus)'}
+            Dashboard
           </h1>
           <p className="text-muted-foreground">
-            {currentLayout.name} - Willkommen zurück! Hier ist Ihre heutige Übersicht.
+            {currentLayout?.name || 'Standard Layout'} - Willkommen zurück!
           </p>
         </div>
-        
-        <div className="flex items-center gap-2">
-          {/* Layout Selection */}
-          <Dialog open={showLayoutDialog} onOpenChange={setShowLayoutDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Layout className="h-4 w-4 mr-2" />
-                Layouts
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Layout verwalten</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Aktuelles Layout: {currentLayout.name}</Label>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Layout wechseln</Label>
-                  <Select
-                    value={currentLayout.id || ''}
-                    onValueChange={(value) => {
-                      switchLayout(value);
-                      setShowLayoutDialog(false);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Layout auswählen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {layouts.map((layout) => (
-                        <SelectItem key={layout.id || 'default'} value={layout.id || ''}>
-                          {layout.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Layouts verwalten</Label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {layouts.map((layout) => (
-                      <div key={layout.id} className="flex items-center justify-between p-2 rounded bg-accent">
-                        <span className="text-sm">{layout.name}</span>
-                        <div className="flex items-center gap-1">
-                          {layout.isActive && (
-                            <span className="text-xs text-primary">Aktiv</span>
-                          )}
-                          {layouts.length > 1 && layout.id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteLayout(layout.id!)}
-                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+        <div className="flex items-center gap-2">
+          {/* Dashboard Mode Selector */}
+          <Select value={dashboardMode} onValueChange={(value: DashboardMode) => setDashboardMode(value)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="classic">Standard</SelectItem>
+              <SelectItem value="hybrid">Hybrid</SelectItem>
+              <SelectItem value="realtime">Echtzeit</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Layout Management */}
+          {currentLayout && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  Layout
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {layouts.map((layout) => (
+                  <DropdownMenuItem
+                    key={layout.id}
+                    onClick={() => switchLayout(layout.id!)}
+                    className={currentLayout.id === layout.id ? 'bg-accent' : ''}
+                  >
+                    {layout.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* Save Layout */}
           <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
@@ -253,51 +216,29 @@ export function CustomizableDashboard() {
                 <DialogTitle>Layout speichern</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="layout-name">Name für neues Layout (optional)</Label>
+                <div>
+                  <Label htmlFor="layout-name">Layout Name</Label>
                   <Input
                     id="layout-name"
                     value={newLayoutName}
                     onChange={(e) => setNewLayoutName(e.target.value)}
-                    placeholder="Neuer Layout-Name"
+                    placeholder="Mein neues Layout"
                   />
                 </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleSaveLayout} className="flex-1">
-                    Aktuelles Layout aktualisieren
-                  </Button>
-                  <Button 
-                    onClick={handleSaveAsNew} 
-                    variant="outline" 
-                    className="flex-1"
-                    disabled={!newLayoutName.trim()}
-                  >
-                    Als neues Layout speichern
-                  </Button>
-                </div>
               </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                  Abbrechen
+                </Button>
+                <Button onClick={() => handleSaveLayout()}>
+                  Aktuelles überschreiben
+                </Button>
+                <Button onClick={handleSaveAsNew}>
+                  Als neu speichern
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
-
-          {/* Dashboard Mode Toggle */}
-          <Button
-            variant={useHybridDashboard ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              if (useHybridDashboard) {
-                setUseHybridDashboard(false);
-                setUseRealTimeDashboard(true);
-              } else if (useRealTimeDashboard) {
-                setUseRealTimeDashboard(false);
-                setUseHybridDashboard(false);
-              } else {
-                setUseHybridDashboard(true);
-              }
-            }}
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            {useHybridDashboard ? 'Hybrid' : useRealTimeDashboard ? 'Real-Time' : 'Classic'}
-          </Button>
 
           {/* Edit Mode Toggle */}
           <Button
@@ -305,72 +246,40 @@ export function CustomizableDashboard() {
             size="sm"
             onClick={() => setIsEditMode(!isEditMode)}
           >
-            <Settings className="h-4 w-4 mr-2" />
+            <Edit className="h-4 w-4 mr-2" />
             {isEditMode ? 'Fertig' : 'Bearbeiten'}
           </Button>
         </div>
       </div>
 
-      {/* Dashboard Content with Drag and Drop */}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="dashboard-widgets" isDropDisabled={!isEditMode}>
-          {(provided, snapshot) => (
-            <div
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              className={`space-y-6 ${snapshot.isDraggingOver ? 'bg-muted/30 rounded-lg p-2' : ''}`}
-            >
-              {/* Responsive Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-min">
-                {currentLayout.widgets.map((widget, index) => (
-                  <Draggable 
-                    key={widget.id} 
-                    draggableId={widget.id} 
-                    index={index}
-                    isDragDisabled={!isEditMode}
-                  >
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={`
-                          relative
-                          ${getWidgetGridClass(widget.widgetSize)} 
-                          ${snapshot.isDragging ? 'z-50 rotate-1 shadow-2xl scale-105' : ''} 
-                          ${isEditMode ? 'ring-2 ring-primary/20 ring-offset-2 hover:ring-primary/40' : ''}
-                          transition-all duration-200
-                        `}
-                        style={{
-                          ...provided.draggableProps.style,
-                          height: getWidgetHeight(widget.widgetSize)
-                        }}
-                      >
-                        {/* Drag Handle */}
-                        {isEditMode && (
-                          <div 
-                            {...provided.dragHandleProps}
-                            className="absolute top-2 right-2 z-10 p-1 bg-background/90 rounded border cursor-grab active:cursor-grabbing hover:bg-accent transition-colors"
-                          >
-                            <GripVertical className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        )}
-                        
-                        <DashboardWidget 
-                          widget={widget} 
-                          isDragging={snapshot.isDragging}
-                          isEditMode={isEditMode}
-                        />
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-              </div>
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
-
+      {/* Dashboard Content */}
+      {currentLayout ? (
+        <ResponsiveGridSystem
+          widgets={currentLayout?.widgets || []}
+          onWidgetMove={handleWidgetMove}
+          isEditMode={isEditMode}
+          containerWidth={1200}
+          gridColumns={getResponsiveColumns(1200)}
+        >
+          {currentLayout?.widgets.map((widget) => (
+            <DashboardWidget
+              key={widget.id}
+              widget={widget}
+              isEditMode={isEditMode}
+              onResize={(widgetId, newSize) => updateWidget(widgetId, { size: newSize })}
+              onMinimize={(widgetId) => updateWidget(widgetId, { minimized: true })}
+              onHide={(widgetId) => updateWidget(widgetId, { hidden: true })}
+              onDelete={(widgetId) => handleRemoveWidget(widgetId)}
+              onConfigure={(widgetId) => console.log('Configure widget:', widgetId)}
+              containerWidth={1200}
+            />
+          ))}
+        </ResponsiveGridSystem>
+      ) : (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-muted-foreground">Kein Layout ausgewählt</div>
+        </div>
+      )}
     </div>
   );
-}
+};
