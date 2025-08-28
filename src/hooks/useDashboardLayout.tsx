@@ -276,9 +276,29 @@ export function useDashboardLayout() {
 
   // Save current layout to database with retry mechanism
   const saveCurrentLayout = async (name?: string) => {
-    if (!currentLayout || !user || !currentTenant) {
-      console.error('Cannot save: missing currentLayout, user, or currentTenant');
-      toast.error('Layout kann nicht gespeichert werden: Fehlende Daten');
+    console.log('saveCurrentLayout called:', { 
+      hasCurrentLayout: !!currentLayout, 
+      hasUser: !!user, 
+      hasTenant: !!currentTenant,
+      userId: user?.id,
+      tenantId: currentTenant?.id
+    });
+
+    if (!currentLayout) {
+      console.error('Cannot save: missing currentLayout');
+      toast.error('Kein Layout zum Speichern verfügbar');
+      return;
+    }
+
+    if (!user) {
+      console.error('Cannot save: missing user');
+      toast.error('Benutzer nicht angemeldet');
+      return;
+    }
+
+    if (!currentTenant) {
+      console.error('Cannot save: missing currentTenant');
+      toast.error('Kein Tenant verfügbar');
       return;
     }
     
@@ -291,13 +311,21 @@ export function useDashboardLayout() {
           ? { ...currentLayout, name, id: crypto.randomUUID() }
           : currentLayout;
 
+        console.log('Attempting save with data:', {
+          id: layoutToSave.id,
+          name: layoutToSave.name,
+          owner_id: user.id,
+          tenant_id: currentTenant.id,
+          widgetCount: layoutToSave.widgets?.length
+        });
+
         // Save to Supabase with proper error handling
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('team_dashboards')
           .upsert({
             id: layoutToSave.id || crypto.randomUUID(),
             owner_id: user.id,
-            name: layoutToSave.name,
+            name: layoutToSave.name || 'Standard Layout',
             description: 'Custom Dashboard',
             layout_data: JSON.parse(JSON.stringify(layoutToSave.widgets)) as any,
             is_public: false,
@@ -305,12 +333,15 @@ export function useDashboardLayout() {
           }, {
             onConflict: 'id',
             ignoreDuplicates: false
-          });
+          })
+          .select();
 
         if (error) {
           console.error('Database save error:', error);
           throw error;
         }
+
+        console.log('Save successful:', data);
 
         if (name) {
           setLayouts(prev => [...prev, layoutToSave]);
@@ -324,6 +355,7 @@ export function useDashboardLayout() {
         
         if (retryCount < maxRetries) {
           // Exponential backoff
+          console.log(`Retrying save in ${Math.pow(2, retryCount)} seconds...`);
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
           return attemptSave();
         }
