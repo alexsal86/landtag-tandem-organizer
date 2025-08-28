@@ -3951,6 +3951,10 @@ export type Database = {
         Args: { dashboard_id: string; user_id: string }
         Returns: boolean
       }
+      can_view_event_planning: {
+        Args: { _planning_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_view_message_confirmations: {
         Args: { message_id_param: string }
         Returns: boolean
