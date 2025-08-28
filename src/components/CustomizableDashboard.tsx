@@ -371,31 +371,6 @@ export function CustomizableDashboard() {
         </Droppable>
       </DragDropContext>
 
-      {/* Edit Mode Instructions */}
-      {isEditMode && (
-        <Card className="fixed bottom-6 right-6 border-primary/20 bg-primary/5 shadow-lg z-50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <GripVertical className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Bearbeitungsmodus aktiv</span>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => saveCurrentLayout()}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Speichern
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setIsEditMode(false)}>
-                  Fertig
-                </Button>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Ziehen Sie Widgets mit dem Griff-Symbol, um sie neu anzuordnen.
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

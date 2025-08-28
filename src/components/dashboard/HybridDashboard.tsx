@@ -423,46 +423,6 @@ function HybridDashboardContent() {
         </div>
       )}
 
-      {/* Edit Mode Status Card */}
-      {isEditMode && (
-        <Card className="fixed bottom-6 right-6 border-primary/20 bg-background/95 backdrop-blur-sm shadow-elegant z-modal">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Settings className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Bearbeitungsmodus</span>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => saveCurrentLayout()}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Speichern
-                </Button>
-                <Button size="sm" variant="outline" onClick={toggleEditMode}>
-                  Fertig
-                </Button>
-              </div>
-            </div>
-            
-            {/* Status Indicators */}
-            <div className="flex gap-2 text-xs">
-              {autoSaveEnabled && (
-                <span className="bg-primary/10 text-primary px-2 py-1 rounded">
-                  Auto-Save
-                </span>
-              )}
-              {gridSnap && (
-                <span className="bg-accent px-2 py-1 rounded">
-                  Raster
-                </span>
-              )}
-            </div>
-            
-            <p className="text-xs text-muted-foreground mt-2">
-              Widgets ziehen, Größe ändern oder neue hinzufügen
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
