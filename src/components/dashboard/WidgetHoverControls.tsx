@@ -108,13 +108,16 @@ export function WidgetHoverControls({
       {/* Main Controls Bar - position dynamically based on screen edge */}
       <div 
         ref={controlsRef}
-        className={`absolute top-0 w-14 bg-background/98 backdrop-blur-sm border-2 border-primary/20 rounded-lg shadow-elegant z-[100] transition-all duration-200 ${
-          menuPosition === 'right' ? '-right-16' : '-left-16'
+        className={`fixed top-2 w-14 bg-background/98 backdrop-blur-sm border-2 border-primary/20 rounded-lg shadow-elegant z-[999] transition-all duration-200 ${
+          menuPosition === 'right' ? '' : ''
         }`}
         style={{ 
           opacity: isHoverExtended ? 1 : 0,
           pointerEvents: isHoverExtended ? 'auto' : 'none',
-          transform: isHoverExtended ? 'scale(1)' : 'scale(0.95)'
+          transform: isHoverExtended ? 'scale(1)' : 'scale(0.95)',
+          left: menuPosition === 'right' ? 'auto' : '8px',
+          right: menuPosition === 'right' ? '8px' : 'auto',
+          top: controlsRef.current ? `${controlsRef.current.getBoundingClientRect().top}px` : '8px'
         }}
         onMouseEnter={() => setIsHoverExtended(true)}
         onMouseLeave={() => setIsHoverExtended(false)}
