@@ -14,6 +14,7 @@ interface WidgetOverlayMenuProps {
   onHide: (widgetId: string) => void;
   onDelete: (widgetId: string) => void;
   onConfigure: (widgetId: string) => void;
+  widgetSize?: string; // Neue Prop für die Widget-Größe
 }
 
 const WIDGET_SIZES = [
@@ -37,44 +38,112 @@ export const WidgetOverlayMenu: React.FC<WidgetOverlayMenuProps> = ({
   onHide,
   onDelete,
   onConfigure,
+  widgetSize,
 }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
 
   if (!isVisible) return null;
 
+  // Bestimme die Menügröße basierend auf der Widget-Größe
+  const getMenuSize = () => {
+    const currentSize = widgetSize || widget.widgetSize || widget.size || '2x2';
+    const [w, h] = currentSize.split('x').map(Number);
+    
+    // Für sehr kleine Widgets
+    if (w === 1 && h === 1) {
+      return {
+        minWidth: '200px',
+        maxWidth: '250px',
+        gridCols: 2,
+        compact: true
+      };
+    }
+    // Für kleine Widgets
+    if (w <= 2 && h <= 2) {
+      return {
+        minWidth: '260px',
+        maxWidth: '300px',
+        gridCols: 2,
+        compact: true
+      };
+    }
+    // Für normale/große Widgets
+    return {
+      minWidth: '300px',
+      maxWidth: '400px',
+      gridCols: 3,
+      compact: false
+    };
+  };
+
+  const menuSize = getMenuSize();
+
   return (
-    <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm border-2 border-primary/20 rounded-lg flex items-center justify-center">
-      <div className="bg-card border border-border rounded-lg p-6 shadow-lg min-w-[300px]">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-foreground">Widget-Einstellungen</h3>
+    <div 
+      className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm border-2 border-primary/20 rounded-lg flex items-center justify-center"
+      onClick={(e) => {
+        e.stopPropagation();
+        e.nativeEvent.stopImmediatePropagation();
+      }}
+      onMouseDown={(e) => {
+        e.stopPropagation();
+        e.nativeEvent.stopImmediatePropagation();
+      }}
+      style={{ pointerEvents: 'all' }}
+    >
+      <div 
+        className="bg-card border border-border rounded-lg p-4 shadow-lg"
+        style={{ 
+          minWidth: menuSize.minWidth,
+          maxWidth: menuSize.maxWidth,
+          width: '90%'
+        }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 className={`font-semibold text-foreground ${menuSize.compact ? 'text-sm' : 'text-lg'}`}>
+            Widget-Einstellungen
+          </h3>
           <Button
             variant="ghost"
             size="sm"
-            onClick={onClose}
-            className="h-8 w-8 p-0"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+              onClose();
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+            }}
+            className="h-6 w-6 p-0"
+            style={{ pointerEvents: 'all' }}
           >
-            <X className="h-4 w-4" />
+            <X className="h-3 w-3" />
           </Button>
         </div>
 
-        <div className="space-y-4">
+        <div className={`space-y-${menuSize.compact ? '2' : '4'}`}>
           {/* Widget Size Selection */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">
+            <label className={`font-medium text-foreground mb-1 block ${menuSize.compact ? 'text-xs' : 'text-sm'}`}>
               Widget-Größe
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className={`grid grid-cols-${menuSize.gridCols} gap-1`}>
               {WIDGET_SIZES.map((size) => (
                 <Button
                   key={size.value}
                   variant={widget.size === size.value || widget.widgetSize === size.value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
+                  size={menuSize.compact ? "sm" : "sm"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
                     console.log('Size button clicked:', size.value, 'for widget:', widget.id);
                     onResize(widget.id, size.value);
                   }}
-                  className="text-xs"
+                  className={menuSize.compact ? "text-xs px-1 py-0.5" : "text-xs"}
+                  style={{ pointerEvents: 'all' }}
                 >
                   {size.label}
                 </Button>
@@ -83,47 +152,67 @@ export const WidgetOverlayMenu: React.FC<WidgetOverlayMenuProps> = ({
           </div>
 
           {/* Quick Actions */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowConfigDialog(true)}
-              className="flex items-center gap-2"
-            >
-              <Settings className="h-4 w-4" />
-              Konfigurieren
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onMinimize(widget.id)}
-              className="flex items-center gap-2"
-            >
-              <EyeOff className="h-4 w-4" />
-              Minimieren
-            </Button>
+          {!menuSize.compact && (
+            <div className="flex flex-wrap gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowConfigDialog(true);
+                }}
+                className="flex items-center gap-1 text-xs"
+                style={{ pointerEvents: 'all' }}
+              >
+                <Settings className="h-3 w-3" />
+                Konfigurieren
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMinimize(widget.id);
+                }}
+                className="flex items-center gap-1 text-xs"
+                style={{ pointerEvents: 'all' }}
+              >
+                <EyeOff className="h-3 w-3" />
+                Minimieren
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onHide(widget.id)}
-              className="flex items-center gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              Ausblenden
-            </Button>
-          </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onHide(widget.id);
+                }}
+                className="flex items-center gap-1 text-xs"
+                style={{ pointerEvents: 'all' }}
+              >
+                <Eye className="h-3 w-3" />
+                Ausblenden
+              </Button>
+            </div>
+          )}
 
+          {/* Quick Actions */}
           {/* Danger Zone */}
-          <div className="pt-2 border-t border-border">
+          <div className={`pt-1 border-t border-border ${menuSize.compact ? 'mt-2' : 'mt-4'}`}>
             <Button
               variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-              className="flex items-center gap-2 w-full"
+              size={menuSize.compact ? "sm" : "sm"}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+                setShowDeleteDialog(true);
+              }}
+              className={`flex items-center gap-1 w-full ${menuSize.compact ? 'text-xs px-2 py-1' : 'text-sm'}`}
+              style={{ pointerEvents: 'all' }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className={menuSize.compact ? "h-3 w-3" : "h-4 w-4"} />
               Widget löschen
             </Button>
           </div>

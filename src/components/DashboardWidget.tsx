@@ -573,12 +573,18 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
           <Button
             variant="outline"
             size="sm"
-            className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-background/80 backdrop-blur-sm"
+            className="absolute top-2 right-2 z-50 h-8 w-8 p-0 bg-background/90 backdrop-blur-sm shadow-md hover:bg-accent"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
               setShowOverlayMenu(true);
             }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+            }}
+            style={{ pointerEvents: 'all' }}
           >
             <Edit2 className="h-4 w-4" />
           </Button>
@@ -588,6 +594,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         {isEditMode && showOverlayMenu && (
           <WidgetOverlayMenu
             widget={widget}
+            widgetSize={typeof widget.widgetSize === 'string' ? widget.widgetSize : typeof widget.size === 'string' ? widget.size : '2x2'}
             isVisible={showOverlayMenu}
             onClose={() => setShowOverlayMenu(false)}
             onResize={(widgetId, newSize) => {
@@ -632,12 +639,18 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         <Button
           variant="outline"
           size="sm"
-          className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-background/80 backdrop-blur-sm"
+          className="absolute top-2 right-2 z-50 h-8 w-8 p-0 bg-background/90 backdrop-blur-sm shadow-md hover:bg-accent"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            e.nativeEvent.stopImmediatePropagation();
             setShowOverlayMenu(true);
           }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.nativeEvent.stopImmediatePropagation();
+          }}
+          style={{ pointerEvents: 'all' }}
         >
           <Edit2 className="h-4 w-4" />
         </Button>
@@ -647,6 +660,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       {isEditMode && showOverlayMenu && (
         <WidgetOverlayMenu
           widget={widget}
+          widgetSize={typeof widget.widgetSize === 'string' ? widget.widgetSize : typeof widget.size === 'string' ? widget.size : '2x2'}
           isVisible={showOverlayMenu}
           onClose={() => setShowOverlayMenu(false)}
           onResize={(widgetId, newSize) => {
