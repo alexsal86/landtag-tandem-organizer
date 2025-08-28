@@ -12,7 +12,7 @@ export type WidgetSize =
 
 export interface DashboardWidget {
   id: string;
-  type: 'stats' | 'tasks' | 'schedule' | 'actions' | 'messages' | 'blackboard' | 'combined-messages' | 'quicknotes' | 'pomodoro' | 'habits' | 'calllog' | 'teamchat';
+  type: 'stats' | 'tasks' | 'schedule' | 'actions' | 'messages' | 'blackboard' | 'combined-messages' | 'quicknotes' | 'pomodoro' | 'habits' | 'calllog' | 'teamchat' | 'quickactions';
   title: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -94,10 +94,19 @@ export function useDashboardLayout() {
         configuration: { theme: 'default', autoSave: true, compact: false }
       },
       {
+        id: 'quickactions',
+        type: 'quickactions',
+        title: 'Schnellzugriff',
+        position: { x: 5, y: 1 },
+        size: { width: 3, height: 2 },
+        widgetSize: '3x2',
+        configuration: { theme: 'default', columns: 3 }
+      },
+      {
         id: 'habits',
         type: 'habits',
         title: 'Habit Tracker',
-        position: { x: 5, y: 1 },
+        position: { x: 8, y: 1 },
         size: { width: 3, height: 2 },
         widgetSize: '3x2',
         configuration: { theme: 'default', showStreak: true }

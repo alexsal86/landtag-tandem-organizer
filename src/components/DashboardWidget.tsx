@@ -16,6 +16,7 @@ import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 import { PomodoroWidget } from '@/components/widgets/PomodoroWidget';
 import { HabitsWidget } from '@/components/widgets/HabitsWidget';
 import { CallLogWidget } from '@/components/widgets/CallLogWidget';
+import { QuickActionsWidget } from '@/components/widgets/QuickActionsWidget';
 
 interface WidgetProps {
   widget: WidgetType;
@@ -315,6 +316,18 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         return <HabitsWidget configuration={widget.configuration} />;
       case 'calllog':
         return <CallLogWidget configuration={widget.configuration} />;
+      case 'quickactions':
+        return (
+          <QuickActionsWidget 
+            className="h-full" 
+            widgetSize={widget.widgetSize}
+            configuration={widget.configuration}
+            onConfigurationChange={(config) => {
+              // Update widget configuration if we have an update function
+              console.log('Configuration changed for quickactions widget:', config);
+            }}
+          />
+        );
       case 'stats':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -557,7 +570,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
   };
 
   // For new widget types that handle their own layout, render them directly
-  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages'].includes(widget.type)) {
+  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions'].includes(widget.type)) {
     return (
       <div 
         className={`relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}
