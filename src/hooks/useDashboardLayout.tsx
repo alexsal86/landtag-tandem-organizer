@@ -276,106 +276,80 @@ export function useDashboardLayout() {
 
   // Save current layout to database with retry mechanism
   const saveCurrentLayout = async (name?: string) => {
-    console.log('saveCurrentLayout called:', { 
-      hasCurrentLayout: !!currentLayout, 
-      hasUser: !!user, 
-      hasTenant: !!currentTenant,
-      userId: user?.id,
-      tenantId: currentTenant?.id
-    });
-
     if (!currentLayout) {
-      console.error('Cannot save: missing currentLayout');
       toast.error('Kein Layout zum Speichern verfügbar');
       return;
     }
 
     if (!user) {
-      console.error('Cannot save: missing user');
       toast.error('Benutzer nicht angemeldet');
       return;
     }
 
-    if (!currentTenant) {
-      console.error('Cannot save: missing currentTenant');
-      toast.error('Kein Tenant verfügbar');
-      return;
-    }
+    // Use a default tenant ID if currentTenant is not available
+    const tenantId = currentTenant?.id || 'default-tenant-id';
     
-    let retryCount = 0;
-    const maxRetries = 3;
-    
-    const attemptSave = async (): Promise<boolean> => {
-      try {
-        const layoutToSave = name 
-          ? { ...currentLayout, name, id: crypto.randomUUID() }
-          : currentLayout;
+    try {
+      const layoutToSave = name 
+        ? { ...currentLayout, name, id: crypto.randomUUID() }
+        : { ...currentLayout, id: currentLayout.id || crypto.randomUUID() };
 
-        console.log('Attempting save with data:', {
+      // Ensure we have a valid name
+      if (!layoutToSave.name) {
+        layoutToSave.name = 'Standard Layout';
+      }
+
+      // Clean and validate layout data
+      const cleanWidgets = layoutToSave.widgets.map(widget => ({
+        id: widget.id,
+        type: widget.type,
+        title: widget.title,
+        position: widget.position || { x: 0, y: 0 },
+        size: widget.size || { width: 2, height: 2 },
+        widgetSize: widget.widgetSize || '2x2',
+        configuration: widget.configuration || {}
+      }));
+
+      // Save to Supabase
+      const { error } = await supabase
+        .from('team_dashboards')
+        .upsert({
           id: layoutToSave.id,
-          name: layoutToSave.name,
           owner_id: user.id,
-          tenant_id: currentTenant.id,
-          widgetCount: layoutToSave.widgets?.length
+          name: layoutToSave.name,
+          description: 'Custom Dashboard',
+          layout_data: cleanWidgets,
+          is_public: false,
+          tenant_id: tenantId
+        }, {
+          onConflict: 'id'
         });
 
-        // Save to Supabase with proper error handling
-        const { data, error } = await supabase
-          .from('team_dashboards')
-          .upsert({
-            id: layoutToSave.id || crypto.randomUUID(),
-            owner_id: user.id,
-            name: layoutToSave.name || 'Standard Layout',
-            description: 'Custom Dashboard',
-            layout_data: JSON.parse(JSON.stringify(layoutToSave.widgets)) as any,
-            is_public: false,
-            tenant_id: currentTenant.id
-          }, {
-            onConflict: 'id',
-            ignoreDuplicates: false
-          })
-          .select();
-
-        if (error) {
-          console.error('Database save error:', error);
-          throw error;
-        }
-
-        console.log('Save successful:', data);
-
-        if (name) {
-          setLayouts(prev => [...prev, layoutToSave]);
-          setCurrentLayout(layoutToSave);
-        }
-        
-        return true;
-      } catch (error) {
-        console.error(`Save attempt ${retryCount + 1} failed:`, error);
-        retryCount++;
-        
-        if (retryCount < maxRetries) {
-          // Exponential backoff
-          console.log(`Retrying save in ${Math.pow(2, retryCount)} seconds...`);
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-          return attemptSave();
-        }
-        return false;
+      if (error) {
+        throw error;
       }
-    };
 
-    const success = await attemptSave();
-    
-    // Always save to localStorage as fallback
-    try {
-      localStorage.setItem(`dashboard-layout-${user.id}`, JSON.stringify(currentLayout));
+      // Update local state
+      if (name) {
+        setLayouts(prev => [...prev, layoutToSave]);
+        setCurrentLayout(layoutToSave);
+      }
+
+      // Save to localStorage as backup
+      localStorage.setItem(`dashboard-layout-${user.id}`, JSON.stringify(layoutToSave));
+      
+      toast.success('Layout erfolgreich gespeichert');
+      
     } catch (error) {
-      console.warn('Failed to save to localStorage:', error);
-    }
-
-    if (success) {
-      toast.success('Layout gespeichert');
-    } else {
-      toast.error('Layout konnte nicht gespeichert werden - wird lokal gespeichert');
+      console.error('Save error:', error);
+      
+      // Fallback: save to localStorage only
+      try {
+        localStorage.setItem(`dashboard-layout-${user.id}`, JSON.stringify(currentLayout));
+        toast.error('Layout nur lokal gespeichert - Server-Fehler');
+      } catch (localError) {
+        toast.error('Speichern fehlgeschlagen');
+      }
     }
   };
 
