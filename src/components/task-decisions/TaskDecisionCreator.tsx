@@ -58,11 +58,27 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
 
     setIsLoading(true);
     try {
-      // Get current user first
+      console.log('Starting decision creation...');
+      
+      // Get current user first and validate
       const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData.user) {
+      if (userError) {
+        console.error('Auth error:', userError);
+        throw new Error(`Authentication error: ${userError.message}`);
+      }
+      
+      if (!userData.user) {
+        console.error('No user found');
         throw new Error('User not authenticated');
       }
+
+      console.log('User authenticated:', userData.user.id);
+      console.log('Creating decision with data:', {
+        task_id: taskId,
+        title: title.trim(),
+        description: description.trim() || null,
+        created_by: userData.user.id,
+      });
 
       // Create the decision
       const { data: decision, error: decisionError } = await supabase
@@ -76,7 +92,12 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
         .select()
         .single();
 
-      if (decisionError) throw decisionError;
+      if (decisionError) {
+        console.error('Decision creation error:', decisionError);
+        throw decisionError;
+      }
+
+      console.log('Decision created successfully:', decision);
 
       // Add participants
       const participants = selectedUsers.map(userId => ({
@@ -84,11 +105,18 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
         user_id: userId,
       }));
 
+      console.log('Adding participants:', participants);
+
       const { error: participantsError } = await supabase
         .from('task_decision_participants')
         .insert(participants);
 
-      if (participantsError) throw participantsError;
+      if (participantsError) {
+        console.error('Participants creation error:', participantsError);
+        throw participantsError;
+      }
+
+      console.log('Participants added successfully');
 
       // Send notifications to participants
       for (const userId of selectedUsers) {
