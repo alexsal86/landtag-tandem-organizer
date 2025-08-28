@@ -576,8 +576,13 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize }: Wi
             isVisible={showOverlayMenu}
             onClose={() => setShowOverlayMenu(false)}
             onResize={(widgetId, newSize) => {
-              if (onResize) onResize(widgetId, newSize);
-              setShowOverlayMenu(false);
+              console.log('Overlay menu resize called:', widgetId, newSize);
+              if (onResize) {
+                onResize(widgetId, newSize);
+                setShowOverlayMenu(false);
+              } else {
+                console.warn('No onResize function provided to DashboardWidget');
+              }
             }}
             onMinimize={() => {}}
             onHide={() => {}}
@@ -622,8 +627,13 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize }: Wi
           isVisible={showOverlayMenu}
           onClose={() => setShowOverlayMenu(false)}
           onResize={(widgetId, newSize) => {
-            if (onResize) onResize(widgetId, newSize);
-            setShowOverlayMenu(false);
+            console.log('Card overlay menu resize called:', widgetId, newSize);
+            if (onResize) {
+              onResize(widgetId, newSize);
+              setShowOverlayMenu(false);
+            } else {
+              console.warn('No onResize function provided to DashboardWidget');
+            }
           }}
           onMinimize={() => {}}
           onHide={() => {}}

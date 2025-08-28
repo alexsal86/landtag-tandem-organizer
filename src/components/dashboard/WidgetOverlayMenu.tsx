@@ -68,9 +68,12 @@ export const WidgetOverlayMenu: React.FC<WidgetOverlayMenuProps> = ({
               {WIDGET_SIZES.map((size) => (
                 <Button
                   key={size.value}
-                  variant={widget.size === size.value ? "default" : "outline"}
+                  variant={widget.size === size.value || widget.widgetSize === size.value ? "default" : "outline"}
                   size="sm"
-                  onClick={() => onResize(widget.id, size.value)}
+                  onClick={() => {
+                    console.log('Size button clicked:', size.value, 'for widget:', widget.id);
+                    onResize(widget.id, size.value);
+                  }}
                   className="text-xs"
                 >
                   {size.label}

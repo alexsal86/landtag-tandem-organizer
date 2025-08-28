@@ -50,9 +50,10 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
   const handleMouseDown = (e: React.MouseEvent, direction: 'se' | 'e' | 's') => {
     e.preventDefault();
     e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
     
+    console.log('Resize handle clicked, direction:', direction);
     setIsResizing(true);
-    setResizeDirection(direction);
     startPos.current = { x: e.clientX, y: e.clientY };
     
     const currentSize = getCurrentSize();
@@ -106,33 +107,36 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
       {/* Corner handle (bottom-right) */}
       <div
         className={cn(
-          "absolute bottom-1 right-1 w-4 h-4 bg-primary rounded cursor-se-resize pointer-events-auto z-10",
+          "absolute bottom-1 right-1 w-4 h-4 bg-primary rounded cursor-se-resize pointer-events-auto z-50",
           "hover:bg-primary/80 transition-colors opacity-70 hover:opacity-100",
           isResizing && resizeDirection === 'se' && "bg-primary/80"
         )}
         onMouseDown={(e) => handleMouseDown(e, 'se')}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
         title="Größe ändern"
       />
       
       {/* Right edge handle */}
       <div
         className={cn(
-          "absolute right-0 top-4 bottom-4 w-2 bg-primary/60 rounded-l cursor-e-resize pointer-events-auto z-10",
+          "absolute right-0 top-4 bottom-4 w-2 bg-primary/60 rounded-l cursor-e-resize pointer-events-auto z-50",
           "hover:bg-primary/80 transition-colors opacity-50 hover:opacity-100",
           isResizing && resizeDirection === 'e' && "bg-primary/80"
         )}
         onMouseDown={(e) => handleMouseDown(e, 'e')}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
         title="Breite ändern"
       />
       
       {/* Bottom edge handle */}
       <div
         className={cn(
-          "absolute bottom-0 left-4 right-4 h-2 bg-primary/60 rounded-t cursor-s-resize pointer-events-auto z-10",
+          "absolute bottom-0 left-4 right-4 h-2 bg-primary/60 rounded-t cursor-s-resize pointer-events-auto z-50",
           "hover:bg-primary/80 transition-colors opacity-50 hover:opacity-100",
           isResizing && resizeDirection === 's' && "bg-primary/80"
         )}
         onMouseDown={(e) => handleMouseDown(e, 's')}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
         title="Höhe ändern"
       />
 

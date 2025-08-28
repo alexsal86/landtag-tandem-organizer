@@ -292,7 +292,10 @@ export const CustomizableDashboard: React.FC = () => {
                           widget={widget}
                           isDragging={snapshot.isDragging}
                           isEditMode={isEditMode}
-                          onResize={(widgetId, newSize) => updateWidget(widgetId, { size: newSize } as any)}
+                          onResize={(widgetId, newSize) => {
+                            console.log('Dashboard resize called:', widgetId, newSize);
+                            updateWidget(widgetId, { size: newSize } as any);
+                          }}
                         />
                       </div>
                     )}
