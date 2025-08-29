@@ -6,11 +6,13 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 export default function ImportContacts() {
   return (
     <SidebarProvider>
-      <div className="min-h-screen bg-gradient-subtle w-full">
+      <div className="flex min-h-screen bg-gradient-subtle">
         <Navigation activeSection="contacts" onSectionChange={() => {}} />
-        <div className="p-6 max-w-6xl mx-auto">
-          <ContactImport />
-        </div>
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">
+            <ContactImport />
+          </div>
+        </main>
       </div>
     </SidebarProvider>
   );
