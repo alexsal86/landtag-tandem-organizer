@@ -2072,6 +2072,181 @@ export type Database = {
         }
         Relationships: []
       }
+      letter_collaborators: {
+        Row: {
+          created_at: string
+          id: string
+          letter_id: string
+          permission_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          letter_id: string
+          permission_type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          letter_id?: string
+          permission_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_collaborators_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "letters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      letter_comments: {
+        Row: {
+          comment_type: string | null
+          content: string
+          created_at: string
+          id: string
+          letter_id: string
+          resolved: boolean | null
+          text_length: number | null
+          text_position: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_type?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          letter_id: string
+          resolved?: boolean | null
+          text_length?: number | null
+          text_position?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_type?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          letter_id?: string
+          resolved?: boolean | null
+          text_length?: number | null
+          text_position?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_comments_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "letters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      letter_templates: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          letterhead_css: string
+          letterhead_html: string
+          name: string
+          response_time_days: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          letterhead_css?: string
+          letterhead_html?: string
+          name: string
+          response_time_days?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          letterhead_css?: string
+          letterhead_html?: string
+          name?: string
+          response_time_days?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      letters: {
+        Row: {
+          contact_id: string | null
+          content: string
+          content_html: string
+          created_at: string
+          created_by: string
+          expected_response_date: string | null
+          id: string
+          recipient_address: string | null
+          recipient_name: string | null
+          sent_date: string | null
+          sent_method: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          contact_id?: string | null
+          content?: string
+          content_html?: string
+          created_at?: string
+          created_by: string
+          expected_response_date?: string | null
+          id?: string
+          recipient_address?: string | null
+          recipient_name?: string | null
+          sent_date?: string | null
+          sent_method?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string | null
+          content?: string
+          content_html?: string
+          created_at?: string
+          created_by?: string
+          expected_response_date?: string | null
+          id?: string
+          recipient_address?: string | null
+          recipient_name?: string | null
+          sent_date?: string | null
+          sent_method?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meeting_agenda_documents: {
         Row: {
           created_at: string

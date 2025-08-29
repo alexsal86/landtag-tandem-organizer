@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { 
@@ -24,10 +24,14 @@ import {
   Calendar,
   Tag,
   FileType,
-  Folder
+  Folder,
+  Mail,
+  Edit3,
+  Send
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import LetterEditor from "./LetterEditor";
 
 interface Document {
   id: string;
@@ -44,16 +48,38 @@ interface Document {
   updated_at: string;
 }
 
+interface Letter {
+  id: string;
+  title: string;
+  content: string;
+  content_html?: string;
+  recipient_name?: string;
+  recipient_address?: string;
+  contact_id?: string;
+  status: 'draft' | 'review' | 'approved' | 'sent';
+  sent_date?: string;
+  sent_method?: 'post' | 'email' | 'both';
+  expected_response_date?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  tenant_id: string;
+}
+
 export function DocumentsView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [letters, setLetters] = useState<Letter[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showLetterEditor, setShowLetterEditor] = useState(false);
+  const [selectedLetter, setSelectedLetter] = useState<Letter | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState<'documents' | 'letters'>('documents');
 
   // Upload form state
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -80,18 +106,24 @@ export function DocumentsView() {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchDocuments();
+    if (user && currentTenant) {
+      if (activeTab === 'documents') {
+        fetchDocuments();
+      } else {
+        fetchLetters();
+      }
     }
-  }, [user]);
+  }, [user, currentTenant, activeTab]);
 
   const fetchDocuments = async () => {
+    if (!currentTenant) return;
+    
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('documents')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -99,6 +131,30 @@ export function DocumentsView() {
     } catch (error: any) {
       toast({
         title: "Fehler beim Laden",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLetters = async () => {
+    if (!currentTenant) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('letters')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setLetters((data || []) as Letter[]);
+    } catch (error: any) {
+      toast({
+        title: "Fehler beim Laden der Briefe",
         description: error.message,
         variant: "destructive",
       });
@@ -154,7 +210,9 @@ export function DocumentsView() {
       setShowUploadDialog(false);
       
       // Refresh documents
-      fetchDocuments();
+      if (activeTab === 'documents') {
+        fetchDocuments();
+      }
     } catch (error: any) {
       toast({
         title: "Upload-Fehler",
@@ -215,7 +273,9 @@ export function DocumentsView() {
         description: "Das Dokument wurde erfolgreich entfernt.",
       });
 
-      fetchDocuments();
+      if (activeTab === 'documents') {
+        fetchDocuments();
+      }
     } catch (error: any) {
       toast({
         title: "Lösch-Fehler",
@@ -251,111 +311,183 @@ export function DocumentsView() {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  const filteredLetters = letters.filter(letter => {
+    const matchesSearch = letter.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         letter.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         letter.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === "all" || letter.status === filterStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleCreateLetter = () => {
+    setSelectedLetter(undefined);
+    setShowLetterEditor(true);
+  };
+
+  const handleEditLetter = (letter: Letter) => {
+    setSelectedLetter(letter);
+    setShowLetterEditor(true);
+  };
+
+  const handleCloseLetterEditor = () => {
+    setShowLetterEditor(false);
+    setSelectedLetter(undefined);
+  };
+
+  const handleSaveLetter = () => {
+    fetchLetters();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">Dokumentenverwaltung</h1>
-              <p className="text-muted-foreground">Verwalten Sie Ihre parlamentarischen Dokumente</p>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground mb-2">
+                  {activeTab === 'documents' ? 'Dokumentenverwaltung' : 'Briefverwaltung'}
+                </h1>
+                <p className="text-muted-foreground">
+                  {activeTab === 'documents' 
+                    ? 'Verwalten Sie Ihre parlamentarischen Dokumente' 
+                    : 'Erstellen und verwalten Sie Ihre Abgeordnetenbriefe'
+                  }
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {activeTab === 'documents' ? (
+                  <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+                    <DialogTrigger asChild>
+                      <Button className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Dokument hochladen
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[500px]">
+                      <DialogHeader>
+                        <DialogTitle>Neues Dokument hochladen</DialogTitle>
+                        <DialogDescription>
+                          Laden Sie ein neues Dokument in Ihre Verwaltung hoch
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="file">Datei auswählen</Label>
+                          <Input
+                            id="file"
+                            type="file"
+                            onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                            accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="title">Titel</Label>
+                          <Input
+                            id="title"
+                            value={uploadTitle}
+                            onChange={(e) => setUploadTitle(e.target.value)}
+                            placeholder="Dokumententitel"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="description">Beschreibung</Label>
+                          <Textarea
+                            id="description"
+                            value={uploadDescription}
+                            onChange={(e) => setUploadDescription(e.target.value)}
+                            placeholder="Optionale Beschreibung"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="category">Kategorie</Label>
+                            <Select value={uploadCategory} onValueChange={setUploadCategory}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(categoryLabels).map(([value, label]) => (
+                                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="status">Status</Label>
+                            <Select value={uploadStatus} onValueChange={setUploadStatus}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(statusLabels).map(([value, label]) => (
+                                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="tags">Tags (kommagetrennt)</Label>
+                          <Input
+                            id="tags"
+                            value={uploadTags}
+                            onChange={(e) => setUploadTags(e.target.value)}
+                            placeholder="Tag1, Tag2, Tag3"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={() => setShowUploadDialog(false)}>
+                            Abbrechen
+                          </Button>
+                          <Button 
+                            onClick={handleUpload} 
+                            disabled={!uploadFile || !uploadTitle || loading}
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            {loading ? "Wird hochgeladen..." : "Hochladen"}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                ) : (
+                  <Button onClick={handleCreateLetter} className="gap-2">
+                    <Mail className="h-4 w-4" />
+                    Abgeordnetenbrief
+                  </Button>
+                )}
+              </div>
             </div>
-            <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Dokument hochladen
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Neues Dokument hochladen</DialogTitle>
-                  <DialogDescription>
-                    Laden Sie ein neues Dokument in Ihre Verwaltung hoch
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="file">Datei auswählen</Label>
-                    <Input
-                      id="file"
-                      type="file"
-                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                      accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="title">Titel</Label>
-                    <Input
-                      id="title"
-                      value={uploadTitle}
-                      onChange={(e) => setUploadTitle(e.target.value)}
-                      placeholder="Dokumententitel"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="description">Beschreibung</Label>
-                    <Textarea
-                      id="description"
-                      value={uploadDescription}
-                      onChange={(e) => setUploadDescription(e.target.value)}
-                      placeholder="Optionale Beschreibung"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="category">Kategorie</Label>
-                      <Select value={uploadCategory} onValueChange={setUploadCategory}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(categoryLabels).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="status">Status</Label>
-                      <Select value={uploadStatus} onValueChange={setUploadStatus}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(statusLabels).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="tags">Tags (kommagetrennt)</Label>
-                    <Input
-                      id="tags"
-                      value={uploadTags}
-                      onChange={(e) => setUploadTags(e.target.value)}
-                      placeholder="Tag1, Tag2, Tag3"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setShowUploadDialog(false)}>
-                      Abbrechen
-                    </Button>
-                    <Button 
-                      onClick={handleUpload} 
-                      disabled={!uploadFile || !uploadTitle || loading}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {loading ? "Wird hochgeladen..." : "Hochladen"}
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+
+            {/* Tab Navigation */}
+            <div className="mb-6">
+              <div className="flex border-b">
+                <button
+                  onClick={() => setActiveTab('documents')}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'documents'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <FileText className="h-4 w-4 inline mr-2" />
+                  Dokumente
+                </button>
+                <button
+                  onClick={() => setActiveTab('letters')}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'letters'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Mail className="h-4 w-4 inline mr-2" />
+                  Briefe
+                </button>
+              </div>
+            </div>
 
           {/* Filters */}
           <Card>
@@ -364,25 +496,27 @@ export function DocumentsView() {
                 <div className="flex items-center gap-2 min-w-[200px]">
                   <Search className="h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Dokumente durchsuchen..."
+                    placeholder={activeTab === 'documents' ? "Dokumente durchsuchen..." : "Briefe durchsuchen..."}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <Select value={filterCategory} onValueChange={setFilterCategory}>
-                    <SelectTrigger className="w-[160px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Alle Kategorien</SelectItem>
-                      {Object.entries(categoryLabels).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {activeTab === 'documents' && (
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <Select value={filterCategory} onValueChange={setFilterCategory}>
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Alle Kategorien</SelectItem>
+                        {Object.entries(categoryLabels).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
                     <SelectTrigger className="w-[140px]">
@@ -390,9 +524,18 @@ export function DocumentsView() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Alle Status</SelectItem>
-                      {Object.entries(statusLabels).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
+                      {activeTab === 'documents' 
+                        ? Object.entries(statusLabels).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))
+                        : ['draft', 'review', 'approved', 'sent'].map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status === 'draft' ? 'Entwurf' : 
+                               status === 'review' ? 'Zur Prüfung' :
+                               status === 'approved' ? 'Genehmigt' : 'Versendet'}
+                            </SelectItem>
+                          ))
+                      }
                     </SelectContent>
                   </Select>
                 </div>
@@ -401,33 +544,36 @@ export function DocumentsView() {
           </Card>
         </div>
 
-        {/* Documents Grid */}
-        {loading && documents.length === 0 ? (
+        {/* Content Grid */}
+        {loading && (activeTab === 'documents' ? documents.length === 0 : letters.length === 0) ? (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Dokumente werden geladen...</p>
+            <p className="text-muted-foreground">
+              {activeTab === 'documents' ? 'Dokumente werden geladen...' : 'Briefe werden geladen...'}
+            </p>
           </div>
-        ) : filteredDocuments.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Keine Dokumente gefunden</h3>
-              <p className="text-muted-foreground mb-4">
-                {documents.length === 0 
-                  ? "Laden Sie Ihr erstes Dokument hoch, um zu beginnen."
-                  : "Keine Dokumente entsprechen Ihren Filterkriterien."
-                }
-              </p>
-              {documents.length === 0 && (
-                <Button onClick={() => setShowUploadDialog(true)} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Erstes Dokument hochladen
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDocuments.map((document) => (
+        ) : activeTab === 'documents' ? (
+          filteredDocuments.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Keine Dokumente gefunden</h3>
+                <p className="text-muted-foreground mb-4">
+                  {documents.length === 0 
+                    ? "Laden Sie Ihr erstes Dokument hoch, um zu beginnen."
+                    : "Keine Dokumente entsprechen Ihren Filterkriterien."
+                  }
+                </p>
+                {documents.length === 0 && (
+                  <Button onClick={() => setShowUploadDialog(true)} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Erstes Dokument hochladen
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredDocuments.map((document) => (
               <Card key={document.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
@@ -499,9 +645,103 @@ export function DocumentsView() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
+        ) : (
+          // Letters tab
+          filteredLetters.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Keine Briefe gefunden</h3>
+                <p className="text-muted-foreground mb-4">
+                  {letters.length === 0 
+                    ? "Erstellen Sie Ihren ersten Abgeordnetenbrief, um zu beginnen."
+                    : "Keine Briefe entsprechen Ihren Filterkriterien."
+                  }
+                </p>
+                {letters.length === 0 && (
+                  <Button onClick={handleCreateLetter} className="gap-2">
+                    <Mail className="h-4 w-4" />
+                    Ersten Brief erstellen
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredLetters.map((letter) => (
+                <Card key={letter.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-lg truncate">{letter.title}</CardTitle>
+                      </div>
+                      <Badge className={
+                        letter.status === 'sent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                        letter.status === 'approved' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                        letter.status === 'review' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                        'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                      }>
+                        {letter.status === 'draft' ? 'Entwurf' : 
+                         letter.status === 'review' ? 'Zur Prüfung' :
+                         letter.status === 'approved' ? 'Genehmigt' : 'Versendet'}
+                      </Badge>
+                    </div>
+                    {letter.recipient_name && (
+                      <CardDescription className="line-clamp-2">
+                        An: {letter.recipient_name}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>{format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}</span>
+                      </div>
+                      {letter.sent_date && (
+                        <div className="flex items-center gap-2">
+                          <Send className="h-4 w-4" />
+                          <span>Versendet: {format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de })}</span>
+                        </div>
+                      )}
+                      {letter.expected_response_date && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>Antwort erwartet: {format(new Date(letter.expected_response_date), "dd.MM.yyyy", { locale: de })}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex justify-between items-center pt-2">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditLetter(letter)}
+                        >
+                          <Edit3 className="h-4 w-4 mr-1" />
+                          Bearbeiten
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )
         )}
+
+        {/* Letter Editor */}
+        <LetterEditor
+          letter={selectedLetter}
+          isOpen={showLetterEditor}
+          onClose={handleCloseLetterEditor}
+          onSave={handleSaveLetter}
+        />
       </div>
     </div>
   );
