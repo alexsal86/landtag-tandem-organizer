@@ -24,7 +24,6 @@ import {
   SidebarHeader,
   SidebarFooter,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar";
 
 interface NavigationProps {
@@ -37,7 +36,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { onlineUsers, getStatusDisplay } = useUserStatus();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
-  const { state } = useSidebar();
+  
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
