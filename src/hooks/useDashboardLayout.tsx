@@ -143,10 +143,16 @@ export function useDashboardLayout() {
   };
 
   // Initialize with default layout and load from database with fallback
+  // Only load once when user/tenant first become available
+  const [hasInitialized, setHasInitialized] = useState(false);
+  
   useEffect(() => {
+    if (hasInitialized) return; // Prevent reloading after initialization
+    
     if (user && currentTenant) {
       loadLayoutFromDatabase();
-    } else {
+      setHasInitialized(true);
+    } else if (!user) {
       // Try to load from localStorage for anonymous users
       try {
         const saved = localStorage.getItem(`dashboard-layout-anonymous`);
@@ -158,13 +164,15 @@ export function useDashboardLayout() {
           setCurrentLayout(defaultLayout);
           setLayouts([defaultLayout]);
         }
+        setHasInitialized(true);
       } catch (error) {
         console.warn('Failed to load from localStorage:', error);
         setCurrentLayout(defaultLayout);
         setLayouts([defaultLayout]);
+        setHasInitialized(true);
       }
     }
-  }, [user, currentTenant]);
+  }, [user, currentTenant, hasInitialized]);
 
   // Load layout from database with localStorage fallback
   const loadLayoutFromDatabase = async () => {
