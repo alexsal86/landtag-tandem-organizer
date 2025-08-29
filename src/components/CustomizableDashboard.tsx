@@ -12,7 +12,8 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useDashboardLayout } from '@/hooks/useDashboardLayout';
+import { useDashboardLayout, type WidgetSize } from '@/hooks/useDashboardLayout';
+import { useAuth } from '@/hooks/useAuth';
 import { DashboardWidget } from './DashboardWidget';
 import { toast } from 'sonner';
 import {
@@ -48,12 +49,15 @@ export const CustomizableDashboard: React.FC = () => {
     currentLayout,
     loading,
     updateWidget,
+    updateLayout,
     saveCurrentLayout,
     switchLayout,
     deleteLayout,
     addWidget,
     removeWidget,
   } = useDashboardLayout();
+  
+  const { user } = useAuth();
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -97,7 +101,9 @@ export const CustomizableDashboard: React.FC = () => {
   const handleLayoutChange = (layout: Layout[], layouts: { [key: string]: Layout[] }) => {
     if (!currentLayout || !isEditMode) return;
 
-    // Update widgets with new positions and sizes
+    console.log('🔄 Layout change detected:', layout);
+
+    // Update all widgets with new positions and sizes at once
     const updatedWidgets = currentLayout.widgets.map(widget => {
       const gridItem = layout.find(item => item.i === widget.id);
       if (!gridItem) return widget;
@@ -105,20 +111,13 @@ export const CustomizableDashboard: React.FC = () => {
       return {
         ...widget,
         position: { x: gridItem.x, y: gridItem.y },
-        widgetSize: `${gridItem.w}x${gridItem.h}` as any,
+        widgetSize: `${gridItem.w}x${gridItem.h}` as WidgetSize,
       };
     });
 
-    // Update all widgets at once
-    updatedWidgets.forEach(widget => {
-      const gridItem = layout.find(item => item.i === widget.id);
-      if (gridItem) {
-        updateWidget(widget.id, {
-          position: { x: gridItem.x, y: gridItem.y },
-          widgetSize: `${gridItem.w}x${gridItem.h}`,
-        } as any);
-      }
-    });
+    // Update the entire layout at once instead of individual widgets
+    const updatedLayout = { ...currentLayout, widgets: updatedWidgets };
+    updateLayout(updatedLayout);
   };
 
   // Widget management handlers

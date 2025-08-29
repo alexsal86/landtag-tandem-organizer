@@ -180,7 +180,7 @@ export function useDashboardLayout() {
 
     try {
       setLoading(true);
-      console.log('Loading dashboard layout from database...');
+      console.log('🔄 Loading dashboard layout from database...', { userId: user.id, tenantId: currentTenant.id });
       
       const { data, error } = await supabase
         .from('team_dashboards')
@@ -251,18 +251,24 @@ export function useDashboardLayout() {
 
   // Update widget position/size with improved persistence
   const updateWidget = (widgetId: string, updates: Partial<DashboardWidget>) => {
-    if (!currentLayout) return;
+    console.log('🔧 updateWidget called:', { widgetId, updates });
+    if (!currentLayout) {
+      console.log('❌ No current layout available');
+      return;
+    }
 
     const updatedWidgets = currentLayout.widgets.map(widget =>
       widget.id === widgetId ? { ...widget, ...updates } : widget
     );
 
     const updatedLayout = { ...currentLayout, widgets: updatedWidgets };
+    console.log('💾 Setting updated layout:', updatedLayout);
     setCurrentLayout(updatedLayout);
     
     // Immediate local storage backup
     try {
       localStorage.setItem(`dashboard-layout-${user?.id || 'anonymous'}`, JSON.stringify(updatedLayout));
+      console.log('✅ Saved to localStorage');
     } catch (error) {
       console.warn('Failed to save to localStorage:', error);
     }
@@ -273,8 +279,40 @@ export function useDashboardLayout() {
     }
     
     saveTimeoutRef.current = setTimeout(async () => {
+      console.log('⏰ Auto-saving layout after debounce...');
       try {
-        await saveCurrentLayout();
+        const success = await saveCurrentLayout();
+        console.log('💾 Auto-save result:', success);
+      } catch (error) {
+        console.error('Failed to save to Supabase:', error);
+        toast.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
+      }
+    }, 1000);
+  };
+
+  // Update entire layout (for batch updates)
+  const updateLayout = (updatedLayout: DashboardLayout) => {
+    console.log('🔄 Updating entire layout:', updatedLayout);
+    setCurrentLayout(updatedLayout);
+    
+    // Immediate local storage backup
+    try {
+      localStorage.setItem(`dashboard-layout-${user?.id || 'anonymous'}`, JSON.stringify(updatedLayout));
+      console.log('✅ Saved to localStorage');
+    } catch (error) {
+      console.warn('Failed to save to localStorage:', error);
+    }
+    
+    // Clear existing timeout and set new one for debounced save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(async () => {
+      console.log('⏰ Auto-saving layout after debounce...');
+      try {
+        const success = await saveCurrentLayout();
+        console.log('💾 Auto-save result:', success);
       } catch (error) {
         console.error('Failed to save to Supabase:', error);
         toast.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
@@ -475,6 +513,7 @@ export function useDashboardLayout() {
     currentLayout,
     loading,
     updateWidget,
+    updateLayout,
     addWidget,
     removeWidget,
     saveCurrentLayout,
