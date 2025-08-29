@@ -301,6 +301,7 @@ export function EventPlanningView() {
       const { data, error } = await supabase
         .from("event_plannings")
         .select("*")
+        .eq("tenant_id", currentTenant.id)
         .order("created_at", { ascending: false });
 
       console.log('Supabase response:', { data, error });
