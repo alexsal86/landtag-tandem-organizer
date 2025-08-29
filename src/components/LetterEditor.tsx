@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,6 +84,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [selectedText, setSelectedText] = useState('');
   const [showToolbar, setShowToolbar] = useState(false);
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
+  const [isProofreadingMode, setIsProofreadingMode] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [showCommentDialog, setShowCommentDialog] = useState(false);
+  const [commentPosition, setCommentPosition] = useState({ x: 0, y: 0 });
+  const [selectedTextForComment, setSelectedTextForComment] = useState('');
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -96,6 +101,32 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     review: 'Zur Prüfung',
     approved: 'Genehmigt',
     sent: 'Versendet'
+  };
+
+  const statusIcons = {
+    draft: Edit3,
+    review: Clock,
+    approved: CheckCircle,
+    sent: Send
+  };
+
+  const getNextStatus = (currentStatus: string) => {
+    const statusFlow = {
+      draft: 'review',
+      review: 'approved',
+      approved: 'sent'
+    };
+    return statusFlow[currentStatus as keyof typeof statusFlow];
+  };
+
+  const canTransitionStatus = (fromStatus: string, toStatus: string) => {
+    const allowedTransitions = {
+      draft: ['review'],
+      review: ['draft', 'approved'],
+      approved: ['review', 'sent'],
+      sent: []
+    };
+    return allowedTransitions[fromStatus as keyof typeof allowedTransitions]?.includes(toStatus) || false;
   };
 
   const sentMethodLabels = {
@@ -128,8 +159,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   useEffect(() => {
     if (isOpen && currentTenant) {
       fetchContacts();
+      if (letter?.id) {
+        fetchComments();
+      }
     }
-  }, [isOpen, currentTenant]);
+  }, [isOpen, currentTenant, letter?.id]);
 
   // Auto-save functionality with improved performance
   useEffect(() => {
@@ -230,6 +264,90 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     } catch (error) {
       console.error('Error fetching contacts:', error);
     }
+  };
+
+  const fetchComments = async () => {
+    if (!letter?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('letter_comments')
+        .select(`
+          id,
+          content,
+          text_position,
+          text_length,
+          resolved,
+          comment_type,
+          created_at,
+          user_id,
+          profiles:user_id (display_name)
+        `)
+        .eq('letter_id', letter.id)
+        .order('created_at');
+
+      if (error) throw error;
+      setComments(data || []);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  };
+
+  const handleAddComment = async (content: string) => {
+    if (!letter?.id || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('letter_comments')
+        .insert({
+          letter_id: letter.id,
+          user_id: user.id,
+          content,
+          comment_type: 'comment'
+        });
+
+      if (error) throw error;
+      
+      fetchComments();
+      setShowCommentDialog(false);
+      setSelectedTextForComment('');
+      
+      toast({
+        title: "Kommentar hinzugefügt",
+        description: "Der Kommentar wurde erfolgreich hinzugefügt.",
+      });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast({
+        title: "Fehler",
+        description: "Der Kommentar konnte nicht hinzugefügt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStatusTransition = async (newStatus: string) => {
+    if (!canTransitionStatus(editedLetter.status || 'draft', newStatus)) {
+      toast({
+        title: "Ungültiger Statuswechsel",
+        description: "Dieser Statuswechsel ist nicht erlaubt.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setEditedLetter(prev => ({
+      ...prev,
+      status: newStatus as any,
+      ...(newStatus === 'sent' ? { sent_date: new Date().toISOString() } : {})
+    }));
+
+    broadcastContentChange('status', newStatus);
+    
+    toast({
+      title: "Status geändert",
+      description: `Status wurde zu "${statusLabels[newStatus as keyof typeof statusLabels]}" geändert.`,
+    });
   };
 
   const formatContactAddress = (contact: Contact, useBusinessAddress = false) => {
@@ -448,6 +566,17 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 Wird gespeichert...
               </Badge>
             )}
+            
+            {/* Proofreading Mode Toggle */}
+            <Button
+              variant={isProofreadingMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsProofreadingMode(!isProofreadingMode)}
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Korrekturlesen
+            </Button>
+            
             <Button 
               onClick={handleManualSave} 
               disabled={!canEdit || saving}
@@ -538,23 +667,55 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               {/* Status */}
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select 
-                  value={editedLetter.status} 
-                  onValueChange={(value: 'draft' | 'review' | 'approved' | 'sent') => {
-                    setEditedLetter(prev => ({ ...prev, status: value }));
-                    broadcastContentChange('status', value);
-                  }}
-                  disabled={!canEdit}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[100]">
-                    {Object.entries(statusLabels).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2 mb-2">
+                  {React.createElement(statusIcons[editedLetter.status || 'draft'], { 
+                    className: "h-4 w-4 text-primary" 
+                  })}
+                  <Badge variant="secondary">
+                    {statusLabels[editedLetter.status || 'draft']}
+                  </Badge>
+                </div>
+                
+                {/* Status Transition Buttons */}
+                {canEdit && editedLetter.status !== 'sent' && (
+                  <div className="flex flex-col gap-2">
+                    {getNextStatus(editedLetter.status || 'draft') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusTransition(getNextStatus(editedLetter.status || 'draft'))}
+                        className="justify-start"
+                      >
+                        <ArrowRight className="h-4 w-4 mr-2" />
+                        Zu "{statusLabels[getNextStatus(editedLetter.status || 'draft') as keyof typeof statusLabels]}"
+                      </Button>
+                    )}
+                    
+                    {/* Back to draft from review */}
+                    {editedLetter.status === 'review' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusTransition('draft')}
+                        className="justify-start text-muted-foreground"
+                      >
+                        Zurück zu Entwurf
+                      </Button>
+                    )}
+                    
+                    {/* Back to review from approved */}
+                    {editedLetter.status === 'approved' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusTransition('review')}
+                        className="justify-start text-muted-foreground"
+                      >
+                        Zurück zur Prüfung
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Sending Details - only show for approved/sent letters */}
@@ -602,6 +763,57 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               )}
             </CardContent>
           </Card>
+
+          {/* Proofreading Comments Section */}
+          {isProofreadingMode && (
+            <Card className="mt-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Kommentare
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {comments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Noch keine Kommentare. Wählen Sie Text im Brief aus und klicken Sie auf "Kommentar hinzufügen".
+                  </p>
+                ) : (
+                  comments.map((comment) => (
+                    <div key={comment.id} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex justify-between items-start">
+                        <span className="text-sm font-medium">
+                          {comment.profiles?.display_name || 'Unbekannt'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(comment.created_at).toLocaleDateString('de-DE')}
+                        </span>
+                      </div>
+                      <p className="text-sm">{comment.content}</p>
+                      {comment.resolved && (
+                        <Badge variant="secondary" className="text-xs">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Erledigt
+                        </Badge>
+                      )}
+                    </div>
+                  ))
+                )}
+                
+                {canEdit && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowCommentDialog(true)}
+                    className="w-full"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Kommentar hinzufügen
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Main Editor */}
@@ -645,6 +857,39 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Comment Dialog */}
+      {showCommentDialog && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-background border rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Kommentar hinzufügen</h3>
+            <Textarea
+              value={selectedTextForComment}
+              onChange={(e) => setSelectedTextForComment(e.target.value)}
+              placeholder="Ihr Kommentar..."
+              rows={4}
+              className="mb-4"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCommentDialog(false);
+                  setSelectedTextForComment('');
+                }}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={() => handleAddComment(selectedTextForComment)}
+                disabled={!selectedTextForComment.trim()}
+              >
+                Hinzufügen
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
