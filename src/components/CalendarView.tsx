@@ -62,18 +62,25 @@ export function CalendarView() {
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
       
-      // Fetch regular appointments for the entire week
+      console.log('🔍 Fetching appointments for week:', weekStart.toISOString(), 'to', weekEnd.toISOString());
+      
+      // Fetch appointments that overlap with the week (not just start in the week)
+      // This ensures multi-day events like vacations are included
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
         .select('*')
-        .gte('start_time', weekStart.toISOString())
-        .lte('start_time', weekEnd.toISOString())
+        .or(`and(start_time.lte.${weekEnd.toISOString()},end_time.gte.${weekStart.toISOString()}),and(start_time.gte.${weekStart.toISOString()},start_time.lte.${weekEnd.toISOString()})`)
         .order('start_time', { ascending: true });
 
       if (error) {
         console.error('Error fetching appointments:', error);
         return;
       }
+
+      console.log('📊 Found appointments:', appointmentsData?.length || 0);
+      appointmentsData?.forEach(apt => {
+        console.log('  -', apt.title, 'from', apt.start_time, 'to', apt.end_time, 'all_day:', apt.is_all_day);
+      });
 
       await processAppointments(appointmentsData || [], weekStart, weekEnd);
     } catch (error) {
