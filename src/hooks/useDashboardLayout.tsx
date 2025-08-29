@@ -147,12 +147,20 @@ export function useDashboardLayout() {
   const [hasInitialized, setHasInitialized] = useState(false);
   
   useEffect(() => {
+    console.log('🔄 Dashboard initialization effect:', { 
+      hasInitialized, 
+      user: user?.id, 
+      currentTenant: currentTenant?.id 
+    });
+    
     if (hasInitialized) return; // Prevent reloading after initialization
     
-    if (user && currentTenant) {
+    if (user?.id && currentTenant?.id) {
+      console.log('✅ User and tenant available, loading from database');
       loadLayoutFromDatabase();
       setHasInitialized(true);
     } else if (!user) {
+      console.log('👤 No user, loading anonymous layout');
       // Try to load from localStorage for anonymous users
       try {
         const saved = localStorage.getItem(`dashboard-layout-anonymous`);
@@ -171,6 +179,8 @@ export function useDashboardLayout() {
         setLayouts([defaultLayout]);
         setHasInitialized(true);
       }
+    } else {
+      console.log('⏳ Waiting for user and tenant to be available');
     }
   }, [user, currentTenant, hasInitialized]);
 
@@ -322,14 +332,29 @@ export function useDashboardLayout() {
 
   // Save current layout to database with retry mechanism
   const saveCurrentLayout = async (name?: string) => {
+    console.log('💾 saveCurrentLayout called', { 
+      hasCurrentLayout: !!currentLayout, 
+      userId: user?.id, 
+      tenantId: currentTenant?.id, 
+      name 
+    });
+    
     if (!currentLayout) {
+      console.log('❌ No currentLayout available');
       toast.error('Kein Layout zum Speichern verfügbar');
-      return;
+      return false;
     }
 
     if (!user?.id) {
+      console.log('❌ No user ID available');
       toast.error('Benutzer nicht angemeldet oder User-ID fehlt');
-      return;
+      return false;
+    }
+
+    if (!currentTenant?.id) {
+      console.log('❌ No tenant ID available');
+      toast.error('Kein Mandant ausgewählt');
+      return false;
     }
 
     try {
@@ -338,10 +363,9 @@ export function useDashboardLayout() {
         ? currentLayout.id 
         : crypto.randomUUID();
 
-      // Use a default tenant ID if currentTenant is not available or invalid
-      const tenantId = currentTenant?.id && currentTenant.id !== '' 
-        ? currentTenant.id 
-        : 'default-tenant-id';
+      const tenantId = currentTenant.id;
+
+      console.log('🔧 Preparing layout data:', { layoutId, tenantId, userId: user.id });
 
       const layoutToSave = name 
         ? { ...currentLayout, name, id: crypto.randomUUID() }
@@ -373,6 +397,13 @@ export function useDashboardLayout() {
       if (!tenantId || tenantId === '') {
         throw new Error('Tenant ID is missing');
       }
+
+      console.log('🚀 Saving to Supabase:', {
+        layoutId: layoutToSave.id,
+        userId: user.id,
+        tenantId: tenantId,
+        widgetCount: cleanWidgets.length
+      });
 
       // Save to Supabase with validated data
       const { data, error } = await supabase
