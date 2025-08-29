@@ -23,6 +23,12 @@ export function MonthView({ date, events, onDateSelect }: MonthViewProps) {
         return "bg-destructive";
       case "blocked":
         return "bg-orange-500";
+      case "veranstaltung":
+        return "bg-purple-600";
+      case "vacation":
+        return "bg-green-500";
+      case "vacation_request":
+        return "bg-yellow-500";
       default:
         return "bg-muted";
     }
@@ -30,9 +36,21 @@ export function MonthView({ date, events, onDateSelect }: MonthViewProps) {
 
   const getDayEvents = (day: Date) => {
     // Filter events by the specific day using the date field
-    return events.filter(event => 
-      event.date.toDateString() === day.toDateString()
-    ).slice(0, 3); // Limit to 3 events per day for display
+    return events.filter(event => {
+      // For single-day events, check if the event date matches
+      if (!event.endTime || event.date.toDateString() === event.endTime.toDateString()) {
+        return event.date.toDateString() === day.toDateString();
+      }
+      
+      // For multi-day events (like vacations), check if this day is within the event's span
+      const eventStart = new Date(event.date);
+      const eventEnd = new Date(event.endTime);
+      eventStart.setHours(0, 0, 0, 0);
+      eventEnd.setHours(23, 59, 59, 999);
+      day.setHours(12, 0, 0, 0); // Middle of day for comparison
+      
+      return day >= eventStart && day <= eventEnd;
+    }).slice(0, 3); // Limit to 3 events per day for display
   };
 
   return (
@@ -79,6 +97,9 @@ export function MonthView({ date, events, onDateSelect }: MonthViewProps) {
                   {event.type === "appointment" && "Termin"}
                   {event.type === "deadline" && "Deadline"}
                   {event.type === "blocked" && "Geblockt"}
+                  {event.type === "veranstaltung" && "Veranstaltung"}
+                  {event.type === "vacation" && "Urlaub"}
+                  {event.type === "vacation_request" && "Urlaubsantrag"}
                 </Badge>
               </div>
             ))}

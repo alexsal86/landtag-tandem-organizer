@@ -157,6 +157,10 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
         return "bg-orange-100 text-orange-800 border-orange-300";
       case "veranstaltung":
         return "bg-purple-100 text-purple-800 border-purple-300";
+      case "vacation":
+        return "bg-green-500/80 text-white border-green-500";
+      case "vacation_request":
+        return "bg-yellow-500/80 text-black border-yellow-500";
       default:
         return "bg-muted text-muted-foreground border-muted";
     }
