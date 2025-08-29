@@ -3,7 +3,7 @@ import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Down
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { RichTextEditor, type RichTextEditorRef } from './RichTextEditor';
+import RichTextEditor, { type RichTextEditorRef } from './RichTextEditor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -131,7 +131,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   }, [isOpen, currentTenant]);
 
-  // Auto-save functionality
+  // Auto-save functionality with improved performance
   useEffect(() => {
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
 
@@ -143,7 +143,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       if (!isUpdatingFromRemoteRef.current && letter?.id) {
         handleAutoSave();
       }
-    }, 1000);
+    }, 3000); // Increased from 1000ms to 3000ms for better performance
 
     return () => {
       if (saveTimeoutRef.current) {
@@ -294,7 +294,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         event: 'content_change',
         payload
       });
-    }, 500);
+    }, 1000); // Increased from 500ms to 1000ms for better performance
   };
 
   const handleSelectionChange = (formats: string[] = []) => {

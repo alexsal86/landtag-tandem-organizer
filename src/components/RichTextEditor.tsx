@@ -19,7 +19,7 @@ interface RichTextEditorRef {
   forceUpdateHandlers: () => void;
 }
 
-const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(({
+const RichTextEditor = React.memo(React.forwardRef<RichTextEditorRef, RichTextEditorProps>(({
   value,
   onChange,
   onSelectionChange,
@@ -979,8 +979,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, RichTextEditorProps>(
       />
     </div>
   );
-});
+}));
 
 RichTextEditor.displayName = 'RichTextEditor';
 
-export { RichTextEditor, type RichTextEditorProps, type RichTextEditorRef };
+export default RichTextEditor;
+export type { RichTextEditorRef };
