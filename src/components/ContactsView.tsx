@@ -64,7 +64,9 @@ export function ContactsView() {
   const [distributionListsLoading, setDistributionListsLoading] = useState(true);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    return localStorage.getItem('contacts-view-mode') as "grid" | "list" || "grid";
+  });
   const [activeTab, setActiveTab] = useState<"contacts" | "distribution-lists" | "archive">("contacts");
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -225,7 +227,7 @@ export function ContactsView() {
   };
 
   const categories = [
-    { value: "all", label: "Alle Kontakte", count: contacts.length },
+    { value: "all", label: "Alle Kontakte", count: contacts.filter(c => c.contact_type !== 'archive').length },
     { value: "citizen", label: "Bürger", count: contacts.filter(c => c.category === "citizen").length },
     { value: "colleague", label: "Kollegen", count: contacts.filter(c => c.category === "colleague").length },
     { value: "business", label: "Wirtschaft", count: contacts.filter(c => c.category === "business").length },
@@ -375,7 +377,10 @@ export function ContactsView() {
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setViewMode("grid")}
+                onClick={() => {
+                  setViewMode("grid");
+                  localStorage.setItem('contacts-view-mode', 'grid');
+                }}
                 className="rounded-r-none"
               >
                 <Grid3X3 className="h-4 w-4" />
@@ -383,7 +388,10 @@ export function ContactsView() {
               <Button
                 variant={viewMode === "list" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setViewMode("list")}
+                onClick={() => {
+                  setViewMode("list");
+                  localStorage.setItem('contacts-view-mode', 'list');
+                }}
                 className="rounded-l-none"
               >
                 <List className="h-4 w-4" />
@@ -551,17 +559,16 @@ export function ContactsView() {
           ))}
         </div>
       ) : (
-        <Card className="bg-card shadow-card border-border">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Kontakt</TableHead>
-                <TableHead>Typ</TableHead>
-                <TableHead>Kategorie</TableHead>
+                <TableHead className="w-12">Avatar</TableHead>
+                <TableHead>Name</TableHead>
                 <TableHead>Organisation/Rolle</TableHead>
-                <TableHead>E-Mail</TableHead>
-                <TableHead>Telefon</TableHead>
-                <TableHead>Standort</TableHead>
+                <TableHead>Kontakt</TableHead>
+                <TableHead>Adresse</TableHead>
+                <TableHead>Letzter Kontakt</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -575,65 +582,62 @@ export function ContactsView() {
                   }}
                 >
                   <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={contact.avatar_url} />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                          {getInitials(contact.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{contact.name}</div>
-                        {contact.priority && (
-                          <div className={`w-2 h-2 rounded-full mt-1 ${
-                            contact.priority === "high" ? "bg-destructive" :
-                            contact.priority === "medium" ? "bg-government-gold" :
-                            "bg-muted-foreground"
-                          }`} />
-                        )}
-                      </div>
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={contact.avatar_url} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        {getInitials(contact.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </TableCell>
+                  <TableCell className="font-medium">{contact.name}</TableCell>
+                  <TableCell>
+                    {contact.contact_type === "organization" 
+                      ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
+                      : contact.organization || contact.role || "—"
+                    }
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      {contact.email && (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Mail className="h-3 w-3" />
+                          <span className="truncate max-w-[200px]">{contact.email}</span>
+                        </div>
+                      )}
+                      {contact.phone && (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Phone className="h-3 w-3" />
+                          <span>{contact.phone}</span>
+                        </div>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {contact.contact_type === "organization" ? "Organisation" : "Person"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getCategoryColor(contact.category)}>
-                      {contact.category === "citizen" && "Bürger"}
-                      {contact.category === "colleague" && "Kollege"}
-                      {contact.category === "business" && "Wirtschaft"}
-                      {contact.category === "media" && "Medien"}
-                      {contact.category === "lobbyist" && "Lobbyist"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="max-w-[200px] truncate">
-                      {contact.contact_type === "organization" 
-                        ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
-                        : contact.organization || contact.role || "-"
-                      }
+                    <div className="text-sm">
+                      {(contact.address || contact.location) && (
+                        <div className="flex items-start gap-1">
+                          <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <div className="leading-tight">
+                            {contact.address && (
+                              <div>{contact.address}</div>
+                            )}
+                            {contact.location && (
+                              <div className="text-muted-foreground">{contact.location}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {!contact.address && !contact.location && "—"}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="max-w-[200px] truncate">
-                      {contact.email || "-"}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {contact.phone || "-"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="max-w-[150px] truncate">
-                      {contact.location || contact.address || "-"}
-                    </div>
+                  <TableCell className="text-muted-foreground">
+                    {contact.last_contact || "—"}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </Card>
+        </div>
         )
       ) : activeTab === "archive" ? (
         // Archive Display
