@@ -29,6 +29,8 @@ export function MonthView({ date, events, onDateSelect }: MonthViewProps) {
         return "bg-green-500";
       case "vacation_request":
         return "bg-yellow-500";
+      case "birthday":
+        return "bg-pink-500";
       default:
         return "bg-muted";
     }
@@ -100,6 +102,7 @@ export function MonthView({ date, events, onDateSelect }: MonthViewProps) {
                   {event.type === "veranstaltung" && "Veranstaltung"}
                   {event.type === "vacation" && "Urlaub"}
                   {event.type === "vacation_request" && "Urlaubsantrag"}
+                  {event.type === "birthday" && "Geburtstag"}
                 </Badge>
               </div>
             ))}

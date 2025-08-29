@@ -28,7 +28,7 @@ export interface CalendarEvent {
     name: string;
     role: string;
   }>;
-  type: "meeting" | "appointment" | "deadline" | "session" | "blocked" | "veranstaltung" | "vacation" | "vacation_request";
+  type: "meeting" | "appointment" | "deadline" | "session" | "blocked" | "veranstaltung" | "vacation" | "vacation_request" | "birthday";
   priority: "low" | "medium" | "high";
   category_color?: string;
   is_all_day?: boolean; // Add all-day flag
@@ -336,6 +336,8 @@ export function CalendarView() {
         return "bg-yellow-500 text-black";
       case "veranstaltung":
         return "bg-purple-600 text-white";
+      case "birthday":
+        return "bg-pink-500 text-white";
       default:
         return "bg-muted text-muted-foreground";
     }
