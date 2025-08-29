@@ -489,7 +489,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   <SelectTrigger>
                     <SelectValue placeholder="Kontakt auswählen..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[100]">
                     {contacts.map((contact) => (
                       <SelectItem key={contact.id} value={contact.id}>
                         {contact.name} {contact.organization ? `(${contact.organization})` : ''}
@@ -549,7 +549,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[100]">
                     {Object.entries(statusLabels).map(([value, label]) => (
                       <SelectItem key={value} value={value}>{label}</SelectItem>
                     ))}
@@ -574,7 +574,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       <SelectTrigger>
                         <SelectValue placeholder="Versandart wählen..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[100]">
                         {Object.entries(sentMethodLabels).map(([value, label]) => (
                           <SelectItem key={value} value={value}>{label}</SelectItem>
                         ))}
