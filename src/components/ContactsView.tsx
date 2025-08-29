@@ -68,6 +68,7 @@ export function ContactsView() {
     return localStorage.getItem('contacts-view-mode') as "grid" | "list" || "grid";
   });
   const [activeTab, setActiveTab] = useState<"contacts" | "distribution-lists" | "archive">("contacts");
+  const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -397,15 +398,19 @@ export function ContactsView() {
                 <List className="h-4 w-4" />
               </Button>
             </div>
-            <Button variant="outline" className="gap-2">
+            <Button 
+              variant={showFilters ? "default" : "outline"} 
+              className="gap-2"
+              onClick={() => setShowFilters(!showFilters)}
+            >
               <Filter className="h-4 w-4" />
               Filter
             </Button>
           </div>
         </div>
 
-        {/* Type Filter - Only show for contacts tab */}
-        {activeTab === "contacts" && (
+        {/* Type Filter - Only show for contacts tab and when filters are open */}
+        {activeTab === "contacts" && showFilters && (
         <div className="flex gap-2 mb-4 overflow-x-auto">
           <Button
             variant={selectedType === "all" ? "default" : "outline"}
@@ -434,8 +439,8 @@ export function ContactsView() {
         </div>
         )}
 
-        {/* Category Tabs - Only show for contacts tab */}
-        {activeTab === "contacts" && (
+        {/* Category Tabs - Only show for contacts tab and when filters are open */}
+        {activeTab === "contacts" && showFilters && (
         <div className="flex gap-2 overflow-x-auto">
           {categories.map((category) => (
             <Button
