@@ -656,12 +656,21 @@ export function EventPlanningView() {
   const createPlanning = async () => {
     console.log('createPlanning called, user:', user, 'title:', newPlanningTitle);
     if (!user || !newPlanningTitle.trim()) return;
+    if (!currentTenant) {
+      toast({
+        title: "Fehler",
+        description: "Kein Tenant gefunden. Bitte laden Sie die Seite neu.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const { data, error } = await supabase
       .from("event_plannings")
       .insert({
         title: newPlanningTitle,
         user_id: user.id,
+        tenant_id: currentTenant.id,
         is_private: newPlanningIsPrivate,
       })
       .select()
