@@ -99,18 +99,25 @@ export function CalendarView() {
       const endOfDay = new Date(currentDate);
       endOfDay.setHours(23, 59, 59, 999);
 
-      // Fetch regular appointments
+      console.log('🔍 Fetching appointments for day:', startOfDay.toISOString(), 'to', endOfDay.toISOString());
+
+      // Fetch appointments that overlap with this day (not just start on this day)
+      // This ensures multi-day events like vacations are included
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
         .select('*')
-        .gte('start_time', startOfDay.toISOString())
-        .lte('start_time', endOfDay.toISOString())
+        .or(`and(start_time.lte.${endOfDay.toISOString()},end_time.gte.${startOfDay.toISOString()}),and(start_time.gte.${startOfDay.toISOString()},start_time.lte.${endOfDay.toISOString()})`)
         .order('start_time', { ascending: true });
 
       if (error) {
         console.error('Error fetching appointments:', error);
         return;
       }
+
+      console.log('📊 Found appointments for day:', appointmentsData?.length || 0);
+      appointmentsData?.forEach(apt => {
+        console.log('  -', apt.title, 'from', apt.start_time, 'to', apt.end_time, 'all_day:', apt.is_all_day);
+      });
 
       await processAppointments(appointmentsData || [], startOfDay, endOfDay);
     } catch (error) {

@@ -205,73 +205,101 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
           <div className="grid grid-cols-7">
             {days.map((day, dayIndex) => (
               <div key={`allday-${dayIndex}`} className="border-r p-1 min-h-[48px] bg-muted/10">
-                {getAllDayEventsForDay(day).map((event) => {
-                  // Calculate span for multi-day events
-                  let spanDays = 1;
-                  let isEventStart = event.date.toDateString() === day.toDateString();
-                  
-                  if (event.endTime && isEventStart) {
-                    const eventStart = new Date(event.date);
-                    const eventEnd = new Date(event.endTime);
-                    eventStart.setHours(0, 0, 0, 0);
-                    eventEnd.setHours(0, 0, 0, 0);
-                    
-                    // Calculate the actual days between start and end (inclusive)
-                    const timeDiff = eventEnd.getTime() - eventStart.getTime();
-                    const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
-                    spanDays = daysDiff + 1;
-                    
-                    // Limit span to remaining days in the week
-                    const remainingDays = 7 - dayIndex;
-                    spanDays = Math.min(spanDays, remainingDays);
-                  }
-                  
-                  // Only render at the start of the event to avoid duplicates
-                  if (!isEventStart && event.endTime) {
-                    return null;
-                  }
-                  
-                  return (
-                    <div
-                      key={event.id}
-                      className={`text-xs p-2 mb-1 rounded cursor-pointer hover:opacity-80 transition-opacity group ${getEventTypeColor(event)}`}
-                      style={{ 
-                        backgroundColor: event.category_color || undefined,
-                        gridColumn: spanDays > 1 ? `span ${spanDays}` : undefined,
-                        width: spanDays > 1 ? `calc(${spanDays * 100}% + ${spanDays * 0.25}rem)` : undefined,
-                        position: spanDays > 1 ? 'relative' : undefined,
-                        zIndex: spanDays > 1 ? 10 : undefined,
-                        marginBottom: '4px',
-                        paddingRight: '0.5rem'
-                      }}
-                      onClick={() => onAppointmentClick?.(event)}
-                    >
-                       <div className="flex items-center justify-between">
-                         <div className="font-medium truncate">
-                           {event.title}
-                         </div>
-                         <div className="flex items-center space-x-1">
-                           {documentCounts[event.id] > 0 && (
-                             <div className="flex items-center space-x-1">
-                               <FileText className="h-3 w-3" />
-                               <span className="text-xs">{documentCounts[event.id]}</span>
-                             </div>
-                           )}
-                           <button
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               onPreparationClick?.(event);
-                             }}
-                             className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
-                             title="Vorbereitung erstellen/bearbeiten"
-                           >
-                             📋
-                           </button>
-                         </div>
-                       </div>
-                    </div>
-                  );
-                })}
+                {getAllDayEventsForDay(day).map((event, eventIndex) => {
+                   // Calculate span for multi-day events
+                   let spanDays = 1;
+                   let isEventStart = event.date.toDateString() === day.toDateString();
+                   let isEventContinuation = false;
+                   
+                   if (event.endTime) {
+                     const eventStart = new Date(event.date);
+                     const eventEnd = new Date(event.endTime);
+                     const currentDay = new Date(day);
+                     
+                     eventStart.setHours(0, 0, 0, 0);
+                     eventEnd.setHours(0, 0, 0, 0);
+                     currentDay.setHours(0, 0, 0, 0);
+                     
+                     // Check if this is the first day of the event in this week
+                     const weekStartDay = new Date(days[0]);
+                     weekStartDay.setHours(0, 0, 0, 0);
+                     
+                     // If the event started before this week, treat the first day of the week as the start for display
+                     if (eventStart < weekStartDay && currentDay.getTime() === weekStartDay.getTime()) {
+                       isEventStart = true;
+                       isEventContinuation = true;
+                       
+                       // Calculate remaining days from today to event end within this week
+                       const weekEndDay = new Date(days[6]);
+                       weekEndDay.setHours(0, 0, 0, 0);
+                       
+                       const endDateForWeek = eventEnd > weekEndDay ? weekEndDay : eventEnd;
+                       const timeDiff = endDateForWeek.getTime() - currentDay.getTime();
+                       spanDays = Math.floor(timeDiff / (1000 * 3600 * 24)) + 1;
+                       
+                       const remainingDays = 7 - dayIndex;
+                       spanDays = Math.min(spanDays, remainingDays);
+                     }
+                     // If the event starts within this week
+                     else if (isEventStart) {
+                       const weekEndDay = new Date(days[6]);
+                       weekEndDay.setHours(0, 0, 0, 0);
+                       
+                       const endDateForWeek = eventEnd > weekEndDay ? weekEndDay : eventEnd;
+                       const timeDiff = endDateForWeek.getTime() - eventStart.getTime();
+                       spanDays = Math.floor(timeDiff / (1000 * 3600 * 24)) + 1;
+                       
+                       const remainingDays = 7 - dayIndex;
+                       spanDays = Math.min(spanDays, remainingDays);
+                     }
+                   }
+                   
+                   // Only render at the effective start of the event (either real start or week continuation)
+                   if (!isEventStart && event.endTime) {
+                     return null;
+                   }
+                   
+                   return (
+                     <div
+                       key={`${event.id}-${day.getTime()}`}
+                       className={`text-xs p-2 mb-1 rounded cursor-pointer hover:opacity-80 transition-opacity group ${getEventTypeColor(event)}`}
+                       style={{ 
+                         backgroundColor: event.category_color || undefined,
+                         gridColumn: spanDays > 1 ? `span ${spanDays}` : undefined,
+                         width: spanDays > 1 ? `calc(${spanDays * 100}% + ${spanDays * 0.25}rem)` : undefined,
+                         position: spanDays > 1 ? 'relative' : undefined,
+                         zIndex: spanDays > 1 ? 10 : undefined,
+                         marginBottom: '4px',
+                         paddingRight: '0.5rem'
+                       }}
+                       onClick={() => onAppointmentClick?.(event)}
+                     >
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium truncate">
+                            {isEventContinuation ? `↳ ${event.title}` : event.title}
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            {documentCounts[event.id] > 0 && (
+                              <div className="flex items-center space-x-1">
+                                <FileText className="h-3 w-3" />
+                                <span className="text-xs">{documentCounts[event.id]}</span>
+                              </div>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onPreparationClick?.(event);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
+                              title="Vorbereitung erstellen/bearbeiten"
+                            >
+                              📋
+                            </button>
+                          </div>
+                        </div>
+                     </div>
+                   );
+                 })}
               </div>
             ))}
           </div>
