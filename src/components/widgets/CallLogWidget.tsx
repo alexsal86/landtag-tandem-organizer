@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, PhoneCall, PhoneIncoming, PhoneMissed, Plus, Clock, AlertCircle, Trash2 } from 'lucide-react';
+import { Phone, PhoneCall, PhoneIncoming, PhoneMissed, Plus, Clock, AlertCircle, Trash2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +58,11 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [completionNotes, setCompletionNotes] = useState("");
+  const [callDate, setCallDate] = useState('');
+  const [callTime, setCallTime] = useState('');
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [selectedNoteContent, setSelectedNoteContent] = useState('');
   
   const CALLS_PER_PAGE = 5;
   
@@ -140,7 +145,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
         caller_phone: contactMode === 'new' ? callerPhone.trim() || undefined : undefined,
         call_type: callType,
         duration_minutes: duration ? parseInt(duration) : undefined,
-        call_date: new Date().toISOString(),
+        call_date: getCallDateTime(),
         notes: notes.trim() || undefined,
         follow_up_required: followUpRequired,
         follow_up_date: followUpDate ? new Date(followUpDate).toISOString() : undefined,
@@ -343,7 +348,31 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
     setFollowUpDate('');
     setPriority('medium');
     setSuggestedContact(null);
+    setCallDate('');
+    setCallTime('');
     setShowAddForm(false);
+  };
+
+  const getCallDateTime = () => {
+    if (callDate && callTime) {
+      return new Date(`${callDate}T${callTime}`).toISOString();
+    }
+    return new Date().toISOString();
+  };
+
+  const toggleNoteExpansion = (logId: string) => {
+    const newExpanded = new Set(expandedNotes);
+    if (newExpanded.has(logId)) {
+      newExpanded.delete(logId);
+    } else {
+      newExpanded.add(logId);
+    }
+    setExpandedNotes(newExpanded);
+  };
+
+  const openNoteDialog = (notes: string) => {
+    setSelectedNoteContent(notes);
+    setNoteDialogOpen(true);
   };
 
   const getCallTypeIcon = (type: 'outgoing' | 'incoming' | 'missed') => {
@@ -586,6 +615,24 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               />
             </div>
 
+            {/* Datum und Uhrzeit */}
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="date"
+                value={callDate}
+                onChange={(e) => setCallDate(e.target.value)}
+                className="h-8 text-xs"
+                placeholder="Datum (optional)"
+              />
+              <Input
+                type="time"
+                value={callTime}
+                onChange={(e) => setCallTime(e.target.value)}
+                className="h-8 text-xs"
+                placeholder="Uhrzeit (optional)"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <Select value={priority} onValueChange={(value) => setPriority(value as any)}>
                 <SelectTrigger className="h-8 text-xs">
@@ -768,9 +815,51 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                       </div>
                       
                       {log.notes && !compact && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {log.notes}
-                        </p>
+                        <div className="mt-1">
+                          {log.notes.length > 100 ? (
+                            <div>
+                              <p className="text-xs text-muted-foreground">
+                                {expandedNotes.has(log.id) 
+                                  ? log.notes 
+                                  : `${log.notes.substring(0, 100)}...`
+                                }
+                              </p>
+                              <div className="flex gap-1 mt-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleNoteExpansion(log.id)}
+                                  className="h-5 px-1 text-xs"
+                                >
+                                  {expandedNotes.has(log.id) ? (
+                                    <>
+                                      <ChevronUp className="h-3 w-3 mr-1" />
+                                      Weniger
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronDown className="h-3 w-3 mr-1" />
+                                      Mehr
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openNoteDialog(log.notes!)}
+                                  className="h-5 px-1 text-xs"
+                                >
+                                  <ExternalLink className="h-3 w-3 mr-1" />
+                                  Fenster
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              {log.notes}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -825,6 +914,35 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                   </Button>
                   <Button onClick={handleSubmitCompletion}>
                     Abschließen
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notes Dialog */}
+        {noteDialogOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-modal">
+            <div className="bg-card p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh]">
+              <h3 className="text-lg font-semibold mb-4">Anruf-Notizen</h3>
+              
+              <div className="space-y-4">
+                <div className="max-h-96 overflow-y-auto">
+                  <div className="p-4 border border-input rounded-md bg-muted/30">
+                    <p className="text-sm whitespace-pre-wrap">{selectedNoteContent}</p>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setNoteDialogOpen(false);
+                      setSelectedNoteContent('');
+                    }}
+                  >
+                    Schließen
                   </Button>
                 </div>
               </div>
