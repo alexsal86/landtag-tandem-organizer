@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { X, Users, Save, ArrowLeft } from "lucide-react";
+import { X, Users, Save, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -32,9 +32,11 @@ export function DistributionListForm({ distributionListId, onSuccess }: Distribu
   const [description, setDescription] = useState("");
   const [topic, setTopic] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [contactsLoading, setContactsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -46,6 +48,16 @@ export function DistributionListForm({ distributionListId, onSuccess }: Distribu
     }
   }, [distributionListId]);
 
+  useEffect(() => {
+    // Filter contacts based on search query
+    const filtered = contacts.filter(contact => 
+      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.organization?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredContacts(filtered);
+  }, [contacts, searchQuery]);
+
   const fetchContacts = async () => {
     try {
       const { data, error } = await supabase
@@ -56,6 +68,7 @@ export function DistributionListForm({ distributionListId, onSuccess }: Distribu
       if (error) throw error;
 
       setContacts(data || []);
+      setFilteredContacts(data || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
       toast({
@@ -210,27 +223,15 @@ export function DistributionListForm({ distributionListId, onSuccess }: Distribu
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate('/contacts')}
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Zurück
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              {distributionListId ? 'Verteiler bearbeiten' : 'Neuer Verteiler'}
-            </h1>
-            <p className="text-muted-foreground">
-              Erstellen Sie eine Sammlung von Kontakten für bestimmte Themen oder Zwecke
-            </p>
-          </div>
-        </div>
+    <div className="container mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-foreground mb-2">
+          {distributionListId ? 'Verteiler bearbeiten' : 'Neuer Verteiler'}
+        </h1>
+        <p className="text-muted-foreground">
+          Erstellen Sie eine Sammlung von Kontakten für bestimmte Themen oder Zwecke
+        </p>
+      </div>
 
         <div className="grid gap-6">
           {/* Basic Information */}
@@ -280,18 +281,38 @@ export function DistributionListForm({ distributionListId, onSuccess }: Distribu
             <CardHeader>
               <CardTitle>Kontakte auswählen</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Ausgewählt: {selectedContactIds.length} von {contacts.length} Kontakten
+                Ausgewählt: {selectedContactIds.length} von {filteredContacts.length} Kontakten
+                {searchQuery && ` (gefiltert aus ${contacts.length} Kontakten)`}
               </p>
             </CardHeader>
             <CardContent>
+              {/* Search Bar */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Kontakte durchsuchen..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
               {contactsLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Kontakte werden geladen...</p>
                 </div>
+              ) : filteredContacts.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    {searchQuery ? 'Keine Kontakte für diese Suche gefunden.' : 'Keine Kontakte verfügbar.'}
+                  </p>
+                </div>
               ) : (
                 <div className="grid gap-3 max-h-96 overflow-y-auto">
-                  {contacts.map((contact) => (
+                  {filteredContacts.map((contact) => (
                     <div
                       key={contact.id}
                       className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
@@ -382,7 +403,6 @@ export function DistributionListForm({ distributionListId, onSuccess }: Distribu
             </Button>
           </div>
         </div>
-      </div>
     </div>
   );
 }
