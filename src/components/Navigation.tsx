@@ -1,5 +1,7 @@
 import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
+import { NavigationBadge } from "./NavigationBadge";
+import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { CompactStatusSelector } from "./CompactStatusSelector";
 import { UserStatusSelector } from "./UserStatusSelector";
 import { useState, useEffect } from "react";
@@ -36,6 +38,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { onlineUsers, getStatusDisplay } = useUserStatus();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
   
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -46,7 +49,11 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     app_subtitle: "Koordinationssystem",
     app_logo_url: ""
   });
-  const navigate = useNavigate();
+  const handleNavigationClick = async (sectionId: string) => {
+    await markNavigationAsVisited(sectionId);
+    onSectionChange(sectionId);
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -198,15 +205,23 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         title: `Navigation geklickt: ${item.label}`,
                         description: `Wechsle zu: ${item.id}`,
                       });
-                      console.log('Calling onSectionChange with:', item.id);
-                      onSectionChange(item.id);
-                      console.log('onSectionChange called successfully');
+                      console.log('Calling handleNavigationClick with:', item.id);
+                      handleNavigationClick(item.id);
+                      console.log('handleNavigationClick called successfully');
                     }}
                     isActive={activeSection === item.id}
                     tooltip={item.label}
+                    className="flex items-center justify-between w-full"
                   >
-                    <item.icon />
-                    <span>{item.label}</span>
+                    <div className="flex items-center">
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </div>
+                    <NavigationBadge 
+                      count={navigationCounts[item.id] || 0}
+                      hasNew={hasNewSinceLastVisit(item.id)}
+                      size="sm"
+                    />
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 );
@@ -216,13 +231,21 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                 <SidebarMenuItem>
                   <SidebarMenuButton 
                     onClick={() => {
-                      onSectionChange("administration");
+                      handleNavigationClick("administration");
                     }}
                     isActive={activeSection === "administration"}
                     tooltip="Administration"
+                    className="flex items-center justify-between w-full"
                   >
-                    <Shield />
-                    <span>Administration</span>
+                    <div className="flex items-center">
+                      <Shield />
+                      <span>Administration</span>
+                    </div>
+                    <NavigationBadge 
+                      count={navigationCounts['administration'] || 0}
+                      hasNew={hasNewSinceLastVisit('administration')}
+                      size="sm"
+                    />
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}

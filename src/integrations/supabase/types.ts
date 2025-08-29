@@ -2453,6 +2453,7 @@ export type Database = {
           is_pushed: boolean
           is_read: boolean
           message: string
+          navigation_context: string | null
           notification_type_id: string
           priority: string
           push_sent_at: string | null
@@ -2470,6 +2471,7 @@ export type Database = {
           is_pushed?: boolean
           is_read?: boolean
           message: string
+          navigation_context?: string | null
           notification_type_id: string
           priority?: string
           push_sent_at?: string | null
@@ -2487,6 +2489,7 @@ export type Database = {
           is_pushed?: boolean
           is_read?: boolean
           message?: string
+          navigation_context?: string | null
           notification_type_id?: string
           priority?: string
           push_sent_at?: string | null
@@ -3807,6 +3810,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_navigation_visits: {
+        Row: {
+          created_at: string
+          id: string
+          last_visited_at: string
+          navigation_context: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_visited_at?: string
+          navigation_context: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_visited_at?: string
+          navigation_context?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_notification_settings: {
         Row: {
