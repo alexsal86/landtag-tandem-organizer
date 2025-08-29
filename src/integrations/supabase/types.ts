@@ -2393,6 +2393,27 @@ export type Database = {
           },
         ]
       }
+      notification_navigation_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          navigation_context: string
+          notification_type_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          navigation_context: string
+          notification_type_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          navigation_context?: string
+          notification_type_name?: string
+        }
+        Relationships: []
+      }
       notification_types: {
         Row: {
           created_at: string
