@@ -29,15 +29,6 @@ export const NavigationBadge: React.FC<NavigationBadgeProps> = ({
       >
         {count > 99 ? '99+' : count}
       </Badge>
-      {hasNew && (
-        <div 
-          className={cn(
-            "absolute -top-0.5 -right-0.5 rounded-full bg-red-500 border border-background animate-pulse",
-            size === 'sm' ? "w-2 h-2" : "w-2.5 h-2.5"
-          )}
-          aria-hidden="true"
-        />
-      )}
     </div>
   );
 };

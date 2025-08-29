@@ -3,6 +3,8 @@ import { CalendarEvent } from "../CalendarView";
 import { formatEventDisplay, isMultiDayEvent, getEventDays } from "@/lib/timeUtils";
 import { FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
+import { NewItemIndicator } from "../NewItemIndicator";
 
 interface DayViewProps {
   date: Date;
@@ -14,6 +16,7 @@ interface DayViewProps {
 export function DayView({ date, events, onAppointmentClick, onPreparationClick }: DayViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
+  const { isItemNew } = useNewItemIndicators('calendar');
   
   // Separate all-day and timed events
   const allDayEvents = events.filter(event => event.is_all_day);
@@ -201,13 +204,18 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
               {allDayEvents.map((event, index) => (
                 <div
                   key={event.id}
-                  className={`p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity group ${getEventTypeColor(event)}`}
+                  className={`p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity group relative ${getEventTypeColor(event)}`}
                   style={{ 
                     backgroundColor: event.category_color || undefined,
                     marginBottom: '4px'
                   }}
                   onClick={() => onAppointmentClick?.(event)}
                 >
+                  <NewItemIndicator 
+                    isVisible={isItemNew(event.id, event.date)} 
+                    size="sm" 
+                    className="top-0 right-0"
+                  />
                         <div className="flex items-center justify-between">
                           <div className="font-medium truncate">
                             {event.title}
@@ -369,22 +377,27 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                           }
                         }
 
-                        return (
-                          <div
-                           key={`${event.id}-${hour}`}
-                           className={`absolute p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity group ${getEventTypeColor(event)} ${isEventContinuation ? 'border-l-4 border-l-yellow-400' : ''}`}
-                           style={{ 
-                             width: `${widthPercentage - 2}%`, // Reduced width to create spacing
-                             left: `${leftOffset + 1}%`, // Add left margin for spacing
-                             height: `${preciseHeight}px`,
-                             top: `${topOffset}px`,
-                             marginBottom: '2px',
-                             marginLeft: `${column * 4}px`, // Additional left indent for overlapping events
-                             backgroundColor: event.category_color || undefined,
-                             zIndex: isEventStart || isEventContinuation ? 2 : 1
-                           }}
-                           onClick={() => onAppointmentClick?.(event)}
-                          >
+                         return (
+                           <div
+                            key={`${event.id}-${hour}`}
+                            className={`absolute p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity group relative ${getEventTypeColor(event)} ${isEventContinuation ? 'border-l-4 border-l-yellow-400' : ''}`}
+                            style={{ 
+                              width: `${widthPercentage - 2}%`, // Reduced width to create spacing
+                              left: `${leftOffset + 1}%`, // Add left margin for spacing
+                              height: `${preciseHeight}px`,
+                              top: `${topOffset}px`,
+                              marginBottom: '2px',
+                              marginLeft: `${column * 4}px`, // Additional left indent for overlapping events
+                              backgroundColor: event.category_color || undefined,
+                              zIndex: isEventStart || isEventContinuation ? 2 : 1
+                            }}
+                            onClick={() => onAppointmentClick?.(event)}
+                           >
+                            <NewItemIndicator 
+                              isVisible={isItemNew(event.id, event.date)} 
+                              size="sm" 
+                              className="top-0 right-0"
+                            />
                              <div className="flex items-center justify-between">
                                <div className="font-medium truncate">
                                  {isEventContinuation ? `→ ${event.title}` : event.title}

@@ -23,6 +23,8 @@ import { TodoCreateDialog } from "./TodoCreateDialog";
 import { TaskDecisionCreator } from "./task-decisions/TaskDecisionCreator";
 import { TaskDecisionStatus } from "./task-decisions/TaskDecisionStatus";
 import { TaskDecisionList } from "./task-decisions/TaskDecisionList";
+import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
+import { NewItemIndicator } from "./NewItemIndicator";
 
 interface Task {
   id: string;
@@ -72,6 +74,12 @@ interface Subtask {
 }
 
 export function TasksView() {
+  // Clear indicators when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clear indicators when leaving the tasks view
+    };
+  }, []);
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [filter, setFilter] = useState<string>("all");
@@ -143,6 +151,7 @@ export function TasksView() {
   console.log('TodoCreateOpen state:', todoCreateOpen); // Debug log
   
   const { toast } = useToast();
+  const { isItemNew, clearAllIndicators } = useNewItemIndicators('tasks');
 
   // Load tasks from database
   useEffect(() => {
@@ -1851,7 +1860,8 @@ export function TasksView() {
             </Card>
           ) : (
             filteredTasksWithSnooze.map((task) => (
-              <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleTaskClick(task)}>
+              <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer relative" onClick={() => handleTaskClick(task)}>
+                <NewItemIndicator isVisible={isItemNew(task.id, task.created_at || '')} />
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <Checkbox

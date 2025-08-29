@@ -2,6 +2,8 @@ import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle,
 import { NotificationBell } from "./NotificationBell";
 import { NavigationBadge } from "./NavigationBadge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
+import { useNotifications } from "@/hooks/useNotifications";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { CompactStatusSelector } from "./CompactStatusSelector";
 import { UserStatusSelector } from "./UserStatusSelector";
 import { useState, useEffect } from "react";
@@ -39,6 +41,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
+  const { notifications } = useNotifications();
   
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -52,6 +55,13 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const handleNavigationClick = async (sectionId: string) => {
     await markNavigationAsVisited(sectionId);
     onSectionChange(sectionId);
+  };
+
+  // Get notifications for a specific context (first 3)
+  const getContextNotifications = (context: string) => {
+    return notifications
+      .filter(notification => (notification as any).navigation_context === context && !notification.is_read)
+      .slice(0, 3);
   };
 
   const handleSignOut = async () => {
@@ -197,56 +207,116 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                 console.log('Navigation item:', item.label, 'id:', item.id);
                 return (
                 <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton
-                    onClick={(e) => {
-                      console.log('Button clicked for:', item.label, 'id:', item.id);
-                      // Visuelles Feedback mit Toast
-                      toast({
-                        title: `Navigation geklickt: ${item.label}`,
-                        description: `Wechsle zu: ${item.id}`,
-                      });
-                      console.log('Calling handleNavigationClick with:', item.id);
-                      handleNavigationClick(item.id);
-                      console.log('handleNavigationClick called successfully');
-                    }}
-                    isActive={activeSection === item.id}
-                    tooltip={item.label}
-                    className="flex items-center justify-between w-full"
-                  >
-                    <div className="flex items-center">
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </div>
-                    <NavigationBadge 
-                      count={navigationCounts[item.id] || 0}
-                      hasNew={hasNewSinceLastVisit(item.id)}
-                      size="sm"
-                    />
-                  </SidebarMenuButton>
+                  <HoverCard openDelay={500} closeDelay={100}>
+                    <HoverCardTrigger asChild>
+                      <SidebarMenuButton
+                        onClick={(e) => {
+                          console.log('Button clicked for:', item.label, 'id:', item.id);
+                          // Visuelles Feedback mit Toast
+                          toast({
+                            title: `Navigation geklickt: ${item.label}`,
+                            description: `Wechsle zu: ${item.id}`,
+                          });
+                          console.log('Calling handleNavigationClick with:', item.id);
+                          handleNavigationClick(item.id);
+                          console.log('handleNavigationClick called successfully');
+                        }}
+                        isActive={activeSection === item.id}
+                        tooltip={item.label}
+                        className="flex items-center justify-between w-full"
+                      >
+                        <div className="flex items-center">
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </div>
+                        <NavigationBadge 
+                          count={navigationCounts[item.id] || 0}
+                          size="sm"
+                        />
+                      </SidebarMenuButton>
+                    </HoverCardTrigger>
+                    <HoverCardContent side="right" className="w-80">
+                      <div className="space-y-2">
+                        <h4 className="font-semibold">{item.label}</h4>
+                        {(() => {
+                          const contextNotifications = getContextNotifications(item.id);
+                          if (contextNotifications.length === 0) {
+                            return <p className="text-sm text-muted-foreground">Keine neuen Benachrichtigungen</p>;
+                          }
+                          return (
+                            <div className="space-y-2">
+                              <p className="text-sm text-muted-foreground">
+                                {contextNotifications.length} neue Benachrichtigung{contextNotifications.length !== 1 ? 'en' : ''}
+                              </p>
+                              {contextNotifications.map(notification => (
+                                <div key={notification.id} className="p-2 rounded border-l-2 border-l-primary bg-muted/50">
+                                  <p className="text-sm font-medium">{notification.title}</p>
+                                  <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {new Date(notification.created_at).toLocaleString('de-DE')}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
                 </SidebarMenuItem>
                 );
               })}
 
               {hasAdminAccess && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    onClick={() => {
-                      handleNavigationClick("administration");
-                    }}
-                    isActive={activeSection === "administration"}
-                    tooltip="Administration"
-                    className="flex items-center justify-between w-full"
-                  >
-                    <div className="flex items-center">
-                      <Shield />
-                      <span>Administration</span>
-                    </div>
-                    <NavigationBadge 
-                      count={navigationCounts['administration'] || 0}
-                      hasNew={hasNewSinceLastVisit('administration')}
-                      size="sm"
-                    />
-                  </SidebarMenuButton>
+                  <HoverCard openDelay={500} closeDelay={100}>
+                    <HoverCardTrigger asChild>
+                      <SidebarMenuButton 
+                        onClick={() => {
+                          handleNavigationClick("administration");
+                        }}
+                        isActive={activeSection === "administration"}
+                        tooltip="Administration"
+                        className="flex items-center justify-between w-full"
+                      >
+                        <div className="flex items-center">
+                          <Shield />
+                          <span>Administration</span>
+                        </div>
+                        <NavigationBadge 
+                          count={navigationCounts['administration'] || 0}
+                          size="sm"
+                        />
+                      </SidebarMenuButton>
+                    </HoverCardTrigger>
+                    <HoverCardContent side="right" className="w-80">
+                      <div className="space-y-2">
+                        <h4 className="font-semibold">Administration</h4>
+                        {(() => {
+                          const contextNotifications = getContextNotifications('administration');
+                          if (contextNotifications.length === 0) {
+                            return <p className="text-sm text-muted-foreground">Keine neuen Benachrichtigungen</p>;
+                          }
+                          return (
+                            <div className="space-y-2">
+                              <p className="text-sm text-muted-foreground">
+                                {contextNotifications.length} neue Benachrichtigung{contextNotifications.length !== 1 ? 'en' : ''}
+                              </p>
+                              {contextNotifications.map(notification => (
+                                <div key={notification.id} className="p-2 rounded border-l-2 border-l-primary bg-muted/50">
+                                  <p className="text-sm font-medium">{notification.title}</p>
+                                  <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {new Date(notification.created_at).toLocaleString('de-DE')}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
                 </SidebarMenuItem>
               )}
             </SidebarMenu>

@@ -12,6 +12,8 @@ import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar"
 import AppointmentPreparationSidebar from "./AppointmentPreparationSidebar";
 import { PollListView } from "./poll/PollListView";
 import { useTenant } from "@/hooks/useTenant";
+import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
+import { NewItemIndicator } from "./NewItemIndicator";
 
 export interface CalendarEvent {
   id: string;
@@ -37,6 +39,7 @@ export interface CalendarEvent {
 export function CalendarView() {
   const navigate = useNavigate();
   const { currentTenant } = useTenant();
+  const { isItemNew, clearAllIndicators } = useNewItemIndicators('calendar');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"day" | "week" | "month" | "polls">("day");
   const [appointments, setAppointments] = useState<CalendarEvent[]>([]);

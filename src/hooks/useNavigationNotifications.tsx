@@ -95,19 +95,45 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         return;
       }
 
+      // Mark all notifications in this context as read
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .update({ is_read: true, read_at: now.toISOString() })
+        .eq('user_id', user.id)
+        .eq('navigation_context', context)
+        .eq('is_read', false);
+
+      if (notificationError) {
+        console.error('Error marking context notifications as read:', notificationError);
+      }
+
       // Update local state
       setLastVisited(prev => ({
         ...prev,
         [context]: now,
       }));
 
-      // Trigger storage event for cross-tab sync
+      // Reset navigation count for this context
+      setNavigationCounts(prev => ({
+        ...prev,
+        [context]: 0,
+      }));
+
+      // Trigger storage events for cross-tab sync
       localStorage.setItem('navigation_visit_sync', JSON.stringify({
         context,
         timestamp: now.toISOString(),
         userId: user.id,
       }));
       localStorage.removeItem('navigation_visit_sync');
+
+      // Also trigger notification sync
+      localStorage.setItem('notifications_marked_read', JSON.stringify({
+        context,
+        timestamp: now.toISOString(),
+        userId: user.id,
+      }));
+      localStorage.removeItem('notifications_marked_read');
     } catch (error) {
       console.error('Error in markNavigationAsVisited:', error);
     }
@@ -183,6 +209,11 @@ export const useNavigationNotifications = (): NavigationNotifications => {
             setLastVisited(prev => ({
               ...prev,
               [data.context]: new Date(data.timestamp),
+            }));
+            // Reset count for this context
+            setNavigationCounts(prev => ({
+              ...prev,
+              [data.context]: 0,
             }));
           }
         } catch (error) {
