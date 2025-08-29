@@ -71,14 +71,17 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
 
   const getAllDayEventsForDay = (day: Date) => {
     return allDayEvents.filter(event => {
+      // Create a copy of the day to avoid mutating the original
+      const dayToCheck = new Date(day);
+      dayToCheck.setHours(12, 0, 0, 0); // Middle of day for comparison
+      
       // Check if this day is within the event's span for multi-day events
       if (event.endTime) {
         const eventStart = new Date(event.date);
         const eventEnd = new Date(event.endTime);
         eventStart.setHours(0, 0, 0, 0);
         eventEnd.setHours(23, 59, 59, 999);
-        day.setHours(12, 0, 0, 0); // Middle of day for comparison
-        return day >= eventStart && day <= eventEnd;
+        return dayToCheck >= eventStart && dayToCheck <= eventEnd;
       }
       return event.date.toDateString() === day.toDateString();
     });
