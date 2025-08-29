@@ -28,7 +28,7 @@ export interface CalendarEvent {
     name: string;
     role: string;
   }>;
-  type: "meeting" | "appointment" | "deadline" | "session" | "blocked" | "veranstaltung";
+  type: "meeting" | "appointment" | "deadline" | "session" | "blocked" | "veranstaltung" | "vacation" | "vacation_request";
   priority: "low" | "medium" | "high";
   category_color?: string;
   is_all_day?: boolean; // Add all-day flag
@@ -165,8 +165,8 @@ export function CalendarView() {
           id: appointment.id,
           title: appointment.title,
           description: appointment.description || undefined,
-          time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-          duration: `${durationHours}h`,
+          time: appointment.is_all_day ? "Ganztägig" : startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+          duration: appointment.is_all_day ? "Ganztägig" : `${durationHours}h`,
           date: startTime, // Add the actual date
           endTime: endTime, // Add actual end time from database
           location: appointment.location || undefined,
@@ -330,6 +330,12 @@ export function CalendarView() {
         return "bg-destructive text-destructive-foreground";
       case "blocked":
         return "bg-orange-500 text-white";
+      case "vacation":
+        return "bg-green-500 text-white";
+      case "vacation_request":
+        return "bg-yellow-500 text-black";
+      case "veranstaltung":
+        return "bg-purple-600 text-white";
       default:
         return "bg-muted text-muted-foreground";
     }
