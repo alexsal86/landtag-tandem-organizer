@@ -32,6 +32,8 @@ import {
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import LetterEditor from "./LetterEditor";
+import LetterTemplateSelector from "./LetterTemplateSelector";
+import LetterPDFExport from "./LetterPDFExport";
 
 interface Document {
   id: string;
@@ -79,6 +81,7 @@ export function DocumentsView() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showLetterEditor, setShowLetterEditor] = useState(false);
   const [selectedLetter, setSelectedLetter] = useState<Letter | undefined>(undefined);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [activeTab, setActiveTab] = useState<'documents' | 'letters'>('documents');
 
   // Upload form state
@@ -322,12 +325,44 @@ export function DocumentsView() {
 
   const handleCreateLetter = () => {
     setSelectedLetter(undefined);
+    setShowTemplateSelector(true);
+  };
+
+  const handleTemplateSelect = (template: any) => {
+    setShowTemplateSelector(false);
+    setSelectedLetter(undefined);
     setShowLetterEditor(true);
   };
 
   const handleEditLetter = (letter: Letter) => {
     setSelectedLetter(letter);
     setShowLetterEditor(true);
+  };
+
+  const handleDeleteLetter = async (letterId: string) => {
+    if (!confirm('Möchten Sie diesen Brief wirklich löschen?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('letters')
+        .delete()
+        .eq('id', letterId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Brief gelöscht",
+        description: "Der Brief wurde erfolgreich gelöscht.",
+      });
+
+      fetchLetters();
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: "Der Brief konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCloseLetterEditor = () => {
@@ -717,7 +752,7 @@ export function DocumentsView() {
                     </div>
                     
                     <div className="flex justify-between items-center pt-2">
-                      <div className="flex gap-2">
+                      <div className="flex gap-1">
                         <Button
                           variant="outline"
                           size="sm"
@@ -726,6 +761,18 @@ export function DocumentsView() {
                           <Edit3 className="h-4 w-4 mr-1" />
                           Bearbeiten
                         </Button>
+                        <LetterPDFExport 
+                          letter={letter} 
+                          disabled={false}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteLetter(letter.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -733,6 +780,23 @@ export function DocumentsView() {
               ))}
             </div>
           )
+        )}
+
+        {/* Template Selector Dialog */}
+        {showTemplateSelector && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+            <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-4xl -translate-x-1/2 -translate-y-1/2 bg-background border rounded-lg shadow-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Template für neuen Brief auswählen</h2>
+                <Button variant="ghost" onClick={() => setShowTemplateSelector(false)}>
+                  ×
+                </Button>
+              </div>
+              <LetterTemplateSelector
+                onSelect={handleTemplateSelect}
+              />
+            </div>
+          </div>
         )}
 
         {/* Letter Editor */}
