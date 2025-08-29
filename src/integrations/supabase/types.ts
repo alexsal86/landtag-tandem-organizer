@@ -753,7 +753,14 @@ export type Database = {
           bic_swift: string | null
           billing_address: string | null
           birthday: string | null
+          business_city: string | null
+          business_country: string | null
           business_description: string | null
+          business_house_number: string | null
+          business_phone: string | null
+          business_phone_2: string | null
+          business_postal_code: string | null
+          business_street: string | null
           category: string | null
           certifications: string[] | null
           commercial_register_number: string | null
@@ -768,11 +775,15 @@ export type Database = {
           credit_limit: number | null
           customer_number: string | null
           data_protection_notes: string | null
+          department: string | null
           diversity_certifications: string[] | null
           email: string | null
+          email_2: string | null
+          email_3: string | null
           employees_count: number | null
           established_year: number | null
           facebook: string | null
+          first_name: string | null
           founding_date: string | null
           gdpr_consent_date: string | null
           iban: string | null
@@ -782,12 +793,14 @@ export type Database = {
           key_contacts: string[] | null
           languages_supported: string[] | null
           last_contact: string | null
+          last_name: string | null
           legal_form: string | null
           linkedin: string | null
           location: string | null
           main_contact_person: string | null
           marketing_consent: boolean | null
           meeting_preferences: string | null
+          mobile_phone: string | null
           name: string
           newsletter_subscription: boolean | null
           notes: string | null
@@ -797,8 +810,16 @@ export type Database = {
           partnership_level: string | null
           payment_terms: string | null
           phone: string | null
+          position: string | null
           preferred_communication_method: string | null
           priority: string | null
+          private_city: string | null
+          private_country: string | null
+          private_house_number: string | null
+          private_phone: string | null
+          private_phone_2: string | null
+          private_postal_code: string | null
+          private_street: string | null
           rating: string | null
           role: string | null
           service_areas: string[] | null
@@ -812,6 +833,7 @@ export type Database = {
           tax_number: string | null
           tenant_id: string
           time_zone: string | null
+          title: string | null
           trade_associations: string[] | null
           twitter: string | null
           updated_at: string
@@ -833,7 +855,14 @@ export type Database = {
           bic_swift?: string | null
           billing_address?: string | null
           birthday?: string | null
+          business_city?: string | null
+          business_country?: string | null
           business_description?: string | null
+          business_house_number?: string | null
+          business_phone?: string | null
+          business_phone_2?: string | null
+          business_postal_code?: string | null
+          business_street?: string | null
           category?: string | null
           certifications?: string[] | null
           commercial_register_number?: string | null
@@ -848,11 +877,15 @@ export type Database = {
           credit_limit?: number | null
           customer_number?: string | null
           data_protection_notes?: string | null
+          department?: string | null
           diversity_certifications?: string[] | null
           email?: string | null
+          email_2?: string | null
+          email_3?: string | null
           employees_count?: number | null
           established_year?: number | null
           facebook?: string | null
+          first_name?: string | null
           founding_date?: string | null
           gdpr_consent_date?: string | null
           iban?: string | null
@@ -862,12 +895,14 @@ export type Database = {
           key_contacts?: string[] | null
           languages_supported?: string[] | null
           last_contact?: string | null
+          last_name?: string | null
           legal_form?: string | null
           linkedin?: string | null
           location?: string | null
           main_contact_person?: string | null
           marketing_consent?: boolean | null
           meeting_preferences?: string | null
+          mobile_phone?: string | null
           name: string
           newsletter_subscription?: boolean | null
           notes?: string | null
@@ -877,8 +912,16 @@ export type Database = {
           partnership_level?: string | null
           payment_terms?: string | null
           phone?: string | null
+          position?: string | null
           preferred_communication_method?: string | null
           priority?: string | null
+          private_city?: string | null
+          private_country?: string | null
+          private_house_number?: string | null
+          private_phone?: string | null
+          private_phone_2?: string | null
+          private_postal_code?: string | null
+          private_street?: string | null
           rating?: string | null
           role?: string | null
           service_areas?: string[] | null
@@ -892,6 +935,7 @@ export type Database = {
           tax_number?: string | null
           tenant_id: string
           time_zone?: string | null
+          title?: string | null
           trade_associations?: string[] | null
           twitter?: string | null
           updated_at?: string
@@ -913,7 +957,14 @@ export type Database = {
           bic_swift?: string | null
           billing_address?: string | null
           birthday?: string | null
+          business_city?: string | null
+          business_country?: string | null
           business_description?: string | null
+          business_house_number?: string | null
+          business_phone?: string | null
+          business_phone_2?: string | null
+          business_postal_code?: string | null
+          business_street?: string | null
           category?: string | null
           certifications?: string[] | null
           commercial_register_number?: string | null
@@ -928,11 +979,15 @@ export type Database = {
           credit_limit?: number | null
           customer_number?: string | null
           data_protection_notes?: string | null
+          department?: string | null
           diversity_certifications?: string[] | null
           email?: string | null
+          email_2?: string | null
+          email_3?: string | null
           employees_count?: number | null
           established_year?: number | null
           facebook?: string | null
+          first_name?: string | null
           founding_date?: string | null
           gdpr_consent_date?: string | null
           iban?: string | null
@@ -942,12 +997,14 @@ export type Database = {
           key_contacts?: string[] | null
           languages_supported?: string[] | null
           last_contact?: string | null
+          last_name?: string | null
           legal_form?: string | null
           linkedin?: string | null
           location?: string | null
           main_contact_person?: string | null
           marketing_consent?: boolean | null
           meeting_preferences?: string | null
+          mobile_phone?: string | null
           name?: string
           newsletter_subscription?: boolean | null
           notes?: string | null
@@ -957,8 +1014,16 @@ export type Database = {
           partnership_level?: string | null
           payment_terms?: string | null
           phone?: string | null
+          position?: string | null
           preferred_communication_method?: string | null
           priority?: string | null
+          private_city?: string | null
+          private_country?: string | null
+          private_house_number?: string | null
+          private_phone?: string | null
+          private_phone_2?: string | null
+          private_postal_code?: string | null
+          private_street?: string | null
           rating?: string | null
           role?: string | null
           service_areas?: string[] | null
@@ -972,6 +1037,7 @@ export type Database = {
           tax_number?: string | null
           tenant_id?: string
           time_zone?: string | null
+          title?: string | null
           trade_associations?: string[] | null
           twitter?: string | null
           updated_at?: string

@@ -14,6 +14,7 @@ import EditContact from "./pages/EditContact";
 import EditProfile from "./pages/EditProfile";
 import CreateDistributionList from "./pages/CreateDistributionList";
 import EditDistributionList from "./pages/EditDistributionList";
+import ImportContacts from "./pages/ImportContacts";
 import PollGuest from "./pages/PollGuest";
 import DecisionResponse from "./pages/DecisionResponse";
 
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/administration" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/contacts/new" element={<CreateContact />} />
+            <Route path="/contacts/import" element={<ImportContacts />} />
             <Route path="/appointments/new" element={<CreateAppointment />} />
             <Route path="/tasks/new" element={<CreateTask />} />
             

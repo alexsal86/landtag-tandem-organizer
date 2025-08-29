@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -311,6 +311,12 @@ export function ContactsView() {
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
                 Neuer Kontakt
+              </Button>
+            </Link>
+            <Link to="/contacts/import">
+              <Button variant="outline" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Kontakte importieren
               </Button>
             </Link>
             <Link to="/distribution-lists/new">
