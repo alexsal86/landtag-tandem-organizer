@@ -270,6 +270,26 @@ export function TimeTrackingView() {
       const e = new Date(`${leaveEnd}T00:00:00`);
       if (e < s) throw new Error("Ende muss nach Start liegen.");
 
+      // Get user profile for display name
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .single();
+
+      // Get tenant information
+      const { data: tenantData } = await supabase
+        .from("user_tenant_memberships")
+        .select("tenant_id")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .limit(1)
+        .single();
+
+      if (!tenantData) {
+        throw new Error("Kein Tenant gefunden");
+      }
+
       const { error } = await supabase.from("leave_requests").insert({
         user_id: user.id,
         type: "vacation",
@@ -279,7 +299,28 @@ export function TimeTrackingView() {
       });
       if (error) throw error;
 
-      toast({ title: "Antrag gesendet", description: "Urlaubsantrag wurde eingereicht (Status: ausstehend)." });
+      // Create calendar entry for the request (pending status)
+      const userName = userProfile?.display_name || "Mitarbeiter";
+      const { error: calendarError } = await supabase
+        .from("appointments")
+        .insert({
+          user_id: user.id,
+          tenant_id: tenantData.tenant_id,
+          start_time: new Date(`${leaveStart}T00:00:00`).toISOString(),
+          end_time: new Date(`${leaveEnd}T23:59:59`).toISOString(),
+          title: `Anfrage Urlaub von ${userName}`,
+          description: `Urlaubsantrag eingereicht${leaveReason ? ` - Grund: ${leaveReason}` : ''}`,
+          category: "vacation_request",
+          priority: "medium",
+          status: "pending",
+          is_all_day: true
+        });
+
+      if (calendarError) {
+        console.error("Fehler beim Erstellen des Kalendereintrags:", calendarError);
+      }
+
+      toast({ title: "Antrag gesendet", description: "Urlaubsantrag wurde eingereicht und in den Kalender eingetragen." });
 
       // Reload leaves for current month
       const { data: leavesData, error: leavesErr } = await supabase

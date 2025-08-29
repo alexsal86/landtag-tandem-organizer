@@ -450,20 +450,43 @@ export function EmployeesView() {
       const userName = userProfile?.display_name || "Mitarbeiter";
       const workingDays = calculateWorkingDays(leaveRequest.start_date, leaveRequest.end_date);
       
-      await supabase
+      // First, try to update existing request entry
+      const { data: existingEntry } = await supabase
         .from("appointments")
-        .insert({
-          user_id: user?.id,
-          tenant_id: tenantData.tenant_id,
-          start_time: new Date(leaveRequest.start_date).toISOString(),
-          end_time: new Date(leaveRequest.end_date + "T23:59:59").toISOString(),
-          title: `${userName} - ${leaveRequest.type === "vacation" ? "Urlaub" : leaveRequest.type === "sick" ? "Krank" : "Abwesenheit"}`,
-          description: `${leaveRequest.type === "vacation" ? "Urlaubsantrag" : leaveRequest.type === "sick" ? "Krankmeldung" : "Abwesenheitsantrag"} genehmigt (${workingDays} Arbeitstage)`,
-          category: leaveRequest.type === "vacation" ? "vacation" : leaveRequest.type === "sick" ? "sick" : "other",
-          priority: "medium",
-          status: "confirmed",
-          is_all_day: true
-        });
+        .select("id")
+        .eq("title", `Anfrage Urlaub von ${userName}`)
+        .eq("start_time", new Date(leaveRequest.start_date).toISOString())
+        .eq("category", "vacation_request")
+        .single();
+
+      if (existingEntry) {
+        // Update existing entry to approved status
+        await supabase
+          .from("appointments")
+          .update({
+            title: `Urlaub von ${userName}`,
+            description: `Urlaubsantrag genehmigt (${workingDays} Arbeitstage)`,
+            category: "vacation",
+            status: "confirmed"
+          })
+          .eq("id", existingEntry.id);
+      } else {
+        // Create new entry if none exists
+        await supabase
+          .from("appointments")
+          .insert({
+            user_id: user?.id,
+            tenant_id: tenantData.tenant_id,
+            start_time: new Date(leaveRequest.start_date).toISOString(),
+            end_time: new Date(leaveRequest.end_date + "T23:59:59").toISOString(),
+            title: `Urlaub von ${userName}`,
+            description: `Urlaubsantrag genehmigt (${workingDays} Arbeitstage)`,
+            category: "vacation",
+            priority: "medium",
+            status: "confirmed",
+            is_all_day: true
+          });
+      }
     } catch (error) {
       console.error("Fehler beim Erstellen des Kalendereintrags:", error);
     }
@@ -481,16 +504,34 @@ export function EmployeesView() {
 
       if (error) throw error;
 
-      // Bei Genehmigung: Kalendereintrag erstellen
-      if (action === "approved" && leaveRequest) {
-        await createVacationCalendarEntry(leaveRequest, leaveRequest.user_id);
+      if (leaveRequest) {
+        const { data: userProfile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("user_id", leaveRequest.user_id)
+          .single();
+
+        const userName = userProfile?.display_name || "Mitarbeiter";
+
+        if (action === "approved") {
+          // Bei Genehmigung: Kalendereintrag aktualisieren
+          await createVacationCalendarEntry(leaveRequest, leaveRequest.user_id);
+        } else {
+          // Bei Ablehnung: Ursprünglichen Antragseintrag löschen
+          await supabase
+            .from("appointments")
+            .delete()
+            .eq("title", `Anfrage Urlaub von ${userName}`)
+            .eq("start_time", new Date(leaveRequest.start_date).toISOString())
+            .eq("category", "vacation_request");
+        }
       }
 
       toast({
         title: action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt",
         description: action === "approved" 
-          ? "Der Urlaubsantrag wurde genehmigt und in den Kalender eingetragen." 
-          : "Der Urlaubsantrag wurde abgelehnt.",
+          ? "Der Urlaubsantrag wurde genehmigt und in den Kalender aktualisiert." 
+          : "Der Urlaubsantrag wurde abgelehnt und aus dem Kalender entfernt.",
       });
 
       // Reload data
