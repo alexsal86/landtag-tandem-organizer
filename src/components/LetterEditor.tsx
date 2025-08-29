@@ -124,7 +124,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       draft: ['review'],
       review: ['draft', 'approved'],
       approved: ['review', 'sent'],
-      sent: []
+      sent: ['approved']
     };
     return allowedTransitions[fromStatus as keyof typeof allowedTransitions]?.includes(toStatus) || false;
   };
@@ -342,12 +342,35 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       ...(newStatus === 'sent' ? { sent_date: new Date().toISOString() } : {})
     }));
 
+    // Korrekturlesen automatisch deaktivieren bei approved/sent
+    if (newStatus === 'approved' || newStatus === 'sent') {
+      setIsProofreadingMode(false);
+    }
+
     broadcastContentChange('status', newStatus);
     
     toast({
       title: "Status geändert",
       description: `Status wurde zu "${statusLabels[newStatus as keyof typeof statusLabels]}" geändert.`,
     });
+  };
+
+  const handleProofreadingToggle = () => {
+    const newProofreadingMode = !isProofreadingMode;
+    setIsProofreadingMode(newProofreadingMode);
+    
+    // Automatischer Status-Wechsel
+    if (newProofreadingMode) {
+      // Korrekturlesen aktiviert → Status zu "Zur Prüfung"
+      if (editedLetter.status === 'draft') {
+        handleStatusTransition('review');
+      }
+    } else {
+      // Korrekturlesen deaktiviert → Status zu "Entwurf"
+      if (editedLetter.status === 'review') {
+        handleStatusTransition('draft');
+      }
+    }
   };
 
   const formatContactAddress = (contact: Contact, useBusinessAddress = false) => {
@@ -567,15 +590,17 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               </Badge>
             )}
             
-            {/* Proofreading Mode Toggle */}
-            <Button
-              variant={isProofreadingMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsProofreadingMode(!isProofreadingMode)}
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Korrekturlesen
-            </Button>
+            {/* Proofreading Mode Toggle - nur bei draft/review */}
+            {editedLetter.status !== 'approved' && editedLetter.status !== 'sent' && (
+              <Button
+                variant={isProofreadingMode ? "default" : "outline"}
+                size="sm"
+                onClick={handleProofreadingToggle}
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Korrekturlesen
+              </Button>
+            )}
             
             <Button 
               onClick={handleManualSave} 
@@ -591,11 +616,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           </div>
         </div>
 
-        {!canEdit && (
-          <div className="bg-muted p-3 rounded-lg flex items-center gap-2 text-sm mt-3">
-            <EyeOff className="h-4 w-4" />
-            Sie haben nur Lesezugriff auf diesen Brief.
-          </div>
+        {!canEdit && editedLetter.status === 'sent' && (
+           <div className="bg-muted p-3 rounded-lg flex items-center gap-2 text-sm mt-3">
+             <EyeOff className="h-4 w-4" />
+             Dieser Brief ist versendet und kann nicht mehr bearbeitet werden.
+           </div>
         )}
       </div>
 
@@ -677,8 +702,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 </div>
                 
                 {/* Status Transition Buttons */}
-                {canEdit && editedLetter.status !== 'sent' && (
+                {canEdit && (
                   <div className="flex flex-col gap-2">
+                    {/* Forward transition button */}
                     {getNextStatus(editedLetter.status || 'draft') && (
                       <Button
                         size="sm"
@@ -691,7 +717,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       </Button>
                     )}
                     
-                    {/* Back to draft from review */}
+                    {/* Zurück-Buttons für alle Status außer draft */}
                     {editedLetter.status === 'review' && (
                       <Button
                         size="sm"
@@ -703,7 +729,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       </Button>
                     )}
                     
-                    {/* Back to review from approved */}
                     {editedLetter.status === 'approved' && (
                       <Button
                         size="sm"
@@ -715,6 +740,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       </Button>
                     )}
                   </div>
+                )}
+                
+                {/* Zurück-Button für sent Status (immer sichtbar) */}
+                {editedLetter.status === 'sent' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStatusTransition('approved')}
+                    className="justify-start text-muted-foreground"
+                  >
+                    Zurück zu Genehmigt
+                  </Button>
                 )}
               </div>
 
@@ -764,8 +801,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             </CardContent>
           </Card>
 
-          {/* Proofreading Comments Section */}
-          {isProofreadingMode && (
+          {/* Proofreading Comments Section - nur bei draft/review */}
+          {isProofreadingMode && editedLetter.status !== 'approved' && editedLetter.status !== 'sent' && (
             <Card className="mt-4">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
