@@ -25,6 +25,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
+import { NewItemIndicator } from "./NewItemIndicator";
 
 interface EventPlanning {
   id: string;
@@ -160,6 +162,7 @@ export function EventPlanningView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const { isItemNew, clearAllIndicators } = useNewItemIndicators('eventplanning');
   const [plannings, setPlannings] = useState<EventPlanning[]>([]);
   const [selectedPlanning, setSelectedPlanning] = useState<EventPlanning | null>(null);
   const [planningDates, setPlanningDates] = useState<EventPlanningDate[]>([]);
@@ -231,7 +234,12 @@ export function EventPlanningView() {
     fetchPlanningTemplates();
     fetchAppointmentPreparations();
     loadViewPreferences();
-  }, [user, currentTenant]);
+
+    // Cleanup indicators when leaving the page
+    return () => {
+      clearAllIndicators();
+    };
+  }, [user, currentTenant, clearAllIndicators]);
 
   // Load view preferences from localStorage
   const loadViewPreferences = () => {
@@ -440,10 +448,13 @@ export function EventPlanningView() {
         {plannings.map((planning) => (
           <TableRow 
             key={planning.id} 
-            className="cursor-pointer hover:bg-muted/50"
+            className="cursor-pointer hover:bg-muted/50 relative"
             onClick={() => setSelectedPlanning(planning)}
           >
-            <TableCell className="font-medium">{planning.title}</TableCell>
+            <TableCell className="font-medium relative">
+              <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} size="sm" />
+              {planning.title}
+            </TableCell>
             <TableCell className="max-w-xs truncate">{planning.description || '-'}</TableCell>
             <TableCell>
               <Badge variant={planning.confirmed_date ? "default" : "secondary"}>
@@ -491,10 +502,13 @@ export function EventPlanningView() {
         {preparations.map((preparation) => (
           <TableRow 
             key={preparation.id} 
-            className="cursor-pointer hover:bg-muted/50"
+            className="cursor-pointer hover:bg-muted/50 relative"
             onClick={() => handlePreparationClick(preparation)}
           >
-            <TableCell className="font-medium">{preparation.title}</TableCell>
+            <TableCell className="font-medium relative">
+              <NewItemIndicator isVisible={isItemNew(preparation.id, preparation.created_at)} size="sm" />
+              {preparation.title}
+            </TableCell>
             <TableCell>
               <Badge 
                 variant={
@@ -2074,9 +2088,10 @@ export function EventPlanningView() {
                 return (
                   <Card
                     key={planning.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    className="cursor-pointer hover:shadow-md transition-shadow relative"
                     onClick={() => setSelectedPlanning(planning)}
                   >
+                    <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} />
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between">
                         <span className="truncate">{planning.title}</span>
@@ -2210,9 +2225,10 @@ export function EventPlanningView() {
                     appointmentPreparations.map((preparation) => (
                       <Card 
                         key={preparation.id} 
-                        className="cursor-pointer hover:shadow-md transition-shadow"
+                        className="cursor-pointer hover:shadow-md transition-shadow relative"
                         onClick={() => handlePreparationClick(preparation)}
                       >
+                        <NewItemIndicator isVisible={isItemNew(preparation.id, preparation.created_at)} />
                         <CardHeader>
                           <CardTitle className="flex items-center justify-between">
                             <span className="truncate">{preparation.title}</span>

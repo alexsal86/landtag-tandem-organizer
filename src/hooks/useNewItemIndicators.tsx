@@ -59,10 +59,15 @@ export const useNewItemIndicators = (context: string): NewItemIndicatorsHook => 
 
   // Check if item is new based on creation date
   const isItemNew = (itemId: string, createdAt: string | Date): boolean => {
-    if (!lastVisited) return true; // If never visited, everything is new
+    if (!lastVisited) {
+      console.log(`🔍 isItemNew(${itemId}): No lastVisited, treating as new`);
+      return true; // If never visited, everything is new
+    }
     
     const itemCreatedAt = new Date(createdAt);
-    return itemCreatedAt > lastVisited;
+    const isNew = itemCreatedAt > lastVisited;
+    console.log(`🔍 isItemNew(${itemId}): created=${itemCreatedAt.toISOString()}, lastVisited=${lastVisited.toISOString()}, isNew=${isNew}`);
+    return isNew;
   };
 
   // Clear all indicators (called when leaving page)
