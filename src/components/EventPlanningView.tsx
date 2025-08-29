@@ -224,22 +224,32 @@ export function EventPlanningView() {
 
   useEffect(() => {
     console.log('EventPlanningView mounted, user:', user, 'currentTenant:', currentTenant);
-    if (!currentTenant) {
-      console.log('No currentTenant available, skipping data fetching');
+    if (!currentTenant || !user) {
+      console.log('No currentTenant or user available, skipping data fetching');
       return;
     }
-    fetchPlannings();
-    fetchAllProfiles();
-    fetchAvailableContacts();
-    fetchPlanningTemplates();
-    fetchAppointmentPreparations();
-    loadViewPreferences();
+    
+    // Use async wrapper to avoid blocking
+    const loadData = async () => {
+      try {
+        await fetchPlannings();
+        await fetchAllProfiles();
+        await fetchAvailableContacts();
+        await fetchPlanningTemplates();
+        await fetchAppointmentPreparations();
+        loadViewPreferences();
+      } catch (error) {
+        console.error('Error loading planning data:', error);
+      }
+    };
+    
+    loadData();
 
     // Cleanup indicators when leaving the page
     return () => {
       clearAllIndicators();
     };
-  }, [user, currentTenant, clearAllIndicators]);
+  }, [user, currentTenant?.id]); // Only depend on currentTenant.id, not the whole object
 
   // Load view preferences from localStorage
   const loadViewPreferences = () => {
@@ -290,20 +300,28 @@ export function EventPlanningView() {
       console.log('No user found, returning early');
       return;
     }
-    if (!currentTenant) {
-      console.log('No currentTenant found, returning early');
+    if (!currentTenant || !currentTenant.id) {
+      console.log('No currentTenant or currentTenant.id found, returning early');
       return;
     }
 
     try {
       setLoading(true);
       console.log('Fetching plannings from Supabase for tenant:', currentTenant.id);
+      
+      // Add timeout to prevent hanging
+      const timeoutId = setTimeout(() => {
+        console.error('Supabase query timeout');
+        setLoading(false);
+      }, 10000); // 10 second timeout
+
       const { data, error } = await supabase
         .from("event_plannings")
         .select("*")
         .eq("tenant_id", currentTenant.id)
         .order("created_at", { ascending: false });
 
+      clearTimeout(timeoutId);
       console.log('Supabase response:', { data, error });
 
       if (error) {
@@ -321,13 +339,18 @@ export function EventPlanningView() {
       
       // Also fetch all collaborators for all plannings
       if (data && data.length > 0) {
-        await fetchAllCollaborators(data.map(p => p.id));
+        try {
+          await fetchAllCollaborators(data.map(p => p.id));
+        } catch (collabError) {
+          console.error('Error fetching collaborators:', collabError);
+          // Don't fail the whole operation if collaborators fail
+        }
       }
     } catch (err) {
       console.error('Unexpected error in fetchPlannings:', err);
       toast({
-        title: "Fehler",
-        description: "Ein unerwarteter Fehler ist aufgetreten.",
+        title: "Fehler", 
+        description: "Ein unerwarteter Fehler ist aufgetreten beim Laden der Planungen.",
         variant: "destructive",
       });
     } finally {
