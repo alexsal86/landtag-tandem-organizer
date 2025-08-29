@@ -206,7 +206,7 @@ export function ContactImport() {
 
   const updateFieldMapping = (index: number, targetField: string) => {
     const newMappings = [...fieldMappings];
-    newMappings[index].targetField = targetField;
+    newMappings[index].targetField = targetField === 'none' ? '' : targetField;
     setFieldMappings(newMappings);
   };
 
@@ -388,14 +388,14 @@ export function ContactImport() {
                   </div>
                   <div className="flex-1">
                     <Select
-                      value={mapping.targetField}
+                      value={mapping.targetField || 'none'}
                       onValueChange={(value) => updateFieldMapping(index, value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Feld auswählen..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nicht zuordnen</SelectItem>
+                        <SelectItem value="none">Nicht zuordnen</SelectItem>
                         {TARGET_FIELDS.map(field => (
                           <SelectItem key={field} value={field}>
                             {field.replace(/_/g, ' ')}
