@@ -56,7 +56,10 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         .eq('is_active', true)
         .neq('user_id', user?.id);
 
-      if (tenantError) throw tenantError;
+      if (tenantError) {
+        console.error('Error fetching tenant users:', tenantError);
+        throw tenantError;
+      }
 
       const userIds = tenantUsers?.map(u => u.user_id) || [];
 
@@ -71,7 +74,10 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         .select('user_id, display_name')
         .in('user_id', userIds);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching profiles:', error);
+        throw error;
+      }
 
       const formattedUsers = data?.map(item => ({
         user_id: item.user_id,
