@@ -199,13 +199,13 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const leftMargin = 25;
       const rightMargin = 20;
       const headerHeight = 45;
-      const addressFieldTop = 50;
+      const addressFieldTop = 46; // Direkt nach Header
       const addressFieldLeft = leftMargin;
       const addressFieldWidth = 85;
       const addressFieldHeight = 40;
       const infoBlockLeft = 125;
       const infoBlockWidth = 75;
-      const contentTop = 169;
+      const contentTop = 98.46; // Neuer Betreff-Start
       
       // Debug mode: Draw comprehensive DIN 5008 guides (ALWAYS ENABLED for testing)
       if (true) { // Force debug mode ON
@@ -221,14 +221,13 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         // Address field with detailed measurements
         pdf.setDrawColor(255, 0, 0);
         pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, addressFieldHeight);
-        pdf.text("Adressfeld: 85×40mm @ Position 50mm/25mm", addressFieldLeft, addressFieldTop - 3);
+        pdf.text("Adressfeld: 85×40mm @ Position 46mm/25mm", addressFieldLeft, addressFieldTop - 3);
         
-        // Address field inner measurements
+        // Address field - kein interner Abstand mehr
         pdf.setDrawColor(255, 100, 100);
         pdf.setLineWidth(0.1);
-        pdf.rect(addressFieldLeft + 5, addressFieldTop + 5, addressFieldWidth - 10, addressFieldHeight - 10);
         pdf.setFontSize(6);
-        pdf.text("Innenbereich: 5mm Abstand", addressFieldLeft + 6, addressFieldTop + 8);
+        pdf.text("Kein interner Abstand", addressFieldLeft + 2, addressFieldTop + 6);
         
         // Info block
         pdf.setDrawColor(0, 0, 255); // Blue
@@ -236,13 +235,13 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.rect(infoBlockLeft, addressFieldTop, infoBlockWidth, addressFieldHeight);
         pdf.setFontSize(8);
         pdf.setTextColor(0, 0, 255);
-        pdf.text("Info-Block: 75×40mm @ 50mm/125mm", infoBlockLeft, addressFieldTop - 3);
+        pdf.text("Info-Block: 75×40mm @ 46mm/125mm", infoBlockLeft, addressFieldTop - 3);
         
-        // Content start line (169mm)
+        // Content start line (98.46mm)
         pdf.setDrawColor(0, 255, 0); // Green
         pdf.line(leftMargin, contentTop, pageWidth - rightMargin, contentTop);
         pdf.setTextColor(0, 255, 0);
-        pdf.text("169mm - Inhaltsbeginn (DIN 5008)", leftMargin, contentTop - 3);
+        pdf.text("98.46mm - Inhaltsbeginn (DIN 5008)", leftMargin, contentTop - 3);
         
         // Left margin guide
         pdf.setDrawColor(255, 165, 0); // Orange
@@ -280,12 +279,12 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         // Address field position arrows
         pdf.setDrawColor(255, 0, 0);
         pdf.line(0, addressFieldTop, addressFieldLeft - 2, addressFieldTop);
-        pdf.text("50mm", 2, addressFieldTop + 2);
+        pdf.text("46mm", 2, addressFieldTop + 2);
         
         // Content position arrows  
         pdf.setDrawColor(0, 255, 0);
         pdf.line(0, contentTop, leftMargin - 2, contentTop);
-        pdf.text("169mm", 2, contentTop + 2);
+        pdf.text("98.46mm", 2, contentTop + 2);
       }
       
       // Reset colors for content
@@ -301,16 +300,16 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       }
       
       // Return address line in address field
-      let addressYPos = addressFieldTop + 8;
+      let addressYPos = addressFieldTop + 3; // Kein interner Abstand
       if (senderInfo?.return_address_line) {
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(senderInfo.return_address_line, addressFieldLeft + 5, addressYPos);
+        pdf.text(senderInfo.return_address_line, addressFieldLeft, addressYPos);
         
         // Underline for return address
         const textWidth = pdf.getTextWidth(senderInfo.return_address_line);
-        pdf.line(addressFieldLeft + 5, addressYPos + 1, addressFieldLeft + 5 + textWidth, addressYPos + 1);
-        addressYPos += 8;
+        pdf.line(addressFieldLeft, addressYPos + 1, addressFieldLeft + textWidth, addressYPos + 1);
+        addressYPos += 6;
       }
       
       // Recipient address
@@ -319,15 +318,15 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.setFont('helvetica', 'normal');
         
         if (letter.recipient_name) {
-          pdf.text(letter.recipient_name, addressFieldLeft + 5, addressYPos);
+          pdf.text(letter.recipient_name, addressFieldLeft, addressYPos);
           addressYPos += 4;
         }
         
         if (letter.recipient_address) {
           const addressLines = letter.recipient_address.split('\n').filter(line => line.trim());
           addressLines.forEach(line => {
-            if (addressYPos < addressFieldTop + addressFieldHeight - 5) {
-              pdf.text(line.trim(), addressFieldLeft + 5, addressYPos);
+            if (addressYPos < addressFieldTop + addressFieldHeight - 2) {
+              pdf.text(line.trim(), addressFieldLeft, addressYPos);
               addressYPos += 4;
             }
           });
