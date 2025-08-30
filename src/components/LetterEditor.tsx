@@ -50,6 +50,16 @@ interface Contact {
   business_country?: string;
 }
 
+interface LetterCollaborator {
+  id: string;
+  user_id: string;
+  permission_type: string;
+  created_at: string;
+  profiles: {
+    display_name: string;
+  };
+}
+
 interface LetterEditorProps {
   letter?: Letter;
   isOpen: boolean;
@@ -89,6 +99,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [showCommentDialog, setShowCommentDialog] = useState(false);
   const [commentPosition, setCommentPosition] = useState({ x: 0, y: 0 });
   const [selectedTextForComment, setSelectedTextForComment] = useState('');
+  const [collaborators, setCollaborators] = useState<LetterCollaborator[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<{id: string, display_name: string}[]>([]);
+  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
+  const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -135,7 +149,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     both: 'Post & E-Mail'
   };
 
-  const canEdit = user?.id === letter?.created_by || !letter || editedLetter.status !== 'sent';
+  // Determine if current user can edit
+  const isCreator = user?.id === letter?.created_by;
+  const isReviewer = collaborators.some(c => c.user_id === user?.id);
+  const isInReviewByOthers = editedLetter.status === 'review' && !isCreator && !isReviewer;
+  const canEdit = !letter || editedLetter.status !== 'sent' && (
+    isCreator && editedLetter.status !== 'review' ||
+    isReviewer && editedLetter.status === 'review'
+  );
 
   useEffect(() => {
     if (letter) {
@@ -159,8 +180,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   useEffect(() => {
     if (isOpen && currentTenant) {
       fetchContacts();
+      fetchAvailableUsers();
       if (letter?.id) {
         fetchComments();
+        fetchCollaborators();
       }
     }
   }, [isOpen, currentTenant, letter?.id]);
@@ -266,6 +289,121 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   };
 
+  const fetchAvailableUsers = async () => {
+    if (!currentTenant) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .neq('user_id', user?.id); // Exclude current user
+
+      if (error) throw error;
+      setAvailableUsers(data?.map(p => ({ id: p.user_id, display_name: p.display_name })) || []);
+    } catch (error) {
+      console.error('Error fetching available users:', error);
+    }
+  };
+
+  const fetchCollaborators = async () => {
+    if (!letter?.id) return;
+
+    try {
+      const { data: collaboratorsData, error } = await supabase
+        .from('letter_collaborators')
+        .select('id, user_id, permission_type, created_at')
+        .eq('letter_id', letter.id);
+
+      if (error) throw error;
+
+      // Fetch profiles separately to avoid relation issues
+      if (collaboratorsData && collaboratorsData.length > 0) {
+        const userIds = collaboratorsData.map(c => c.user_id);
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', userIds);
+
+        if (profilesError) throw profilesError;
+
+        const collaboratorsWithProfiles = collaboratorsData.map(collab => ({
+          ...collab,
+          profiles: profilesData?.find(p => p.user_id === collab.user_id) || { display_name: 'Unbekannt' }
+        }));
+
+        setCollaborators(collaboratorsWithProfiles);
+      } else {
+        setCollaborators([]);
+      }
+    } catch (error) {
+      console.error('Error fetching collaborators:', error);
+    }
+  };
+
+  const handleAssignReviewers = async () => {
+    if (!letter?.id || !user || selectedReviewers.length === 0) return;
+
+    try {
+      // Insert new collaborators
+      const { error } = await supabase
+        .from('letter_collaborators')
+        .insert(
+          selectedReviewers.map(userId => ({
+            letter_id: letter.id,
+            user_id: userId,
+            permission_type: 'edit'
+          }))
+        );
+
+      if (error) throw error;
+
+      // Now change status to review and activate proofreading mode
+      setEditedLetter(prev => ({ ...prev, status: 'review' }));
+      setIsProofreadingMode(true);
+      broadcastContentChange('status', 'review');
+
+      fetchCollaborators();
+      setShowAssignmentDialog(false);
+      setSelectedReviewers([]);
+      
+      toast({
+        title: "Prüfer zugewiesen",
+        description: "Der Brief wurde zur Prüfung freigegeben und die Prüfer wurden benachrichtigt.",
+      });
+    } catch (error) {
+      console.error('Error assigning reviewers:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Prüfer konnten nicht zugewiesen werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReturnLetter = async () => {
+    if (!letter?.id || !user) return;
+
+    try {
+      // Set status back to draft and activate proofreading mode
+      setEditedLetter(prev => ({ ...prev, status: 'draft' }));
+      setIsProofreadingMode(true);
+      
+      broadcastContentChange('status', 'draft');
+      
+      toast({
+        title: "Brief zurückgegeben",
+        description: "Der Brief wurde zur Bearbeitung zurückgegeben.",
+      });
+    } catch (error) {
+      console.error('Error returning letter:', error);
+      toast({
+        title: "Fehler",
+        description: "Der Brief konnte nicht zurückgegeben werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const fetchComments = async () => {
     if (!letter?.id) return;
 
@@ -336,14 +474,28 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       return;
     }
 
+    // Show assignment dialog when transitioning to review
+    if (newStatus === 'review' && isCreator) {
+      setShowAssignmentDialog(true);
+      return;
+    }
+
     setEditedLetter(prev => ({
       ...prev,
       status: newStatus as any,
       ...(newStatus === 'sent' ? { sent_date: new Date().toISOString() } : {})
     }));
 
+    // Korrekturlesen automatisch aktivieren bei "review"
+    if (newStatus === 'review') {
+      setIsProofreadingMode(true);
+    }
     // Korrekturlesen automatisch deaktivieren bei approved/sent
     if (newStatus === 'approved' || newStatus === 'sent') {
+      setIsProofreadingMode(false);
+    }
+    // Korrekturlesen automatisch deaktivieren beim Zurück zu draft
+    if (newStatus === 'draft') {
       setIsProofreadingMode(false);
     }
 
@@ -742,6 +894,19 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   </div>
                 )}
                 
+                {/* Return letter button for reviewers in review status */}
+                {editedLetter.status === 'review' && isReviewer && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleReturnLetter}
+                    className="justify-start text-green-600"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Brief zurückgeben
+                  </Button>
+                )}
+                
                 {/* Zurück-Button für sent Status (immer sichtbar) */}
                 {editedLetter.status === 'sent' && (
                   <Button
@@ -752,6 +917,21 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   >
                     Zurück zu Genehmigt
                   </Button>
+                )}
+                
+                {/* Show assigned reviewers in review status */}
+                {editedLetter.status === 'review' && collaborators.length > 0 && (
+                  <div className="mt-4 p-3 bg-muted rounded-lg">
+                    <p className="text-sm font-medium mb-2">Zugewiesene Prüfer:</p>
+                    <div className="space-y-1">
+                      {collaborators.map((collab) => (
+                        <div key={collab.id} className="text-sm flex items-center gap-2">
+                          <User className="h-3 w-3" />
+                          {collab.profiles.display_name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -922,6 +1102,62 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 disabled={!selectedTextForComment.trim()}
               >
                 Hinzufügen
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reviewer Assignment Dialog */}
+      {showAssignmentDialog && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-background border rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Prüfer zuweisen</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Wählen Sie die Benutzer aus, die den Brief prüfen sollen:
+            </p>
+            <div className="space-y-2 max-h-48 overflow-auto mb-4">
+              {availableUsers.map((user) => (
+                <div key={user.id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={`reviewer-${user.id}`}
+                    checked={selectedReviewers.includes(user.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedReviewers(prev => [...prev, user.id]);
+                      } else {
+                        setSelectedReviewers(prev => prev.filter(id => id !== user.id));
+                      }
+                    }}
+                    className="rounded border-border"
+                  />
+                  <Label htmlFor={`reviewer-${user.id}`} className="text-sm cursor-pointer">
+                    {user.display_name}
+                  </Label>
+                </div>
+              ))}
+              {availableUsers.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Keine anderen Benutzer verfügbar.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAssignmentDialog(false);
+                  setSelectedReviewers([]);
+                }}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={handleAssignReviewers}
+                disabled={selectedReviewers.length === 0}
+              >
+                Zuweisen
               </Button>
             </div>
           </div>
