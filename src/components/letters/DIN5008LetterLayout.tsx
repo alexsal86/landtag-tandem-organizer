@@ -240,11 +240,11 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           </div>
         </div>
 
-        {/* Subject Line - positioned at 98.46mm from top */}
+        {/* Subject Line - positioned below 98.46mm line */}
         {subject && (
           <div style={{ 
             position: 'absolute',
-            top: '98.46mm', // Neuer Betreff-Start
+            top: 'calc(98.46mm + 3mm)', // Betreff beginnt unter der Linie
             left: '25mm',
             right: '20mm',
             marginBottom: '8.46mm',
@@ -260,7 +260,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         <div 
           style={{ 
             position: 'absolute',
-            top: subject ? '114.46mm' : '98.46mm', // Start below subject or at content line
+            top: subject ? 'calc(98.46mm + 11mm)' : 'calc(98.46mm + 3mm)', // Start below subject or below content line
             left: '25mm',
             right: '20mm',
             minHeight: '100mm',

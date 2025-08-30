@@ -411,7 +411,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       }
       
       // Subject line
-      let contentYPos = contentTop;
+      let contentYPos = contentTop + 3; // Betreff beginnt unter der 98.46mm Linie
       if (letter.subject || letter.title) {
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
