@@ -1052,36 +1052,80 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         isOpen={showAssignmentDialog}
         onClose={() => setShowAssignmentDialog(false)}
         letterId={letter?.id || ''}
-        onReviewAssigned={() => {
+        onReviewAssigned={async () => {
           console.log('Assignment completed, proceeding with status change');
           fetchCollaborators();
           setShowAssignmentDialog(false);
-          setEditedLetter(prev => ({ ...prev, status: 'review' as any }));
+          
+          // Update status and save to database atomically
+          const newStatus = 'review';
+          setEditedLetter(prev => ({ ...prev, status: newStatus as any }));
           setIsProofreadingMode(true);
-          broadcastContentChange('status', 'review');
+          broadcastContentChange('status', newStatus);
           
-          // Immediately save the status change to database
-          handleAutoSave();
-          
-          toast({
-            title: "Status geändert",
-            description: "Brief wurde zur Prüfung weitergeleitet.",
-          });
+          setSaving(true);
+          try {
+            const { error } = await supabase
+              .from('letters')
+              .update({
+                status: newStatus,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', letter!.id);
+
+            if (error) throw error;
+            
+            toast({
+              title: "Status geändert",
+              description: "Brief wurde zur Prüfung weitergeleitet.",
+            });
+          } catch (error) {
+            console.error('Error saving status:', error);
+            toast({
+              title: "Fehler",
+              description: "Status konnte nicht gespeichert werden.",
+              variant: "destructive",
+            });
+          } finally {
+            setSaving(false);
+          }
         }}
-        onSkipReview={() => {
+        onSkipReview={async () => {
           console.log('Skipping review, going directly to approved');
           setShowAssignmentDialog(false);
-          setEditedLetter(prev => ({ ...prev, status: 'approved' as any }));
+          
+          // Update status and save to database atomically
+          const newStatus = 'approved';
+          setEditedLetter(prev => ({ ...prev, status: newStatus as any }));
           setIsProofreadingMode(false);
-          broadcastContentChange('status', 'approved');
+          broadcastContentChange('status', newStatus);
           
-          // Immediately save the status change to database
-          handleAutoSave();
-          
-          toast({
-            title: "Status geändert",
-            description: "Brief wurde direkt genehmigt.",
-          });
+          setSaving(true);
+          try {
+            const { error } = await supabase
+              .from('letters')
+              .update({
+                status: newStatus,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', letter!.id);
+
+            if (error) throw error;
+            
+            toast({
+              title: "Status geändert",
+              description: "Brief wurde direkt genehmigt.",
+            });
+          } catch (error) {
+            console.error('Error saving status:', error);
+            toast({
+              title: "Fehler",
+              description: "Status konnte nicht gespeichert werden.",
+              variant: "destructive",
+            });
+          } finally {
+            setSaving(false);
+          }
         }}
       />
     </div>
