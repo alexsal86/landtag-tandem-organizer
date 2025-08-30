@@ -163,8 +163,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         ...letter,
         content_html: letter.content_html || ''
       });
+      // Set proofreading mode based on actual letter status
+      setIsProofreadingMode(letter.status === 'review');
     } else {
-      // New letter
+      // New letter - always start fresh
       setEditedLetter({
         title: '',
         content: '',
@@ -173,6 +175,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         recipient_address: '',
         status: 'draft'
       });
+      // Reset proofreading mode for new letters
+      setIsProofreadingMode(false);
     }
   }, [letter]);
 
