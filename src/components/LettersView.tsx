@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Filter, Calendar, User, Eye, Edit3, Trash2 } from 'lucide-react';
+import { Search, Plus, FileText, Filter, Calendar, User, Eye, Edit3, Trash2, Grid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
+import { useViewPreference } from '@/hooks/useViewPreference';
 import LetterEditor from './LetterEditor';
 import LetterTemplateSelector from './LetterTemplateSelector';
 import LetterPDFExport from './LetterPDFExport';
@@ -35,6 +37,7 @@ const LettersView: React.FC = () => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const { viewType, setViewType } = useViewPreference({ key: 'letters' });
   
   const [letters, setLetters] = useState<Letter[]>([]);
   const [loading, setLoading] = useState(false);
@@ -160,32 +163,54 @@ const LettersView: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Briefe durchsuchen..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex flex-col md:flex-row gap-4 flex-1">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Briefe durchsuchen..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Status filtern..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Status</SelectItem>
+                    <SelectItem value="draft">Entwurf</SelectItem>
+                    <SelectItem value="review">Zur Prüfung</SelectItem>
+                    <SelectItem value="approved">Genehmigt</SelectItem>
+                    <SelectItem value="sent">Versendet</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Status filtern..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle Status</SelectItem>
-                  <SelectItem value="draft">Entwurf</SelectItem>
-                  <SelectItem value="review">Zur Prüfung</SelectItem>
-                  <SelectItem value="approved">Genehmigt</SelectItem>
-                  <SelectItem value="sent">Versendet</SelectItem>
-                </SelectContent>
-              </Select>
+            
+            {/* View Toggle */}
+            <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+              <Button
+                variant={viewType === 'card' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewType('card')}
+                className="h-8 w-8 p-0"
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewType === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewType('list')}
+                className="h-8 w-8 p-0"
+              >
+                <List className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -215,64 +240,123 @@ const LettersView: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredLetters.map((letter) => (
-            <Card key={letter.id} className="group hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-              <CardTitle className="text-lg line-clamp-2">{letter.title}</CardTitle>
-                  <Badge className={`ml-2 ${statusColors[letter.status] || 'bg-gray-100 text-gray-800'}`}>
-                    {statusLabels[letter.status] || letter.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Recipient */}
-                {letter.recipient_name && (
+        viewType === 'card' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredLetters.map((letter) => (
+              <Card key={letter.id} className="group hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                <CardTitle className="text-lg line-clamp-2">{letter.title}</CardTitle>
+                    <Badge className={`ml-2 ${statusColors[letter.status] || 'bg-gray-100 text-gray-800'}`}>
+                      {statusLabels[letter.status] || letter.status}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* Recipient */}
+                  {letter.recipient_name && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      <span className="truncate">{letter.recipient_name}</span>
+                    </div>
+                  )}
+                  
+                  {/* Date */}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <User className="h-4 w-4" />
-                    <span className="truncate">{letter.recipient_name}</span>
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      {new Date(letter.updated_at).toLocaleDateString('de-DE')}
+                    </span>
                   </div>
-                )}
-                
-                {/* Date */}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>
-                    {new Date(letter.updated_at).toLocaleDateString('de-DE')}
-                  </span>
-                </div>
-                
-                {/* Content Preview */}
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {letter.content || 'Kein Inhalt vorhanden'}
-                </p>
-                
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-3 border-t">
-                  <div className="flex items-center gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleEditLetter(letter)}
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
-                    <LetterPDFExport letter={letter} />
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeleteLetter(letter.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  
+                  {/* Content Preview */}
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {letter.content || 'Kein Inhalt vorhanden'}
+                  </p>
+                  
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEditLetter(letter)}
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <LetterPDFExport letter={letter} />
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteLetter(letter.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Titel</TableHead>
+                  <TableHead>Empfänger</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Erstellt</TableHead>
+                  <TableHead className="text-right">Aktionen</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredLetters.map((letter) => (
+                  <TableRow key={letter.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        {letter.title}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {letter.recipient_name || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`${statusColors[letter.status] || 'bg-gray-100 text-gray-800'}`}>
+                        {statusLabels[letter.status] || letter.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(letter.updated_at).toLocaleDateString('de-DE')}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center gap-1 justify-end">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleEditLetter(letter)}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <LetterPDFExport letter={letter} />
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeleteLetter(letter.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )
       )}
 
       {/* Template Selector Dialog */}

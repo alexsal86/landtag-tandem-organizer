@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useViewPreference } from "@/hooks/useViewPreference";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -27,7 +29,9 @@ import {
   Folder,
   Mail,
   Edit3,
-  Send
+  Send,
+  Grid,
+  List
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -72,6 +76,8 @@ export function DocumentsView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const { viewType, setViewType } = useViewPreference({ key: 'documents' });
+  
   const [documents, setDocuments] = useState<Document[]>([]);
   const [letters, setLetters] = useState<Letter[]>([]);
   const [loading, setLoading] = useState(false);
@@ -527,52 +533,74 @@ export function DocumentsView() {
           {/* Filters */}
           <Card>
             <CardContent className="p-4">
-              <div className="flex flex-wrap gap-4 items-center">
-                <div className="flex items-center gap-2 min-w-[200px]">
-                  <Search className="h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={activeTab === 'documents' ? "Dokumente durchsuchen..." : "Briefe durchsuchen..."}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                {activeTab === 'documents' && (
+              <div className="flex flex-wrap gap-4 items-center justify-between">
+                <div className="flex flex-wrap gap-4 items-center flex-1">
+                  <div className="flex items-center gap-2 min-w-[200px]">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={activeTab === 'documents' ? "Dokumente durchsuchen..." : "Briefe durchsuchen..."}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  {activeTab === 'documents' && (
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <Select value={filterCategory} onValueChange={setFilterCategory}>
+                        <SelectTrigger className="w-[160px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Alle Kategorien</SelectItem>
+                          {Object.entries(categoryLabels).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-muted-foreground" />
-                    <Select value={filterCategory} onValueChange={setFilterCategory}>
-                      <SelectTrigger className="w-[160px]">
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="w-[140px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Alle Kategorien</SelectItem>
-                        {Object.entries(categoryLabels).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
-                        ))}
+                        <SelectItem value="all">Alle Status</SelectItem>
+                        {activeTab === 'documents' 
+                          ? Object.entries(statusLabels).map(([value, label]) => (
+                              <SelectItem key={value} value={value}>{label}</SelectItem>
+                            ))
+                          : ['draft', 'review', 'approved', 'sent'].map((status) => (
+                              <SelectItem key={status} value={status}>
+                                {status === 'draft' ? 'Entwurf' : 
+                                 status === 'review' ? 'Zur Prüfung' :
+                                 status === 'approved' ? 'Genehmigt' : 'Versendet'}
+                              </SelectItem>
+                            ))
+                        }
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Alle Status</SelectItem>
-                      {activeTab === 'documents' 
-                        ? Object.entries(statusLabels).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))
-                        : ['draft', 'review', 'approved', 'sent'].map((status) => (
-                            <SelectItem key={status} value={status}>
-                              {status === 'draft' ? 'Entwurf' : 
-                               status === 'review' ? 'Zur Prüfung' :
-                               status === 'approved' ? 'Genehmigt' : 'Versendet'}
-                            </SelectItem>
-                          ))
-                      }
-                    </SelectContent>
-                  </Select>
+                </div>
+                
+                {/* View Toggle */}
+                <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+                  <Button
+                    variant={viewType === 'card' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewType('card')}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Grid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewType === 'list' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewType('list')}
+                    className="h-8 w-8 p-0"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -607,81 +635,150 @@ export function DocumentsView() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredDocuments.map((document) => (
-              <Card key={document.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-primary" />
-                      <CardTitle className="text-lg truncate">{document.title}</CardTitle>
+            viewType === 'card' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredDocuments.map((document) => (
+                <Card key={document.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-lg truncate">{document.title}</CardTitle>
+                      </div>
+                      <Badge className={getStatusColor(document.status)}>
+                        {statusLabels[document.status as keyof typeof statusLabels]}
+                      </Badge>
                     </div>
-                    <Badge className={getStatusColor(document.status)}>
-                      {statusLabels[document.status as keyof typeof statusLabels]}
-                    </Badge>
-                  </div>
-                  {document.description && (
-                    <CardDescription className="line-clamp-2">
-                      {document.description}
-                    </CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Folder className="h-4 w-4" />
-                      <span>{categoryLabels[document.category as keyof typeof categoryLabels]}</span>
+                    {document.description && (
+                      <CardDescription className="line-clamp-2">
+                        {document.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Folder className="h-4 w-4" />
+                        <span>{categoryLabels[document.category as keyof typeof categoryLabels]}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>{format(new Date(document.created_at), "dd.MM.yyyy", { locale: de })}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FileType className="h-4 w-4" />
+                        <span>{document.file_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>Größe: {formatFileSize(document.file_size)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>{format(new Date(document.created_at), "dd.MM.yyyy", { locale: de })}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FileType className="h-4 w-4" />
-                      <span>{document.file_name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span>Größe: {formatFileSize(document.file_size)}</span>
-                    </div>
-                  </div>
-                  
-                  {document.tags && document.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {document.tags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          <Tag className="h-3 w-3 mr-1" />
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+                    
+                    {document.tags && document.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {document.tags.map((tag, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            <Tag className="h-3 w-3 mr-1" />
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
 
-                  <Separator />
-                  
-                  <div className="flex justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(document)}
-                      className="gap-1"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(document)}
-                      className="gap-1 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Löschen
-                    </Button>
-                  </div>
-                </CardContent>
+                    <Separator />
+                    
+                    <div className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownload(document)}
+                        className="gap-1"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(document)}
+                        className="gap-1 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Löschen
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Titel</TableHead>
+                      <TableHead>Kategorie</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Erstellt</TableHead>
+                      <TableHead>Größe</TableHead>
+                      <TableHead className="text-right">Aktionen</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredDocuments.map((document) => (
+                      <TableRow key={document.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <div>{document.title}</div>
+                              {document.description && (
+                                <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                  {document.description}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {categoryLabels[document.category as keyof typeof categoryLabels]}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(document.status)}>
+                            {statusLabels[document.status as keyof typeof statusLabels]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(document.created_at), "dd.MM.yyyy", { locale: de })}
+                        </TableCell>
+                        <TableCell>
+                          {formatFileSize(document.file_size)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center gap-1 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDownload(document)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(document)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </Card>
-              ))}
-            </div>
+            )
           )
         ) : (
           // Letters tab
@@ -705,80 +802,153 @@ export function DocumentsView() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredLetters.map((letter) => (
-                <Card key={letter.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-lg truncate">{letter.title}</CardTitle>
-                      </div>
-                      <Badge className={
-                        letter.status === 'sent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                        letter.status === 'approved' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                        letter.status === 'review' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                        'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                      }>
-                        {letter.status === 'draft' ? 'Entwurf' : 
-                         letter.status === 'review' ? 'Zur Prüfung' :
-                         letter.status === 'approved' ? 'Genehmigt' : 'Versendet'}
-                      </Badge>
-                    </div>
-                    {letter.recipient_name && (
-                      <CardDescription className="line-clamp-2">
-                        An: {letter.recipient_name}
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>{format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}</span>
-                      </div>
-                      {letter.sent_date && (
+            viewType === 'card' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredLetters.map((letter) => (
+                  <Card key={letter.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
-                          <Send className="h-4 w-4" />
-                          <span>Versendet: {format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de })}</span>
+                          <Mail className="h-5 w-5 text-primary" />
+                          <CardTitle className="text-lg truncate">{letter.title}</CardTitle>
                         </div>
+                        <Badge className={
+                          letter.status === 'sent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                          letter.status === 'approved' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                          letter.status === 'review' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                          'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                        }>
+                          {letter.status === 'draft' ? 'Entwurf' : 
+                           letter.status === 'review' ? 'Zur Prüfung' :
+                           letter.status === 'approved' ? 'Genehmigt' : 'Versendet'}
+                        </Badge>
+                      </div>
+                      {letter.recipient_name && (
+                        <CardDescription className="line-clamp-2">
+                          An: {letter.recipient_name}
+                        </CardDescription>
                       )}
-                      {letter.expected_response_date && (
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
-                          <span>Antwort erwartet: {format(new Date(letter.expected_response_date), "dd.MM.yyyy", { locale: de })}</span>
+                          <span>{format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}</span>
                         </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex justify-between items-center pt-2">
-                      <div className="flex gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditLetter(letter)}
-                        >
-                          <Edit3 className="h-4 w-4 mr-1" />
-                          Bearbeiten
-                        </Button>
-                        <LetterPDFExport 
-                          letter={letter} 
-                          disabled={false}
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteLetter(letter.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {letter.sent_date && (
+                          <div className="flex items-center gap-2">
+                            <Send className="h-4 w-4" />
+                            <span>Versendet: {format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de })}</span>
+                          </div>
+                        )}
+                        {letter.expected_response_date && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>Antwort erwartet: {format(new Date(letter.expected_response_date), "dd.MM.yyyy", { locale: de })}</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      
+                      <div className="flex justify-between items-center pt-2">
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditLetter(letter)}
+                          >
+                            <Edit3 className="h-4 w-4 mr-1" />
+                            Bearbeiten
+                          </Button>
+                          <LetterPDFExport 
+                            letter={letter} 
+                            disabled={false}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteLetter(letter.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Titel</TableHead>
+                      <TableHead>Empfänger</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Erstellt</TableHead>
+                      <TableHead>Versendet</TableHead>
+                      <TableHead className="text-right">Aktionen</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLetters.map((letter) => (
+                      <TableRow key={letter.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            {letter.title}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {letter.recipient_name || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={
+                            letter.status === 'sent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            letter.status === 'approved' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                            letter.status === 'review' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                            'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                          }>
+                            {letter.status === 'draft' ? 'Entwurf' : 
+                             letter.status === 'review' ? 'Zur Prüfung' :
+                             letter.status === 'approved' ? 'Genehmigt' : 'Versendet'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}
+                        </TableCell>
+                        <TableCell>
+                          {letter.sent_date ? format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de }) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center gap-1 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditLetter(letter)}
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                            <LetterPDFExport 
+                              letter={letter} 
+                              disabled={false}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteLetter(letter.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            )
           )
         )}
 
@@ -803,7 +973,11 @@ export function DocumentsView() {
         <LetterEditor
           letter={selectedLetter}
           isOpen={showLetterEditor}
-          onClose={handleCloseLetterEditor}
+          onClose={() => {
+            handleCloseLetterEditor();
+            // Refresh letters when editor closes to get latest status
+            fetchLetters();
+          }}
           onSave={handleSaveLetter}
         />
       </div>
