@@ -14,6 +14,11 @@ interface Letter {
   recipient_name?: string;
   recipient_address?: string;
   template_id?: string;
+  subject?: string;
+  reference_number?: string;
+  sender_info_id?: string;
+  information_block_ids?: string[];
+  letter_date?: string;
   status: string;
   sent_date?: string;
   created_at: string;
@@ -38,29 +43,74 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
 }) => {
   const { toast } = useToast();
   const [template, setTemplate] = useState<LetterTemplate | null>(null);
+  const [senderInfo, setSenderInfo] = useState<any>(null);
+  const [informationBlock, setInformationBlock] = useState<any>(null);
+  const [attachments, setAttachments] = useState<any[]>([]);
 
+  // Fetch template and DIN 5008 data when letter changes
   useEffect(() => {
-    if (letter.template_id) {
-      fetchTemplate();
-    }
-  }, [letter.template_id]);
+    const fetchData = async () => {
+      try {
+        // Fetch template
+        if (letter.template_id) {
+          const { data: templateData, error: templateError } = await supabase
+            .from('letter_templates')
+            .select('*')
+            .eq('id', letter.template_id)
+            .single();
 
-  const fetchTemplate = async () => {
-    if (!letter.template_id) return;
+          if (templateError) throw templateError;
+          setTemplate(templateData);
+        } else {
+          setTemplate(null);
+        }
 
-    try {
-      const { data, error } = await supabase
-        .from('letter_templates')
-        .select('*')
-        .eq('id', letter.template_id)
-        .single();
+        // Fetch sender info
+        if (letter.sender_info_id) {
+          const { data: senderData, error: senderError } = await supabase
+            .from('sender_information')
+            .select('*')
+            .eq('id', letter.sender_info_id)
+            .single();
 
-      if (error) throw error;
-      setTemplate(data);
-    } catch (error) {
-      console.error('Error fetching template:', error);
-    }
-  };
+          if (senderError) throw senderError;
+          setSenderInfo(senderData);
+        } else {
+          setSenderInfo(null);
+        }
+
+        // Fetch information block
+        if (letter.information_block_ids && letter.information_block_ids.length > 0) {
+          const { data: blockData, error: blockError } = await supabase
+            .from('information_blocks')
+            .select('*')
+            .eq('id', letter.information_block_ids[0])
+            .single();
+
+          if (blockError) throw blockError;
+          setInformationBlock(blockData);
+        } else {
+          setInformationBlock(null);
+        }
+
+        // Fetch attachments
+        if (letter.id) {
+          const { data: attachmentData, error: attachmentError } = await supabase
+            .from('letter_attachments')
+            .select('*')
+            .eq('letter_id', letter.id)
+            .order('created_at');
+
+          if (attachmentError) throw attachmentError;
+          setAttachments(attachmentData || []);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, [letter.template_id, letter.sender_info_id, letter.information_block_ids, letter.id]);
 
   const convertHtmlToText = (html: string): string => {
     // Create temporary div to parse HTML
@@ -118,8 +168,10 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
 
   const exportToPDF = async () => {
     try {
-      // If we have a template, use HTML-to-canvas approach for better formatting
-      if (template) {
+      // Use enhanced DIN 5008 export if we have DIN fields or prefer simple export
+      if (letter.subject || letter.reference_number || senderInfo || informationBlock) {
+        await exportWithDIN5008Features();
+      } else if (template) {
         await exportWithTemplate();
       } else {
         await exportWithoutTemplate();
@@ -132,6 +184,149 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         variant: "destructive",
       });
     }
+  };
+
+  const exportWithDIN5008Features = async () => {
+    const doc = new jsPDF();
+    
+    // PDF configuration
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const maxWidth = pageWidth - (margin * 2);
+    
+    let currentY = margin;
+    
+    // Helper function to add text with automatic line wrapping
+    const addText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
+      doc.setFontSize(fontSize);
+      doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+      
+      const lines = doc.splitTextToSize(text, maxWidth);
+      const lineHeight = fontSize * 0.4;
+      
+      // Check if we need a new page
+      if (currentY + (lines.length * lineHeight) > pageHeight - margin) {
+        doc.addPage();
+        currentY = margin;
+      }
+      
+      lines.forEach((line: string) => {
+        doc.text(line, margin, currentY);
+        currentY += lineHeight;
+      });
+      
+      currentY += 5; // Add some space after text
+    };
+    
+    // Header with sender info
+    if (senderInfo) {
+      addText(`${senderInfo.name}`, 14, true);
+      if (senderInfo.organization) {
+        addText(senderInfo.organization, 12);
+      }
+      if (senderInfo.address) {
+        addText(senderInfo.address, 10);
+      }
+      currentY += 10;
+    }
+    
+    // Information block
+    if (informationBlock && informationBlock.block_data) {
+      addText(informationBlock.label, 10, true);
+      const blockData = informationBlock.block_data;
+      Object.entries(blockData).forEach(([key, value]: [string, any]) => {
+        if (value && typeof value === 'string') {
+          addText(`${key}: ${value}`, 9);
+        }
+      });
+      currentY += 10;
+    }
+    
+    // Date
+    const letterDate = letter.letter_date 
+      ? new Date(letter.letter_date).toLocaleDateString('de-DE')
+      : new Date(letter.created_at).toLocaleDateString('de-DE');
+    addText(`Datum: ${letterDate}`, 10);
+    currentY += 10;
+    
+    // Reference number
+    if (letter.reference_number) {
+      addText(`Aktenzeichen: ${letter.reference_number}`, 10);
+      currentY += 5;
+    }
+    
+    // Recipient
+    if (letter.recipient_name) {
+      addText('EMPFÄNGER:', 12, true);
+      addText(letter.recipient_name, 12);
+      
+      if (letter.recipient_address) {
+        const addressLines = letter.recipient_address.split('\n');
+        addressLines.forEach(line => {
+          if (line.trim()) {
+            addText(line.trim(), 12);
+          }
+        });
+      }
+      currentY += 15;
+    }
+    
+    // Subject
+    if (letter.subject) {
+      addText(`Betreff: ${letter.subject}`, 14, true);
+      currentY += 10;
+    } else if (letter.title) {
+      addText(`Betreff: ${letter.title}`, 14, true);
+      currentY += 10;
+    }
+    
+    // Content
+    const contentText = letter.content_html 
+      ? convertHtmlToText(letter.content_html)
+      : letter.content;
+    
+    if (contentText) {
+      // Split content into paragraphs
+      const paragraphs = contentText.split('\n\n');
+      
+      paragraphs.forEach((paragraph, index) => {
+        if (paragraph.trim()) {
+          addText(paragraph.trim(), 11);
+          if (index < paragraphs.length - 1) {
+            currentY += 5; // Extra space between paragraphs
+          }
+        }
+      });
+    } else {
+      addText('[Kein Inhalt vorhanden]', 11);
+    }
+    
+    // Attachments
+    if (attachments.length > 0) {
+      currentY += 10;
+      addText('ANLAGEN:', 12, true);
+      attachments.forEach(attachment => {
+        addText(`• ${attachment.file_name}`, 10);
+      });
+    }
+    
+    // Footer
+    currentY = pageHeight - 30;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocaleTimeString('de-DE')}`, margin, currentY);
+    
+    // Generate filename
+    const fileName = `Brief_DIN5008_${(letter.subject || letter.title || 'Ohne_Titel').replace(/[^a-zA-Z0-9]/g, '_')}_${letterDate.replace(/\./g, '-')}.pdf`;
+    
+    // Save the PDF
+    doc.save(fileName);
+    
+    toast({
+      title: "PDF exportiert",
+      description: `Der Brief wurde als PDF gespeichert: ${fileName}`,
+    });
   };
 
   const exportWithTemplate = async () => {
@@ -182,13 +377,13 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       contentDiv.appendChild(recipientDiv);
     }
 
-    // Add letter title
+    // Add letter title/subject
     const titleDiv = document.createElement('div');
     titleDiv.style.marginTop = '30px';
     titleDiv.style.marginBottom = '20px';
     titleDiv.style.fontWeight = 'bold';
     titleDiv.style.fontSize = '18px';
-    titleDiv.textContent = letter.title;
+    titleDiv.textContent = letter.subject || letter.title;
     contentDiv.appendChild(titleDiv);
 
     // Add letter content
@@ -242,7 +437,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
 
       // Generate filename
       const date = new Date(letter.created_at).toLocaleDateString('de-DE');
-      const fileName = `Brief_${letter.title.replace(/[^a-zA-Z0-9]/g, '_')}_${date.replace(/\./g, '-')}.pdf`;
+      const fileName = `Brief_${(letter.subject || letter.title).replace(/[^a-zA-Z0-9]/g, '_')}_${date.replace(/\./g, '-')}.pdf`;
       
       // Save the PDF
       pdf.save(fileName);

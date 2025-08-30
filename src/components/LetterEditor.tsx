@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +16,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import FloatingTextToolbar from './FloatingTextToolbar';
 import ReviewAssignmentDialog from './ReviewAssignmentDialog';
+import LetterAttachmentManager from './letters/LetterAttachmentManager';
+import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
 
 interface Letter {
   id: string;
@@ -26,6 +28,11 @@ interface Letter {
   recipient_address?: string;
   contact_id?: string;
   template_id?: string;
+  subject?: string;
+  reference_number?: string;
+  sender_info_id?: string;
+  information_block_ids?: string[];
+  letter_date?: string;
   status: 'draft' | 'review' | 'approved' | 'sent';
   sent_date?: string;
   sent_method?: 'post' | 'email' | 'both';
@@ -115,6 +122,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [selectedTextForComment, setSelectedTextForComment] = useState('');
   const [collaborators, setCollaborators] = useState<LetterCollaborator[]>([]);
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
+  const [showDINPreview, setShowDINPreview] = useState(false);
+  const [senderInfos, setSenderInfos] = useState<any[]>([]);
+  const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<any[]>([]);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -197,10 +208,13 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     if (isOpen && currentTenant) {
       fetchContacts();
       fetchTemplates();
+      fetchSenderInfos();
+      fetchInformationBlocks();
       if (letter?.id) {
         fetchComments();
         fetchCollaborators();
         fetchCurrentTemplate();
+        fetchAttachments();
       }
     }
   }, [isOpen, currentTenant, letter?.id]);
@@ -339,6 +353,61 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       setCurrentTemplate(data);
     } catch (error) {
       console.error('Error fetching current template:', error);
+    }
+  };
+
+  const fetchSenderInfos = async () => {
+    if (!currentTenant) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('sender_information')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .order('is_default', { ascending: false })
+        .order('name');
+
+      if (error) throw error;
+      setSenderInfos(data || []);
+    } catch (error) {
+      console.error('Error fetching sender infos:', error);
+    }
+  };
+
+  const fetchInformationBlocks = async () => {
+    if (!currentTenant) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('information_blocks')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .order('is_default', { ascending: false })
+        .order('name');
+
+      if (error) throw error;
+      setInformationBlocks(data || []);
+    } catch (error) {
+      console.error('Error fetching information blocks:', error);
+    }
+  };
+
+  const fetchAttachments = async () => {
+    if (!letter?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('letter_attachments')
+        .select('*')
+        .eq('letter_id', letter.id)
+        .order('created_at');
+
+      if (error) throw error;
+      setAttachments(data || []);
+    } catch (error) {
+      console.error('Error fetching attachments:', error);
     }
   };
 
@@ -755,6 +824,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               </Badge>
             )}
             
+            {/* DIN 5008 Preview Toggle */}
+            <Button
+              variant={showDINPreview ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowDINPreview(!showDINPreview)}
+            >
+              <Layout className="h-4 w-4 mr-2" />
+              DIN 5008 Vorschau
+            </Button>
+
             {/* Proofreading Mode Toggle - nur bei draft/review */}
             {editedLetter.status !== 'approved' && editedLetter.status !== 'sent' && (
               <Button
@@ -850,6 +929,118 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   placeholder="Straße, Hausnummer&#10;PLZ Ort&#10;Land"
                   rows={4}
                 />
+              </div>
+
+              <Separator />
+
+              {/* DIN 5008 Fields */}
+              <div>
+                <Label htmlFor="subject">Betreff</Label>
+                <Input
+                  id="subject"
+                  value={editedLetter.subject || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEditedLetter(prev => ({ ...prev, subject: value }));
+                    broadcastContentChange('subject', value);
+                  }}
+                  disabled={!canEdit}
+                  placeholder="Betreff des Briefes"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="reference-number">Aktenzeichen</Label>
+                <Input
+                  id="reference-number"
+                  value={editedLetter.reference_number || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEditedLetter(prev => ({ ...prev, reference_number: value }));
+                    broadcastContentChange('reference_number', value);
+                  }}
+                  disabled={!canEdit}
+                  placeholder="z.B. AZ-2024-001"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="letter-date">Briefdatum</Label>
+                <Input
+                  id="letter-date"
+                  type="date"
+                  value={editedLetter.letter_date ? new Date(editedLetter.letter_date).toISOString().split('T')[0] : ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEditedLetter(prev => ({ ...prev, letter_date: value }));
+                    broadcastContentChange('letter_date', value);
+                  }}
+                  disabled={!canEdit}
+                />
+              </div>
+
+              {/* Sender Information Selection */}
+              <div>
+                <Label htmlFor="sender-info">Absenderinformation</Label>
+                <Select 
+                  value={editedLetter.sender_info_id || 'none'} 
+                  onValueChange={(value) => {
+                    const senderInfoId = value === 'none' ? undefined : value;
+                    setEditedLetter(prev => ({ ...prev, sender_info_id: senderInfoId }));
+                    broadcastContentChange('sender_info_id', senderInfoId || '');
+                  }}
+                  disabled={!canEdit}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Absender auswählen..." />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100]">
+                    <SelectItem value="none">Kein Absender</SelectItem>
+                    {senderInfos.map((info) => (
+                      <SelectItem key={info.id} value={info.id}>
+                        <div className="flex items-center gap-2">
+                          <Building className="h-4 w-4" />
+                          {info.name}
+                          {info.is_default && (
+                            <Badge variant="secondary" className="text-xs">Standard</Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Information Blocks Selection */}
+              <div>
+                <Label htmlFor="info-blocks">Informationsblöcke</Label>
+                <Select 
+                  value={editedLetter.information_block_ids?.[0] || 'none'} 
+                  onValueChange={(value) => {
+                    const blockIds = value === 'none' ? [] : [value];
+                    setEditedLetter(prev => ({ ...prev, information_block_ids: blockIds }));
+                    broadcastContentChange('information_block_ids', JSON.stringify(blockIds));
+                  }}
+                  disabled={!canEdit}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Informationsblock auswählen..." />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100]">
+                    <SelectItem value="none">Kein Informationsblock</SelectItem>
+                    {informationBlocks.map((block) => (
+                      <SelectItem key={block.id} value={block.id}>
+                        <div className="flex items-center gap-2">
+                          <Info className="h-4 w-4" />
+                          {block.label}
+                          {block.is_default && (
+                            <Badge variant="secondary" className="text-xs">Standard</Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Separator />
@@ -1083,43 +1274,71 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
         {/* Main Editor */}
         <div className="flex-1 p-6 overflow-auto">
-          <div className="max-w-full space-y-6">
-            {/* Title */}
-            <div>
-              <Input
-                value={editedLetter.title || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setEditedLetter(prev => ({ ...prev, title: value }));
-                  broadcastContentChange('title', value);
-                }}
-                disabled={!canEdit}
-                className="text-2xl font-bold border-none px-0 focus-visible:ring-0 bg-transparent"
-                placeholder="Briefbetreff"
+          {showDINPreview ? (
+            /* DIN 5008 Preview */
+            <div className="max-w-4xl mx-auto">
+              <DIN5008LetterLayout
+                template={currentTemplate}
+                senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+                informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
+                recipientAddress={editedLetter.recipient_address}
+                subject={editedLetter.subject}
+                letterDate={editedLetter.letter_date}
+                referenceNumber={editedLetter.reference_number}
+                content={editedLetter.content_html || editedLetter.content || ''}
+                attachments={attachments}
               />
             </div>
+          ) : (
+            /* Regular Editor */
+            <div className="max-w-full space-y-6">
+              {/* Title */}
+              <div>
+                <Input
+                  value={editedLetter.title || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEditedLetter(prev => ({ ...prev, title: value }));
+                    broadcastContentChange('title', value);
+                  }}
+                  disabled={!canEdit}
+                  className="text-2xl font-bold border-none px-0 focus-visible:ring-0 bg-transparent"
+                  placeholder="Briefbetreff"
+                />
+              </div>
 
-            {/* Rich Text Editor */}
-            <div className="relative">
-              <RichTextEditor
-                ref={richTextEditorRef}
-                value={editedLetter.content || ''}
-                onChange={(content, contentHtml) => {
-                  setEditedLetter(prev => ({ 
-                    ...prev, 
-                    content, 
-                    content_html: contentHtml || '' 
-                  }));
-                  broadcastContentChange('content', content, contentHtml);
-                }}
-                onSelectionChange={handleSelectionChange}
-                placeholder="Hier können Sie Ihren Brief verfassen..."
-                disabled={!canEdit}
-              />
-              
-              {/* Floating toolbar temporarily disabled for type compatibility */}
+              {/* Rich Text Editor */}
+              <div className="relative">
+                <RichTextEditor
+                  ref={richTextEditorRef}
+                  value={editedLetter.content || ''}
+                  onChange={(content, contentHtml) => {
+                    setEditedLetter(prev => ({ 
+                      ...prev, 
+                      content, 
+                      content_html: contentHtml || '' 
+                    }));
+                    broadcastContentChange('content', content, contentHtml);
+                  }}
+                  onSelectionChange={handleSelectionChange}
+                  placeholder="Hier können Sie Ihren Brief verfassen..."
+                  disabled={!canEdit}
+                />
+                
+                {/* Floating toolbar temporarily disabled for type compatibility */}
+              </div>
+
+              {/* Attachment Manager */}
+              {letter?.id && (
+                <LetterAttachmentManager
+                  letterId={letter.id}
+                  attachments={attachments}
+                  onAttachmentUpdate={fetchAttachments}
+                  readonly={!canEdit}
+                />
+              )}
             </div>
-          </div>
+          )}
         </div>
       </div>
 

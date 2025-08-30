@@ -2282,14 +2282,17 @@ export type Database = {
           expected_response_date: string | null
           id: string
           information_block_id: string | null
+          information_block_ids: string[] | null
           letter_date: string | null
           recipient_address: string | null
           recipient_name: string | null
           reference_number: string | null
+          sender_info_id: string | null
           sender_information_id: string | null
           sent_date: string | null
           sent_method: string | null
           status: string
+          subject: string | null
           subject_line: string | null
           template_id: string | null
           tenant_id: string
@@ -2306,14 +2309,17 @@ export type Database = {
           expected_response_date?: string | null
           id?: string
           information_block_id?: string | null
+          information_block_ids?: string[] | null
           letter_date?: string | null
           recipient_address?: string | null
           recipient_name?: string | null
           reference_number?: string | null
+          sender_info_id?: string | null
           sender_information_id?: string | null
           sent_date?: string | null
           sent_method?: string | null
           status?: string
+          subject?: string | null
           subject_line?: string | null
           template_id?: string | null
           tenant_id: string
@@ -2330,14 +2336,17 @@ export type Database = {
           expected_response_date?: string | null
           id?: string
           information_block_id?: string | null
+          information_block_ids?: string[] | null
           letter_date?: string | null
           recipient_address?: string | null
           recipient_name?: string | null
           reference_number?: string | null
+          sender_info_id?: string | null
           sender_information_id?: string | null
           sent_date?: string | null
           sent_method?: string | null
           status?: string
+          subject?: string | null
           subject_line?: string | null
           template_id?: string | null
           tenant_id?: string
