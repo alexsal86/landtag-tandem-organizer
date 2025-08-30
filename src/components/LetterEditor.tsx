@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -892,15 +893,33 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Recipient Info Sidebar */}
-        <div className="w-80 border-r bg-card/30 p-4 overflow-auto">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Empfänger
-              </CardTitle>
-            </CardHeader>
+        {/* Briefdetails Sidebar */}
+        <Collapsible 
+          open={!sidebarCollapsed} 
+          onOpenChange={(open) => setSidebarCollapsed(!open)}
+          className="border-r bg-card/30"
+        >
+          <div className={`${sidebarCollapsed ? 'w-12' : 'w-80'} transition-all duration-200 flex flex-col`}>
+            {/* Toggle Button */}
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="self-end m-2 p-2"
+                title={sidebarCollapsed ? "Briefdetails öffnen" : "Briefdetails schließen"}
+              >
+                {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent className="flex-1 overflow-auto p-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Briefdetails
+                  </CardTitle>
+                </CardHeader>
             <CardContent className="space-y-4">
               {/* Enhanced Contact Selection */}
               <div>
@@ -1394,15 +1413,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 {/* Floating toolbar temporarily disabled for type compatibility */}
               </div>
 
-              {/* Attachment Manager */}
-              {letter?.id && (
-                <LetterAttachmentManager
-                  letterId={letter.id}
-                  attachments={attachments}
-                  onAttachmentUpdate={fetchAttachments}
-                  readonly={!canEdit}
-                />
-              )}
             </div>
           )}
         </div>
