@@ -900,20 +900,21 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           onOpenChange={(open) => setSidebarCollapsed(!open)}
           className="border-r bg-card/30"
         >
-          <div className={`${sidebarCollapsed ? 'w-12' : 'w-80'} transition-all duration-200 flex flex-col`}>
+          <div className={`${sidebarCollapsed ? 'w-12' : 'w-80'} transition-all duration-200 flex flex-col h-full`}>
             {/* Toggle Button */}
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="self-end m-2 p-2"
+                className="self-end m-2 p-2 flex-shrink-0"
                 title={sidebarCollapsed ? "Briefdetails öffnen" : "Briefdetails schließen"}
               >
                 {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
               </Button>
             </CollapsibleTrigger>
             
-            <CollapsibleContent className="flex-1 overflow-auto p-4">
+            <CollapsibleContent className="flex-1 min-h-0">
+              <div className="h-full overflow-y-auto p-4 space-y-4">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -1335,6 +1336,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   </CardContent>
                 </Card>
               )}
+              </div>
             </CollapsibleContent>
           </div>
         </Collapsible>
