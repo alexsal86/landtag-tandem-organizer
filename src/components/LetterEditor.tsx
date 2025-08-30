@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -129,6 +129,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [previewZoom, setPreviewZoom] = useState(1.0);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -1314,7 +1315,29 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               </CardContent>
             </Card>
           )}
-        </div>
+
+              {/* Attachment Manager */}
+              {letter?.id && (
+                <Card className="mt-4">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Anlagen
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <LetterAttachmentManager
+                      letterId={letter.id}
+                      attachments={attachments}
+                      onAttachmentUpdate={fetchAttachments}
+                      readonly={!canEdit}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
 
         {/* Main Editor */}
         <div className="flex-1 p-6 overflow-auto">
