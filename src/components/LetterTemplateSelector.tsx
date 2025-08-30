@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Layout } from 'lucide-react';
+import { FileText, Plus, Layout, Settings, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import LetterTemplateManager from '@/components/LetterTemplateManager';
 
 interface LetterTemplate {
   id: string;
@@ -42,6 +43,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showTemplateManager, setShowTemplateManager] = useState(false);
   const [newTemplate, setNewTemplate] = useState({
     name: '',
     letterhead_html: '',
@@ -168,13 +170,29 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Brief-Template auswählen</h3>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Template erstellen
-            </Button>
-          </DialogTrigger>
+        <div className="flex space-x-2">
+          <Dialog open={showTemplateManager} onOpenChange={setShowTemplateManager}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4 mr-2" />
+                Templates verwalten
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Brief-Templates verwalten</DialogTitle>
+              </DialogHeader>
+              <LetterTemplateManager />
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Template erstellen
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Neues Brief-Template erstellen</DialogTitle>
@@ -235,6 +253,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
