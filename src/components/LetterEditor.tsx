@@ -1059,6 +1059,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           setEditedLetter(prev => ({ ...prev, status: 'review' as any }));
           setIsProofreadingMode(true);
           broadcastContentChange('status', 'review');
+          
+          // Immediately save the status change to database
+          handleAutoSave();
+          
           toast({
             title: "Status geändert",
             description: "Brief wurde zur Prüfung weitergeleitet.",
@@ -1070,6 +1074,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           setEditedLetter(prev => ({ ...prev, status: 'approved' as any }));
           setIsProofreadingMode(false);
           broadcastContentChange('status', 'approved');
+          
+          // Immediately save the status change to database
+          handleAutoSave();
+          
           toast({
             title: "Status geändert",
             description: "Brief wurde direkt genehmigt.",
