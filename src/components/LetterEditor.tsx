@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Paperclip, Settings } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import RichTextEditor, { type RichTextEditorRef } from './RichTextEditor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
-import { LetterAttachmentManager } from './letters/LetterAttachmentManager';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,15 +23,9 @@ interface Letter {
   content: string;
   content_html?: string;
   recipient_name?: string;
-  recipient_address?: any;
+  recipient_address?: string;
   contact_id?: string;
   template_id?: string;
-  sender_information_id?: string;
-  information_block_id?: string;
-  letter_date?: string;
-  subject_line?: string;
-  reference_number?: string;
-  attachments_list?: string[];
   status: 'draft' | 'review' | 'approved' | 'sent';
   sent_date?: string;
   sent_method?: 'post' | 'email' | 'both';
@@ -109,10 +101,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
-  const [senderInfos, setSenderInfos] = useState<any[]>([]);
-  const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
   const [currentTemplate, setCurrentTemplate] = useState<LetterTemplate | null>(null);
-  const [showDINPreview, setShowDINPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [activeUsers, setActiveUsers] = useState<string[]>([]);
@@ -208,8 +197,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     if (isOpen && currentTenant) {
       fetchContacts();
       fetchTemplates();
-      fetchSenderInfos();
-      fetchInformationBlocks();
       if (letter?.id) {
         fetchComments();
         fetchCollaborators();
@@ -217,42 +204,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       }
     }
   }, [isOpen, currentTenant, letter?.id]);
-
-  const fetchSenderInfos = async () => {
-    if (!currentTenant) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('sender_information')
-        .select('*')
-        .eq('tenant_id', currentTenant.id)
-        .eq('is_active', true)
-        .order('is_default', { ascending: false });
-
-      if (error) throw error;
-      setSenderInfos(data || []);
-    } catch (error) {
-      console.error('Error fetching sender information:', error);
-    }
-  };
-
-  const fetchInformationBlocks = async () => {
-    if (!currentTenant) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('information_blocks')
-        .select('*')
-        .eq('tenant_id', currentTenant.id)
-        .eq('is_active', true)
-        .order('is_default', { ascending: false });
-
-      if (error) throw error;
-      setInformationBlocks(data || []);
-    } catch (error) {
-      console.error('Error fetching information blocks:', error);
-    }
-  };
 
   // Auto-save functionality with improved performance
   useEffect(() => {
@@ -936,121 +887,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 </Select>
               </div>
 
-               <Separator />
+              <Separator />
 
-               {/* Sender Information */}
-               <div>
-                 <Label htmlFor="sender-select">Absenderinformation</Label>
-                 <Select 
-                   value={editedLetter.sender_information_id || ''} 
-                   onValueChange={(value) => {
-                     setEditedLetter(prev => ({ ...prev, sender_information_id: value }));
-                     broadcastContentChange('sender_information_id', value);
-                   }}
-                   disabled={!canEdit}
-                 >
-                   <SelectTrigger>
-                     <SelectValue placeholder="Absender auswählen..." />
-                   </SelectTrigger>
-                   <SelectContent className="z-[100]">
-                     {senderInfos.map((sender) => (
-                       <SelectItem key={sender.id} value={sender.id}>
-                         <div className="flex items-center justify-between w-full">
-                           <span>{sender.name} - {sender.organization}</span>
-                           {sender.is_default && (
-                             <Badge variant="secondary" className="ml-2 text-xs">Standard</Badge>
-                           )}
-                         </div>
-                       </SelectItem>
-                     ))}
-                   </SelectContent>
-                 </Select>
-               </div>
-
-               {/* Information Block */}
-               <div>
-                 <Label htmlFor="info-block-select">Informationsblock</Label>
-                 <Select 
-                   value={editedLetter.information_block_id || ''} 
-                   onValueChange={(value) => {
-                     setEditedLetter(prev => ({ ...prev, information_block_id: value }));
-                     broadcastContentChange('information_block_id', value);
-                   }}
-                   disabled={!canEdit}
-                 >
-                   <SelectTrigger>
-                     <SelectValue placeholder="Informationsblock auswählen..." />
-                   </SelectTrigger>
-                   <SelectContent className="z-[100]">
-                     {informationBlocks.map((block) => (
-                       <SelectItem key={block.id} value={block.id}>
-                         <div className="flex items-center justify-between w-full">
-                           <span>{block.label}</span>
-                           {block.is_default && (
-                             <Badge variant="secondary" className="ml-2 text-xs">Standard</Badge>
-                           )}
-                         </div>
-                       </SelectItem>
-                     ))}
-                   </SelectContent>
-                 </Select>
-               </div>
-
-               {/* Subject and Reference */}
-               <div>
-                 <Label htmlFor="subject-line">Betreff</Label>
-                 <Input
-                   id="subject-line"
-                   value={editedLetter.subject_line || ''}
-                   onChange={(e) => {
-                     const value = e.target.value;
-                     setEditedLetter(prev => ({ ...prev, subject_line: value }));
-                     broadcastContentChange('subject_line', value);
-                   }}
-                   disabled={!canEdit}
-                   placeholder="Betreff eingeben..."
-                 />
-               </div>
-
-               <div>
-                 <Label htmlFor="reference-number">Aktenzeichen</Label>
-                 <Input
-                   id="reference-number"
-                   value={editedLetter.reference_number || ''}
-                   onChange={(e) => {
-                     const value = e.target.value;
-                     setEditedLetter(prev => ({ ...prev, reference_number: value }));
-                     broadcastContentChange('reference_number', value);
-                   }}
-                   disabled={!canEdit}
-                   placeholder="Aktenzeichen eingeben..."
-                 />
-               </div>
-
-               {/* DIN Preview Toggle */}
-               <div className="flex items-center space-x-2">
-                 <Switch
-                   id="din-preview"
-                   checked={showDINPreview}
-                   onCheckedChange={setShowDINPreview}
-                 />
-                 <Label htmlFor="din-preview" className="text-sm font-medium">
-                   DIN 5008 Vorschau
-                 </Label>
-               </div>
-
-               <Separator />
-
-               {/* Status */}
-               <div>
-                 <Label htmlFor="status">Status</Label>
-                 <div className="flex items-center gap-2 mb-2">
-                   {React.createElement(statusIcons[editedLetter.status || 'draft'], { 
-                     className: "h-4 w-4 text-primary" 
-                   })}
-                   <Badge variant="secondary">
-                     {statusLabels[editedLetter.status || 'draft']}
-                   </Badge>
+              {/* Status */}
+              <div>
+                <Label htmlFor="status">Status</Label>
+                <div className="flex items-center gap-2 mb-2">
+                  {React.createElement(statusIcons[editedLetter.status || 'draft'], { 
+                    className: "h-4 w-4 text-primary" 
+                  })}
+                  <Badge variant="secondary">
+                    {statusLabels[editedLetter.status || 'draft']}
+                  </Badge>
                 </div>
                 
                 {/* Status Transition Buttons */}
@@ -1230,75 +1078,47 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 )}
               </CardContent>
             </Card>
-           )}
-
-          {/* Attachments Section */}
-          <LetterAttachmentManager
-            letterId={letter?.id}
-            attachments={editedLetter.attachments_list}
-            onAttachmentsChange={(attachments) => {
-              setEditedLetter(prev => ({ ...prev, attachments_list: attachments }));
-            }}
-            disabled={!canEdit}
-          />
+          )}
         </div>
 
         {/* Main Editor */}
         <div className="flex-1 p-6 overflow-auto">
           <div className="max-w-full space-y-6">
-            {showDINPreview ? (
-              /* DIN 5008 Preview */
-              <div className="bg-white border rounded-lg shadow-lg p-4">
-                <DIN5008LetterLayout
-                  template={currentTemplate}
-                  senderInfo={senderInfos.find(s => s.id === editedLetter.sender_information_id)}
-                  informationBlock={informationBlocks.find(b => b.id === editedLetter.information_block_id)}
-                  recipientAddress={editedLetter.recipient_address}
-                  content={editedLetter.content || ''}
-                  subject={editedLetter.subject_line}
-                  letterDate={editedLetter.letter_date || new Date().toISOString()}
-                  referenceNumber={editedLetter.reference_number}
-                  attachments={editedLetter.attachments_list}
-                  className="transform scale-75 origin-top"
-                />
-              </div>
-            ) : (
-              <>
-                {/* Title */}
-                <div>
-                  <Input
-                    value={editedLetter.title || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setEditedLetter(prev => ({ ...prev, title: value }));
-                      broadcastContentChange('title', value);
-                    }}
-                    disabled={!canEdit}
-                    className="text-2xl font-bold border-none px-0 focus-visible:ring-0 bg-transparent"
-                    placeholder="Briefbetreff"
-                  />
-                </div>
+            {/* Title */}
+            <div>
+              <Input
+                value={editedLetter.title || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setEditedLetter(prev => ({ ...prev, title: value }));
+                  broadcastContentChange('title', value);
+                }}
+                disabled={!canEdit}
+                className="text-2xl font-bold border-none px-0 focus-visible:ring-0 bg-transparent"
+                placeholder="Briefbetreff"
+              />
+            </div>
 
-                {/* Rich Text Editor */}
-                <div className="relative">
-                  <RichTextEditor
-                    ref={richTextEditorRef}
-                    value={editedLetter.content || ''}
-                    onChange={(content, contentHtml) => {
-                      setEditedLetter(prev => ({ 
-                        ...prev, 
-                        content, 
-                        content_html: contentHtml || '' 
-                      }));
-                      broadcastContentChange('content', content, contentHtml);
-                    }}
-                    onSelectionChange={handleSelectionChange}
-                    placeholder="Hier können Sie Ihren Brief verfassen..."
-                    disabled={!canEdit}
-                  />
-                </div>
-              </>
-            )}
+            {/* Rich Text Editor */}
+            <div className="relative">
+              <RichTextEditor
+                ref={richTextEditorRef}
+                value={editedLetter.content || ''}
+                onChange={(content, contentHtml) => {
+                  setEditedLetter(prev => ({ 
+                    ...prev, 
+                    content, 
+                    content_html: contentHtml || '' 
+                  }));
+                  broadcastContentChange('content', content, contentHtml);
+                }}
+                onSelectionChange={handleSelectionChange}
+                placeholder="Hier können Sie Ihren Brief verfassen..."
+                disabled={!canEdit}
+              />
+              
+              {/* Floating toolbar temporarily disabled for type compatibility */}
+            </div>
           </div>
         </div>
       </div>
