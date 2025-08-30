@@ -177,10 +177,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         paddingBottom: '16.9mm' // Bottom margin
       }}>
         
-        {/* Main Address and Info Block Container - positioned at 50mm from top */}
+        {/* Main Address and Info Block Container - positioned at 46mm from top */}
         <div className="flex" style={{ 
           position: 'absolute',
-          top: '50mm', // DIN 5008 standard position
+          top: '46mm', // Direkt nach Header
           left: '25mm',
           right: '20mm',
           marginBottom: '8.46mm'
@@ -191,7 +191,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             width: '85mm', // DIN 5008 standard
             height: '40mm', // DIN 5008 standard
             border: debugMode ? '1px solid #e0e0e0' : 'none',
-            padding: '5mm 5mm 5mm 5mm', // Internal padding
+            padding: '0', // Kein interner Abstand
             marginRight: '10mm',
             backgroundColor: debugMode ? 'rgba(255,0,0,0.05)' : 'transparent'
           }}>
@@ -240,11 +240,11 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           </div>
         </div>
 
-        {/* Subject Line - positioned at 169mm from top */}
+        {/* Subject Line - positioned at 98.46mm from top */}
         {subject && (
           <div style={{ 
             position: 'absolute',
-            top: '169mm', // DIN 5008 content start
+            top: '98.46mm', // Neuer Betreff-Start
             left: '25mm',
             right: '20mm',
             marginBottom: '8.46mm',
@@ -260,7 +260,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         <div 
           style={{ 
             position: 'absolute',
-            top: subject ? '185mm' : '169mm', // Start below subject or at content line
+            top: subject ? '114.46mm' : '98.46mm', // Start below subject or at content line
             left: '25mm',
             right: '20mm',
             minHeight: '100mm',
