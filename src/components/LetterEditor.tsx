@@ -18,6 +18,7 @@ import FloatingTextToolbar from './FloatingTextToolbar';
 import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
+import { ContactSelector } from './ContactSelector';
 
 interface Letter {
   id: string;
@@ -126,6 +127,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [senderInfos, setSenderInfos] = useState<any[]>([]);
   const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [previewZoom, setPreviewZoom] = useState(0.6);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -900,21 +902,24 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Contact Selection */}
+              {/* Enhanced Contact Selection */}
               <div>
-                <Label htmlFor="contact-select">Aus Kontakten wählen</Label>
-                <Select onValueChange={handleContactSelect} disabled={!canEdit}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Kontakt auswählen..." />
-                  </SelectTrigger>
-                  <SelectContent className="z-[100]">
-                    {contacts.map((contact) => (
-                      <SelectItem key={contact.id} value={contact.id}>
-                        {contact.name} {contact.organization ? `(${contact.organization})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Aus Kontakten wählen</Label>
+                <ContactSelector
+                  onSelect={(contact) => {
+                    setEditedLetter(prev => ({
+                      ...prev,
+                      contact_id: contact.id,
+                      recipient_name: contact.name,
+                      recipient_address: (contact as any).formatted_address || contact.address || ''
+                    }));
+                    broadcastContentChange('contact_id', contact.id);
+                    broadcastContentChange('recipient_name', contact.name);
+                    broadcastContentChange('recipient_address', (contact as any).formatted_address || contact.address || '');
+                  }}
+                  selectedContactId={editedLetter.contact_id}
+                  placeholder="Kontakt aus Adressbuch wählen..."
+                />
               </div>
 
               <Separator />
@@ -1295,19 +1300,60 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         {/* Main Editor */}
         <div className="flex-1 p-6 overflow-auto">
           {showDINPreview ? (
-            /* DIN 5008 Preview */
-            <div className="max-w-4xl mx-auto">
-              <DIN5008LetterLayout
-                template={currentTemplate}
-                senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
-                informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
-                recipientAddress={editedLetter.recipient_address}
-                subject={editedLetter.subject}
-                letterDate={editedLetter.letter_date}
-                referenceNumber={editedLetter.reference_number}
-                content={editedLetter.content_html || editedLetter.content || ''}
-                attachments={attachments}
-              />
+            /* Enhanced DIN 5008 Preview with Zoom Controls */
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">DIN 5008 Vorschau</h3>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPreviewZoom(Math.max(0.3, previewZoom - 0.1))}
+                  >
+                    -
+                  </Button>
+                  <span className="text-sm px-2 min-w-[60px] text-center">
+                    {Math.round(previewZoom * 100)}%
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPreviewZoom(Math.min(1.2, previewZoom + 0.1))}
+                  >
+                    +
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPreviewZoom(0.6)}
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="border rounded-lg p-4 bg-white overflow-auto">
+                <div style={{ 
+                  transform: `scale(${previewZoom})`, 
+                  transformOrigin: 'top left',
+                  width: `${100 / previewZoom}%`
+                }}>
+                  <DIN5008LetterLayout
+                    template={currentTemplate}
+                    senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+                    informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
+                    recipientAddress={editedLetter.recipient_address ? {
+                      name: editedLetter.recipient_name,
+                      address: editedLetter.recipient_address
+                    } : null}
+                    subject={editedLetter.subject}
+                    letterDate={editedLetter.letter_date}
+                    referenceNumber={editedLetter.reference_number}
+                    content={editedLetter.content_html || editedLetter.content || ''}
+                    attachments={attachments.map(att => att.file_name)}
+                  />
+                </div>
+              </div>
             </div>
           ) : (
             /* Regular Editor */

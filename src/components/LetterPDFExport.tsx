@@ -187,146 +187,136 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   };
 
   const exportWithDIN5008Features = async () => {
-    const doc = new jsPDF();
-    
-    // PDF configuration
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const maxWidth = pageWidth - (margin * 2);
-    
-    let currentY = margin;
-    
-    // Helper function to add text with automatic line wrapping
-    const addText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
-      doc.setFontSize(fontSize);
-      doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+    // Create a temporary container for DIN 5008 letter rendering
+    const container = document.createElement('div');
+    container.style.width = '794px'; // A4 width in pixels at 96 DPI
+    container.style.background = 'white';
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.fontFamily = 'Arial, sans-serif';
+
+    try {
+      // Import DIN5008LetterLayout dynamically
+      const { DIN5008LetterLayout } = await import('./letters/DIN5008LetterLayout');
       
-      const lines = doc.splitTextToSize(text, maxWidth);
-      const lineHeight = fontSize * 0.4;
+      // Create React element and render it
+      const { createRoot } = await import('react-dom/client');
+      const React = await import('react');
       
-      // Check if we need a new page
-      if (currentY + (lines.length * lineHeight) > pageHeight - margin) {
-        doc.addPage();
-        currentY = margin;
-      }
+      const root = createRoot(container);
       
-      lines.forEach((line: string) => {
-        doc.text(line, margin, currentY);
-        currentY += lineHeight;
-      });
-      
-      currentY += 5; // Add some space after text
-    };
-    
-    // Header with sender info
-    if (senderInfo) {
-      addText(`${senderInfo.name}`, 14, true);
-      if (senderInfo.organization) {
-        addText(senderInfo.organization, 12);
-      }
-      if (senderInfo.address) {
-        addText(senderInfo.address, 10);
-      }
-      currentY += 10;
-    }
-    
-    // Information block
-    if (informationBlock && informationBlock.block_data) {
-      addText(informationBlock.label, 10, true);
-      const blockData = informationBlock.block_data;
-      Object.entries(blockData).forEach(([key, value]: [string, any]) => {
-        if (value && typeof value === 'string') {
-          addText(`${key}: ${value}`, 9);
-        }
-      });
-      currentY += 10;
-    }
-    
-    // Date
-    const letterDate = letter.letter_date 
-      ? new Date(letter.letter_date).toLocaleDateString('de-DE')
-      : new Date(letter.created_at).toLocaleDateString('de-DE');
-    addText(`Datum: ${letterDate}`, 10);
-    currentY += 10;
-    
-    // Reference number
-    if (letter.reference_number) {
-      addText(`Aktenzeichen: ${letter.reference_number}`, 10);
-      currentY += 5;
-    }
-    
-    // Recipient
-    if (letter.recipient_name) {
-      addText('EMPFÄNGER:', 12, true);
-      addText(letter.recipient_name, 12);
-      
-      if (letter.recipient_address) {
-        const addressLines = letter.recipient_address.split('\n');
-        addressLines.forEach(line => {
-          if (line.trim()) {
-            addText(line.trim(), 12);
+      // Format recipient address
+      const recipientAddress = letter.recipient_address 
+        ? { 
+            name: letter.recipient_name, 
+            address: letter.recipient_address 
           }
+        : null;
+
+      // Format attachments list
+      const attachmentNames = attachments.map(att => att.file_name);
+
+      await new Promise<void>((resolve) => {
+        root.render(
+          React.createElement(DIN5008LetterLayout, {
+            template,
+            senderInfo,
+            informationBlock,
+            recipientAddress,
+            content: letter.content_html || letter.content,
+            subject: letter.subject || letter.title,
+            letterDate: letter.letter_date,
+            referenceNumber: letter.reference_number,
+            attachments: attachmentNames,
+            className: 'pdf-export'
+          })
+        );
+        
+        // Allow time for rendering
+        setTimeout(resolve, 100);
+      });
+
+      document.body.appendChild(container);
+
+      // Convert to canvas with high quality
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: 794,
+        height: 1123 // A4 height in pixels at 96 DPI
+      });
+
+      // Create PDF with precise DIN 5008 dimensions
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Add image to PDF with exact A4 dimensions
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+      // Generate filename
+      const letterDate = letter.letter_date 
+        ? new Date(letter.letter_date).toLocaleDateString('de-DE')
+        : new Date(letter.created_at).toLocaleDateString('de-DE');
+      const fileName = `Brief_DIN5008_${(letter.subject || letter.title || 'Ohne_Titel').replace(/[^a-zA-Z0-9]/g, '_')}_${letterDate.replace(/\./g, '-')}.pdf`;
+      
+      // Save the PDF
+      pdf.save(fileName);
+      
+      toast({
+        title: "PDF exportiert",
+        description: `Der Brief wurde als DIN 5008 PDF gespeichert: ${fileName}`,
+      });
+
+    } catch (error) {
+      console.error('Error in DIN 5008 PDF export:', error);
+      
+      // Fallback to simple PDF export
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      const maxWidth = pageWidth - (margin * 2);
+      let currentY = margin;
+      
+      const addText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
+        doc.setFontSize(fontSize);
+        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+        const lines = doc.splitTextToSize(text, maxWidth);
+        lines.forEach((line: string) => {
+          doc.text(line, margin, currentY);
+          currentY += fontSize * 0.4;
         });
-      }
-      currentY += 15;
-    }
-    
-    // Subject
-    if (letter.subject) {
-      addText(`Betreff: ${letter.subject}`, 14, true);
-      currentY += 10;
-    } else if (letter.title) {
-      addText(`Betreff: ${letter.title}`, 14, true);
-      currentY += 10;
-    }
-    
-    // Content
-    const contentText = letter.content_html 
-      ? convertHtmlToText(letter.content_html)
-      : letter.content;
-    
-    if (contentText) {
-      // Split content into paragraphs
-      const paragraphs = contentText.split('\n\n');
+        currentY += 5;
+      };
       
-      paragraphs.forEach((paragraph, index) => {
-        if (paragraph.trim()) {
-          addText(paragraph.trim(), 11);
-          if (index < paragraphs.length - 1) {
-            currentY += 5; // Extra space between paragraphs
-          }
-        }
-      });
-    } else {
-      addText('[Kein Inhalt vorhanden]', 11);
-    }
-    
-    // Attachments
-    if (attachments.length > 0) {
+      addText(`Brief: ${letter.subject || letter.title}`, 16, true);
+      if (letter.recipient_name) addText(`An: ${letter.recipient_name}`, 12);
+      if (letter.letter_date) addText(`Datum: ${new Date(letter.letter_date).toLocaleDateString('de-DE')}`, 10);
+      if (letter.reference_number) addText(`Ref.: ${letter.reference_number}`, 10);
       currentY += 10;
-      addText('ANLAGEN:', 12, true);
-      attachments.forEach(attachment => {
-        addText(`• ${attachment.file_name}`, 10);
+      
+      const content = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
+      addText(content, 11);
+      
+      const fileName = `Brief_${(letter.subject || letter.title || 'Ohne_Titel').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      doc.save(fileName);
+      
+      toast({
+        title: "PDF exportiert (Fallback)",
+        description: "Der Brief wurde als einfaches PDF gespeichert.",
       });
+    } finally {
+      // Clean up
+      if (container.parentNode) {
+        document.body.removeChild(container);
+      }
     }
-    
-    // Footer
-    currentY = pageHeight - 30;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocaleTimeString('de-DE')}`, margin, currentY);
-    
-    // Generate filename
-    const fileName = `Brief_DIN5008_${(letter.subject || letter.title || 'Ohne_Titel').replace(/[^a-zA-Z0-9]/g, '_')}_${letterDate.replace(/\./g, '-')}.pdf`;
-    
-    // Save the PDF
-    doc.save(fileName);
-    
-    toast({
-      title: "PDF exportiert",
-      description: `Der Brief wurde als PDF gespeichert: ${fileName}`,
-    });
   };
 
   const exportWithTemplate = async () => {
