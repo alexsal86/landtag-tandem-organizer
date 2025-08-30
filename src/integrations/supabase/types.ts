@@ -1954,6 +1954,48 @@ export type Database = {
           },
         ]
       }
+      information_blocks: {
+        Row: {
+          block_data: Json
+          block_type: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          label: string
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          block_data?: Json
+          block_type?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          label: string
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          block_data?: Json
+          block_type?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          label?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       knowledge_document_permissions: {
         Row: {
           created_at: string
@@ -2069,6 +2111,36 @@ export type Database = {
           type?: Database["public"]["Enums"]["leave_type"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      letter_attachments: {
+        Row: {
+          created_at: string
+          document_id: string | null
+          file_name: string
+          file_path: string | null
+          file_size: number | null
+          id: string
+          letter_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id?: string | null
+          file_name: string
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          letter_id: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string | null
+          file_name?: string
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          letter_id?: string
         }
         Relationships: []
       }
@@ -2201,6 +2273,7 @@ export type Database = {
       }
       letters: {
         Row: {
+          attachments_list: string[] | null
           contact_id: string | null
           content: string
           content_html: string
@@ -2208,17 +2281,23 @@ export type Database = {
           created_by: string
           expected_response_date: string | null
           id: string
+          information_block_id: string | null
+          letter_date: string | null
           recipient_address: string | null
           recipient_name: string | null
+          reference_number: string | null
+          sender_information_id: string | null
           sent_date: string | null
           sent_method: string | null
           status: string
+          subject_line: string | null
           template_id: string | null
           tenant_id: string
           title: string
           updated_at: string
         }
         Insert: {
+          attachments_list?: string[] | null
           contact_id?: string | null
           content?: string
           content_html?: string
@@ -2226,17 +2305,23 @@ export type Database = {
           created_by: string
           expected_response_date?: string | null
           id?: string
+          information_block_id?: string | null
+          letter_date?: string | null
           recipient_address?: string | null
           recipient_name?: string | null
+          reference_number?: string | null
+          sender_information_id?: string | null
           sent_date?: string | null
           sent_method?: string | null
           status?: string
+          subject_line?: string | null
           template_id?: string | null
           tenant_id: string
           title: string
           updated_at?: string
         }
         Update: {
+          attachments_list?: string[] | null
           contact_id?: string | null
           content?: string
           content_html?: string
@@ -2244,17 +2329,36 @@ export type Database = {
           created_by?: string
           expected_response_date?: string | null
           id?: string
+          information_block_id?: string | null
+          letter_date?: string | null
           recipient_address?: string | null
           recipient_name?: string | null
+          reference_number?: string | null
+          sender_information_id?: string | null
           sent_date?: string | null
           sent_method?: string | null
           status?: string
+          subject_line?: string | null
           template_id?: string | null
           tenant_id?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "letters_information_block_id_fkey"
+            columns: ["information_block_id"]
+            isOneToOne: false
+            referencedRelation: "information_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "letters_sender_information_id_fkey"
+            columns: ["sender_information_id"]
+            isOneToOne: false
+            referencedRelation: "sender_information"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "letters_template_id_fkey"
             columns: ["template_id"]
@@ -3245,6 +3349,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sender_information: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string
+          created_by: string
+          department: string | null
+          email: string | null
+          fax: string | null
+          house_number: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          organization: string
+          phone: string | null
+          postal_code: string | null
+          return_address_line: string | null
+          street: string | null
+          tenant_id: string
+          title: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          created_by: string
+          department?: string | null
+          email?: string | null
+          fax?: string | null
+          house_number?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          organization: string
+          phone?: string | null
+          postal_code?: string | null
+          return_address_line?: string | null
+          street?: string | null
+          tenant_id: string
+          title?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string
+          department?: string | null
+          email?: string | null
+          fax?: string | null
+          house_number?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          organization?: string
+          phone?: string | null
+          postal_code?: string | null
+          return_address_line?: string | null
+          street?: string | null
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
       }
       sick_days: {
         Row: {
