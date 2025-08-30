@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +25,7 @@ interface Letter {
   recipient_name?: string;
   recipient_address?: string;
   contact_id?: string;
+  template_id?: string;
   status: 'draft' | 'review' | 'approved' | 'sent';
   sent_date?: string;
   sent_method?: 'post' | 'email' | 'both';
@@ -33,6 +34,16 @@ interface Letter {
   created_at: string;
   updated_at: string;
   tenant_id: string;
+}
+
+interface LetterTemplate {
+  id: string;
+  name: string;
+  letterhead_html: string;
+  letterhead_css: string;
+  response_time_days: number;
+  is_default: boolean;
+  is_active: boolean;
 }
 
 interface Contact {
@@ -89,6 +100,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   });
 
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [templates, setTemplates] = useState<LetterTemplate[]>([]);
+  const [currentTemplate, setCurrentTemplate] = useState<LetterTemplate | null>(null);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [activeUsers, setActiveUsers] = useState<string[]>([]);
@@ -183,9 +196,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   useEffect(() => {
     if (isOpen && currentTenant) {
       fetchContacts();
+      fetchTemplates();
       if (letter?.id) {
         fetchComments();
         fetchCollaborators();
+        fetchCurrentTemplate();
       }
     }
   }, [isOpen, currentTenant, letter?.id]);
@@ -288,6 +303,58 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       setContacts(data || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    if (!currentTenant) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('letter_templates')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .order('is_default', { ascending: false })
+        .order('name');
+
+      if (error) throw error;
+      setTemplates(data || []);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const fetchCurrentTemplate = async () => {
+    if (!letter?.template_id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('letter_templates')
+        .select('*')
+        .eq('id', letter.template_id)
+        .single();
+
+      if (error) throw error;
+      setCurrentTemplate(data);
+    } catch (error) {
+      console.error('Error fetching current template:', error);
+    }
+  };
+
+  const handleTemplateChange = async (templateId: string) => {
+    if (!templateId || templateId === 'none') {
+      setEditedLetter(prev => ({ ...prev, template_id: undefined }));
+      setCurrentTemplate(null);
+      broadcastContentChange('template_id', '');
+      return;
+    }
+
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+      setEditedLetter(prev => ({ ...prev, template_id: templateId }));
+      setCurrentTemplate(template);
+      broadcastContentChange('template_id', templateId);
     }
   };
 
@@ -564,6 +631,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           recipient_name: editedLetter.recipient_name,
           recipient_address: editedLetter.recipient_address,
           contact_id: editedLetter.contact_id,
+          template_id: editedLetter.template_id,
           status: editedLetter.status,
           updated_at: new Date().toISOString()
         })
@@ -595,6 +663,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             recipient_name: editedLetter.recipient_name,
             recipient_address: editedLetter.recipient_address,
             contact_id: editedLetter.contact_id,
+            template_id: editedLetter.template_id,
             status: editedLetter.status,
             updated_at: new Date().toISOString()
           })
@@ -614,6 +683,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             recipient_name: editedLetter.recipient_name,
             recipient_address: editedLetter.recipient_address,
             contact_id: editedLetter.contact_id,
+            template_id: editedLetter.template_id,
             status: editedLetter.status || 'draft'
           });
 
@@ -780,6 +850,41 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   placeholder="Straße, Hausnummer&#10;PLZ Ort&#10;Land"
                   rows={4}
                 />
+              </div>
+
+              <Separator />
+
+              {/* Template Selection */}
+              <div>
+                <Label htmlFor="template-select">Brief-Template</Label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Layout className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">
+                    {currentTemplate ? currentTemplate.name : 'Kein Template ausgewählt'}
+                  </span>
+                </div>
+                <Select 
+                  value={editedLetter.template_id || 'none'} 
+                  onValueChange={handleTemplateChange}
+                  disabled={!canEdit}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Template auswählen..." />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100]">
+                    <SelectItem value="none">Kein Template</SelectItem>
+                    {templates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        <div className="flex items-center justify-between w-full">
+                          <span>{template.name}</span>
+                          {template.is_default && (
+                            <Badge variant="secondary" className="ml-2 text-xs">Standard</Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Separator />

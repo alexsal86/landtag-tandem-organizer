@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface Letter {
   id: string;
@@ -11,9 +13,18 @@ interface Letter {
   content_html?: string;
   recipient_name?: string;
   recipient_address?: string;
+  template_id?: string;
   status: string;
   sent_date?: string;
   created_at: string;
+}
+
+interface LetterTemplate {
+  id: string;
+  name: string;
+  letterhead_html: string;
+  letterhead_css: string;
+  response_time_days: number;
 }
 
 interface LetterPDFExportProps {
@@ -26,6 +37,30 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   disabled = false
 }) => {
   const { toast } = useToast();
+  const [template, setTemplate] = useState<LetterTemplate | null>(null);
+
+  useEffect(() => {
+    if (letter.template_id) {
+      fetchTemplate();
+    }
+  }, [letter.template_id]);
+
+  const fetchTemplate = async () => {
+    if (!letter.template_id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('letter_templates')
+        .select('*')
+        .eq('id', letter.template_id)
+        .single();
+
+      if (error) throw error;
+      setTemplate(data);
+    } catch (error) {
+      console.error('Error fetching template:', error);
+    }
+  };
 
   const convertHtmlToText = (html: string): string => {
     // Create temporary div to parse HTML
@@ -83,115 +118,12 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
 
   const exportToPDF = async () => {
     try {
-      const doc = new jsPDF();
-      
-      // PDF configuration
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 20;
-      const maxWidth = pageWidth - (margin * 2);
-      
-      let currentY = margin;
-      
-      // Helper function to add text with automatic line wrapping
-      const addText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
-        doc.setFontSize(fontSize);
-        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-        
-        const lines = doc.splitTextToSize(text, maxWidth);
-        const lineHeight = fontSize * 0.4;
-        
-        // Check if we need a new page
-        if (currentY + (lines.length * lineHeight) > pageHeight - margin) {
-          doc.addPage();
-          currentY = margin;
-        }
-        
-        lines.forEach((line: string) => {
-          doc.text(line, margin, currentY);
-          currentY += lineHeight;
-        });
-        
-        currentY += 5; // Add some space after text
-      };
-      
-      // Header
-      addText(`BRIEF - ${letter.title}`, 16, true);
-      currentY += 5;
-      
-      // Date
-      const date = new Date(letter.created_at).toLocaleDateString('de-DE');
-      addText(`Datum: ${date}`, 10);
-      currentY += 10;
-      
-      // Recipient
-      if (letter.recipient_name) {
-        addText('EMPFÄNGER:', 12, true);
-        addText(letter.recipient_name, 12);
-        
-        if (letter.recipient_address) {
-          const addressLines = letter.recipient_address.split('\n');
-          addressLines.forEach(line => {
-            if (line.trim()) {
-              addText(line.trim(), 12);
-            }
-          });
-        }
-        currentY += 10;
-      }
-      
-      // Status
-      const statusLabels: { [key: string]: string } = {
-        draft: 'Entwurf',
-        review: 'Zur Prüfung',
-        approved: 'Genehmigt',
-        sent: 'Versendet'
-      };
-      addText(`Status: ${statusLabels[letter.status] || letter.status}`, 10);
-      currentY += 15;
-      
-      // Content
-      addText('INHALT:', 12, true);
-      currentY += 5;
-      
-      // Convert content to text
-      const contentText = letter.content_html 
-        ? convertHtmlToText(letter.content_html)
-        : letter.content;
-      
-      if (contentText) {
-        // Split content into paragraphs
-        const paragraphs = contentText.split('\n\n');
-        
-        paragraphs.forEach((paragraph, index) => {
-          if (paragraph.trim()) {
-            addText(paragraph.trim(), 11);
-            if (index < paragraphs.length - 1) {
-              currentY += 5; // Extra space between paragraphs
-            }
-          }
-        });
+      // If we have a template, use HTML-to-canvas approach for better formatting
+      if (template) {
+        await exportWithTemplate();
       } else {
-        addText('[Kein Inhalt vorhanden]', 11);
+        await exportWithoutTemplate();
       }
-      
-      // Footer
-      currentY = pageHeight - 30;
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocaleTimeString('de-DE')}`, margin, currentY);
-      
-      // Generate filename
-      const fileName = `Brief_${letter.title.replace(/[^a-zA-Z0-9]/g, '_')}_${date.replace(/\./g, '-')}.pdf`;
-      
-      // Save the PDF
-      doc.save(fileName);
-      
-      toast({
-        title: "PDF exportiert",
-        description: `Der Brief wurde als PDF gespeichert: ${fileName}`,
-      });
-      
     } catch (error) {
       console.error('Error exporting PDF:', error);
       toast({
@@ -200,6 +132,241 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         variant: "destructive",
       });
     }
+  };
+
+  const exportWithTemplate = async () => {
+    // Create a temporary container for rendering
+    const container = document.createElement('div');
+    container.style.width = '794px'; // A4 width in pixels at 96 DPI
+    container.style.background = 'white';
+    container.style.padding = '40px';
+    container.style.fontFamily = 'Arial, sans-serif';
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+
+    // Apply template styles
+    const styleElement = document.createElement('style');
+    styleElement.textContent = template!.letterhead_css;
+    container.appendChild(styleElement);
+
+    // Create the letter content with template
+    const contentDiv = document.createElement('div');
+    
+    // Add letterhead
+    const letterheadDiv = document.createElement('div');
+    letterheadDiv.innerHTML = template!.letterhead_html;
+    contentDiv.appendChild(letterheadDiv);
+
+    // Add recipient information
+    if (letter.recipient_name || letter.recipient_address) {
+      const recipientDiv = document.createElement('div');
+      recipientDiv.style.marginTop = '30px';
+      recipientDiv.style.marginBottom = '30px';
+      
+      if (letter.recipient_name) {
+        const nameP = document.createElement('p');
+        nameP.textContent = letter.recipient_name;
+        nameP.style.fontWeight = 'bold';
+        nameP.style.margin = '0 0 5px 0';
+        recipientDiv.appendChild(nameP);
+      }
+      
+      if (letter.recipient_address) {
+        const addressDiv = document.createElement('div');
+        addressDiv.style.whiteSpace = 'pre-line';
+        addressDiv.textContent = letter.recipient_address;
+        recipientDiv.appendChild(addressDiv);
+      }
+      
+      contentDiv.appendChild(recipientDiv);
+    }
+
+    // Add letter title
+    const titleDiv = document.createElement('div');
+    titleDiv.style.marginTop = '30px';
+    titleDiv.style.marginBottom = '20px';
+    titleDiv.style.fontWeight = 'bold';
+    titleDiv.style.fontSize = '18px';
+    titleDiv.textContent = letter.title;
+    contentDiv.appendChild(titleDiv);
+
+    // Add letter content
+    const letterContentDiv = document.createElement('div');
+    letterContentDiv.style.marginTop = '20px';
+    letterContentDiv.style.lineHeight = '1.6';
+    
+    if (letter.content_html) {
+      letterContentDiv.innerHTML = letter.content_html;
+    } else {
+      letterContentDiv.style.whiteSpace = 'pre-line';
+      letterContentDiv.textContent = letter.content;
+    }
+    contentDiv.appendChild(letterContentDiv);
+
+    container.appendChild(contentDiv);
+    document.body.appendChild(container);
+
+    try {
+      // Convert to canvas
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff'
+      });
+
+      // Create PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      // Add additional pages if needed
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      // Generate filename
+      const date = new Date(letter.created_at).toLocaleDateString('de-DE');
+      const fileName = `Brief_${letter.title.replace(/[^a-zA-Z0-9]/g, '_')}_${date.replace(/\./g, '-')}.pdf`;
+      
+      // Save the PDF
+      pdf.save(fileName);
+
+      toast({
+        title: "PDF exportiert",
+        description: `Der Brief wurde als PDF gespeichert: ${fileName}`,
+      });
+
+    } finally {
+      // Clean up
+      document.body.removeChild(container);
+    }
+  };
+
+  const exportWithoutTemplate = async () => {
+    const doc = new jsPDF();
+    
+    // PDF configuration
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const maxWidth = pageWidth - (margin * 2);
+    
+    let currentY = margin;
+    
+    // Helper function to add text with automatic line wrapping
+    const addText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
+      doc.setFontSize(fontSize);
+      doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+      
+      const lines = doc.splitTextToSize(text, maxWidth);
+      const lineHeight = fontSize * 0.4;
+      
+      // Check if we need a new page
+      if (currentY + (lines.length * lineHeight) > pageHeight - margin) {
+        doc.addPage();
+        currentY = margin;
+      }
+      
+      lines.forEach((line: string) => {
+        doc.text(line, margin, currentY);
+        currentY += lineHeight;
+      });
+      
+      currentY += 5; // Add some space after text
+    };
+    
+    // Header
+    addText(`BRIEF - ${letter.title}`, 16, true);
+    currentY += 5;
+    
+    // Date
+    const date = new Date(letter.created_at).toLocaleDateString('de-DE');
+    addText(`Datum: ${date}`, 10);
+    currentY += 10;
+    
+    // Recipient
+    if (letter.recipient_name) {
+      addText('EMPFÄNGER:', 12, true);
+      addText(letter.recipient_name, 12);
+      
+      if (letter.recipient_address) {
+        const addressLines = letter.recipient_address.split('\n');
+        addressLines.forEach(line => {
+          if (line.trim()) {
+            addText(line.trim(), 12);
+          }
+        });
+      }
+      currentY += 10;
+    }
+    
+    // Status
+    const statusLabels: { [key: string]: string } = {
+      draft: 'Entwurf',
+      review: 'Zur Prüfung',
+      approved: 'Genehmigt',
+      sent: 'Versendet'
+    };
+    addText(`Status: ${statusLabels[letter.status] || letter.status}`, 10);
+    currentY += 15;
+    
+    // Content
+    addText('INHALT:', 12, true);
+    currentY += 5;
+    
+    // Convert content to text
+    const contentText = letter.content_html 
+      ? convertHtmlToText(letter.content_html)
+      : letter.content;
+    
+    if (contentText) {
+      // Split content into paragraphs
+      const paragraphs = contentText.split('\n\n');
+      
+      paragraphs.forEach((paragraph, index) => {
+        if (paragraph.trim()) {
+          addText(paragraph.trim(), 11);
+          if (index < paragraphs.length - 1) {
+            currentY += 5; // Extra space between paragraphs
+          }
+        }
+      });
+    } else {
+      addText('[Kein Inhalt vorhanden]', 11);
+    }
+    
+    // Footer
+    currentY = pageHeight - 30;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocaleTimeString('de-DE')}`, margin, currentY);
+    
+    // Generate filename
+    const fileName = `Brief_${letter.title.replace(/[^a-zA-Z0-9]/g, '_')}_${date.replace(/\./g, '-')}.pdf`;
+    
+    // Save the PDF
+    doc.save(fileName);
+    
+    toast({
+      title: "PDF exportiert",
+      description: `Der Brief wurde als PDF gespeichert: ${fileName}`,
+    });
   };
 
   return (

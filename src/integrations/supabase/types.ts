@@ -2213,6 +2213,7 @@ export type Database = {
           sent_date: string | null
           sent_method: string | null
           status: string
+          template_id: string | null
           tenant_id: string
           title: string
           updated_at: string
@@ -2230,6 +2231,7 @@ export type Database = {
           sent_date?: string | null
           sent_method?: string | null
           status?: string
+          template_id?: string | null
           tenant_id: string
           title: string
           updated_at?: string
@@ -2247,11 +2249,20 @@ export type Database = {
           sent_date?: string | null
           sent_method?: string | null
           status?: string
+          template_id?: string | null
           tenant_id?: string
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "letters_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "letter_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       meeting_agenda_documents: {
         Row: {
