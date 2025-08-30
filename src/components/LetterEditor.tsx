@@ -127,7 +127,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [senderInfos, setSenderInfos] = useState<any[]>([]);
   const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
-  const [previewZoom, setPreviewZoom] = useState(0.6);
+  const [previewZoom, setPreviewZoom] = useState(1.0);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -1325,7 +1325,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setPreviewZoom(0.6)}
+                    onClick={() => setPreviewZoom(1.0)}
                   >
                     Reset
                   </Button>

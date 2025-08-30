@@ -12,6 +12,7 @@ interface DIN5008LetterLayoutProps {
   referenceNumber?: string;
   attachments?: string[];
   className?: string;
+  debugMode?: boolean;
 }
 
 export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
@@ -24,20 +25,41 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   letterDate,
   referenceNumber,
   attachments,
-  className = ""
+  className = "",
+  debugMode = false
 }) => {
   const formatAddress = (address: any) => {
     if (!address) return '';
+    
+    // Handle different address formats
     const parts = [];
-    if (address.name) parts.push(address.name);
-    if (address.company) parts.push(address.company);
-    if (address.street) parts.push(address.street);
-    if (address.postal_code && address.city) {
-      parts.push(`${address.postal_code} ${address.city}`);
+    
+    // If address has structured fields
+    if (typeof address === 'object' && address.name) {
+      if (address.name) parts.push(address.name);
+      if (address.company) parts.push(address.company);
+      if (address.street) parts.push(address.street);
+      if (address.postal_code && address.city) {
+        parts.push(`${address.postal_code} ${address.city}`);
+      }
+      if (address.country && address.country !== 'Deutschland') {
+        parts.push(address.country);
+      }
+    } 
+    // If address is a simple string
+    else if (typeof address === 'string') {
+      return address;
     }
-    if (address.country && address.country !== 'Deutschland') {
-      parts.push(address.country);
+    // If address has recipient_name and recipient_address separately 
+    else if (address.recipient_name || address.recipient_address) {
+      if (address.recipient_name) parts.push(address.recipient_name);
+      if (address.recipient_address) {
+        // Split address string into lines and add each non-empty line
+        const addressLines = address.recipient_address.split('\n').filter(line => line.trim());
+        parts.push(...addressLines);
+      }
     }
+    
     return parts.join('\n');
   };
 
@@ -122,7 +144,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     }
   };
 
-  return (
+    return (
     <div className={`din5008-letter bg-white ${className}`} style={{ 
       minHeight: '297mm', 
       width: '210mm', 
@@ -130,7 +152,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       padding: '0',
       fontFamily: 'Arial, sans-serif',
       fontSize: '11pt',
-      lineHeight: '1.2'
+      lineHeight: '1.2',
+      position: 'relative'
     }}>
       {/* Template Header */}
       {template?.letterhead_html && (
@@ -148,25 +171,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       {/* Letter Content Area */}
       <div style={{ padding: '20mm 20mm 16.9mm 24.1mm' }}>
         
-        {/* Return Address Line */}
-        {senderInfo?.return_address_line && (
-          <div style={{
-            position: 'absolute',
-            top: '45mm',
-            left: '24.1mm',
-            fontSize: '8pt',
-            borderBottom: '1px solid #000',
-            paddingBottom: '1mm',
-            marginBottom: '3mm',
-            width: '85mm'
-          }}>
-            {senderInfo.return_address_line}
-          </div>
-        )}
-
         {/* Main Address and Info Block Container */}
         <div className="flex" style={{ 
-          marginTop: senderInfo?.return_address_line ? '12mm' : '0',
+          marginTop: '0',
           marginBottom: '8.46mm'
         }}>
           
@@ -178,7 +185,21 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             padding: '5mm',
             marginRight: '10mm'
           }}>
-            <div style={{ fontSize: '9pt', marginBottom: '3mm' }}>
+            {/* Return Address Line at top of address field */}
+            {senderInfo?.return_address_line && (
+              <div style={{
+                fontSize: '7pt',
+                borderBottom: '1px solid #000',
+                paddingBottom: '1mm',
+                marginBottom: '3mm',
+                lineHeight: '1.0'
+              }}>
+                {senderInfo.return_address_line}
+              </div>
+            )}
+            
+            {/* Recipient Address */}
+            <div style={{ fontSize: '9pt', lineHeight: '1.1' }}>
               {formatAddress(recipientAddress)}
             </div>
           </div>
@@ -251,6 +272,118 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       {/* Custom CSS from template */}
       {template?.letterhead_css && (
         <style dangerouslySetInnerHTML={{ __html: template.letterhead_css }} />
+      )}
+
+      {/* Debug Mode Overlays */}
+      {debugMode && (
+        <>
+          {/* DIN 5008 measurement guides */}
+          <div style={{
+            position: 'absolute',
+            top: '45mm',
+            left: '0',
+            right: '0',
+            height: '1px',
+            backgroundColor: 'red',
+            zIndex: 1000
+          }}>
+            <span style={{
+              position: 'absolute',
+              left: '5mm',
+              top: '-15px',
+              fontSize: '8pt',
+              color: 'red',
+              backgroundColor: 'white',
+              padding: '2px'
+            }}>45mm - Header Ende</span>
+          </div>
+          
+          <div style={{
+            position: 'absolute',
+            top: '105mm',
+            left: '24.1mm',
+            width: '85mm',
+            height: '40mm',
+            border: '2px dashed red',
+            zIndex: 1000,
+            pointerEvents: 'none'
+          }}>
+            <span style={{
+              position: 'absolute',
+              top: '-20px',
+              left: '0',
+              fontSize: '8pt',
+              color: 'red',
+              backgroundColor: 'white',
+              padding: '2px'
+            }}>Adressfeld: 85×40mm @ 24.1mm</span>
+          </div>
+          
+          <div style={{
+            position: 'absolute',
+            top: '105mm',
+            left: '119.1mm',
+            width: '75mm',
+            height: '40mm',
+            border: '2px dashed blue',
+            zIndex: 1000,
+            pointerEvents: 'none'
+          }}>
+            <span style={{
+              position: 'absolute',
+              top: '-20px',
+              left: '0',
+              fontSize: '8pt',
+              color: 'blue',
+              backgroundColor: 'white',
+              padding: '2px'
+            }}>Info-Block: 75mm @ 119.1mm</span>
+          </div>
+          
+          <div style={{
+            position: 'absolute',
+            top: '169mm',
+            left: '24.1mm',
+            right: '20mm',
+            height: '1px',
+            backgroundColor: 'green',
+            zIndex: 1000
+          }}>
+            <span style={{
+              position: 'absolute',
+              left: '0',
+              top: '-15px',
+              fontSize: '8pt',
+              color: 'green',
+              backgroundColor: 'white',
+              padding: '2px'
+            }}>169mm - Inhaltsbeginn</span>
+          </div>
+
+          {/* Margin guides */}
+          <div style={{
+            position: 'absolute',
+            top: '0',
+            left: '24.1mm',
+            width: '1px',
+            height: '100%',
+            backgroundColor: 'orange',
+            opacity: 0.5,
+            zIndex: 999
+          }}>
+            <span style={{
+              position: 'absolute',
+              left: '5px',
+              top: '10mm',
+              fontSize: '8pt',
+              color: 'orange',
+              backgroundColor: 'white',
+              padding: '2px',
+              transform: 'rotate(90deg)',
+              transformOrigin: 'left'
+            }}>Linker Rand: 24.1mm</span>
+          </div>
+        </>
       )}
     </div>
   );

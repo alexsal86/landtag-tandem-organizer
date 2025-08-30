@@ -35,11 +35,13 @@ interface LetterTemplate {
 interface LetterPDFExportProps {
   letter: Letter;
   disabled?: boolean;
+  debugMode?: boolean;
 }
 
 const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   letter,
-  disabled = false
+  disabled = false,
+  debugMode = false
 }) => {
   const { toast } = useToast();
   const [template, setTemplate] = useState<LetterTemplate | null>(null);
@@ -209,8 +211,8 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       // Format recipient address
       const recipientAddress = letter.recipient_address 
         ? { 
-            name: letter.recipient_name, 
-            address: letter.recipient_address 
+            recipient_name: letter.recipient_name, 
+            recipient_address: letter.recipient_address 
           }
         : null;
 
@@ -229,7 +231,8 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
             letterDate: letter.letter_date,
             referenceNumber: letter.reference_number,
             attachments: attachmentNames,
-            className: 'pdf-export'
+            className: 'pdf-export',
+            debugMode: debugMode
           })
         );
         
