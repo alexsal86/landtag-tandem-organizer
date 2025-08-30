@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import FloatingTextToolbar from './FloatingTextToolbar';
+import UserAssignmentDialog from './UserAssignmentDialog';
 
 interface Letter {
   id: string;
@@ -53,7 +54,7 @@ interface Contact {
 interface LetterCollaborator {
   id: string;
   user_id: string;
-  permission_type: string;
+  role: string;
   created_at: string;
   profiles: {
     display_name: string;
@@ -100,9 +101,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [commentPosition, setCommentPosition] = useState({ x: 0, y: 0 });
   const [selectedTextForComment, setSelectedTextForComment] = useState('');
   const [collaborators, setCollaborators] = useState<LetterCollaborator[]>([]);
-  const [availableUsers, setAvailableUsers] = useState<{id: string, display_name: string}[]>([]);
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
-  const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -180,7 +179,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   useEffect(() => {
     if (isOpen && currentTenant) {
       fetchContacts();
-      fetchAvailableUsers();
       if (letter?.id) {
         fetchComments();
         fetchCollaborators();
@@ -289,94 +287,34 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   };
 
-  const fetchAvailableUsers = async () => {
-    if (!currentTenant) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .neq('user_id', user?.id); // Exclude current user
-
-      if (error) throw error;
-      setAvailableUsers(data?.map(p => ({ id: p.user_id, display_name: p.display_name })) || []);
-    } catch (error) {
-      console.error('Error fetching available users:', error);
-    }
-  };
-
   const fetchCollaborators = async () => {
     if (!letter?.id) return;
 
     try {
-      const { data: collaboratorsData, error } = await supabase
+      const { data, error } = await supabase
         .from('letter_collaborators')
-        .select('id, user_id, permission_type, created_at')
+        .select('id, user_id, created_at')
         .eq('letter_id', letter.id);
 
       if (error) throw error;
-
-      // Fetch profiles separately to avoid relation issues
-      if (collaboratorsData && collaboratorsData.length > 0) {
-        const userIds = collaboratorsData.map(c => c.user_id);
-        const { data: profilesData, error: profilesError } = await supabase
+      
+      if (data && data.length > 0) {
+        const userIds = data.map(c => c.user_id);
+        const { data: profiles } = await supabase
           .from('profiles')
           .select('user_id, display_name')
           .in('user_id', userIds);
 
-        if (profilesError) throw profilesError;
-
-        const collaboratorsWithProfiles = collaboratorsData.map(collab => ({
-          ...collab,
-          profiles: profilesData?.find(p => p.user_id === collab.user_id) || { display_name: 'Unbekannt' }
-        }));
-
-        setCollaborators(collaboratorsWithProfiles);
+        setCollaborators(data.map(item => ({
+          ...item,
+          role: 'reviewer',
+          profiles: profiles?.find(p => p.user_id === item.user_id) || { display_name: 'Unbekannt' }
+        })));
       } else {
         setCollaborators([]);
       }
     } catch (error) {
       console.error('Error fetching collaborators:', error);
-    }
-  };
-
-  const handleAssignReviewers = async () => {
-    if (!letter?.id || !user || selectedReviewers.length === 0) return;
-
-    try {
-      // Insert new collaborators
-      const { error } = await supabase
-        .from('letter_collaborators')
-        .insert(
-          selectedReviewers.map(userId => ({
-            letter_id: letter.id,
-            user_id: userId,
-            permission_type: 'edit'
-          }))
-        );
-
-      if (error) throw error;
-
-      // Now change status to review and activate proofreading mode
-      setEditedLetter(prev => ({ ...prev, status: 'review' }));
-      setIsProofreadingMode(true);
-      broadcastContentChange('status', 'review');
-
-      fetchCollaborators();
-      setShowAssignmentDialog(false);
-      setSelectedReviewers([]);
-      
-      toast({
-        title: "Prüfer zugewiesen",
-        description: "Der Brief wurde zur Prüfung freigegeben und die Prüfer wurden benachrichtigt.",
-      });
-    } catch (error) {
-      console.error('Error assigning reviewers:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Prüfer konnten nicht zugewiesen werden.",
-        variant: "destructive",
-      });
     }
   };
 
