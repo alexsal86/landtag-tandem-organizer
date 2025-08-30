@@ -199,12 +199,12 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
                 users.map((user) => (
                   <div
                     key={user.user_id}
-                    className="flex items-center space-x-2 p-2 rounded border hover:bg-muted/50 cursor-pointer"
+                    className="flex items-center space-x-2 p-3 rounded border hover:bg-muted/50 cursor-pointer touch-manipulation"
                     onClick={() => handleUserToggle(user.user_id)}
                   >
                     <Checkbox
                       checked={selectedUsers.includes(user.user_id)}
-                      onChange={() => handleUserToggle(user.user_id)}
+                      onCheckedChange={() => handleUserToggle(user.user_id)}
                     />
                     <div className="flex-1">
                       <span className="text-sm font-medium">{user.display_name}</span>
