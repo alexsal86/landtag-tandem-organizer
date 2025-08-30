@@ -2074,24 +2074,30 @@ export type Database = {
       }
       letter_collaborators: {
         Row: {
+          assigned_by: string | null
           created_at: string
           id: string
           letter_id: string
           permission_type: string
+          role: string | null
           user_id: string
         }
         Insert: {
+          assigned_by?: string | null
           created_at?: string
           id?: string
           letter_id: string
           permission_type?: string
+          role?: string | null
           user_id: string
         }
         Update: {
+          assigned_by?: string | null
           created_at?: string
           id?: string
           letter_id?: string
           permission_type?: string
+          role?: string | null
           user_id?: string
         }
         Relationships: [
