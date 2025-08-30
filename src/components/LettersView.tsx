@@ -299,6 +299,8 @@ const LettersView: React.FC = () => {
         onClose={() => {
           setIsEditorOpen(false);
           setSelectedLetter(null);
+          // Refresh letters when editor closes to get latest status
+          fetchLetters();
         }}
         onSave={() => {
           fetchLetters();
