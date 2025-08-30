@@ -701,6 +701,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           recipient_address: editedLetter.recipient_address,
           contact_id: editedLetter.contact_id,
           template_id: editedLetter.template_id,
+          subject: editedLetter.subject,
+          reference_number: editedLetter.reference_number,
+          sender_info_id: editedLetter.sender_info_id,
+          information_block_ids: editedLetter.information_block_ids,
+          letter_date: editedLetter.letter_date,
           status: editedLetter.status,
           updated_at: new Date().toISOString()
         })
@@ -733,6 +738,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             recipient_address: editedLetter.recipient_address,
             contact_id: editedLetter.contact_id,
             template_id: editedLetter.template_id,
+            subject: editedLetter.subject,
+            reference_number: editedLetter.reference_number,
+            sender_info_id: editedLetter.sender_info_id,
+            information_block_ids: editedLetter.information_block_ids,
+            letter_date: editedLetter.letter_date,
             status: editedLetter.status,
             updated_at: new Date().toISOString()
           })
@@ -753,6 +763,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             recipient_address: editedLetter.recipient_address,
             contact_id: editedLetter.contact_id,
             template_id: editedLetter.template_id,
+            subject: editedLetter.subject,
+            reference_number: editedLetter.reference_number,
+            sender_info_id: editedLetter.sender_info_id,
+            information_block_ids: editedLetter.information_block_ids,
+            letter_date: editedLetter.letter_date,
             status: editedLetter.status || 'draft'
           });
 
@@ -782,6 +797,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     editedLetter.content !== letter.content || 
     editedLetter.recipient_name !== letter.recipient_name ||
     editedLetter.recipient_address !== letter.recipient_address ||
+    editedLetter.subject !== letter.subject ||
+    editedLetter.reference_number !== letter.reference_number ||
+    editedLetter.sender_info_id !== letter.sender_info_id ||
+    JSON.stringify(editedLetter.information_block_ids || []) !== JSON.stringify(letter.information_block_ids || []) ||
+    editedLetter.letter_date !== letter.letter_date ||
     editedLetter.status !== letter.status
   );
 
