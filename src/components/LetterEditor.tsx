@@ -1047,60 +1047,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       )}
 
       {/* Reviewer Assignment Dialog */}
-      {showAssignmentDialog && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-background border rounded-lg shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Prüfer zuweisen</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Wählen Sie die Benutzer aus, die den Brief prüfen sollen:
-            </p>
-            <div className="space-y-2 max-h-48 overflow-auto mb-4">
-              {availableUsers.map((user) => (
-                <div key={user.id} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id={`reviewer-${user.id}`}
-                    checked={selectedReviewers.includes(user.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedReviewers(prev => [...prev, user.id]);
-                      } else {
-                        setSelectedReviewers(prev => prev.filter(id => id !== user.id));
-                      }
-                    }}
-                    className="rounded border-border"
-                  />
-                  <Label htmlFor={`reviewer-${user.id}`} className="text-sm cursor-pointer">
-                    {user.display_name}
-                  </Label>
-                </div>
-              ))}
-              {availableUsers.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Keine anderen Benutzer verfügbar.
-                </p>
-              )}
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowAssignmentDialog(false);
-                  setSelectedReviewers([]);
-                }}
-              >
-                Abbrechen
-              </Button>
-              <Button
-                onClick={handleAssignReviewers}
-                disabled={selectedReviewers.length === 0}
-              >
-                Zuweisen
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UserAssignmentDialog
+        isOpen={showAssignmentDialog}
+        onClose={() => setShowAssignmentDialog(false)}
+        letterId={letter?.id || ''}
+        onAssignmentComplete={() => {
+          fetchCollaborators();
+          handleStatusTransition('review');
+          setIsProofreadingMode(true);
+        }}
+      />
     </div>
   );
 };
