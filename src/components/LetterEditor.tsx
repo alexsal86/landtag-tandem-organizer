@@ -414,6 +414,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
     // Show assignment dialog when transitioning to review
     if (newStatus === 'review' && isCreator) {
+      console.log('Opening assignment dialog for review status', { isCreator, newStatus });
       setShowAssignmentDialog(true);
       return;
     }
@@ -1052,8 +1053,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         onClose={() => setShowAssignmentDialog(false)}
         letterId={letter?.id || ''}
         onAssignmentComplete={() => {
+          console.log('Assignment completed, proceeding with status change');
           fetchCollaborators();
-          handleStatusTransition('review');
+          setShowAssignmentDialog(false);
+          setEditedLetter(prev => ({ ...prev, status: 'review' as any }));
           setIsProofreadingMode(true);
         }}
       />
