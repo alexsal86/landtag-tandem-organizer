@@ -22,6 +22,8 @@ import { CreateDemoUsers } from "@/components/CreateDemoUsers";
 import { TenantCollaboration } from "@/components/TenantCollaboration";
 import { DecisionEmailTemplates } from "@/components/task-decisions/DecisionEmailTemplates";
 import AppointmentPreparationTemplateAdmin from "@/components/AppointmentPreparationTemplateAdmin";
+import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
+import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -502,7 +504,7 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-11">
+        <TabsList className="grid w-full grid-cols-12">
           <TabsTrigger value="general">Allgemein</TabsTrigger>
           <TabsTrigger value="status">Status</TabsTrigger>
           <TabsTrigger value="expenses">Kosten</TabsTrigger>
@@ -513,6 +515,7 @@ export default function Administration() {
           <TabsTrigger value="meetings">Meetings</TabsTrigger>
           <TabsTrigger value="plannings">Planungen</TabsTrigger>
           <TabsTrigger value="decisions">Entscheidungen</TabsTrigger>
+          <TabsTrigger value="letters">Briefvorlagen</TabsTrigger>
           <TabsTrigger value="collaboration">Kollaboration</TabsTrigger>
           {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
         </TabsList>
@@ -535,6 +538,28 @@ export default function Administration() {
 
         <TabsContent value="decisions" className="space-y-6">
           <DecisionEmailTemplates />
+        </TabsContent>
+
+        <TabsContent value="letters" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Absenderinformationen</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SenderInformationManager />
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Informationsblöcke</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <InformationBlockManager />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="collaboration" className="space-y-6">
