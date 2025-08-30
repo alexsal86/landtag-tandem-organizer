@@ -15,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import FloatingTextToolbar from './FloatingTextToolbar';
-import UserAssignmentDialog from './UserAssignmentDialog';
+import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 
 interface Letter {
   id: string;
@@ -1048,16 +1048,32 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       )}
 
       {/* Reviewer Assignment Dialog */}
-      <UserAssignmentDialog
+      <ReviewAssignmentDialog
         isOpen={showAssignmentDialog}
         onClose={() => setShowAssignmentDialog(false)}
         letterId={letter?.id || ''}
-        onAssignmentComplete={() => {
+        onReviewAssigned={() => {
           console.log('Assignment completed, proceeding with status change');
           fetchCollaborators();
           setShowAssignmentDialog(false);
           setEditedLetter(prev => ({ ...prev, status: 'review' as any }));
           setIsProofreadingMode(true);
+          broadcastContentChange('status', 'review');
+          toast({
+            title: "Status geändert",
+            description: "Brief wurde zur Prüfung weitergeleitet.",
+          });
+        }}
+        onSkipReview={() => {
+          console.log('Skipping review, going directly to approved');
+          setShowAssignmentDialog(false);
+          setEditedLetter(prev => ({ ...prev, status: 'approved' as any }));
+          setIsProofreadingMode(false);
+          broadcastContentChange('status', 'approved');
+          toast({
+            title: "Status geändert",
+            description: "Brief wurde direkt genehmigt.",
+          });
         }}
       />
     </div>
