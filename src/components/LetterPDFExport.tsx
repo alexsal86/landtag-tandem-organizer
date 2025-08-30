@@ -189,80 +189,265 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   };
 
   const exportWithDIN5008Features = async () => {
-    // Create a temporary container for DIN 5008 letter rendering
-    const container = document.createElement('div');
-    container.style.width = '794px'; // A4 width in pixels at 96 DPI
-    container.style.background = 'white';
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.top = '0';
-    container.style.fontFamily = 'Arial, sans-serif';
-
     try {
-      // Import DIN5008LetterLayout dynamically
-      const { DIN5008LetterLayout } = await import('./letters/DIN5008LetterLayout');
-      
-      // Create React element and render it
-      const { createRoot } = await import('react-dom/client');
-      const React = await import('react');
-      
-      const root = createRoot(container);
-      
-      // Format recipient address
-      const recipientAddress = letter.recipient_address 
-        ? { 
-            recipient_name: letter.recipient_name, 
-            recipient_address: letter.recipient_address 
-          }
-        : null;
-
-      // Format attachments list
-      const attachmentNames = attachments.map(att => att.file_name);
-
-      await new Promise<void>((resolve) => {
-        root.render(
-          React.createElement(DIN5008LetterLayout, {
-            template,
-            senderInfo,
-            informationBlock,
-            recipientAddress,
-            content: letter.content_html || letter.content,
-            subject: letter.subject || letter.title,
-            letterDate: letter.letter_date,
-            referenceNumber: letter.reference_number,
-            attachments: attachmentNames,
-            className: 'pdf-export',
-            debugMode: debugMode
-          })
-        );
-        
-        // Allow time for rendering
-        setTimeout(resolve, 100);
-      });
-
-      document.body.appendChild(container);
-
-      // Convert to canvas with high quality
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: 794,
-        height: 1123 // A4 height in pixels at 96 DPI
-      });
-
-      // Create PDF with precise DIN 5008 dimensions
+      // Create PDF with DIN 5008 compliant layout using text
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      const imgData = canvas.toDataURL('image/png');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
+      // DIN 5008 measurements in mm
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const leftMargin = 24.1;
+      const rightMargin = 20;
+      const headerHeight = 45;
+      const addressFieldTop = 105;
+      const addressFieldLeft = leftMargin;
+      const addressFieldWidth = 85;
+      const addressFieldHeight = 40;
+      const infoBlockLeft = 119.1;
+      const infoBlockWidth = 75;
+      const contentTop = 169;
       
-      // Add image to PDF with exact A4 dimensions
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-
+      // Debug mode: Draw guides
+      if (debugMode) {
+        pdf.setDrawColor(255, 0, 0); // Red
+        pdf.setLineWidth(0.1);
+        
+        // Header line
+        pdf.line(0, headerHeight, pageWidth, headerHeight);
+        pdf.setFontSize(6);
+        pdf.setTextColor(255, 0, 0);
+        pdf.text("45mm - Header Ende", 5, headerHeight - 2);
+        
+        // Address field
+        pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, addressFieldHeight);
+        pdf.text("Adressfeld: 85×40mm", addressFieldLeft, addressFieldTop - 2);
+        
+        // Info block
+        pdf.setDrawColor(0, 0, 255); // Blue
+        pdf.rect(infoBlockLeft, addressFieldTop, infoBlockWidth, addressFieldHeight);
+        pdf.setTextColor(0, 0, 255);
+        pdf.text("Info-Block: 75mm", infoBlockLeft, addressFieldTop - 2);
+        
+        // Content line
+        pdf.setDrawColor(0, 255, 0); // Green
+        pdf.line(leftMargin, contentTop, pageWidth - rightMargin, contentTop);
+        pdf.setTextColor(0, 255, 0);
+        pdf.text("169mm - Inhaltsbeginn", leftMargin, contentTop - 2);
+        
+        // Left margin
+        pdf.setDrawColor(255, 165, 0); // Orange
+        pdf.line(leftMargin, 0, leftMargin, pageHeight);
+        pdf.setTextColor(255, 165, 0);
+        pdf.text("24.1mm", leftMargin + 1, 20);
+      }
+      
+      // Reset colors for content
+      pdf.setTextColor(0, 0, 0);
+      pdf.setDrawColor(0, 0, 0);
+      
+      // Template letterhead (if available)
+      if (template?.letterhead_html) {
+        // For template, we'll add a simple header text
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(template.name || 'Briefkopf', leftMargin, 20);
+      }
+      
+      // Return address line in address field
+      let addressYPos = addressFieldTop + 8;
+      if (senderInfo?.return_address_line) {
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(senderInfo.return_address_line, addressFieldLeft + 5, addressYPos);
+        
+        // Underline for return address
+        const textWidth = pdf.getTextWidth(senderInfo.return_address_line);
+        pdf.line(addressFieldLeft + 5, addressYPos + 1, addressFieldLeft + 5 + textWidth, addressYPos + 1);
+        addressYPos += 8;
+      }
+      
+      // Recipient address
+      if (letter.recipient_name || letter.recipient_address) {
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        
+        if (letter.recipient_name) {
+          pdf.text(letter.recipient_name, addressFieldLeft + 5, addressYPos);
+          addressYPos += 4;
+        }
+        
+        if (letter.recipient_address) {
+          const addressLines = letter.recipient_address.split('\n').filter(line => line.trim());
+          addressLines.forEach(line => {
+            if (addressYPos < addressFieldTop + addressFieldHeight - 5) {
+              pdf.text(line.trim(), addressFieldLeft + 5, addressYPos);
+              addressYPos += 4;
+            }
+          });
+        }
+      }
+      
+      // Information block
+      let infoYPos = addressFieldTop + 8;
+      if (informationBlock) {
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(informationBlock.label || 'Information', infoBlockLeft, infoYPos);
+        infoYPos += 5;
+        
+        pdf.setFont('helvetica', 'normal');
+        
+        switch (informationBlock.block_type) {
+          case 'contact':
+            if (informationBlock.block_data?.contact_name) {
+              pdf.text(informationBlock.block_data.contact_name, infoBlockLeft, infoYPos);
+              infoYPos += 4;
+            }
+            if (informationBlock.block_data?.contact_phone) {
+              pdf.text(`Tel: ${informationBlock.block_data.contact_phone}`, infoBlockLeft, infoYPos);
+              infoYPos += 4;
+            }
+            if (informationBlock.block_data?.contact_email) {
+              pdf.text(informationBlock.block_data.contact_email, infoBlockLeft, infoYPos);
+              infoYPos += 4;
+            }
+            break;
+          case 'date':
+            const date = new Date();
+            const formatDate = (date: Date, format: string) => {
+              switch (format) {
+                case 'dd.mm.yyyy': return date.toLocaleDateString('de-DE');
+                case 'dd.mm.yy': return date.toLocaleDateString('de-DE', { year: '2-digit', month: '2-digit', day: '2-digit' });
+                case 'yyyy-mm-dd': return date.toISOString().split('T')[0];
+                default: return date.toLocaleDateString('de-DE');
+              }
+            };
+            pdf.text(formatDate(date, informationBlock.block_data?.date_format || 'dd.mm.yyyy'), infoBlockLeft, infoYPos);
+            infoYPos += 4;
+            if (informationBlock.block_data?.show_time) {
+              pdf.text(`${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`, infoBlockLeft, infoYPos);
+              infoYPos += 4;
+            }
+            break;
+          case 'reference':
+            const refText = `${informationBlock.block_data?.reference_prefix || ''}${letter.reference_number || informationBlock.block_data?.reference_pattern || ''}`;
+            pdf.text(refText, infoBlockLeft, infoYPos);
+            infoYPos += 4;
+            break;
+          case 'custom':
+            if (informationBlock.block_data?.custom_content) {
+              const customLines = informationBlock.block_data.custom_content.split('\n');
+              customLines.forEach(line => {
+                if (infoYPos < addressFieldTop + addressFieldHeight - 5) {
+                  pdf.text(line, infoBlockLeft, infoYPos);
+                  infoYPos += 4;
+                }
+              });
+            }
+            break;
+        }
+      }
+      
+      // Letter date
+      if (letter.letter_date && !informationBlock) {
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Datum', infoBlockLeft, infoYPos);
+        infoYPos += 5;
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(new Date(letter.letter_date).toLocaleDateString('de-DE'), infoBlockLeft, infoYPos);
+      }
+      
+      // Subject line
+      let contentYPos = contentTop;
+      if (letter.subject || letter.title) {
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        const subjectText = letter.subject || letter.title;
+        pdf.text(subjectText, leftMargin, contentYPos);
+        contentYPos += 8;
+      }
+      
+      // Letter content
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      
+      const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
+      const maxWidth = pageWidth - leftMargin - rightMargin;
+      
+      // Split content into lines that fit the page width
+      const contentLines = pdf.splitTextToSize(contentText, maxWidth);
+      const lineHeight = 4.5;
+      
+      contentLines.forEach((line: string) => {
+        // Check if we need a new page
+        if (contentYPos > pageHeight - 30) {
+          pdf.addPage();
+          contentYPos = 20;
+        }
+        
+        pdf.text(line, leftMargin, contentYPos);
+        contentYPos += lineHeight;
+      });
+      
+      // Attachments
+      if (attachments && attachments.length > 0) {
+        contentYPos += 8;
+        
+        if (contentYPos > pageHeight - 30) {
+          pdf.addPage();
+          contentYPos = 20;
+        }
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Anlagen:', leftMargin, contentYPos);
+        contentYPos += 5;
+        
+        pdf.setFont('helvetica', 'normal');
+        attachments.forEach(attachment => {
+          if (contentYPos > pageHeight - 30) {
+            pdf.addPage();
+            contentYPos = 20;
+          }
+          
+          pdf.text(`- ${attachment.file_name}`, leftMargin + 5, contentYPos);
+          contentYPos += 4;
+        });
+      }
+      
+      // Sender information at bottom
+      if (senderInfo) {
+        const footerY = pageHeight - 25;
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(102, 102, 102); // Gray color
+        
+        let footerText = '';
+        if (senderInfo.organization) footerText += senderInfo.organization;
+        if (senderInfo.name) footerText += (footerText ? ' • ' : '') + senderInfo.name;
+        if (senderInfo.street && senderInfo.house_number) {
+          footerText += (footerText ? ' • ' : '') + `${senderInfo.street} ${senderInfo.house_number}`;
+        }
+        if (senderInfo.postal_code && senderInfo.city) {
+          footerText += (footerText ? ' • ' : '') + `${senderInfo.postal_code} ${senderInfo.city}`;
+        }
+        
+        pdf.text(footerText, leftMargin, footerY);
+        
+        let contactY = footerY + 4;
+        if (senderInfo.phone) {
+          pdf.text(`Tel: ${senderInfo.phone}`, leftMargin, contactY);
+          contactY += 4;
+        }
+        if (senderInfo.email) {
+          pdf.text(`E-Mail: ${senderInfo.email}`, leftMargin, contactY);
+          contactY += 4;
+        }
+        if (senderInfo.website) {
+          pdf.text(`Web: ${senderInfo.website}`, leftMargin, contactY);
+        }
+      }
+      
       // Generate filename
       const letterDate = letter.letter_date 
         ? new Date(letter.letter_date).toLocaleDateString('de-DE')
@@ -274,51 +459,14 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       
       toast({
         title: "PDF exportiert",
-        description: `Der Brief wurde als DIN 5008 PDF gespeichert: ${fileName}`,
+        description: `Der Brief wurde als durchsuchbares DIN 5008 PDF gespeichert: ${fileName}`,
       });
 
     } catch (error) {
       console.error('Error in DIN 5008 PDF export:', error);
       
       // Fallback to simple PDF export
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 20;
-      const maxWidth = pageWidth - (margin * 2);
-      let currentY = margin;
-      
-      const addText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
-        doc.setFontSize(fontSize);
-        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-        const lines = doc.splitTextToSize(text, maxWidth);
-        lines.forEach((line: string) => {
-          doc.text(line, margin, currentY);
-          currentY += fontSize * 0.4;
-        });
-        currentY += 5;
-      };
-      
-      addText(`Brief: ${letter.subject || letter.title}`, 16, true);
-      if (letter.recipient_name) addText(`An: ${letter.recipient_name}`, 12);
-      if (letter.letter_date) addText(`Datum: ${new Date(letter.letter_date).toLocaleDateString('de-DE')}`, 10);
-      if (letter.reference_number) addText(`Ref.: ${letter.reference_number}`, 10);
-      currentY += 10;
-      
-      const content = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
-      addText(content, 11);
-      
-      const fileName = `Brief_${(letter.subject || letter.title || 'Ohne_Titel').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      doc.save(fileName);
-      
-      toast({
-        title: "PDF exportiert (Fallback)",
-        description: "Der Brief wurde als einfaches PDF gespeichert.",
-      });
-    } finally {
-      // Clean up
-      if (container.parentNode) {
-        document.body.removeChild(container);
-      }
+      await exportWithoutTemplate();
     }
   };
 
