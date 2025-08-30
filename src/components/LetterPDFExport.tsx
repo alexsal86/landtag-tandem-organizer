@@ -196,14 +196,14 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       // DIN 5008 measurements in mm
       const pageWidth = 210;
       const pageHeight = 297;
-      const leftMargin = 24.1;
+      const leftMargin = 25;
       const rightMargin = 20;
       const headerHeight = 45;
-      const addressFieldTop = 105;
+      const addressFieldTop = 50;
       const addressFieldLeft = leftMargin;
       const addressFieldWidth = 85;
       const addressFieldHeight = 40;
-      const infoBlockLeft = 119.1;
+      const infoBlockLeft = 125;
       const infoBlockWidth = 75;
       const contentTop = 169;
       
@@ -221,7 +221,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         // Address field with detailed measurements
         pdf.setDrawColor(255, 0, 0);
         pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, addressFieldHeight);
-        pdf.text("Adressfeld: 85×40mm @ Position 105mm/24.1mm", addressFieldLeft, addressFieldTop - 3);
+        pdf.text("Adressfeld: 85×40mm @ Position 50mm/25mm", addressFieldLeft, addressFieldTop - 3);
         
         // Address field inner measurements
         pdf.setDrawColor(255, 100, 100);
@@ -236,7 +236,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.rect(infoBlockLeft, addressFieldTop, infoBlockWidth, addressFieldHeight);
         pdf.setFontSize(8);
         pdf.setTextColor(0, 0, 255);
-        pdf.text("Info-Block: 75×40mm @ 119.1mm", infoBlockLeft, addressFieldTop - 3);
+        pdf.text("Info-Block: 75×40mm @ 50mm/125mm", infoBlockLeft, addressFieldTop - 3);
         
         // Content start line (169mm)
         pdf.setDrawColor(0, 255, 0); // Green
@@ -249,7 +249,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.line(leftMargin, 0, leftMargin, pageHeight);
         pdf.setTextColor(255, 165, 0);
         pdf.text("Linker Rand:", leftMargin + 2, 15);
-        pdf.text("24.1mm", leftMargin + 2, 20);
+        pdf.text("25mm", leftMargin + 2, 20);
         
         // Right margin guide
         pdf.line(pageWidth - rightMargin, 0, pageWidth - rightMargin, pageHeight);
@@ -280,7 +280,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         // Address field position arrows
         pdf.setDrawColor(255, 0, 0);
         pdf.line(0, addressFieldTop, addressFieldLeft - 2, addressFieldTop);
-        pdf.text("105mm", 2, addressFieldTop + 2);
+        pdf.text("50mm", 2, addressFieldTop + 2);
         
         // Content position arrows  
         pdf.setDrawColor(0, 255, 0);

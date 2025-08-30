@@ -172,16 +172,16 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       <div style={{ 
         position: 'relative',
         paddingTop: '60mm', // Start after header area (45mm + 15mm margin)
-        paddingLeft: '24.1mm', // DIN 5008 left margin
+        paddingLeft: '25mm', // DIN 5008 left margin
         paddingRight: '20mm', // DIN 5008 right margin
         paddingBottom: '16.9mm' // Bottom margin
       }}>
         
-        {/* Main Address and Info Block Container - positioned at 105mm from top */}
+        {/* Main Address and Info Block Container - positioned at 50mm from top */}
         <div className="flex" style={{ 
           position: 'absolute',
-          top: '105mm', // DIN 5008 standard position
-          left: '24.1mm',
+          top: '50mm', // DIN 5008 standard position
+          left: '25mm',
           right: '20mm',
           marginBottom: '8.46mm'
         }}>
@@ -221,6 +221,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
 
           {/* Information Block - DIN 5008 positioned */}
           <div style={{ 
+            position: 'absolute',
+            left: '125mm', // 125mm from left edge
+            top: '0', // 50mm from top (relative to container)
             width: '75mm', // DIN 5008 standard
             height: '40mm',
             backgroundColor: debugMode ? 'rgba(0,0,255,0.05)' : 'transparent',
@@ -242,7 +245,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           <div style={{ 
             position: 'absolute',
             top: '169mm', // DIN 5008 content start
-            left: '24.1mm',
+            left: '25mm',
             right: '20mm',
             marginBottom: '8.46mm',
             fontWeight: 'bold',
@@ -258,7 +261,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           style={{ 
             position: 'absolute',
             top: subject ? '185mm' : '169mm', // Start below subject or at content line
-            left: '24.1mm',
+            left: '25mm',
             right: '20mm',
             minHeight: '100mm',
             fontSize: '11pt',
@@ -273,7 +276,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           <div style={{ 
             position: 'absolute',
             top: '230mm', // Below main content area
-            left: '24.1mm',
+            left: '25mm',
             right: '20mm',
             marginTop: '8.46mm',
             backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent'
@@ -296,7 +299,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           <div style={{ 
             position: 'absolute',
             bottom: '16.9mm', // DIN 5008 bottom margin
-            left: '24.1mm',
+            left: '25mm',
             right: '20mm',
             fontSize: '8pt',
             color: '#666',
@@ -344,8 +347,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* Address field measurements */}
           <div style={{
             position: 'absolute',
-            top: '105mm',
-            left: '24.1mm',
+            top: '50mm',
+            left: '25mm',
             width: '85mm',
             height: '40mm',
             border: '2px dashed red',
@@ -361,7 +364,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               backgroundColor: 'white',
               padding: '3px',
               border: '1px solid red'
-            }}>Adressfeld: 85×40mm @ 105mm/24.1mm</span>
+            }}>Adressfeld: 85×40mm @ 50mm/25mm</span>
             
             {/* Window position indicator */}
             <div style={{
@@ -378,8 +381,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* Info block measurements */}
           <div style={{
             position: 'absolute',
-            top: '105mm',
-            left: '119.1mm',
+            top: '50mm',
+            left: '125mm',
             width: '75mm',
             height: '40mm',
             border: '2px dashed blue',
@@ -395,14 +398,14 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               backgroundColor: 'white',
               padding: '3px',
               border: '1px solid blue'
-            }}>Info-Block: 75×40mm @ 119.1mm</span>
+            }}>Info-Block: 75×40mm @ 50mm/125mm</span>
           </div>
           
           {/* Content start line */}
           <div style={{
             position: 'absolute',
             top: '169mm',
-            left: '24.1mm',
+            left: '25mm',
             right: '20mm',
             height: '2px',
             backgroundColor: 'green',
@@ -424,7 +427,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           <div style={{
             position: 'absolute',
             top: '0',
-            left: '24.1mm',
+            left: '25mm',
             width: '2px',
             height: '100%',
             backgroundColor: 'orange',
@@ -442,7 +445,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               transform: 'rotate(90deg)',
               transformOrigin: 'left',
               border: '1px solid orange'
-            }}>Linker Rand: 24.1mm</span>
+            }}>Linker Rand: 25mm</span>
           </div>
           
           {/* Right margin guide */}
