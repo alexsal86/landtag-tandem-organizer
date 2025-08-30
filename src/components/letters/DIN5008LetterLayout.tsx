@@ -223,7 +223,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           <div style={{ 
             position: 'absolute',
             left: '125mm', // 125mm from left edge
-            top: '0', // 50mm from top (relative to container)
+            top: '4mm', // 50mm from top (46mm + 4mm difference)
             width: '75mm', // DIN 5008 standard
             height: '40mm',
             backgroundColor: debugMode ? 'rgba(0,0,255,0.05)' : 'transparent',

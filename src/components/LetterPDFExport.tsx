@@ -199,13 +199,14 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const leftMargin = 25;
       const rightMargin = 20;
       const headerHeight = 45;
-      const addressFieldTop = 46; // Direkt nach Header
+      const addressFieldTop = 46; // Adressfeld bei 46mm 
       const addressFieldLeft = leftMargin;
       const addressFieldWidth = 85;
       const addressFieldHeight = 40;
+      const infoBlockTop = 50; // Info-Block bei 50mm
       const infoBlockLeft = 125;
       const infoBlockWidth = 75;
-      const contentTop = 98.46; // Neuer Betreff-Start
+      const contentTop = 98.46; // Betreff/Inhalt beginnt bei 98.46mm
       
       // Debug mode: Draw comprehensive DIN 5008 guides (ALWAYS ENABLED for testing)
       if (true) { // Force debug mode ON
@@ -232,10 +233,10 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         // Info block
         pdf.setDrawColor(0, 0, 255); // Blue
         pdf.setLineWidth(0.2);
-        pdf.rect(infoBlockLeft, addressFieldTop, infoBlockWidth, addressFieldHeight);
+        pdf.rect(infoBlockLeft, infoBlockTop, infoBlockWidth, addressFieldHeight);
         pdf.setFontSize(8);
         pdf.setTextColor(0, 0, 255);
-        pdf.text("Info-Block: 75×40mm @ 46mm/125mm", infoBlockLeft, addressFieldTop - 3);
+        pdf.text("Info-Block: 75×40mm @ 50mm/125mm", infoBlockLeft, infoBlockTop - 3);
         
         // Content start line (98.46mm)
         pdf.setDrawColor(0, 255, 0); // Green
@@ -280,6 +281,11 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.setDrawColor(255, 0, 0);
         pdf.line(0, addressFieldTop, addressFieldLeft - 2, addressFieldTop);
         pdf.text("46mm", 2, addressFieldTop + 2);
+        
+        // Info block position arrows
+        pdf.setDrawColor(0, 0, 255);
+        pdf.line(0, infoBlockTop, infoBlockLeft - 2, infoBlockTop);
+        pdf.text("50mm", 2, infoBlockTop + 2);
         
         // Content position arrows  
         pdf.setDrawColor(0, 255, 0);
@@ -334,7 +340,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       }
       
       // Information block
-      let infoYPos = addressFieldTop + 8;
+      let infoYPos = infoBlockTop + 3;
       if (informationBlock) {
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'bold');
