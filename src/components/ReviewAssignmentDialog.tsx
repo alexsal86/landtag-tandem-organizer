@@ -111,7 +111,10 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
   };
 
   const handleSubmit = async () => {
+    console.log('handleSubmit called with reviewOption:', reviewOption);
+    
     if (reviewOption === 'skip') {
+      console.log('Skipping review, calling onSkipReview');
       onSkipReview();
       onClose();
       return;
@@ -128,6 +131,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
 
     if (!user) return;
 
+    console.log('Starting assignment save with selectedUsers:', selectedUsers);
     setSaving(true);
     try {
       // Remove existing collaborators
@@ -157,6 +161,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         description: `${selectedUsers.length} Prüfer wurden erfolgreich zugewiesen.`,
       });
 
+      console.log('Assignment successful, calling onReviewAssigned');
       onReviewAssigned();
       onClose();
     } catch (error) {
@@ -167,6 +172,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         variant: "destructive",
       });
     } finally {
+      console.log('Setting saving to false');
       setSaving(false);
     }
   };
