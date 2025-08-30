@@ -207,8 +207,8 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const infoBlockWidth = 75;
       const contentTop = 169;
       
-      // Debug mode: Draw comprehensive DIN 5008 guides
-      if (debugMode) {
+      // Debug mode: Draw comprehensive DIN 5008 guides (ALWAYS ENABLED for testing)
+      if (true) { // Force debug mode ON
         pdf.setLineWidth(0.2);
         
         // Header line (45mm)
