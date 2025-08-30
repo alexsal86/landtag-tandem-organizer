@@ -168,81 +168,120 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         />
       )}
 
-      {/* Letter Content Area */}
-      <div style={{ padding: '20mm 20mm 16.9mm 24.1mm' }}>
+      {/* Letter Content Area - DIN 5008 konform */}
+      <div style={{ 
+        position: 'relative',
+        paddingTop: '60mm', // Start after header area (45mm + 15mm margin)
+        paddingLeft: '24.1mm', // DIN 5008 left margin
+        paddingRight: '20mm', // DIN 5008 right margin
+        paddingBottom: '16.9mm' // Bottom margin
+      }}>
         
-        {/* Main Address and Info Block Container */}
+        {/* Main Address and Info Block Container - positioned at 105mm from top */}
         <div className="flex" style={{ 
-          marginTop: '0',
+          position: 'absolute',
+          top: '105mm', // DIN 5008 standard position
+          left: '24.1mm',
+          right: '20mm',
           marginBottom: '8.46mm'
         }}>
           
-          {/* Recipient Address Field */}
+          {/* Recipient Address Field - DIN 5008 exact dimensions */}
           <div style={{ 
-            width: '85mm',
-            height: '40mm',
-            border: '1px solid #e0e0e0',
-            padding: '5mm',
-            marginRight: '10mm'
+            width: '85mm', // DIN 5008 standard
+            height: '40mm', // DIN 5008 standard
+            border: debugMode ? '1px solid #e0e0e0' : 'none',
+            padding: '5mm 5mm 5mm 5mm', // Internal padding
+            marginRight: '10mm',
+            backgroundColor: debugMode ? 'rgba(255,0,0,0.05)' : 'transparent'
           }}>
             {/* Return Address Line at top of address field */}
             {senderInfo?.return_address_line && (
               <div style={{
                 fontSize: '7pt',
-                borderBottom: '1px solid #000',
+                borderBottom: '0.5pt solid #000',
                 paddingBottom: '1mm',
                 marginBottom: '3mm',
-                lineHeight: '1.0'
+                lineHeight: '1.0',
+                maxWidth: '75mm' // Prevent overflow
               }}>
                 {senderInfo.return_address_line}
               </div>
             )}
             
             {/* Recipient Address */}
-            <div style={{ fontSize: '9pt', lineHeight: '1.1' }}>
+            <div style={{ 
+              fontSize: '10pt', // Slightly larger for better readability
+              lineHeight: '1.2',
+              maxWidth: '75mm' // Prevent overflow
+            }}>
               {formatAddress(recipientAddress)}
             </div>
           </div>
 
-          {/* Information Block */}
-          <div style={{ width: '75mm' }}>
+          {/* Information Block - DIN 5008 positioned */}
+          <div style={{ 
+            width: '75mm', // DIN 5008 standard
+            height: '40mm',
+            backgroundColor: debugMode ? 'rgba(0,0,255,0.05)' : 'transparent',
+            padding: '2mm'
+          }}>
             {renderInformationBlock(informationBlock)}
             
-            {letterDate && (
+            {letterDate && !informationBlock && (
               <div style={{ marginTop: '8mm' }}>
-                <div className="font-medium">Datum</div>
-                <div>{new Date(letterDate).toLocaleDateString('de-DE')}</div>
+                <div className="font-medium" style={{ fontSize: '9pt' }}>Datum</div>
+                <div style={{ fontSize: '9pt' }}>{new Date(letterDate).toLocaleDateString('de-DE')}</div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Subject Line */}
+        {/* Subject Line - positioned at 169mm from top */}
         {subject && (
           <div style={{ 
+            position: 'absolute',
+            top: '169mm', // DIN 5008 content start
+            left: '24.1mm',
+            right: '20mm',
             marginBottom: '8.46mm',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            fontSize: '11pt',
+            backgroundColor: debugMode ? 'rgba(0,255,0,0.05)' : 'transparent'
           }}>
             {subject}
           </div>
         )}
 
-        {/* Letter Content */}
+        {/* Letter Content - starts after subject line */}
         <div 
           style={{ 
-            marginBottom: '8.46mm',
-            minHeight: '100mm'
+            position: 'absolute',
+            top: subject ? '185mm' : '169mm', // Start below subject or at content line
+            left: '24.1mm',
+            right: '20mm',
+            minHeight: '100mm',
+            fontSize: '11pt',
+            lineHeight: '1.2',
+            backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent'
           }}
           dangerouslySetInnerHTML={{ __html: content }}
         />
 
-        {/* Attachments */}
+        {/* Attachments - positioned after content */}
         {attachments && attachments.length > 0 && (
-          <div style={{ marginTop: '8.46mm' }}>
-            <div className="font-medium" style={{ marginBottom: '2mm' }}>
+          <div style={{ 
+            position: 'absolute',
+            top: '230mm', // Below main content area
+            left: '24.1mm',
+            right: '20mm',
+            marginTop: '8.46mm',
+            backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent'
+          }}>
+            <div className="font-medium" style={{ marginBottom: '2mm', fontSize: '10pt' }}>
               Anlagen:
             </div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '10pt' }}>
               {attachments.map((attachment, index) => (
                 <li key={index} style={{ marginBottom: '1mm' }}>
                   - {attachment}
@@ -252,14 +291,17 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           </div>
         )}
 
-        {/* Sender Address Block */}
+        {/* Sender Address Block - DIN 5008 footer position */}
         {senderInfo && (
           <div style={{ 
             position: 'absolute',
-            bottom: '16.9mm',
+            bottom: '16.9mm', // DIN 5008 bottom margin
             left: '24.1mm',
-            fontSize: '9pt',
-            color: '#666'
+            right: '20mm',
+            fontSize: '8pt',
+            color: '#666',
+            backgroundColor: debugMode ? 'rgba(255,165,0,0.05)' : 'transparent',
+            padding: debugMode ? '2mm' : '0'
           }}>
             {formatSenderAddress(senderInfo)}
             {senderInfo.phone && <div>Tel: {senderInfo.phone}</div>}
@@ -274,7 +316,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         <style dangerouslySetInnerHTML={{ __html: template.letterhead_css }} />
       )}
 
-      {/* Debug Mode Overlays */}
+      {/* Debug Mode Overlays - Enhanced with precise measurements */}
       {debugMode && (
         <>
           {/* DIN 5008 measurement guides */}
@@ -283,21 +325,23 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             top: '45mm',
             left: '0',
             right: '0',
-            height: '1px',
+            height: '2px',
             backgroundColor: 'red',
             zIndex: 1000
           }}>
             <span style={{
               position: 'absolute',
               left: '5mm',
-              top: '-15px',
-              fontSize: '8pt',
+              top: '-18px',
+              fontSize: '9pt',
               color: 'red',
               backgroundColor: 'white',
-              padding: '2px'
-            }}>45mm - Header Ende</span>
+              padding: '3px',
+              border: '1px solid red'
+            }}>45mm - Header Ende (DIN 5008)</span>
           </div>
           
+          {/* Address field measurements */}
           <div style={{
             position: 'absolute',
             top: '105mm',
@@ -310,15 +354,28 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           }}>
             <span style={{
               position: 'absolute',
-              top: '-20px',
+              top: '-25px',
               left: '0',
-              fontSize: '8pt',
+              fontSize: '9pt',
               color: 'red',
               backgroundColor: 'white',
-              padding: '2px'
-            }}>Adressfeld: 85×40mm @ 24.1mm</span>
+              padding: '3px',
+              border: '1px solid red'
+            }}>Adressfeld: 85×40mm @ 105mm/24.1mm</span>
+            
+            {/* Window position indicator */}
+            <div style={{
+              position: 'absolute',
+              top: '5mm',
+              left: '5mm',
+              fontSize: '7pt',
+              color: 'red',
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              padding: '1px'
+            }}>Fenster: 5mm Innenabstand</div>
           </div>
           
+          {/* Info block measurements */}
           <div style={{
             position: 'absolute',
             top: '105mm',
@@ -331,57 +388,126 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           }}>
             <span style={{
               position: 'absolute',
-              top: '-20px',
+              top: '-25px',
               left: '0',
-              fontSize: '8pt',
+              fontSize: '9pt',
               color: 'blue',
               backgroundColor: 'white',
-              padding: '2px'
-            }}>Info-Block: 75mm @ 119.1mm</span>
+              padding: '3px',
+              border: '1px solid blue'
+            }}>Info-Block: 75×40mm @ 119.1mm</span>
           </div>
           
+          {/* Content start line */}
           <div style={{
             position: 'absolute',
             top: '169mm',
             left: '24.1mm',
             right: '20mm',
-            height: '1px',
+            height: '2px',
             backgroundColor: 'green',
             zIndex: 1000
           }}>
             <span style={{
               position: 'absolute',
               left: '0',
-              top: '-15px',
-              fontSize: '8pt',
+              top: '-18px',
+              fontSize: '9pt',
               color: 'green',
               backgroundColor: 'white',
-              padding: '2px'
-            }}>169mm - Inhaltsbeginn</span>
+              padding: '3px',
+              border: '1px solid green'
+            }}>169mm - Inhaltsbeginn (DIN 5008)</span>
           </div>
 
-          {/* Margin guides */}
+          {/* Left margin guide */}
           <div style={{
             position: 'absolute',
             top: '0',
             left: '24.1mm',
-            width: '1px',
+            width: '2px',
             height: '100%',
             backgroundColor: 'orange',
-            opacity: 0.5,
+            opacity: 0.7,
             zIndex: 999
           }}>
             <span style={{
               position: 'absolute',
               left: '5px',
-              top: '10mm',
+              top: '15mm',
               fontSize: '8pt',
               color: 'orange',
               backgroundColor: 'white',
               padding: '2px',
               transform: 'rotate(90deg)',
-              transformOrigin: 'left'
+              transformOrigin: 'left',
+              border: '1px solid orange'
             }}>Linker Rand: 24.1mm</span>
+          </div>
+          
+          {/* Right margin guide */}
+          <div style={{
+            position: 'absolute',
+            top: '0',
+            right: '20mm',
+            width: '2px',
+            height: '100%',
+            backgroundColor: 'orange',
+            opacity: 0.7,
+            zIndex: 999
+          }}>
+            <span style={{
+              position: 'absolute',
+              right: '5px',
+              top: '15mm',
+              fontSize: '8pt',
+              color: 'orange',
+              backgroundColor: 'white',
+              padding: '2px',
+              transform: 'rotate(90deg)',
+              transformOrigin: 'right',
+              border: '1px solid orange'
+            }}>Rechter Rand: 20mm</span>
+          </div>
+          
+          {/* Bottom margin guide */}
+          <div style={{
+            position: 'absolute',
+            bottom: '16.9mm',
+            left: '0',
+            right: '0',
+            height: '2px',
+            backgroundColor: 'purple',
+            opacity: 0.7,
+            zIndex: 999
+          }}>
+            <span style={{
+              position: 'absolute',
+              left: '5mm',
+              bottom: '5px',
+              fontSize: '8pt',
+              color: 'purple',
+              backgroundColor: 'white',
+              padding: '2px',
+              border: '1px solid purple'
+            }}>Unterer Rand: 16.9mm</span>
+          </div>
+          
+          {/* Page dimensions indicator */}
+          <div style={{
+            position: 'absolute',
+            top: '5mm',
+            right: '5mm',
+            fontSize: '8pt',
+            color: '#333',
+            backgroundColor: 'rgba(255,255,255,0.95)',
+            padding: '5px',
+            border: '1px solid #333',
+            borderRadius: '3px'
+          }}>
+            <div><strong>DIN A4:</strong> 210×297mm</div>
+            <div><strong>Schriftart:</strong> Arial 11pt</div>
+            <div><strong>Zeilenabstand:</strong> 1.2</div>
           </div>
         </>
       )}

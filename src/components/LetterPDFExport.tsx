@@ -207,38 +207,85 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const infoBlockWidth = 75;
       const contentTop = 169;
       
-      // Debug mode: Draw guides
+      // Debug mode: Draw comprehensive DIN 5008 guides
       if (debugMode) {
+        pdf.setLineWidth(0.2);
+        
+        // Header line (45mm)
         pdf.setDrawColor(255, 0, 0); // Red
-        pdf.setLineWidth(0.1);
-        
-        // Header line
         pdf.line(0, headerHeight, pageWidth, headerHeight);
-        pdf.setFontSize(6);
+        pdf.setFontSize(8);
         pdf.setTextColor(255, 0, 0);
-        pdf.text("45mm - Header Ende", 5, headerHeight - 2);
+        pdf.text("45mm - Header Ende (DIN 5008)", 5, headerHeight - 3);
         
-        // Address field
+        // Address field with detailed measurements
+        pdf.setDrawColor(255, 0, 0);
         pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, addressFieldHeight);
-        pdf.text("Adressfeld: 85×40mm", addressFieldLeft, addressFieldTop - 2);
+        pdf.text("Adressfeld: 85×40mm @ Position 105mm/24.1mm", addressFieldLeft, addressFieldTop - 3);
+        
+        // Address field inner measurements
+        pdf.setDrawColor(255, 100, 100);
+        pdf.setLineWidth(0.1);
+        pdf.rect(addressFieldLeft + 5, addressFieldTop + 5, addressFieldWidth - 10, addressFieldHeight - 10);
+        pdf.setFontSize(6);
+        pdf.text("Innenbereich: 5mm Abstand", addressFieldLeft + 6, addressFieldTop + 8);
         
         // Info block
         pdf.setDrawColor(0, 0, 255); // Blue
+        pdf.setLineWidth(0.2);
         pdf.rect(infoBlockLeft, addressFieldTop, infoBlockWidth, addressFieldHeight);
+        pdf.setFontSize(8);
         pdf.setTextColor(0, 0, 255);
-        pdf.text("Info-Block: 75mm", infoBlockLeft, addressFieldTop - 2);
+        pdf.text("Info-Block: 75×40mm @ 119.1mm", infoBlockLeft, addressFieldTop - 3);
         
-        // Content line
+        // Content start line (169mm)
         pdf.setDrawColor(0, 255, 0); // Green
         pdf.line(leftMargin, contentTop, pageWidth - rightMargin, contentTop);
         pdf.setTextColor(0, 255, 0);
-        pdf.text("169mm - Inhaltsbeginn", leftMargin, contentTop - 2);
+        pdf.text("169mm - Inhaltsbeginn (DIN 5008)", leftMargin, contentTop - 3);
         
-        // Left margin
+        // Left margin guide
         pdf.setDrawColor(255, 165, 0); // Orange
         pdf.line(leftMargin, 0, leftMargin, pageHeight);
         pdf.setTextColor(255, 165, 0);
-        pdf.text("24.1mm", leftMargin + 1, 20);
+        pdf.text("Linker Rand:", leftMargin + 2, 15);
+        pdf.text("24.1mm", leftMargin + 2, 20);
+        
+        // Right margin guide
+        pdf.line(pageWidth - rightMargin, 0, pageWidth - rightMargin, pageHeight);
+        pdf.text("Rechter Rand:", pageWidth - rightMargin - 25, 15);
+        pdf.text("20mm", pageWidth - rightMargin - 15, 20);
+        
+        // Bottom margin guide
+        pdf.setDrawColor(128, 0, 128); // Purple
+        pdf.line(0, pageHeight - 16.9, pageWidth, pageHeight - 16.9);
+        pdf.setTextColor(128, 0, 128);
+        pdf.text("Unterer Rand: 16.9mm", 5, pageHeight - 16.9 - 2);
+        
+        // Page dimensions box
+        pdf.setDrawColor(0, 0, 0);
+        pdf.setLineWidth(0.3);
+        pdf.rect(pageWidth - 50, 5, 45, 25);
+        pdf.setFontSize(7);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text("DIN A4:", pageWidth - 48, 10);
+        pdf.text("210×297mm", pageWidth - 48, 15);
+        pdf.text("Font: Arial", pageWidth - 48, 20);
+        pdf.text("Size: 11pt", pageWidth - 48, 25);
+        
+        // Measurement annotations
+        pdf.setFontSize(6);
+        pdf.setTextColor(0, 0, 0);
+        
+        // Address field position arrows
+        pdf.setDrawColor(255, 0, 0);
+        pdf.line(0, addressFieldTop, addressFieldLeft - 2, addressFieldTop);
+        pdf.text("105mm", 2, addressFieldTop + 2);
+        
+        // Content position arrows  
+        pdf.setDrawColor(0, 255, 0);
+        pdf.line(0, contentTop, leftMargin - 2, contentTop);
+        pdf.text("169mm", 2, contentTop + 2);
       }
       
       // Reset colors for content
