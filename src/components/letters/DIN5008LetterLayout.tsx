@@ -195,7 +195,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             marginRight: '10mm',
             backgroundColor: debugMode ? 'rgba(255,0,0,0.05)' : 'transparent'
           }}>
-            {/* Return Address Line at top of address field */}
+            {/* Return Address Line at top of address field - 17.7mm height */}
             {senderInfo?.return_address_line && (
               <div style={{
                 fontSize: '7pt',
@@ -203,7 +203,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                 paddingBottom: '1mm',
                 marginBottom: '3mm',
                 lineHeight: '1.0',
-                maxWidth: '75mm' // Prevent overflow
+                maxWidth: '75mm', // Prevent overflow
+                height: '17.7mm', // DIN 5008 Rücksendeangaben-Höhe
+                display: 'flex',
+                alignItems: 'flex-end' // Text am unteren Rand der 17.7mm
               }}>
                 {senderInfo.return_address_line}
               </div>

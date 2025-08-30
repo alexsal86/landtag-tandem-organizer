@@ -224,11 +224,12 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, addressFieldHeight);
         pdf.text("Adressfeld: 85×40mm @ Position 46mm/25mm", addressFieldLeft, addressFieldTop - 3);
         
-        // Address field - kein interner Abstand mehr
+        // Address field - Rücksendeangaben 17.7mm-Zone
         pdf.setDrawColor(255, 100, 100);
         pdf.setLineWidth(0.1);
+        pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, 17.7);
         pdf.setFontSize(6);
-        pdf.text("Kein interner Abstand", addressFieldLeft + 2, addressFieldTop + 6);
+        pdf.text("Rücksendeangaben: 17.7mm Höhe", addressFieldLeft + 2, addressFieldTop + 15);
         
         // Info block
         pdf.setDrawColor(0, 0, 255); // Blue
@@ -305,17 +306,18 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.text(template.name || 'Briefkopf', leftMargin, 20);
       }
       
-      // Return address line in address field
-      let addressYPos = addressFieldTop + 3; // Kein interner Abstand
+      // Return address line in address field - 17.7mm height
+      let addressYPos = addressFieldTop + 17.7; // Rücksendeangaben sind 17.7mm hoch
       if (senderInfo?.return_address_line) {
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(senderInfo.return_address_line, addressFieldLeft, addressYPos);
+        // Position text at bottom of 17.7mm area
+        pdf.text(senderInfo.return_address_line, addressFieldLeft, addressYPos - 2);
         
         // Underline for return address
         const textWidth = pdf.getTextWidth(senderInfo.return_address_line);
-        pdf.line(addressFieldLeft, addressYPos + 1, addressFieldLeft + textWidth, addressYPos + 1);
-        addressYPos += 6;
+        pdf.line(addressFieldLeft, addressYPos - 1, addressFieldLeft + textWidth, addressYPos - 1);
+        addressYPos += 3; // Small gap after return address
       }
       
       // Recipient address
