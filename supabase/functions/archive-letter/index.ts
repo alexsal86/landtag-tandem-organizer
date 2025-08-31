@@ -33,20 +33,10 @@ serve(async (req) => {
 
     console.log(`Starting archive process for letter ID: ${letterId}`)
 
-    // Get letter data with all related information
+    // Get letter data
     const { data: letter, error: letterError } = await supabase
       .from('letters')
-      .select(`
-        *,
-        letter_attachments (
-          id,
-          file_name,
-          file_path,
-          file_type,
-          file_size,
-          display_name
-        )
-      `)
+      .select('*')
       .eq('id', letterId)
       .single()
 
@@ -82,15 +72,8 @@ serve(async (req) => {
       workflow_locked: letter.workflow_locked
     }
 
-    // Prepare archived attachments data
-    const archivedAttachments = letter.letter_attachments?.map((attachment: any) => ({
-      id: attachment.id,
-      file_name: attachment.file_name,
-      display_name: attachment.display_name || attachment.file_name,
-      file_path: attachment.file_path,
-      file_type: attachment.file_type,
-      file_size: attachment.file_size
-    })) || []
+    // No attachments for now - can be enhanced later
+    const archivedAttachments = []
 
     // Create document record for archived letter
     const documentData = {
