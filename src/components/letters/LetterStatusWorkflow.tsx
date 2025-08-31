@@ -34,20 +34,20 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
   const [transitionNote, setTransitionNote] = useState('');
   const [sentMethod, setSentMethod] = useState<'post' | 'email' | 'both'>('post');
   const [users, setUsers] = useState<any[]>([]);
-  const [selectedReviewer, setSelectedReviewer] = useState<string>('');
+  const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]);
 
   const statusConfig = {
     draft: {
       label: 'Entwurf',
       icon: Edit3,
       color: 'bg-gray-100 text-gray-800',
-      nextStates: ['review', 'approved']
+      nextStates: ['review', 'approved', 'sent']
     },
     review: {
       label: 'Zur Prüfung',
       icon: Clock,
       color: 'bg-yellow-100 text-yellow-800',
-      nextStates: ['draft', 'approved']
+      nextStates: ['draft', 'approved', 'sent']
     },
     approved: {
       label: 'Genehmigt',
@@ -84,8 +84,8 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
       let additionalData: any = {};
 
       // Handle specific transition logic
-      if (transitionTo === 'review' && selectedReviewer) {
-        additionalData.reviewer_id = selectedReviewer;
+      if (transitionTo === 'review' && selectedReviewers.length > 0) {
+        additionalData.reviewer_ids = selectedReviewers;
       }
 
       if (transitionTo === 'sent') {
@@ -138,7 +138,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
       setIsTransitionDialogOpen(false);
       setTransitionTo('');
       setTransitionNote('');
-      setSelectedReviewer('');
+      setSelectedReviewers([]);
     } catch (error) {
       console.error('Error changing status:', error);
       toast({
@@ -198,17 +198,29 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
           <span className="text-sm text-muted-foreground">Aktueller Status</span>
         </div>
 
-        {/* Nur der nächste logische Schritt */}
+        {/* Available Actions */}
         {nextStates.length > 0 && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => openTransitionDialog(nextStates[0])}
-            className="w-full justify-start"
-          >
-            <ArrowRight className="h-4 w-4 mr-2" />
-            Zu "{statusConfig[nextStates[0] as keyof typeof statusConfig].label}"
-          </Button>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Verfügbare Aktionen:</Label>
+            <div className="flex flex-wrap gap-2">
+              {nextStates.map((nextState) => {
+                const nextConfig = statusConfig[nextState as keyof typeof statusConfig];
+                return (
+                  <Button
+                    key={nextState}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openTransitionDialog(nextState)}
+                    className="flex items-center gap-2"
+                  >
+                    <nextConfig.icon className="h-3 w-3" />
+                    {nextConfig.label}
+                    <ArrowRight className="h-3 w-3" />
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Transition Dialog */}
@@ -224,22 +236,38 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
               {/* Reviewer Selection for Review Status */}
               {transitionTo === 'review' && (
                 <div className="space-y-2">
-                  <Label>Prüfung zuweisen an:</Label>
-                  <Select value={selectedReviewer} onValueChange={setSelectedReviewer}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Benutzer auswählen..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.map((user) => (
-                        <SelectItem key={user.user_id} value={user.user_id}>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            {user.display_name || 'Unbekannt'}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Prüfung zuweisen an (mehrere möglich):</Label>
+                  <div className="border rounded-md p-2 max-h-40 overflow-y-auto">
+                    {users.map((user) => (
+                      <div key={user.user_id} className="flex items-center space-x-2 p-1">
+                        <input
+                          type="checkbox"
+                          id={`reviewer-${user.user_id}`}
+                          checked={selectedReviewers.includes(user.user_id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedReviewers(prev => [...prev, user.user_id]);
+                            } else {
+                              setSelectedReviewers(prev => prev.filter(id => id !== user.user_id));
+                            }
+                          }}
+                          className="rounded"
+                        />
+                        <label 
+                          htmlFor={`reviewer-${user.user_id}`} 
+                          className="flex items-center gap-2 cursor-pointer flex-1"
+                        >
+                          <User className="h-4 w-4" />
+                          {user.display_name || 'Unbekannt'}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedReviewers.length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      {selectedReviewers.length} Prüfer ausgewählt
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -290,7 +318,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
                 </Button>
                 <Button
                   onClick={handleStatusTransition}
-                  disabled={transitionTo === 'review' && !selectedReviewer}
+                  disabled={transitionTo === 'review' && selectedReviewers.length === 0}
                 >
                   Status ändern
                 </Button>
