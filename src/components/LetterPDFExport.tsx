@@ -257,11 +257,12 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.text("Rechter Rand:", pageWidth - rightMargin - 25, 15);
         pdf.text("20mm", pageWidth - rightMargin - 15, 20);
         
-        // Bottom margin guide
+        // Footer guide (Fußzeile at 259.7mm from top)
+        const footerPosition = 259.7;
         pdf.setDrawColor(128, 0, 128); // Purple
-        pdf.line(0, pageHeight - 16.9, pageWidth, pageHeight - 16.9);
+        pdf.line(0, footerPosition, pageWidth, footerPosition);
         pdf.setTextColor(128, 0, 128);
-        pdf.text("Unterer Rand: 16.9mm", 5, pageHeight - 16.9 - 2);
+        pdf.text("Fußzeile: 259.7mm", 5, footerPosition - 2);
         
         // Page dimensions box
         pdf.setDrawColor(0, 0, 0);
