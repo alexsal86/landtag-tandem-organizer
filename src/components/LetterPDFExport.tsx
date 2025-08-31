@@ -461,119 +461,148 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       let currentPage = 1;
       let totalPages = 1;
       
-      // Calculate total pages (simple estimation)
-      const totalContentHeight = contentLines.length * lineHeight + (attachments?.length || 0) * 4 + 50;
-      const availableHeight = pageHeight - contentTop - 50; // Minus margins
-      totalPages = Math.ceil(totalContentHeight / availableHeight) || 1;
+      // Calculate total pages (accurate estimation)
+      const availableContentHeight = pageHeight - contentTop - 50; // Height available for content
+      const totalContentHeight = contentLines.length * lineHeight;
+      totalPages = Math.max(1, Math.ceil(totalContentHeight / availableContentHeight));
+      
+      // Add debug margins to all pages function
+      const addDebugMargins = (pageNum: number) => {
+        if (debugMode || true) { // Force debug mode for testing
+          pdf.setLineWidth(0.2);
+          
+          // Header line (45mm)
+          pdf.setDrawColor(255, 0, 0);
+          pdf.line(0, headerHeight, pageWidth, headerHeight);
+          pdf.setFontSize(8);
+          pdf.setTextColor(255, 0, 0);
+          pdf.text(`45mm - Header Ende (Seite ${pageNum})`, 5, headerHeight - 3);
+          
+          // Left margin guide
+          pdf.setDrawColor(255, 165, 0);
+          pdf.line(leftMargin, 0, leftMargin, pageHeight);
+          pdf.setTextColor(255, 165, 0);
+          pdf.text("25mm", leftMargin + 2, 15);
+          
+          // Right margin guide
+          pdf.line(pageWidth - rightMargin, 0, pageWidth - rightMargin, pageHeight);
+          pdf.text("20mm", pageWidth - rightMargin - 15, 20);
+          
+          // Footer area
+          const footerTop = 272;
+          const footerBottom = pageHeight - 7;
+          
+          pdf.setDrawColor(128, 0, 128);
+          pdf.rect(leftMargin, footerTop, pageWidth - leftMargin - rightMargin, footerBottom - footerTop);
+          pdf.line(0, footerTop, pageWidth, footerTop);
+          pdf.line(0, footerBottom, pageWidth, footerBottom);
+          
+          pdf.setTextColor(128, 0, 128);
+          pdf.text("Fußzeile: 272mm", 5, footerTop - 2);
+          pdf.text("Unterer Rand: 7mm", 5, footerBottom + 3);
+          
+          // Reset colors
+          pdf.setTextColor(0, 0, 0);
+          pdf.setDrawColor(0, 0, 0);
+        }
+      };
+      
+      // Add pagination function
+      const addPagination = (pageNum: number) => {
+        if (showPagination && totalPages > 1) {
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(0, 0, 0);
+          
+          // Position: 4.23mm above footer (272mm), 20mm from right edge
+          const paginationY = 272 - 4.23; // 267.77mm from top
+          const paginationX = pageWidth - 20; // 20mm from right edge
+          
+          const paginationText = `Seite ${pageNum} von ${totalPages}`;
+          const textWidth = pdf.getTextWidth(paginationText);
+          
+          pdf.text(paginationText, paginationX - textWidth, paginationY);
+        }
+      };
       
       contentLines.forEach((line: string) => {
         // Check if we need a new page
         if (contentYPos > pageHeight - 50) {
           // Add pagination to current page before new page
-          if (showPagination) {
-            pdf.setFontSize(8);
-            pdf.setFont('helvetica', 'normal');
-            pdf.setTextColor(102, 102, 102);
-            pdf.text(`Seite ${currentPage} von ${totalPages}`, pageWidth - rightMargin - 30, pageHeight - 16);
-            pdf.setTextColor(0, 0, 0);
-          }
+          addPagination(currentPage);
           
+          // Create new page
           pdf.addPage();
           currentPage++;
-          contentYPos = 20;
+          
+          // Add debug margins to new page
+          addDebugMargins(currentPage);
+          
+          contentYPos = contentTop + 3; // Reset position for new page
         }
         
         pdf.text(line, leftMargin, contentYPos);
         contentYPos += lineHeight;
       });
       
-      // Attachments
+      // Handle attachments
       if (attachments && attachments.length > 0) {
-        contentYPos += 8;
-        
-        if (contentYPos > pageHeight - 50) {
-          // Add pagination to current page before new page
-          if (showPagination) {
-            pdf.setFontSize(8);
-            pdf.setFont('helvetica', 'normal');
-            pdf.setTextColor(102, 102, 102);
-            pdf.text(`Seite ${currentPage} von ${totalPages}`, pageWidth - rightMargin - 30, pageHeight - 16);
-            pdf.setTextColor(0, 0, 0);
-          }
-          
+        // Check if we need space for attachments header
+        if (contentYPos > pageHeight - 70) {
+          addPagination(currentPage);
           pdf.addPage();
           currentPage++;
-          contentYPos = 20;
+          addDebugMargins(currentPage);
+          contentYPos = contentTop + 3;
         }
+        
+        contentYPos += 10; // Space before attachments
         
         pdf.setFont('helvetica', 'bold');
         pdf.text('Anlagen:', leftMargin, contentYPos);
-        contentYPos += 5;
+        contentYPos += 6;
         
         pdf.setFont('helvetica', 'normal');
-        attachments.forEach(attachment => {
-          if (contentYPos > pageHeight - 50) {
-            // Add pagination to current page before new page
-            if (showPagination) {
-              pdf.setFontSize(8);
-              pdf.setFont('helvetica', 'normal');
-              pdf.setTextColor(102, 102, 102);
-              pdf.text(`Seite ${currentPage} von ${totalPages}`, pageWidth - rightMargin - 30, pageHeight - 16);
-              pdf.setTextColor(0, 0, 0);
-            }
-            
+        attachments.forEach((attachment) => {
+          if (contentYPos > pageHeight - 30) {
+            addPagination(currentPage);
             pdf.addPage();
             currentPage++;
-            contentYPos = 20;
+            addDebugMargins(currentPage);
+            contentYPos = contentTop + 3;
           }
           
-          pdf.text(`- ${attachment.display_name || attachment.file_name}`, leftMargin + 5, contentYPos);
+          // Use display_name if available, otherwise use file_name
+          const displayName = attachment.display_name || attachment.file_name;
+          pdf.text(`• ${displayName}`, leftMargin, contentYPos);
           contentYPos += 4;
         });
       }
       
-      // Sender information at bottom
-      if (senderInfo) {
-        const footerY = pageHeight - 25;
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(102, 102, 102); // Gray color
-        
-        let footerText = '';
-        if (senderInfo.organization) footerText += senderInfo.organization;
-        if (senderInfo.name) footerText += (footerText ? ' • ' : '') + senderInfo.name;
-        if (senderInfo.street && senderInfo.house_number) {
-          footerText += (footerText ? ' • ' : '') + `${senderInfo.street} ${senderInfo.house_number}`;
-        }
-        if (senderInfo.postal_code && senderInfo.city) {
-          footerText += (footerText ? ' • ' : '') + `${senderInfo.postal_code} ${senderInfo.city}`;
-        }
-        
-        pdf.text(footerText, leftMargin, footerY);
-        
-        let contactY = footerY + 4;
-        if (senderInfo.phone) {
-          pdf.text(`Tel: ${senderInfo.phone}`, leftMargin, contactY);
-          contactY += 4;
-        }
-        if (senderInfo.email) {
-          pdf.text(`E-Mail: ${senderInfo.email}`, leftMargin, contactY);
-          contactY += 4;
-        }
-         if (senderInfo.website) {
-           pdf.text(`Web: ${senderInfo.website}`, leftMargin, contactY);
-         }
-       }
-      
       // Add pagination to final page
-      if (showPagination && currentPage >= 1) {
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(102, 102, 102);
-        pdf.text(`Seite ${currentPage} von ${totalPages}`, pageWidth - rightMargin - 30, pageHeight - 16);
-        pdf.setTextColor(0, 0, 0);
-      }
+      addPagination(currentPage);
       
+      // Add letter date to info block if not already there
+      if (letter.letter_date) {
+        // Go back to first page to add date if no information block
+        if (!informationBlock) {
+          // Count pages by checking the current page number
+          const totalPagesCount = currentPage;
+          pdf.setPage(1);
+          
+          let dateYPos = infoBlockTop + 3;
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Datum', infoBlockLeft, dateYPos);
+          dateYPos += 5;
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(new Date(letter.letter_date).toLocaleDateString('de-DE'), infoBlockLeft, dateYPos);
+          
+          // Return to last page
+          pdf.setPage(totalPagesCount);
+        }
+      }
+
       // Generate filename
       const letterDate = letter.letter_date 
         ? new Date(letter.letter_date).toLocaleDateString('de-DE')
