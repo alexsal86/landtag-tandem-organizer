@@ -465,13 +465,12 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       
       // Add pagination tracking
       let currentPage = 1;
-      let totalPages = 1;
+      let letterPages = 1; // Track only letter content pages
       
-      // Calculate total pages more accurately
+      // Calculate letter content pages more accurately
       const availableContentHeight = pageHeight - contentTop - 50; // Height available for content on page 1
       const availableContentHeightPage2Plus = pageHeight - 25 - 50; // Height available on page 2+ (25mm header)
       let remainingLines = contentLines.length;
-      totalPages = 1;
       
       // Calculate if content fits on first page
       const linesOnFirstPage = Math.floor(availableContentHeight / lineHeight);
@@ -479,12 +478,19 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         remainingLines -= linesOnFirstPage;
         // Calculate additional pages needed
         const linesPerAdditionalPage = Math.floor(availableContentHeightPage2Plus / lineHeight);
-        totalPages += Math.ceil(remainingLines / linesPerAdditionalPage);
+        letterPages += Math.ceil(remainingLines / linesPerAdditionalPage);
       }
       
-      // Add pages for attachments if they exist
+      // Account for attachments list if it exists
       if (attachments.length > 0) {
-        totalPages += attachments.length; // Each attachment gets its own page
+        // Calculate if attachment list needs additional pages
+        const attachmentListLines = attachments.length + 1; // +1 for "Anlagen:" header
+        const attachmentListHeight = attachmentListLines * 4 + 10; // 4mm per line + 10mm spacing
+        
+        // Check if attachment list fits on current content or needs new page
+        if (attachmentListHeight > 50) { // If it needs significant space
+          letterPages += Math.ceil(attachmentListHeight / availableContentHeightPage2Plus);
+        }
       }
       
       // Add debug margins to all pages function
@@ -544,9 +550,9 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         }
       };
       
-      // Add pagination function
+      // Add pagination function - only for letter content pages
       const addPagination = (pageNum: number) => {
-        if (showPagination && totalPages > 1) {
+        if (showPagination && letterPages > 1 && pageNum <= letterPages) {
           pdf.setFontSize(8);
           pdf.setFont('helvetica', 'normal');
           pdf.setTextColor(0, 0, 0);
@@ -555,7 +561,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           const paginationY = 272 - 4.23; // 267.77mm from top
           const paginationX = pageWidth - 20; // 20mm from right edge
           
-          const paginationText = `Seite ${pageNum} von ${totalPages}`;
+          const paginationText = `Seite ${pageNum} von ${letterPages}`;
           const textWidth = pdf.getTextWidth(paginationText);
           
           pdf.text(paginationText, paginationX - textWidth, paginationY);
@@ -579,8 +585,22 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           contentYPos = currentPage === 1 ? contentTop + 3 : 25 + 3;
         }
         
-        // Use full width (same as page 1)
-        pdf.text(line, leftMargin, contentYPos);
+        // Use full width (same as page 1) - ensure consistent maxWidth usage
+        const actualMaxWidth = pageWidth - leftMargin - rightMargin;
+        if (line.length > 0) {
+          // Re-split line if needed to ensure proper width on all pages
+          const lineParts = pdf.splitTextToSize(line, actualMaxWidth);
+          if (Array.isArray(lineParts)) {
+            lineParts.forEach((part: string, index: number) => {
+              pdf.text(part, leftMargin, contentYPos + (index * lineHeight));
+            });
+            if (lineParts.length > 1) {
+              contentYPos += (lineParts.length - 1) * lineHeight;
+            }
+          } else {
+            pdf.text(line, leftMargin, contentYPos);
+          }
+        }
         contentYPos += lineHeight;
       });
       
