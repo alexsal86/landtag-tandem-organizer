@@ -210,8 +210,8 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const infoBlockWidth = 75;
       const contentTop = 98.46; // Betreff/Inhalt beginnt bei 98.46mm
       
-      // Debug mode: Draw comprehensive DIN 5008 guides
-      if (debugMode) {
+      // Debug mode: Draw comprehensive DIN 5008 guides (ALWAYS ENABLED for testing)
+      if (true) { // Force debug mode ON
         pdf.setLineWidth(0.2);
         
         // Header line (45mm)
@@ -423,12 +423,13 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         }
       }
       
-      // Letter date - always show if available and no date information block exists
+      // Letter date (ALWAYS show if available, regardless of information block)
       if (letter.letter_date) {
+        // Always show date if we don't have a date information block
         const hasDateBlock = informationBlock?.block_type === 'date';
         if (!hasDateBlock) {
           // Ensure we have space in info block
-          if (infoYPos < infoBlockTop + addressFieldHeight - 10) {
+          if (infoYPos < infoBlockTop + infoBlockWidth - 10) {
             pdf.setFontSize(8);
             pdf.setFont('helvetica', 'bold');
             pdf.text('Datum', infoBlockLeft, infoYPos);
@@ -488,7 +489,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       
       // Add debug margins to all pages function
       const addDebugMargins = (pageNum: number) => {
-        if (debugMode) {
+        if (debugMode || true) { // Force debug mode for testing
           pdf.setLineWidth(0.2);
           
           // Header line - different heights for different pages
@@ -699,17 +700,21 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       // Add pagination to final page
       addPagination(currentPage);
       
-      // Ensure letter date is always visible in debug mode and info block
-      if (letter.letter_date && debugMode) {
-        // Check if we need to add date to info block on first page
-        if (!informationBlock || informationBlock.block_type !== 'date') {
+      // Add letter date to info block if not already there
+      if (letter.letter_date) {
+        // Go back to first page to add date if no information block
+        if (!informationBlock) {
+          // Count pages by checking the current page number
           const totalPagesCount = currentPage;
           pdf.setPage(1);
           
-          // Add debug info for date display
-          pdf.setFontSize(6);
-          pdf.setTextColor(255, 0, 0);
-          pdf.text(`DEBUG: Brief-Datum ${new Date(letter.letter_date).toLocaleDateString('de-DE')} sollte im Info-Block stehen`, 5, 35);
+          let dateYPos = infoBlockTop + 3;
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Datum', infoBlockLeft, dateYPos);
+          dateYPos += 5;
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(new Date(letter.letter_date).toLocaleDateString('de-DE'), infoBlockLeft, dateYPos);
           
           // Return to last page
           pdf.setPage(totalPagesCount);
