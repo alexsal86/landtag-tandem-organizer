@@ -77,7 +77,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
 
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2)}_${file.name}`;
-        const filePath = `letters/${letterId}/${fileName}`;
+        const filePath = `${letterId}/${fileName}`;
         
         console.log('Uploading to storage:', { filePath, bucketName: 'documents' });
 
