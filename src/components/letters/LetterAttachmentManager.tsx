@@ -50,16 +50,23 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
   };
 
   const handleFileSelect = useCallback(async (files: FileList | null) => {
-    if (!files || files.length === 0 || readonly) return;
+    console.log('Upload started', { files: files?.length, readonly, letterId, userId: user?.id });
+    
+    if (!files || files.length === 0 || readonly) {
+      console.log('Upload cancelled: no files or readonly', { files: files?.length, readonly });
+      return;
+    }
 
     setUploading(true);
     
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        console.log('Processing file:', { name: file.name, size: file.size, type: file.type });
         
         // File size limit (10MB)
         if (file.size > 10 * 1024 * 1024) {
+          console.log('File too large:', file.name);
           toast({
             title: "Datei zu groß",
             description: `${file.name} ist größer als 10MB und wurde übersprungen.`,
@@ -71,9 +78,11 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2)}_${file.name}`;
         const filePath = `letters/${letterId}/${fileName}`;
+        
+        console.log('Uploading to storage:', { filePath, bucketName: 'documents' });
 
         // Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('documents')
           .upload(filePath, file);
 
@@ -81,14 +90,24 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
           console.error('Upload error:', uploadError);
           toast({
             title: "Upload-Fehler",
-            description: `${file.name} konnte nicht hochgeladen werden.`,
+            description: `${file.name} konnte nicht hochgeladen werden: ${uploadError.message}`,
             variant: "destructive",
           });
           continue;
         }
+        
+        console.log('Storage upload successful:', uploadData);
+        console.log('Inserting into database:', {
+          letter_id: letterId,
+          file_name: file.name,
+          file_path: filePath,
+          file_type: file.type,
+          file_size: file.size,
+          uploaded_by: user?.id
+        });
 
         // Save attachment record
-        const { error: insertError } = await supabase
+        const { data: insertData, error: insertError } = await supabase
           .from('letter_attachments')
           .insert({
             letter_id: letterId,
@@ -105,12 +124,16 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
           await supabase.storage.from('documents').remove([filePath]);
           toast({
             title: "Datenbankfehler",
-            description: `${file.name} konnte nicht gespeichert werden.`,
+            description: `${file.name} konnte nicht gespeichert werden: ${insertError.message}`,
             variant: "destructive",
           });
+          continue;
         }
+        
+        console.log('Database insert successful:', insertData);
       }
 
+      console.log('All files processed, calling onAttachmentUpdate');
       onAttachmentUpdate();
       toast({
         title: "Upload erfolgreich",
