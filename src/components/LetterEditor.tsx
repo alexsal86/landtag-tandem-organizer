@@ -1245,13 +1245,40 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     created_by: editedLetter.created_by || ''
                   }}
                   currentUserId={user?.id || ''}
-                  onStatusChange={(newStatus, additionalData) => {
-                    setEditedLetter(prev => ({
-                      ...prev,
-                      status: newStatus as any,
-                      ...additionalData
-                    }));
-                    handleManualSave();
+                  onStatusChange={async (newStatus, additionalData) => {
+                    try {
+                      const updatedData = {
+                        status: newStatus,
+                        ...additionalData,
+                        updated_at: new Date().toISOString()
+                      };
+
+                      if (letter?.id) {
+                        // Update existing letter in database
+                        const { error } = await supabase
+                          .from('letters')
+                          .update(updatedData)
+                          .eq('id', letter.id);
+
+                        if (error) throw error;
+
+                        // Update local state
+                        setEditedLetter(prev => ({
+                          ...prev,
+                          ...updatedData
+                        }));
+
+                        setLastSaved(new Date());
+                        onSave(); // Refresh the letters list
+                      }
+                    } catch (error) {
+                      console.error('Error updating letter status:', error);
+                      toast({
+                        title: "Fehler beim Status-Update",
+                        description: "Der Status konnte nicht aktualisiert werden.",
+                        variant: "destructive",
+                      });
+                    }
                   }}
                   canEdit={canEdit}
                 />
