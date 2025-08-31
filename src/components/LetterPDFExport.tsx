@@ -257,12 +257,30 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.text("Rechter Rand:", pageWidth - rightMargin - 25, 15);
         pdf.text("20mm", pageWidth - rightMargin - 15, 20);
         
-        // Footer guide (Fußzeile at 259.7mm from top)
-        const footerPosition = 259.7;
+        // Footer area (272mm from top, 7mm from bottom)
+        const footerTop = 272;
+        const footerBottom = pageHeight - 7;
+        
+        // Footer box
         pdf.setDrawColor(128, 0, 128); // Purple
-        pdf.line(0, footerPosition, pageWidth, footerPosition);
+        pdf.rect(leftMargin, footerTop, pageWidth - leftMargin - rightMargin, footerBottom - footerTop);
+        
+        // Footer guide lines
+        pdf.line(0, footerTop, pageWidth, footerTop);
+        pdf.line(0, footerBottom, pageWidth, footerBottom);
+        
         pdf.setTextColor(128, 0, 128);
-        pdf.text("Fußzeile: 259.7mm", 5, footerPosition - 2);
+        pdf.text("Fußzeile: 272mm", 5, footerTop - 2);
+        pdf.text("Unterer Rand: 7mm", 5, footerBottom + 3);
+        
+        // Footer content
+        pdf.setFontSize(8);
+        pdf.setTextColor(0, 0, 0);
+        const footerY = footerTop + 3;
+        pdf.text("Fraktion GRÜNE im Landtag von Baden-Württemberg • Alexander Salomon • Konrad-Adenauer-Str. 12 • 70197 Stuttgart", leftMargin + 2, footerY);
+        pdf.text("Tel: 0711 / 2063620", leftMargin + 2, footerY + 4);
+        pdf.text("E-Mail: Alexander.Salomon@gruene.landtag-bw.de", leftMargin + 2, footerY + 8);
+        pdf.text("Web: https://www.alexander-salomon.de", leftMargin + 2, footerY + 12);
         
         // Page dimensions box
         pdf.setDrawColor(0, 0, 0);
