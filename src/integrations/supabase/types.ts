@@ -1214,64 +1214,52 @@ export type Database = {
       }
       documents: {
         Row: {
-          archived_attachments: Json | null
           category: string | null
           created_at: string
           description: string | null
-          document_type: string | null
           file_name: string
           file_path: string
           file_size: number | null
           file_type: string | null
           id: string
-          source_letter_id: string | null
           status: string | null
           tags: string[] | null
           tenant_id: string
           title: string
           updated_at: string
           user_id: string
-          workflow_history: Json | null
         }
         Insert: {
-          archived_attachments?: Json | null
           category?: string | null
           created_at?: string
           description?: string | null
-          document_type?: string | null
           file_name: string
           file_path: string
           file_size?: number | null
           file_type?: string | null
           id?: string
-          source_letter_id?: string | null
           status?: string | null
           tags?: string[] | null
           tenant_id: string
           title: string
           updated_at?: string
           user_id: string
-          workflow_history?: Json | null
         }
         Update: {
-          archived_attachments?: Json | null
           category?: string | null
           created_at?: string
           description?: string | null
-          document_type?: string | null
           file_name?: string
           file_path?: string
           file_size?: number | null
           file_type?: string | null
           id?: string
-          source_letter_id?: string | null
           status?: string | null
           tags?: string[] | null
           tenant_id?: string
           title?: string
           updated_at?: string
           user_id?: string
-          workflow_history?: Json | null
         }
         Relationships: [
           {
@@ -2126,36 +2114,6 @@ export type Database = {
         }
         Relationships: []
       }
-      letter_archive_settings: {
-        Row: {
-          auto_archive_days: number | null
-          created_at: string
-          id: string
-          show_sent_letters: boolean | null
-          tenant_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          auto_archive_days?: number | null
-          created_at?: string
-          id?: string
-          show_sent_letters?: boolean | null
-          tenant_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          auto_archive_days?: number | null
-          created_at?: string
-          id?: string
-          show_sent_letters?: boolean | null
-          tenant_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       letter_attachments: {
         Row: {
           created_at: string
@@ -2329,7 +2287,6 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
-          archived_document_id: string | null
           attachments_list: string[] | null
           contact_id: string | null
           content: string
@@ -2365,7 +2322,6 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
-          archived_document_id?: string | null
           attachments_list?: string[] | null
           contact_id?: string | null
           content?: string
@@ -2401,7 +2357,6 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
-          archived_document_id?: string | null
           attachments_list?: string[] | null
           contact_id?: string | null
           content?: string

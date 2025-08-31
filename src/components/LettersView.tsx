@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Filter, Calendar, User, Eye, Edit3, Trash2, Grid, List, Download, Send } from 'lucide-react';
+import { Search, Plus, FileText, Filter, Calendar, User, Eye, Edit3, Trash2, Grid, List, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,6 @@ import { useViewPreference } from '@/hooks/useViewPreference';
 import LetterEditor from './LetterEditor';
 import LetterTemplateSelector from './LetterTemplateSelector';
 import LetterPDFExport from './LetterPDFExport';
-import { LetterArchiveSettings } from './letters/LetterArchiveSettings';
 
 interface Letter {
   id: string;
@@ -47,7 +46,6 @@ const LettersView: React.FC = () => {
   const [selectedLetter, setSelectedLetter] = useState<Letter | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
-  const [archiveSettings, setArchiveSettings] = useState({ auto_archive_days: 30, show_sent_letters: true });
 
   useEffect(() => {
     if (currentTenant) {
@@ -80,21 +78,7 @@ const LettersView: React.FC = () => {
     }
   };
 
-  // Separate active and sent letters
-  const activeLetters = letters.filter(letter => letter.status !== 'sent');
-  const sentLetters = letters.filter(letter => {
-    if (letter.status !== 'sent') return false;
-    
-    // Check if letter should be hidden based on archive settings
-    if (!archiveSettings.show_sent_letters) return false;
-    
-    const sentDate = new Date(letter.sent_date || letter.updated_at);
-    const daysSinceSent = (Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24);
-    
-    return daysSinceSent <= archiveSettings.auto_archive_days;
-  });
-
-  const filteredActiveLetters = activeLetters.filter(letter => {
+  const filteredLetters = letters.filter(letter => {
     const matchesSearch = 
       letter.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       letter.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -103,15 +87,6 @@ const LettersView: React.FC = () => {
     const matchesStatus = statusFilter === 'all' || letter.status === statusFilter;
     
     return matchesSearch && matchesStatus;
-  });
-
-  const filteredSentLetters = sentLetters.filter(letter => {
-    const matchesSearch = 
-      letter.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      letter.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      letter.content.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesSearch;
   });
 
   const handleNewLetter = () => {
@@ -171,173 +146,6 @@ const LettersView: React.FC = () => {
     sent: 'bg-blue-100 text-blue-800'
   };
 
-  // Helper function to render letters grid
-  const renderLettersGrid = (letters: Letter[], isSentSection = false) => {
-    const sectionOpacity = isSentSection ? 'opacity-75' : '';
-    
-    return viewType === 'card' ? (
-      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${sectionOpacity}`}>
-        {letters.map((letter) => (
-          <Card key={letter.id} className="group hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <CardTitle className="text-lg line-clamp-2">{letter.title}</CardTitle>
-                <Badge className={`ml-2 ${statusColors[letter.status] || 'bg-gray-100 text-gray-800'}`}>
-                  {statusLabels[letter.status] || letter.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {/* Recipient */}
-              {letter.recipient_name && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span className="truncate">{letter.recipient_name}</span>
-                </div>
-              )}
-              
-              {/* Date */}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>
-                  {letter.status === 'sent' && letter.sent_date 
-                    ? `Versendet: ${new Date(letter.sent_date).toLocaleDateString('de-DE')}`
-                    : new Date(letter.updated_at).toLocaleDateString('de-DE')
-                  }
-                </span>
-              </div>
-              
-              {/* Content Preview */}
-              <p className="text-sm text-muted-foreground line-clamp-3">
-                {letter.content || 'Kein Inhalt vorhanden'}
-              </p>
-              
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-3 border-t">
-                <div className="flex items-center gap-1">
-                  {!isSentSection && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleEditLetter(letter)}
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {isSentSection && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleEditLetter(letter)}
-                      disabled
-                      title="Versendete Briefe können nicht bearbeitet werden"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <LetterPDFExport 
-                    letter={letter} 
-                    variant="icon-only"
-                    size="sm"
-                  />
-                  {!isSentSection && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeleteLetter(letter.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    ) : (
-      <Card className={sectionOpacity}>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Titel</TableHead>
-              <TableHead>Empfänger</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Erstellt</TableHead>
-              <TableHead className="text-right">Aktionen</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {letters.map((letter) => (
-              <TableRow key={letter.id}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    {letter.title}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {letter.recipient_name || '-'}
-                </TableCell>
-                <TableCell>
-                  <Badge className={`${statusColors[letter.status] || 'bg-gray-100 text-gray-800'}`}>
-                    {statusLabels[letter.status] || letter.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {letter.status === 'sent' && letter.sent_date 
-                    ? `Versendet: ${new Date(letter.sent_date).toLocaleDateString('de-DE')}`
-                    : new Date(letter.updated_at).toLocaleDateString('de-DE')
-                  }
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center gap-1 justify-end">
-                    {!isSentSection && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleEditLetter(letter)}
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {isSentSection && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleEditLetter(letter)}
-                        disabled
-                        title="Versendete Briefe können nicht bearbeitet werden"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <LetterPDFExport 
-                      letter={letter} 
-                      variant="icon-only"
-                      size="sm"
-                    />
-                    {!isSentSection && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleDeleteLetter(letter.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-    );
-  };
-
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
@@ -346,13 +154,10 @@ const LettersView: React.FC = () => {
           <h1 className="text-3xl font-bold">Briefe</h1>
           <p className="text-muted-foreground">Verwalten Sie Ihre Korrespondenz</p>
         </div>
-        <div className="flex items-center gap-2">
-          <LetterArchiveSettings onSettingsChange={setArchiveSettings} />
-          <Button onClick={handleNewLetter} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Neuer Brief
-          </Button>
-        </div>
+        <Button onClick={handleNewLetter} className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          Neuer Brief
+        </Button>
       </div>
 
       {/* Filters */}
@@ -411,13 +216,13 @@ const LettersView: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Letters Content */}
+      {/* Letters Grid */}
       {loading ? (
         <div className="text-center py-8">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
           <p className="mt-2 text-muted-foreground">Briefe werden geladen...</p>
         </div>
-      ) : filteredActiveLetters.length === 0 && filteredSentLetters.length === 0 ? (
+      ) : filteredLetters.length === 0 ? (
         <div className="text-center py-8">
           <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
           <h3 className="text-lg font-medium mb-2">Keine Briefe gefunden</h3>
@@ -435,34 +240,131 @@ const LettersView: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* Active Letters Section */}
-          {filteredActiveLetters.length > 0 && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <Edit3 className="h-5 w-5" />
-                Aktive Briefe ({filteredActiveLetters.length})
-              </h2>
-              {renderLettersGrid(filteredActiveLetters)}
-            </div>
-          )}
-
-          {/* Sent Letters Section */}
-          {filteredSentLetters.length > 0 && (
-            <div>
-              <div className="border-t pt-8">
-                <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
-                  <Send className="h-5 w-5" />
-                  Versendete Briefe ({filteredSentLetters.length})
-                </h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Diese Briefe wurden bereits versendet und werden nach {archiveSettings.auto_archive_days} Tagen automatisch archiviert.
-                </p>
-                {renderLettersGrid(filteredSentLetters, true)}
-              </div>
-            </div>
-          )}
-        </div>
+        viewType === 'card' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredLetters.map((letter) => (
+              <Card key={letter.id} className="group hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                <CardTitle className="text-lg line-clamp-2">{letter.title}</CardTitle>
+                    <Badge className={`ml-2 ${statusColors[letter.status] || 'bg-gray-100 text-gray-800'}`}>
+                      {statusLabels[letter.status] || letter.status}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* Recipient */}
+                  {letter.recipient_name && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      <span className="truncate">{letter.recipient_name}</span>
+                    </div>
+                  )}
+                  
+                  {/* Date */}
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      {new Date(letter.updated_at).toLocaleDateString('de-DE')}
+                    </span>
+                  </div>
+                  
+                  {/* Content Preview */}
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {letter.content || 'Kein Inhalt vorhanden'}
+                  </p>
+                  
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEditLetter(letter)}
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <LetterPDFExport 
+                        letter={letter} 
+                        variant="icon-only"
+                        size="sm"
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteLetter(letter.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Titel</TableHead>
+                  <TableHead>Empfänger</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Erstellt</TableHead>
+                  <TableHead className="text-right">Aktionen</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredLetters.map((letter) => (
+                  <TableRow key={letter.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        {letter.title}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {letter.recipient_name || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`${statusColors[letter.status] || 'bg-gray-100 text-gray-800'}`}>
+                        {statusLabels[letter.status] || letter.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(letter.updated_at).toLocaleDateString('de-DE')}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center gap-1 justify-end">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleEditLetter(letter)}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <LetterPDFExport 
+                          letter={letter} 
+                          variant="icon-only"
+                          size="sm"
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeleteLetter(letter.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )
       )}
 
       {/* Template Selector Dialog */}
