@@ -75,13 +75,45 @@ serve(async (req) => {
     // No attachments for now - can be enhanced later
     const archivedAttachments = []
 
+    // Generate PDF content for the letter
+    const pdfContent = `
+Brief: ${letter.title}
+Empfänger: ${letter.recipient_name || 'Unbekannt'}
+Datum: ${new Date(letter.created_at).toLocaleDateString('de-DE')}
+
+${letter.content || 'Kein Inhalt'}
+
+---
+Archiviert am: ${new Date().toLocaleDateString('de-DE')}
+Status: ${letter.status}
+`;
+
+    // Create a simple PDF-like content (for now just text)
+    const encoder = new TextEncoder();
+    const pdfBuffer = encoder.encode(pdfContent);
+
+    // Upload to storage
+    const filePath = `archived-letters/${letter.tenant_id}/${letter.id}/brief_${letter.id}.txt`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(filePath, pdfBuffer, {
+        contentType: 'text/plain',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error('Error uploading file:', uploadError);
+      // Continue anyway - we'll still create the document record
+    }
+
     // Create document record for archived letter
     const documentData = {
-      title: `[ARCHIV] ${letter.title}`,
+      title: letter.title, // Ohne [ARCHIV] Präfix
       description: `Archivierter Brief - Empfänger: ${letter.recipient_name || 'Unbekannt'}`,
-      file_name: `brief_${letter.id}.pdf`,
-      file_path: `archived-letters/${letter.tenant_id}/${letter.id}/brief_${letter.id}.pdf`,
-      file_type: 'application/pdf',
+      file_name: `brief_${letter.id}.txt`,
+      file_path: filePath,
+      file_type: 'text/plain',
       category: 'correspondence',
       tags: ['archiviert', 'brief', 'versendet'],
       status: 'archived',
