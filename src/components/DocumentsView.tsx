@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { TestArchiveButton } from './TestArchiveButton';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useViewPreference } from "@/hooks/useViewPreference";
@@ -756,6 +757,7 @@ export function DocumentsView() {
                 </p>
               </div>
               <div className="flex gap-2">
+                <TestArchiveButton />
                 {activeTab === 'documents' ? (
                   <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
                     <DialogTrigger asChild>
