@@ -321,7 +321,7 @@ export function DocumentsView() {
   });
 
   // For documents section, show archived letters as special documents
-  const archivedLetters = documents.filter(doc => doc.document_type === 'archived_letter');
+  const archivedLetters = documents.filter(doc => doc.category === 'archived_letter');
 
   const filteredLetters = letters.filter(letter => {
     const matchesSearch = letter.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1026,7 +1026,7 @@ export function DocumentsView() {
                 ))}
               </div>
             ) : (
-            viewType === 'card' ? (
+            viewType === 'list' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDocuments.map((document) => (
                 <Card key={document.id} className="hover:shadow-lg transition-shadow">
@@ -1170,7 +1170,7 @@ export function DocumentsView() {
                  </Table>
                </Card>
              )
-          ) : (
+          ))) : (
           // Letters tab
           filteredLetters.length === 0 ? (
             <Card>
