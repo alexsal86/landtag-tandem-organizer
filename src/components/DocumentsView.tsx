@@ -38,7 +38,6 @@ import { de } from "date-fns/locale";
 import LetterEditor from "./LetterEditor";
 import LetterTemplateSelector from "./LetterTemplateSelector";
 import LetterPDFExport from "./LetterPDFExport";
-import { ArchivedLettersGrid } from "./letters/ArchivedLettersGrid";
 
 interface Document {
   id: string;
@@ -51,10 +50,6 @@ interface Document {
   category: string;
   tags?: string[];
   status: string;
-  document_type?: string;
-  source_letter_id?: string;
-  workflow_history?: any;
-  archived_attachments?: any;
   created_at: string;
   updated_at: string;
 }
@@ -235,45 +230,6 @@ export function DocumentsView() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleArchivedLetterDownload = async (archivedLetter: any) => {
-    try {
-      if (!archivedLetter.file_path) {
-        toast({
-          title: "Download-Fehler", 
-          description: "Dateipfad nicht gefunden.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const { data, error } = await supabase.storage
-        .from('documents')
-        .download(archivedLetter.file_path);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = archivedLetter.file_name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Download erfolgreich",
-        description: `${archivedLetter.title} wurde heruntergeladen.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Download-Fehler",
-        description: error.message,
-        variant: "destructive",
-      });
     }
   };
 
@@ -1070,7 +1026,7 @@ export function DocumentsView() {
                 ))}
               </div>
             ) : (
-            viewType === 'list' ? (
+            viewType === 'card' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDocuments.map((document) => (
                 <Card key={document.id} className="hover:shadow-lg transition-shadow">
@@ -1210,14 +1166,14 @@ export function DocumentsView() {
                         </TableCell>
                       </TableRow>
                     ))}
-                   </TableBody>
-                 </Table>
-               </Card>
-             )
-          ))
+                  </TableBody>
+                </Table>
+              </Card>
+            )
+          )
         ) : (
-          // Letters tab with separated sections
-          filteredActiveLetters.length === 0 && filteredSentLetters.length === 0 ? (
+          // Letters tab
+          filteredLetters.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -1237,37 +1193,7 @@ export function DocumentsView() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-8">
-              {/* Active Letters Section */}
-              {filteredActiveLetters.length > 0 && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <Edit3 className="h-5 w-5" />
-                    Aktive Briefe ({filteredActiveLetters.length})
-                  </h2>
-                  {renderLettersGrid(filteredActiveLetters, false)}
-                </div>
-              )}
-
-              {/* Sent Letters Section */}
-              {filteredSentLetters.length > 0 && (
-                <div>
-                  <div className="border-t pt-8">
-                    <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
-                      <Send className="h-5 w-5" />
-                      Versendete Briefe ({filteredSentLetters.length})
-                    </h2>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Diese Briefe wurden bereits versendet und sind im Dokumentenbereich archiviert.
-                    </p>
-                    {renderLettersGrid(filteredSentLetters, true)}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            // Letters tab with separated sections
-            filteredActiveLetters.length === 0 && filteredSentLetters.length === 0 ? (
+            viewType === 'card' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredLetters.map((letter) => (
                   <Card key={letter.id} className="hover:shadow-lg transition-shadow">

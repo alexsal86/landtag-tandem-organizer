@@ -20,7 +20,6 @@ import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
 import { ContactSelector } from './ContactSelector';
-import { LetterStatusWorkflow } from './letters/LetterStatusWorkflow';
 
 interface Letter {
   id: string;
@@ -1237,51 +1236,81 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
               {/* Status */}
               <div>
-                <LetterStatusWorkflow
-                  letter={{
-                    id: editedLetter.id || '',
-                    status: editedLetter.status || 'draft',
-                    title: editedLetter.title || 'Unbenannt',
-                    created_by: editedLetter.created_by || ''
-                  }}
-                  currentUserId={user?.id || ''}
-                  onStatusChange={async (newStatus, additionalData) => {
-                    try {
-                      const updatedData = {
-                        status: newStatus,
-                        ...additionalData,
-                        updated_at: new Date().toISOString()
-                      };
-
-                      if (letter?.id) {
-                        // Update existing letter in database
-                        const { error } = await supabase
-                          .from('letters')
-                          .update(updatedData)
-                          .eq('id', letter.id);
-
-                        if (error) throw error;
-
-                        // Update local state
-                        setEditedLetter(prev => ({
-                          ...prev,
-                          ...updatedData
-                        }));
-
-                        setLastSaved(new Date());
-                        onSave(); // Refresh the letters list
-                      }
-                    } catch (error) {
-                      console.error('Error updating letter status:', error);
-                      toast({
-                        title: "Fehler beim Status-Update",
-                        description: "Der Status konnte nicht aktualisiert werden.",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  canEdit={canEdit}
-                />
+                <Label htmlFor="status">Status</Label>
+                <div className="flex items-center gap-2 mb-2">
+                  {React.createElement(statusIcons[editedLetter.status || 'draft'], { 
+                    className: "h-4 w-4 text-primary" 
+                  })}
+                  <Badge variant="secondary">
+                    {statusLabels[editedLetter.status || 'draft']}
+                  </Badge>
+                </div>
+                
+                {/* Status Transition Buttons */}
+                {canEdit && (
+                  <div className="flex flex-col gap-2">
+                    {/* Forward transition button */}
+                    {getNextStatus(editedLetter.status || 'draft') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusTransition(getNextStatus(editedLetter.status || 'draft'))}
+                        className="justify-start"
+                      >
+                        <ArrowRight className="h-4 w-4 mr-2" />
+                        Zu "{statusLabels[getNextStatus(editedLetter.status || 'draft') as keyof typeof statusLabels]}"
+                      </Button>
+                    )}
+                    
+                    {/* Zurück-Buttons für alle Status außer draft */}
+                    {editedLetter.status === 'review' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusTransition('draft')}
+                        className="justify-start text-muted-foreground"
+                      >
+                        Zurück zu Entwurf
+                      </Button>
+                    )}
+                    
+                    {editedLetter.status === 'approved' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusTransition('review')}
+                        className="justify-start text-muted-foreground"
+                      >
+                        Zurück zur Prüfung
+                      </Button>
+                    )}
+                  </div>
+                )}
+                
+                {/* Return letter button for reviewers in review status */}
+                {editedLetter.status === 'review' && isReviewer && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleReturnLetter}
+                    className="justify-start text-green-600"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Brief zurückgeben
+                  </Button>
+                )}
+                
+                {/* Zurück-Button für sent Status (immer sichtbar) */}
+                {editedLetter.status === 'sent' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStatusTransition('approved')}
+                    className="justify-start text-muted-foreground"
+                  >
+                    Zurück zu Genehmigt
+                  </Button>
+                )}
                 
                 {/* Show assigned reviewers in review status */}
                 {editedLetter.status === 'review' && collaborators.length > 0 && (

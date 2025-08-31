@@ -33,10 +33,20 @@ serve(async (req) => {
 
     console.log(`Starting archive process for letter ID: ${letterId}`)
 
-    // Get letter data
+    // Get letter data with all related information
     const { data: letter, error: letterError } = await supabase
       .from('letters')
-      .select('*')
+      .select(`
+        *,
+        letter_attachments (
+          id,
+          file_name,
+          file_path,
+          file_type,
+          file_size,
+          display_name
+        )
+      `)
       .eq('id', letterId)
       .single()
 
@@ -72,48 +82,23 @@ serve(async (req) => {
       workflow_locked: letter.workflow_locked
     }
 
-    // No attachments for now - can be enhanced later
-    const archivedAttachments = []
-
-    // Generate PDF content for the letter
-    const pdfContent = `
-Brief: ${letter.title}
-Empfänger: ${letter.recipient_name || 'Unbekannt'}
-Datum: ${new Date(letter.created_at).toLocaleDateString('de-DE')}
-
-${letter.content || 'Kein Inhalt'}
-
----
-Archiviert am: ${new Date().toLocaleDateString('de-DE')}
-Status: ${letter.status}
-`;
-
-    // Create a simple PDF-like content (for now just text)
-    const encoder = new TextEncoder();
-    const pdfBuffer = encoder.encode(pdfContent);
-
-    // Upload to storage
-    const filePath = `archived-letters/${letter.tenant_id}/${letter.id}/brief_${letter.id}.txt`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from('documents')
-      .upload(filePath, pdfBuffer, {
-        contentType: 'text/plain',
-        upsert: true
-      });
-
-    if (uploadError) {
-      console.error('Error uploading file:', uploadError);
-      // Continue anyway - we'll still create the document record
-    }
+    // Prepare archived attachments data
+    const archivedAttachments = letter.letter_attachments?.map((attachment: any) => ({
+      id: attachment.id,
+      file_name: attachment.file_name,
+      display_name: attachment.display_name || attachment.file_name,
+      file_path: attachment.file_path,
+      file_type: attachment.file_type,
+      file_size: attachment.file_size
+    })) || []
 
     // Create document record for archived letter
     const documentData = {
-      title: letter.title, // Ohne [ARCHIV] Präfix
+      title: `[ARCHIV] ${letter.title}`,
       description: `Archivierter Brief - Empfänger: ${letter.recipient_name || 'Unbekannt'}`,
-      file_name: `brief_${letter.id}.txt`,
-      file_path: filePath,
-      file_type: 'text/plain',
+      file_name: `brief_${letter.id}.pdf`,
+      file_path: `archived-letters/${letter.tenant_id}/${letter.id}/brief_${letter.id}.pdf`,
+      file_type: 'application/pdf',
       category: 'correspondence',
       tags: ['archiviert', 'brief', 'versendet'],
       status: 'archived',
