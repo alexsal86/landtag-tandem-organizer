@@ -425,13 +425,19 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       
       // Letter date (ALWAYS show if available, regardless of information block)
       if (letter.letter_date) {
-        if (!informationBlock) {
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text('Datum', infoBlockLeft, infoYPos);
-          infoYPos += 5;
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(new Date(letter.letter_date).toLocaleDateString('de-DE'), infoBlockLeft, infoYPos);
+        // Always show date if we don't have a date information block
+        const hasDateBlock = informationBlock?.block_type === 'date';
+        if (!hasDateBlock) {
+          // Ensure we have space in info block
+          if (infoYPos < infoBlockTop + infoBlockWidth - 10) {
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Datum', infoBlockLeft, infoYPos);
+            infoYPos += 5;
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(new Date(letter.letter_date).toLocaleDateString('de-DE'), infoBlockLeft, infoYPos);
+            infoYPos += 4;
+          }
         }
       }
       
@@ -471,12 +477,28 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         if (debugMode || true) { // Force debug mode for testing
           pdf.setLineWidth(0.2);
           
-          // Header line (45mm)
+          // Header line - different heights for different pages
           pdf.setDrawColor(255, 0, 0);
-          pdf.line(0, headerHeight, pageWidth, headerHeight);
-          pdf.setFontSize(8);
-          pdf.setTextColor(255, 0, 0);
-          pdf.text(`45mm - Header Ende (Seite ${pageNum})`, 5, headerHeight - 3);
+          if (pageNum === 1) {
+            // Page 1: Header ends at 45mm
+            pdf.line(0, headerHeight, pageWidth, headerHeight);
+            pdf.setFontSize(8);
+            pdf.setTextColor(255, 0, 0);
+            pdf.text(`45mm - Header Ende (Seite ${pageNum})`, 5, headerHeight - 3);
+          } else {
+            // Page 2+: Header ends at 25mm
+            const page2HeaderHeight = 25;
+            pdf.line(0, page2HeaderHeight, pageWidth, page2HeaderHeight);
+            pdf.setFontSize(8);
+            pdf.setTextColor(255, 0, 0);
+            pdf.text(`25mm - Header Ende (Seite ${pageNum})`, 5, page2HeaderHeight - 3);
+            
+            // Content start line for page 2+ (immediately after header at 25mm)
+            pdf.setDrawColor(0, 255, 0);
+            pdf.line(leftMargin, page2HeaderHeight, pageWidth - rightMargin, page2HeaderHeight);
+            pdf.setTextColor(0, 255, 0);
+            pdf.text(`Inhaltsbeginn Seite ${pageNum}`, leftMargin, page2HeaderHeight + 3);
+          }
           
           // Left margin guide
           pdf.setDrawColor(255, 165, 0);
@@ -538,7 +560,8 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           // Add debug margins to new page
           addDebugMargins(currentPage);
           
-          contentYPos = contentTop + 3; // Reset position for new page
+          // For page 2+, content starts immediately after 25mm header
+          contentYPos = currentPage === 1 ? contentTop + 3 : 25 + 3;
         }
         
         pdf.text(line, leftMargin, contentYPos);
@@ -553,7 +576,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           pdf.addPage();
           currentPage++;
           addDebugMargins(currentPage);
-          contentYPos = contentTop + 3;
+          contentYPos = currentPage === 1 ? contentTop + 3 : 25 + 3;
         }
         
         contentYPos += 10; // Space before attachments
@@ -569,7 +592,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
             pdf.addPage();
             currentPage++;
             addDebugMargins(currentPage);
-            contentYPos = contentTop + 3;
+            contentYPos = currentPage === 1 ? contentTop + 3 : 25 + 3;
           }
           
           // Use display_name if available, otherwise use file_name
