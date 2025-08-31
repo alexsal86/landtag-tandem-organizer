@@ -1405,7 +1405,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     letterDate={editedLetter.letter_date}
                     referenceNumber={editedLetter.reference_number}
                     content={editedLetter.content_html || editedLetter.content || ''}
-                    attachments={attachments.map(att => att.file_name)}
+                    attachments={attachments}
                   />
                 </div>
               </div>

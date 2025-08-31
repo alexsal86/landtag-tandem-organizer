@@ -36,12 +36,14 @@ interface LetterPDFExportProps {
   letter: Letter;
   disabled?: boolean;
   debugMode?: boolean;
+  showPagination?: boolean;
 }
 
 const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   letter,
   disabled = false,
-  debugMode = false
+  debugMode = false,
+  showPagination = false
 }) => {
   const { toast } = useToast();
   const [template, setTemplate] = useState<LetterTemplate | null>(null);
@@ -421,14 +423,16 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         }
       }
       
-      // Letter date
-      if (letter.letter_date && !informationBlock) {
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Datum', infoBlockLeft, infoYPos);
-        infoYPos += 5;
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(new Date(letter.letter_date).toLocaleDateString('de-DE'), infoBlockLeft, infoYPos);
+      // Letter date (ALWAYS show if available, regardless of information block)
+      if (letter.letter_date) {
+        if (!informationBlock) {
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Datum', infoBlockLeft, infoYPos);
+          infoYPos += 5;
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(new Date(letter.letter_date).toLocaleDateString('de-DE'), infoBlockLeft, infoYPos);
+        }
       }
       
       // Subject line
@@ -452,10 +456,30 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const contentLines = pdf.splitTextToSize(contentText, maxWidth);
       const lineHeight = 4.5;
       
+      
+      // Add pagination tracking
+      let currentPage = 1;
+      let totalPages = 1;
+      
+      // Calculate total pages (simple estimation)
+      const totalContentHeight = contentLines.length * lineHeight + (attachments?.length || 0) * 4 + 50;
+      const availableHeight = pageHeight - contentTop - 50; // Minus margins
+      totalPages = Math.ceil(totalContentHeight / availableHeight) || 1;
+      
       contentLines.forEach((line: string) => {
         // Check if we need a new page
-        if (contentYPos > pageHeight - 30) {
+        if (contentYPos > pageHeight - 50) {
+          // Add pagination to current page before new page
+          if (showPagination) {
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(102, 102, 102);
+            pdf.text(`Seite ${currentPage} von ${totalPages}`, pageWidth - rightMargin - 30, pageHeight - 16);
+            pdf.setTextColor(0, 0, 0);
+          }
+          
           pdf.addPage();
+          currentPage++;
           contentYPos = 20;
         }
         
@@ -467,8 +491,18 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       if (attachments && attachments.length > 0) {
         contentYPos += 8;
         
-        if (contentYPos > pageHeight - 30) {
+        if (contentYPos > pageHeight - 50) {
+          // Add pagination to current page before new page
+          if (showPagination) {
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(102, 102, 102);
+            pdf.text(`Seite ${currentPage} von ${totalPages}`, pageWidth - rightMargin - 30, pageHeight - 16);
+            pdf.setTextColor(0, 0, 0);
+          }
+          
           pdf.addPage();
+          currentPage++;
           contentYPos = 20;
         }
         
@@ -478,12 +512,22 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         
         pdf.setFont('helvetica', 'normal');
         attachments.forEach(attachment => {
-          if (contentYPos > pageHeight - 30) {
+          if (contentYPos > pageHeight - 50) {
+            // Add pagination to current page before new page
+            if (showPagination) {
+              pdf.setFontSize(8);
+              pdf.setFont('helvetica', 'normal');
+              pdf.setTextColor(102, 102, 102);
+              pdf.text(`Seite ${currentPage} von ${totalPages}`, pageWidth - rightMargin - 30, pageHeight - 16);
+              pdf.setTextColor(0, 0, 0);
+            }
+            
             pdf.addPage();
+            currentPage++;
             contentYPos = 20;
           }
           
-          pdf.text(`- ${attachment.file_name}`, leftMargin + 5, contentYPos);
+          pdf.text(`- ${attachment.display_name || attachment.file_name}`, leftMargin + 5, contentYPos);
           contentYPos += 4;
         });
       }
@@ -516,9 +560,18 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           pdf.text(`E-Mail: ${senderInfo.email}`, leftMargin, contactY);
           contactY += 4;
         }
-        if (senderInfo.website) {
-          pdf.text(`Web: ${senderInfo.website}`, leftMargin, contactY);
-        }
+         if (senderInfo.website) {
+           pdf.text(`Web: ${senderInfo.website}`, leftMargin, contactY);
+         }
+       }
+      
+      // Add pagination to final page
+      if (showPagination && currentPage >= 1) {
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(102, 102, 102);
+        pdf.text(`Seite ${currentPage} von ${totalPages}`, pageWidth - rightMargin - 30, pageHeight - 16);
+        pdf.setTextColor(0, 0, 0);
       }
       
       // Generate filename

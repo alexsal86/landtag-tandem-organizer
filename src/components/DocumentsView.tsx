@@ -859,10 +859,11 @@ export function DocumentsView() {
                             <Edit3 className="h-4 w-4 mr-1" />
                             Bearbeiten
                           </Button>
-                          <LetterPDFExport 
-                            letter={letter} 
-                            disabled={false}
-                          />
+                              <LetterPDFExport 
+                                letter={letter} 
+                                disabled={false}
+                                showPagination={true}
+                              />
                           <Button
                             variant="outline"
                             size="sm"
@@ -932,6 +933,7 @@ export function DocumentsView() {
                             <LetterPDFExport 
                               letter={letter} 
                               disabled={false}
+                              showPagination={true}
                             />
                             <Button
                               variant="ghost"
