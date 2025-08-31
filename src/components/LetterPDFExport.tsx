@@ -36,13 +36,17 @@ interface LetterPDFExportProps {
   disabled?: boolean;
   debugMode?: boolean;
   showPagination?: boolean;
+  variant?: 'default' | 'icon-only';
+  size?: 'sm' | 'default';
 }
 
 const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   letter,
   disabled = false,
   debugMode = false,
-  showPagination = false
+  showPagination = false,
+  variant = 'default',
+  size = 'default'
 }) => {
   const { toast } = useToast();
   const [template, setTemplate] = useState<LetterTemplate | null>(null);
@@ -201,6 +205,111 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const infoBlockLeft = 125;
       const infoBlockWidth = 75;
       const contentTop = 98.46;
+      
+      // Debug mode: Draw comprehensive DIN 5008 guides (ALWAYS ENABLED for testing)
+      if (true) { // Force debug mode ON
+        pdf.setLineWidth(0.2);
+        
+        // Header line (45mm)
+        pdf.setDrawColor(255, 0, 0); // Red
+        pdf.line(0, headerHeight, pageWidth, headerHeight);
+        pdf.setFontSize(8);
+        pdf.setTextColor(255, 0, 0);
+        pdf.text("45mm - Header Ende (DIN 5008)", 5, headerHeight - 3);
+        
+        // Address field with detailed measurements
+        pdf.setDrawColor(255, 0, 0);
+        pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, addressFieldHeight);
+        pdf.text("Adressfeld: 85×40mm @ Position 46mm/25mm", addressFieldLeft, addressFieldTop - 3);
+        
+        // Address field - Rücksendeangaben 17.7mm-Zone
+        pdf.setDrawColor(255, 100, 100);
+        pdf.setLineWidth(0.1);
+        pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, 17.7);
+        pdf.setFontSize(6);
+        pdf.text("Rücksendeangaben: 17.7mm Höhe", addressFieldLeft + 2, addressFieldTop + 15);
+        
+        // Info block
+        pdf.setDrawColor(0, 0, 255); // Blue
+        pdf.setLineWidth(0.2);
+        pdf.rect(infoBlockLeft, infoBlockTop, infoBlockWidth, addressFieldHeight);
+        pdf.setFontSize(8);
+        pdf.setTextColor(0, 0, 255);
+        pdf.text("Info-Block: 75×40mm @ 50mm/125mm", infoBlockLeft, infoBlockTop - 3);
+        
+        // Content start line (98.46mm)
+        pdf.setDrawColor(0, 255, 0); // Green
+        pdf.line(leftMargin, contentTop, pageWidth - rightMargin, contentTop);
+        pdf.setTextColor(0, 255, 0);
+        pdf.text("98.46mm - Inhaltsbeginn (DIN 5008)", leftMargin, contentTop - 3);
+        
+        // Left margin guide
+        pdf.setDrawColor(255, 165, 0); // Orange
+        pdf.line(leftMargin, 0, leftMargin, pageHeight);
+        pdf.setTextColor(255, 165, 0);
+        pdf.text("Linker Rand:", leftMargin + 2, 15);
+        pdf.text("25mm", leftMargin + 2, 20);
+        
+        // Right margin guide
+        pdf.line(pageWidth - rightMargin, 0, pageWidth - rightMargin, pageHeight);
+        pdf.text("Rechter Rand:", pageWidth - rightMargin - 25, 15);
+        pdf.text("20mm", pageWidth - rightMargin - 15, 20);
+        
+        // Footer area (272mm from top, 7mm from bottom)
+        const footerTop = 272;
+        const footerBottom = pageHeight - 7;
+        
+        // Footer box
+        pdf.setDrawColor(128, 0, 128); // Purple
+        pdf.rect(leftMargin, footerTop, pageWidth - leftMargin - rightMargin, footerBottom - footerTop);
+        
+        // Footer guide lines
+        pdf.line(0, footerTop, pageWidth, footerTop);
+        pdf.line(0, footerBottom, pageWidth, footerBottom);
+        
+        pdf.setTextColor(128, 0, 128);
+        pdf.text("Fußzeile: 272mm", 5, footerTop - 2);
+        pdf.text("Unterer Rand: 7mm", 5, footerBottom + 3);
+        
+        // Footer content
+        pdf.setFontSize(8);
+        pdf.setTextColor(0, 0, 0);
+        const footerY = footerTop + 3;
+        pdf.text("Fraktion GRÜNE im Landtag von Baden-Württemberg • Alexander Salomon • Konrad-Adenauer-Str. 12 • 70197 Stuttgart", leftMargin + 2, footerY);
+        pdf.text("Tel: 0711 / 2063620", leftMargin + 2, footerY + 4);
+        pdf.text("E-Mail: Alexander.Salomon@gruene.landtag-bw.de", leftMargin + 2, footerY + 8);
+        pdf.text("Web: https://www.alexander-salomon.de", leftMargin + 2, footerY + 12);
+        
+        // Page dimensions box
+        pdf.setDrawColor(0, 0, 0);
+        pdf.setLineWidth(0.3);
+        pdf.rect(pageWidth - 50, 5, 45, 25);
+        pdf.setFontSize(7);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text("DIN A4:", pageWidth - 48, 10);
+        pdf.text("210×297mm", pageWidth - 48, 15);
+        pdf.text("Font: Arial", pageWidth - 48, 20);
+        pdf.text("Size: 11pt", pageWidth - 48, 25);
+        
+        // Measurement annotations
+        pdf.setFontSize(6);
+        pdf.setTextColor(0, 0, 0);
+        
+        // Address field position arrows
+        pdf.setDrawColor(255, 0, 0);
+        pdf.line(0, addressFieldTop, addressFieldLeft - 2, addressFieldTop);
+        pdf.text("46mm", 2, addressFieldTop + 2);
+        
+        // Info block position arrows
+        pdf.setDrawColor(0, 0, 255);
+        pdf.line(0, infoBlockTop, infoBlockLeft - 2, infoBlockTop);
+        pdf.text("50mm", 2, infoBlockTop + 2);
+        
+        // Content position arrows  
+        pdf.setDrawColor(0, 255, 0);
+        pdf.line(0, contentTop, leftMargin - 2, contentTop);
+        pdf.text("98.46mm", 2, contentTop + 2);
+      }
       
       // Reset colors for content
       pdf.setTextColor(0, 0, 0);
@@ -382,7 +491,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       // Render the content
       renderContentText(contentText, contentTop + 10);
       
-      // Add attachments as embedded files
+      // Add attachments as embedded files (not counted in letter pagination)
       if (attachments && attachments.length > 0) {
         for (let i = 0; i < attachments.length; i++) {
           const attachment = attachments[i];
@@ -398,15 +507,49 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
               continue;
             }
             
-            // Add a new page for each attachment
+            // Add a new page for each attachment (separate from letter pages)
             pdf.addPage();
-            letterPages++;
             currentPage++;
             
-            // Add header for this attachment
+            // Debug mode for attachments - 20mm margins
+            const attachmentMargin = 20;
+            if (true) { // Debug mode always on
+              pdf.setLineWidth(0.2);
+              pdf.setDrawColor(255, 0, 255); // Magenta for attachment margins
+              
+              // Top margin line
+              pdf.line(0, attachmentMargin, pageWidth, attachmentMargin);
+              pdf.setFontSize(8);
+              pdf.setTextColor(255, 0, 255);
+              pdf.text("20mm - Anlage Oberrand", 5, attachmentMargin - 3);
+              
+              // Bottom margin line
+              pdf.line(0, pageHeight - attachmentMargin, pageWidth, pageHeight - attachmentMargin);
+              pdf.text("20mm - Anlage Unterrand", 5, pageHeight - attachmentMargin + 10);
+              
+              // Left margin line
+              pdf.line(attachmentMargin, 0, attachmentMargin, pageHeight);
+              pdf.text("20mm", attachmentMargin + 2, 15);
+              pdf.text("Linker", attachmentMargin + 2, 20);
+              pdf.text("Anlage-Rand", attachmentMargin + 2, 25);
+              
+              // Right margin line
+              pdf.line(pageWidth - attachmentMargin, 0, pageWidth - attachmentMargin, pageHeight);
+              pdf.text("20mm Rechter Anlage-Rand", pageWidth - attachmentMargin - 45, 15);
+              
+              // Attachment area box
+              pdf.setDrawColor(200, 0, 200);
+              pdf.rect(attachmentMargin, attachmentMargin, pageWidth - 2 * attachmentMargin, pageHeight - 2 * attachmentMargin);
+              
+              pdf.setTextColor(0, 0, 0);
+              pdf.setDrawColor(0, 0, 0);
+            }
+            
+            // Add header for this attachment with custom title
             pdf.setFontSize(14);
             pdf.setFont('helvetica', 'bold');
-            pdf.text(`Anlage ${i + 1}: ${attachment.file_name}`, leftMargin, 30);
+            const attachmentTitle = attachment.title || attachment.file_name;
+            pdf.text(`Anlage ${i + 1}: ${attachmentTitle}`, attachmentMargin, attachmentMargin + 10);
             
             // Convert file to data URL for embedding
             const reader = new FileReader();
@@ -414,45 +557,51 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
               reader.onload = function() {
                 try {
                   if (attachment.file_type?.startsWith('image/')) {
-                    // For images, embed directly
+                    // For images, embed directly within attachment margins
                     const imgData = reader.result as string;
-                    pdf.addImage(imgData, 'JPEG', leftMargin, 40, pageWidth - leftMargin - rightMargin, 200);
+                    const availableWidth = pageWidth - 2 * attachmentMargin;
+                    const availableHeight = pageHeight - 2 * attachmentMargin - 30; // Reserve space for title
+                    pdf.addImage(imgData, 'JPEG', attachmentMargin, attachmentMargin + 20, availableWidth, Math.min(200, availableHeight));
                   } else if (attachment.file_type === 'application/pdf') {
-                    // For PDFs, show information page
+                    // For PDFs, show information page within margins
                     pdf.setFontSize(11);
                     pdf.setFont('helvetica', 'normal');
-                    pdf.text('PDF-Dokument eingebettet:', leftMargin, 50);
-                    pdf.text(`Dateiname: ${attachment.file_name}`, leftMargin, 65);
-                    pdf.text(`Größe: ${attachment.file_size ? Math.round(attachment.file_size / 1024) + ' KB' : 'Unbekannt'}`, leftMargin, 80);
+                    pdf.text('PDF-Dokument eingebettet:', attachmentMargin, attachmentMargin + 30);
+                    pdf.text(`Dateiname: ${attachment.file_name}`, attachmentMargin, attachmentMargin + 45);
+                    pdf.text(`Größe: ${attachment.file_size ? Math.round(attachment.file_size / 1024) + ' KB' : 'Unbekannt'}`, attachmentMargin, attachmentMargin + 60);
                     
-                    // Add visual representation
+                    // Add visual representation within margins
+                    const boxWidth = pageWidth - 2 * attachmentMargin;
+                    const boxHeight = 150;
                     pdf.setDrawColor(200, 200, 200);
-                    pdf.rect(leftMargin, 90, pageWidth - leftMargin - rightMargin, 150);
+                    pdf.rect(attachmentMargin, attachmentMargin + 70, boxWidth, boxHeight);
                     pdf.setFontSize(24);
                     pdf.setTextColor(150, 150, 150);
-                    pdf.text('PDF', leftMargin + 80, 170);
+                    pdf.text('PDF', attachmentMargin + boxWidth/2 - 15, attachmentMargin + 70 + boxHeight/2);
                     pdf.setTextColor(0, 0, 0);
                   } else {
-                    // For other file types, show file info
+                    // For other file types, show file info within margins
                     pdf.setFontSize(11);
                     pdf.setFont('helvetica', 'normal');
-                    pdf.text(`Dateiname: ${attachment.file_name}`, leftMargin, 50);
-                    pdf.text(`Dateityp: ${attachment.file_type || 'Unbekannt'}`, leftMargin, 65);
-                    pdf.text(`Größe: ${attachment.file_size ? Math.round(attachment.file_size / 1024) + ' KB' : 'Unbekannt'}`, leftMargin, 80);
+                    pdf.text(`Dateiname: ${attachment.file_name}`, attachmentMargin, attachmentMargin + 30);
+                    pdf.text(`Dateityp: ${attachment.file_type || 'Unbekannt'}`, attachmentMargin, attachmentMargin + 45);
+                    pdf.text(`Größe: ${attachment.file_size ? Math.round(attachment.file_size / 1024) + ' KB' : 'Unbekannt'}`, attachmentMargin, attachmentMargin + 60);
                     
-                    // Add visual representation
+                    // Add visual representation within margins
+                    const boxWidth = pageWidth - 2 * attachmentMargin;
+                    const boxHeight = 100;
                     pdf.setDrawColor(200, 200, 200);
-                    pdf.rect(leftMargin, 90, pageWidth - leftMargin - rightMargin, 100);
+                    pdf.rect(attachmentMargin, attachmentMargin + 70, boxWidth, boxHeight);
                     pdf.setFontSize(16);
                     pdf.setTextColor(100, 100, 100);
-                    pdf.text('DATEI', leftMargin + 70, 145);
+                    pdf.text('DATEI', attachmentMargin + boxWidth/2 - 15, attachmentMargin + 70 + boxHeight/2);
                     pdf.setTextColor(0, 0, 0);
                   }
                 } catch (error) {
                   console.error('Error embedding attachment:', error);
                   pdf.setFontSize(11);
                   pdf.setFont('helvetica', 'normal');
-                  pdf.text('Anhang konnte nicht eingebettet werden', leftMargin, 50);
+                  pdf.text('Anhang konnte nicht eingebettet werden', attachmentMargin, attachmentMargin + 30);
                 }
                 resolve(null);
               };
@@ -462,28 +611,32 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
             console.error('Error processing attachment:', error);
             // Add error page
             pdf.addPage();
-            letterPages++;
             currentPage++;
+            
+            // Define attachment margin for error page too
+            const attachmentMargin = 20;
+            
             pdf.setFontSize(14);
             pdf.setFont('helvetica', 'bold');
-            pdf.text(`Anlage ${i + 1}: ${attachment.file_name}`, leftMargin, 30);
+            const attachmentTitle = attachment.title || attachment.file_name;
+            pdf.text(`Anlage ${i + 1}: ${attachmentTitle}`, attachmentMargin, attachmentMargin + 10);
             pdf.setFontSize(11);
             pdf.setFont('helvetica', 'normal');
-            pdf.text('Fehler beim Laden der Anlage', leftMargin, 50);
+            pdf.text('Fehler beim Laden der Anlage', attachmentMargin, attachmentMargin + 30);
           }
         }
       }
       
-      // Add pagination to all pages
-      const totalPages = letterPages;
-      for (let page = 1; page <= totalPages; page++) {
+      // Add pagination only to letter pages (not attachment pages)
+      const totalLetterPages = letterPages;
+      for (let page = 1; page <= totalLetterPages; page++) {
         pdf.setPage(page);
         
         // Add page number at bottom
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(100, 100, 100);
-        const pageText = `Seite ${page} von ${totalPages}`;
+        const pageText = `Seite ${page} von ${totalLetterPages}`;
         const pageTextWidth = pdf.getTextWidth(pageText);
         pdf.text(pageText, pageWidth - rightMargin - pageTextWidth, pageHeight - 10);
         pdf.setTextColor(0, 0, 0);
@@ -510,13 +663,13 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   return (
     <Button
       variant="ghost"
-      size="sm"
+      size={size}
       onClick={exportToPDF}
       disabled={disabled}
-      className="flex items-center gap-2"
+      className={variant === 'icon-only' ? "" : "flex items-center gap-2"}
     >
       <Download className="h-4 w-4" />
-      {disabled ? 'Export...' : 'PDF'}
+      {variant === 'default' && (disabled ? 'Export...' : 'PDF')}
     </Button>
   );
 };

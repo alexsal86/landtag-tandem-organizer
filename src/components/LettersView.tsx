@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Filter, Calendar, User, Eye, Edit3, Trash2, Grid, List } from 'lucide-react';
+import { Search, Plus, FileText, Filter, Calendar, User, Eye, Edit3, Trash2, Grid, List, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -284,7 +284,11 @@ const LettersView: React.FC = () => {
                       >
                         <Edit3 className="h-4 w-4" />
                       </Button>
-                      <LetterPDFExport letter={letter} />
+                      <LetterPDFExport 
+                        letter={letter} 
+                        variant="icon-only"
+                        size="sm"
+                      />
                       <Button 
                         variant="ghost" 
                         size="sm"
@@ -340,7 +344,11 @@ const LettersView: React.FC = () => {
                         >
                           <Edit3 className="h-4 w-4" />
                         </Button>
-                        <LetterPDFExport letter={letter} />
+                        <LetterPDFExport 
+                          letter={letter} 
+                          variant="icon-only"
+                          size="sm"
+                        />
                         <Button 
                           variant="ghost" 
                           size="sm"
