@@ -2121,8 +2121,11 @@ export type Database = {
           file_name: string
           file_path: string | null
           file_size: number | null
+          file_type: string | null
           id: string
           letter_id: string
+          updated_at: string | null
+          uploaded_by: string | null
         }
         Insert: {
           created_at?: string
@@ -2130,8 +2133,11 @@ export type Database = {
           file_name: string
           file_path?: string | null
           file_size?: number | null
+          file_type?: string | null
           id?: string
           letter_id: string
+          updated_at?: string | null
+          uploaded_by?: string | null
         }
         Update: {
           created_at?: string
@@ -2139,8 +2145,11 @@ export type Database = {
           file_name?: string
           file_path?: string | null
           file_size?: number | null
+          file_type?: string | null
           id?: string
           letter_id?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
         }
         Relationships: []
       }
