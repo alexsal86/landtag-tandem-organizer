@@ -1170,9 +1170,8 @@ export function DocumentsView() {
                  </Table>
                </Card>
              )
-          ) : (
-            console.log('Switching to letters tab'),
-            // Letters tab
+          )) : (
+          // Letters tab
           filteredLetters.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
