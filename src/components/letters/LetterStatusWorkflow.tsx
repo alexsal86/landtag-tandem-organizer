@@ -198,28 +198,18 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
           <span className="text-sm text-muted-foreground">Aktueller Status</span>
         </div>
 
-        {/* Available Transitions */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Verfügbare Aktionen:</Label>
-          <div className="flex flex-wrap gap-2">
-            {nextStates.map((nextState) => {
-              const nextConfig = statusConfig[nextState as keyof typeof statusConfig];
-              return (
-                <Button
-                  key={nextState}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openTransitionDialog(nextState)}
-                  className="flex items-center gap-2"
-                >
-                  <nextConfig.icon className="h-3 w-3" />
-                  {nextConfig.label}
-                  <ArrowRight className="h-3 w-3" />
-                </Button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Nur der nächste logische Schritt */}
+        {nextStates.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => openTransitionDialog(nextStates[0])}
+            className="w-full justify-start"
+          >
+            <ArrowRight className="h-4 w-4 mr-2" />
+            Zu "{statusConfig[nextStates[0] as keyof typeof statusConfig].label}"
+          </Button>
+        )}
 
         {/* Transition Dialog */}
         <Dialog open={isTransitionDialogOpen} onOpenChange={setIsTransitionDialogOpen}>
