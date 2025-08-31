@@ -137,6 +137,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [senderInfos, setSenderInfos] = useState<any[]>([]);
   const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [userProfiles, setUserProfiles] = useState<{[key: string]: {display_name: string, avatar_url?: string}}>({});
   const [previewZoom, setPreviewZoom] = useState(1.0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showPagination, setShowPagination] = useState(false);
@@ -229,6 +230,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         fetchCollaborators();
         fetchCurrentTemplate();
         fetchAttachments();
+        fetchWorkflowUserProfiles();
       }
     }
   }, [isOpen, currentTenant, letter?.id]);
@@ -405,6 +407,45 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       setInformationBlocks(data || []);
     } catch (error) {
       console.error('Error fetching information blocks:', error);
+    }
+  };
+
+  const fetchWorkflowUserProfiles = async () => {
+    if (!letter) return;
+    
+    // Collect all user IDs from workflow fields
+    const userIds = [
+      letter.submitted_for_review_by,
+      letter.submitted_to_user,
+      letter.approved_by,
+      letter.sent_by,
+      letter.created_by
+    ].filter(Boolean);
+    
+    if (userIds.length === 0) return;
+    
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', userIds);
+      
+      if (error) {
+        console.error('Error fetching user profiles:', error);
+        return;
+      }
+      
+      const profilesMap = profiles?.reduce((acc, profile) => {
+        acc[profile.user_id] = {
+          display_name: profile.display_name || 'Unbekannter Benutzer',
+          avatar_url: profile.avatar_url
+        };
+        return acc;
+      }, {} as {[key: string]: {display_name: string, avatar_url?: string}}) || {};
+      
+      setUserProfiles(profilesMap);
+    } catch (error) {
+      console.error('Error fetching workflow user profiles:', error);
     }
   };
 
@@ -1351,10 +1392,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       <div className="text-muted-foreground">
                         {new Date(editedLetter.submitted_for_review_at).toLocaleString('de-DE')}
                         {editedLetter.submitted_for_review_by && (
-                          <span> • von Benutzer {editedLetter.submitted_for_review_by}</span>
+                          <span> • von {userProfiles[editedLetter.submitted_for_review_by]?.display_name || 'Unbekannter Benutzer'}</span>
                         )}
                         {editedLetter.submitted_to_user && (
-                          <span> • an Benutzer {editedLetter.submitted_to_user}</span>
+                          <span> • an {userProfiles[editedLetter.submitted_to_user]?.display_name || 'Unbekannter Benutzer'}</span>
                         )}
                       </div>
                     </div>
@@ -1369,7 +1410,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       <div className="text-muted-foreground">
                         {new Date(editedLetter.approved_at).toLocaleString('de-DE')}
                         {editedLetter.approved_by && (
-                          <span> • von Benutzer {editedLetter.approved_by}</span>
+                          <span> • von {userProfiles[editedLetter.approved_by]?.display_name || 'Unbekannter Benutzer'}</span>
                         )}
                       </div>
                     </div>
@@ -1384,7 +1425,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       <div className="text-muted-foreground">
                         {new Date(editedLetter.sent_at).toLocaleString('de-DE')}
                         {editedLetter.sent_by && (
-                          <span> • von Benutzer {editedLetter.sent_by}</span>
+                          <span> • von {userProfiles[editedLetter.sent_by]?.display_name || 'Unbekannter Benutzer'}</span>
                         )}
                       </div>
                     </div>
