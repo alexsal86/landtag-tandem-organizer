@@ -38,6 +38,7 @@ import { de } from "date-fns/locale";
 import LetterEditor from "./LetterEditor";
 import LetterTemplateSelector from "./LetterTemplateSelector";
 import LetterPDFExport from "./LetterPDFExport";
+import { ArchivedLettersGrid } from "./letters/ArchivedLettersGrid";
 
 interface Document {
   id: string;
@@ -50,6 +51,10 @@ interface Document {
   category: string;
   tags?: string[];
   status: string;
+  document_type?: string;
+  source_letter_id?: string;
+  workflow_history?: any;
+  archived_attachments?: any;
   created_at: string;
   updated_at: string;
 }
@@ -233,6 +238,45 @@ export function DocumentsView() {
     }
   };
 
+  const handleArchivedLetterDownload = async (archivedLetter: any) => {
+    try {
+      if (!archivedLetter.file_path) {
+        toast({
+          title: "Download-Fehler", 
+          description: "Dateipfad nicht gefunden.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .download(archivedLetter.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = archivedLetter.file_name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Download erfolgreich",
+        description: `${archivedLetter.title} wurde heruntergeladen.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Download-Fehler",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDownload = async (document: Document) => {
     try {
       const { data, error } = await supabase.storage
@@ -321,7 +365,7 @@ export function DocumentsView() {
   });
 
   // For documents section, show archived letters as special documents
-  const archivedLetters = documents.filter(doc => doc.category === 'archived_letter');
+  const archivedLetters = documents.filter(doc => doc.document_type === 'archived_letter');
 
   const filteredLetters = letters.filter(letter => {
     const matchesSearch = letter.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1170,7 +1214,8 @@ export function DocumentsView() {
                  </Table>
                </Card>
              )
-          ))) : (
+           )
+          ) : (
           // Letters tab
           filteredLetters.length === 0 ? (
             <Card>
