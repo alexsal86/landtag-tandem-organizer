@@ -15,6 +15,7 @@ interface Attachment {
   file_size?: number;
   uploaded_by: string;
   created_at: string;
+  display_name?: string; // For customizable display in letter
 }
 
 interface LetterAttachmentManagerProps {
@@ -32,8 +33,37 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Fetch documents from document management
+  useEffect(() => {
+    if (showDocumentSelector) {
+      fetchDocuments();
+    }
+  }, [showDocumentSelector]);
+
+  const fetchDocuments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setDocuments(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: "Dokumente konnten nicht geladen werden.",
+        variant: "destructive",
+      });
+    }
+  };
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [editingAttachment, setEditingAttachment] = useState<Attachment | null>(null);
+  const [newDisplayName, setNewDisplayName] = useState("");
+  const [showDocumentSelector, setShowDocumentSelector] = useState(false);
+  const [documents, setDocuments] = useState<any[]>([]);
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '';

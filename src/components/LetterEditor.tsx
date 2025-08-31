@@ -130,6 +130,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [attachments, setAttachments] = useState<any[]>([]);
   const [previewZoom, setPreviewZoom] = useState(1.0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showPagination, setShowPagination] = useState(false);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
