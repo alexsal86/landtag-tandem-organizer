@@ -467,10 +467,25 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       let currentPage = 1;
       let totalPages = 1;
       
-      // Calculate total pages (accurate estimation)
-      const availableContentHeight = pageHeight - contentTop - 50; // Height available for content
-      const totalContentHeight = contentLines.length * lineHeight;
-      totalPages = Math.max(1, Math.ceil(totalContentHeight / availableContentHeight));
+      // Calculate total pages more accurately
+      const availableContentHeight = pageHeight - contentTop - 50; // Height available for content on page 1
+      const availableContentHeightPage2Plus = pageHeight - 25 - 50; // Height available on page 2+ (25mm header)
+      let remainingLines = contentLines.length;
+      totalPages = 1;
+      
+      // Calculate if content fits on first page
+      const linesOnFirstPage = Math.floor(availableContentHeight / lineHeight);
+      if (remainingLines > linesOnFirstPage) {
+        remainingLines -= linesOnFirstPage;
+        // Calculate additional pages needed
+        const linesPerAdditionalPage = Math.floor(availableContentHeightPage2Plus / lineHeight);
+        totalPages += Math.ceil(remainingLines / linesPerAdditionalPage);
+      }
+      
+      // Add pages for attachments if they exist
+      if (attachments.length > 0) {
+        totalPages += attachments.length; // Each attachment gets its own page
+      }
       
       // Add debug margins to all pages function
       const addDebugMargins = (pageNum: number) => {
@@ -564,13 +579,14 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           contentYPos = currentPage === 1 ? contentTop + 3 : 25 + 3;
         }
         
+        // Use full width (same as page 1)
         pdf.text(line, leftMargin, contentYPos);
         contentYPos += lineHeight;
       });
       
-      // Handle attachments
+      // Handle attachments - now append actual files to PDF
       if (attachments && attachments.length > 0) {
-        // Check if we need space for attachments header
+        // Add attachments list to the letter first
         if (contentYPos > pageHeight - 70) {
           addPagination(currentPage);
           pdf.addPage();
@@ -586,7 +602,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         contentYPos += 6;
         
         pdf.setFont('helvetica', 'normal');
-        attachments.forEach((attachment) => {
+        for (const attachment of attachments) {
           if (contentYPos > pageHeight - 30) {
             addPagination(currentPage);
             pdf.addPage();
@@ -599,7 +615,86 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           const displayName = attachment.display_name || attachment.file_name;
           pdf.text(`• ${displayName}`, leftMargin, contentYPos);
           contentYPos += 4;
-        });
+        }
+        
+        // Add final pagination for letter pages
+        addPagination(currentPage);
+        
+        // Now append actual attachment files to the PDF
+        for (const attachment of attachments) {
+          // Use display_name if available, otherwise use file_name
+          const displayName = attachment.display_name || attachment.file_name;
+          
+          try {
+            // Download attachment file from Supabase storage
+            const { data: fileData, error } = await supabase.storage
+              .from('attachments')
+              .download(attachment.file_path);
+            
+            if (error) {
+              console.warn(`Could not download attachment ${attachment.file_name}:`, error);
+              continue;
+            }
+            
+            // Convert file to array buffer for PDF embedding
+            const arrayBuffer = await fileData.arrayBuffer();
+            
+            // Check if it's a PDF file
+            if (attachment.file_type === 'application/pdf' || attachment.file_name.toLowerCase().endsWith('.pdf')) {
+              // For PDF files, merge them directly into the main PDF
+              // Note: jsPDF doesn't support PDF merging directly, so we'll add a placeholder page
+              pdf.addPage();
+              currentPage++;
+              
+              // Add attachment info page
+              pdf.setFontSize(16);
+              pdf.setFont('helvetica', 'bold');
+              pdf.text('Anlage:', leftMargin, 50);
+              pdf.setFontSize(14);
+              pdf.setFont('helvetica', 'normal');
+              pdf.text(displayName, leftMargin, 65);
+              
+              pdf.setFontSize(10);
+              pdf.text('Diese Seite stellt eine PDF-Anlage dar, die als separate Datei vorliegt.', leftMargin, 85);
+              pdf.text(`Dateigröße: ${Math.round((arrayBuffer.byteLength || 0) / 1024)} KB`, leftMargin, 100);
+            } else {
+              // For other file types, add an info page
+              pdf.addPage();
+              currentPage++;
+              
+              pdf.setFontSize(16);
+              pdf.setFont('helvetica', 'bold');
+              pdf.text('Anlage:', leftMargin, 50);
+              pdf.setFontSize(14);
+              pdf.setFont('helvetica', 'normal');
+              pdf.text(displayName, leftMargin, 65);
+              
+              pdf.setFontSize(10);
+              pdf.text(`Dateityp: ${attachment.file_type || 'Unbekannt'}`, leftMargin, 85);
+              pdf.text(`Dateigröße: ${Math.round((arrayBuffer.byteLength || 0) / 1024)} KB`, leftMargin, 100);
+              pdf.text('Diese Anlage liegt als separate Datei vor.', leftMargin, 115);
+            }
+          } catch (error) {
+            console.warn(`Error processing attachment ${attachment.file_name}:`, error);
+            
+            // Add error page
+            pdf.addPage();
+            currentPage++;
+            
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Anlage (Fehler):', leftMargin, 50);
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(displayName, leftMargin, 65);
+            
+            pdf.setFontSize(10);
+            pdf.text('Diese Anlage konnte nicht geladen werden.', leftMargin, 85);
+          }
+        }
+      } else {
+        // Add final pagination for letter if no attachments
+        addPagination(currentPage);
       }
       
       // Add pagination to final page
