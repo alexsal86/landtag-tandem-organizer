@@ -206,56 +206,78 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const infoBlockWidth = 75;
       const contentTop = 98.46;
       
-      // Debug mode: Draw comprehensive DIN 5008 guides (ALWAYS ENABLED for testing)
-      if (true) { // Force debug mode ON
+      // Debug helper function for consistent styling across all pages
+      const drawDebugGuides = (pageNum: number) => {
         pdf.setLineWidth(0.2);
         
-        // Header line (45mm)
-        pdf.setDrawColor(255, 0, 0); // Red
-        pdf.line(0, headerHeight, pageWidth, headerHeight);
-        pdf.setFontSize(8);
-        pdf.setTextColor(255, 0, 0);
-        pdf.text("45mm - Header Ende (DIN 5008)", 5, headerHeight - 3);
+        if (pageNum === 1) {
+          // Header line (45mm)
+          pdf.setDrawColor(255, 0, 0); // Red
+          pdf.line(0, headerHeight, pageWidth, headerHeight);
+          pdf.setFontSize(8);
+          pdf.setTextColor(255, 0, 0);
+          pdf.text("45mm - Header Ende (DIN 5008)", 5, headerHeight - 3);
+          
+          // Address field with detailed measurements
+          pdf.setDrawColor(255, 0, 0);
+          pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, addressFieldHeight);
+          pdf.text("Adressfeld: 85×40mm @ Position 46mm/25mm", addressFieldLeft, addressFieldTop - 3);
+          
+          // Address field - Rücksendeangaben 17.7mm-Zone
+          pdf.setDrawColor(255, 100, 100);
+          pdf.setLineWidth(0.1);
+          pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, 17.7);
+          pdf.setFontSize(6);
+          pdf.text("Rücksendeangaben: 17.7mm Höhe", addressFieldLeft + 2, addressFieldTop + 15);
+          
+          // Info block
+          pdf.setDrawColor(0, 0, 255); // Blue
+          pdf.setLineWidth(0.2);
+          pdf.rect(infoBlockLeft, infoBlockTop, infoBlockWidth, addressFieldHeight);
+          pdf.setFontSize(8);
+          pdf.setTextColor(0, 0, 255);
+          pdf.text("Info-Block: 75×40mm @ 50mm/125mm", infoBlockLeft, infoBlockTop - 3);
+          
+          // Content start line (98.46mm)
+          pdf.setDrawColor(0, 255, 0); // Green
+          pdf.line(leftMargin, contentTop, pageWidth - rightMargin, contentTop);
+          pdf.setTextColor(0, 255, 0);
+          pdf.text("98.46mm - Inhaltsbeginn (DIN 5008)", leftMargin, contentTop - 3);
+          
+          // Measurement annotations
+          pdf.setFontSize(6);
+          pdf.setTextColor(0, 0, 0);
+          
+          // Address field position arrows
+          pdf.setDrawColor(255, 0, 0);
+          pdf.line(0, addressFieldTop, addressFieldLeft - 2, addressFieldTop);
+          pdf.text("46mm", 2, addressFieldTop + 2);
+          
+          // Info block position arrows
+          pdf.setDrawColor(0, 0, 255);
+          pdf.line(0, infoBlockTop, infoBlockLeft - 2, infoBlockTop);
+          pdf.text("50mm", 2, infoBlockTop + 2);
+          
+          // Content position arrows  
+          pdf.setDrawColor(0, 255, 0);
+          pdf.line(0, contentTop, leftMargin - 2, contentTop);
+          pdf.text("98.46mm", 2, contentTop + 2);
+        }
         
-        // Address field with detailed measurements
-        pdf.setDrawColor(255, 0, 0);
-        pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, addressFieldHeight);
-        pdf.text("Adressfeld: 85×40mm @ Position 46mm/25mm", addressFieldLeft, addressFieldTop - 3);
-        
-        // Address field - Rücksendeangaben 17.7mm-Zone
-        pdf.setDrawColor(255, 100, 100);
-        pdf.setLineWidth(0.1);
-        pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, 17.7);
-        pdf.setFontSize(6);
-        pdf.text("Rücksendeangaben: 17.7mm Höhe", addressFieldLeft + 2, addressFieldTop + 15);
-        
-        // Info block
-        pdf.setDrawColor(0, 0, 255); // Blue
-        pdf.setLineWidth(0.2);
-        pdf.rect(infoBlockLeft, infoBlockTop, infoBlockWidth, addressFieldHeight);
-        pdf.setFontSize(8);
-        pdf.setTextColor(0, 0, 255);
-        pdf.text("Info-Block: 75×40mm @ 50mm/125mm", infoBlockLeft, infoBlockTop - 3);
-        
-        // Content start line (98.46mm)
-        pdf.setDrawColor(0, 255, 0); // Green
-        pdf.line(leftMargin, contentTop, pageWidth - rightMargin, contentTop);
-        pdf.setTextColor(0, 255, 0);
-        pdf.text("98.46mm - Inhaltsbeginn (DIN 5008)", leftMargin, contentTop - 3);
-        
-        // Left margin guide
+        // Left margin guide (all pages)
         pdf.setDrawColor(255, 165, 0); // Orange
         pdf.line(leftMargin, 0, leftMargin, pageHeight);
         pdf.setTextColor(255, 165, 0);
+        pdf.setFontSize(8);
         pdf.text("Linker Rand:", leftMargin + 2, 15);
         pdf.text("25mm", leftMargin + 2, 20);
         
-        // Right margin guide
+        // Right margin guide (all pages)
         pdf.line(pageWidth - rightMargin, 0, pageWidth - rightMargin, pageHeight);
         pdf.text("Rechter Rand:", pageWidth - rightMargin - 25, 15);
         pdf.text("20mm", pageWidth - rightMargin - 15, 20);
         
-        // Footer area (272mm from top, 7mm from bottom)
+        // Footer area (272mm from top, 7mm from bottom) (all pages)
         const footerTop = 272;
         const footerBottom = pageHeight - 7;
         
@@ -271,14 +293,13 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.text("Fußzeile: 272mm", 5, footerTop - 2);
         pdf.text("Unterer Rand: 7mm", 5, footerBottom + 3);
         
-        // Footer content
-        pdf.setFontSize(8);
-        pdf.setTextColor(0, 0, 0);
-        const footerY = footerTop + 3;
-        pdf.text("Fraktion GRÜNE im Landtag von Baden-Württemberg • Alexander Salomon • Konrad-Adenauer-Str. 12 • 70197 Stuttgart", leftMargin + 2, footerY);
-        pdf.text("Tel: 0711 / 2063620", leftMargin + 2, footerY + 4);
-        pdf.text("E-Mail: Alexander.Salomon@gruene.landtag-bw.de", leftMargin + 2, footerY + 8);
-        pdf.text("Web: https://www.alexander-salomon.de", leftMargin + 2, footerY + 12);
+        // Pagination position (4.23mm above footer)
+        const paginationY = footerTop - 4.23;
+        pdf.setDrawColor(255, 0, 255); // Magenta
+        pdf.rect(leftMargin, paginationY - 2, pageWidth - leftMargin - rightMargin, 4);
+        pdf.setTextColor(255, 0, 255);
+        pdf.setFontSize(6);
+        pdf.text("Paginierung: 4.23mm über Fußzeile", leftMargin + 2, paginationY + 1);
         
         // Page dimensions box
         pdf.setDrawColor(0, 0, 0);
@@ -290,25 +311,20 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.text("210×297mm", pageWidth - 48, 15);
         pdf.text("Font: Arial", pageWidth - 48, 20);
         pdf.text("Size: 11pt", pageWidth - 48, 25);
+      };
+      
+      // Draw debug guides for page 1 (ALWAYS ENABLED for testing)
+      if (true) { // Force debug mode ON
+        drawDebugGuides(1);
         
-        // Measurement annotations
-        pdf.setFontSize(6);
+        // Footer content for page 1
+        pdf.setFontSize(8);
         pdf.setTextColor(0, 0, 0);
-        
-        // Address field position arrows
-        pdf.setDrawColor(255, 0, 0);
-        pdf.line(0, addressFieldTop, addressFieldLeft - 2, addressFieldTop);
-        pdf.text("46mm", 2, addressFieldTop + 2);
-        
-        // Info block position arrows
-        pdf.setDrawColor(0, 0, 255);
-        pdf.line(0, infoBlockTop, infoBlockLeft - 2, infoBlockTop);
-        pdf.text("50mm", 2, infoBlockTop + 2);
-        
-        // Content position arrows  
-        pdf.setDrawColor(0, 255, 0);
-        pdf.line(0, contentTop, leftMargin - 2, contentTop);
-        pdf.text("98.46mm", 2, contentTop + 2);
+        const footerY = 272 + 3;
+        pdf.text("Fraktion GRÜNE im Landtag von Baden-Württemberg • Alexander Salomon • Konrad-Adenauer-Str. 12 • 70197 Stuttgart", leftMargin + 2, footerY);
+        pdf.text("Tel: 0711 / 2063620", leftMargin + 2, footerY + 4);
+        pdf.text("E-Mail: Alexander.Salomon@gruene.landtag-bw.de", leftMargin + 2, footerY + 8);
+        pdf.text("Web: https://www.alexander-salomon.de", leftMargin + 2, footerY + 12);
       }
       
       // Reset colors for content
@@ -470,6 +486,21 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
               pdf.addPage();
               letterPages++;
               currentPage++;
+              
+              // Draw debug guides for new pages
+              if (true) { // Force debug mode ON
+                drawDebugGuides(currentPage);
+                
+                // Footer content for continuation pages
+                pdf.setFontSize(8);
+                pdf.setTextColor(0, 0, 0);
+                const footerY = 272 + 3;
+                pdf.text("Fraktion GRÜNE im Landtag von Baden-Württemberg • Alexander Salomon • Konrad-Adenauer-Str. 12 • 70197 Stuttgart", leftMargin + 2, footerY);
+                pdf.text("Tel: 0711 / 2063620", leftMargin + 2, footerY + 4);
+                pdf.text("E-Mail: Alexander.Salomon@gruene.landtag-bw.de", leftMargin + 2, footerY + 8);
+                pdf.text("Web: https://www.alexander-salomon.de", leftMargin + 2, footerY + 12);
+              }
+              
               currentY = 30; // Start new page at 30mm from top
               
               // Ensure correct font for continuation pages
@@ -632,13 +663,30 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       for (let page = 1; page <= totalLetterPages; page++) {
         pdf.setPage(page);
         
-        // Add page number at bottom
+        // Pagination 4.23mm above footer (272mm - 4.23mm = 267.77mm)
+        const paginationY = 267.77;
+        
+        // Debug box around pagination
+        if (true) { // Force debug mode ON
+          pdf.setDrawColor(255, 0, 255); // Magenta
+          pdf.setLineWidth(0.1);
+          const pageText = `Seite ${page} von ${totalLetterPages}`;
+          const pageTextWidth = pdf.getTextWidth(pageText);
+          const pageTextX = (pageWidth - pageTextWidth) / 2;
+          pdf.rect(pageTextX - 2, paginationY - 3, pageTextWidth + 4, 5);
+          pdf.setTextColor(255, 0, 255);
+          pdf.setFontSize(6);
+          pdf.text("Pagination: 4.23mm über Fußzeile", pageTextX, paginationY - 4);
+        }
+        
+        // Add page number
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(100, 100, 100);
         const pageText = `Seite ${page} von ${totalLetterPages}`;
         const pageTextWidth = pdf.getTextWidth(pageText);
-        pdf.text(pageText, pageWidth - rightMargin - pageTextWidth, pageHeight - 10);
+        const pageTextX = (pageWidth - pageTextWidth) / 2; // Center horizontally
+        pdf.text(pageText, pageTextX, paginationY);
         pdf.setTextColor(0, 0, 0);
       }
       
