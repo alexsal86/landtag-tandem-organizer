@@ -1214,8 +1214,8 @@ export function DocumentsView() {
                  </Table>
                </Card>
              )
-           )
-          ) : (
+          ))
+        ) : (
           // Letters tab
           filteredLetters.length === 0 ? (
             <Card>
