@@ -1170,8 +1170,8 @@ export function DocumentsView() {
                  </Table>
                </Card>
              )
-          ) : (
-          // Letters tab
+        ) : (
+            // Letters tab
           filteredLetters.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
