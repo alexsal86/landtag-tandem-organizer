@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { TestArchiveButton } from './TestArchiveButton';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useViewPreference } from "@/hooks/useViewPreference";
@@ -757,7 +756,6 @@ export function DocumentsView() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <TestArchiveButton />
                 {activeTab === 'documents' ? (
                   <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
                     <DialogTrigger asChild>
@@ -1218,8 +1216,8 @@ export function DocumentsView() {
              )
           ))
         ) : (
-          // Letters tab
-          filteredLetters.length === 0 ? (
+          // Letters tab with separated sections
+          filteredActiveLetters.length === 0 && filteredSentLetters.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -1239,7 +1237,37 @@ export function DocumentsView() {
               </CardContent>
             </Card>
           ) : (
-            viewType === 'card' ? (
+            <div className="space-y-8">
+              {/* Active Letters Section */}
+              {filteredActiveLetters.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <Edit3 className="h-5 w-5" />
+                    Aktive Briefe ({filteredActiveLetters.length})
+                  </h2>
+                  {renderLettersGrid(filteredActiveLetters, false)}
+                </div>
+              )}
+
+              {/* Sent Letters Section */}
+              {filteredSentLetters.length > 0 && (
+                <div>
+                  <div className="border-t pt-8">
+                    <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+                      <Send className="h-5 w-5" />
+                      Versendete Briefe ({filteredSentLetters.length})
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Diese Briefe wurden bereits versendet und sind im Dokumentenbereich archiviert.
+                    </p>
+                    {renderLettersGrid(filteredSentLetters, true)}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Letters tab with separated sections
+            filteredActiveLetters.length === 0 && filteredSentLetters.length === 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredLetters.map((letter) => (
                   <Card key={letter.id} className="hover:shadow-lg transition-shadow">
