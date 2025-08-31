@@ -442,13 +442,11 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       }
       
       // Subject line
-      let contentYPos = contentTop + 3; // Betreff beginnt unter der 98.46mm Linie
       if (letter.subject || letter.title) {
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
         const subjectText = letter.subject || letter.title;
-        pdf.text(subjectText, leftMargin, contentYPos);
-        contentYPos += 8;
+        pdf.text(subjectText, leftMargin, contentTop + 3);
       }
       
       // Letter content
@@ -456,42 +454,78 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       pdf.setFont('helvetica', 'normal');
       
       const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
-      const maxWidth = pageWidth - leftMargin - rightMargin;
-      
-      // Don't pre-split content - we'll handle this per page to ensure full width
-      const contentText2 = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
       const lineHeight = 4.5;
-      
       
       // Add pagination tracking
       let currentPage = 1;
       let letterPages = 1; // Track only letter content pages
       
-      // Calculate letter content pages more accurately
-      const availableContentHeight = pageHeight - contentTop - 50; // Height available for content on page 1
-      const availableContentHeightPage2Plus = pageHeight - 25 - 50; // Height available on page 2+ (25mm header)
-      // Split content to estimate pages
-      const tempLines = pdf.splitTextToSize(contentText2, maxWidth);
-      let remainingLines = tempLines.length;
+      // Function to render text with proper line breaking for each page
+      const renderContentText = (text: string, startY: number) => {
+        let currentY = startY;
+        const paragraphs = text.split('\n\n').filter(p => p.trim());
+        
+        paragraphs.forEach((paragraph, paragIndex) => {
+          // Calculate available width for current page
+          const currentMaxWidth = pageWidth - leftMargin - rightMargin; // Always use full width
+          
+          // Split paragraph into lines that fit the current page width
+          const lines = pdf.splitTextToSize(paragraph.trim(), currentMaxWidth);
+          
+          lines.forEach((line: string) => {
+            // Check if we need a new page
+            if (currentY > pageHeight - 50) {
+              // Add pagination to current page
+              addPagination(currentPage);
+              
+              // Create new page
+              pdf.addPage();
+              currentPage++;
+              
+              // Add debug margins to new page  
+              addDebugMargins(currentPage);
+              
+              // Reset Y position for new page (25mm header on page 2+)
+              currentY = 25 + 5; // 5mm spacing after header
+            }
+            
+            // Draw the line
+            pdf.text(line, leftMargin, currentY);
+            currentY += lineHeight;
+          });
+          
+          // Add spacing between paragraphs
+          if (paragIndex < paragraphs.length - 1) {
+            currentY += lineHeight * 0.5;
+          }
+        });
+        
+        return currentY;
+      };
       
-      // Calculate if content fits on first page
-      const linesOnFirstPage = Math.floor(availableContentHeight / lineHeight);
-      if (remainingLines > linesOnFirstPage) {
-        remainingLines -= linesOnFirstPage;
-        // Calculate additional pages needed
-        const linesPerAdditionalPage = Math.floor(availableContentHeightPage2Plus / lineHeight);
-        letterPages += Math.ceil(remainingLines / linesPerAdditionalPage);
+      // Calculate letter pages before rendering
+      const tempPdf = new jsPDF('p', 'mm', 'a4');
+      tempPdf.setFontSize(11);
+      const tempMaxWidth = pageWidth - leftMargin - rightMargin;
+      const tempLines = tempPdf.splitTextToSize(contentText, tempMaxWidth);
+      const availableContentHeight1 = pageHeight - contentTop - 50;
+      const availableContentHeightOther = pageHeight - 25 - 50;
+      const linesOnPage1 = Math.floor(availableContentHeight1 / lineHeight);
+      
+      if (tempLines.length <= linesOnPage1) {
+        letterPages = 1;
+      } else {
+        const remainingLines = tempLines.length - linesOnPage1;
+        const linesPerOtherPage = Math.floor(availableContentHeightOther / lineHeight);
+        letterPages = 1 + Math.ceil(remainingLines / linesPerOtherPage);
       }
       
-      // Account for attachments list if it exists
+      // Account for attachments list
       if (attachments.length > 0) {
-        // Calculate if attachment list needs additional pages
-        const attachmentListLines = attachments.length + 1; // +1 for "Anlagen:" header
-        const attachmentListHeight = attachmentListLines * 4 + 10; // 4mm per line + 10mm spacing
-        
-        // Check if attachment list fits on current content or needs new page
-        if (attachmentListHeight > 50) { // If it needs significant space
-          letterPages += Math.ceil(attachmentListHeight / availableContentHeightPage2Plus);
+        const attachmentLines = attachments.length + 2; // Header + items + spacing
+        const attachmentHeight = attachmentLines * lineHeight + 15;
+        if (attachmentHeight > 50) {
+          letterPages++;
         }
       }
       
@@ -570,41 +604,9 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         }
       };
       
-      // Render content text with proper page breaks and full width
-      const renderText = (text: string, startY: number, pageNum: number) => {
-        const actualMaxWidth = pageWidth - leftMargin - rightMargin;
-        const contentLines = pdf.splitTextToSize(text, actualMaxWidth);
-        let currentY = startY;
-        
-        contentLines.forEach((line: string) => {
-          // Check if we need a new page
-          if (currentY > pageHeight - 50) {
-            // Add pagination to current page before new page
-            addPagination(pageNum);
-            
-            // Create new page
-            pdf.addPage();
-            pageNum++;
-            currentPage = pageNum;
-            
-            // Add debug margins to new page
-            addDebugMargins(pageNum);
-            
-            // For page 2+, content starts immediately after 25mm header
-            currentY = pageNum === 1 ? contentTop + 3 : 25 + 3;
-          }
-          
-          // Render line with full width
-          pdf.text(line, leftMargin, currentY);
-          currentY += lineHeight;
-        });
-        
-        return { finalY: currentY, finalPage: pageNum };
-      };
-      
-      const result = renderText(contentText2, contentYPos, currentPage);
-      contentYPos = result.finalY;
-      currentPage = result.finalPage;
+      // Render content text with proper width on all pages  
+      const startY = letter.subject || letter.title ? contentTop + 11 : contentTop + 3; // 8mm after subject
+      let contentYPos = renderContentText(contentText, startY);
       
       // Handle attachments - now append actual files to PDF
       if (attachments && attachments.length > 0) {
@@ -642,142 +644,53 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         // Add final pagination for letter pages
         addPagination(currentPage);
         
-        // Now append actual attachment files to the PDF
+        // Now append actual attachment files to the PDF as simple info pages
         for (const attachment of attachments) {
           // Use display_name if available, otherwise use file_name
           const displayName = attachment.display_name || attachment.file_name;
           
           try {
-            // Download attachment file from Supabase storage
+            // Download attachment file from Supabase storage to get file info
             const { data: fileData, error } = await supabase.storage
               .from('attachments')
               .download(attachment.file_path);
             
-            if (error) {
-              console.warn(`Could not download attachment ${attachment.file_name}:`, error);
-              continue;
+            let fileSize = 0;
+            if (!error && fileData) {
+              const arrayBuffer = await fileData.arrayBuffer();
+              fileSize = arrayBuffer.byteLength;
             }
             
-            // Convert file to array buffer for PDF embedding
-            const arrayBuffer = await fileData.arrayBuffer();
+            // Add new page for attachment
+            pdf.addPage();
+            currentPage++;
             
-            // Check if it's a PDF file
-            if (attachment.file_type === 'application/pdf' || attachment.file_name.toLowerCase().endsWith('.pdf')) {
-              // For PDF files, try to embed actual PDF content
-              try {
-                // Create a URL from the array buffer
-                const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                
-                // Create iframe to render PDF pages
-                const iframe = document.createElement('iframe');
-                iframe.src = url;
-                iframe.style.width = '794px'; // A4 width
-                iframe.style.height = '1123px'; // A4 height  
-                iframe.style.position = 'absolute';
-                iframe.style.left = '-9999px';
-                document.body.appendChild(iframe);
-                
-                // Wait for PDF to load then capture as image
-                await new Promise((resolve) => {
-                  iframe.onload = async () => {
-                    try {
-                      const canvas = await html2canvas(iframe, {
-                        width: 794,
-                        height: 1123,
-                        scale: 2
-                      });
-                      
-                      // Add new page for attachment
-                      pdf.addPage();
-                      currentPage++;
-                      
-                      // Add the PDF page as image
-                      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-                      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297); // Full A4 page
-                      
-                      document.body.removeChild(iframe);
-                      URL.revokeObjectURL(url);
-                    } catch (err) {
-                      console.warn('Could not render PDF attachment as image:', err);
-                      // Fallback: add info page
-                      pdf.addPage();
-                      currentPage++;
-                      pdf.setFontSize(16);
-                      pdf.setFont('helvetica', 'bold');
-                      pdf.text('PDF Anlage:', leftMargin, 50);
-                      pdf.setFontSize(14);
-                      pdf.setFont('helvetica', 'normal');
-                      pdf.text(displayName, leftMargin, 65);
-                      
-                      document.body.removeChild(iframe);
-                      URL.revokeObjectURL(url);
-                    }
-                    resolve(true);
-                  };
-                });
-              } catch (err) {
-                console.warn('Could not embed PDF attachment:', err);
-                // Fallback: add info page
-                pdf.addPage();
-                currentPage++;
-                
-                // Add attachment info page
-                pdf.setFontSize(16);
-                pdf.setFont('helvetica', 'bold');
-                pdf.text('PDF Anlage (Fehler):', leftMargin, 50);
-                pdf.setFontSize(14);
-                pdf.setFont('helvetica', 'normal');
-                pdf.text(displayName, leftMargin, 65);
-                
-                pdf.setFontSize(10);
-                pdf.text('Diese PDF-Anlage konnte nicht eingebettet werden.', leftMargin, 85);
-                pdf.text(`Dateigröße: ${Math.round((arrayBuffer.byteLength || 0) / 1024)} KB`, leftMargin, 100);
-              }
-            } else if (attachment.file_type?.startsWith('image/')) {
-              // For image files, embed them directly
-              try {
-                const blob = new Blob([arrayBuffer], { type: attachment.file_type });
-                const url = URL.createObjectURL(blob);
-                
-                pdf.addPage();
-                currentPage++;
-                
-                // Add image to PDF
-                const imgData = url;
-                pdf.addImage(imgData, 'JPEG', leftMargin, 25, pageWidth - leftMargin - rightMargin, 0, '', 'FAST');
-                
-                URL.revokeObjectURL(url);
-              } catch (err) {
-                console.warn('Could not embed image attachment:', err);
-                // Fallback: add info page
-                pdf.addPage();
-                currentPage++;
-                
-                pdf.setFontSize(16);
-                pdf.setFont('helvetica', 'bold');
-                pdf.text('Bild-Anlage (Fehler):', leftMargin, 50);
-                pdf.setFontSize(14);
-                pdf.setFont('helvetica', 'normal');
-                pdf.text(displayName, leftMargin, 65);
-              }
-            } else {
-              // For other file types, add an info page
-              pdf.addPage();
-              currentPage++;
-              
-              pdf.setFontSize(16);
-              pdf.setFont('helvetica', 'bold');
-              pdf.text('Anlage:', leftMargin, 50);
-              pdf.setFontSize(14);
-              pdf.setFont('helvetica', 'normal');
-              pdf.text(displayName, leftMargin, 65);
-              
-              pdf.setFontSize(10);
-              pdf.text(`Dateityp: ${attachment.file_type || 'Unbekannt'}`, leftMargin, 85);
-              pdf.text(`Dateigröße: ${Math.round((arrayBuffer.byteLength || 0) / 1024)} KB`, leftMargin, 100);
-              pdf.text('Diese Anlage liegt als separate Datei vor.', leftMargin, 115);
+            // Add attachment page content
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Anlage', leftMargin, 50);
+            
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(displayName, leftMargin, 70);
+            
+            pdf.setFontSize(10);
+            pdf.text(`Dateityp: ${attachment.file_type || 'Unbekannt'}`, leftMargin, 90);
+            
+            if (fileSize > 0) {
+              const sizeText = fileSize > 1024 * 1024 
+                ? `${(fileSize / (1024 * 1024)).toFixed(1)} MB`
+                : `${Math.round(fileSize / 1024)} KB`;
+              pdf.text(`Dateigröße: ${sizeText}`, leftMargin, 105);
             }
+            
+            pdf.text('Diese Anlage ist dem Brief beigefügt.', leftMargin, 120);
+            
+            // Add a simple border around the attachment info
+            pdf.setLineWidth(0.5);
+            pdf.setDrawColor(200, 200, 200);
+            pdf.rect(leftMargin, 40, pageWidth - leftMargin - rightMargin, 90);
+            
           } catch (error) {
             console.warn(`Error processing attachment ${attachment.file_name}:`, error);
             
@@ -787,13 +700,14 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
             
             pdf.setFontSize(16);
             pdf.setFont('helvetica', 'bold');
-            pdf.text('Anlage (Fehler):', leftMargin, 50);
+            pdf.text('Anlage (Fehler)', leftMargin, 50);
+            
             pdf.setFontSize(14);
             pdf.setFont('helvetica', 'normal');
-            pdf.text(displayName, leftMargin, 65);
+            pdf.text(displayName, leftMargin, 70);
             
             pdf.setFontSize(10);
-            pdf.text('Diese Anlage konnte nicht geladen werden.', leftMargin, 85);
+            pdf.text('Diese Anlage konnte nicht geladen werden.', leftMargin, 90);
           }
         }
       } else {
@@ -801,30 +715,6 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         addPagination(currentPage);
       }
       
-      // Add pagination to final page
-      addPagination(currentPage);
-      
-      // Add letter date to info block if not already there
-      if (letter.letter_date) {
-        // Go back to first page to add date if no information block
-        if (!informationBlock) {
-          // Count pages by checking the current page number
-          const totalPagesCount = currentPage;
-          pdf.setPage(1);
-          
-          let dateYPos = infoBlockTop + 3;
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text('Datum', infoBlockLeft, dateYPos);
-          dateYPos += 5;
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(new Date(letter.letter_date).toLocaleDateString('de-DE'), infoBlockLeft, dateYPos);
-          
-          // Return to last page
-          pdf.setPage(totalPagesCount);
-        }
-      }
-
       // Generate filename
       const letterDate = letter.letter_date 
         ? new Date(letter.letter_date).toLocaleDateString('de-DE')
