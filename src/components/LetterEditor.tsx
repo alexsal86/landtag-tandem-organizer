@@ -43,6 +43,15 @@ interface Letter {
   created_at: string;
   updated_at: string;
   tenant_id: string;
+  // Workflow tracking fields
+  submitted_for_review_at?: string;
+  submitted_for_review_by?: string;
+  submitted_to_user?: string;
+  approved_at?: string;
+  approved_by?: string;
+  sent_at?: string;
+  sent_by?: string;
+  workflow_locked?: boolean;
 }
 
 interface LetterTemplate {
@@ -557,6 +566,32 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       return;
     }
 
+    // Prepare workflow tracking updates
+    const now = new Date().toISOString();
+    const workflowUpdates: any = { status: newStatus };
+
+    // Update workflow tracking fields based on status transition
+    if (newStatus === 'review' && !editedLetter.workflow_locked) {
+      workflowUpdates.submitted_for_review_at = now;
+      workflowUpdates.submitted_for_review_by = user?.id;
+      // submitted_to_user will be set when reviewer is assigned
+    }
+    
+    if (newStatus === 'approved' && !editedLetter.workflow_locked) {
+      workflowUpdates.approved_at = now;
+      workflowUpdates.approved_by = user?.id;
+    }
+    
+    if (newStatus === 'sent') {
+      if (!editedLetter.workflow_locked) {
+        workflowUpdates.sent_at = now;
+        workflowUpdates.sent_by = user?.id;
+      }
+      // Lock workflow when letter is sent
+      workflowUpdates.workflow_locked = true;
+      workflowUpdates.sent_date = now;
+    }
+
     // Show assignment dialog when transitioning to review
     if (newStatus === 'review' && isCreator) {
       console.log('Opening assignment dialog for review status', { isCreator, newStatus });
@@ -566,9 +601,30 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
     setEditedLetter(prev => ({
       ...prev,
-      status: newStatus as any,
-      ...(newStatus === 'sent' ? { sent_date: new Date().toISOString() } : {})
+      ...workflowUpdates
     }));
+
+    // Update database with workflow tracking
+    if (letter?.id) {
+      try {
+        const { error } = await supabase
+          .from('letters')
+          .update({
+            ...workflowUpdates,
+            updated_at: now
+          })
+          .eq('id', letter.id);
+
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error updating workflow tracking:', error);
+        toast({
+          title: "Fehler beim Workflow-Update",
+          description: "Die Workflow-Daten konnten nicht gespeichert werden.",
+          variant: "destructive",
+        });
+      }
+    }
 
     // Korrekturlesen automatisch aktivieren bei "review"
     if (newStatus === 'review') {
@@ -1276,6 +1332,79 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               )}
             </CardContent>
           </Card>
+
+          {/* Workflow Tracking Section */}
+          {letter?.id && (editedLetter.submitted_for_review_at || editedLetter.approved_at || editedLetter.sent_at) && (
+            <Card className="mt-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Workflow-Verlauf
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {editedLetter.submitted_for_review_at && (
+                  <div className="flex items-start gap-3 text-sm">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <div className="font-medium">Zur Prüfung weitergeleitet</div>
+                      <div className="text-muted-foreground">
+                        {new Date(editedLetter.submitted_for_review_at).toLocaleString('de-DE')}
+                        {editedLetter.submitted_for_review_by && (
+                          <span> • von Benutzer {editedLetter.submitted_for_review_by}</span>
+                        )}
+                        {editedLetter.submitted_to_user && (
+                          <span> • an Benutzer {editedLetter.submitted_to_user}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {editedLetter.approved_at && (
+                  <div className="flex items-start gap-3 text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <div className="font-medium">Genehmigt</div>
+                      <div className="text-muted-foreground">
+                        {new Date(editedLetter.approved_at).toLocaleString('de-DE')}
+                        {editedLetter.approved_by && (
+                          <span> • von Benutzer {editedLetter.approved_by}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {editedLetter.sent_at && (
+                  <div className="flex items-start gap-3 text-sm">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <div className="font-medium">Als versendet markiert</div>
+                      <div className="text-muted-foreground">
+                        {new Date(editedLetter.sent_at).toLocaleString('de-DE')}
+                        {editedLetter.sent_by && (
+                          <span> • von Benutzer {editedLetter.sent_by}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {editedLetter.workflow_locked && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3">
+                    <div className="flex items-center gap-2 text-amber-800">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Workflow gesperrt</span>
+                    </div>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Die Workflow-Daten sind fest eingestellt und können nicht mehr geändert werden.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Proofreading Comments Section - nur bei draft/review */}
           {isProofreadingMode && editedLetter.status !== 'approved' && editedLetter.status !== 'sent' && (

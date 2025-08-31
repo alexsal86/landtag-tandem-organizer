@@ -1,0 +1,10 @@
+-- Add workflow tracking fields to letters table
+ALTER TABLE public.letters 
+ADD COLUMN IF NOT EXISTS submitted_for_review_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS submitted_for_review_by UUID,
+ADD COLUMN IF NOT EXISTS submitted_to_user UUID,
+ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS approved_by UUID,
+ADD COLUMN IF NOT EXISTS sent_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS sent_by UUID,
+ADD COLUMN IF NOT EXISTS workflow_locked BOOLEAN DEFAULT FALSE;

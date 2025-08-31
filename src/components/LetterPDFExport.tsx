@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface Letter {
   id: string;
@@ -172,14 +171,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
 
   const exportToPDF = async () => {
     try {
-      // Use enhanced DIN 5008 export if we have DIN fields or prefer simple export
-      if (letter.subject || letter.reference_number || senderInfo || informationBlock) {
-        await exportWithDIN5008Features();
-      } else if (template) {
-        await exportWithTemplate();
-      } else {
-        await exportWithoutTemplate();
-      }
+      await exportWithDIN5008Features();
     } catch (error) {
       console.error('Error exporting PDF:', error);
       toast({
@@ -201,119 +193,14 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       const leftMargin = 25;
       const rightMargin = 20;
       const headerHeight = 45;
-      const addressFieldTop = 46; // Adressfeld bei 46mm 
+      const addressFieldTop = 46;
       const addressFieldLeft = leftMargin;
       const addressFieldWidth = 85;
       const addressFieldHeight = 40;
-      const infoBlockTop = 50; // Info-Block bei 50mm
+      const infoBlockTop = 50;
       const infoBlockLeft = 125;
       const infoBlockWidth = 75;
-      const contentTop = 98.46; // Betreff/Inhalt beginnt bei 98.46mm
-      
-      // Debug mode: Draw comprehensive DIN 5008 guides (ALWAYS ENABLED for testing)
-      if (true) { // Force debug mode ON
-        pdf.setLineWidth(0.2);
-        
-        // Header line (45mm)
-        pdf.setDrawColor(255, 0, 0); // Red
-        pdf.line(0, headerHeight, pageWidth, headerHeight);
-        pdf.setFontSize(8);
-        pdf.setTextColor(255, 0, 0);
-        pdf.text("45mm - Header Ende (DIN 5008)", 5, headerHeight - 3);
-        
-        // Address field with detailed measurements
-        pdf.setDrawColor(255, 0, 0);
-        pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, addressFieldHeight);
-        pdf.text("Adressfeld: 85×40mm @ Position 46mm/25mm", addressFieldLeft, addressFieldTop - 3);
-        
-        // Address field - Rücksendeangaben 17.7mm-Zone
-        pdf.setDrawColor(255, 100, 100);
-        pdf.setLineWidth(0.1);
-        pdf.rect(addressFieldLeft, addressFieldTop, addressFieldWidth, 17.7);
-        pdf.setFontSize(6);
-        pdf.text("Rücksendeangaben: 17.7mm Höhe", addressFieldLeft + 2, addressFieldTop + 15);
-        
-        // Info block
-        pdf.setDrawColor(0, 0, 255); // Blue
-        pdf.setLineWidth(0.2);
-        pdf.rect(infoBlockLeft, infoBlockTop, infoBlockWidth, addressFieldHeight);
-        pdf.setFontSize(8);
-        pdf.setTextColor(0, 0, 255);
-        pdf.text("Info-Block: 75×40mm @ 50mm/125mm", infoBlockLeft, infoBlockTop - 3);
-        
-        // Content start line (98.46mm)
-        pdf.setDrawColor(0, 255, 0); // Green
-        pdf.line(leftMargin, contentTop, pageWidth - rightMargin, contentTop);
-        pdf.setTextColor(0, 255, 0);
-        pdf.text("98.46mm - Inhaltsbeginn (DIN 5008)", leftMargin, contentTop - 3);
-        
-        // Left margin guide
-        pdf.setDrawColor(255, 165, 0); // Orange
-        pdf.line(leftMargin, 0, leftMargin, pageHeight);
-        pdf.setTextColor(255, 165, 0);
-        pdf.text("Linker Rand:", leftMargin + 2, 15);
-        pdf.text("25mm", leftMargin + 2, 20);
-        
-        // Right margin guide
-        pdf.line(pageWidth - rightMargin, 0, pageWidth - rightMargin, pageHeight);
-        pdf.text("Rechter Rand:", pageWidth - rightMargin - 25, 15);
-        pdf.text("20mm", pageWidth - rightMargin - 15, 20);
-        
-        // Footer area (272mm from top, 7mm from bottom)
-        const footerTop = 272;
-        const footerBottom = pageHeight - 7;
-        
-        // Footer box
-        pdf.setDrawColor(128, 0, 128); // Purple
-        pdf.rect(leftMargin, footerTop, pageWidth - leftMargin - rightMargin, footerBottom - footerTop);
-        
-        // Footer guide lines
-        pdf.line(0, footerTop, pageWidth, footerTop);
-        pdf.line(0, footerBottom, pageWidth, footerBottom);
-        
-        pdf.setTextColor(128, 0, 128);
-        pdf.text("Fußzeile: 272mm", 5, footerTop - 2);
-        pdf.text("Unterer Rand: 7mm", 5, footerBottom + 3);
-        
-        // Footer content
-        pdf.setFontSize(8);
-        pdf.setTextColor(0, 0, 0);
-        const footerY = footerTop + 3;
-        pdf.text("Fraktion GRÜNE im Landtag von Baden-Württemberg • Alexander Salomon • Konrad-Adenauer-Str. 12 • 70197 Stuttgart", leftMargin + 2, footerY);
-        pdf.text("Tel: 0711 / 2063620", leftMargin + 2, footerY + 4);
-        pdf.text("E-Mail: Alexander.Salomon@gruene.landtag-bw.de", leftMargin + 2, footerY + 8);
-        pdf.text("Web: https://www.alexander-salomon.de", leftMargin + 2, footerY + 12);
-        
-        // Page dimensions box
-        pdf.setDrawColor(0, 0, 0);
-        pdf.setLineWidth(0.3);
-        pdf.rect(pageWidth - 50, 5, 45, 25);
-        pdf.setFontSize(7);
-        pdf.setTextColor(0, 0, 0);
-        pdf.text("DIN A4:", pageWidth - 48, 10);
-        pdf.text("210×297mm", pageWidth - 48, 15);
-        pdf.text("Font: Arial", pageWidth - 48, 20);
-        pdf.text("Size: 11pt", pageWidth - 48, 25);
-        
-        // Measurement annotations
-        pdf.setFontSize(6);
-        pdf.setTextColor(0, 0, 0);
-        
-        // Address field position arrows
-        pdf.setDrawColor(255, 0, 0);
-        pdf.line(0, addressFieldTop, addressFieldLeft - 2, addressFieldTop);
-        pdf.text("46mm", 2, addressFieldTop + 2);
-        
-        // Info block position arrows
-        pdf.setDrawColor(0, 0, 255);
-        pdf.line(0, infoBlockTop, infoBlockLeft - 2, infoBlockTop);
-        pdf.text("50mm", 2, infoBlockTop + 2);
-        
-        // Content position arrows  
-        pdf.setDrawColor(0, 255, 0);
-        pdf.line(0, contentTop, leftMargin - 2, contentTop);
-        pdf.text("98.46mm", 2, contentTop + 2);
-      }
+      const contentTop = 98.46;
       
       // Reset colors for content
       pdf.setTextColor(0, 0, 0);
@@ -321,24 +208,22 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       
       // Template letterhead (if available)
       if (template?.letterhead_html) {
-        // For template, we'll add a simple header text
         pdf.setFontSize(12);
         pdf.setFont('helvetica', 'bold');
         pdf.text(template.name || 'Briefkopf', leftMargin, 20);
       }
       
       // Return address line in address field - 17.7mm height
-      let addressYPos = addressFieldTop + 17.7; // Rücksendeangaben sind 17.7mm hoch
+      let addressYPos = addressFieldTop + 17.7;
       if (senderInfo?.return_address_line) {
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
-        // Position text at bottom of 17.7mm area
         pdf.text(senderInfo.return_address_line, addressFieldLeft, addressYPos - 2);
         
         // Underline for return address
         const textWidth = pdf.getTextWidth(senderInfo.return_address_line);
         pdf.line(addressFieldLeft, addressYPos - 1, addressFieldLeft + textWidth, addressYPos - 1);
-        addressYPos += 3; // Small gap after return address
+        addressYPos += 3;
       }
       
       // Recipient address
@@ -425,10 +310,8 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       
       // Letter date (ALWAYS show if available, regardless of information block)
       if (letter.letter_date) {
-        // Always show date if we don't have a date information block
         const hasDateBlock = informationBlock?.block_type === 'date';
         if (!hasDateBlock) {
-          // Ensure we have space in info block
           if (infoYPos < infoBlockTop + infoBlockWidth - 10) {
             pdf.setFontSize(8);
             pdf.setFont('helvetica', 'bold');
@@ -466,522 +349,174 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         const paragraphs = text.split('\n\n').filter(p => p.trim());
         
         paragraphs.forEach((paragraph, paragIndex) => {
-          // Calculate available width for current page
-          const currentMaxWidth = pageWidth - leftMargin - rightMargin; // Always use full width
+          // Calculate available width for current page (full width for all pages)
+          const currentMaxWidth = pageWidth - leftMargin - rightMargin;
           
           // Split paragraph into lines that fit the current page width
           const lines = pdf.splitTextToSize(paragraph.trim(), currentMaxWidth);
           
-          lines.forEach((line: string) => {
+          lines.forEach((line, lineIndex) => {
             // Check if we need a new page
-            if (currentY > pageHeight - 50) {
-              // Add pagination to current page
-              addPagination(currentPage);
-              
-              // Create new page
+            if (currentY + lineHeight > pageHeight - 40) { // Leave 40mm for footer
               pdf.addPage();
+              letterPages++;
               currentPage++;
+              currentY = 30; // Start new page at 30mm from top
               
-              // Add debug margins to new page  
-              addDebugMargins(currentPage);
-              
-              // Reset Y position for new page (25mm header on page 2+)
-              currentY = 25 + 5; // 5mm spacing after header
+              // Ensure correct font for continuation pages
+              pdf.setFontSize(11);
+              pdf.setFont('helvetica', 'normal');
             }
             
-            // Draw the line
             pdf.text(line, leftMargin, currentY);
             currentY += lineHeight;
           });
           
-          // Add spacing between paragraphs
+          // Add extra space between paragraphs
           if (paragIndex < paragraphs.length - 1) {
-            currentY += lineHeight * 0.5;
+            currentY += lineHeight / 2;
           }
         });
-        
-        return currentY;
       };
       
-      // Calculate letter pages before rendering
-      const tempPdf = new jsPDF('p', 'mm', 'a4');
-      tempPdf.setFontSize(11);
-      const tempMaxWidth = pageWidth - leftMargin - rightMargin;
-      const tempLines = tempPdf.splitTextToSize(contentText, tempMaxWidth);
-      const availableContentHeight1 = pageHeight - contentTop - 50;
-      const availableContentHeightOther = pageHeight - 25 - 50;
-      const linesOnPage1 = Math.floor(availableContentHeight1 / lineHeight);
+      // Render the content
+      renderContentText(contentText, contentTop + 10);
       
-      if (tempLines.length <= linesOnPage1) {
-        letterPages = 1;
-      } else {
-        const remainingLines = tempLines.length - linesOnPage1;
-        const linesPerOtherPage = Math.floor(availableContentHeightOther / lineHeight);
-        letterPages = 1 + Math.ceil(remainingLines / linesPerOtherPage);
-      }
-      
-      // Account for attachments list
-      if (attachments.length > 0) {
-        const attachmentLines = attachments.length + 2; // Header + items + spacing
-        const attachmentHeight = attachmentLines * lineHeight + 15;
-        if (attachmentHeight > 50) {
-          letterPages++;
-        }
-      }
-      
-      // Add debug margins to all pages function
-      const addDebugMargins = (pageNum: number) => {
-        if (debugMode || true) { // Force debug mode for testing
-          pdf.setLineWidth(0.2);
-          
-          // Header line - different heights for different pages
-          pdf.setDrawColor(255, 0, 0);
-          if (pageNum === 1) {
-            // Page 1: Header ends at 45mm
-            pdf.line(0, headerHeight, pageWidth, headerHeight);
-            pdf.setFontSize(8);
-            pdf.setTextColor(255, 0, 0);
-            pdf.text(`45mm - Header Ende (Seite ${pageNum})`, 5, headerHeight - 3);
-          } else {
-            // Page 2+: Header ends at 25mm
-            const page2HeaderHeight = 25;
-            pdf.line(0, page2HeaderHeight, pageWidth, page2HeaderHeight);
-            pdf.setFontSize(8);
-            pdf.setTextColor(255, 0, 0);
-            pdf.text(`25mm - Header Ende (Seite ${pageNum})`, 5, page2HeaderHeight - 3);
-            
-            // Content start line for page 2+ (immediately after header at 25mm)
-            pdf.setDrawColor(0, 255, 0);
-            pdf.line(leftMargin, page2HeaderHeight, pageWidth - rightMargin, page2HeaderHeight);
-            pdf.setTextColor(0, 255, 0);
-            pdf.text(`Inhaltsbeginn Seite ${pageNum}`, leftMargin, page2HeaderHeight + 3);
-          }
-          
-          // Left margin guide
-          pdf.setDrawColor(255, 165, 0);
-          pdf.line(leftMargin, 0, leftMargin, pageHeight);
-          pdf.setTextColor(255, 165, 0);
-          pdf.text("25mm", leftMargin + 2, 15);
-          
-          // Right margin guide
-          pdf.line(pageWidth - rightMargin, 0, pageWidth - rightMargin, pageHeight);
-          pdf.text("20mm", pageWidth - rightMargin - 15, 20);
-          
-          // Footer area
-          const footerTop = 272;
-          const footerBottom = pageHeight - 7;
-          
-          pdf.setDrawColor(128, 0, 128);
-          pdf.rect(leftMargin, footerTop, pageWidth - leftMargin - rightMargin, footerBottom - footerTop);
-          pdf.line(0, footerTop, pageWidth, footerTop);
-          pdf.line(0, footerBottom, pageWidth, footerBottom);
-          
-          pdf.setTextColor(128, 0, 128);
-          pdf.text("Fußzeile: 272mm", 5, footerTop - 2);
-          pdf.text("Unterer Rand: 7mm", 5, footerBottom + 3);
-          
-          // Reset colors
-          pdf.setTextColor(0, 0, 0);
-          pdf.setDrawColor(0, 0, 0);
-        }
-      };
-      
-      // Add pagination function - only for letter content pages
-      const addPagination = (pageNum: number) => {
-        if (showPagination && letterPages > 1 && pageNum <= letterPages) {
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(0, 0, 0);
-          
-          // Position: 4.23mm above footer (272mm), 20mm from right edge
-          const paginationY = 272 - 4.23; // 267.77mm from top
-          const paginationX = pageWidth - 20; // 20mm from right edge
-          
-          const paginationText = `Seite ${pageNum} von ${letterPages}`;
-          const textWidth = pdf.getTextWidth(paginationText);
-          
-          pdf.text(paginationText, paginationX - textWidth, paginationY);
-        }
-      };
-      
-      // Render content text with proper width on all pages  
-      const startY = letter.subject || letter.title ? contentTop + 11 : contentTop + 3; // 8mm after subject
-      let contentYPos = renderContentText(contentText, startY);
-      
-      // Handle attachments - now append actual files to PDF
+      // Add attachments as embedded files
       if (attachments && attachments.length > 0) {
-        // Add attachments list to the letter first
-        if (contentYPos > pageHeight - 70) {
-          addPagination(currentPage);
-          pdf.addPage();
-          currentPage++;
-          addDebugMargins(currentPage);
-          contentYPos = currentPage === 1 ? contentTop + 3 : 25 + 3;
-        }
-        
-        contentYPos += 10; // Space before attachments
-        
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Anlagen:', leftMargin, contentYPos);
-        contentYPos += 6;
-        
-        pdf.setFont('helvetica', 'normal');
-        for (const attachment of attachments) {
-          if (contentYPos > pageHeight - 30) {
-            addPagination(currentPage);
-            pdf.addPage();
-            currentPage++;
-            addDebugMargins(currentPage);
-            contentYPos = currentPage === 1 ? contentTop + 3 : 25 + 3;
-          }
-          
-          // Use display_name if available, otherwise use file_name
-          const displayName = attachment.display_name || attachment.file_name;
-          pdf.text(`• ${displayName}`, leftMargin, contentYPos);
-          contentYPos += 4;
-        }
-        
-        // Add final pagination for letter pages
-        addPagination(currentPage);
-        
-        // Now append actual attachment files to the PDF as simple info pages
-        for (const attachment of attachments) {
-          // Use display_name if available, otherwise use file_name
-          const displayName = attachment.display_name || attachment.file_name;
+        for (let i = 0; i < attachments.length; i++) {
+          const attachment = attachments[i];
           
           try {
-            // Download attachment file from Supabase storage to get file info
-            const { data: fileData, error } = await supabase.storage
-              .from('attachments')
+            // Fetch the attachment file
+            const { data: fileData, error: fileError } = await supabase.storage
+              .from('documents')
               .download(attachment.file_path);
             
-            let fileSize = 0;
-            if (!error && fileData) {
-              const arrayBuffer = await fileData.arrayBuffer();
-              fileSize = arrayBuffer.byteLength;
+            if (fileError) {
+              console.error('Error downloading attachment:', fileError);
+              continue;
             }
             
-            // Add new page for attachment
+            // Add a new page for each attachment
             pdf.addPage();
+            letterPages++;
             currentPage++;
             
-            // Add attachment page content
-            pdf.setFontSize(16);
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('Anlage', leftMargin, 50);
-            
+            // Add header for this attachment
             pdf.setFontSize(14);
-            pdf.setFont('helvetica', 'normal');
-            pdf.text(displayName, leftMargin, 70);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`Anlage ${i + 1}: ${attachment.file_name}`, leftMargin, 30);
             
-            pdf.setFontSize(10);
-            pdf.text(`Dateityp: ${attachment.file_type || 'Unbekannt'}`, leftMargin, 90);
-            
-            if (fileSize > 0) {
-              const sizeText = fileSize > 1024 * 1024 
-                ? `${(fileSize / (1024 * 1024)).toFixed(1)} MB`
-                : `${Math.round(fileSize / 1024)} KB`;
-              pdf.text(`Dateigröße: ${sizeText}`, leftMargin, 105);
-            }
-            
-            pdf.text('Diese Anlage ist dem Brief beigefügt.', leftMargin, 120);
-            
-            // Add a simple border around the attachment info
-            pdf.setLineWidth(0.5);
-            pdf.setDrawColor(200, 200, 200);
-            pdf.rect(leftMargin, 40, pageWidth - leftMargin - rightMargin, 90);
-            
+            // Convert file to data URL for embedding
+            const reader = new FileReader();
+            await new Promise((resolve) => {
+              reader.onload = function() {
+                try {
+                  if (attachment.file_type?.startsWith('image/')) {
+                    // For images, embed directly
+                    const imgData = reader.result as string;
+                    pdf.addImage(imgData, 'JPEG', leftMargin, 40, pageWidth - leftMargin - rightMargin, 200);
+                  } else if (attachment.file_type === 'application/pdf') {
+                    // For PDFs, show information page
+                    pdf.setFontSize(11);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.text('PDF-Dokument eingebettet:', leftMargin, 50);
+                    pdf.text(`Dateiname: ${attachment.file_name}`, leftMargin, 65);
+                    pdf.text(`Größe: ${attachment.file_size ? Math.round(attachment.file_size / 1024) + ' KB' : 'Unbekannt'}`, leftMargin, 80);
+                    
+                    // Add visual representation
+                    pdf.setDrawColor(200, 200, 200);
+                    pdf.rect(leftMargin, 90, pageWidth - leftMargin - rightMargin, 150);
+                    pdf.setFontSize(24);
+                    pdf.setTextColor(150, 150, 150);
+                    pdf.text('PDF', leftMargin + 80, 170);
+                    pdf.setTextColor(0, 0, 0);
+                  } else {
+                    // For other file types, show file info
+                    pdf.setFontSize(11);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.text(`Dateiname: ${attachment.file_name}`, leftMargin, 50);
+                    pdf.text(`Dateityp: ${attachment.file_type || 'Unbekannt'}`, leftMargin, 65);
+                    pdf.text(`Größe: ${attachment.file_size ? Math.round(attachment.file_size / 1024) + ' KB' : 'Unbekannt'}`, leftMargin, 80);
+                    
+                    // Add visual representation
+                    pdf.setDrawColor(200, 200, 200);
+                    pdf.rect(leftMargin, 90, pageWidth - leftMargin - rightMargin, 100);
+                    pdf.setFontSize(16);
+                    pdf.setTextColor(100, 100, 100);
+                    pdf.text('DATEI', leftMargin + 70, 145);
+                    pdf.setTextColor(0, 0, 0);
+                  }
+                } catch (error) {
+                  console.error('Error embedding attachment:', error);
+                  pdf.setFontSize(11);
+                  pdf.setFont('helvetica', 'normal');
+                  pdf.text('Anhang konnte nicht eingebettet werden', leftMargin, 50);
+                }
+                resolve(null);
+              };
+              reader.readAsDataURL(fileData);
+            });
           } catch (error) {
-            console.warn(`Error processing attachment ${attachment.file_name}:`, error);
-            
+            console.error('Error processing attachment:', error);
             // Add error page
             pdf.addPage();
+            letterPages++;
             currentPage++;
-            
-            pdf.setFontSize(16);
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('Anlage (Fehler)', leftMargin, 50);
-            
             pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`Anlage ${i + 1}: ${attachment.file_name}`, leftMargin, 30);
+            pdf.setFontSize(11);
             pdf.setFont('helvetica', 'normal');
-            pdf.text(displayName, leftMargin, 70);
-            
-            pdf.setFontSize(10);
-            pdf.text('Diese Anlage konnte nicht geladen werden.', leftMargin, 90);
+            pdf.text('Fehler beim Laden der Anlage', leftMargin, 50);
           }
         }
-      } else {
-        // Add final pagination for letter if no attachments
-        addPagination(currentPage);
       }
       
-      // Generate filename
-      const letterDate = letter.letter_date 
-        ? new Date(letter.letter_date).toLocaleDateString('de-DE')
-        : new Date(letter.created_at).toLocaleDateString('de-DE');
-      const fileName = `Brief_DIN5008_${(letter.subject || letter.title || 'Ohne_Titel').replace(/[^a-zA-Z0-9]/g, '_')}_${letterDate.replace(/\./g, '-')}.pdf`;
+      // Add pagination to all pages
+      const totalPages = letterPages;
+      for (let page = 1; page <= totalPages; page++) {
+        pdf.setPage(page);
+        
+        // Add page number at bottom
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 100, 100);
+        const pageText = `Seite ${page} von ${totalPages}`;
+        const pageTextWidth = pdf.getTextWidth(pageText);
+        pdf.text(pageText, pageWidth - rightMargin - pageTextWidth, pageHeight - 10);
+        pdf.setTextColor(0, 0, 0);
+      }
       
       // Save the PDF
+      const fileName = `${letter.title || 'Brief'}_${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
       
       toast({
-        title: "PDF exportiert",
-        description: `Der Brief wurde als durchsuchbares DIN 5008 PDF gespeichert: ${fileName}`,
-      });
-
-    } catch (error) {
-      console.error('Error in DIN 5008 PDF export:', error);
-      
-      // Fallback to simple PDF export
-      await exportWithoutTemplate();
-    }
-  };
-
-  const exportWithTemplate = async () => {
-    // Create a temporary container for rendering
-    const container = document.createElement('div');
-    container.style.width = '794px'; // A4 width in pixels at 96 DPI
-    container.style.background = 'white';
-    container.style.padding = '40px';
-    container.style.fontFamily = 'Arial, sans-serif';
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.top = '0';
-
-    // Apply template styles
-    const styleElement = document.createElement('style');
-    styleElement.textContent = template!.letterhead_css;
-    container.appendChild(styleElement);
-
-    // Create the letter content with template
-    const contentDiv = document.createElement('div');
-    
-    // Add letterhead
-    const letterheadDiv = document.createElement('div');
-    letterheadDiv.innerHTML = template!.letterhead_html;
-    contentDiv.appendChild(letterheadDiv);
-
-    // Add recipient information
-    if (letter.recipient_name || letter.recipient_address) {
-      const recipientDiv = document.createElement('div');
-      recipientDiv.style.marginTop = '30px';
-      recipientDiv.style.marginBottom = '30px';
-      
-      if (letter.recipient_name) {
-        const nameP = document.createElement('p');
-        nameP.textContent = letter.recipient_name;
-        nameP.style.fontWeight = 'bold';
-        nameP.style.margin = '0 0 5px 0';
-        recipientDiv.appendChild(nameP);
-      }
-      
-      if (letter.recipient_address) {
-        const addressDiv = document.createElement('div');
-        addressDiv.style.whiteSpace = 'pre-line';
-        addressDiv.textContent = letter.recipient_address;
-        recipientDiv.appendChild(addressDiv);
-      }
-      
-      contentDiv.appendChild(recipientDiv);
-    }
-
-    // Add letter title/subject
-    const titleDiv = document.createElement('div');
-    titleDiv.style.marginTop = '30px';
-    titleDiv.style.marginBottom = '20px';
-    titleDiv.style.fontWeight = 'bold';
-    titleDiv.style.fontSize = '18px';
-    titleDiv.textContent = letter.subject || letter.title;
-    contentDiv.appendChild(titleDiv);
-
-    // Add letter content
-    const letterContentDiv = document.createElement('div');
-    letterContentDiv.style.marginTop = '20px';
-    letterContentDiv.style.lineHeight = '1.6';
-    
-    if (letter.content_html) {
-      letterContentDiv.innerHTML = letter.content_html;
-    } else {
-      letterContentDiv.style.whiteSpace = 'pre-line';
-      letterContentDiv.textContent = letter.content;
-    }
-    contentDiv.appendChild(letterContentDiv);
-
-    container.appendChild(contentDiv);
-    document.body.appendChild(container);
-
-    try {
-      // Convert to canvas
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#ffffff'
-      });
-
-      // Create PDF
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      // Add additional pages if needed
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      // Generate filename
-      const date = new Date(letter.created_at).toLocaleDateString('de-DE');
-      const fileName = `Brief_${(letter.subject || letter.title).replace(/[^a-zA-Z0-9]/g, '_')}_${date.replace(/\./g, '-')}.pdf`;
-      
-      // Save the PDF
-      pdf.save(fileName);
-
-      toast({
-        title: "PDF exportiert",
+        title: "PDF erstellt",
         description: `Der Brief wurde als PDF gespeichert: ${fileName}`,
       });
-
-    } finally {
-      // Clean up
-      document.body.removeChild(container);
-    }
-  };
-
-  const exportWithoutTemplate = async () => {
-    const doc = new jsPDF();
-    
-    // PDF configuration
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const maxWidth = pageWidth - (margin * 2);
-    
-    let currentY = margin;
-    
-    // Helper function to add text with automatic line wrapping
-    const addText = (text: string, fontSize: number = 12, isBold: boolean = false) => {
-      doc.setFontSize(fontSize);
-      doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-      
-      const lines = doc.splitTextToSize(text, maxWidth);
-      const lineHeight = fontSize * 0.4;
-      
-      // Check if we need a new page
-      if (currentY + (lines.length * lineHeight) > pageHeight - margin) {
-        doc.addPage();
-        currentY = margin;
-      }
-      
-      lines.forEach((line: string) => {
-        doc.text(line, margin, currentY);
-        currentY += lineHeight;
+    } catch (error) {
+      console.error('Error creating PDF:', error);
+      toast({
+        title: "Export-Fehler",
+        description: "Der Brief konnte nicht als PDF exportiert werden.",
+        variant: "destructive",
       });
-      
-      currentY += 5; // Add some space after text
-    };
-    
-    // Header
-    addText(`BRIEF - ${letter.title}`, 16, true);
-    currentY += 5;
-    
-    // Date
-    const date = new Date(letter.created_at).toLocaleDateString('de-DE');
-    addText(`Datum: ${date}`, 10);
-    currentY += 10;
-    
-    // Recipient
-    if (letter.recipient_name) {
-      addText('EMPFÄNGER:', 12, true);
-      addText(letter.recipient_name, 12);
-      
-      if (letter.recipient_address) {
-        const addressLines = letter.recipient_address.split('\n');
-        addressLines.forEach(line => {
-          if (line.trim()) {
-            addText(line.trim(), 12);
-          }
-        });
-      }
-      currentY += 10;
     }
-    
-    // Status
-    const statusLabels: { [key: string]: string } = {
-      draft: 'Entwurf',
-      review: 'Zur Prüfung',
-      approved: 'Genehmigt',
-      sent: 'Versendet'
-    };
-    addText(`Status: ${statusLabels[letter.status] || letter.status}`, 10);
-    currentY += 15;
-    
-    // Content
-    addText('INHALT:', 12, true);
-    currentY += 5;
-    
-    // Convert content to text
-    const contentText = letter.content_html 
-      ? convertHtmlToText(letter.content_html)
-      : letter.content;
-    
-    if (contentText) {
-      // Split content into paragraphs
-      const paragraphs = contentText.split('\n\n');
-      
-      paragraphs.forEach((paragraph, index) => {
-        if (paragraph.trim()) {
-          addText(paragraph.trim(), 11);
-          if (index < paragraphs.length - 1) {
-            currentY += 5; // Extra space between paragraphs
-          }
-        }
-      });
-    } else {
-      addText('[Kein Inhalt vorhanden]', 11);
-    }
-    
-    // Footer
-    currentY = pageHeight - 30;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Erstellt am ${new Date().toLocaleDateString('de-DE')} um ${new Date().toLocaleTimeString('de-DE')}`, margin, currentY);
-    
-    // Generate filename
-    const fileName = `Brief_${letter.title.replace(/[^a-zA-Z0-9]/g, '_')}_${date.replace(/\./g, '-')}.pdf`;
-    
-    // Save the PDF
-    doc.save(fileName);
-    
-    toast({
-      title: "PDF exportiert",
-      description: `Der Brief wurde als PDF gespeichert: ${fileName}`,
-    });
   };
 
   return (
     <Button
+      variant="ghost"
+      size="sm"
       onClick={exportToPDF}
       disabled={disabled}
-      variant="outline"
-      size="sm"
       className="flex items-center gap-2"
     >
       <Download className="h-4 w-4" />
-      PDF Export
+      {disabled ? 'Export...' : 'PDF'}
     </Button>
   );
 };

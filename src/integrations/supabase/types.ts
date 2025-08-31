@@ -2285,6 +2285,8 @@ export type Database = {
       }
       letters: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           attachments_list: string[] | null
           contact_id: string | null
           content: string
@@ -2301,17 +2303,25 @@ export type Database = {
           reference_number: string | null
           sender_info_id: string | null
           sender_information_id: string | null
+          sent_at: string | null
+          sent_by: string | null
           sent_date: string | null
           sent_method: string | null
           status: string
           subject: string | null
           subject_line: string | null
+          submitted_for_review_at: string | null
+          submitted_for_review_by: string | null
+          submitted_to_user: string | null
           template_id: string | null
           tenant_id: string
           title: string
           updated_at: string
+          workflow_locked: boolean | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           attachments_list?: string[] | null
           contact_id?: string | null
           content?: string
@@ -2328,17 +2338,25 @@ export type Database = {
           reference_number?: string | null
           sender_info_id?: string | null
           sender_information_id?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
           sent_date?: string | null
           sent_method?: string | null
           status?: string
           subject?: string | null
           subject_line?: string | null
+          submitted_for_review_at?: string | null
+          submitted_for_review_by?: string | null
+          submitted_to_user?: string | null
           template_id?: string | null
           tenant_id: string
           title: string
           updated_at?: string
+          workflow_locked?: boolean | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           attachments_list?: string[] | null
           contact_id?: string | null
           content?: string
@@ -2355,15 +2373,21 @@ export type Database = {
           reference_number?: string | null
           sender_info_id?: string | null
           sender_information_id?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
           sent_date?: string | null
           sent_method?: string | null
           status?: string
           subject?: string | null
           subject_line?: string | null
+          submitted_for_review_at?: string | null
+          submitted_for_review_by?: string | null
+          submitted_to_user?: string | null
           template_id?: string | null
           tenant_id?: string
           title?: string
           updated_at?: string
+          workflow_locked?: boolean | null
         }
         Relationships: [
           {
