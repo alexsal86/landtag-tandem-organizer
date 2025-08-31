@@ -1167,13 +1167,12 @@ export function DocumentsView() {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
-              </Card>
-            )
-          )
-        ) : (
-          // Letters tab
-          filteredLetters.length === 0 ? (
+                  </Table>
+                </Card>
+              )
+            ) : (
+            // Letters tab
+            filteredLetters.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
