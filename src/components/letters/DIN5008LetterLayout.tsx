@@ -10,9 +10,10 @@ interface DIN5008LetterLayoutProps {
   subject?: string;
   letterDate?: string;
   referenceNumber?: string;
-  attachments?: string[];
+  attachments?: any[];
   className?: string;
   debugMode?: boolean;
+  showPagination?: boolean;
 }
 
 export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
@@ -26,7 +27,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   referenceNumber,
   attachments,
   className = "",
-  debugMode = false
+  debugMode = false,
+  showPagination = false
 }) => {
   const formatAddress = (address: any) => {
     if (!address) return '';
@@ -290,7 +292,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '10pt' }}>
               {attachments.map((attachment, index) => (
                 <li key={index} style={{ marginBottom: '1mm' }}>
-                  - {attachment}
+                  - {typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name)}
                 </li>
               ))}
             </ul>
@@ -313,6 +315,20 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             {senderInfo.phone && <div>Tel: {senderInfo.phone}</div>}
             {senderInfo.email && <div>E-Mail: {senderInfo.email}</div>}
             {senderInfo.website && <div>Web: {senderInfo.website}</div>}
+          </div>
+        )}
+
+        {/* Pagination Footer */}
+        {showPagination && (
+          <div style={{
+            position: 'absolute',
+            bottom: '15.85mm', // 4.23mm from footer (20.08mm - 4.23mm)
+            right: '20mm',
+            fontSize: '8pt',
+            color: '#666',
+            fontFamily: 'Arial, sans-serif'
+          }}>
+            Seite 1 von 1
           </div>
         )}
       </div>

@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Upload, Download, Trash2, FileText, Image, File, Plus, Loader2 } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
+import { FileText, Upload, Download, Trash2, X, Edit, Plus, FolderOpen } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -21,7 +24,7 @@ interface Attachment {
 interface LetterAttachmentManagerProps {
   letterId: string;
   attachments: Attachment[];
-  onAttachmentUpdate: () => void;
+  onAttachmentUpdate: (attachments: Attachment[]) => void;
   readonly?: boolean;
 }
 
@@ -33,6 +36,13 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [editingAttachment, setEditingAttachment] = useState<Attachment | null>(null);
+  const [newDisplayName, setNewDisplayName] = useState("");
+  const [showDocumentSelector, setShowDocumentSelector] = useState(false);
+  const [documents, setDocuments] = useState<any[]>([]);
 
   // Fetch documents from document management
   useEffect(() => {
@@ -58,12 +68,6 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       });
     }
   };
-  const [uploading, setUploading] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const [editingAttachment, setEditingAttachment] = useState<Attachment | null>(null);
-  const [newDisplayName, setNewDisplayName] = useState("");
-  const [showDocumentSelector, setShowDocumentSelector] = useState(false);
-  const [documents, setDocuments] = useState<any[]>([]);
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '';
@@ -72,31 +76,19 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
     return Math.round(bytes / (1024 * 1024)) + ' MB';
   };
 
-  const getFileIcon = (fileType?: string) => {
-    if (!fileType) return File;
-    if (fileType.startsWith('image/')) return Image;
-    if (fileType.includes('pdf') || fileType.includes('document')) return FileText;
-    return File;
-  };
-
   const handleFileSelect = useCallback(async (files: FileList | null) => {
-    console.log('Upload started', { files: files?.length, readonly, letterId, userId: user?.id });
-    
-    if (!files || files.length === 0 || readonly) {
-      console.log('Upload cancelled: no files or readonly', { files: files?.length, readonly });
-      return;
-    }
+    if (!files || files.length === 0 || readonly) return;
 
     setUploading(true);
     
     try {
+      const newAttachments = [...attachments];
+      
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        console.log('Processing file:', { name: file.name, size: file.size, type: file.type });
         
         // File size limit (10MB)
         if (file.size > 10 * 1024 * 1024) {
-          console.log('File too large:', file.name);
           toast({
             title: "Datei zu groß",
             description: `${file.name} ist größer als 10MB und wurde übersprungen.`,
@@ -105,19 +97,15 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
           continue;
         }
 
-        const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2)}_${file.name}`;
         const filePath = `${letterId}/${fileName}`;
-        
-        console.log('Uploading to storage:', { filePath, bucketName: 'documents' });
 
         // Upload to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('documents')
           .upload(filePath, file);
 
         if (uploadError) {
-          console.error('Upload error:', uploadError);
           toast({
             title: "Upload-Fehler",
             description: `${file.name} konnte nicht hochgeladen werden: ${uploadError.message}`,
@@ -125,16 +113,6 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
           });
           continue;
         }
-        
-        console.log('Storage upload successful:', uploadData);
-        console.log('Inserting into database:', {
-          letter_id: letterId,
-          file_name: file.name,
-          file_path: filePath,
-          file_type: file.type,
-          file_size: file.size,
-          uploaded_by: user?.id
-        });
 
         // Save attachment record
         const { data: insertData, error: insertError } = await supabase
@@ -146,10 +124,11 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
             file_type: file.type,
             file_size: file.size,
             uploaded_by: user?.id
-          });
+          })
+          .select()
+          .single();
 
         if (insertError) {
-          console.error('Database insert error:', insertError);
           // Clean up uploaded file
           await supabase.storage.from('documents').remove([filePath]);
           toast({
@@ -160,17 +139,15 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
           continue;
         }
         
-        console.log('Database insert successful:', insertData);
+        newAttachments.push(insertData);
       }
 
-      console.log('All files processed, calling onAttachmentUpdate');
-      onAttachmentUpdate();
+      onAttachmentUpdate(newAttachments);
       toast({
         title: "Upload erfolgreich",
         description: "Alle Dateien wurden erfolgreich hochgeladen.",
       });
     } catch (error) {
-      console.error('Error uploading files:', error);
       toast({
         title: "Upload-Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
@@ -179,7 +156,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
     } finally {
       setUploading(false);
     }
-  }, [letterId, readonly, user?.id, onAttachmentUpdate, toast]);
+  }, [letterId, readonly, user?.id, attachments, onAttachmentUpdate, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -219,7 +196,6 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Download error:', error);
       toast({
         title: "Download-Fehler",
         description: "Die Datei konnte nicht heruntergeladen werden.",
@@ -249,16 +225,92 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         console.error('Storage deletion error:', storageError);
       }
 
-      onAttachmentUpdate();
+      const updatedAttachments = attachments.filter(att => att.id !== attachment.id);
+      onAttachmentUpdate(updatedAttachments);
+      
       toast({
         title: "Datei gelöscht",
         description: `${attachment.file_name} wurde erfolgreich gelöscht.`,
       });
-    } catch (error) {
-      console.error('Delete error:', error);
+    } catch (error: any) {
       toast({
         title: "Lösch-Fehler",
-        description: "Die Datei konnte nicht gelöscht werden.",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditDisplayName = (attachment: Attachment) => {
+    setEditingAttachment(attachment);
+    setNewDisplayName(attachment.display_name || attachment.file_name);
+  };
+
+  const handleSaveDisplayName = async () => {
+    if (!editingAttachment) return;
+
+    try {
+      const { error } = await supabase
+        .from('letter_attachments')
+        .update({ display_name: newDisplayName })
+        .eq('id', editingAttachment.id);
+
+      if (error) throw error;
+
+      const updatedAttachments = attachments.map(att => 
+        att.id === editingAttachment.id 
+          ? { ...att, display_name: newDisplayName }
+          : att
+      );
+      
+      onAttachmentUpdate(updatedAttachments);
+      setEditingAttachment(null);
+      setNewDisplayName("");
+
+      toast({
+        title: "Anzeigename aktualisiert",
+        description: "Der Anzeigename wurde erfolgreich geändert.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: "Der Anzeigename konnte nicht geändert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddDocumentAttachment = async (document: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('letter_attachments')
+        .insert({
+          letter_id: letterId,
+          file_name: document.file_name,
+          file_path: document.file_path,
+          file_type: document.file_type,
+          file_size: document.file_size,
+          uploaded_by: document.user_id,
+          display_name: document.title // Use document title as display name
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const updatedAttachments = [...attachments, data];
+      onAttachmentUpdate(updatedAttachments);
+
+      toast({
+        title: "Dokument hinzugefügt",
+        description: `${document.title} wurde als Anlage hinzugefügt.`,
+      });
+
+      setShowDocumentSelector(false);
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: "Das Dokument konnte nicht hinzugefügt werden.",
         variant: "destructive",
       });
     }
@@ -275,95 +327,133 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {!readonly && (
-          <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-              dragActive
-                ? 'border-primary bg-primary/5'
-                : 'border-muted-foreground/25 hover:border-muted-foreground/50'
-            }`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-          >
-            <input
-              type="file"
-              multiple
-              onChange={(e) => handleFileSelect(e.target.files)}
-              className="hidden"
-              id={`file-upload-${letterId}`}
-              disabled={uploading}
-            />
-            <label
-              htmlFor={`file-upload-${letterId}`}
-              className="cursor-pointer flex flex-col items-center gap-2"
+          <div className="space-y-4">
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
+              }`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
             >
-              {uploading ? (
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              ) : (
-                <Upload className="h-8 w-8 text-muted-foreground" />
-              )}
-              <div className="text-sm text-muted-foreground">
-                {uploading ? (
-                  "Dateien werden hochgeladen..."
-                ) : (
-                  <>
-                    <span className="font-medium">Dateien hochladen</span>
-                    <br />
-                    Ziehen Sie Dateien hierher oder klicken Sie zum Auswählen
-                  </>
-                )}
+              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-2">
+                Dateien hierher ziehen oder klicken zum Auswählen
+              </p>
+              <div className="flex justify-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                  disabled={uploading}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading ? 'Wird hochgeladen...' : 'Datei hochladen'}
+                </Button>
+                <Dialog open={showDocumentSelector} onOpenChange={setShowDocumentSelector}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <FolderOpen className="h-4 w-4 mr-2" />
+                      Aus Dokumenten
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Dokument aus Verwaltung auswählen</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                      {documents.map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                          <div>
+                            <p className="font-medium">{doc.title}</p>
+                            <p className="text-sm text-muted-foreground">{doc.file_name}</p>
+                          </div>
+                          <Button 
+                            size="sm"
+                            onClick={() => handleAddDocumentAttachment(doc)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Hinzufügen
+                          </Button>
+                        </div>
+                      ))}
+                      {documents.length === 0 && (
+                        <p className="text-center text-muted-foreground py-8">
+                          Keine Dokumente verfügbar
+                        </p>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
-              <div className="text-xs text-muted-foreground">
-                Maximale Dateigröße: 10MB
-              </div>
-            </label>
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => handleFileSelect(e.target.files)}
+                accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xls,.xlsx,.ppt,.pptx"
+              />
+            </div>
           </div>
         )}
 
         {attachments.length > 0 && (
           <div className="space-y-2">
-            {attachments.map((attachment) => {
-              const FileIcon = getFileIcon(attachment.file_type);
-              return (
-                <div
-                  key={attachment.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-sm truncate">
-                        {attachment.file_name}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatFileSize(attachment.file_size)}
-                        {attachment.file_type && ` • ${attachment.file_type}`}
-                      </div>
+            {attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+              >
+                <div className="flex items-center gap-3 flex-1">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{attachment.display_name || attachment.file_name}</p>
+                      {!readonly && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditDisplayName(attachment)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>{formatFileSize(attachment.file_size)}</span>
+                      {attachment.file_type && (
+                        <>
+                          <span>•</span>
+                          <span>{attachment.file_type}</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDownload(attachment)}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  {!readonly && (
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleDownload(attachment)}
+                      onClick={() => handleDelete(attachment)}
+                      className="text-destructive hover:text-destructive"
                     >
-                      <Download className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
-                    {!readonly && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDelete(attachment)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
+                  )}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
 
@@ -373,6 +463,34 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
             <p>Keine Anlagen vorhanden</p>
           </div>
         )}
+
+        {/* Edit Display Name Dialog */}
+        <Dialog open={!!editingAttachment} onOpenChange={() => setEditingAttachment(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Anzeigename bearbeiten</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="display-name">Anzeigename in Brief</Label>
+                <Input
+                  id="display-name"
+                  value={newDisplayName}
+                  onChange={(e) => setNewDisplayName(e.target.value)}
+                  placeholder="Name wie er im Brief erscheinen soll"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditingAttachment(null)}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleSaveDisplayName}>
+                  Speichern
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

@@ -2117,6 +2117,7 @@ export type Database = {
       letter_attachments: {
         Row: {
           created_at: string
+          display_name: string | null
           document_id: string | null
           file_name: string
           file_path: string | null
@@ -2129,6 +2130,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          display_name?: string | null
           document_id?: string | null
           file_name: string
           file_path?: string | null
@@ -2141,6 +2143,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          display_name?: string | null
           document_id?: string | null
           file_name?: string
           file_path?: string | null

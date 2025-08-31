@@ -1026,6 +1026,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 />
               </div>
 
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="pagination"
+                  checked={showPagination}
+                  onCheckedChange={setShowPagination}
+                  disabled={!canEdit}
+                />
+                <Label htmlFor="pagination">Paginierung anzeigen</Label>
+              </div>
+
               {/* Sender Information Selection */}
               <div>
                 <Label htmlFor="sender-info">Absenderinformation</Label>
