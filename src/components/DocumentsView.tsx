@@ -1170,7 +1170,8 @@ export function DocumentsView() {
                  </Table>
                </Card>
              )
-        ) : (
+          ) : (
+            console.log('Switching to letters tab'),
             // Letters tab
           filteredLetters.length === 0 ? (
             <Card>
