@@ -624,13 +624,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
     
     if (newStatus === 'sent') {
+      console.log('Processing SENT status change...');
       if (!editedLetter.workflow_locked) {
         workflowUpdates.sent_at = now;
         workflowUpdates.sent_by = user?.id;
+        console.log('Setting sent_at and sent_by');
       }
       // Lock workflow when letter is sent
       workflowUpdates.workflow_locked = true;
       workflowUpdates.sent_date = now;
+      console.log('Set workflow_locked and sent_date');
     }
 
     // Show assignment dialog when transitioning to review
@@ -647,6 +650,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
     // Update database with workflow tracking
     if (letter?.id) {
+      console.log('Updating database for letter:', letter.id);
+      console.log('Update data:', workflowUpdates);
       try {
         const { error } = await supabase
           .from('letters')
@@ -656,10 +661,15 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           })
           .eq('id', letter.id);
 
-        if (error) throw error;
+        console.log('Database update result:', error ? 'ERROR' : 'SUCCESS');
+        if (error) {
+          console.error('Database update error:', error);
+          throw error;
+        }
         
         // Trigger archiving process for sent letters AFTER successful database update
         if (newStatus === 'sent') {
+          console.log('=== STARTING ARCHIVE PROCESS ===');
           try {
             console.log('Calling archive-letter function for letter:', letter.id);
             const { data: archiveResult, error: archiveError } = await supabase.functions.invoke('archive-letter', {
@@ -677,6 +687,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 variant: "default",
               });
             } else {
+              console.log('Archive successful:', archiveResult);
               toast({
                 title: "Brief versendet und archiviert",
                 description: "Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.",
@@ -686,11 +697,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           } catch (archiveError) {
             console.error('Failed to trigger archive:', archiveError);
             toast({
-              title: "Archivierungsfehler",
+              title: "Archivierungsfehler", 
               description: "Brief wurde versendet, aber die Archivierung ist fehlgeschlagen.",
               variant: "destructive",
             });
           }
+          console.log('=== ARCHIVE PROCESS COMPLETED ===');
         }
         
       } catch (error) {
@@ -701,12 +713,15 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           variant: "destructive",
         });
       }
-    }
+     }
+     
+     console.log('=== STATUS CHANGE PROCESS COMPLETED ===');
+     console.log('Final status:', newStatus);
 
-    // Korrekturlesen automatisch aktivieren bei "review"
-    if (newStatus === 'review') {
-      setIsProofreadingMode(true);
-    }
+     // Korrekturlesen automatisch aktivieren bei "review"
+     if (newStatus === 'review') {
+       setIsProofreadingMode(true);
+     }
     // Korrekturlesen automatisch deaktivieren bei approved/sent
     if (newStatus === 'approved' || newStatus === 'sent') {
       setIsProofreadingMode(false);
