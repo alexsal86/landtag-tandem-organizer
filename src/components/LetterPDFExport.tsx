@@ -377,40 +377,40 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           const lines = block.content.split('\n');
           let blockY = footerY;
           
-          lines.forEach((line: string) => {
-            if (blockY > 290) return; // Don't go beyond page bounds
+        lines.forEach((line: string) => {
+          if (blockY > 290) return; // Don't go beyond page bounds
+          
+          // Simple text wrapping: if text is too wide, try to break it
+          const textWidth = pdf.getTextWidth(line);
+          if (textWidth <= blockWidth - 2) {
+            pdf.text(line, currentX + 1, blockY);
+            blockY += fontSize; // Line spacing = 1 (font size)
+          } else {
+            // Simple word wrap for long lines
+            const words = line.split(' ');
+            let currentLine = '';
             
-            // Simple text wrapping: if text is too wide, try to break it
-            const textWidth = pdf.getTextWidth(line);
-            if (textWidth <= blockWidth - 2) {
-              pdf.text(line, currentX + 1, blockY);
-              blockY += fontSize * 0.5 + 2; // Line height based on font size
-            } else {
-              // Simple word wrap for long lines
-              const words = line.split(' ');
-              let currentLine = '';
+            words.forEach((word: string) => {
+              const testLine = currentLine ? currentLine + ' ' + word : word;
+              const testWidth = pdf.getTextWidth(testLine);
               
-              words.forEach((word: string) => {
-                const testLine = currentLine ? currentLine + ' ' + word : word;
-                const testWidth = pdf.getTextWidth(testLine);
-                
-                if (testWidth <= blockWidth - 2) {
-                  currentLine = testLine;
-                } else {
-                  if (currentLine) {
-                    pdf.text(currentLine, currentX + 1, blockY);
-                    blockY += fontSize * 0.5 + 2;
-                  }
-                  currentLine = word;
+              if (testWidth <= blockWidth - 2) {
+                currentLine = testLine;
+              } else {
+                if (currentLine) {
+                  pdf.text(currentLine, currentX + 1, blockY);
+                  blockY += fontSize; // Line spacing = 1 (font size)
                 }
-              });
-              
-              if (currentLine && blockY <= 290) {
-                pdf.text(currentLine, currentX + 1, blockY);
-                blockY += fontSize * 0.5 + 2;
+                currentLine = word;
               }
+            });
+            
+            if (currentLine && blockY <= 290) {
+              pdf.text(currentLine, currentX + 1, blockY);
+              blockY += fontSize; // Line spacing = 1 (font size)
             }
-          });
+          }
+        });
           
           currentX += blockWidth;
         });
@@ -662,7 +662,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
               const textWidth = pdf.getTextWidth(line);
               if (textWidth <= blockWidth - 2) {
                 pdf.text(line, currentX + 1, blockY);
-                blockY += fontSize * 0.5 + 2; // Line height based on font size
+                blockY += fontSize; // Line spacing = 1 (font size) // Line height based on font size
               } else {
                 // Simple word wrap for long lines
                 const words = line.split(' ');
@@ -677,7 +677,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
                   } else {
                     if (currentLine) {
                       pdf.text(currentLine, currentX + 1, blockY);
-                      blockY += fontSize * 0.5 + 2;
+                blockY += fontSize; // Line spacing = 1 (font size)
                     }
                     currentLine = word;
                   }
@@ -685,7 +685,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
                 
                 if (currentLine && blockY <= 290) {
                   pdf.text(currentLine, currentX + 1, blockY);
-                  blockY += fontSize * 0.5 + 2;
+                    blockY += fontSize; // Line spacing = 1 (font size)
                 }
               }
             });

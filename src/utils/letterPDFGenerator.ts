@@ -315,7 +315,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
           const textWidth = pdf.getTextWidth(line);
           if (textWidth <= blockWidth - 2) {
             pdf.text(line, currentX + 1, blockY);
-            blockY += fontSize * 0.5 + 2; // Line height based on font size
+            blockY += fontSize; // Line spacing = 1 (font size)
           } else {
             // Simple word wrap for long lines
             const words = line.split(' ');
@@ -330,7 +330,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
               } else {
                 if (currentLine) {
                   pdf.text(currentLine, currentX + 1, blockY);
-                  blockY += fontSize * 0.5 + 2;
+                  blockY += fontSize; // Line spacing = 1 (font size)
                 }
                 currentLine = word;
               }
@@ -338,7 +338,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
             
             if (currentLine && blockY <= 290) {
               pdf.text(currentLine, currentX + 1, blockY);
-              blockY += fontSize * 0.5 + 2;
+              blockY += fontSize; // Line spacing = 1 (font size)
             }
           }
         });
