@@ -129,23 +129,7 @@ export class HeaderRenderer {
     console.log('Font weight:', fontWeight);
     console.log('Element content:', element.content);
     
-    // Test if setFontSize works at all by using an extremely large size
-    const testFontSize = 50; // Very large font size to see if setFontSize works
-    console.log('Setting test fontSize:', testFontSize);
-    
-    this.pdf.setFontSize(testFontSize);
-    
-    // Debug: Check if setFontSize actually worked
-    const actualFontSize = this.pdf.getFontSize();
-    console.log('PDF fontSize after setFontSize:', actualFontSize);
-    console.log('Expected fontSize:', testFontSize);
-    
-    // Also try setting font BEFORE setFontSize to see if that affects it
-    console.log('Setting font family first...');
-    this.pdf.setFont('helvetica', 'normal');
-    this.pdf.setFontSize(testFontSize);
-    const actualFontSizeAfterFont = this.pdf.getFontSize();
-    console.log('Font size after setting font:', actualFontSizeAfterFont);
+    this.pdf.setFontSize(fontSize);
     
     // Handle different font families - jsPDF has limited font support
     // Map from StructuredHeaderEditor font names to jsPDF font names
@@ -182,7 +166,7 @@ export class HeaderRenderer {
     const yInMm = element.y || 0;
     
     // Adjust text position - jsPDF positions text by baseline, we need to add font height
-    const textYInMm = yInMm + (testFontSize * 0.352778); // Convert font size from points to mm and adjust for baseline
+    const textYInMm = yInMm + (fontSize * 0.352778); // Convert font size from points to mm and adjust for baseline
     
     console.log('Text element position and font:', { 
       elementX: element.x, 
@@ -197,7 +181,7 @@ export class HeaderRenderer {
     });
     
     // Render debug box around text element (shows the actual bounding box)
-    this.renderDebugBox(xInMm, yInMm, testFontSize, element.content || '');
+    this.renderDebugBox(xInMm, yInMm, fontSize, element.content || '');
     
     // Set text color BEFORE debug rendering to avoid red text
     if (element.color && element.color.startsWith('#')) {
@@ -209,8 +193,8 @@ export class HeaderRenderer {
     
     // CRITICAL: Set font size again RIGHT BEFORE rendering text
     // because other parts of the PDF generation might override it
-    console.log('Setting font size again RIGHT before text rendering:', testFontSize);
-    this.pdf.setFontSize(testFontSize);
+    console.log('Setting font size again RIGHT before text rendering:', fontSize);
+    this.pdf.setFontSize(fontSize);
     this.pdf.setFont(pdfFontFamily, pdfFontWeight);
     
     // Render text at adjusted position
