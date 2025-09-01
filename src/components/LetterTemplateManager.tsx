@@ -27,8 +27,10 @@ interface LetterTemplate {
   created_at: string;
   updated_at: string;
   tenant_id: string;
-  default_sender_id?: string;
-  default_info_blocks?: string[];
+  default_sender_id?: string | null;
+  default_info_blocks?: any;
+  header_layout_type?: any;
+  header_text_elements?: any;
 }
 
 interface SenderInformation {
@@ -304,13 +306,62 @@ const LetterTemplateManager: React.FC = () => {
   };
 
   const renderPreview = (template: LetterTemplate) => {
-    const previewHtml = `
-      <style>${template.letterhead_css}</style>
-      ${template.letterhead_html}
-      <div style="margin-top: 20px; padding: 20px; border: 1px dashed #ccc;">
-        <p><em>Hier würde der Briefinhalt stehen...</em></p>
-      </div>
-    `;
+    // Use structured elements if available and layout type is structured
+    let previewHtml = '';
+    
+    // Parse header_text_elements if it's a string (JSON)
+    let headerElements: any[] = [];
+    if (template.header_text_elements) {
+      if (typeof template.header_text_elements === 'string') {
+        try {
+          headerElements = JSON.parse(template.header_text_elements);
+        } catch (e) {
+          console.warn('Failed to parse header_text_elements:', e);
+          headerElements = [];
+        }
+      } else if (Array.isArray(template.header_text_elements)) {
+        headerElements = template.header_text_elements;
+      }
+    }
+    
+    if (template.header_layout_type === 'structured' && headerElements.length > 0) {
+      // Render structured elements
+      const structuredElements = headerElements.map((element: any) => {
+        if (element.type === 'text') {
+          return `<div style="position: absolute; left: ${(element.x / 595) * 100}%; top: ${(element.y / 200) * 100}%; width: ${(element.width / 595) * 100}%; font-size: ${element.fontSize || 16}px; font-family: ${element.fontFamily || 'Arial'}, sans-serif; font-weight: ${element.fontWeight || 'normal'}; color: ${element.color || '#000000'}; line-height: 1.2;">${element.content || ''}</div>`;
+        } else if (element.type === 'image' && element.imageUrl) {
+          return `<img src="${element.imageUrl}" style="position: absolute; left: ${(element.x / 595) * 100}%; top: ${(element.y / 200) * 100}%; width: ${(element.width / 595) * 100}%; height: ${(element.height / 200) * 100}%; object-fit: contain;" alt="Header Image" />`;
+        }
+        return '';
+      }).join('');
+      
+      previewHtml = `
+        <div style="position: relative; width: 100%; height: 200px; background: white; border: 1px solid #e0e0e0; margin-bottom: 20px;">
+          ${structuredElements}
+        </div>
+        <div style="margin-top: 20px; padding: 20px; border: 1px dashed #ccc;">
+          <p><em>Hier würde der Briefinhalt stehen...</em></p>
+        </div>
+      `;
+    } else if (template.letterhead_html) {
+      // Fallback to HTML/CSS
+      previewHtml = `
+        <style>${template.letterhead_css || ''}</style>
+        ${template.letterhead_html}
+        <div style="margin-top: 20px; padding: 20px; border: 1px dashed #ccc;">
+          <p><em>Hier würde der Briefinhalt stehen...</em></p>
+        </div>
+      `;
+    } else {
+      previewHtml = `
+        <div style="padding: 20px; text-align: center; color: #666;">
+          <p>Kein Header definiert</p>
+        </div>
+        <div style="margin-top: 20px; padding: 20px; border: 1px dashed #ccc;">
+          <p><em>Hier würde der Briefinhalt stehen...</em></p>
+        </div>
+      `;
+    }
 
     return (
       <Dialog open={showPreview === template.id} onOpenChange={(open) => !open && setShowPreview(null)}>

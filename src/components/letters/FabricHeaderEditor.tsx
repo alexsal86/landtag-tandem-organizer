@@ -402,19 +402,82 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
       imageUrl: obj.type === 'image' ? obj.getSrc() : undefined,
     }));
 
+    // Generate HTML/CSS from visual elements if in visual mode
+    let finalHtml = htmlCode;
+    let finalCss = cssCode;
+
+    if (mode === 'visual' && headerElements.length > 0) {
+      finalHtml = generateHtmlFromElements(headerElements);
+      finalCss = generateCssFromElements(headerElements);
+    }
+
     console.log('Exporting header data:', {
       header_layout_type: mode === 'visual' ? 'structured' : 'html',
       header_text_elements: mode === 'visual' ? headerElements : [],
-      letterhead_html: htmlCode,
-      letterhead_css: cssCode,
+      letterhead_html: finalHtml,
+      letterhead_css: finalCss,
     });
 
     return {
       header_layout_type: mode === 'visual' ? 'structured' : 'html',
       header_text_elements: mode === 'visual' ? headerElements : [],
-      letterhead_html: htmlCode,
-      letterhead_css: cssCode,
+      letterhead_html: finalHtml,
+      letterhead_css: finalCss,
     };
+  };
+
+  const generateHtmlFromElements = (elements: any[]) => {
+    if (elements.length === 0) return '';
+    
+    const elementHtml = elements.map((element, index) => {
+      if (element.type === 'text') {
+        return `  <div class="header-text-${index}">${element.content || ''}</div>`;
+      } else if (element.type === 'image' && element.imageUrl) {
+        return `  <img class="header-image-${index}" src="${element.imageUrl}" alt="Header Image" />`;
+      }
+      return '';
+    }).join('\n');
+
+    return `<div class="fabric-header-container">\n${elementHtml}\n</div>`;
+  };
+
+  const generateCssFromElements = (elements: any[]) => {
+    if (elements.length === 0) return '';
+    
+    const containerCss = `
+.fabric-header-container {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  background: white;
+}`;
+
+    const elementsCss = elements.map((element, index) => {
+      const baseStyles = `
+  position: absolute;
+  left: ${(element.x / 595) * 100}%;
+  top: ${(element.y / 200) * 100}%;`;
+
+      if (element.type === 'text') {
+        return `.header-text-${index} {${baseStyles}
+  width: ${(element.width / 595) * 100}%;
+  font-size: ${element.fontSize || 16}px;
+  font-family: ${element.fontFamily || 'Arial'}, sans-serif;
+  font-weight: ${element.fontWeight || 'normal'};
+  color: ${element.color || '#000000'};
+  line-height: 1.2;
+}`;
+      } else if (element.type === 'image') {
+        return `.header-image-${index} {${baseStyles}
+  width: ${(element.width / 595) * 100}%;
+  height: ${(element.height / 200) * 100}%;
+  object-fit: contain;
+}`;
+      }
+      return '';
+    }).join('\n');
+
+    return containerCss + '\n' + elementsCss;
   };
 
   const handleSave = () => {
