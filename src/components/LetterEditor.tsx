@@ -1038,6 +1038,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           sender_info_id: editedLetter.sender_info_id,
           information_block_ids: editedLetter.information_block_ids,
           letter_date: editedLetter.letter_date,
+          show_pagination: showPagination, // WICHTIG: Paginierung beim Auto-Save speichern
           // Removed status from auto-save to prevent conflicts
           updated_at: new Date().toISOString()
         })
@@ -1136,7 +1137,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     JSON.stringify(editedLetter.information_block_ids || []) !== JSON.stringify(letter.information_block_ids || []) ||
     editedLetter.letter_date !== letter.letter_date ||
     editedLetter.status !== letter.status ||
-    showPagination !== (letter.show_pagination || false)
+    showPagination !== (letter.show_pagination || false) // WICHTIG: Paginierung in unsaved changes berücksichtigen
   );
 
   if (!isOpen) return null;
@@ -1365,6 +1366,15 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     console.log('New value:', checked);
                     setShowPagination(checked);
                     console.log('=== PAGINATION TOGGLE APPLIED ===');
+                    
+                    // Trigger autosave when pagination changes
+                    if (saveTimeoutRef.current) {
+                      clearTimeout(saveTimeoutRef.current);
+                    }
+                    saveTimeoutRef.current = setTimeout(() => {
+                      console.log('=== AUTO-SAVING PAGINATION CHANGE ===');
+                      handleAutoSave();
+                    }, 1000);
                   }}
                   disabled={!canEdit}
                 />
