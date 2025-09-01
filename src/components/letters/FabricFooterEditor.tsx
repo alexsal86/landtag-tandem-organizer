@@ -247,10 +247,10 @@ export const FabricFooterEditor: React.FC<FabricFooterEditorProps> = ({
       const cleanWebsite = senderInfo.website.replace(/^https?:\/\/(www\.)?/, '');
       parts.push(cleanWebsite);
     }
-    // Replace "Instagram:" with icon symbol
-    if (senderInfo.instagram_profile) parts.push(`📷 ${senderInfo.instagram_profile}`);
-    // Replace "Facebook:" with icon symbol  
-    if (senderInfo.facebook_profile) parts.push(`👤 ${senderInfo.facebook_profile}`);
+    // Use simple @ symbol for Instagram
+    if (senderInfo.instagram_profile) parts.push(`@ ${senderInfo.instagram_profile}`);
+    // Use simple @ symbol for Facebook
+    if (senderInfo.facebook_profile) parts.push(`@ ${senderInfo.facebook_profile}`);
     return parts.join('\n');
   };
 

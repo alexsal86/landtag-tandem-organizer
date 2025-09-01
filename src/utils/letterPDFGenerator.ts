@@ -385,12 +385,12 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
             formattedLine = formattedLine.replace('Web: ', '').replace(/^https?:\/\/(www\.)?/, '');
           }
           
-          // Replace social media text with icons
+          // Replace social media text with @ symbol
           if (formattedLine.startsWith('Instagram: ')) {
-            formattedLine = formattedLine.replace('Instagram: ', '📷 ');
+            formattedLine = formattedLine.replace('Instagram: ', '@ ');
           }
           if (formattedLine.startsWith('Facebook: ')) {
-            formattedLine = formattedLine.replace('Facebook: ', '👤 ');
+            formattedLine = formattedLine.replace('Facebook: ', '@ ');
           }
           
           // Use jsPDF's text wrapping for better word breaks
