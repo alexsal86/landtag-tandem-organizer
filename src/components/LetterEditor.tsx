@@ -631,6 +631,41 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       // Lock workflow when letter is sent
       workflowUpdates.workflow_locked = true;
       workflowUpdates.sent_date = now;
+      
+      // Trigger archiving process for sent letters
+      if (letter?.id) {
+        try {
+          console.log('Calling archive-letter function for letter:', letter.id);
+          const { data: archiveResult, error: archiveError } = await supabase.functions.invoke('archive-letter', {
+            body: { letterId: letter.id }
+          });
+          
+          console.log('Archive function result:', archiveResult);
+          console.log('Archive function error:', archiveError);
+          
+          if (archiveError) {
+            console.error('Archive function error:', archiveError);
+            toast({
+              title: "Brief versendet",
+              description: "Brief wurde als versendet markiert. Archivierung wird im Hintergrund verarbeitet.",
+              variant: "default",
+            });
+          } else {
+            toast({
+              title: "Brief versendet und archiviert",
+              description: "Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.",
+              variant: "default",
+            });
+          }
+        } catch (error) {
+          console.error('Failed to trigger archive:', error);
+          toast({
+            title: "Archivierungsfehler",
+            description: "Brief wurde versendet, aber die Archivierung ist fehlgeschlagen.",
+            variant: "destructive",
+          });
+        }
+      }
     }
 
     // Show assignment dialog when transitioning to review
