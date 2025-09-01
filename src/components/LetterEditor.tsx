@@ -200,16 +200,27 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
   useEffect(() => {
     if (letter) {
-      console.log('Setting letter data:', letter);
+      console.log('=== LETTER DATA RECEIVED ===');
+      console.log('Letter:', letter);
+      console.log('Template ID:', letter.template_id);
+      console.log('Sender Info ID:', letter.sender_info_id);
+      console.log('Information Block IDs:', letter.information_block_ids);
+      console.log('=== END LETTER DATA ===');
+      
       setEditedLetter({
         ...letter,
         content_html: letter.content_html || ''
       });
       // Set proofreading mode based on actual letter status
       setIsProofreadingMode(letter.status === 'review');
+      
+      // If it's a new letter with template data, we'll apply defaults after template loads
+      if (!letter.id && letter.template_id) {
+        console.log('New letter with template, will apply defaults after template loads');
+      }
     } else {
       // New letter - always start fresh
-      console.log('Creating new letter');
+      console.log('Creating new letter - no letter prop provided');
       setEditedLetter({
         title: '',
         content: '',
@@ -238,12 +249,24 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   }, [isOpen, currentTenant, letter?.id]);
 
-  // Separate effect for fetching template after sender infos and info blocks are loaded
+  // Effect for fetching template after sender infos and info blocks are loaded
   useEffect(() => {
-    if (isOpen && currentTenant && letter?.id && senderInfos.length > 0 && informationBlocks.length > 0) {
-      fetchCurrentTemplate();
+    if (isOpen && currentTenant && senderInfos.length > 0 && informationBlocks.length > 0) {
+      const templateId = editedLetter?.template_id || letter?.template_id;
+      console.log('Template effect triggered:', { 
+        templateId, 
+        editedTemplateId: editedLetter?.template_id, 
+        letterTemplateId: letter?.template_id,
+        letterId: letter?.id 
+      });
+      
+      // For existing letters or new letters with template_id, fetch the template
+      if (templateId) {
+        console.log('Fetching template:', templateId);
+        fetchCurrentTemplate();
+      }
     }
-  }, [isOpen, currentTenant, letter?.id, senderInfos.length, informationBlocks.length]);
+  }, [isOpen, currentTenant, editedLetter?.template_id, letter?.template_id, letter?.id, senderInfos.length, informationBlocks.length]);
 
   // Auto-save functionality with improved performance
   useEffect(() => {
@@ -366,13 +389,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   };
 
   const fetchCurrentTemplate = async () => {
-    if (!letter?.template_id) return;
+    const templateId = editedLetter?.template_id || letter?.template_id;
+    if (!templateId) {
+      console.log('No template ID found');
+      return;
+    }
 
+    console.log('Fetching template with ID:', templateId);
     try {
       const { data, error } = await supabase
         .from('letter_templates')
         .select('*')
-        .eq('id', letter.template_id)
+        .eq('id', templateId)
         .single();
 
       if (error) throw error;
