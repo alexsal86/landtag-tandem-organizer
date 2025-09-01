@@ -1,0 +1,552 @@
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Type, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/hooks/useTenant';
+
+interface FooterBlock {
+  id: string;
+  type: 'landtag_address' | 'wahlkreis_address' | 'communication' | 'general' | 'custom';
+  title: string;
+  content: string;
+  order: number;
+  widthPercent: number; // Width as percentage of available footer space (165mm)
+  fontSize: number;
+  fontFamily: string;
+  fontWeight: string;
+  color: string;
+}
+
+interface SenderInfo {
+  name: string;
+  organization: string;
+  phone?: string;
+  fax?: string;
+  website?: string;
+  instagram_profile?: string;
+  facebook_profile?: string;
+  landtag_street?: string;
+  landtag_house_number?: string;
+  landtag_postal_code?: string;
+  landtag_city?: string;
+  landtag_email?: string;
+  wahlkreis_street?: string;
+  wahlkreis_house_number?: string;
+  wahlkreis_postal_code?: string;
+  wahlkreis_city?: string;
+  wahlkreis_email?: string;
+}
+
+interface StructuredFooterEditorProps {
+  initialBlocks?: FooterBlock[];
+  onBlocksChange: (blocks: FooterBlock[]) => void;
+}
+
+export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
+  initialBlocks = [],
+  onBlocksChange
+}) => {
+  const { toast } = useToast();
+  const { currentTenant } = useTenant();
+  const [blocks, setBlocks] = useState<FooterBlock[]>(initialBlocks);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [senderInfo, setSenderInfo] = useState<SenderInfo | null>(null);
+
+  const footerAvailableWidth = 165; // 210mm - 25mm left - 20mm right
+  const footerHeight = 40; // Footer height in mm
+
+  useEffect(() => {
+    if (currentTenant) {
+      fetchSenderInfo();
+    }
+  }, [currentTenant]);
+
+  useEffect(() => {
+    if (senderInfo && blocks.length === 0) {
+      initializeDefaultBlocks();
+    }
+  }, [senderInfo]);
+
+  useEffect(() => {
+    onBlocksChange(blocks);
+  }, [blocks, onBlocksChange]);
+
+  const fetchSenderInfo = async () => {
+    if (!currentTenant) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('sender_information')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .eq('is_default', true)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      if (data) setSenderInfo(data);
+    } catch (error) {
+      console.error('Error fetching sender info:', error);
+    }
+  };
+
+  const initializeDefaultBlocks = () => {
+    if (!senderInfo) return;
+
+    const defaultBlocks: FooterBlock[] = [
+      {
+        id: 'landtag',
+        type: 'landtag_address',
+        title: 'Landtagsadresse',
+        content: generateLandtagAddress(),
+        order: 0,
+        widthPercent: 25,
+        fontSize: 10,
+        fontFamily: 'Arial',
+        fontWeight: 'normal',
+        color: '#000000'
+      },
+      {
+        id: 'wahlkreis',
+        type: 'wahlkreis_address',
+        title: 'Wahlkreisadresse',
+        content: generateWahlkreisAddress(),
+        order: 1,
+        widthPercent: 25,
+        fontSize: 10,
+        fontFamily: 'Arial',
+        fontWeight: 'normal',
+        color: '#000000'
+      },
+      {
+        id: 'communication',
+        type: 'communication',
+        title: 'Kommunikation',
+        content: generateCommunication(),
+        order: 2,
+        widthPercent: 25,
+        fontSize: 10,
+        fontFamily: 'Arial',
+        fontWeight: 'normal',
+        color: '#000000'
+      },
+      {
+        id: 'general',
+        type: 'general',
+        title: 'Allgemein',
+        content: generateGeneral(),
+        order: 3,
+        widthPercent: 25,
+        fontSize: 10,
+        fontFamily: 'Arial',
+        fontWeight: 'normal',
+        color: '#000000'
+      }
+    ];
+
+    setBlocks(defaultBlocks);
+  };
+
+  const generateLandtagAddress = (): string => {
+    if (!senderInfo) return '';
+    const parts = [];
+    if (senderInfo.landtag_street && senderInfo.landtag_house_number) {
+      parts.push(`${senderInfo.landtag_street} ${senderInfo.landtag_house_number}`);
+    }
+    if (senderInfo.landtag_postal_code && senderInfo.landtag_city) {
+      parts.push(`${senderInfo.landtag_postal_code} ${senderInfo.landtag_city}`);
+    }
+    if (senderInfo.landtag_email) {
+      parts.push(senderInfo.landtag_email);
+    }
+    return parts.join('\n');
+  };
+
+  const generateWahlkreisAddress = (): string => {
+    if (!senderInfo) return '';
+    const parts = [];
+    if (senderInfo.wahlkreis_street && senderInfo.wahlkreis_house_number) {
+      parts.push(`${senderInfo.wahlkreis_street} ${senderInfo.wahlkreis_house_number}`);
+    }
+    if (senderInfo.wahlkreis_postal_code && senderInfo.wahlkreis_city) {
+      parts.push(`${senderInfo.wahlkreis_postal_code} ${senderInfo.wahlkreis_city}`);
+    }
+    if (senderInfo.wahlkreis_email) {
+      parts.push(senderInfo.wahlkreis_email);
+    }
+    return parts.join('\n');
+  };
+
+  const generateCommunication = (): string => {
+    if (!senderInfo) return '';
+    const parts = [];
+    if (senderInfo.phone) parts.push(`Tel: ${senderInfo.phone}`);
+    if (senderInfo.fax) parts.push(`Fax: ${senderInfo.fax}`);
+    if (senderInfo.website) parts.push(`Web: ${senderInfo.website}`);
+    if (senderInfo.instagram_profile) parts.push(`Instagram: ${senderInfo.instagram_profile}`);
+    if (senderInfo.facebook_profile) parts.push(`Facebook: ${senderInfo.facebook_profile}`);
+    return parts.join('\n');
+  };
+
+  const generateGeneral = (): string => {
+    if (!senderInfo) return '';
+    const parts = [];
+    if (senderInfo.name) parts.push(senderInfo.name);
+    if (senderInfo.organization) parts.push(senderInfo.organization);
+    return parts.join('\n');
+  };
+
+  const addCustomBlock = () => {
+    const newBlock: FooterBlock = {
+      id: Date.now().toString(),
+      type: 'custom',
+      title: 'Neuer Block',
+      content: 'Neuer Inhalt',
+      order: blocks.length,
+      widthPercent: 20,
+      fontSize: 10,
+      fontFamily: 'Arial',
+      fontWeight: 'normal',
+      color: '#000000'
+    };
+    setBlocks([...blocks, newBlock]);
+    setSelectedBlockId(newBlock.id);
+  };
+
+  const updateBlock = (id: string, updates: Partial<FooterBlock>) => {
+    setBlocks(blocks.map(block => block.id === id ? { ...block, ...updates } : block));
+  };
+
+  const removeBlock = (id: string) => {
+    setBlocks(blocks.filter(block => block.id !== id));
+    if (selectedBlockId === id) {
+      setSelectedBlockId(null);
+    }
+  };
+
+  const moveBlockUp = (id: string) => {
+    const blockIndex = blocks.findIndex(b => b.id === id);
+    if (blockIndex > 0) {
+      const newBlocks = [...blocks];
+      [newBlocks[blockIndex - 1], newBlocks[blockIndex]] = [newBlocks[blockIndex], newBlocks[blockIndex - 1]];
+      
+      // Update order values
+      newBlocks.forEach((block, index) => {
+        block.order = index;
+      });
+      
+      setBlocks(newBlocks);
+    }
+  };
+
+  const moveBlockDown = (id: string) => {
+    const blockIndex = blocks.findIndex(b => b.id === id);
+    if (blockIndex < blocks.length - 1) {
+      const newBlocks = [...blocks];
+      [newBlocks[blockIndex], newBlocks[blockIndex + 1]] = [newBlocks[blockIndex + 1], newBlocks[blockIndex]];
+      
+      // Update order values
+      newBlocks.forEach((block, index) => {
+        block.order = index;
+      });
+      
+      setBlocks(newBlocks);
+    }
+  };
+
+  const selectedBlock = blocks.find(block => block.id === selectedBlockId);
+
+  const calculateActualWidth = (widthPercent: number) => {
+    return (footerAvailableWidth * widthPercent) / 100;
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Block List & Controls */}
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Blöcke hinzufügen</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button onClick={addCustomBlock} className="w-full justify-start">
+              <Type className="h-4 w-4 mr-2" />
+              Neuen Block hinzufügen
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Footer-Blöcke ({blocks.length})</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Verfügbare Breite: {footerAvailableWidth}mm
+            </p>
+          </CardHeader>
+          <CardContent>
+            {blocks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Keine Blöcke vorhanden</p>
+            ) : (
+              <div className="space-y-2">
+                {blocks.sort((a, b) => a.order - b.order).map((block, index) => (
+                  <div
+                    key={block.id}
+                    className={`p-3 border rounded cursor-pointer transition-colors ${
+                      selectedBlockId === block.id 
+                        ? 'border-primary bg-primary/10' 
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => setSelectedBlockId(block.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Type className="h-4 w-4" />
+                          <span className="font-medium text-sm">
+                            {block.title}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {block.widthPercent}% ({calculateActualWidth(block.widthPercent).toFixed(1)}mm)
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+                          {block.content.split('\n')[0]}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            moveBlockUp(block.id);
+                          }}
+                          disabled={index === 0}
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            moveBlockDown(block.id);
+                          }}
+                          disabled={index === blocks.length - 1}
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                        {block.type === 'custom' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeBlock(block.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Properties Panel */}
+      <div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {selectedBlock ? 'Block-Eigenschaften' : 'Block auswählen'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {selectedBlock ? (
+              <div className="space-y-4">
+                {/* Block Title */}
+                <div>
+                  <Label>Block-Titel</Label>
+                  <Input
+                    value={selectedBlock.title}
+                    onChange={(e) => updateBlock(selectedBlock.id, { title: e.target.value })}
+                    placeholder="Block-Titel..."
+                  />
+                </div>
+
+                {/* Content */}
+                <div>
+                  <Label>Inhalt</Label>
+                  <Textarea
+                    value={selectedBlock.content}
+                    onChange={(e) => updateBlock(selectedBlock.id, { content: e.target.value })}
+                    placeholder="Block-Inhalt..."
+                    rows={4}
+                  />
+                </div>
+
+                <Separator />
+
+                {/* Width */}
+                <div>
+                  <Label>Breite (%)</Label>
+                  <Input
+                    type="number"
+                    value={selectedBlock.widthPercent}
+                    onChange={(e) => updateBlock(selectedBlock.id, { widthPercent: Math.max(1, Math.min(100, parseInt(e.target.value) || 20)) })}
+                    min={1}
+                    max={100}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    = {calculateActualWidth(selectedBlock.widthPercent).toFixed(1)}mm von {footerAvailableWidth}mm
+                  </p>
+                </div>
+
+                <Separator />
+
+                {/* Typography */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Schriftgröße</Label>
+                    <Input
+                      type="number"
+                      value={selectedBlock.fontSize}
+                      onChange={(e) => updateBlock(selectedBlock.id, { fontSize: parseInt(e.target.value) || 10 })}
+                      min={6}
+                      max={24}
+                    />
+                  </div>
+                  <div>
+                    <Label>Schriftart</Label>
+                    <Select
+                      value={selectedBlock.fontFamily}
+                      onValueChange={(value) => updateBlock(selectedBlock.id, { fontFamily: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Arial">Arial</SelectItem>
+                        <SelectItem value="Helvetica">Helvetica</SelectItem>
+                        <SelectItem value="Times">Times</SelectItem>
+                        <SelectItem value="Courier">Courier</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Schriftstärke</Label>
+                    <Select
+                      value={selectedBlock.fontWeight}
+                      onValueChange={(value) => updateBlock(selectedBlock.id, { fontWeight: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="bold">Fett</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Textfarbe</Label>
+                    <Input
+                      type="color"
+                      value={selectedBlock.color}
+                      onChange={(e) => updateBlock(selectedBlock.id, { color: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Wählen Sie einen Block aus der Liste aus, um seine Eigenschaften zu bearbeiten.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Live Preview */}
+      <div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Vorschau</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Footer ({footerAvailableWidth}mm × {footerHeight}mm)
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div 
+              className="border border-gray-300 bg-white relative overflow-hidden"
+              style={{
+                width: '100%',
+                height: '120px', // Scaled down for display
+                backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)',
+                backgroundSize: '8px 8px'
+              }}
+            >
+              {blocks.sort((a, b) => a.order - b.order).map((block, index) => {
+                const scaleX = 330 / footerAvailableWidth; // Scale factor for display
+                const scaleY = 120 / footerHeight;
+                
+                // Calculate position based on previous blocks
+                let leftPosition = 0;
+                for (let i = 0; i < index; i++) {
+                  leftPosition += (blocks.sort((a, b) => a.order - b.order)[i].widthPercent / 100) * 330;
+                }
+                
+                const blockWidth = (block.widthPercent / 100) * 330;
+                
+                return (
+                  <div
+                    key={block.id}
+                    className={`absolute cursor-pointer border border-transparent p-1 ${
+                      selectedBlockId === block.id ? 'border-primary border-dashed bg-primary/5' : ''
+                    }`}
+                    style={{
+                      left: `${leftPosition}px`,
+                      top: '10px',
+                      width: `${blockWidth}px`,
+                      height: '100px',
+                      fontSize: `${block.fontSize * Math.min(scaleX, scaleY) * 0.8}px`,
+                      fontFamily: block.fontFamily,
+                      fontWeight: block.fontWeight,
+                      color: block.color,
+                      lineHeight: '1.2',
+                      whiteSpace: 'pre-line',
+                      overflow: 'hidden'
+                    }}
+                    onClick={() => setSelectedBlockId(block.id)}
+                  >
+                    <div className="text-xs font-semibold mb-1 opacity-60">
+                      {block.title}
+                    </div>
+                    <div className="text-overflow-ellipsis">
+                      {block.content}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};

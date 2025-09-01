@@ -15,7 +15,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
-import { FabricFooterEditor } from '@/components/letters/FabricFooterEditor';
+import { StructuredFooterEditor } from '@/components/letters/StructuredFooterEditor';
 
 interface LetterTemplate {
   id: string;
@@ -69,8 +69,7 @@ const LetterTemplateManager: React.FC = () => {
     default_sender_id: '',
     default_info_blocks: [] as string[],
     header_elements: [] as any[],
-    footer_html: '',
-    footer_css: ''
+    footer_blocks: [] as any[]
   });
 
   useEffect(() => {
@@ -161,8 +160,7 @@ const LetterTemplateManager: React.FC = () => {
           default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
           header_layout_type: formData.header_elements.length > 0 ? 'structured' : 'html',
           header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null,
-          footer_html: formData.footer_html || null,
-          footer_css: formData.footer_css || null
+          footer_blocks: formData.footer_blocks.length > 0 ? formData.footer_blocks : null
         });
 
       if (error) throw error;
@@ -200,8 +198,7 @@ const LetterTemplateManager: React.FC = () => {
           default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
           header_layout_type: formData.header_elements.length > 0 ? 'structured' : 'html',
           header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null,
-          footer_html: formData.footer_html || null,
-          footer_css: formData.footer_css || null,
+          footer_blocks: formData.footer_blocks.length > 0 ? formData.footer_blocks : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingTemplate.id);
@@ -262,8 +259,7 @@ const LetterTemplateManager: React.FC = () => {
       default_sender_id: '',
       default_info_blocks: [],
       header_elements: [],
-      footer_html: '',
-      footer_css: ''
+      footer_blocks: []
     });
   };
 
@@ -285,6 +281,21 @@ const LetterTemplateManager: React.FC = () => {
       }
     }
     
+    // Parse footer blocks if they exist
+    let footerBlocks: any[] = [];
+    if ((template as any).footer_blocks) {
+      if (typeof (template as any).footer_blocks === 'string') {
+        try {
+          footerBlocks = JSON.parse((template as any).footer_blocks);
+        } catch (e) {
+          console.warn('Failed to parse footer_blocks:', e);
+          footerBlocks = [];
+        }
+      } else if (Array.isArray((template as any).footer_blocks)) {
+        footerBlocks = (template as any).footer_blocks;
+      }
+    }
+    
     setFormData({
       name: template.name,
       letterhead_html: template.letterhead_html,
@@ -293,8 +304,7 @@ const LetterTemplateManager: React.FC = () => {
       default_sender_id: template.default_sender_id || '',
       default_info_blocks: template.default_info_blocks || [],
       header_elements: headerElements,
-      footer_html: (template as any).footer_html || '',
-      footer_css: (template as any).footer_css || ''
+      footer_blocks: footerBlocks
     });
   };
 
@@ -419,21 +429,10 @@ const LetterTemplateManager: React.FC = () => {
                   <p className="text-sm text-muted-foreground">
                     Gestalten Sie Ihren Brief-Footer mit verschiedenen Elementen wie Adresse, Kontaktdaten und sozialen Medien.
                   </p>
-                  <FabricFooterEditor
-                    template={{
-                      id: 'new',
-                      footer_html: formData.footer_html,
-                      footer_css: formData.footer_css
-                    }}
-                    onSave={(footerData) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        footer_html: footerData.footer_html || '',
-                        footer_css: footerData.footer_css || ''
-                      }));
-                    }}
-                    onCancel={() => {}}
-                  />
+                   <StructuredFooterEditor
+                     initialBlocks={formData.footer_blocks}
+                     onBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
+                   />
                 </div>
               </TabsContent>
               
@@ -650,21 +649,10 @@ const LetterTemplateManager: React.FC = () => {
                   <p className="text-sm text-muted-foreground">
                     Bearbeiten Sie Ihren Brief-Footer mit verschiedenen Elementen wie Adresse, Kontaktdaten und sozialen Medien.
                   </p>
-                  <FabricFooterEditor
-                    template={{
-                      ...editingTemplate,
-                      footer_html: formData.footer_html,
-                      footer_css: formData.footer_css
-                    }}
-                    onSave={(footerData) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        footer_html: footerData.footer_html || '',
-                        footer_css: footerData.footer_css || ''
-                      }));
-                    }}
-                    onCancel={() => {}}
-                  />
+                   <StructuredFooterEditor
+                     initialBlocks={formData.footer_blocks}
+                     onBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
+                   />
                 </div>
               </TabsContent>
               
