@@ -2345,6 +2345,7 @@ export type Database = {
           created_by: string
           default_info_blocks: string[] | null
           default_sender_id: string | null
+          footer_blocks: Json | null
           header_image_position: Json | null
           header_image_url: string | null
           header_layout_type: string | null
@@ -2364,6 +2365,7 @@ export type Database = {
           created_by: string
           default_info_blocks?: string[] | null
           default_sender_id?: string | null
+          footer_blocks?: Json | null
           header_image_position?: Json | null
           header_image_url?: string | null
           header_layout_type?: string | null
@@ -2383,6 +2385,7 @@ export type Database = {
           created_by?: string
           default_info_blocks?: string[] | null
           default_sender_id?: string | null
+          footer_blocks?: Json | null
           header_image_position?: Json | null
           header_image_url?: string | null
           header_layout_type?: string | null
