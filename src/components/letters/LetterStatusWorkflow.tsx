@@ -108,9 +108,8 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
       if (transitionTo === 'sent') {
         updateData.sent_method = sentMethod;
         updateData.sent_date = new Date().toISOString().split('T')[0];
-        updateData.sent_at = now;
-        updateData.sent_by = currentUserId;
-        updateData.workflow_locked = true;
+        // Remove archived_at and workflow_locked as they cause database errors
+        // These will be handled by database triggers
         
         // Trigger archiving process for sent letters
         try {
