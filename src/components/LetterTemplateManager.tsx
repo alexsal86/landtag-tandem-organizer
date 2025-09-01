@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, Trash2, Plus, Save, X, Eye, EyeOff } from 'lucide-react';
+import { Edit3, Trash2, Plus, Save, X, Eye, EyeOff, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { FabricHeaderEditor } from '@/components/letters/FabricHeaderEditor';
 
 interface LetterTemplate {
   id: string;
@@ -56,6 +57,7 @@ const LetterTemplateManager: React.FC = () => {
   const [editingTemplate, setEditingTemplate] = useState<LetterTemplate | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPreview, setShowPreview] = useState<string | null>(null);
+  const [showHeaderEditor, setShowHeaderEditor] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     letterhead_html: '',
@@ -265,6 +267,42 @@ const LetterTemplateManager: React.FC = () => {
     resetForm();
   };
 
+  const handleEditHeader = (template: LetterTemplate) => {
+    setShowHeaderEditor(template.id);
+  };
+
+  const handleSaveHeader = async (templateId: string, headerData: any) => {
+    try {
+      const { error } = await supabase
+        .from('letter_templates')
+        .update({
+          header_layout_type: headerData.header_layout_type,
+          header_text_elements: headerData.header_text_elements,
+          letterhead_html: headerData.letterhead_html,
+          letterhead_css: headerData.letterhead_css,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', templateId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Header aktualisiert",
+        description: "Der Header wurde erfolgreich aktualisiert.",
+      });
+
+      setShowHeaderEditor(null);
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error updating header:', error);
+      toast({
+        title: "Fehler",
+        description: "Header konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderPreview = (template: LetterTemplate) => {
     const previewHtml = `
       <style>${template.letterhead_css}</style>
@@ -431,13 +469,23 @@ const LetterTemplateManager: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowPreview(template.id)}
+                      title="Vorschau"
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => handleEditHeader(template)}
+                      title="Header bearbeiten"
+                    >
+                      <Palette className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => startEditing(template)}
+                      title="Template bearbeiten"
                     >
                       <Edit3 className="h-4 w-4" />
                     </Button>
@@ -584,6 +632,22 @@ const LetterTemplateManager: React.FC = () => {
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Header Editor Dialog */}
+      {showHeaderEditor && (
+        <Dialog open={!!showHeaderEditor} onOpenChange={(open) => !open && setShowHeaderEditor(null)}>
+          <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Header Editor - {templates.find(t => t.id === showHeaderEditor)?.name}</DialogTitle>
+            </DialogHeader>
+            <FabricHeaderEditor
+              template={templates.find(t => t.id === showHeaderEditor)}
+              onSave={(headerData) => handleSaveHeader(showHeaderEditor, headerData)}
+              onCancel={() => setShowHeaderEditor(null)}
+            />
           </DialogContent>
         </Dialog>
       )}
