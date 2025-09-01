@@ -3563,72 +3563,84 @@ export type Database = {
       }
       sender_information: {
         Row: {
-          city: string | null
-          country: string | null
           created_at: string
           created_by: string
-          department: string | null
-          email: string | null
+          facebook_profile: string | null
           fax: string | null
-          house_number: string | null
           id: string
+          instagram_profile: string | null
           is_active: boolean | null
           is_default: boolean | null
+          landtag_city: string | null
+          landtag_email: string | null
+          landtag_house_number: string | null
+          landtag_postal_code: string | null
+          landtag_street: string | null
           name: string
           organization: string
           phone: string | null
-          postal_code: string | null
           return_address_line: string | null
-          street: string | null
           tenant_id: string
-          title: string | null
           updated_at: string
+          wahlkreis_city: string | null
+          wahlkreis_email: string | null
+          wahlkreis_house_number: string | null
+          wahlkreis_postal_code: string | null
+          wahlkreis_street: string | null
           website: string | null
         }
         Insert: {
-          city?: string | null
-          country?: string | null
           created_at?: string
           created_by: string
-          department?: string | null
-          email?: string | null
+          facebook_profile?: string | null
           fax?: string | null
-          house_number?: string | null
           id?: string
+          instagram_profile?: string | null
           is_active?: boolean | null
           is_default?: boolean | null
+          landtag_city?: string | null
+          landtag_email?: string | null
+          landtag_house_number?: string | null
+          landtag_postal_code?: string | null
+          landtag_street?: string | null
           name: string
           organization: string
           phone?: string | null
-          postal_code?: string | null
           return_address_line?: string | null
-          street?: string | null
           tenant_id: string
-          title?: string | null
           updated_at?: string
+          wahlkreis_city?: string | null
+          wahlkreis_email?: string | null
+          wahlkreis_house_number?: string | null
+          wahlkreis_postal_code?: string | null
+          wahlkreis_street?: string | null
           website?: string | null
         }
         Update: {
-          city?: string | null
-          country?: string | null
           created_at?: string
           created_by?: string
-          department?: string | null
-          email?: string | null
+          facebook_profile?: string | null
           fax?: string | null
-          house_number?: string | null
           id?: string
+          instagram_profile?: string | null
           is_active?: boolean | null
           is_default?: boolean | null
+          landtag_city?: string | null
+          landtag_email?: string | null
+          landtag_house_number?: string | null
+          landtag_postal_code?: string | null
+          landtag_street?: string | null
           name?: string
           organization?: string
           phone?: string | null
-          postal_code?: string | null
           return_address_line?: string | null
-          street?: string | null
           tenant_id?: string
-          title?: string | null
           updated_at?: string
+          wahlkreis_city?: string | null
+          wahlkreis_email?: string | null
+          wahlkreis_house_number?: string | null
+          wahlkreis_postal_code?: string | null
+          wahlkreis_street?: string | null
           website?: string | null
         }
         Relationships: []
