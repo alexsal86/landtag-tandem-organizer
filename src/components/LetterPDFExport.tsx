@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import jsPDF from 'jspdf';
+import { HeaderRenderer } from '@/services/headerRenderer';
 
 interface Letter {
   id: string;
@@ -30,6 +31,8 @@ interface LetterTemplate {
   letterhead_html: string;
   letterhead_css: string;
   response_time_days: number;
+  header_layout_type?: any;
+  header_text_elements?: any;
 }
 
 interface LetterPDFExportProps {
@@ -344,10 +347,17 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       pdf.setDrawColor(0, 0, 0);
       
       // Template letterhead (if available)
-      if (template?.letterhead_html) {
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(template.name || 'Briefkopf', leftMargin, 20);
+      console.log('=== PDF TEMPLATE RENDERING ===');
+      console.log('Template data:', template);
+      console.log('Template header_layout_type:', template?.header_layout_type);
+      console.log('Template header_text_elements:', template?.header_text_elements);
+      
+      if (template) {
+        const headerRenderer = new HeaderRenderer(pdf, leftMargin);
+        await headerRenderer.renderHeader(template);
+        console.log('Header renderer called with template');
+      } else {
+        console.log('No template available for header rendering');
       }
       
       // Return address line in address field - 17.7mm height

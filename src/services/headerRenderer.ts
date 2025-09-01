@@ -39,32 +39,68 @@ export class HeaderRenderer {
   }
 
   async renderHeader(template: HeaderTemplate | null): Promise<void> {
-    if (!template) return;
+    if (!template) {
+      console.log('HeaderRenderer: No template provided');
+      return;
+    }
+
+    console.log('=== HEADER RENDERER START ===');
+    console.log('Template layout type:', template.header_layout_type);
+    console.log('Template elements:', template.header_text_elements);
+    console.log('Template HTML:', template.letterhead_html);
 
     // Convert pixels to mm for jsPDF (1px = 0.264583mm at 96 DPI)
     const pxToMm = 0.264583;
 
     try {
       if (template.header_layout_type === 'structured') {
+        console.log('Rendering structured header');
         await this.renderStructuredHeader(template, pxToMm);
       } else if (template.letterhead_html) {
+        console.log('Rendering HTML header');
         this.renderHtmlHeader(template);
+      } else {
+        console.log('No valid header data found, using fallback');
+        this.renderFallbackHeader(template);
       }
     } catch (error) {
       console.warn('Error rendering header:', error);
       // Fallback to simple text header
       this.renderFallbackHeader(template);
     }
+    
+    console.log('=== HEADER RENDERER END ===');
   }
 
   private async renderStructuredHeader(template: HeaderTemplate, pxToMm: number): Promise<void> {
-    // Render text elements
-    const textElements = Array.isArray(template.header_text_elements) ? template.header_text_elements : [];
+    console.log('=== RENDERING STRUCTURED HEADER ===');
     
-    for (const element of textElements) {
+    // Parse header_text_elements if it's a string (JSON)
+    let headerElements: any[] = [];
+    if (template.header_text_elements) {
+      if (typeof template.header_text_elements === 'string') {
+        try {
+          headerElements = JSON.parse(template.header_text_elements);
+          console.log('Parsed elements from JSON string:', headerElements);
+        } catch (e) {
+          console.warn('Failed to parse header_text_elements:', e);
+          headerElements = [];
+        }
+      } else if (Array.isArray(template.header_text_elements)) {
+        headerElements = template.header_text_elements;
+        console.log('Using array elements directly:', headerElements);
+      }
+    }
+    
+    console.log('Final elements to render:', headerElements);
+    
+    for (const element of headerElements) {
+      console.log('Processing element:', element);
       if (element.type === 'text' && element.content) {
+        console.log('Rendering text element:', element);
         this.renderTextElement(element, pxToMm);
       } else if (element.type === 'image' && element.imageUrl) {
+        console.log('Rendering image element:', element);
         await this.renderImageElement(element.imageUrl, {
           x: element.x,
           y: element.y,
@@ -77,6 +113,7 @@ export class HeaderRenderer {
     // Reset PDF state
     this.pdf.setTextColor(0, 0, 0);
     this.pdf.setDrawColor(0, 0, 0);
+    console.log('=== STRUCTURED HEADER RENDERED ===');
   }
 
   private renderTextElement(element: HeaderElement, pxToMm: number): void {
