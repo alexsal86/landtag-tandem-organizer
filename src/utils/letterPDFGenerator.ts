@@ -283,7 +283,9 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         
         // Set font properties with proper size handling
         const fontSize = Math.max(6, Math.min(14, block.fontSize || 8)); // Clamp font size
-        const lineHeight = (block.lineHeight || 1) * fontSize; // Apply line height multiplier
+        // For tight spacing, use a smaller line height - default to 0.8 for compact footer
+        const lineHeightMultiplier = block.lineHeight || 0.8;
+        const lineHeight = fontSize + (lineHeightMultiplier - 1) * fontSize * 0.5; // More reasonable line spacing
         pdf.setFontSize(fontSize);
         
         // Set font weight

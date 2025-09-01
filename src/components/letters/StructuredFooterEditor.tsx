@@ -113,7 +113,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontFamily: 'Arial',
         fontWeight: 'normal',
         color: '#000000',
-        lineHeight: 1
+        lineHeight: 0.8
       },
       {
         id: 'wahlkreis',
@@ -126,7 +126,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontFamily: 'Arial',
         fontWeight: 'normal',
         color: '#000000',
-        lineHeight: 1
+        lineHeight: 0.8
       },
       {
         id: 'communication',
@@ -139,7 +139,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontFamily: 'Arial',
         fontWeight: 'normal',
         color: '#000000',
-        lineHeight: 1
+        lineHeight: 0.8
       },
       {
         id: 'general',
@@ -152,7 +152,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontFamily: 'Arial',
         fontWeight: 'normal',
         color: '#000000',
-        lineHeight: 1
+        lineHeight: 0.8
       }
     ];
 
@@ -220,7 +220,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
       fontFamily: 'Arial',
       fontWeight: 'normal',
       color: '#000000',
-      lineHeight: 1
+      lineHeight: 0.8
     };
     setBlocks([...blocks, newBlock]);
     setSelectedBlockId(newBlock.id);
