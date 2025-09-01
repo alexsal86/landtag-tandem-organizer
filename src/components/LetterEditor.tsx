@@ -200,6 +200,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
   useEffect(() => {
     if (letter) {
+      console.log('Setting letter data:', letter);
       setEditedLetter({
         ...letter,
         content_html: letter.content_html || ''
@@ -208,6 +209,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       setIsProofreadingMode(letter.status === 'review');
     } else {
       // New letter - always start fresh
+      console.log('Creating new letter');
       setEditedLetter({
         title: '',
         content: '',
@@ -374,10 +376,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         .single();
 
       if (error) throw error;
+      console.log('Fetched template:', data);
       setCurrentTemplate(data);
       
       // Apply template defaults if the letter doesn't have sender/info blocks set
       if (data) {
+        console.log('Applying template defaults...');
         applyTemplateDefaults(data);
       }
     } catch (error) {
@@ -386,16 +390,23 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   };
 
   const applyTemplateDefaults = (template: LetterTemplate) => {
+    console.log('Template:', template);
+    console.log('Current letter state:', editedLetter);
+    console.log('Available senderInfos:', senderInfos);
+    console.log('Available informationBlocks:', informationBlocks);
+    
     setEditedLetter(prev => {
       const updates: Partial<Letter> = {};
       
       // Apply default sender if letter doesn't have one set
       if (!prev.sender_info_id && template.default_sender_id) {
+        console.log('Setting default sender:', template.default_sender_id);
         updates.sender_info_id = template.default_sender_id;
       }
       
       // Apply default info blocks if letter doesn't have any set
       if ((!prev.information_block_ids || prev.information_block_ids.length === 0) && template.default_info_blocks) {
+        console.log('Setting default info blocks:', template.default_info_blocks);
         updates.information_block_ids = template.default_info_blocks;
       }
       
@@ -404,6 +415,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         if (!prev.sender_info_id) {
           const defaultSender = senderInfos.find(info => info.is_default);
           if (defaultSender) {
+            console.log('Setting default sender for empty letter:', defaultSender.id);
             updates.sender_info_id = defaultSender.id;
           }
         }
@@ -411,11 +423,13 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         if (!prev.information_block_ids || prev.information_block_ids.length === 0) {
           const defaultBlocks = informationBlocks.filter(block => block.is_default);
           if (defaultBlocks.length > 0) {
+            console.log('Setting default info blocks for empty letter:', defaultBlocks.map(b => b.id));
             updates.information_block_ids = defaultBlocks.map(block => block.id);
           }
         }
       }
       
+      console.log('Updates to apply:', updates);
       return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
     });
   };
@@ -1320,22 +1334,26 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               {/* Information Blocks Selection */}
               <div>
                 <Label htmlFor="info-blocks">Informationsblöcke</Label>
-                <Select 
-                  value={editedLetter.information_block_ids?.[0] || 'none'} 
-                  onValueChange={(value) => {
-                    const blockIds = value === 'none' ? [] : [value];
-                    setEditedLetter(prev => ({ ...prev, information_block_ids: blockIds }));
-                    broadcastContentChange('information_block_ids', JSON.stringify(blockIds));
-                  }}
-                  disabled={!canEdit}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Informationsblock auswählen..." />
-                  </SelectTrigger>
-                  <SelectContent className="z-[100]">
-                    <SelectItem value="none">Kein Informationsblock</SelectItem>
-                    {informationBlocks.map((block) => (
-                      <SelectItem key={block.id} value={block.id}>
+                <div className="space-y-2">
+                  {informationBlocks.map((block) => (
+                    <div key={block.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`block-${block.id}`}
+                        checked={editedLetter.information_block_ids?.includes(block.id) || false}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          const currentIds = editedLetter.information_block_ids || [];
+                          const newIds = checked 
+                            ? [...currentIds, block.id]
+                            : currentIds.filter(id => id !== block.id);
+                          setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }));
+                          broadcastContentChange('information_block_ids', JSON.stringify(newIds));
+                        }}
+                        disabled={!canEdit}
+                        className="rounded border border-input"
+                      />
+                      <Label htmlFor={`block-${block.id}`} className="text-sm">
                         <div className="flex items-center gap-2">
                           <Info className="h-4 w-4" />
                           {block.label}
@@ -1343,10 +1361,13 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                             <Badge variant="secondary" className="text-xs">Standard</Badge>
                           )}
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      </Label>
+                    </div>
+                  ))}
+                  {informationBlocks.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
+                  )}
+                </div>
               </div>
 
               <Separator />
