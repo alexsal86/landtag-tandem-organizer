@@ -746,33 +746,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             });
           }
         }
-            
-            if (archiveError) {
-              console.error('Archive function error:', archiveError);
-              toast({
-                title: "Brief versendet",
-                description: "Brief wurde als versendet markiert. Archivierung wird im Hintergrund verarbeitet.",
-                variant: "default",
-              });
-            } else {
-              console.log('Archive successful:', archiveResult);
-              toast({
-                title: "Brief versendet und archiviert",
-                description: "Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.",
-                variant: "default",
-              });
-            }
-          } catch (archiveError) {
-            console.error('Failed to trigger archive:', archiveError);
-            toast({
-              title: "Archivierungsfehler", 
-              description: "Brief wurde versendet, aber die Archivierung ist fehlgeschlagen.",
-              variant: "destructive",
-            });
-          }
-          console.log('=== ARCHIVE PROCESS COMPLETED ===');
-        }
-        
       } catch (error) {
         console.error('Error updating workflow tracking:', error);
         toast({
