@@ -193,6 +193,57 @@ serve(async (req) => {
 
     console.log('Letter archived successfully');
 
+    // Create follow-up task for letter response
+    try {
+      console.log('Creating follow-up task for letter:', letter.title);
+      
+      // Calculate due date based on template response time
+      const responseTimeDays = template?.response_time_days || 21; // Default 21 days
+      const sentDate = new Date();
+      const dueDate = new Date(sentDate);
+      dueDate.setDate(sentDate.getDate() + responseTimeDays);
+
+      // Format task title: "Abgeordnetenbrief "Betreff des Briefs" vom "Tag des Versands"
+      const formattedSentDate = sentDate.toLocaleDateString('de-DE');
+      const taskTitle = `Abgeordnetenbrief "${letter.subject || letter.title}" vom ${formattedSentDate}`;
+      
+      // Create task description from first 300 characters of letter content
+      let taskDescription = '';
+      const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content || '';
+      if (contentText.length > 300) {
+        taskDescription = contentText.substring(0, 300) + '...';
+      } else {
+        taskDescription = contentText;
+      }
+
+      // Create the follow-up task
+      const { data: taskData, error: taskError } = await supabase
+        .from('tasks')
+        .insert({
+          user_id: letter.created_by,
+          tenant_id: letter.tenant_id,
+          title: taskTitle,
+          description: taskDescription,
+          due_date: dueDate.toISOString(),
+          priority: 'medium',
+          status: 'todo',
+          category: 'Abgeordnetenbrief',
+          assigned_to: null // Assigned to the creator (user_id)
+        })
+        .select()
+        .single();
+
+      if (taskError) {
+        console.error('Error creating follow-up task:', taskError);
+        // Don't fail the entire process if task creation fails
+      } else {
+        console.log('Follow-up task created successfully:', taskData.id);
+      }
+    } catch (error) {
+      console.error('Error in task creation process:', error);
+      // Don't fail the entire process if task creation fails
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
