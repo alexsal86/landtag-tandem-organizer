@@ -91,17 +91,26 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
       if (transitionTo === 'sent') {
         additionalData.sent_method = sentMethod;
         additionalData.sent_date = new Date().toISOString().split('T')[0];
+        
+        // Trigger archiving process for sent letters
+        try {
+          const { error: archiveError } = await supabase.functions.invoke('archive-letter', {
+            body: { letterId: letter.id }
+          });
+          
+          if (archiveError) {
+            console.error('Archive function error:', archiveError);
+            // Still update status but show warning
+            toast({
+              title: "Brief versendet",
+              description: "Brief wurde als versendet markiert. Archivierung wird im Hintergrund verarbeitet.",
+              variant: "default",
+            });
+          }
+        } catch (error) {
+          console.error('Failed to trigger archive:', error);
+        }
       }
-
-      // Log the status change (simplified for now)
-      console.log('Status change:', {
-        letter_id: letter.id,
-        from_status: letter.status,
-        to_status: transitionTo,
-        changed_by: currentUserId,
-        notes: transitionNote.trim() || null,
-        ...additionalData
-      });
 
       // Update the letter
       onStatusChange(transitionTo, additionalData);
