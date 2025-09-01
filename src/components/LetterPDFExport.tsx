@@ -483,6 +483,13 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       // Function to render text with proper line breaking for each page
       const renderContentText = (text: string, startY: number) => {
         let currentY = startY;
+        const shouldShowPagination = showPagination || letter.show_pagination;
+        
+        console.log('=== PDF PAGINATION SETTINGS ===');
+        console.log('showPagination prop:', showPagination);
+        console.log('letter.show_pagination:', letter.show_pagination);
+        console.log('shouldShowPagination:', shouldShowPagination);
+        
         const paragraphs = text.split('\n\n').filter(p => p.trim());
         
         paragraphs.forEach((paragraph, paragIndex) => {
@@ -494,8 +501,17 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           
           lines.forEach((line, lineIndex) => {
             // Check if we need a new page - adjust available height based on pagination setting
-            const shouldShowPagination = showPagination || letter.show_pagination;
-            const availableHeight = shouldShowPagination ? pageHeight - 50 : pageHeight - 40; // Less space if pagination enabled
+            const footerHeight = 40; // Base space for footer
+            const paginationHeight = shouldShowPagination ? 15 : 0; // Additional space only when pagination is enabled
+            const totalBottomMargin = footerHeight + paginationHeight;
+            const availableHeight = pageHeight - totalBottomMargin;
+            
+            console.log('=== PAGE HEIGHT CALCULATION ===');
+            console.log('pageHeight:', pageHeight);
+            console.log('footerHeight:', footerHeight);
+            console.log('paginationHeight:', paginationHeight);
+            console.log('availableHeight:', availableHeight);
+            
             if (currentY + lineHeight > availableHeight) {
               pdf.addPage();
               letterPages++;

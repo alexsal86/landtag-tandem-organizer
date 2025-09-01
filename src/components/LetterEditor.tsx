@@ -230,6 +230,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       // Set pagination setting from letter data
       setShowPagination(letter.show_pagination || false);
       
+      console.log('=== PAGINATION SETTING LOADED ===');
+      console.log('Letter show_pagination:', letter.show_pagination);
+      console.log('Setting showPagination to:', letter.show_pagination || false);
+      
       // If it's a new letter with template data, we'll apply defaults after template loads
       if (!letter.id && letter.template_id) {
         console.log('New letter with template, will apply defaults after template loads');
