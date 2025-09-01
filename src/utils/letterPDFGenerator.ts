@@ -1,4 +1,6 @@
 import jsPDF from 'jspdf';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Letter {
@@ -542,12 +544,12 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
           break;
         case 'date':
           const date = new Date();
-          const formatDate = (date: Date, format: string) => {
-            switch (format) {
-              case 'dd.mm.yyyy': return date.toLocaleDateString('de-DE');
+          const formatDate = (date: Date, formatString: string) => {
+            switch (formatString) {
+              case 'dd.mm.yyyy': return format(date, 'd. MMMM yyyy', { locale: de });
               case 'dd.mm.yy': return date.toLocaleDateString('de-DE', { year: '2-digit', month: '2-digit', day: '2-digit' });
               case 'yyyy-mm-dd': return date.toISOString().split('T')[0];
-              default: return date.toLocaleDateString('de-DE');
+              default: return format(date, 'd. MMMM yyyy', { locale: de });
             }
           };
           pdf.text(formatDate(date, informationBlock.block_data?.date_format || 'dd.mm.yyyy'), infoBlockLeft, infoYPos);
@@ -586,7 +588,8 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
           pdf.text('Datum', infoBlockLeft, infoYPos);
           infoYPos += 5;
           pdf.setFont('helvetica', 'normal');
-          pdf.text(new Date(letter.letter_date).toLocaleDateString('de-DE'), infoBlockLeft, infoYPos);
+          const formattedDate = format(new Date(letter.letter_date), 'd. MMMM yyyy', { locale: de });
+          pdf.text(formattedDate, infoBlockLeft, infoYPos);
           infoYPos += 4;
         }
       }
@@ -684,13 +687,13 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       pdf.setFontSize(6);
       pdf.text("Pagination: 4.23mm über Fußzeile", pageTextX, paginationY - 4);
       
-      // Add page number
-      pdf.setFontSize(10);
+      // Add page number at right edge with 9pt font size
+      pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(100, 100, 100);
       const pageTextFinal = `Seite ${page} von ${letterPages}`;
       const pageTextWidthFinal = pdf.getTextWidth(pageTextFinal);
-      const pageTextXFinal = (pageWidth - pageTextWidthFinal) / 2; // Center horizontally
+      const pageTextXFinal = pageWidth - rightMargin - pageTextWidthFinal; // Right aligned
       pdf.text(pageTextFinal, pageTextXFinal, paginationY);
       pdf.setTextColor(0, 0, 0);
     }
