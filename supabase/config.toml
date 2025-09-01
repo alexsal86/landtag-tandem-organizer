@@ -29,3 +29,6 @@ verify_jwt = true
 
 [functions.process-decision-response]
 verify_jwt = false
+
+[functions.archive-letter]
+verify_jwt = true
