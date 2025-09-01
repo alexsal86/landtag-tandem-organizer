@@ -1066,15 +1066,20 @@ export function DocumentsView() {
                         <div className="flex gap-1">
                            {letterSubTab === 'active' ? (
                              <>
-                               <Button
-                                 variant="outline"
-                                 size="sm"
-                                 onClick={() => handleEditLetter(letter)}
-                               >
-                                 <Edit3 className="h-4 w-4 mr-1" />
-                                 Bearbeiten
-                               </Button>
-                                {/* Archive button removed - now automatic on status "sent" */}
+                                <LetterPDFExport 
+                                  letter={letter} 
+                                  disabled={false}
+                                  showPagination={true}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditLetter(letter)}
+                                >
+                                  <Edit3 className="h-4 w-4 mr-1" />
+                                  Bearbeiten
+                                </Button>
+                                 {/* Archive button removed - now automatic on status "sent" */}
                              </>
                            ) : (
                              <>
@@ -1153,18 +1158,23 @@ export function DocumentsView() {
                           {letter.sent_date ? format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de }) : '-'}
                         </TableCell>
                          <TableCell className="text-right">
-                           <div className="flex items-center gap-1 justify-end">
-                             {letterSubTab === 'active' ? (
-                               <>
-                                 <Button
-                                   variant="ghost"
-                                   size="sm"
-                                   onClick={() => handleEditLetter(letter)}
-                                 >
-                                   <Edit3 className="h-4 w-4" />
-                                 </Button>
-                                  {/* Archive button removed - now automatic on status "sent" */}
-                               </>
+                            <div className="flex items-center gap-1 justify-end">
+                              {letterSubTab === 'active' ? (
+                                <>
+                                  <LetterPDFExport 
+                                    letter={letter} 
+                                    disabled={false}
+                                    showPagination={true}
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditLetter(letter)}
+                                  >
+                                    <Edit3 className="h-4 w-4" />
+                                  </Button>
+                                   {/* Archive button removed - now automatic on status "sent" */}
+                                </>
                              ) : (
                                <>
                                  <LetterPDFExport 
