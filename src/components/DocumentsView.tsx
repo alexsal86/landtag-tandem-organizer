@@ -34,13 +34,15 @@ import {
   List,
   Settings,
   Archive,
-  RotateCcw
+  RotateCcw,
+  Info
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import LetterEditor from "./LetterEditor";
 import LetterTemplateSelector from "./LetterTemplateSelector";
 import LetterPDFExport from "./LetterPDFExport";
+import { ArchivedLetterDetails } from "./letters/ArchivedLetterDetails";
 
 interface Document {
   id: string;
@@ -55,6 +57,9 @@ interface Document {
   status: string;
   created_at: string;
   updated_at: string;
+  document_type?: string;
+  source_letter_id?: string;
+  archived_attachments?: any[];
 }
 
 interface Letter {
@@ -97,6 +102,8 @@ export function DocumentsView() {
   const [letterSubTab, setLetterSubTab] = useState<'active' | 'archived'>('active');
   const [autoArchiveDays, setAutoArchiveDays] = useState(30);
   const [showArchiveSettings, setShowArchiveSettings] = useState(false);
+  const [showArchivedLetterDetails, setShowArchivedLetterDetails] = useState(false);
+  const [selectedArchivedDocument, setSelectedArchivedDocument] = useState<Document | null>(null);
 
   // Upload form state
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -144,7 +151,10 @@ export function DocumentsView() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setDocuments(data || []);
+      setDocuments((data || []).map(doc => ({
+        ...doc,
+        archived_attachments: Array.isArray(doc.archived_attachments) ? doc.archived_attachments : []
+      })));
     } catch (error: any) {
       toast({
         title: "Fehler beim Laden",
@@ -300,6 +310,11 @@ export function DocumentsView() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleShowArchivedLetterDetails = (document: Document) => {
+    setSelectedArchivedDocument(document);
+    setShowArchivedLetterDetails(true);
   };
 
   const formatFileSize = (bytes?: number) => {
@@ -822,26 +837,39 @@ export function DocumentsView() {
 
                     <Separator />
                     
-                    <div className="flex justify-between">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(document)}
-                        className="gap-1"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(document)}
-                        className="gap-1 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Löschen
-                      </Button>
-                    </div>
+                     <div className="flex justify-between gap-2">
+                       <div className="flex gap-1">
+                         {document.document_type === 'archived_letter' && document.source_letter_id && (
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => handleShowArchivedLetterDetails(document)}
+                             className="gap-1"
+                           >
+                             <Info className="h-4 w-4" />
+                             Details
+                           </Button>
+                         )}
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => handleDownload(document)}
+                           className="gap-1"
+                         >
+                           <Download className="h-4 w-4" />
+                           Download
+                         </Button>
+                       </div>
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => handleDelete(document)}
+                         className="gap-1 text-destructive hover:text-destructive"
+                       >
+                         <Trash2 className="h-4 w-4" />
+                         Löschen
+                       </Button>
+                     </div>
                   </CardContent>
                 </Card>
                 ))}
@@ -889,25 +917,35 @@ export function DocumentsView() {
                         <TableCell>
                           {formatFileSize(document.file_size)}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center gap-1 justify-end">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDownload(document)}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(document)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                         <TableCell className="text-right">
+                           <div className="flex items-center gap-1 justify-end">
+                             {document.document_type === 'archived_letter' && document.source_letter_id && (
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => handleShowArchivedLetterDetails(document)}
+                                 title="Brief-Details anzeigen"
+                               >
+                                 <Info className="h-4 w-4" />
+                               </Button>
+                             )}
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => handleDownload(document)}
+                             >
+                               <Download className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => handleDelete(document)}
+                               className="text-destructive hover:text-destructive"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                           </div>
+                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1206,6 +1244,18 @@ export function DocumentsView() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Archived Letter Details Dialog */}
+        {selectedArchivedDocument && (
+          <ArchivedLetterDetails
+            document={selectedArchivedDocument}
+            isOpen={showArchivedLetterDetails}
+            onClose={() => {
+              setShowArchivedLetterDetails(false);
+              setSelectedArchivedDocument(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );

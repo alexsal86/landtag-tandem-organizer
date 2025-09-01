@@ -2325,6 +2325,42 @@ export type Database = {
         }
         Relationships: []
       }
+      letter_workflow_history: {
+        Row: {
+          additional_data: Json | null
+          changed_at: string
+          changed_by: string
+          created_at: string
+          id: string
+          letter_id: string
+          notes: string | null
+          status_from: string
+          status_to: string
+        }
+        Insert: {
+          additional_data?: Json | null
+          changed_at?: string
+          changed_by: string
+          created_at?: string
+          id?: string
+          letter_id: string
+          notes?: string | null
+          status_from: string
+          status_to: string
+        }
+        Update: {
+          additional_data?: Json | null
+          changed_at?: string
+          changed_by?: string
+          created_at?: string
+          id?: string
+          letter_id?: string
+          notes?: string | null
+          status_from?: string
+          status_to?: string
+        }
+        Relationships: []
+      }
       letters: {
         Row: {
           approved_at: string | null
