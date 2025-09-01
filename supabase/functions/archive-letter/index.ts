@@ -56,9 +56,38 @@ serve(async (req) => {
     // Generate PDF content using simplified HTML structure
     const pdfContent = generatePDFContent(letter);
     
-    // Create document record with PDF content
-    const documentFileName = `letter_${letter.title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
+    // Create a simple PDF-like text file for now (could be enhanced with actual PDF generation later)
+    const pdfBuffer = new TextEncoder().encode(pdfContent);
     
+    // Create document file name
+    const documentFileName = `letter_${letter.title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
+    const filePath = `archived_letters/${documentFileName}`;
+    
+    // Upload the PDF content to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(filePath, pdfBuffer, {
+        contentType: 'application/pdf',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Error uploading PDF:', uploadError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to upload PDF',
+          details: uploadError.message
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    console.log('PDF uploaded successfully:', uploadData.path);
+    
+    // Create document record with PDF content
     const { data: document, error: documentError } = await supabase
       .from('documents')
       .insert({
@@ -67,7 +96,7 @@ serve(async (req) => {
         title: `Brief: ${letter.title}`,
         description: `Archivierte Version des Briefes "${letter.title}"`,
         file_name: documentFileName,
-        file_path: `archived_letters/${documentFileName}`,
+        file_path: filePath,
         file_type: 'application/pdf',
         category: 'correspondence',
         tags: ['archiviert', 'brief'],
