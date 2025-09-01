@@ -81,16 +81,30 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
     if (!transitionTo) return;
 
     try {
-      let additionalData: any = {};
+      const now = new Date().toISOString();
+      let updateData: any = { 
+        status: transitionTo,
+        updated_at: now
+      };
 
       // Handle specific transition logic
       if (transitionTo === 'review' && selectedReviewer) {
-        additionalData.reviewer_id = selectedReviewer;
+        updateData.reviewer_id = selectedReviewer;
+        updateData.submitted_for_review_at = now;
+        updateData.submitted_for_review_by = currentUserId;
+      }
+
+      if (transitionTo === 'approved') {
+        updateData.approved_at = now;
+        updateData.approved_by = currentUserId;
       }
 
       if (transitionTo === 'sent') {
-        additionalData.sent_method = sentMethod;
-        additionalData.sent_date = new Date().toISOString().split('T')[0];
+        updateData.sent_method = sentMethod;
+        updateData.sent_date = new Date().toISOString().split('T')[0];
+        updateData.sent_at = now;
+        updateData.sent_by = currentUserId;
+        updateData.workflow_locked = true;
         
         // Trigger archiving process for sent letters
         try {
@@ -112,8 +126,18 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
         }
       }
 
-      // Update the letter
-      onStatusChange(transitionTo, additionalData);
+      // Update database directly
+      const { error } = await supabase
+        .from('letters')
+        .update(updateData)
+        .eq('id', letter.id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update the letter via callback for UI updates
+      onStatusChange(transitionTo, updateData);
 
       toast({
         title: "Status geändert",
