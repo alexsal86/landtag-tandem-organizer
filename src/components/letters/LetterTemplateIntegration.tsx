@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Edit, Trash2, Settings, Image as ImageIcon } from 'lucide-react';
+import { FileText, Plus, Edit, Trash2, Settings, Image as ImageIcon, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
 import { FabricHeaderEditor } from './FabricHeaderEditor';
+import { FabricFooterEditor } from './FabricFooterEditor';
 
 interface LetterTemplate {
   id: string;
@@ -47,6 +48,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<LetterTemplate | null>(null);
   const [showHeaderEditor, setShowHeaderEditor] = useState(false);
+  const [showFooterEditor, setShowFooterEditor] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -131,6 +133,11 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
     setShowHeaderEditor(true);
   };
 
+  const handleEditFooter = (template: LetterTemplate) => {
+    setEditingTemplate(template);
+    setShowFooterEditor(true);
+  };
+
   const handleSaveHeader = async (headerData: any) => {
     if (!editingTemplate || !currentTenant) return;
 
@@ -154,6 +161,34 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       toast({
         title: "Fehler",
         description: "Header konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveFooter = async (footerData: any) => {
+    if (!editingTemplate || !currentTenant) return;
+
+    try {
+      const { error } = await supabase
+        .from('letter_templates')
+        .update(footerData)
+        .eq('id', editingTemplate.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Erfolg",
+        description: "Footer wurde aktualisiert.",
+      });
+
+      setShowFooterEditor(false);
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error saving footer:', error);
+      toast({
+        title: "Fehler",
+        description: "Footer konnte nicht gespeichert werden.",
         variant: "destructive",
       });
     }
@@ -446,6 +481,14 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleEditFooter(template)}
+                            title="Footer bearbeiten"
+                          >
+                            <Type className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleEditTemplate(template)}
                           >
                             <Edit className="h-3 w-3" />
@@ -477,6 +520,19 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
               template={editingTemplate}
               onSave={handleSaveHeader}
               onCancel={() => setShowHeaderEditor(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Footer Editor Dialog */}
+      {showFooterEditor && editingTemplate && (
+        <Dialog open={showFooterEditor} onOpenChange={setShowFooterEditor}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
+            <FabricFooterEditor
+              template={editingTemplate}
+              onSave={handleSaveFooter}
+              onCancel={() => setShowFooterEditor(false)}
             />
           </DialogContent>
         </Dialog>

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,18 +16,24 @@ import { Plus, Edit, Trash2 } from 'lucide-react';
 interface SenderInformation {
   id: string;
   name: string;
-  title?: string;
-  department?: string;
   organization: string;
-  street?: string;
-  house_number?: string;
-  postal_code?: string;
-  city?: string;
-  country: string;
   phone?: string;
   fax?: string;
-  email?: string;
   website?: string;
+  instagram_profile?: string;
+  facebook_profile?: string;
+  // Landtag/Stuttgart Address
+  landtag_street?: string;
+  landtag_house_number?: string;
+  landtag_postal_code?: string;
+  landtag_city?: string;
+  landtag_email?: string;
+  // Wahlkreis Address
+  wahlkreis_street?: string;
+  wahlkreis_house_number?: string;
+  wahlkreis_postal_code?: string;
+  wahlkreis_city?: string;
+  wahlkreis_email?: string;
   return_address_line?: string;
   is_default: boolean;
   is_active: boolean;
@@ -38,7 +45,6 @@ export const SenderInformationManager: React.FC = () => {
   const [editingInfo, setEditingInfo] = useState<SenderInformation | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<SenderInformation>>({
-    country: 'Deutschland',
     is_default: false,
     is_active: true
   });
@@ -99,17 +105,21 @@ export const SenderInformationManager: React.FC = () => {
         const insertData = {
           name: formData.name!,
           organization: formData.organization!,
-          title: formData.title,
-          department: formData.department,
-          street: formData.street,
-          house_number: formData.house_number,
-          postal_code: formData.postal_code,
-          city: formData.city,
-          country: formData.country || 'Deutschland',
           phone: formData.phone,
           fax: formData.fax,
-          email: formData.email,
           website: formData.website,
+          instagram_profile: formData.instagram_profile,
+          facebook_profile: formData.facebook_profile,
+          landtag_street: formData.landtag_street,
+          landtag_house_number: formData.landtag_house_number,
+          landtag_postal_code: formData.landtag_postal_code,
+          landtag_city: formData.landtag_city,
+          landtag_email: formData.landtag_email,
+          wahlkreis_street: formData.wahlkreis_street,
+          wahlkreis_house_number: formData.wahlkreis_house_number,
+          wahlkreis_postal_code: formData.wahlkreis_postal_code,
+          wahlkreis_city: formData.wahlkreis_city,
+          wahlkreis_email: formData.wahlkreis_email,
           return_address_line: formData.return_address_line,
           is_default: formData.is_default || false,
           is_active: formData.is_active || true,
@@ -130,7 +140,7 @@ export const SenderInformationManager: React.FC = () => {
 
       setIsDialogOpen(false);
       setEditingInfo(null);
-      setFormData({ country: 'Deutschland', is_default: false, is_active: true });
+      setFormData({ is_default: false, is_active: true });
       fetchSenderInfos();
     } catch (error) {
       console.error('Fehler beim Speichern:', error);
@@ -189,7 +199,7 @@ export const SenderInformationManager: React.FC = () => {
           <DialogTrigger asChild>
             <Button onClick={() => {
               setEditingInfo(null);
-              setFormData({ country: 'Deutschland', is_default: false, is_active: true });
+              setFormData({ is_default: false, is_active: true });
             }}>
               <Plus className="h-4 w-4 mr-2" />
               Neue Absenderinformation
@@ -201,131 +211,186 @@ export const SenderInformationManager: React.FC = () => {
                 {editingInfo ? 'Absenderinformation bearbeiten' : 'Neue Absenderinformation'}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name || ''}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Allgemeine Informationen */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Allgemeine Informationen</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name || ''}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="organization">Organisation *</Label>
+                    <Input
+                      id="organization"
+                      value={formData.organization || ''}
+                      onChange={(e) => setFormData({...formData, organization: e.target.value})}
+                      required
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="title">Titel</Label>
-                  <Input
-                    id="title"
-                    value={formData.title || ''}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone">Telefon</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone || ''}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fax">Fax</Label>
+                    <Input
+                      id="fax"
+                      value={formData.fax || ''}
+                      onChange={(e) => setFormData({...formData, fax: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      value={formData.website || ''}
+                      onChange={(e) => setFormData({...formData, website: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="instagram_profile">Instagram Profil</Label>
+                    <Input
+                      id="instagram_profile"
+                      value={formData.instagram_profile || ''}
+                      onChange={(e) => setFormData({...formData, instagram_profile: e.target.value})}
+                      placeholder="@username"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="facebook_profile">Facebook Profil</Label>
+                    <Input
+                      id="facebook_profile"
+                      value={formData.facebook_profile || ''}
+                      onChange={(e) => setFormData({...formData, facebook_profile: e.target.value})}
+                      placeholder="@username"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="department">Abteilung</Label>
-                  <Input
-                    id="department"
-                    value={formData.department || ''}
-                    onChange={(e) => setFormData({...formData, department: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="organization">Organisation *</Label>
-                  <Input
-                    id="organization"
-                    value={formData.organization || ''}
-                    onChange={(e) => setFormData({...formData, organization: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
+              {/* Adressen in Accordions */}
+              <Accordion type="multiple" className="w-full">
+                <AccordionItem value="landtag">
+                  <AccordionTrigger>Adresse Landtag</AccordionTrigger>
+                  <AccordionContent className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-2">
+                        <Label htmlFor="landtag_street">Straße</Label>
+                        <Input
+                          id="landtag_street"
+                          value={formData.landtag_street || ''}
+                          onChange={(e) => setFormData({...formData, landtag_street: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="landtag_house_number">Hausnummer</Label>
+                        <Input
+                          id="landtag_house_number"
+                          value={formData.landtag_house_number || ''}
+                          onChange={(e) => setFormData({...formData, landtag_house_number: e.target.value})}
+                        />
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                  <Label htmlFor="street">Straße</Label>
-                  <Input
-                    id="street"
-                    value={formData.street || ''}
-                    onChange={(e) => setFormData({...formData, street: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="house_number">Hausnummer</Label>
-                  <Input
-                    id="house_number"
-                    value={formData.house_number || ''}
-                    onChange={(e) => setFormData({...formData, house_number: e.target.value})}
-                  />
-                </div>
-              </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="landtag_postal_code">PLZ</Label>
+                        <Input
+                          id="landtag_postal_code"
+                          value={formData.landtag_postal_code || ''}
+                          onChange={(e) => setFormData({...formData, landtag_postal_code: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="landtag_city">Stadt</Label>
+                        <Input
+                          id="landtag_city"
+                          value={formData.landtag_city || ''}
+                          onChange={(e) => setFormData({...formData, landtag_city: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="landtag_email">E-Mail</Label>
+                        <Input
+                          id="landtag_email"
+                          type="email"
+                          value={formData.landtag_email || ''}
+                          onChange={(e) => setFormData({...formData, landtag_email: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="postal_code">PLZ</Label>
-                  <Input
-                    id="postal_code"
-                    value={formData.postal_code || ''}
-                    onChange={(e) => setFormData({...formData, postal_code: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="city">Stadt</Label>
-                  <Input
-                    id="city"
-                    value={formData.city || ''}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="country">Land</Label>
-                  <Input
-                    id="country"
-                    value={formData.country || 'Deutschland'}
-                    onChange={(e) => setFormData({...formData, country: e.target.value})}
-                  />
-                </div>
-              </div>
+                <AccordionItem value="wahlkreis">
+                  <AccordionTrigger>Adresse Wahlkreis</AccordionTrigger>
+                  <AccordionContent className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-2">
+                        <Label htmlFor="wahlkreis_street">Straße</Label>
+                        <Input
+                          id="wahlkreis_street"
+                          value={formData.wahlkreis_street || ''}
+                          onChange={(e) => setFormData({...formData, wahlkreis_street: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="wahlkreis_house_number">Hausnummer</Label>
+                        <Input
+                          id="wahlkreis_house_number"
+                          value={formData.wahlkreis_house_number || ''}
+                          onChange={(e) => setFormData({...formData, wahlkreis_house_number: e.target.value})}
+                        />
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="phone">Telefon</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone || ''}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="fax">Fax</Label>
-                  <Input
-                    id="fax"
-                    value={formData.fax || ''}
-                    onChange={(e) => setFormData({...formData, fax: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="email">E-Mail</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email || ''}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    value={formData.website || ''}
-                    onChange={(e) => setFormData({...formData, website: e.target.value})}
-                  />
-                </div>
-              </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="wahlkreis_postal_code">PLZ</Label>
+                        <Input
+                          id="wahlkreis_postal_code"
+                          value={formData.wahlkreis_postal_code || ''}
+                          onChange={(e) => setFormData({...formData, wahlkreis_postal_code: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="wahlkreis_city">Stadt</Label>
+                        <Input
+                          id="wahlkreis_city"
+                          value={formData.wahlkreis_city || ''}
+                          onChange={(e) => setFormData({...formData, wahlkreis_city: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="wahlkreis_email">E-Mail</Label>
+                        <Input
+                          id="wahlkreis_email"
+                          type="email"
+                          value={formData.wahlkreis_email || ''}
+                          onChange={(e) => setFormData({...formData, wahlkreis_email: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               <div>
                 <Label htmlFor="return_address_line">Rücksendeangabe (einzeilig)</Label>
@@ -382,22 +447,42 @@ export const SenderInformationManager: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <strong>Adresse:</strong><br />
-                  {info.street} {info.house_number}<br />
-                  {info.postal_code} {info.city}<br />
-                  {info.country}
+              <div className="grid grid-cols-2 gap-6 text-sm">
+                <div className="space-y-3">
+                  <div>
+                    <strong>Landtag Adresse:</strong><br />
+                    {(info.landtag_street || info.landtag_house_number) && (
+                      <>
+                        {info.landtag_street} {info.landtag_house_number}<br />
+                        {info.landtag_postal_code} {info.landtag_city}<br />
+                      </>
+                    )}
+                    {info.landtag_email && <div>E-Mail: {info.landtag_email}</div>}
+                  </div>
+                  
+                  <div>
+                    <strong>Wahlkreis Adresse:</strong><br />
+                    {(info.wahlkreis_street || info.wahlkreis_house_number) && (
+                      <>
+                        {info.wahlkreis_street} {info.wahlkreis_house_number}<br />
+                        {info.wahlkreis_postal_code} {info.wahlkreis_city}<br />
+                      </>
+                    )}
+                    {info.wahlkreis_email && <div>E-Mail: {info.wahlkreis_email}</div>}
+                  </div>
                 </div>
+                
                 <div>
-                  <strong>Kontakt:</strong><br />
+                  <strong>Kommunikation:</strong><br />
                   {info.phone && <div>Tel: {info.phone}</div>}
-                  {info.email && <div>E-Mail: {info.email}</div>}
+                  {info.fax && <div>Fax: {info.fax}</div>}
                   {info.website && <div>Web: {info.website}</div>}
+                  {info.instagram_profile && <div>Instagram: {info.instagram_profile}</div>}
+                  {info.facebook_profile && <div>Facebook: {info.facebook_profile}</div>}
                 </div>
               </div>
               {info.return_address_line && (
-                <div className="mt-2 text-sm">
+                <div className="mt-4 text-sm">
                   <strong>Rücksendeangabe:</strong> {info.return_address_line}
                 </div>
               )}
