@@ -129,11 +129,10 @@ export class HeaderRenderer {
     console.log('Font weight:', fontWeight);
     console.log('Element content:', element.content);
     
-    // jsPDF expects font size in points (pt)
-    // The StructuredHeaderEditor uses pixel values, so we need to convert
-    // 1px = 0.75pt (standard web conversion)
-    const fontSizeInPoints = fontSize * 0.75;
-    console.log('Converted fontSize to points:', fontSizeInPoints);
+    // The StructuredHeaderEditor likely already uses point values
+    // Try without conversion first - if it's still wrong, we'll adjust
+    const fontSizeInPoints = fontSize; // Use original value
+    console.log('Using fontSize directly (no conversion):', fontSizeInPoints);
     
     this.pdf.setFontSize(fontSizeInPoints);
     
