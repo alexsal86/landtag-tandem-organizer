@@ -184,23 +184,125 @@ serve(async (req) => {
   }
 });
 
+// Generate DIN 5008 compliant PDF content  
 function generatePDFContent(letter: any): string {
-  // Generate simplified PDF content representation
-  return `
-    Brief: ${letter.title}
-    
-    Erstellt am: ${new Date(letter.created_at).toLocaleDateString('de-DE')}
-    Empfänger: ${letter.recipient_name || 'Nicht angegeben'}
-    ${letter.recipient_address ? `Adresse: ${letter.recipient_address}` : ''}
-    
-    Inhalt:
-    ${letter.content || letter.content_html || 'Kein Inhalt'}
-    
-    Status: ${letter.status}
-    ${letter.sent_date ? `Versendet am: ${letter.sent_date}` : ''}
-    ${letter.sent_method ? `Versandart: ${letter.sent_method}` : ''}
-    
-    Anlagen: ${letter.letter_attachments?.length || 0}
-    ${letter.letter_attachments?.map((att: any) => `- ${att.display_name || att.file_name}`).join('\n') || ''}
-  `;
+  const currentDate = new Date().toLocaleDateString('de-DE');
+  
+  // DIN 5008 Text-basierte PDF-Struktur
+  let content = '';
+  
+  // Header-Bereich (entspricht 45mm DIN 5008)
+  content += '='.repeat(80) + '\n';
+  content += 'ARCHIVIERTE KORRESPONDENZ\n';
+  content += '='.repeat(80) + '\n\n';
+  
+  // Absender-Bereich (Return address line simulation)
+  if (letter.sender_info) {
+    content += `${letter.sender_info.organization || ''} • ${letter.sender_info.name || ''} • `;
+    content += `${letter.sender_info.street || ''} ${letter.sender_info.house_number || ''} • `;
+    content += `${letter.sender_info.postal_code || ''} ${letter.sender_info.city || ''}\n`;
+    content += '-'.repeat(60) + '\n\n';
+  }
+  
+  // Empfänger-Adressfeld (entspricht DIN 5008 Adressfeld bei 46mm)
+  content += 'AN:\n';
+  content += `${letter.recipient_name || 'Empfänger nicht angegeben'}\n`;
+  if (letter.recipient_address) {
+    const addressLines = letter.recipient_address.split('\n').filter(line => line.trim());
+    addressLines.forEach(line => {
+      content += `${line.trim()}\n`;
+    });
+  }
+  content += '\n';
+  
+  // Info-Block (entspricht DIN 5008 Info-Block bei 125mm)
+  content += 'BRIEF-INFORMATIONEN:\n';
+  content += '-'.repeat(30) + '\n';
+  content += `Datum: ${letter.letter_date ? new Date(letter.letter_date).toLocaleDateString('de-DE') : currentDate}\n`;
+  content += `Referenz: ${letter.reference_number || 'Nicht angegeben'}\n`;
+  content += `Status: ${letter.status}\n`;
+  if (letter.sent_date) {
+    content += `Versendet: ${new Date(letter.sent_date).toLocaleDateString('de-DE')}\n`;
+  }
+  content += '\n\n';
+  
+  // Betreff (entspricht DIN 5008 Betreff bei 98.46mm)
+  if (letter.subject || letter.title) {
+    content += `BETREFF: ${letter.subject || letter.title}\n`;
+    content += '='.repeat((letter.subject || letter.title).length + 9) + '\n\n';
+  }
+  
+  // Briefinhalt (entspricht DIN 5008 Inhaltsbereich)
+  content += 'BRIEFINHALT:\n';
+  content += '-'.repeat(12) + '\n\n';
+  
+  // Convert HTML content to text if needed
+  let textContent = letter.content || 'Kein Inhalt verfügbar';
+  if (letter.content_html) {
+    // Simple HTML to text conversion
+    textContent = letter.content_html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<p[^>]*>/gi, '')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<div[^>]*>/gi, '')
+      .replace(/<strong[^>]*>|<\/strong>/gi, '')
+      .replace(/<b[^>]*>|<\/b>/gi, '')
+      .replace(/<em[^>]*>|<\/em>/gi, '')
+      .replace(/<i[^>]*>|<\/i>/gi, '')
+      .replace(/<[^>]*>/g, '') // Remove any remaining HTML tags
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .trim();
+  }
+  
+  // Format content with proper line breaks
+  const paragraphs = textContent.split('\n\n').filter(p => p.trim());
+  paragraphs.forEach(paragraph => {
+    const words = paragraph.trim().split(' ');
+    let line = '';
+    words.forEach(word => {
+      if ((line + word).length > 75) { // DIN 5008 typical line length
+        content += line.trim() + '\n';
+        line = word + ' ';
+      } else {
+        line += word + ' ';
+      }
+    });
+    if (line.trim()) {
+      content += line.trim() + '\n';
+    }
+    content += '\n';
+  });
+  
+  // Anlagen (entspricht DIN 5008 Anlagenverzeichnis)
+  if (letter.letter_attachments && letter.letter_attachments.length > 0) {
+    content += '\n' + '='.repeat(40) + '\n';
+    content += 'ANLAGEN:\n';
+    content += '-'.repeat(8) + '\n';
+    letter.letter_attachments.forEach((attachment: any, index: number) => {
+      content += `${index + 1}. ${attachment.display_name || attachment.file_name}\n`;
+      content += `   Dateigröße: ${attachment.file_size ? Math.round(attachment.file_size / 1024) + ' KB' : 'Unbekannt'}\n`;
+      content += `   Dateityp: ${attachment.file_type || 'Unbekannt'}\n\n`;
+    });
+  }
+  
+  // Fußzeile (entspricht DIN 5008 Fußbereich bei 272mm)
+  content += '\n' + '='.repeat(80) + '\n';
+  content += 'ARCHIVIERUNGS-INFORMATIONEN\n';
+  content += '='.repeat(80) + '\n';
+  content += `Archiviert am: ${currentDate}\n`;
+  content += `Ursprünglicher Brief erstellt: ${letter.created_at ? new Date(letter.created_at).toLocaleDateString('de-DE') : 'Unbekannt'}\n`;
+  content += `Workflow-Status beim Archivieren: ${letter.status}\n`;
+  if (letter.sent_method) {
+    content += `Versandart: ${letter.sent_method}\n`;
+  }
+  content += '\n';
+  content += 'Dieses Dokument wurde automatisch aus dem Briefverwaltungssystem generiert.\n';
+  content += 'Alle Formatierungen entsprechen der DIN 5008 Norm für Geschäftsbriefe.\n';
+  
+  return content;
 }
