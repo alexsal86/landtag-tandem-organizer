@@ -61,15 +61,17 @@ export class HeaderRenderer {
     // Render text elements
     const textElements = Array.isArray(template.header_text_elements) ? template.header_text_elements : [];
     
-    textElements.forEach(element => {
+    for (const element of textElements) {
       if (element.type === 'text' && element.content) {
         this.renderTextElement(element, pxToMm);
+      } else if (element.type === 'image' && element.imageUrl) {
+        await this.renderImageElement(element.imageUrl, {
+          x: element.x,
+          y: element.y,
+          width: element.width || 100,
+          height: element.height || 50
+        }, pxToMm);
       }
-    });
-
-    // Render header image if available
-    if (template.header_image_url && template.header_image_position) {
-      await this.renderImageElement(template.header_image_url, template.header_image_position, pxToMm);
     }
 
     // Reset PDF state

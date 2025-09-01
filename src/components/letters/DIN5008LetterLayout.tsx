@@ -158,7 +158,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       position: 'relative'
     }}>
       {/* Template Header */}
-      {template?.letterhead_html && (
+      {template && (
         <div 
           className="letter-header"
           style={{ 
@@ -166,8 +166,57 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             borderBottom: '1px solid #e0e0e0',
             marginBottom: '8.46mm'
           }}
-          dangerouslySetInnerHTML={{ __html: template.letterhead_html }}
-        />
+        >
+          {template.header_layout_type === 'structured' && template.header_text_elements ? (
+            <div 
+              className="relative bg-white w-full h-full overflow-hidden"
+              style={{ 
+                width: '100%',
+                height: '100%',
+                position: 'relative'
+              }}
+            >
+              {template.header_text_elements.map((element: any, index: number) => (
+                <div key={index}>
+                  {element.type === 'text' && (
+                    <div
+                      className="absolute"
+                      style={{
+                        left: `${(element.x / 595) * 100}%`, // Convert from canvas pixels to percentage
+                        top: `${(element.y / 200) * 100}%`, // Convert from canvas pixels to percentage
+                        fontSize: `${(element.fontSize || 16) / 16 * 11}pt`, // Scale font size for DIN 5008
+                        fontFamily: element.fontFamily || 'Arial, sans-serif',
+                        fontWeight: element.fontWeight || 'normal',
+                        color: element.color || '#000000',
+                        width: `${(element.width / 595) * 100}%`,
+                        lineHeight: '1.2',
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      {element.content}
+                    </div>
+                  )}
+                  {element.type === 'image' && element.imageUrl && (
+                    <img
+                      src={element.imageUrl}
+                      alt="Header Image"
+                      className="absolute"
+                      style={{
+                        left: `${(element.x / 595) * 100}%`,
+                        top: `${(element.y / 200) * 100}%`,
+                        width: `${(element.width / 595) * 100}%`,
+                        height: `${(element.height / 200) * 100}%`,
+                        objectFit: 'contain'
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : template?.letterhead_html ? (
+            <div dangerouslySetInnerHTML={{ __html: template.letterhead_html }} />
+          ) : null}
+        </div>
       )}
 
       {/* Letter Content Area - DIN 5008 konform */}

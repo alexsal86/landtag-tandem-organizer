@@ -87,6 +87,56 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
       canvas.renderAll();
     });
 
+    canvas.on('object:moving', (e) => {
+      const obj = e.target;
+      if (!obj) return;
+
+      const snapThreshold = 10;
+      const canvasWidth = canvas.getWidth();
+      const canvasHeight = canvas.getHeight();
+
+      // Snap to edges
+      if (Math.abs(obj.left) < snapThreshold) {
+        obj.left = 0;
+      }
+      if (Math.abs(obj.top) < snapThreshold) {
+        obj.top = 0;
+      }
+      if (Math.abs(obj.left + obj.getScaledWidth() - canvasWidth) < snapThreshold) {
+        obj.left = canvasWidth - obj.getScaledWidth();
+      }
+      if (Math.abs(obj.top + obj.getScaledHeight() - canvasHeight) < snapThreshold) {
+        obj.top = canvasHeight - obj.getScaledHeight();
+      }
+
+      // Snap to center
+      const objCenterX = obj.left + obj.getScaledWidth() / 2;
+      const objCenterY = obj.top + obj.getScaledHeight() / 2;
+      const canvasCenterX = canvasWidth / 2;
+      const canvasCenterY = canvasHeight / 2;
+
+      if (Math.abs(objCenterX - canvasCenterX) < snapThreshold) {
+        obj.left = canvasCenterX - obj.getScaledWidth() / 2;
+      }
+      if (Math.abs(objCenterY - canvasCenterY) < snapThreshold) {
+        obj.top = canvasCenterY - obj.getScaledHeight() / 2;
+      }
+
+      // Snap to grid
+      const gridSize = 20;
+      const snappedLeft = Math.round(obj.left / gridSize) * gridSize;
+      const snappedTop = Math.round(obj.top / gridSize) * gridSize;
+      
+      if (Math.abs(obj.left - snappedLeft) < snapThreshold) {
+        obj.left = snappedLeft;
+      }
+      if (Math.abs(obj.top - snappedTop) < snapThreshold) {
+        obj.top = snappedTop;
+      }
+
+      canvas.renderAll();
+    });
+
     setFabricCanvas(canvas);
 
     return () => {
@@ -152,6 +202,35 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
       } as any);
       canvas.add(line);
     }
+
+    // Add center guidelines
+    const centerV = new Rect({
+      left: width / 2,
+      top: 0,
+      width: 1,
+      height: height,
+      fill: '#ff6b6b',
+      selectable: false,
+      evented: false,
+      excludeFromExport: true,
+      isGrid: true,
+      opacity: 0.5,
+    } as any);
+    canvas.add(centerV);
+
+    const centerH = new Rect({
+      left: 0,
+      top: height / 2,
+      width: width,
+      height: 1,
+      fill: '#ff6b6b',
+      selectable: false,
+      evented: false,
+      excludeFromExport: true,
+      isGrid: true,
+      opacity: 0.5,
+    } as any);
+    canvas.add(centerH);
   };
 
   const removeGrid = (canvas: FabricCanvas) => {
@@ -311,10 +390,10 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
     const headerElements = nonGridObjects.map((obj: any) => ({
       id: obj.id || Math.random().toString(),
       type: obj.type === 'textbox' ? 'text' : obj.type === 'image' ? 'image' : 'shape',
-      x: obj.left || 0,
-      y: obj.top || 0,
-      width: obj.type === 'textbox' ? obj.width : obj.getScaledWidth(),
-      height: obj.type === 'textbox' ? obj.height : obj.getScaledHeight(),
+      x: Math.round(obj.left || 0),
+      y: Math.round(obj.top || 0),
+      width: Math.round(obj.type === 'textbox' ? obj.width : obj.getScaledWidth()),
+      height: Math.round(obj.type === 'textbox' ? obj.height : obj.getScaledHeight()),
       content: obj.type === 'textbox' ? obj.text : undefined,
       fontSize: obj.fontSize,
       fontFamily: obj.fontFamily,
@@ -322,6 +401,13 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
       color: obj.fill,
       imageUrl: obj.type === 'image' ? obj.getSrc() : undefined,
     }));
+
+    console.log('Exporting header data:', {
+      header_layout_type: mode === 'visual' ? 'structured' : 'html',
+      header_text_elements: mode === 'visual' ? headerElements : [],
+      letterhead_html: htmlCode,
+      letterhead_css: cssCode,
+    });
 
     return {
       header_layout_type: mode === 'visual' ? 'structured' : 'html',
