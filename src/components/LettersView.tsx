@@ -101,7 +101,12 @@ const LettersView: React.FC = () => {
   };
 
   const handleTemplateSelect = (template: any) => {
+    console.log('=== TEMPLATE SELECTION START ===');
     console.log('Template selected:', template);
+    console.log('Template ID:', template?.id);
+    console.log('Template default_sender_id:', template?.default_sender_id);
+    console.log('Template default_info_blocks:', template?.default_info_blocks);
+    
     setSelectedTemplate(template);
     setShowTemplateSelector(false);
     
@@ -125,9 +130,17 @@ const LettersView: React.FC = () => {
       archived_at: null
     };
     
-    console.log('New letter with template:', newLetter);
+    console.log('=== NEW LETTER CREATED ===');
+    console.log('New letter object:', newLetter);
+    console.log('New letter template_id:', newLetter.template_id);
+    console.log('New letter sender_info_id:', newLetter.sender_info_id);
+    console.log('New letter information_block_ids:', newLetter.information_block_ids);
+    console.log('=== SETTING SELECTED LETTER ===');
+    
     setSelectedLetter(newLetter);
     setIsEditorOpen(true);
+    
+    console.log('=== TEMPLATE SELECTION END ===');
   };
 
   const handleEditLetter = (letter: Letter) => {

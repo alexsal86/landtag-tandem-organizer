@@ -199,6 +199,13 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   );
 
   useEffect(() => {
+    console.log('=== LETTER PROP EFFECT TRIGGERED ===');
+    console.log('Letter prop received:', letter);
+    console.log('Letter exists:', !!letter);
+    console.log('Letter template_id:', letter?.template_id);
+    console.log('Letter sender_info_id:', letter?.sender_info_id);
+    console.log('Letter information_block_ids:', letter?.information_block_ids);
+    
     if (letter) {
       console.log('=== LETTER DATA RECEIVED ===');
       console.log('Letter:', letter);
