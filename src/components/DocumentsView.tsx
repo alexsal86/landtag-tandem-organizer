@@ -42,6 +42,7 @@ import { de } from "date-fns/locale";
 import LetterEditor from "./LetterEditor";
 import LetterTemplateSelector from "./LetterTemplateSelector";
 import LetterPDFExport from "./LetterPDFExport";
+import LetterDOCXExport from "./LetterDOCXExport";
 import { ArchivedLetterDetails } from "./letters/ArchivedLetterDetails";
 import { useLetterArchiving } from "@/hooks/useLetterArchiving";
 
@@ -1072,6 +1073,9 @@ export function DocumentsView() {
                                     disabled={false}
                                     showPagination={letter.show_pagination || false}
                                   />
+                                  <LetterDOCXExport 
+                                    letter={letter} 
+                                  />
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -1088,6 +1092,9 @@ export function DocumentsView() {
                                  letter={letter} 
                                  disabled={false}
                                  showPagination={true}
+                               />
+                               <LetterDOCXExport 
+                                 letter={letter} 
                                />
                                <Button
                                  variant="outline"
@@ -1167,6 +1174,9 @@ export function DocumentsView() {
                                       disabled={false}
                                       showPagination={letter.show_pagination || false}
                                     />
+                                    <LetterDOCXExport 
+                                      letter={letter} 
+                                    />
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1182,6 +1192,9 @@ export function DocumentsView() {
                                    letter={letter} 
                                    disabled={false}
                                    showPagination={true}
+                                 />
+                                 <LetterDOCXExport 
+                                   letter={letter} 
                                  />
                                  <Button
                                    variant="ghost"
