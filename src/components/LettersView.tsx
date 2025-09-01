@@ -298,6 +298,13 @@ const LettersView: React.FC = () => {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+
+                    {/* Status Actions for non-sent letters */}
+                    {letter.status !== 'sent' && (
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Status ändern im Editor</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
