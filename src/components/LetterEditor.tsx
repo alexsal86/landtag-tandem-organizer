@@ -786,10 +786,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     console.log('=== STATUS CHANGE PROCESS COMPLETED ===');
     console.log('Final status:', newStatus);
 
-     // Korrekturlesen automatisch aktivieren bei "review"
-     if (newStatus === 'review') {
-       setIsProofreadingMode(true);
-     }
+    // Korrekturlesen automatisch aktivieren bei "review"
+    if (newStatus === 'review') {
+      setIsProofreadingMode(true);
+    }
     // Korrekturlesen automatisch deaktivieren bei approved/sent
     if (newStatus === 'approved' || newStatus === 'sent') {
       setIsProofreadingMode(false);
