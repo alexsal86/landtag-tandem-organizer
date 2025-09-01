@@ -9,6 +9,7 @@ interface HeaderElement {
   height?: number;
   content?: string;
   fontSize?: number;
+  fontFamily?: string;
   fontWeight?: string;
   color?: string;
   imageUrl?: string;
@@ -119,8 +120,31 @@ export class HeaderRenderer {
   private renderTextElement(element: HeaderElement, pxToMm: number): void {
     // Set font properties
     const fontSize = element.fontSize || 12;
+    const fontFamily = element.fontFamily || 'helvetica';
+    const fontWeight = element.fontWeight || 'normal';
+    
+    console.log('Text element font properties:', { 
+      fontSize, 
+      fontFamily, 
+      fontWeight,
+      content: element.content 
+    });
+    
     this.pdf.setFontSize(fontSize);
-    this.pdf.setFont('helvetica', element.fontWeight === 'bold' ? 'bold' : 'normal');
+    
+    // Handle different font families - jsPDF has limited font support
+    let pdfFontFamily = 'helvetica'; // Default fallback
+    if (fontFamily.toLowerCase().includes('times') || fontFamily.toLowerCase().includes('serif')) {
+      pdfFontFamily = 'times';
+    } else if (fontFamily.toLowerCase().includes('courier') || fontFamily.toLowerCase().includes('mono')) {
+      pdfFontFamily = 'courier';
+    } else if (fontFamily.toLowerCase().includes('helvetica') || fontFamily.toLowerCase().includes('arial') || fontFamily.toLowerCase().includes('sans')) {
+      pdfFontFamily = 'helvetica';
+    }
+    
+    // Set font with proper weight
+    const pdfFontWeight = fontWeight === 'bold' || fontWeight === '700' || fontWeight === '800' || fontWeight === '900' ? 'bold' : 'normal';
+    this.pdf.setFont(pdfFontFamily, pdfFontWeight);
     
     // Use direct mm coordinates from structured editor
     const xInMm = element.x || 0;
@@ -129,12 +153,15 @@ export class HeaderRenderer {
     // Adjust text position - jsPDF positions text by baseline, we need to add font height
     const textYInMm = yInMm + (fontSize * 0.352778); // Convert font size from points to mm and adjust for baseline
     
-    console.log('Text element position:', { 
+    console.log('Text element position and font:', { 
       elementX: element.x, 
       elementY: element.y, 
       pdfX: xInMm, 
       pdfY: yInMm,
       adjustedTextY: textYInMm,
+      pdfFontFamily,
+      pdfFontWeight,
+      fontSize,
       content: element.content 
     });
     
