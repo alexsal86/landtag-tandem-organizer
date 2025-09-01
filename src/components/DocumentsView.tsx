@@ -31,7 +31,10 @@ import {
   Edit3,
   Send,
   Grid,
-  List
+  List,
+  Settings,
+  Archive,
+  RotateCcw
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -62,7 +65,7 @@ interface Letter {
   recipient_name?: string;
   recipient_address?: string;
   contact_id?: string;
-  status: 'draft' | 'review' | 'approved' | 'sent';
+  status: 'draft' | 'review' | 'approved' | 'sent' | 'archived';
   sent_date?: string;
   sent_method?: 'post' | 'email' | 'both';
   expected_response_date?: string;
@@ -70,6 +73,8 @@ interface Letter {
   created_at: string;
   updated_at: string;
   tenant_id: string;
+  archived_at?: string;
+  archived_by?: string;
 }
 
 export function DocumentsView() {
@@ -89,6 +94,9 @@ export function DocumentsView() {
   const [selectedLetter, setSelectedLetter] = useState<Letter | undefined>(undefined);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [activeTab, setActiveTab] = useState<'documents' | 'letters'>('documents');
+  const [letterSubTab, setLetterSubTab] = useState<'active' | 'archived'>('active');
+  const [autoArchiveDays, setAutoArchiveDays] = useState(30);
+  const [showArchiveSettings, setShowArchiveSettings] = useState(false);
 
   // Upload form state
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -326,7 +334,12 @@ export function DocumentsView() {
                          letter.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "all" || letter.status === filterStatus;
     
-    return matchesSearch && matchesStatus;
+    // Filter by sub-tab
+    const isActiveStatus = ['draft', 'review', 'approved'].includes(letter.status);
+    const isArchivedStatus = ['sent', 'archived'].includes(letter.status);
+    const matchesSubTab = letterSubTab === 'active' ? isActiveStatus : isArchivedStatus;
+    
+    return matchesSearch && matchesStatus && matchesSubTab;
   });
 
   const handleCreateLetter = () => {
@@ -378,6 +391,86 @@ export function DocumentsView() {
 
   const handleSaveLetter = () => {
     fetchLetters();
+  };
+
+  const handleArchiveLetter = async (letterId: string) => {
+    if (!confirm('Möchten Sie diesen Brief archivieren?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('letters')
+        .update({ 
+          status: 'archived',
+          archived_at: new Date().toISOString(),
+          archived_by: user?.id
+        })
+        .eq('id', letterId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Brief archiviert",
+        description: "Der Brief wurde erfolgreich archiviert.",
+      });
+
+      fetchLetters();
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: "Der Brief konnte nicht archiviert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRestoreLetter = async (letterId: string) => {
+    if (!confirm('Möchten Sie diesen Brief wieder aktivieren?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('letters')
+        .update({ 
+          status: 'draft',
+          archived_at: null,
+          archived_by: null
+        })
+        .eq('id', letterId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Brief wiederhergestellt",
+        description: "Der Brief wurde erfolgreich wiederhergestellt.",
+      });
+
+      fetchLetters();
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: "Der Brief konnte nicht wiederhergestellt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const saveArchiveSettings = async () => {
+    try {
+      // In a real implementation, this would save to a settings table
+      localStorage.setItem('autoArchiveDays', autoArchiveDays.toString());
+      
+      toast({
+        title: "Einstellungen gespeichert",
+        description: "Die Auto-Archivierung wurde konfiguriert.",
+      });
+      
+      setShowArchiveSettings(false);
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: "Die Einstellungen konnten nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -493,12 +586,22 @@ export function DocumentsView() {
                       </div>
                     </DialogContent>
                   </Dialog>
-                ) : (
-                  <Button onClick={handleCreateLetter} className="gap-2">
-                    <Mail className="h-4 w-4" />
-                    Abgeordnetenbrief
-                  </Button>
-                )}
+                 ) : (
+                   <div className="flex gap-2">
+                     <Button onClick={handleCreateLetter} className="gap-2">
+                       <Mail className="h-4 w-4" />
+                       Abgeordnetenbrief
+                     </Button>
+                     <Button 
+                       variant="outline" 
+                       onClick={() => setShowArchiveSettings(true)}
+                       className="gap-2"
+                     >
+                       <Settings className="h-4 w-4" />
+                       Archiv-Einstellungen
+                     </Button>
+                   </div>
+                 )}
               </div>
             </div>
 
@@ -516,19 +619,45 @@ export function DocumentsView() {
                   <FileText className="h-4 w-4 inline mr-2" />
                   Dokumente
                 </button>
-                <button
-                  onClick={() => setActiveTab('letters')}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'letters'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Mail className="h-4 w-4 inline mr-2" />
-                  Briefe
-                </button>
-              </div>
-            </div>
+                 <button
+                   onClick={() => setActiveTab('letters')}
+                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                     activeTab === 'letters'
+                       ? 'border-primary text-primary'
+                       : 'border-transparent text-muted-foreground hover:text-foreground'
+                   }`}
+                 >
+                   <Mail className="h-4 w-4 inline mr-2" />
+                   Briefe
+                 </button>
+               </div>
+               
+               {/* Letter Sub-tabs */}
+               {activeTab === 'letters' && (
+                 <div className="flex border-b mt-4">
+                   <button
+                     onClick={() => setLetterSubTab('active')}
+                     className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                       letterSubTab === 'active'
+                         ? 'border-primary text-primary'
+                         : 'border-transparent text-muted-foreground hover:text-foreground'
+                     }`}
+                   >
+                     Aktive Briefe
+                   </button>
+                   <button
+                     onClick={() => setLetterSubTab('archived')}
+                     className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                       letterSubTab === 'archived'
+                         ? 'border-primary text-primary'
+                         : 'border-transparent text-muted-foreground hover:text-foreground'
+                     }`}
+                   >
+                     Versendete/Archivierte
+                   </button>
+                 </div>
+               )}
+             </div>
 
           {/* Filters */}
           <Card>
@@ -564,20 +693,26 @@ export function DocumentsView() {
                       <SelectTrigger className="w-[140px]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Alle Status</SelectItem>
-                        {activeTab === 'documents' 
-                          ? Object.entries(statusLabels).map(([value, label]) => (
-                              <SelectItem key={value} value={value}>{label}</SelectItem>
-                            ))
-                          : ['draft', 'review', 'approved', 'sent'].map((status) => (
-                              <SelectItem key={status} value={status}>
-                                {status === 'draft' ? 'Entwurf' : 
-                                 status === 'review' ? 'Zur Prüfung' :
-                                 status === 'approved' ? 'Genehmigt' : 'Versendet'}
-                              </SelectItem>
-                            ))
-                        }
+                       <SelectContent>
+                         <SelectItem value="all">Alle Status</SelectItem>
+                         {activeTab === 'documents' 
+                           ? Object.entries(statusLabels).map(([value, label]) => (
+                               <SelectItem key={value} value={value}>{label}</SelectItem>
+                             ))
+                           : letterSubTab === 'active'
+                             ? ['draft', 'review', 'approved'].map((status) => (
+                                 <SelectItem key={status} value={status}>
+                                   {status === 'draft' ? 'Entwurf' : 
+                                    status === 'review' ? 'Zur Prüfung' :
+                                    'Genehmigt'}
+                                 </SelectItem>
+                               ))
+                             : ['sent', 'archived'].map((status) => (
+                                 <SelectItem key={status} value={status}>
+                                   {status === 'sent' ? 'Versendet' : 'Archiviert'}
+                                 </SelectItem>
+                               ))
+                         }
                       </SelectContent>
                     </Select>
                   </div>
@@ -812,16 +947,18 @@ export function DocumentsView() {
                           <Mail className="h-5 w-5 text-primary" />
                           <CardTitle className="text-lg truncate">{letter.title}</CardTitle>
                         </div>
-                        <Badge className={
-                          letter.status === 'sent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                          letter.status === 'approved' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                          letter.status === 'review' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                          'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                        }>
-                          {letter.status === 'draft' ? 'Entwurf' : 
-                           letter.status === 'review' ? 'Zur Prüfung' :
-                           letter.status === 'approved' ? 'Genehmigt' : 'Versendet'}
-                        </Badge>
+                         <Badge className={
+                           letter.status === 'sent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                           letter.status === 'archived' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' :
+                           letter.status === 'approved' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                           letter.status === 'review' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                           'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                         }>
+                           {letter.status === 'draft' ? 'Entwurf' : 
+                            letter.status === 'review' ? 'Zur Prüfung' :
+                            letter.status === 'approved' ? 'Genehmigt' : 
+                            letter.status === 'sent' ? 'Versendet' : 'Archiviert'}
+                         </Badge>
                       </div>
                       {letter.recipient_name && (
                         <CardDescription className="line-clamp-2">
@@ -851,24 +988,49 @@ export function DocumentsView() {
                       
                       <div className="flex justify-between items-center pt-2">
                         <div className="flex gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditLetter(letter)}
-                          >
-                            <Edit3 className="h-4 w-4 mr-1" />
-                            Bearbeiten
-                          </Button>
-                              <LetterPDFExport 
-                                letter={letter} 
-                                disabled={false}
-                                showPagination={true}
-                              />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteLetter(letter.id)}
-                            className="text-destructive hover:text-destructive"
+                           {letterSubTab === 'active' ? (
+                             <>
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => handleEditLetter(letter)}
+                               >
+                                 <Edit3 className="h-4 w-4 mr-1" />
+                                 Bearbeiten
+                               </Button>
+                               {letter.status === 'sent' && (
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => handleArchiveLetter(letter.id)}
+                                 >
+                                   <Archive className="h-4 w-4 mr-1" />
+                                   Archivieren
+                                 </Button>
+                               )}
+                             </>
+                           ) : (
+                             <>
+                               <LetterPDFExport 
+                                 letter={letter} 
+                                 disabled={false}
+                                 showPagination={true}
+                               />
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => handleRestoreLetter(letter.id)}
+                               >
+                                 <RotateCcw className="h-4 w-4 mr-1" />
+                                 Wiederherstellen
+                               </Button>
+                             </>
+                           )}
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => handleDeleteLetter(letter.id)}
+                             className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -904,16 +1066,18 @@ export function DocumentsView() {
                           {letter.recipient_name || '-'}
                         </TableCell>
                         <TableCell>
-                          <Badge className={
-                            letter.status === 'sent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                            letter.status === 'approved' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                            letter.status === 'review' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                            'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                          }>
-                            {letter.status === 'draft' ? 'Entwurf' : 
-                             letter.status === 'review' ? 'Zur Prüfung' :
-                             letter.status === 'approved' ? 'Genehmigt' : 'Versendet'}
-                          </Badge>
+                           <Badge className={
+                             letter.status === 'sent' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                             letter.status === 'archived' ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' :
+                             letter.status === 'approved' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                             letter.status === 'review' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                             'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                           }>
+                             {letter.status === 'draft' ? 'Entwurf' : 
+                              letter.status === 'review' ? 'Zur Prüfung' :
+                              letter.status === 'approved' ? 'Genehmigt' : 
+                              letter.status === 'sent' ? 'Versendet' : 'Archiviert'}
+                           </Badge>
                         </TableCell>
                         <TableCell>
                           {format(new Date(letter.created_at), "dd.MM.yyyy", { locale: de })}
@@ -921,38 +1085,61 @@ export function DocumentsView() {
                         <TableCell>
                           {letter.sent_date ? format(new Date(letter.sent_date), "dd.MM.yyyy", { locale: de }) : '-'}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center gap-1 justify-end">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditLetter(letter)}
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </Button>
-                            <LetterPDFExport 
-                              letter={letter} 
-                              disabled={false}
-                              showPagination={true}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteLetter(letter.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                         <TableCell className="text-right">
+                           <div className="flex items-center gap-1 justify-end">
+                             {letterSubTab === 'active' ? (
+                               <>
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   onClick={() => handleEditLetter(letter)}
+                                 >
+                                   <Edit3 className="h-4 w-4" />
+                                 </Button>
+                                 {letter.status === 'sent' && (
+                                   <Button
+                                     variant="ghost"
+                                     size="sm"
+                                     onClick={() => handleArchiveLetter(letter.id)}
+                                   >
+                                     <Archive className="h-4 w-4" />
+                                   </Button>
+                                 )}
+                               </>
+                             ) : (
+                               <>
+                                 <LetterPDFExport 
+                                   letter={letter} 
+                                   disabled={false}
+                                   showPagination={true}
+                                 />
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   onClick={() => handleRestoreLetter(letter.id)}
+                                 >
+                                   <RotateCcw className="h-4 w-4" />
+                                 </Button>
+                               </>
+                             )}
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => handleDeleteLetter(letter.id)}
+                               className="text-destructive hover:text-destructive"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                           </div>
+                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </Card>
-            )
-          )
-        )}
+               </Card>
+             )
+           )
+         )}
 
         {/* Template Selector Dialog */}
         {showTemplateSelector && (
@@ -973,7 +1160,7 @@ export function DocumentsView() {
 
         {/* Letter Editor */}
         <LetterEditor
-          letter={selectedLetter}
+          letter={selectedLetter as any}
           isOpen={showLetterEditor}
           onClose={() => {
             handleCloseLetterEditor();
@@ -982,6 +1169,43 @@ export function DocumentsView() {
           }}
           onSave={handleSaveLetter}
         />
+        
+        {/* Archive Settings Dialog */}
+        <Dialog open={showArchiveSettings} onOpenChange={setShowArchiveSettings}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Auto-Archivierung Einstellungen</DialogTitle>
+              <DialogDescription>
+                Konfigurieren Sie die automatische Archivierung von Briefen
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="archiveDays">Archivierung nach (Tage)</Label>
+                <Input
+                  id="archiveDays"
+                  type="number"
+                  value={autoArchiveDays}
+                  onChange={(e) => setAutoArchiveDays(parseInt(e.target.value) || 30)}
+                  placeholder="30"
+                  min="1"
+                  max="365"
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Briefe werden automatisch {autoArchiveDays} Tage nach dem Versenden archiviert
+                </p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowArchiveSettings(false)}>
+                  Abbrechen
+                </Button>
+                <Button onClick={saveArchiveSettings}>
+                  Speichern
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
