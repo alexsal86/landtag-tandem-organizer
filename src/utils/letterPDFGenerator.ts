@@ -264,14 +264,93 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     // Draw debug guides for page 1 (ALWAYS ENABLED for testing)
     drawDebugGuides(1);
     
-    // Footer content for page 1
-    pdf.setFontSize(8);
-    pdf.setTextColor(0, 0, 0);
-    const footerY = 272 + 3;
-    pdf.text("Fraktion GRÜNE im Landtag von Baden-Württemberg • Alexander Salomon • Konrad-Adenauer-Str. 12 • 70197 Stuttgart", leftMargin + 2, footerY);
-    pdf.text("Tel: 0711 / 2063620", leftMargin + 2, footerY + 4);
-    pdf.text("E-Mail: Alexander.Salomon@gruene.landtag-bw.de", leftMargin + 2, footerY + 8);
-    pdf.text("Web: https://www.alexander-salomon.de", leftMargin + 2, footerY + 12);
+    // Footer content from template
+    const renderFooterBlocks = () => {
+      if (!template?.footer_blocks) return;
+      
+      const footerY = 272 + 3;
+      const availableWidth = 165; // 210mm - 25mm left - 20mm right margin
+      let currentX = leftMargin;
+      
+      const footerBlocks = Array.isArray(template.footer_blocks) ? template.footer_blocks : [];
+      const sortedBlocks = footerBlocks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      
+      sortedBlocks.forEach((block: any) => {
+        if (!block.content) return;
+        
+        // Calculate width in mm from percentage
+        const blockWidth = (block.widthPercent || 25) * availableWidth / 100;
+        
+        // Set font properties with proper size handling
+        const fontSize = Math.max(6, Math.min(14, block.fontSize || 8)); // Clamp font size
+        pdf.setFontSize(fontSize);
+        
+        // Set font weight
+        const fontWeight = block.fontWeight === 'bold' ? 'bold' : 'normal';
+        pdf.setFont('helvetica', fontWeight);
+        
+        // Set color if specified
+        if (block.color && block.color.startsWith('#')) {
+          try {
+            const hex = block.color.substring(1);
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            pdf.setTextColor(r, g, b);
+          } catch (e) {
+            pdf.setTextColor(0, 0, 0); // Fallback to black
+          }
+        } else {
+          pdf.setTextColor(0, 0, 0);
+        }
+        
+        // Split content into lines and render within block width
+        const lines = block.content.split('\n');
+        let blockY = footerY;
+        
+        lines.forEach((line: string) => {
+          if (blockY > 290) return; // Don't go beyond page bounds
+          
+          // Simple text wrapping: if text is too wide, try to break it
+          const textWidth = pdf.getTextWidth(line);
+          if (textWidth <= blockWidth - 2) {
+            pdf.text(line, currentX + 1, blockY);
+            blockY += fontSize * 0.5 + 2; // Line height based on font size
+          } else {
+            // Simple word wrap for long lines
+            const words = line.split(' ');
+            let currentLine = '';
+            
+            words.forEach((word: string) => {
+              const testLine = currentLine ? currentLine + ' ' + word : word;
+              const testWidth = pdf.getTextWidth(testLine);
+              
+              if (testWidth <= blockWidth - 2) {
+                currentLine = testLine;
+              } else {
+                if (currentLine) {
+                  pdf.text(currentLine, currentX + 1, blockY);
+                  blockY += fontSize * 0.5 + 2;
+                }
+                currentLine = word;
+              }
+            });
+            
+            if (currentLine && blockY <= 290) {
+              pdf.text(currentLine, currentX + 1, blockY);
+              blockY += fontSize * 0.5 + 2;
+            }
+          }
+        });
+        
+        currentX += blockWidth;
+      });
+      
+      // Reset text color
+      pdf.setTextColor(0, 0, 0);
+    };
+    
+    renderFooterBlocks();
     
     // Reset colors for content
     pdf.setTextColor(0, 0, 0);
@@ -488,14 +567,8 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
             // Draw debug guides for new pages
             drawDebugGuides(currentPage);
             
-            // Add footer for new page
-            pdf.setFontSize(8);
-            pdf.setTextColor(0, 0, 0);
-            const newFooterY = 272 + 3;
-            pdf.text("Fraktion GRÜNE im Landtag von Baden-Württemberg • Alexander Salomon • Konrad-Adenauer-Str. 12 • 70197 Stuttgart", leftMargin + 2, newFooterY);
-            pdf.text("Tel: 0711 / 2063620", leftMargin + 2, newFooterY + 4);
-            pdf.text("E-Mail: Alexander.Salomon@gruene.landtag-bw.de", leftMargin + 2, newFooterY + 8);
-            pdf.text("Web: https://www.alexander-salomon.de", leftMargin + 2, newFooterY + 12);
+            // Add footer for new page using template footer blocks
+            renderFooterBlocks();
             
             // Reset text settings for content
             pdf.setFontSize(11);
