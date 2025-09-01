@@ -126,26 +126,33 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
       // Trigger archiving process for sent letters AFTER successful database update
       if (transitionTo === 'sent') {
         try {
-          console.log('Calling archive-letter function for letter:', letter.id);
-          const { data: archiveResult, error: archiveError } = await supabase.functions.invoke('archive-letter', {
-            body: { letterId: letter.id }
-          });
+          console.log('Using direct PDF archiving for consistent results with LetterPDFExport');
           
-          console.log('Archive function result:', archiveResult);
-          console.log('Archive function error:', archiveError);
+          // Fetch complete letter data for archiving
+          const { data: fullLetter, error: fetchError } = await supabase
+            .from('letters')
+            .select('*')
+            .eq('id', letter.id)
+            .single();
+            
+          if (fetchError || !fullLetter) {
+            throw new Error('Could not fetch complete letter data');
+          }
           
-          if (archiveError) {
-            console.error('Archive function error:', archiveError);
-            // Still update status but show warning
+          // Use the standalone archiving function for consistency  
+          const { archiveLetter } = await import('@/utils/letterArchiving');
+          const archiveResult = await archiveLetter(fullLetter, currentUserId);
+          
+          if (archiveResult) {
             toast({
-              title: "Brief versendet",
-              description: "Brief wurde als versendet markiert. Archivierung wird im Hintergrund verarbeitet.",
+              title: "Brief versendet und archiviert",
+              description: "Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen. Eine Follow-up Aufgabe wurde erstellt.",
               variant: "default",
             });
           } else {
             toast({
-              title: "Brief versendet und archiviert",
-              description: "Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen. Eine Follow-up Aufgabe wurde erstellt.",
+              title: "Brief versendet",
+              description: "Brief wurde als versendet markiert. Archivierung wird im Hintergrund verarbeitet.",
               variant: "default",
             });
           }
