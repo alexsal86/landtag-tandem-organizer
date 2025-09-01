@@ -230,12 +230,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       if (letter?.id) {
         fetchComments();
         fetchCollaborators();
-        fetchCurrentTemplate();
         fetchAttachments();
         fetchWorkflowUserProfiles();
       }
     }
   }, [isOpen, currentTenant, letter?.id]);
+
+  // Separate effect for fetching template after sender infos and info blocks are loaded
+  useEffect(() => {
+    if (isOpen && currentTenant && letter?.id && senderInfos.length > 0 && informationBlocks.length > 0) {
+      fetchCurrentTemplate();
+    }
+  }, [isOpen, currentTenant, letter?.id, senderInfos.length, informationBlocks.length]);
 
   // Auto-save functionality with improved performance
   useEffect(() => {
@@ -369,9 +375,49 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
       if (error) throw error;
       setCurrentTemplate(data);
+      
+      // Apply template defaults if the letter doesn't have sender/info blocks set
+      if (data) {
+        applyTemplateDefaults(data);
+      }
     } catch (error) {
       console.error('Error fetching current template:', error);
     }
+  };
+
+  const applyTemplateDefaults = (template: LetterTemplate) => {
+    setEditedLetter(prev => {
+      const updates: Partial<Letter> = {};
+      
+      // Apply default sender if letter doesn't have one set
+      if (!prev.sender_info_id && template.default_sender_id) {
+        updates.sender_info_id = template.default_sender_id;
+      }
+      
+      // Apply default info blocks if letter doesn't have any set
+      if ((!prev.information_block_ids || prev.information_block_ids.length === 0) && template.default_info_blocks) {
+        updates.information_block_ids = template.default_info_blocks;
+      }
+      
+      // For "Leerer Brief" template, apply defaults from standard entries
+      if (template.name === 'Leerer Brief' || template.id === 'blank') {
+        if (!prev.sender_info_id) {
+          const defaultSender = senderInfos.find(info => info.is_default);
+          if (defaultSender) {
+            updates.sender_info_id = defaultSender.id;
+          }
+        }
+        
+        if (!prev.information_block_ids || prev.information_block_ids.length === 0) {
+          const defaultBlocks = informationBlocks.filter(block => block.is_default);
+          if (defaultBlocks.length > 0) {
+            updates.information_block_ids = defaultBlocks.map(block => block.id);
+          }
+        }
+      }
+      
+      return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+    });
   };
 
   const fetchSenderInfos = async () => {
@@ -483,31 +529,15 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
     const template = templates.find(t => t.id === templateId);
     if (template) {
-      // Get default sender info and info blocks if no specific letter context
-      let defaultSender = template.default_sender_id || '';
-      let defaultInfoBlocks = template.default_info_blocks || [];
-      
-      // For "Leerer Brief", use defaults from standard entries
-      if (template.name === 'Leerer Brief') {
-        // Find default sender info
-        const defaultSenderInfo = senderInfos.find(info => info.is_default);
-        if (defaultSenderInfo) {
-          defaultSender = defaultSenderInfo.id;
-        }
-        
-        // Find default info blocks
-        const defaultBlocks = informationBlocks.filter(block => block.is_default);
-        defaultInfoBlocks = defaultBlocks.map(block => block.id);
-      }
-      
       setEditedLetter(prev => ({ 
         ...prev, 
-        template_id: templateId,
-        sender_info_id: prev.sender_info_id || defaultSender,
-        information_block_ids: prev.information_block_ids?.length ? prev.information_block_ids : defaultInfoBlocks
+        template_id: templateId
       }));
       setCurrentTemplate(template);
       broadcastContentChange('template_id', templateId);
+      
+      // Apply template defaults
+      applyTemplateDefaults(template);
     }
   };
 
