@@ -199,13 +199,19 @@ export class HeaderRenderer {
     // Render debug box around text element (shows the actual bounding box)
     this.renderDebugBox(xInMm, yInMm, testFontSize, element.content || '');
     
-    // Set text color AFTER debug rendering to avoid red text
+    // Set text color BEFORE debug rendering to avoid red text
     if (element.color && element.color.startsWith('#')) {
       const { r, g, b } = this.hexToRgb(element.color);
       this.pdf.setTextColor(r, g, b);
     } else {
       this.pdf.setTextColor(0, 0, 0); // Default to black
     }
+    
+    // CRITICAL: Set font size again RIGHT BEFORE rendering text
+    // because other parts of the PDF generation might override it
+    console.log('Setting font size again RIGHT before text rendering:', testFontSize);
+    this.pdf.setFontSize(testFontSize);
+    this.pdf.setFont(pdfFontFamily, pdfFontWeight);
     
     // Render text at adjusted position
     this.pdf.text(element.content || '', xInMm, textYInMm);
