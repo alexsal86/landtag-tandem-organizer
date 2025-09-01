@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
-import { LetterHeaderEditor } from './LetterHeaderEditor';
+import { FabricHeaderEditor } from './FabricHeaderEditor';
 
 interface LetterTemplate {
   id: string;
@@ -473,7 +473,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       {showHeaderEditor && editingTemplate && (
         <Dialog open={showHeaderEditor} onOpenChange={setShowHeaderEditor}>
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
-            <LetterHeaderEditor
+            <FabricHeaderEditor
               template={editingTemplate}
               onSave={handleSaveHeader}
               onCancel={() => setShowHeaderEditor(false)}
