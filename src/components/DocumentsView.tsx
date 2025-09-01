@@ -280,12 +280,18 @@ export function DocumentsView() {
     if (!confirm('Sind Sie sicher, dass Sie dieses Dokument löschen möchten?')) return;
 
     try {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('documents')
-        .remove([document.file_path]);
+      // Only attempt to delete from storage if it's not an archived letter document
+      if (document.document_type !== 'archived_letter') {
+        // Delete from storage
+        const { error: storageError } = await supabase.storage
+          .from('documents')
+          .remove([document.file_path]);
 
-      if (storageError) throw storageError;
+        if (storageError) {
+          console.warn('Storage deletion error:', storageError);
+          // Don't throw error for storage deletion, as archived letters may not be in normal storage
+        }
+      }
 
       // Delete from database
       const { error: dbError } = await supabase
