@@ -294,12 +294,12 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
               
               <div>
                 <Label htmlFor="default-sender">Standard-Absenderinformation</Label>
-                <Select value={newTemplate.default_sender_id} onValueChange={(value) => setNewTemplate(prev => ({ ...prev, default_sender_id: value }))}>
+                <Select value={newTemplate.default_sender_id || "none"} onValueChange={(value) => setNewTemplate(prev => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Absenderinformation auswählen..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Keine Auswahl</SelectItem>
+                    <SelectItem value="none">Keine Auswahl</SelectItem>
                     {senderInfos.map((sender) => (
                       <SelectItem key={sender.id} value={sender.id}>
                         {sender.name} - {sender.organization}

@@ -351,12 +351,12 @@ const LetterTemplateManager: React.FC = () => {
               
               <div>
                 <Label htmlFor="default-sender">Standard-Absenderinformation</Label>
-                <Select value={formData.default_sender_id} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value }))}>
+                <Select value={formData.default_sender_id || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Absenderinformation auswählen..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Keine Auswahl</SelectItem>
+                    <SelectItem value="none">Keine Auswahl</SelectItem>
                     {senderInfos.map((sender) => (
                       <SelectItem key={sender.id} value={sender.id}>
                         {sender.name} - {sender.organization}
@@ -524,12 +524,12 @@ const LetterTemplateManager: React.FC = () => {
               
               <div>
                 <Label htmlFor="edit-default-sender">Standard-Absenderinformation</Label>
-                <Select value={formData.default_sender_id} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value }))}>
+                <Select value={formData.default_sender_id || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Absenderinformation auswählen..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Keine Auswahl</SelectItem>
+                    <SelectItem value="none">Keine Auswahl</SelectItem>
                     {senderInfos.map((sender) => (
                       <SelectItem key={sender.id} value={sender.id}>
                         {sender.name} - {sender.organization}
