@@ -216,7 +216,7 @@ export const FabricFooterEditor: React.FC<FabricFooterEditorProps> = ({
       parts.push(`${senderInfo.landtag_postal_code} ${senderInfo.landtag_city}`);
     }
     if (senderInfo.landtag_email) {
-      parts.push(senderInfo.landtag_email);
+      parts.push(senderInfo.landtag_email.replace('@', '@\n'));
     }
     return parts.join('\n');
   };
@@ -231,7 +231,7 @@ export const FabricFooterEditor: React.FC<FabricFooterEditorProps> = ({
       parts.push(`${senderInfo.wahlkreis_postal_code} ${senderInfo.wahlkreis_city}`);
     }
     if (senderInfo.wahlkreis_email) {
-      parts.push(senderInfo.wahlkreis_email);
+      parts.push(senderInfo.wahlkreis_email.replace('@', '@\n'));
     }
     return parts.join('\n');
   };

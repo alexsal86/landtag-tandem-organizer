@@ -454,6 +454,11 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
               formattedLine = formattedLine.replace('Web: ', '').replace(/^https?:\/\/(www\.)?/, '');
             }
             
+            // Add line break after @ in email addresses
+            if (formattedLine.includes('@') && !formattedLine.startsWith('@')) {
+              formattedLine = formattedLine.replace('@', '@\n');
+            }
+            
             // Replace social media text with @ symbol
             if (formattedLine.startsWith('Instagram: ')) {
               formattedLine = formattedLine.replace('Instagram: ', '@ ');
