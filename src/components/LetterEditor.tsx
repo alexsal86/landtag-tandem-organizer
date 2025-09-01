@@ -43,6 +43,7 @@ interface Letter {
   created_at: string;
   updated_at: string;
   tenant_id: string;
+  show_pagination?: boolean;
   // Workflow tracking fields
   submitted_for_review_at?: string;
   submitted_for_review_by?: string;
@@ -226,6 +227,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       });
       // Set proofreading mode based on actual letter status
       setIsProofreadingMode(letter.status === 'review');
+      // Set pagination setting from letter data
+      setShowPagination(letter.show_pagination || false);
       
       // If it's a new letter with template data, we'll apply defaults after template loads
       if (!letter.id && letter.template_id) {
@@ -1077,7 +1080,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             sender_info_id: editedLetter.sender_info_id,
             information_block_ids: editedLetter.information_block_ids,
             letter_date: editedLetter.letter_date,
-            status: editedLetter.status || 'draft'
+            status: editedLetter.status || 'draft',
+            show_pagination: showPagination
           });
 
         if (error) throw error;
@@ -1111,7 +1115,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     editedLetter.sender_info_id !== letter.sender_info_id ||
     JSON.stringify(editedLetter.information_block_ids || []) !== JSON.stringify(letter.information_block_ids || []) ||
     editedLetter.letter_date !== letter.letter_date ||
-    editedLetter.status !== letter.status
+    editedLetter.status !== letter.status ||
+    showPagination !== (letter.show_pagination || false)
   );
 
   if (!isOpen) return null;

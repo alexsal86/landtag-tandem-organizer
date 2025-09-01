@@ -79,6 +79,7 @@ interface Letter {
   created_at: string;
   updated_at: string;
   tenant_id: string;
+  show_pagination?: boolean;
   archived_at?: string;
   archived_by?: string;
 }
@@ -1066,11 +1067,11 @@ export function DocumentsView() {
                         <div className="flex gap-1">
                            {letterSubTab === 'active' ? (
                              <>
-                                <LetterPDFExport 
-                                  letter={letter} 
-                                  disabled={false}
-                                  showPagination={true}
-                                />
+                                  <LetterPDFExport 
+                                    letter={letter} 
+                                    disabled={false}
+                                    showPagination={letter.show_pagination || false}
+                                  />
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -1161,11 +1162,11 @@ export function DocumentsView() {
                             <div className="flex items-center gap-1 justify-end">
                               {letterSubTab === 'active' ? (
                                 <>
-                                  <LetterPDFExport 
-                                    letter={letter} 
-                                    disabled={false}
-                                    showPagination={true}
-                                  />
+                                    <LetterPDFExport 
+                                      letter={letter} 
+                                      disabled={false}
+                                      showPagination={letter.show_pagination || false}
+                                    />
                                   <Button
                                     variant="ghost"
                                     size="sm"

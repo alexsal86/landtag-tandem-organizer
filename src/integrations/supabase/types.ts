@@ -2400,6 +2400,7 @@ export type Database = {
           sent_by: string | null
           sent_date: string | null
           sent_method: string | null
+          show_pagination: boolean | null
           status: string
           subject: string | null
           subject_line: string | null
@@ -2436,6 +2437,7 @@ export type Database = {
           sent_by?: string | null
           sent_date?: string | null
           sent_method?: string | null
+          show_pagination?: boolean | null
           status?: string
           subject?: string | null
           subject_line?: string | null
@@ -2472,6 +2474,7 @@ export type Database = {
           sent_by?: string | null
           sent_date?: string | null
           sent_method?: string | null
+          show_pagination?: boolean | null
           status?: string
           subject?: string | null
           subject_line?: string | null

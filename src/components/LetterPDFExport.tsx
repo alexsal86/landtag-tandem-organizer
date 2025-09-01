@@ -21,6 +21,7 @@ interface Letter {
   status: string;
   sent_date?: string;
   created_at: string;
+  show_pagination?: boolean;
 }
 
 interface LetterTemplate {
@@ -669,9 +670,12 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         }
       }
       
-      // Add pagination only to letter pages (not attachment pages)
+      // Add pagination only to letter pages (not attachment pages) and only if enabled
+      const shouldShowPagination = showPagination || letter.show_pagination;
       const totalLetterPages = letterPages;
-      for (let page = 1; page <= totalLetterPages; page++) {
+      
+      if (shouldShowPagination) {
+        for (let page = 1; page <= totalLetterPages; page++) {
         pdf.setPage(page);
         
         // Pagination 4.23mm above footer (272mm - 4.23mm = 267.77mm)
@@ -699,6 +703,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         const pageTextX = (pageWidth - pageTextWidth) / 2; // Center horizontally
         pdf.text(pageText, pageTextX, paginationY);
         pdf.setTextColor(0, 0, 0);
+        }
       }
       
       // Save the PDF or return blob
