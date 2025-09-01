@@ -283,6 +283,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         
         // Set font properties with proper size handling
         const fontSize = Math.max(6, Math.min(14, block.fontSize || 8)); // Clamp font size
+        const lineHeight = (block.lineHeight || 1) * fontSize; // Apply line height multiplier
         pdf.setFontSize(fontSize);
         
         // Set font weight
@@ -304,43 +305,38 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
           pdf.setTextColor(0, 0, 0);
         }
         
+        let blockY = footerY;
+        
+        // Render block title in bold
+        if (block.title) {
+          pdf.setFont('helvetica', 'bold');
+          const wrappedTitle = pdf.splitTextToSize(block.title, blockWidth - 2);
+          wrappedTitle.forEach((titleLine: string) => {
+            if (blockY <= 290) {
+              pdf.text(titleLine, currentX + 1, blockY);
+              blockY += lineHeight;
+            }
+          });
+          blockY += 1; // Small gap after title
+          
+          // Reset to original font weight for content
+          pdf.setFont('helvetica', fontWeight);
+        }
+        
         // Split content into lines and render within block width
         const lines = block.content.split('\n');
-        let blockY = footerY;
         
         lines.forEach((line: string) => {
           if (blockY > 290) return; // Don't go beyond page bounds
           
-          // Simple text wrapping: if text is too wide, try to break it
-          const textWidth = pdf.getTextWidth(line);
-          if (textWidth <= blockWidth - 2) {
-            pdf.text(line, currentX + 1, blockY);
-            blockY += fontSize; // Line spacing = 1 (font size)
-          } else {
-            // Simple word wrap for long lines
-            const words = line.split(' ');
-            let currentLine = '';
-            
-            words.forEach((word: string) => {
-              const testLine = currentLine ? currentLine + ' ' + word : word;
-              const testWidth = pdf.getTextWidth(testLine);
-              
-              if (testWidth <= blockWidth - 2) {
-                currentLine = testLine;
-              } else {
-                if (currentLine) {
-                  pdf.text(currentLine, currentX + 1, blockY);
-                  blockY += fontSize; // Line spacing = 1 (font size)
-                }
-                currentLine = word;
-              }
-            });
-            
-            if (currentLine && blockY <= 290) {
-              pdf.text(currentLine, currentX + 1, blockY);
-              blockY += fontSize; // Line spacing = 1 (font size)
+          // Use jsPDF's text wrapping for better word breaks
+          const wrappedLines = pdf.splitTextToSize(line, blockWidth - 2);
+          wrappedLines.forEach((wrappedLine: string) => {
+            if (blockY <= 290) {
+              pdf.text(wrappedLine, currentX + 1, blockY);
+              blockY += lineHeight;
             }
-          }
+          });
         });
         
         currentX += blockWidth;

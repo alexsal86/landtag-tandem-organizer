@@ -22,6 +22,7 @@ interface FooterBlock {
   fontFamily: string;
   fontWeight: string;
   color: string;
+  lineHeight?: number; // Line height multiplier (default: 1)
 }
 
 interface SenderInfo {
@@ -111,7 +112,8 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontSize: 10,
         fontFamily: 'Arial',
         fontWeight: 'normal',
-        color: '#000000'
+        color: '#000000',
+        lineHeight: 1
       },
       {
         id: 'wahlkreis',
@@ -123,7 +125,8 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontSize: 10,
         fontFamily: 'Arial',
         fontWeight: 'normal',
-        color: '#000000'
+        color: '#000000',
+        lineHeight: 1
       },
       {
         id: 'communication',
@@ -135,7 +138,8 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontSize: 10,
         fontFamily: 'Arial',
         fontWeight: 'normal',
-        color: '#000000'
+        color: '#000000',
+        lineHeight: 1
       },
       {
         id: 'general',
@@ -147,7 +151,8 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontSize: 10,
         fontFamily: 'Arial',
         fontWeight: 'normal',
-        color: '#000000'
+        color: '#000000',
+        lineHeight: 1
       }
     ];
 
@@ -214,7 +219,8 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
       fontSize: 10,
       fontFamily: 'Arial',
       fontWeight: 'normal',
-      color: '#000000'
+      color: '#000000',
+      lineHeight: 1
     };
     setBlocks([...blocks, newBlock]);
     setSelectedBlockId(newBlock.id);
@@ -471,6 +477,27 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
                       onChange={(e) => updateBlock(selectedBlock.id, { color: e.target.value })}
                     />
                   </div>
+                </div>
+
+                <Separator />
+
+                {/* Line Height */}
+                <div>
+                  <Label>Zeilenabstand</Label>
+                  <Select
+                    value={selectedBlock.lineHeight?.toString() || '1'}
+                    onValueChange={(value) => updateBlock(selectedBlock.id, { lineHeight: parseFloat(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0.8">Eng (0.8)</SelectItem>
+                      <SelectItem value="1">Normal (1.0)</SelectItem>
+                      <SelectItem value="1.2">Weit (1.2)</SelectItem>
+                      <SelectItem value="1.5">Sehr weit (1.5)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             ) : (
