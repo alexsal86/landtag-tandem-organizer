@@ -104,18 +104,26 @@ const LettersView: React.FC = () => {
     setShowTemplateSelector(false);
     
     // Create a new letter object with template information
-    const newLetter: Partial<Letter> = {
+    const newLetter = {
+      id: undefined, // New letter has no ID yet
       title: '',
       content: '',
       content_html: '',
-      status: 'draft',
+      status: 'draft' as const,
       template_id: template?.id,
       sender_info_id: template?.default_sender_id,
-      information_block_ids: template?.default_info_blocks || []
+      information_block_ids: template?.default_info_blocks || [],
+      tenant_id: currentTenant?.id || '',
+      user_id: user?.id || '',
+      created_by: user?.id || '',
+      created_at: '',
+      updated_at: '',
+      recipient_name: '',
+      recipient_address: ''
     };
     
     console.log('New letter with template:', newLetter);
-    setSelectedLetter(newLetter as Letter);
+    setSelectedLetter(newLetter);
     setIsEditorOpen(true);
   };
 
