@@ -136,6 +136,11 @@ export class HeaderRenderer {
     
     this.pdf.setFontSize(fontSizeInPoints);
     
+    // Debug: Check if setFontSize actually worked
+    const actualFontSize = this.pdf.getFontSize();
+    console.log('PDF fontSize after setFontSize:', actualFontSize);
+    console.log('Expected fontSize:', fontSizeInPoints);
+    
     // Handle different font families - jsPDF has limited font support
     // Map from StructuredHeaderEditor font names to jsPDF font names
     let pdfFontFamily = 'helvetica'; // Default fallback
