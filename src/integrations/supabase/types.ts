@@ -2287,6 +2287,8 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          default_info_blocks: string[] | null
+          default_sender_id: string | null
           id: string
           is_active: boolean | null
           is_default: boolean | null
@@ -2300,6 +2302,8 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          default_info_blocks?: string[] | null
+          default_sender_id?: string | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
@@ -2313,6 +2317,8 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          default_info_blocks?: string[] | null
+          default_sender_id?: string | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
@@ -2323,7 +2329,15 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_letter_templates_sender"
+            columns: ["default_sender_id"]
+            isOneToOne: false
+            referencedRelation: "sender_information"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       letter_workflow_history: {
         Row: {

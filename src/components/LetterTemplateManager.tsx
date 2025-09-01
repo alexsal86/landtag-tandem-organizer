@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,6 +26,22 @@ interface LetterTemplate {
   created_at: string;
   updated_at: string;
   tenant_id: string;
+  default_sender_id?: string;
+  default_info_blocks?: string[];
+}
+
+interface SenderInformation {
+  id: string;
+  name: string;
+  organization: string;
+  is_default: boolean;
+}
+
+interface InformationBlock {
+  id: string;
+  name: string;
+  label: string;
+  is_default: boolean;
 }
 
 const LetterTemplateManager: React.FC = () => {
@@ -32,6 +50,8 @@ const LetterTemplateManager: React.FC = () => {
   const { toast } = useToast();
   
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
+  const [senderInfos, setSenderInfos] = useState<SenderInformation[]>([]);
+  const [infoBlocks, setInfoBlocks] = useState<InformationBlock[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<LetterTemplate | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -40,12 +60,16 @@ const LetterTemplateManager: React.FC = () => {
     name: '',
     letterhead_html: '',
     letterhead_css: '',
-    response_time_days: 21
+    response_time_days: 21,
+    default_sender_id: '',
+    default_info_blocks: [] as string[]
   });
 
   useEffect(() => {
     if (currentTenant) {
       fetchTemplates();
+      fetchSenderInfos();
+      fetchInformationBlocks();
     }
   }, [currentTenant]);
 
@@ -76,6 +100,42 @@ const LetterTemplateManager: React.FC = () => {
     }
   };
 
+  const fetchSenderInfos = async () => {
+    if (!currentTenant) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('sender_information')
+        .select('id, name, organization, is_default')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .order('is_default', { ascending: false });
+
+      if (error) throw error;
+      setSenderInfos(data || []);
+    } catch (error) {
+      console.error('Error fetching sender infos:', error);
+    }
+  };
+
+  const fetchInformationBlocks = async () => {
+    if (!currentTenant) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('information_blocks')
+        .select('id, name, label, is_default')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .order('is_default', { ascending: false });
+
+      if (error) throw error;
+      setInfoBlocks(data || []);
+    } catch (error) {
+      console.error('Error fetching info blocks:', error);
+    }
+  };
+
   const handleCreateTemplate = async () => {
     if (!currentTenant || !user || !formData.name.trim()) return;
 
@@ -88,7 +148,9 @@ const LetterTemplateManager: React.FC = () => {
           name: formData.name.trim(),
           letterhead_html: formData.letterhead_html,
           letterhead_css: formData.letterhead_css,
-          response_time_days: formData.response_time_days
+          response_time_days: formData.response_time_days,
+          default_sender_id: formData.default_sender_id || null,
+          default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null
         });
 
       if (error) throw error;
@@ -122,6 +184,8 @@ const LetterTemplateManager: React.FC = () => {
           letterhead_html: formData.letterhead_html,
           letterhead_css: formData.letterhead_css,
           response_time_days: formData.response_time_days,
+          default_sender_id: formData.default_sender_id || null,
+          default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingTemplate.id);
@@ -178,7 +242,9 @@ const LetterTemplateManager: React.FC = () => {
       name: '',
       letterhead_html: '',
       letterhead_css: '',
-      response_time_days: 21
+      response_time_days: 21,
+      default_sender_id: '',
+      default_info_blocks: []
     });
   };
 
@@ -188,7 +254,9 @@ const LetterTemplateManager: React.FC = () => {
       name: template.name,
       letterhead_html: template.letterhead_html,
       letterhead_css: template.letterhead_css,
-      response_time_days: template.response_time_days
+      response_time_days: template.response_time_days,
+      default_sender_id: template.default_sender_id || '',
+      default_info_blocks: template.default_info_blocks || []
     });
   };
 
@@ -279,6 +347,57 @@ const LetterTemplateManager: React.FC = () => {
                   min="1"
                   max="365"
                 />
+              </div>
+              
+              <div>
+                <Label htmlFor="default-sender">Standard-Absenderinformation</Label>
+                <Select value={formData.default_sender_id} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Absenderinformation auswählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Keine Auswahl</SelectItem>
+                    {senderInfos.map((sender) => (
+                      <SelectItem key={sender.id} value={sender.id}>
+                        {sender.name} - {sender.organization}
+                        {sender.is_default && " (Standard)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label>Standard-Informationsblöcke</Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {infoBlocks.map((block) => (
+                    <div key={block.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`block-${block.id}`}
+                        checked={formData.default_info_blocks.includes(block.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              default_info_blocks: [...prev.default_info_blocks, block.id]
+                            }));
+                          } else {
+                            setFormData(prev => ({
+                              ...prev,
+                              default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id)
+                            }));
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`block-${block.id}`} className="text-sm">
+                        {block.label} {block.is_default && "(Standard)"}
+                      </Label>
+                    </div>
+                  ))}
+                  {infoBlocks.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
+                  )}
+                </div>
               </div>
               
               <div className="flex justify-end space-x-2">
@@ -401,6 +520,57 @@ const LetterTemplateManager: React.FC = () => {
                   min="1"
                   max="365"
                 />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-default-sender">Standard-Absenderinformation</Label>
+                <Select value={formData.default_sender_id} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Absenderinformation auswählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Keine Auswahl</SelectItem>
+                    {senderInfos.map((sender) => (
+                      <SelectItem key={sender.id} value={sender.id}>
+                        {sender.name} - {sender.organization}
+                        {sender.is_default && " (Standard)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label>Standard-Informationsblöcke</Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {infoBlocks.map((block) => (
+                    <div key={block.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-block-${block.id}`}
+                        checked={formData.default_info_blocks.includes(block.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              default_info_blocks: [...prev.default_info_blocks, block.id]
+                            }));
+                          } else {
+                            setFormData(prev => ({
+                              ...prev,
+                              default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id)
+                            }));
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`edit-block-${block.id}`} className="text-sm">
+                        {block.label} {block.is_default && "(Standard)"}
+                      </Label>
+                    </div>
+                  ))}
+                  {infoBlocks.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
+                  )}
+                </div>
               </div>
               
               <div className="flex justify-end space-x-2">

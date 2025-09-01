@@ -62,6 +62,8 @@ interface LetterTemplate {
   response_time_days: number;
   is_default: boolean;
   is_active: boolean;
+  default_sender_id?: string;
+  default_info_blocks?: string[];
 }
 
 interface Contact {
@@ -468,7 +470,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
   const handleTemplateChange = async (templateId: string) => {
     if (!templateId || templateId === 'none') {
-      setEditedLetter(prev => ({ ...prev, template_id: undefined }));
+      setEditedLetter(prev => ({ 
+        ...prev, 
+        template_id: undefined,
+        sender_info_id: '',
+        information_block_ids: []
+      }));
       setCurrentTemplate(null);
       broadcastContentChange('template_id', '');
       return;
@@ -476,7 +483,29 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
     const template = templates.find(t => t.id === templateId);
     if (template) {
-      setEditedLetter(prev => ({ ...prev, template_id: templateId }));
+      // Get default sender info and info blocks if no specific letter context
+      let defaultSender = template.default_sender_id || '';
+      let defaultInfoBlocks = template.default_info_blocks || [];
+      
+      // For "Leerer Brief", use defaults from standard entries
+      if (template.name === 'Leerer Brief') {
+        // Find default sender info
+        const defaultSenderInfo = senderInfos.find(info => info.is_default);
+        if (defaultSenderInfo) {
+          defaultSender = defaultSenderInfo.id;
+        }
+        
+        // Find default info blocks
+        const defaultBlocks = informationBlocks.filter(block => block.is_default);
+        defaultInfoBlocks = defaultBlocks.map(block => block.id);
+      }
+      
+      setEditedLetter(prev => ({ 
+        ...prev, 
+        template_id: templateId,
+        sender_info_id: prev.sender_info_id || defaultSender,
+        information_block_ids: prev.information_block_ids?.length ? prev.information_block_ids : defaultInfoBlocks
+      }));
       setCurrentTemplate(template);
       broadcastContentChange('template_id', templateId);
     }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Layout, Settings, Eye } from 'lucide-react';
+import { FileText, Plus, Layout, Settings, Eye, User, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,6 +27,8 @@ interface LetterTemplate {
   created_at: string;
   updated_at: string;
   tenant_id: string;
+  default_sender_id?: string;
+  default_info_blocks?: string[];
 }
 
 interface LetterTemplateSelectorProps {
@@ -41,6 +45,8 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
   const { toast } = useToast();
   
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
+  const [senderInfos, setSenderInfos] = useState<any[]>([]);
+  const [infoBlocks, setInfoBlocks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showTemplateManager, setShowTemplateManager] = useState(false);
@@ -48,12 +54,16 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
     name: '',
     letterhead_html: '',
     letterhead_css: '',
-    response_time_days: 21
+    response_time_days: 21,
+    default_sender_id: '',
+    default_info_blocks: [] as string[]
   });
 
   useEffect(() => {
     if (currentTenant) {
       fetchTemplates();
+      fetchSenderInfos();
+      fetchInformationBlocks();
     }
   }, [currentTenant]);
 
@@ -84,6 +94,42 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
     }
   };
 
+  const fetchSenderInfos = async () => {
+    if (!currentTenant) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('sender_information')
+        .select('id, name, organization, is_default')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .order('is_default', { ascending: false });
+
+      if (error) throw error;
+      setSenderInfos(data || []);
+    } catch (error) {
+      console.error('Error fetching sender infos:', error);
+    }
+  };
+
+  const fetchInformationBlocks = async () => {
+    if (!currentTenant) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('information_blocks')
+        .select('id, name, label, is_default')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .order('is_default', { ascending: false });
+
+      if (error) throw error;
+      setInfoBlocks(data || []);
+    } catch (error) {
+      console.error('Error fetching info blocks:', error);
+    }
+  };
+
   const handleCreateTemplate = async () => {
     if (!currentTenant || !user || !newTemplate.name.trim()) return;
 
@@ -96,7 +142,9 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
           name: newTemplate.name.trim(),
           letterhead_html: newTemplate.letterhead_html,
           letterhead_css: newTemplate.letterhead_css,
-          response_time_days: newTemplate.response_time_days
+          response_time_days: newTemplate.response_time_days,
+          default_sender_id: newTemplate.default_sender_id || null,
+          default_info_blocks: newTemplate.default_info_blocks.length > 0 ? newTemplate.default_info_blocks : null
         });
 
       if (error) throw error;
@@ -111,7 +159,9 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
         name: '',
         letterhead_html: '',
         letterhead_css: '',
-        response_time_days: 21
+        response_time_days: 21,
+        default_sender_id: '',
+        default_info_blocks: []
       });
       fetchTemplates();
     } catch (error) {
@@ -242,6 +292,57 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
                 />
               </div>
               
+              <div>
+                <Label htmlFor="default-sender">Standard-Absenderinformation</Label>
+                <Select value={newTemplate.default_sender_id} onValueChange={(value) => setNewTemplate(prev => ({ ...prev, default_sender_id: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Absenderinformation auswählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Keine Auswahl</SelectItem>
+                    {senderInfos.map((sender) => (
+                      <SelectItem key={sender.id} value={sender.id}>
+                        {sender.name} - {sender.organization}
+                        {sender.is_default && " (Standard)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label>Standard-Informationsblöcke</Label>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {infoBlocks.map((block) => (
+                    <div key={block.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`block-${block.id}`}
+                        checked={newTemplate.default_info_blocks.includes(block.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setNewTemplate(prev => ({
+                              ...prev,
+                              default_info_blocks: [...prev.default_info_blocks, block.id]
+                            }));
+                          } else {
+                            setNewTemplate(prev => ({
+                              ...prev,
+                              default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id)
+                            }));
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`block-${block.id}`} className="text-sm">
+                        {block.label} {block.is_default && "(Standard)"}
+                      </Label>
+                    </div>
+                  ))}
+                  {infoBlocks.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
+                  )}
+                </div>
+              </div>
+              
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                   Abbrechen
@@ -297,15 +398,31 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="flex items-center justify-between">
-                <Badge variant="outline" className="text-xs">
-                  {template.response_time_days} Tage
-                </Badge>
-                {template.is_default && (
-                  <Badge variant="default" className="text-xs">
-                    Standard
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-xs">
+                    {template.response_time_days} Tage
                   </Badge>
-                )}
+                  {template.is_default && (
+                    <Badge variant="default" className="text-xs">
+                      Standard
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {template.default_sender_id && (
+                    <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      Absender
+                    </Badge>
+                  )}
+                  {template.default_info_blocks && template.default_info_blocks.length > 0 && (
+                    <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                      <Info className="h-3 w-3" />
+                      {template.default_info_blocks.length} Info-Blöcke
+                    </Badge>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
