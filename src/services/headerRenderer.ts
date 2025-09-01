@@ -122,12 +122,6 @@ export class HeaderRenderer {
     this.pdf.setFontSize(fontSize);
     this.pdf.setFont('helvetica', element.fontWeight === 'bold' ? 'bold' : 'normal');
     
-    // Set text color
-    if (element.color && element.color.startsWith('#')) {
-      const { r, g, b } = this.hexToRgb(element.color);
-      this.pdf.setTextColor(r, g, b);
-    }
-    
     // Use direct mm coordinates from structured editor
     const xInMm = element.x || 0;
     const yInMm = element.y || 0;
@@ -146,6 +140,14 @@ export class HeaderRenderer {
     
     // Render debug box around text element (shows the actual bounding box)
     this.renderDebugBox(xInMm, yInMm, fontSize, element.content || '');
+    
+    // Set text color AFTER debug rendering to avoid red text
+    if (element.color && element.color.startsWith('#')) {
+      const { r, g, b } = this.hexToRgb(element.color);
+      this.pdf.setTextColor(r, g, b);
+    } else {
+      this.pdf.setTextColor(0, 0, 0); // Default to black
+    }
     
     // Render text at adjusted position
     this.pdf.text(element.content || '', xInMm, textYInMm);
@@ -269,11 +271,17 @@ export class HeaderRenderer {
       boxWidth = width as number;
       boxHeight = height as number;
     } else {
-      // For text elements, estimate dimensions based on content and font size
-      const fontSize = width as number; // width parameter contains fontSize for text
-      const content = height as string; // height parameter contains content for text
-      boxWidth = Math.max(content.length * fontSize * 0.6, 20); // Rough estimation
-      boxHeight = fontSize * 1.2; // Font size with some padding
+      // For text elements, calculate dimensions properly in mm
+      const fontSize = width as number; // Font size in points
+      const content = height as string; // Text content
+      
+      // Convert font size from points to mm (1 point = 0.352778 mm)
+      const fontSizeMm = fontSize * 0.352778;
+      
+      // Estimate text width based on character count (rough approximation)
+      // Average character width is about 0.6 of font height for most fonts
+      boxWidth = Math.max(content.length * fontSizeMm * 0.6, 10);
+      boxHeight = fontSizeMm * 1.2; // Font size with some padding
     }
     
     // Draw debug rectangle with red border
