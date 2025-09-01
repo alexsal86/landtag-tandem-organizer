@@ -493,8 +493,10 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           const lines = pdf.splitTextToSize(paragraph.trim(), currentMaxWidth);
           
           lines.forEach((line, lineIndex) => {
-            // Check if we need a new page
-            if (currentY + lineHeight > pageHeight - 40) { // Leave 40mm for footer
+            // Check if we need a new page - adjust available height based on pagination setting
+            const shouldShowPagination = showPagination || letter.show_pagination;
+            const availableHeight = shouldShowPagination ? pageHeight - 50 : pageHeight - 40; // Less space if pagination enabled
+            if (currentY + lineHeight > availableHeight) {
               pdf.addPage();
               letterPages++;
               currentPage++;

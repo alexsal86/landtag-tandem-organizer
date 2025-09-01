@@ -245,8 +245,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         recipient_address: '',
         status: 'draft'
       });
-      // Reset proofreading mode for new letters
+      // Reset proofreading mode and pagination for new letters
       setIsProofreadingMode(false);
+      setShowPagination(false);
     }
   }, [letter]);
 
