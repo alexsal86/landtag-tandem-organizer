@@ -50,6 +50,11 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    console.log('=== FABRIC EDITOR INIT ===');
+    console.log('Template data:', template);
+    console.log('Header elements:', template?.header_text_elements);
+    console.log('Header layout type:', template?.header_layout_type);
+
     const canvas = new FabricCanvas(canvasRef.current, {
       width: 595, // A4 width in points
       height: 200, // Header height
@@ -65,7 +70,10 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
 
     // Load existing header elements
     if (template?.header_text_elements) {
+      console.log('Loading header elements:', template.header_text_elements);
       loadHeaderElements(canvas, template.header_text_elements);
+    } else {
+      console.log('No header elements to load');
     }
 
     // Event listeners
@@ -240,9 +248,32 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
   };
 
   const loadHeaderElements = async (canvas: FabricCanvas, elements: any[]) => {
-    for (const element of elements) {
+    console.log('=== LOADING HEADER ELEMENTS ===');
+    console.log('Raw elements data:', elements);
+    console.log('Type of elements:', typeof elements);
+    
+    // Parse elements if they come as JSON string
+    let parsedElements = elements;
+    if (typeof elements === 'string') {
+      try {
+        parsedElements = JSON.parse(elements);
+        console.log('Parsed elements from JSON:', parsedElements);
+      } catch (error) {
+        console.error('Failed to parse elements JSON:', error);
+        return;
+      }
+    }
+
+    if (!Array.isArray(parsedElements)) {
+      console.warn('Elements is not an array:', parsedElements);
+      return;
+    }
+
+    for (const element of parsedElements) {
+      console.log('Processing element:', element);
       try {
         if (element.type === 'text') {
+          console.log('Creating text element:', element);
           const textObj = new Textbox(element.content || 'Text', {
             left: element.x || 50,
             top: element.y || 50,
@@ -253,7 +284,9 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
             width: element.width || 200,
           });
           canvas.add(textObj);
+          console.log('Text element added to canvas');
         } else if (element.type === 'image' && element.imageUrl) {
+          console.log('Creating image element:', element);
           FabricImage.fromURL(element.imageUrl).then((img) => {
             img.set({
               left: element.x || 50,
@@ -262,13 +295,15 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
               scaleY: (element.height || 100) / (img.height || 1),
             });
             canvas.add(img);
+            console.log('Image element added to canvas');
           });
         }
       } catch (error) {
-        console.error('Error loading element:', error);
+        console.error('Error loading element:', element, error);
       }
     }
     canvas.renderAll();
+    console.log('=== HEADER ELEMENTS LOADED ===');
   };
 
   const updatePropertiesFromObject = (obj: any) => {
@@ -409,6 +444,8 @@ export const FabricHeaderEditor: React.FC<FabricHeaderEditorProps> = ({
     if (mode === 'visual' && headerElements.length > 0) {
       finalHtml = generateHtmlFromElements(headerElements);
       finalCss = generateCssFromElements(headerElements);
+      console.log('Generated HTML from visual elements:', finalHtml);
+      console.log('Generated CSS from visual elements:', finalCss);
     }
 
     console.log('Exporting header data:', {
