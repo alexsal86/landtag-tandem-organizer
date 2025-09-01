@@ -53,6 +53,12 @@ const LettersView: React.FC = () => {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
 
+  console.log('=== LETTERSVIEW RENDER ===');
+  console.log('selectedLetter:', selectedLetter);
+  console.log('isEditorOpen:', isEditorOpen);
+  console.log('selectedTemplate:', selectedTemplate);
+  console.log('=== END LETTERSVIEW RENDER ===');
+
   useEffect(() => {
     if (currentTenant) {
       fetchLetters();

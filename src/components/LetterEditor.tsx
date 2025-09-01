@@ -197,6 +197,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     isCreator && editedLetter.status !== 'review' ||
     isReviewer && editedLetter.status === 'review'
   );
+  
+  console.log('=== LETTEREDITOR RENDER ===');
+  console.log('LetterEditor props:', { letter, isOpen });
+  console.log('Letter prop value:', letter);
+  console.log('Is letter truthy?', !!letter);
+  console.log('=== END LETTEREDITOR RENDER ===');
 
   useEffect(() => {
     console.log('=== LETTER PROP EFFECT TRIGGERED ===');
