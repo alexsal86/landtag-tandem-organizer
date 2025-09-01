@@ -352,9 +352,10 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           
           // Set font properties with proper size handling
           const fontSize = Math.max(6, Math.min(14, block.fontSize || 8)); // Clamp font size
-          // For tight spacing, use a smaller line height - default to 0.8 for compact footer
+          // For tight spacing in footer, use minimal line height
           const lineHeightMultiplier = block.lineHeight || 0.8;
-          const lineHeight = fontSize + (lineHeightMultiplier - 1) * fontSize * 0.5; // More reasonable line spacing
+          // Direct calculation: tight spacing should be around 3-4pt for 8pt font
+          const lineHeight = lineHeightMultiplier <= 0.8 ? fontSize * 0.4 : fontSize * lineHeightMultiplier * 0.5;
           pdf.setFontSize(fontSize);
           
           // Set font weight
