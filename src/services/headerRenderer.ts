@@ -127,12 +127,24 @@ export class HeaderRenderer {
       this.pdf.setTextColor(r, g, b);
     }
     
-    // Calculate position in mm
-    const x = this.leftMargin + (element.x || 0) * pxToMm;
-    const y = 20 + (element.y || 0) * pxToMm;
+    // Calculate position in mm for A4 (210mm width, 45mm header height max)
+    const maxHeaderWidth = 210; // A4 width in mm
+    const maxHeaderHeight = 45; // Header height limit in mm
+    
+    // Convert canvas coordinates (595px x 200px) to PDF coordinates (210mm x 45mm)
+    const xInMm = (element.x || 0) / 595 * maxHeaderWidth;
+    const yInMm = 10 + ((element.y || 0) / 200) * maxHeaderHeight; // 10mm top margin
+    
+    console.log('Text element position:', { 
+      canvasX: element.x, 
+      canvasY: element.y, 
+      pdfX: xInMm, 
+      pdfY: yInMm,
+      content: element.content 
+    });
     
     // Render text
-    this.pdf.text(element.content || '', x, y);
+    this.pdf.text(element.content || '', xInMm, yInMm);
   }
 
   private async renderImageElement(
@@ -141,36 +153,76 @@ export class HeaderRenderer {
     pxToMm: number
   ): Promise<void> {
     try {
-      // For now, render a placeholder rectangle
-      // In a full implementation, you would:
-      // 1. Fetch the image from the URL
-      // 2. Convert it to base64 if needed
-      // 3. Use pdf.addImage() to embed it
-
-      const x = this.leftMargin + position.x * pxToMm;
-      const y = 20 + position.y * pxToMm;
-      const width = position.width * pxToMm;
-      const height = position.height * pxToMm;
-
-      // Placeholder rectangle
-      this.pdf.setDrawColor(200, 200, 200);
-      this.pdf.setFillColor(245, 245, 245);
-      this.pdf.rect(x, y, width, height, 'FD');
+      console.log('Rendering image element:', { imageUrl, position });
       
-      // Placeholder text
+      // Calculate position and size in mm for A4 (210mm width, 45mm header height max)
+      const maxHeaderWidth = 210; // A4 width in mm
+      const maxHeaderHeight = 45; // Header height limit in mm
+      
+      // Convert canvas coordinates (595px x 200px) to PDF coordinates (210mm x 45mm)
+      const xInMm = (position.x / 595) * maxHeaderWidth;
+      const yInMm = 10 + (position.y / 200) * maxHeaderHeight; // 10mm top margin
+      const widthInMm = Math.min((position.width / 595) * maxHeaderWidth, maxHeaderWidth - xInMm);
+      const heightInMm = Math.min((position.height / 200) * maxHeaderHeight, maxHeaderHeight - (yInMm - 10));
+      
+      console.log('Image position in mm:', { xInMm, yInMm, widthInMm, heightInMm });
+
+      // Fetch and convert image to base64
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const base64 = await this.blobToBase64(blob);
+      
+      // Determine image format
+      let format = 'JPEG';
+      const mimeType = blob.type.toLowerCase();
+      if (mimeType.includes('png')) {
+        format = 'PNG';
+      } else if (mimeType.includes('svg')) {
+        // For SVG, we need to handle it differently
+        format = 'SVG';
+      }
+      
+      console.log('Image format detected:', format, 'MIME type:', mimeType);
+
+      if (format === 'SVG') {
+        // For SVG, convert to PNG first or render as rectangle with text
+        this.pdf.setDrawColor(100, 100, 100);
+        this.pdf.setFillColor(245, 245, 245);
+        this.pdf.rect(xInMm, yInMm, widthInMm, heightInMm, 'FD');
+        
+        this.pdf.setFontSize(8);
+        this.pdf.setTextColor(100, 100, 100);
+        const fileName = imageUrl.split('/').pop() || 'SVG';
+        this.pdf.text(`[${fileName.substring(0, 20)}]`, xInMm + 2, yInMm + heightInMm / 2);
+        
+        console.log('SVG rendered as placeholder');
+      } else {
+        // Render actual image
+        this.pdf.addImage(base64, format, xInMm, yInMm, widthInMm, heightInMm);
+        console.log('Image rendered successfully');
+      }
+
+    } catch (error) {
+      console.warn('Error rendering image, using fallback:', error);
+      
+      // Fallback: render a simple placeholder
+      const xInMm = (position.x / 595) * 210;
+      const yInMm = 10 + (position.y / 200) * 45;
+      const widthInMm = Math.min((position.width / 595) * 210, 210 - xInMm);
+      const heightInMm = Math.min((position.height / 200) * 45, 45 - (yInMm - 10));
+      
+      this.pdf.setDrawColor(200, 200, 200);
+      this.pdf.setFillColor(250, 250, 250);
+      this.pdf.rect(xInMm, yInMm, widthInMm, heightInMm, 'FD');
+      
       this.pdf.setFontSize(8);
       this.pdf.setTextColor(128, 128, 128);
       const fileName = imageUrl.split('/').pop() || 'Bild';
-      this.pdf.text(`[${fileName}]`, x + 2, y + height / 2);
-
-      // TODO: Implement actual image loading and rendering
-      // const response = await fetch(imageUrl);
-      // const blob = await response.blob();
-      // const base64 = await this.blobToBase64(blob);
-      // this.pdf.addImage(base64, 'JPEG', x, y, width, height);
-
-    } catch (error) {
-      console.warn('Error rendering image:', error);
+      this.pdf.text(`[${fileName.substring(0, 15)}...]`, xInMm + 1, yInMm + heightInMm / 2);
     }
   }
 
