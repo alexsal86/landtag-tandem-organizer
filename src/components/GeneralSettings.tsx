@@ -74,11 +74,12 @@ export function GeneralSettings() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
+    // Validate file type - allow common image formats including SVG
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
       toast({
         title: "Fehler",
-        description: "Bitte wählen Sie eine Bilddatei aus.",
+        description: "Bitte wählen Sie eine Bilddatei aus (JPG, PNG, GIF, SVG, WebP).",
         variant: "destructive"
       });
       return;
@@ -212,7 +213,7 @@ export function GeneralSettings() {
               <div className="flex flex-col gap-2">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/svg+xml,image/webp"
                   onChange={handleFileUpload}
                   className="hidden"
                   id="logo-upload"
@@ -227,7 +228,7 @@ export function GeneralSettings() {
                   {uploading ? "Hochladen..." : "Logo hochladen"}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Unterstützte Formate: JPG, PNG. Max. 2MB
+                  Unterstützte Formate: JPG, PNG, GIF, SVG, WebP. Max. 2MB
                 </p>
               </div>
             </div>
