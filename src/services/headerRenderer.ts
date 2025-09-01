@@ -118,7 +118,8 @@ export class HeaderRenderer {
 
   private renderTextElement(element: HeaderElement, pxToMm: number): void {
     // Set font properties
-    this.pdf.setFontSize(element.fontSize || 12);
+    const fontSize = element.fontSize || 12;
+    this.pdf.setFontSize(fontSize);
     this.pdf.setFont('helvetica', element.fontWeight === 'bold' ? 'bold' : 'normal');
     
     // Set text color
@@ -129,21 +130,25 @@ export class HeaderRenderer {
     
     // Use direct mm coordinates from structured editor
     const xInMm = element.x || 0;
-    const yInMm = element.y || 0; // No offset - use exact coordinates
+    const yInMm = element.y || 0;
+    
+    // Adjust text position - jsPDF positions text by baseline, we need to add font height
+    const textYInMm = yInMm + (fontSize * 0.352778); // Convert font size from points to mm and adjust for baseline
     
     console.log('Text element position:', { 
       elementX: element.x, 
       elementY: element.y, 
       pdfX: xInMm, 
       pdfY: yInMm,
+      adjustedTextY: textYInMm,
       content: element.content 
     });
     
-    // Render debug box around text element
-    this.renderDebugBox(xInMm, yInMm, element.fontSize || 12, element.content || '');
+    // Render debug box around text element (shows the actual bounding box)
+    this.renderDebugBox(xInMm, yInMm, fontSize, element.content || '');
     
-    // Render text
-    this.pdf.text(element.content || '', xInMm, yInMm);
+    // Render text at adjusted position
+    this.pdf.text(element.content || '', xInMm, textYInMm);
   }
 
   private async renderImageElement(
