@@ -365,7 +365,12 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
             className={`cursor-pointer transition-all hover:shadow-md ${
               selectedTemplate?.id === template.id ? 'ring-2 ring-primary' : ''
             }`}
-            onClick={() => onSelect(template as any)}
+            onClick={() => {
+              console.log('=== TEMPLATE CLICKED (DEFAULT) ===');
+              console.log('Clicked template:', template);
+              onSelect(template as any);
+              console.log('=== onSelect called ===');
+            }}
           >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -389,7 +394,12 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
             className={`cursor-pointer transition-all hover:shadow-md ${
               selectedTemplate?.id === template.id ? 'ring-2 ring-primary' : ''
             }`}
-            onClick={() => onSelect(template)}
+            onClick={() => {
+              console.log('=== TEMPLATE CLICKED (CUSTOM) ===');
+              console.log('Clicked template:', template);
+              onSelect(template);
+              console.log('=== onSelect called ===');
+            }}
           >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
