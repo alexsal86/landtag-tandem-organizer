@@ -107,46 +107,52 @@ const LettersView: React.FC = () => {
   };
 
   const handleTemplateSelect = (template: any) => {
-    console.log('=== TEMPLATE SELECTION START ===');
-    console.log('Template selected:', template);
-    console.log('Template ID:', template?.id);
-    console.log('Template default_sender_id:', template?.default_sender_id);
-    console.log('Template default_info_blocks:', template?.default_info_blocks);
-    
-    setSelectedTemplate(template);
-    setShowTemplateSelector(false);
-    
-    // Create a new letter object with template information
-    const newLetter: any = {
-      id: undefined, // New letter has no ID yet
-      title: '',
-      content: '',
-      content_html: '',
-      status: 'draft',
-      template_id: template?.id,
-      sender_info_id: template?.default_sender_id,
-      information_block_ids: template?.default_info_blocks || [],
-      tenant_id: currentTenant?.id || '',
-      user_id: user?.id || '',
-      created_by: user?.id || '',
-      created_at: '',
-      updated_at: '',
-      recipient_name: '',
-      recipient_address: '',
-      archived_at: null
-    };
-    
-    console.log('=== NEW LETTER CREATED ===');
-    console.log('New letter object:', newLetter);
-    console.log('New letter template_id:', newLetter.template_id);
-    console.log('New letter sender_info_id:', newLetter.sender_info_id);
-    console.log('New letter information_block_ids:', newLetter.information_block_ids);
-    console.log('=== SETTING SELECTED LETTER ===');
-    
-    setSelectedLetter(newLetter);
-    setIsEditorOpen(true);
-    
-    console.log('=== TEMPLATE SELECTION END ===');
+    try {
+      console.log('=== TEMPLATE SELECTION START ===');
+      console.log('Template selected:', template);
+      console.log('Template ID:', template?.id);
+      console.log('Template default_sender_id:', template?.default_sender_id);
+      console.log('Template default_info_blocks:', template?.default_info_blocks);
+      
+      setSelectedTemplate(template);
+      setShowTemplateSelector(false);
+      
+      // Create a new letter object with template information
+      const newLetter: any = {
+        id: undefined, // New letter has no ID yet
+        title: '',
+        content: '',
+        content_html: '',
+        status: 'draft',
+        template_id: template?.id,
+        sender_info_id: template?.default_sender_id,
+        information_block_ids: template?.default_info_blocks || [],
+        tenant_id: currentTenant?.id || '',
+        user_id: user?.id || '',
+        created_by: user?.id || '',
+        created_at: '',
+        updated_at: '',
+        recipient_name: '',
+        recipient_address: '',
+        archived_at: null
+      };
+      
+      console.log('=== NEW LETTER CREATED ===');
+      console.log('New letter object:', newLetter);
+      console.log('New letter template_id:', newLetter.template_id);
+      console.log('New letter sender_info_id:', newLetter.sender_info_id);
+      console.log('New letter information_block_ids:', newLetter.information_block_ids);
+      console.log('=== SETTING SELECTED LETTER ===');
+      
+      setSelectedLetter(newLetter);
+      setIsEditorOpen(true);
+      
+      console.log('=== TEMPLATE SELECTION END ===');
+    } catch (error) {
+      console.error('=== ERROR IN HANDLETEMPLESELECT ===');
+      console.error('Error:', error);
+      console.error('=== END ERROR ===');
+    }
   };
 
   const handleEditLetter = (letter: Letter) => {
