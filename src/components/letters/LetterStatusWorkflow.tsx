@@ -105,13 +105,26 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
         updateData.approved_by = currentUserId;
       }
 
+      console.log('Update data:', updateData);
+
+      // Update database directly
+      const { data, error } = await supabase
+        .from('letters')
+        .update(updateData)
+        .eq('id', letter.id)
+        .select();
+
+      console.log('Supabase update result:', { data, error });
+
+      if (error) {
+        console.error('Supabase error details:', error);
+        throw error;
+      }
+
+      console.log('Database update successful');
+
+      // Trigger archiving process for sent letters AFTER successful database update
       if (transitionTo === 'sent') {
-        updateData.sent_method = sentMethod;
-        updateData.sent_date = new Date().toISOString().split('T')[0];
-        // Remove archived_at and workflow_locked as they cause database errors
-        // These will be handled by database triggers
-        
-        // Trigger archiving process for sent letters
         try {
           console.log('Calling archive-letter function for letter:', letter.id);
           const { data: archiveResult, error: archiveError } = await supabase.functions.invoke('archive-letter', {
@@ -132,7 +145,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
           } else {
             toast({
               title: "Brief versendet und archiviert",
-              description: "Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.",
+              description: "Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen. Eine Follow-up Aufgabe wurde erstellt.",
               variant: "default",
             });
           }
@@ -145,24 +158,6 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
           });
         }
       }
-
-      console.log('Update data:', updateData);
-
-      // Update database directly
-      const { data, error } = await supabase
-        .from('letters')
-        .update(updateData)
-        .eq('id', letter.id)
-        .select();
-
-      console.log('Supabase update result:', { data, error });
-
-      if (error) {
-        console.error('Supabase error details:', error);
-        throw error;
-      }
-
-      console.log('Database update successful');
 
       // Update the letter via callback for UI updates
       onStatusChange(transitionTo, updateData);
