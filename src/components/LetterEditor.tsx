@@ -793,6 +793,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     
     setSaving(true);
     try {
+      // Don't auto-save status changes - only content and metadata
       const { error } = await supabase
         .from('letters')
         .update({
@@ -808,7 +809,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           sender_info_id: editedLetter.sender_info_id,
           information_block_ids: editedLetter.information_block_ids,
           letter_date: editedLetter.letter_date,
-          status: editedLetter.status,
+          // Removed status from auto-save to prevent conflicts
           updated_at: new Date().toISOString()
         })
         .eq('id', letter.id);
