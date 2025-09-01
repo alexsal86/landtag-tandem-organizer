@@ -16,7 +16,7 @@ import LetterTemplateSelector from './LetterTemplateSelector';
 import LetterPDFExport from './LetterPDFExport';
 
 interface Letter {
-  id: string;
+  id?: string;
   title: string;
   content: string;
   content_html?: string;
@@ -26,7 +26,7 @@ interface Letter {
   template_id?: string;
   sender_info_id?: string;
   information_block_ids?: string[];
-  status: string;
+  status: 'draft' | 'review' | 'approved' | 'sent';
   sent_date?: string;
   sent_method?: string;
   expected_response_date?: string;
@@ -34,6 +34,8 @@ interface Letter {
   created_at: string;
   updated_at: string;
   tenant_id: string;
+  user_id?: string;
+  archived_at?: string | null;
 }
 
 const LettersView: React.FC = () => {
@@ -69,7 +71,7 @@ const LettersView: React.FC = () => {
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      setLetters(data || []);
+      setLetters(data as any || []);
     } catch (error) {
       console.error('Error fetching letters:', error);
       toast({
@@ -104,12 +106,12 @@ const LettersView: React.FC = () => {
     setShowTemplateSelector(false);
     
     // Create a new letter object with template information
-    const newLetter = {
+    const newLetter: any = {
       id: undefined, // New letter has no ID yet
       title: '',
       content: '',
       content_html: '',
-      status: 'draft' as const,
+      status: 'draft',
       template_id: template?.id,
       sender_info_id: template?.default_sender_id,
       information_block_ids: template?.default_info_blocks || [],
@@ -119,7 +121,8 @@ const LettersView: React.FC = () => {
       created_at: '',
       updated_at: '',
       recipient_name: '',
-      recipient_address: ''
+      recipient_address: '',
+      archived_at: null
     };
     
     console.log('New letter with template:', newLetter);
@@ -312,14 +315,14 @@ const LettersView: React.FC = () => {
                         <Edit3 className="h-4 w-4" />
                       </Button>
                       <LetterPDFExport 
-                        letter={letter} 
+                        letter={letter as any} 
                         variant="icon-only"
                         size="sm"
                       />
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => handleDeleteLetter(letter.id)}
+                        onClick={() => handleDeleteLetter(letter.id!)}
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -379,14 +382,14 @@ const LettersView: React.FC = () => {
                           <Edit3 className="h-4 w-4" />
                         </Button>
                         <LetterPDFExport 
-                          letter={letter} 
+                          letter={letter as any} 
                           variant="icon-only"
                           size="sm"
                         />
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => handleDeleteLetter(letter.id)}
+                          onClick={() => handleDeleteLetter(letter.id!)}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
