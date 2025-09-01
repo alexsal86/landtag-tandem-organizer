@@ -23,6 +23,9 @@ interface Letter {
   recipient_name?: string;
   recipient_address?: string;
   contact_id?: string;
+  template_id?: string;
+  sender_info_id?: string;
+  information_block_ids?: string[];
   status: string;
   sent_date?: string;
   sent_method?: string;
@@ -46,6 +49,7 @@ const LettersView: React.FC = () => {
   const [selectedLetter, setSelectedLetter] = useState<Letter | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
 
   useEffect(() => {
     if (currentTenant) {
@@ -95,8 +99,23 @@ const LettersView: React.FC = () => {
   };
 
   const handleTemplateSelect = (template: any) => {
+    console.log('Template selected:', template);
+    setSelectedTemplate(template);
     setShowTemplateSelector(false);
-    setSelectedLetter(null);
+    
+    // Create a new letter object with template information
+    const newLetter: Partial<Letter> = {
+      title: '',
+      content: '',
+      content_html: '',
+      status: 'draft',
+      template_id: template?.id,
+      sender_info_id: template?.default_sender_id,
+      information_block_ids: template?.default_info_blocks || []
+    };
+    
+    console.log('New letter with template:', newLetter);
+    setSelectedLetter(newLetter as Letter);
     setIsEditorOpen(true);
   };
 
