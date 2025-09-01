@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, Trash2, Plus, Save, X, Eye, EyeOff, Palette } from 'lucide-react';
+import { Edit3, Trash2, Plus, Save, X, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { FabricHeaderEditor } from '@/components/letters/FabricHeaderEditor';
+import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
 
 interface LetterTemplate {
   id: string;
@@ -59,14 +60,14 @@ const LetterTemplateManager: React.FC = () => {
   const [editingTemplate, setEditingTemplate] = useState<LetterTemplate | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPreview, setShowPreview] = useState<string | null>(null);
-  const [showHeaderEditor, setShowHeaderEditor] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     letterhead_html: '',
     letterhead_css: '',
     response_time_days: 21,
     default_sender_id: '',
-    default_info_blocks: [] as string[]
+    default_info_blocks: [] as string[],
+    header_elements: [] as any[]
   });
 
   useEffect(() => {
@@ -154,7 +155,9 @@ const LetterTemplateManager: React.FC = () => {
           letterhead_css: formData.letterhead_css,
           response_time_days: formData.response_time_days,
           default_sender_id: formData.default_sender_id || null,
-          default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null
+          default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
+          header_layout_type: formData.header_elements.length > 0 ? 'structured' : 'html',
+          header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null
         });
 
       if (error) throw error;
@@ -190,6 +193,8 @@ const LetterTemplateManager: React.FC = () => {
           response_time_days: formData.response_time_days,
           default_sender_id: formData.default_sender_id || null,
           default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
+          header_layout_type: formData.header_elements.length > 0 ? 'structured' : 'html',
+          header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingTemplate.id);
@@ -248,61 +253,43 @@ const LetterTemplateManager: React.FC = () => {
       letterhead_css: '',
       response_time_days: 21,
       default_sender_id: '',
-      default_info_blocks: []
+      default_info_blocks: [],
+      header_elements: []
     });
   };
 
   const startEditing = (template: LetterTemplate) => {
     setEditingTemplate(template);
+    
+    // Parse header elements if they exist
+    let headerElements: any[] = [];
+    if (template.header_text_elements) {
+      if (typeof template.header_text_elements === 'string') {
+        try {
+          headerElements = JSON.parse(template.header_text_elements);
+        } catch (e) {
+          console.warn('Failed to parse header_text_elements:', e);
+          headerElements = [];
+        }
+      } else if (Array.isArray(template.header_text_elements)) {
+        headerElements = template.header_text_elements;
+      }
+    }
+    
     setFormData({
       name: template.name,
       letterhead_html: template.letterhead_html,
       letterhead_css: template.letterhead_css,
       response_time_days: template.response_time_days,
       default_sender_id: template.default_sender_id || '',
-      default_info_blocks: template.default_info_blocks || []
+      default_info_blocks: template.default_info_blocks || [],
+      header_elements: headerElements
     });
   };
 
   const cancelEditing = () => {
     setEditingTemplate(null);
     resetForm();
-  };
-
-  const handleEditHeader = (template: LetterTemplate) => {
-    setShowHeaderEditor(template.id);
-  };
-
-  const handleSaveHeader = async (templateId: string, headerData: any) => {
-    try {
-      const { error } = await supabase
-        .from('letter_templates')
-        .update({
-          header_layout_type: headerData.header_layout_type,
-          header_text_elements: headerData.header_text_elements,
-          letterhead_html: headerData.letterhead_html,
-          letterhead_css: headerData.letterhead_css,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', templateId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Header aktualisiert",
-        description: "Der Header wurde erfolgreich aktualisiert.",
-      });
-
-      setShowHeaderEditor(null);
-      fetchTemplates();
-    } catch (error) {
-      console.error('Error updating header:', error);
-      toast({
-        title: "Fehler",
-        description: "Header konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
-    }
   };
 
   const renderPreview = (template: LetterTemplate) => {
@@ -389,114 +376,145 @@ const LetterTemplateManager: React.FC = () => {
               Neues Template
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Neues Brief-Template erstellen</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="template-name">Name</Label>
-                <Input
-                  id="template-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Template-Name eingeben..."
-                />
-              </div>
+            
+            <Tabs defaultValue="header-designer" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
+                <TabsTrigger value="general">Allgemein</TabsTrigger>
+                <TabsTrigger value="advanced">Erweitert</TabsTrigger>
+              </TabsList>
               
-              <div>
-                <Label htmlFor="letterhead-html">Briefkopf HTML</Label>
-                <Textarea
-                  id="letterhead-html"
-                  value={formData.letterhead_html}
-                  onChange={(e) => setFormData(prev => ({ ...prev, letterhead_html: e.target.value }))}
-                  placeholder="HTML für den Briefkopf..."
-                  rows={8}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="letterhead-css">Briefkopf CSS</Label>
-                <Textarea
-                  id="letterhead-css"
-                  value={formData.letterhead_css}
-                  onChange={(e) => setFormData(prev => ({ ...prev, letterhead_css: e.target.value }))}
-                  placeholder="CSS-Stile für den Briefkopf..."
-                  rows={8}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="response-time">Antwortzeit (Tage)</Label>
-                <Input
-                  id="response-time"
-                  type="number"
-                  value={formData.response_time_days}
-                  onChange={(e) => setFormData(prev => ({ ...prev, response_time_days: parseInt(e.target.value) || 21 }))}
-                  min="1"
-                  max="365"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="default-sender">Standard-Absenderinformation</Label>
-                <Select value={formData.default_sender_id || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Absenderinformation auswählen..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Keine Auswahl</SelectItem>
-                    {senderInfos.map((sender) => (
-                      <SelectItem key={sender.id} value={sender.id}>
-                        {sender.name} - {sender.organization}
-                        {sender.is_default && " (Standard)"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label>Standard-Informationsblöcke</Label>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {infoBlocks.map((block) => (
-                    <div key={block.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`block-${block.id}`}
-                        checked={formData.default_info_blocks.includes(block.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setFormData(prev => ({
-                              ...prev,
-                              default_info_blocks: [...prev.default_info_blocks, block.id]
-                            }));
-                          } else {
-                            setFormData(prev => ({
-                              ...prev,
-                              default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id)
-                            }));
-                          }
-                        }}
-                      />
-                      <Label htmlFor={`block-${block.id}`} className="text-sm">
-                        {block.label} {block.is_default && "(Standard)"}
-                      </Label>
-                    </div>
-                  ))}
-                  {infoBlocks.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
-                  )}
+              <TabsContent value="header-designer" className="space-y-4">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Header-Elemente erstellen</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Gestalten Sie Ihren Briefkopf mit Text- und Bildelementen. Der Header wird automatisch auf DIN A4 Briefgröße (210mm × 45mm) skaliert.
+                  </p>
+                  <StructuredHeaderEditor
+                    initialElements={formData.header_elements}
+                    onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
+                  />
                 </div>
-              </div>
+              </TabsContent>
               
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => { setShowCreateDialog(false); resetForm(); }}>
-                  Abbrechen
-                </Button>
-                <Button onClick={handleCreateTemplate}>
-                  Template erstellen
-                </Button>
-              </div>
+              <TabsContent value="general" className="space-y-4">
+                <div>
+                  <Label htmlFor="template-name">Name</Label>
+                  <Input
+                    id="template-name"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Template-Name eingeben..."
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="response-time">Antwortzeit (Tage)</Label>
+                  <Input
+                    id="response-time"
+                    type="number"
+                    value={formData.response_time_days}
+                    onChange={(e) => setFormData(prev => ({ ...prev, response_time_days: parseInt(e.target.value) || 21 }))}
+                    min="1"
+                    max="365"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="default-sender">Standard-Absenderinformation</Label>
+                  <Select value={formData.default_sender_id || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Absenderinformation auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Keine Auswahl</SelectItem>
+                      {senderInfos.map((sender) => (
+                        <SelectItem key={sender.id} value={sender.id}>
+                          {sender.name} - {sender.organization}
+                          {sender.is_default && " (Standard)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>Standard-Informationsblöcke</Label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {infoBlocks.map((block) => (
+                      <div key={block.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`block-${block.id}`}
+                          checked={formData.default_info_blocks.includes(block.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData(prev => ({
+                                ...prev,
+                                default_info_blocks: [...prev.default_info_blocks, block.id]
+                              }));
+                            } else {
+                              setFormData(prev => ({
+                                ...prev,
+                                default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id)
+                              }));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`block-${block.id}`} className="text-sm">
+                          {block.label} {block.is_default && "(Standard)"}
+                        </Label>
+                      </div>
+                    ))}
+                    {infoBlocks.length === 0 && (
+                      <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="advanced" className="space-y-4">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Erweiterte HTML/CSS Bearbeitung</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Für erfahrene Benutzer: Erstellen Sie den Briefkopf direkt mit HTML und CSS.
+                  </p>
+                  
+                  <div>
+                    <Label htmlFor="letterhead-html">Briefkopf HTML</Label>
+                    <Textarea
+                      id="letterhead-html"
+                      value={formData.letterhead_html}
+                      onChange={(e) => setFormData(prev => ({ ...prev, letterhead_html: e.target.value }))}
+                      placeholder="HTML für den Briefkopf..."
+                      rows={8}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="letterhead-css">Briefkopf CSS</Label>
+                    <Textarea
+                      id="letterhead-css"
+                      value={formData.letterhead_css}
+                      onChange={(e) => setFormData(prev => ({ ...prev, letterhead_css: e.target.value }))}
+                      placeholder="CSS-Stile für den Briefkopf..."
+                      rows={8}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+              
+            <div className="flex justify-end space-x-2 pt-4 border-t">
+              <Button variant="outline" onClick={() => { setShowCreateDialog(false); resetForm(); }}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleCreateTemplate}>
+                Template erstellen
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -524,22 +542,14 @@ const LetterTemplateManager: React.FC = () => {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditHeader(template)}
-                      title="Header bearbeiten"
-                    >
-                      <Palette className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => startEditing(template)}
-                      title="Template bearbeiten"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       onClick={() => startEditing(template)}
+                       title="Template bearbeiten"
+                     >
+                       <Edit3 className="h-4 w-4" />
+                     </Button>
                     {!template.is_default && (
                       <Button
                         variant="ghost"
@@ -572,133 +582,148 @@ const LetterTemplateManager: React.FC = () => {
       {/* Edit Dialog */}
       {editingTemplate && (
         <Dialog open={!!editingTemplate} onOpenChange={(open) => !open && cancelEditing()}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Template bearbeiten: {editingTemplate.name}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-template-name">Name</Label>
-                <Input
-                  id="edit-template-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Template-Name eingeben..."
-                />
-              </div>
+            
+            <Tabs defaultValue="header-designer" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
+                <TabsTrigger value="general">Allgemein</TabsTrigger>
+                <TabsTrigger value="advanced">Erweitert</TabsTrigger>
+              </TabsList>
               
-              <div>
-                <Label htmlFor="edit-letterhead-html">Briefkopf HTML</Label>
-                <Textarea
-                  id="edit-letterhead-html"
-                  value={formData.letterhead_html}
-                  onChange={(e) => setFormData(prev => ({ ...prev, letterhead_html: e.target.value }))}
-                  placeholder="HTML für den Briefkopf..."
-                  rows={8}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="edit-letterhead-css">Briefkopf CSS</Label>
-                <Textarea
-                  id="edit-letterhead-css"
-                  value={formData.letterhead_css}
-                  onChange={(e) => setFormData(prev => ({ ...prev, letterhead_css: e.target.value }))}
-                  placeholder="CSS-Stile für den Briefkopf..."
-                  rows={8}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="edit-response-time">Antwortzeit (Tage)</Label>
-                <Input
-                  id="edit-response-time"
-                  type="number"
-                  value={formData.response_time_days}
-                  onChange={(e) => setFormData(prev => ({ ...prev, response_time_days: parseInt(e.target.value) || 21 }))}
-                  min="1"
-                  max="365"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="edit-default-sender">Standard-Absenderinformation</Label>
-                <Select value={formData.default_sender_id || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Absenderinformation auswählen..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Keine Auswahl</SelectItem>
-                    {senderInfos.map((sender) => (
-                      <SelectItem key={sender.id} value={sender.id}>
-                        {sender.name} - {sender.organization}
-                        {sender.is_default && " (Standard)"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label>Standard-Informationsblöcke</Label>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {infoBlocks.map((block) => (
-                    <div key={block.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`edit-block-${block.id}`}
-                        checked={formData.default_info_blocks.includes(block.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setFormData(prev => ({
-                              ...prev,
-                              default_info_blocks: [...prev.default_info_blocks, block.id]
-                            }));
-                          } else {
-                            setFormData(prev => ({
-                              ...prev,
-                              default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id)
-                            }));
-                          }
-                        }}
-                      />
-                      <Label htmlFor={`edit-block-${block.id}`} className="text-sm">
-                        {block.label} {block.is_default && "(Standard)"}
-                      </Label>
-                    </div>
-                  ))}
-                  {infoBlocks.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
-                  )}
+              <TabsContent value="header-designer" className="space-y-4">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Header-Elemente bearbeiten</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Gestalten Sie Ihren Briefkopf mit Text- und Bildelementen. Der Header wird automatisch auf DIN A4 Briefgröße (210mm × 45mm) skaliert.
+                  </p>
+                  <StructuredHeaderEditor
+                    initialElements={formData.header_elements}
+                    onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
+                  />
                 </div>
-              </div>
+              </TabsContent>
               
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={cancelEditing}>
-                  <X className="h-4 w-4 mr-2" />
-                  Abbrechen
-                </Button>
-                <Button onClick={handleUpdateTemplate}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Speichern
-                </Button>
-              </div>
+              <TabsContent value="general" className="space-y-4">
+                <div>
+                  <Label htmlFor="edit-template-name">Name</Label>
+                  <Input
+                    id="edit-template-name"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Template-Name eingeben..."
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="edit-response-time">Antwortzeit (Tage)</Label>
+                  <Input
+                    id="edit-response-time"
+                    type="number"
+                    value={formData.response_time_days}
+                    onChange={(e) => setFormData(prev => ({ ...prev, response_time_days: parseInt(e.target.value) || 21 }))}
+                    min="1"
+                    max="365"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="edit-default-sender">Standard-Absenderinformation</Label>
+                  <Select value={formData.default_sender_id || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Absenderinformation auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Keine Auswahl</SelectItem>
+                      {senderInfos.map((sender) => (
+                        <SelectItem key={sender.id} value={sender.id}>
+                          {sender.name} - {sender.organization}
+                          {sender.is_default && " (Standard)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>Standard-Informationsblöcke</Label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {infoBlocks.map((block) => (
+                      <div key={block.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`edit-block-${block.id}`}
+                          checked={formData.default_info_blocks.includes(block.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData(prev => ({
+                                ...prev,
+                                default_info_blocks: [...prev.default_info_blocks, block.id]
+                              }));
+                            } else {
+                              setFormData(prev => ({
+                                ...prev,
+                                default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id)
+                              }));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`edit-block-${block.id}`} className="text-sm">
+                          {block.label} {block.is_default && "(Standard)"}
+                        </Label>
+                      </div>
+                    ))}
+                    {infoBlocks.length === 0 && (
+                      <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="advanced" className="space-y-4">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Erweiterte HTML/CSS Bearbeitung</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Für erfahrene Benutzer: Bearbeiten Sie den Briefkopf direkt mit HTML und CSS.
+                  </p>
+                  
+                  <div>
+                    <Label htmlFor="edit-letterhead-html">Briefkopf HTML</Label>
+                    <Textarea
+                      id="edit-letterhead-html"
+                      value={formData.letterhead_html}
+                      onChange={(e) => setFormData(prev => ({ ...prev, letterhead_html: e.target.value }))}
+                      placeholder="HTML für den Briefkopf..."
+                      rows={8}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="edit-letterhead-css">Briefkopf CSS</Label>
+                    <Textarea
+                      id="edit-letterhead-css"
+                      value={formData.letterhead_css}
+                      onChange={(e) => setFormData(prev => ({ ...prev, letterhead_css: e.target.value }))}
+                      placeholder="CSS-Stile für den Briefkopf..."
+                      rows={8}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+            
+            <div className="flex justify-end space-x-2 pt-4 border-t">
+              <Button variant="outline" onClick={cancelEditing}>
+                <X className="h-4 w-4 mr-2" />
+                Abbrechen
+              </Button>
+              <Button onClick={handleUpdateTemplate}>
+                <Save className="h-4 w-4 mr-2" />
+                Speichern
+              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Header Editor Dialog */}
-      {showHeaderEditor && (
-        <Dialog open={!!showHeaderEditor} onOpenChange={(open) => !open && setShowHeaderEditor(null)}>
-          <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Header Editor - {templates.find(t => t.id === showHeaderEditor)?.name}</DialogTitle>
-            </DialogHeader>
-            <FabricHeaderEditor
-              template={templates.find(t => t.id === showHeaderEditor)}
-              onSave={(headerData) => handleSaveHeader(showHeaderEditor, headerData)}
-              onCancel={() => setShowHeaderEditor(null)}
-            />
           </DialogContent>
         </Dialog>
       )}
