@@ -80,6 +80,12 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
   const handleStatusTransition = async () => {
     if (!transitionTo) return;
 
+    console.log('=== STATUS TRANSITION START ===');
+    console.log('Letter ID:', letter.id);
+    console.log('Current Status:', letter.status);
+    console.log('Target Status:', transitionTo);
+    console.log('Current User ID:', currentUserId);
+
     try {
       const now = new Date().toISOString();
       let updateData: any = { 
@@ -126,15 +132,23 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
         }
       }
 
+      console.log('Update data:', updateData);
+
       // Update database directly
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('letters')
         .update(updateData)
-        .eq('id', letter.id);
+        .eq('id', letter.id)
+        .select();
+
+      console.log('Supabase update result:', { data, error });
 
       if (error) {
+        console.error('Supabase error details:', error);
         throw error;
       }
+
+      console.log('Database update successful');
 
       // Update the letter via callback for UI updates
       onStatusChange(transitionTo, updateData);
