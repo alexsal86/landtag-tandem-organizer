@@ -133,13 +133,29 @@ export class HeaderRenderer {
     this.pdf.setFontSize(fontSize);
     
     // Handle different font families - jsPDF has limited font support
+    // Map from StructuredHeaderEditor font names to jsPDF font names
     let pdfFontFamily = 'helvetica'; // Default fallback
-    if (fontFamily.toLowerCase().includes('times') || fontFamily.toLowerCase().includes('serif')) {
-      pdfFontFamily = 'times';
-    } else if (fontFamily.toLowerCase().includes('courier') || fontFamily.toLowerCase().includes('mono')) {
-      pdfFontFamily = 'courier';
-    } else if (fontFamily.toLowerCase().includes('helvetica') || fontFamily.toLowerCase().includes('arial') || fontFamily.toLowerCase().includes('sans')) {
-      pdfFontFamily = 'helvetica';
+    
+    switch (fontFamily) {
+      case 'Arial':
+      case 'Helvetica':
+        pdfFontFamily = 'helvetica';
+        break;
+      case 'Times':
+        pdfFontFamily = 'times';
+        break;
+      case 'Courier':
+        pdfFontFamily = 'courier';
+        break;
+      default:
+        // Fallback for unknown fonts
+        if (fontFamily.toLowerCase().includes('times') || fontFamily.toLowerCase().includes('serif')) {
+          pdfFontFamily = 'times';
+        } else if (fontFamily.toLowerCase().includes('courier') || fontFamily.toLowerCase().includes('mono')) {
+          pdfFontFamily = 'courier';
+        } else {
+          pdfFontFamily = 'helvetica';
+        }
     }
     
     // Set font with proper weight
