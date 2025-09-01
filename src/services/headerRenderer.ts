@@ -129,7 +129,7 @@ export class HeaderRenderer {
     
     // Use direct mm coordinates from structured editor
     const xInMm = element.x || 0;
-    const yInMm = 10 + (element.y || 0); // 10mm top margin
+    const yInMm = element.y || 0; // No offset - use exact coordinates
     
     console.log('Text element position:', { 
       elementX: element.x, 
@@ -156,7 +156,7 @@ export class HeaderRenderer {
       
       // Use direct mm coordinates from structured editor
       const xInMm = position.x;
-      const yInMm = 10 + position.y; // 10mm top margin
+      const yInMm = position.y; // No offset - use exact coordinates
       const widthInMm = position.width;
       const heightInMm = position.height;
       
@@ -209,7 +209,7 @@ export class HeaderRenderer {
       
       // Fallback: render a simple placeholder
       const xInMm = position.x;
-      const yInMm = 10 + position.y;
+      const yInMm = position.y;
       const widthInMm = position.width;
       const heightInMm = position.height;
       
