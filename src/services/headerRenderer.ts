@@ -123,14 +123,19 @@ export class HeaderRenderer {
     const fontFamily = element.fontFamily || 'helvetica';
     const fontWeight = element.fontWeight || 'normal';
     
-    console.log('Text element font properties:', { 
-      fontSize, 
-      fontFamily, 
-      fontWeight,
-      content: element.content 
-    });
+    console.log('=== TEXT ELEMENT FONT DEBUG ===');
+    console.log('Original fontSize from designer:', fontSize);
+    console.log('Font family:', fontFamily);
+    console.log('Font weight:', fontWeight);
+    console.log('Element content:', element.content);
     
-    this.pdf.setFontSize(fontSize);
+    // jsPDF expects font size in points (pt)
+    // The StructuredHeaderEditor uses pixel values, so we need to convert
+    // 1px = 0.75pt (standard web conversion)
+    const fontSizeInPoints = fontSize * 0.75;
+    console.log('Converted fontSize to points:', fontSizeInPoints);
+    
+    this.pdf.setFontSize(fontSizeInPoints);
     
     // Handle different font families - jsPDF has limited font support
     // Map from StructuredHeaderEditor font names to jsPDF font names
@@ -167,7 +172,7 @@ export class HeaderRenderer {
     const yInMm = element.y || 0;
     
     // Adjust text position - jsPDF positions text by baseline, we need to add font height
-    const textYInMm = yInMm + (fontSize * 0.352778); // Convert font size from points to mm and adjust for baseline
+    const textYInMm = yInMm + (fontSizeInPoints * 0.352778); // Convert font size from points to mm and adjust for baseline
     
     console.log('Text element position and font:', { 
       elementX: element.x, 
@@ -182,7 +187,7 @@ export class HeaderRenderer {
     });
     
     // Render debug box around text element (shows the actual bounding box)
-    this.renderDebugBox(xInMm, yInMm, fontSize, element.content || '');
+    this.renderDebugBox(xInMm, yInMm, fontSizeInPoints, element.content || '');
     
     // Set text color AFTER debug rendering to avoid red text
     if (element.color && element.color.startsWith('#')) {
