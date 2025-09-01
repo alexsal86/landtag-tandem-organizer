@@ -144,7 +144,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [userProfiles, setUserProfiles] = useState<{[key: string]: {display_name: string, avatar_url?: string}}>({});
   const [previewZoom, setPreviewZoom] = useState(1.0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [showPagination, setShowPagination] = useState(false);
+  const [showPagination, setShowPagination] = useState(true);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const richTextEditorRef = useRef<RichTextEditorRef>(null);
@@ -253,9 +253,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         recipient_address: '',
         status: 'draft'
       });
-      // Reset proofreading mode and pagination for new letters
+      // Reset proofreading mode and set default pagination for new letters
       setIsProofreadingMode(false);
-      setShowPagination(false);
+      setShowPagination(true);
     }
   }, [letter]);
 
@@ -1457,6 +1457,42 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                               disabled={!canEdit}
                             />
                           </div>
+
+                          {/* Workflow-Historie - nur anzeigen wenn Letter existiert und Workflow-Daten vorhanden sind */}
+                          {letter?.id && (editedLetter.submitted_for_review_at || editedLetter.approved_at || editedLetter.sent_at) && (
+                            <div>
+                              <Label>Workflow-Historie</Label>
+                              <div className="space-y-2 p-3 border rounded-md bg-muted/50">
+                                {editedLetter.submitted_for_review_at && (
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Clock className="h-3 w-3" />
+                                    <span>Zur Prüfung: {new Date(editedLetter.submitted_for_review_at).toLocaleDateString('de-DE')}</span>
+                                    {editedLetter.submitted_for_review_by && userProfiles[editedLetter.submitted_for_review_by] && (
+                                      <span className="text-muted-foreground">von {userProfiles[editedLetter.submitted_for_review_by].display_name}</span>
+                                    )}
+                                  </div>
+                                )}
+                                {editedLetter.approved_at && (
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <CheckCircle className="h-3 w-3" />
+                                    <span>Genehmigt: {new Date(editedLetter.approved_at).toLocaleDateString('de-DE')}</span>
+                                    {editedLetter.approved_by && userProfiles[editedLetter.approved_by] && (
+                                      <span className="text-muted-foreground">von {userProfiles[editedLetter.approved_by].display_name}</span>
+                                    )}
+                                  </div>
+                                )}
+                                {editedLetter.sent_at && (
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Send className="h-3 w-3" />
+                                    <span>Versendet: {new Date(editedLetter.sent_at).toLocaleDateString('de-DE')}</span>
+                                    {editedLetter.sent_by && userProfiles[editedLetter.sent_by] && (
+                                      <span className="text-muted-foreground">von {userProfiles[editedLetter.sent_by].display_name}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </AccordionContent>
                       </AccordionItem>
 
@@ -1600,22 +1636,28 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       </AccordionItem>
 
                       {/* 4. Anlagen */}
-                      {letter?.id && (
-                        <AccordionItem value="anlagen">
-                          <AccordionTrigger className="flex items-center gap-2">
-                            <FileText className="h-4 w-4" />
-                            <span>Anlagen</span>
-                          </AccordionTrigger>
-                          <AccordionContent>
+                      <AccordionItem value="anlagen">
+                        <AccordionTrigger className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          <span>Anlagen</span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          {letter?.id ? (
                             <LetterAttachmentManager
                               letterId={letter.id}
                               attachments={attachments}
                               onAttachmentUpdate={fetchAttachments}
                               readonly={!canEdit}
                             />
-                          </AccordionContent>
-                        </AccordionItem>
-                      )}
+                          ) : (
+                            <div className="p-4 text-center text-muted-foreground border border-dashed rounded-lg">
+                              <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="font-medium">Anlagen verfügbar nach dem Speichern</p>
+                              <p className="text-sm">Speichern Sie den Brief zuerst, um Anlagen hinzufügen zu können.</p>
+                            </div>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
                     </Accordion>
 
                     {/* Sending Details - only show for approved/sent letters */}
