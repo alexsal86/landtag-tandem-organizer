@@ -219,6 +219,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       console.log('Template ID:', letter.template_id);
       console.log('Sender Info ID:', letter.sender_info_id);
       console.log('Information Block IDs:', letter.information_block_ids);
+      console.log('Letter show_pagination:', letter.show_pagination);
       console.log('=== END LETTER DATA ===');
       
       setEditedLetter({
@@ -227,12 +228,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       });
       // Set proofreading mode based on actual letter status
       setIsProofreadingMode(letter.status === 'review');
-      // Set pagination setting from letter data
-      setShowPagination(letter.show_pagination || false);
       
+      // IMPORTANT: Set pagination setting from letter data
+      const paginationValue = letter.show_pagination || false;
       console.log('=== PAGINATION SETTING LOADED ===');
-      console.log('Letter show_pagination:', letter.show_pagination);
-      console.log('Setting showPagination to:', letter.show_pagination || false);
+      console.log('Letter show_pagination value:', letter.show_pagination);
+      console.log('Setting showPagination to:', paginationValue);
+      setShowPagination(paginationValue);
+      console.log('=== PAGINATION SETTING APPLIED ===');
       
       // If it's a new letter with template data, we'll apply defaults after template loads
       if (!letter.id && letter.template_id) {
@@ -254,6 +257,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       setShowPagination(false);
     }
   }, [letter]);
+
+  // Separate useEffect specifically for pagination to avoid conflicts
+  useEffect(() => {
+    if (letter && letter.show_pagination !== undefined) {
+      console.log('=== DEDICATED PAGINATION EFFECT ===');
+      console.log('Letter show_pagination value:', letter.show_pagination);
+      console.log('Current showPagination state:', showPagination);
+      console.log('Setting pagination to:', letter.show_pagination);
+      setShowPagination(letter.show_pagination);
+      console.log('=== PAGINATION EFFECT COMPLETED ===');
+    }
+  }, [letter?.show_pagination]);
 
   useEffect(() => {
     if (isOpen && currentTenant) {
@@ -1344,7 +1359,13 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 <Switch
                   id="pagination"
                   checked={showPagination}
-                  onCheckedChange={setShowPagination}
+                  onCheckedChange={(checked) => {
+                    console.log('=== PAGINATION TOGGLE CLICKED ===');
+                    console.log('Old value:', showPagination);
+                    console.log('New value:', checked);
+                    setShowPagination(checked);
+                    console.log('=== PAGINATION TOGGLE APPLIED ===');
+                  }}
                   disabled={!canEdit}
                 />
                 <Label htmlFor="pagination">Paginierung anzeigen</Label>
