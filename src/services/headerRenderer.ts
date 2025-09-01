@@ -129,17 +129,23 @@ export class HeaderRenderer {
     console.log('Font weight:', fontWeight);
     console.log('Element content:', element.content);
     
-    // The StructuredHeaderEditor uses pixel values, but jsPDF needs larger values
-    // Try multiplying by a factor to get proper size
-    const fontSizeInPoints = fontSize * 2; // Double the size as test
-    console.log('Doubled fontSize for PDF:', fontSizeInPoints);
+    // Test if setFontSize works at all by using an extremely large size
+    const testFontSize = 50; // Very large font size to see if setFontSize works
+    console.log('Setting test fontSize:', testFontSize);
     
-    this.pdf.setFontSize(fontSizeInPoints);
+    this.pdf.setFontSize(testFontSize);
     
     // Debug: Check if setFontSize actually worked
     const actualFontSize = this.pdf.getFontSize();
     console.log('PDF fontSize after setFontSize:', actualFontSize);
-    console.log('Expected fontSize:', fontSizeInPoints);
+    console.log('Expected fontSize:', testFontSize);
+    
+    // Also try setting font BEFORE setFontSize to see if that affects it
+    console.log('Setting font family first...');
+    this.pdf.setFont('helvetica', 'normal');
+    this.pdf.setFontSize(testFontSize);
+    const actualFontSizeAfterFont = this.pdf.getFontSize();
+    console.log('Font size after setting font:', actualFontSizeAfterFont);
     
     // Handle different font families - jsPDF has limited font support
     // Map from StructuredHeaderEditor font names to jsPDF font names
@@ -176,7 +182,7 @@ export class HeaderRenderer {
     const yInMm = element.y || 0;
     
     // Adjust text position - jsPDF positions text by baseline, we need to add font height
-    const textYInMm = yInMm + (fontSizeInPoints * 0.352778); // Convert font size from points to mm and adjust for baseline
+    const textYInMm = yInMm + (testFontSize * 0.352778); // Convert font size from points to mm and adjust for baseline
     
     console.log('Text element position and font:', { 
       elementX: element.x, 
@@ -191,7 +197,7 @@ export class HeaderRenderer {
     });
     
     // Render debug box around text element (shows the actual bounding box)
-    this.renderDebugBox(xInMm, yInMm, fontSizeInPoints, element.content || '');
+    this.renderDebugBox(xInMm, yInMm, testFontSize, element.content || '');
     
     // Set text color AFTER debug rendering to avoid red text
     if (element.color && element.color.startsWith('#')) {
