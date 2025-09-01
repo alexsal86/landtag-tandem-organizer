@@ -414,97 +414,47 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({
                 
                 if (element.type === 'text') {
                   return (
-                    <div key={element.id} className="absolute">
-                      {/* Element Box */}
-                      <div
-                        className={`absolute border-2 bg-blue-50/30 ${
-                          selectedElementId === element.id ? 'border-primary border-dashed' : 'border-blue-300'
-                        }`}
-                        style={{
-                          left: `${element.x * scaleX}px`,
-                          top: `${element.y * scaleY}px`,
-                          width: `${Math.max(80, (element.content || 'Text').length * (element.fontSize || 12) * 0.6 * scaleX)}px`,
-                          height: `${(element.fontSize || 12) * scaleY * 1.5}px`,
-                        }}
-                        onClick={() => setSelectedElementId(element.id)}
-                      />
-                      
-                      {/* Position Label */}
-                      <div
-                        className="absolute text-xs bg-blue-600 text-white px-1 rounded pointer-events-none z-10"
-                        style={{
-                          left: `${element.x * scaleX}px`,
-                          top: `${element.y * scaleY - 20}px`,
-                        }}
-                      >
-                        x:{element.x}mm y:{element.y}mm
-                      </div>
-                      
-                      {/* Text Content */}
-                      <div
-                        className="absolute cursor-pointer z-5"
-                        style={{
-                          left: `${element.x * scaleX + 2}px`,
-                          top: `${element.y * scaleY + 2}px`,
-                          fontSize: `${(element.fontSize || 12) * Math.min(scaleX, scaleY) * 0.8}px`,
-                          fontFamily: element.fontFamily || 'Arial',
-                          fontWeight: element.fontWeight || 'normal',
-                          color: element.color || '#000000',
-                          lineHeight: '1.2'
-                        }}
-                        onClick={() => setSelectedElementId(element.id)}
-                      >
-                        {element.content || 'Text'}
-                      </div>
+                    <div
+                      key={element.id}
+                      className={`absolute cursor-pointer border border-transparent ${
+                        selectedElementId === element.id ? 'border-primary border-dashed' : ''
+                      }`}
+                      style={{
+                        left: `${element.x * scaleX}px`,
+                        top: `${element.y * scaleY}px`,
+                        fontSize: `${(element.fontSize || 12) * Math.min(scaleX, scaleY) * 0.8}px`,
+                        fontFamily: element.fontFamily || 'Arial',
+                        fontWeight: element.fontWeight || 'normal',
+                        color: element.color || '#000000',
+                        lineHeight: '1.2'
+                      }}
+                      onClick={() => setSelectedElementId(element.id)}
+                    >
+                      {element.content || 'Text'}
                     </div>
                   );
                 } else if (element.type === 'image' && element.imageUrl) {
                   return (
-                    <div key={element.id} className="absolute">
-                      {/* Element Box */}
-                      <div
-                        className={`absolute border-2 bg-green-50/30 ${
-                          selectedElementId === element.id ? 'border-primary border-dashed' : 'border-green-400'
-                        }`}
-                        style={{
-                          left: `${element.x * scaleX}px`,
-                          top: `${element.y * scaleY}px`,
-                          width: `${(element.width || 50) * scaleX}px`,
-                          height: `${(element.height || 30) * scaleY}px`,
-                        }}
-                        onClick={() => setSelectedElementId(element.id)}
-                      />
-                      
-                      {/* Position and Size Label */}
-                      <div
-                        className="absolute text-xs bg-green-600 text-white px-1 rounded pointer-events-none z-10"
-                        style={{
-                          left: `${element.x * scaleX}px`,
-                          top: `${element.y * scaleY - 20}px`,
-                        }}
-                      >
-                        x:{element.x}mm y:{element.y}mm {element.width}×{element.height}mm
-                      </div>
-                      
-                       {/* Image */}
-                       <img
-                         src={element.imageUrl}
-                         alt="Header Image"
-                         className="absolute cursor-pointer object-contain z-5"
-                         style={{
-                           left: `${element.x * scaleX}px`,
-                           top: `${element.y * scaleY}px`,
-                           width: `${(element.width || 50) * scaleX}px`,
-                           height: `${(element.height || 30) * scaleY}px`
-                         }}
-                         onClick={() => setSelectedElementId(element.id)}
-                       />
-                     </div>
-                   );
-                 }
-                 return null;
-               })}
-             </div>
+                    <img
+                      key={element.id}
+                      src={element.imageUrl}
+                      alt="Header Image"
+                      className={`absolute cursor-pointer border border-transparent object-contain ${
+                        selectedElementId === element.id ? 'border-primary border-dashed border-2' : ''
+                      }`}
+                      style={{
+                        left: `${element.x * scaleX}px`,
+                        top: `${element.y * scaleY}px`,
+                        width: `${(element.width || 50) * scaleX}px`,
+                        height: `${(element.height || 30) * scaleY}px`
+                      }}
+                      onClick={() => setSelectedElementId(element.id)}
+                    />
+                  );
+                }
+                return null;
+              })}
+            </div>
             <div className="mt-2 text-xs text-muted-foreground">
               Klicken Sie auf Elemente zur Auswahl • Skaliert für Anzeige
             </div>

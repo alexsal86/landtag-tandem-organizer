@@ -127,14 +127,17 @@ export class HeaderRenderer {
       this.pdf.setTextColor(r, g, b);
     }
     
-    // Elements from StructuredHeaderEditor already have positions in mm
-    // Just add top margin and use coordinates directly
-    const xInMm = element.x || 0;
-    const yInMm = 10 + (element.y || 0); // 10mm top margin for document header space
+    // Calculate position in mm for A4 (210mm width, 45mm header height max)
+    const maxHeaderWidth = 210; // A4 width in mm
+    const maxHeaderHeight = 45; // Header height limit in mm
     
-    console.log('Text element position (mm):', { 
-      x: element.x, 
-      y: element.y, 
+    // Convert canvas coordinates (595px x 200px) to PDF coordinates (210mm x 45mm)
+    const xInMm = (element.x || 0) / 595 * maxHeaderWidth;
+    const yInMm = 10 + ((element.y || 0) / 200) * maxHeaderHeight; // 10mm top margin
+    
+    console.log('Text element position:', { 
+      canvasX: element.x, 
+      canvasY: element.y, 
       pdfX: xInMm, 
       pdfY: yInMm,
       content: element.content 
@@ -152,12 +155,15 @@ export class HeaderRenderer {
     try {
       console.log('Rendering image element:', { imageUrl, position });
       
-      // Elements from StructuredHeaderEditor already have positions and sizes in mm
-      // Just add top margin and use coordinates directly
-      const xInMm = position.x;
-      const yInMm = 10 + position.y; // 10mm top margin for document header space
-      const widthInMm = position.width;
-      const heightInMm = position.height;
+      // Calculate position and size in mm for A4 (210mm width, 45mm header height max)
+      const maxHeaderWidth = 210; // A4 width in mm
+      const maxHeaderHeight = 45; // Header height limit in mm
+      
+      // Convert canvas coordinates (595px x 200px) to PDF coordinates (210mm x 45mm)
+      const xInMm = (position.x / 595) * maxHeaderWidth;
+      const yInMm = 10 + (position.y / 200) * maxHeaderHeight; // 10mm top margin
+      const widthInMm = Math.min((position.width / 595) * maxHeaderWidth, maxHeaderWidth - xInMm);
+      const heightInMm = Math.min((position.height / 200) * maxHeaderHeight, maxHeaderHeight - (yInMm - 10));
       
       console.log('Image position in mm:', { xInMm, yInMm, widthInMm, heightInMm });
 
@@ -203,11 +209,11 @@ export class HeaderRenderer {
     } catch (error) {
       console.error('Error rendering image, using fallback:', error);
       
-      // Fallback: render a simple placeholder using mm coordinates directly
-      const xInMm = position.x;
-      const yInMm = 10 + position.y;
-      const widthInMm = position.width;
-      const heightInMm = position.height;
+      // Fallback: render a simple placeholder
+      const xInMm = (position.x / 595) * 210;
+      const yInMm = 10 + (position.y / 200) * 45;
+      const widthInMm = Math.min((position.width / 595) * 210, 210 - xInMm);
+      const heightInMm = Math.min((position.height / 200) * 45, 45 - (yInMm - 10));
       
       this.pdf.setDrawColor(200, 200, 200);
       this.pdf.setFillColor(250, 250, 250);
