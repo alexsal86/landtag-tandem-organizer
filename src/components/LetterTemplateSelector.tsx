@@ -40,6 +40,11 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
   onSelect,
   selectedTemplate
 }) => {
+  console.log('=== LETTERT TEMPLATE SELECTOR RENDER ===');
+  console.log('onSelect function:', onSelect);
+  console.log('typeof onSelect:', typeof onSelect);
+  console.log('=== END LETTERT TEMPLATE SELECTOR RENDER ===');
+  
   const { currentTenant } = useTenant();
   const { user } = useAuth();
   const { toast } = useToast();
