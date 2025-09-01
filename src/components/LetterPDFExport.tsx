@@ -379,17 +379,57 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
           
           let blockY = footerY;
           
-          // Render block title in bold
+          // Render block title with highlighting support
           if (block.title) {
-            pdf.setFont('helvetica', 'bold');
-            const wrappedTitle = pdf.splitTextToSize(block.title, blockWidth - 2);
-            wrappedTitle.forEach((titleLine: string) => {
-              if (blockY <= 290) {
-                pdf.text(titleLine, currentX + 1, blockY);
-                blockY += lineHeight;
+            if (block.titleHighlight) {
+              // Use highlighted title settings
+              const titleFontSize = Math.max(8, Math.min(20, block.titleFontSize || 13));
+              const titleFontWeight = block.titleFontWeight || 'bold';
+              const titleColor = block.titleColor || '#107030';
+              
+              pdf.setFont('helvetica', titleFontWeight);
+              pdf.setFontSize(titleFontSize);
+              
+              // Set title color
+              if (titleColor.startsWith('#')) {
+                try {
+                  const hex = titleColor.substring(1);
+                  const r = parseInt(hex.substr(0, 2), 16);
+                  const g = parseInt(hex.substr(2, 2), 16);
+                  const b = parseInt(hex.substr(4, 2), 16);
+                  pdf.setTextColor(r, g, b);
+                } catch (e) {
+                  pdf.setTextColor(16, 112, 48); // Fallback to RGB 16,112,48
+                }
+              } else {
+                pdf.setTextColor(16, 112, 48);
               }
-            });
-            blockY += 1; // Small gap after title
+              
+              const wrappedTitle = pdf.splitTextToSize(block.title, blockWidth - 2);
+              const titleLineHeight = titleFontSize * 0.4; // Tight spacing for title
+              wrappedTitle.forEach((titleLine: string) => {
+                if (blockY <= 290) {
+                  pdf.text(titleLine, currentX + 1, blockY);
+                  blockY += titleLineHeight;
+                }
+              });
+              blockY += 2; // Extra gap after highlighted title
+              
+              // Reset font size and color for content
+              pdf.setFontSize(fontSize);
+              pdf.setTextColor(0, 0, 0);
+            } else {
+              // Regular title formatting
+              pdf.setFont('helvetica', 'bold');
+              const wrappedTitle = pdf.splitTextToSize(block.title, blockWidth - 2);
+              wrappedTitle.forEach((titleLine: string) => {
+                if (blockY <= 290) {
+                  pdf.text(titleLine, currentX + 1, blockY);
+                  blockY += lineHeight;
+                }
+              });
+              blockY += 1; // Small gap after title
+            }
             
             // Reset to original font weight for content
             pdf.setFont('helvetica', fontWeight);

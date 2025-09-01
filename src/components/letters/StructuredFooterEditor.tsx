@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Type, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +24,10 @@ interface FooterBlock {
   fontWeight: string;
   color: string;
   lineHeight?: number; // Line height multiplier (default: 1)
+  titleHighlight?: boolean; // Whether to highlight the title
+  titleFontSize?: number; // Font size for highlighted title (default: 13)
+  titleFontWeight?: string; // Font weight for highlighted title (default: bold)
+  titleColor?: string; // Color for highlighted title (default: RGB 16,112,48)
 }
 
 interface SenderInfo {
@@ -113,7 +118,11 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontFamily: 'Arial',
         fontWeight: 'normal',
         color: '#000000',
-        lineHeight: 0.8
+        lineHeight: 0.8,
+        titleHighlight: false,
+        titleFontSize: 13,
+        titleFontWeight: 'bold',
+        titleColor: '#107030'
       },
       {
         id: 'wahlkreis',
@@ -126,7 +135,11 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontFamily: 'Arial',
         fontWeight: 'normal',
         color: '#000000',
-        lineHeight: 0.8
+        lineHeight: 0.8,
+        titleHighlight: false,
+        titleFontSize: 13,
+        titleFontWeight: 'bold',
+        titleColor: '#107030'
       },
       {
         id: 'communication',
@@ -139,7 +152,11 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontFamily: 'Arial',
         fontWeight: 'normal',
         color: '#000000',
-        lineHeight: 0.8
+        lineHeight: 0.8,
+        titleHighlight: false,
+        titleFontSize: 13,
+        titleFontWeight: 'bold',
+        titleColor: '#107030'
       },
       {
         id: 'general',
@@ -152,7 +169,11 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
         fontFamily: 'Arial',
         fontWeight: 'normal',
         color: '#000000',
-        lineHeight: 0.8
+        lineHeight: 0.8,
+        titleHighlight: false,
+        titleFontSize: 13,
+        titleFontWeight: 'bold',
+        titleColor: '#107030'
       }
     ];
 
@@ -220,7 +241,11 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
       fontFamily: 'Arial',
       fontWeight: 'normal',
       color: '#000000',
-      lineHeight: 0.8
+      lineHeight: 0.8,
+      titleHighlight: false,
+      titleFontSize: 13,
+      titleFontWeight: 'bold',
+      titleColor: '#107030'
     };
     setBlocks([...blocks, newBlock]);
     setSelectedBlockId(newBlock.id);
@@ -419,6 +444,69 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
                     = {calculateActualWidth(selectedBlock.widthPercent).toFixed(1)}mm von {footerAvailableWidth}mm
                   </p>
                 </div>
+
+                <Separator />
+
+                {/* Title Highlighting */}
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`highlight-${selectedBlock.id}`}
+                      checked={selectedBlock.titleHighlight || false}
+                      onCheckedChange={(checked) => {
+                        updateBlock(selectedBlock.id, { 
+                          titleHighlight: checked as boolean,
+                          // Set default values when enabling highlighting
+                          titleFontSize: checked ? (selectedBlock.titleFontSize || 13) : selectedBlock.titleFontSize,
+                          titleFontWeight: checked ? (selectedBlock.titleFontWeight || 'bold') : selectedBlock.titleFontWeight,
+                          titleColor: checked ? (selectedBlock.titleColor || '#107030') : selectedBlock.titleColor
+                        });
+                      }}
+                    />
+                    <Label htmlFor={`highlight-${selectedBlock.id}`}>Titel hervorheben</Label>
+                  </div>
+                </div>
+
+                {/* Title styling options - only show when highlighting is enabled */}
+                {selectedBlock.titleHighlight && (
+                  <div className="space-y-4 border-l-4 border-primary/20 pl-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Titel-Schriftgröße</Label>
+                        <Input
+                          type="number"
+                          value={selectedBlock.titleFontSize || 13}
+                          onChange={(e) => updateBlock(selectedBlock.id, { titleFontSize: parseInt(e.target.value) || 13 })}
+                          min={8}
+                          max={24}
+                        />
+                      </div>
+                      <div>
+                        <Label>Titel-Schriftstärke</Label>
+                        <Select
+                          value={selectedBlock.titleFontWeight || 'bold'}
+                          onValueChange={(value) => updateBlock(selectedBlock.id, { titleFontWeight: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="normal">Normal</SelectItem>
+                            <SelectItem value="bold">Fett</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Titel-Textfarbe</Label>
+                      <Input
+                        type="color"
+                        value={selectedBlock.titleColor || '#107030'}
+                        onChange={(e) => updateBlock(selectedBlock.id, { titleColor: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <Separator />
 
