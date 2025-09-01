@@ -632,8 +632,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       }
       // Lock workflow when letter is sent
       workflowUpdates.workflow_locked = true;
-      workflowUpdates.sent_date = now;
-      console.log('Set workflow_locked and sent_date');
+      workflowUpdates.sent_date = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+      console.log('Set workflow_locked and sent_date:', workflowUpdates.sent_date);
     }
 
     // Show assignment dialog when transitioning to review
