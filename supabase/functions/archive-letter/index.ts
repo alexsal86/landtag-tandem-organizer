@@ -21,25 +21,37 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch letter with all details
+    // Fetch letter with basic details first
     const { data: letter, error: letterError } = await supabase
       .from('letters')
-      .select(`
-        *,
-        letter_templates(*),
-        sender_information(*),
-        information_blocks(*),
-        letter_attachments(*)
-      `)
+      .select('*')
       .eq('id', letterId)
       .single();
 
     if (letterError || !letter) {
       console.error('Error fetching letter:', letterError);
-      throw new Error('Letter not found');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Letter not found',
+          details: letterError?.message || 'Unknown error'
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     console.log('Letter fetched:', letter.title);
+
+    // Fetch attachments separately
+    const { data: attachments } = await supabase
+      .from('letter_attachments')
+      .select('*')
+      .eq('letter_id', letterId);
+
+    // Add attachments to letter object
+    letter.letter_attachments = attachments || [];
 
     // Generate PDF content using simplified HTML structure
     const pdfContent = generatePDFContent(letter);
