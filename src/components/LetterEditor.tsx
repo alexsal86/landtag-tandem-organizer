@@ -260,6 +260,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
   // Separate useEffect specifically for pagination to avoid conflicts
   useEffect(() => {
+    console.log('=== PAGINATION EFFECT TRIGGERED ===');
+    console.log('Letter object:', letter);
+    console.log('Letter show_pagination:', letter?.show_pagination);
+    console.log('Type of show_pagination:', typeof letter?.show_pagination);
+    
     if (letter && letter.show_pagination !== undefined) {
       console.log('=== DEDICATED PAGINATION EFFECT ===');
       console.log('Letter show_pagination value:', letter.show_pagination);
@@ -304,8 +309,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   }, [isOpen, currentTenant, editedLetter?.template_id, letter?.template_id, letter?.id, senderInfos.length, informationBlocks.length]);
 
-  // Auto-save functionality with improved performance
+  // Auto-save functionality with improved performance - INCLUDES PAGINATION
   useEffect(() => {
+    console.log('=== AUTO-SAVE EFFECT TRIGGERED ===');
+    console.log('canEdit:', canEdit);
+    console.log('isUpdatingFromRemoteRef.current:', isUpdatingFromRemoteRef.current);
+    console.log('letter?.id:', letter?.id);
+    console.log('showPagination (for auto-save):', showPagination);
+    
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
 
     if (saveTimeoutRef.current) {
@@ -314,6 +325,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
     saveTimeoutRef.current = setTimeout(() => {
       if (!isUpdatingFromRemoteRef.current && letter?.id) {
+        console.log('=== TRIGGERING AUTO-SAVE WITH PAGINATION ===');
+        console.log('showPagination at auto-save time:', showPagination);
         handleAutoSave();
       }
     }, 3000); // Increased from 1000ms to 3000ms for better performance
@@ -323,7 +336,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [editedLetter, canEdit, letter?.id]);
+  }, [editedLetter, canEdit, letter?.id, showPagination]); // WICHTIG: showPagination als Dependency hinzugefügt
 
   // Real-time collaboration setup
   useEffect(() => {
@@ -1020,6 +1033,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const handleAutoSave = async () => {
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
     
+    console.log('=== AUTO-SAVE STARTED ===');
+    console.log('Current showPagination value:', showPagination);
+    console.log('Letter ID:', letter?.id);
+    
     setSaving(true);
     try {
       // Don't auto-save status changes - only content and metadata
@@ -1046,9 +1063,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
       if (error) throw error;
 
+      console.log('=== AUTO-SAVE SUCCESSFUL ===');
+      console.log('Saved showPagination:', showPagination);
       setLastSaved(new Date());
     } catch (error) {
       console.error('Error auto-saving letter:', error);
+      console.log('=== AUTO-SAVE FAILED ===');
     } finally {
       setTimeout(() => setSaving(false), 200);
     }
