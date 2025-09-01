@@ -127,21 +127,20 @@ export class HeaderRenderer {
       this.pdf.setTextColor(r, g, b);
     }
     
-    // Calculate position in mm for A4 (210mm width, 45mm header height max)
-    const maxHeaderWidth = 210; // A4 width in mm
-    const maxHeaderHeight = 45; // Header height limit in mm
-    
-    // Convert canvas coordinates (595px x 200px) to PDF coordinates (210mm x 45mm)
-    const xInMm = (element.x || 0) / 595 * maxHeaderWidth;
-    const yInMm = 10 + ((element.y || 0) / 200) * maxHeaderHeight; // 10mm top margin
+    // Use direct mm coordinates from structured editor
+    const xInMm = element.x || 0;
+    const yInMm = 10 + (element.y || 0); // 10mm top margin
     
     console.log('Text element position:', { 
-      canvasX: element.x, 
-      canvasY: element.y, 
+      elementX: element.x, 
+      elementY: element.y, 
       pdfX: xInMm, 
       pdfY: yInMm,
       content: element.content 
     });
+    
+    // Render debug box around text element
+    this.renderDebugBox(xInMm, yInMm, element.fontSize || 12, element.content || '');
     
     // Render text
     this.pdf.text(element.content || '', xInMm, yInMm);
@@ -155,17 +154,16 @@ export class HeaderRenderer {
     try {
       console.log('Rendering image element:', { imageUrl, position });
       
-      // Calculate position and size in mm for A4 (210mm width, 45mm header height max)
-      const maxHeaderWidth = 210; // A4 width in mm
-      const maxHeaderHeight = 45; // Header height limit in mm
-      
-      // Convert canvas coordinates (595px x 200px) to PDF coordinates (210mm x 45mm)
-      const xInMm = (position.x / 595) * maxHeaderWidth;
-      const yInMm = 10 + (position.y / 200) * maxHeaderHeight; // 10mm top margin
-      const widthInMm = Math.min((position.width / 595) * maxHeaderWidth, maxHeaderWidth - xInMm);
-      const heightInMm = Math.min((position.height / 200) * maxHeaderHeight, maxHeaderHeight - (yInMm - 10));
+      // Use direct mm coordinates from structured editor
+      const xInMm = position.x;
+      const yInMm = 10 + position.y; // 10mm top margin
+      const widthInMm = position.width;
+      const heightInMm = position.height;
       
       console.log('Image position in mm:', { xInMm, yInMm, widthInMm, heightInMm });
+      
+      // Render debug box around image element
+      this.renderDebugBox(xInMm, yInMm, widthInMm, heightInMm, true);
 
       // Check if it's an SVG first (which jsPDF doesn't support directly)
       if (imageUrl.toLowerCase().includes('.svg')) {
@@ -210,10 +208,10 @@ export class HeaderRenderer {
       console.error('Error rendering image, using fallback:', error);
       
       // Fallback: render a simple placeholder
-      const xInMm = (position.x / 595) * 210;
-      const yInMm = 10 + (position.y / 200) * 45;
-      const widthInMm = Math.min((position.width / 595) * 210, 210 - xInMm);
-      const heightInMm = Math.min((position.height / 200) * 45, 45 - (yInMm - 10));
+      const xInMm = position.x;
+      const yInMm = 10 + position.y;
+      const widthInMm = position.width;
+      const heightInMm = position.height;
       
       this.pdf.setDrawColor(200, 200, 200);
       this.pdf.setFillColor(250, 250, 250);
@@ -256,5 +254,34 @@ export class HeaderRenderer {
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
+  }
+
+  private renderDebugBox(x: number, y: number, width: number | string, height?: number | string, isImage: boolean = false): void {
+    let boxWidth: number;
+    let boxHeight: number;
+    
+    if (isImage) {
+      boxWidth = width as number;
+      boxHeight = height as number;
+    } else {
+      // For text elements, estimate dimensions based on content and font size
+      const fontSize = width as number; // width parameter contains fontSize for text
+      const content = height as string; // height parameter contains content for text
+      boxWidth = Math.max(content.length * fontSize * 0.6, 20); // Rough estimation
+      boxHeight = fontSize * 1.2; // Font size with some padding
+    }
+    
+    // Draw debug rectangle with red border
+    this.pdf.setDrawColor(255, 0, 0); // Red border
+    this.pdf.rect(x, y, boxWidth, boxHeight, 'D'); // Draw outline only
+    
+    // Add debug information text
+    this.pdf.setFontSize(6);
+    this.pdf.setTextColor(255, 0, 0); // Red text
+    const debugText = `x:${x.toFixed(1)}mm y:${y.toFixed(1)}mm ${boxWidth.toFixed(1)}×${boxHeight.toFixed(1)}mm`;
+    
+    // Position debug text above or below the element
+    const debugY = y > 15 ? y - 2 : y + boxHeight + 8;
+    this.pdf.text(debugText, x, debugY);
   }
 }
