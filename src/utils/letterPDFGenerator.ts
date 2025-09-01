@@ -283,6 +283,59 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       pdf.setFont('helvetica', 'bold');
       pdf.text(template.name || 'Briefkopf', leftMargin, 20);
     }
+
+    // Render structured header if available
+    if (template?.header_layout_type === 'structured' && template?.header_text_elements) {
+      // Render text elements
+      const textElements = Array.isArray(template.header_text_elements) ? template.header_text_elements : [];
+      textElements.forEach(element => {
+        if (element.type === 'text' && element.content) {
+          pdf.setFontSize(element.fontSize || 12);
+          pdf.setFont('helvetica', element.fontWeight === 'bold' ? 'bold' : 'normal');
+          
+          // Convert hex color to RGB for jsPDF
+          if (element.color && element.color.startsWith('#')) {
+            const hex = element.color.substring(1);
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            pdf.setTextColor(r, g, b);
+          }
+          
+          pdf.text(element.content, leftMargin + (element.x || 0) * 0.264583, 20 + (element.y || 0) * 0.264583);
+        }
+      });
+      
+      // Reset text color
+      pdf.setTextColor(0, 0, 0);
+
+      // Render header image if available
+      if (template?.header_image_url) {
+        try {
+          // For now, we'll indicate the image position but not render it directly
+          // In a full implementation, you'd need to load and embed the image
+          const imgPosition = template.header_image_position || { x: 0, y: 0, width: 200, height: 100 };
+          pdf.setDrawColor(200, 200, 200);
+          pdf.rect(
+            leftMargin + imgPosition.x * 0.264583,
+            20 + imgPosition.y * 0.264583,
+            imgPosition.width * 0.264583,
+            imgPosition.height * 0.264583
+          );
+          pdf.setFontSize(8);
+          pdf.text('[Bild: ' + template.header_image_url.split('/').pop() + ']', 
+                   leftMargin + imgPosition.x * 0.264583 + 2, 
+                   20 + imgPosition.y * 0.264583 + 10);
+        } catch (error) {
+          console.warn('Error rendering header image:', error);
+        }
+      }
+    } else if (template?.letterhead_html) {
+      // Fallback to HTML/CSS letterhead
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(template.name || 'Briefkopf', leftMargin, 20);
+    }
     
     // Return address line in address field - 17.7mm height
     let addressYPos = addressFieldTop + 17.7;

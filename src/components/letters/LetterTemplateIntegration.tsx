@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Edit, Trash2, Settings } from 'lucide-react';
+import { FileText, Plus, Edit, Trash2, Settings, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
+import { LetterHeaderEditor } from './LetterHeaderEditor';
 
 interface LetterTemplate {
   id: string;
@@ -21,6 +22,10 @@ interface LetterTemplate {
   is_default: boolean;
   is_active: boolean;
   created_at: string;
+  header_image_url?: string;
+  header_image_position?: any;
+  header_text_elements?: any[];
+  header_layout_type?: string;
 }
 
 interface LetterTemplateIntegrationProps {
@@ -41,6 +46,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<LetterTemplate | null>(null);
+  const [showHeaderEditor, setShowHeaderEditor] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -70,7 +76,14 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
         .order('name');
 
       if (error) throw error;
-      setTemplates(data || []);
+      // Cast the data to ensure proper typing
+      const typedTemplates = (data || []).map(template => ({
+        ...template,
+        header_text_elements: Array.isArray(template.header_text_elements) 
+          ? template.header_text_elements 
+          : []
+      })) as LetterTemplate[];
+      setTemplates(typedTemplates);
     } catch (error) {
       console.error('Error fetching templates:', error);
       toast({
@@ -111,6 +124,39 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       is_active: template.is_active
     });
     setIsDialogOpen(true);
+  };
+
+  const handleEditHeader = (template: LetterTemplate) => {
+    setEditingTemplate(template);
+    setShowHeaderEditor(true);
+  };
+
+  const handleSaveHeader = async (headerData: any) => {
+    if (!editingTemplate || !currentTenant) return;
+
+    try {
+      const { error } = await supabase
+        .from('letter_templates')
+        .update(headerData)
+        .eq('id', editingTemplate.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Erfolg",
+        description: "Header wurde aktualisiert.",
+      });
+
+      setShowHeaderEditor(false);
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error saving header:', error);
+      toast({
+        title: "Fehler",
+        description: "Header konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSaveTemplate = async () => {
@@ -392,6 +438,14 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleEditHeader(template)}
+                            title="Header bearbeiten"
+                          >
+                            <ImageIcon className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleEditTemplate(template)}
                           >
                             <Edit className="h-3 w-3" />
@@ -414,6 +468,19 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
           )}
         </CardContent>
       </Card>
+
+      {/* Header Editor Dialog */}
+      {showHeaderEditor && editingTemplate && (
+        <Dialog open={showHeaderEditor} onOpenChange={setShowHeaderEditor}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
+            <LetterHeaderEditor
+              template={editingTemplate}
+              onSave={handleSaveHeader}
+              onCancel={() => setShowHeaderEditor(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

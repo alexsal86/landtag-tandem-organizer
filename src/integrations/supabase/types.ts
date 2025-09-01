@@ -2283,12 +2283,72 @@ export type Database = {
           },
         ]
       }
+      letter_template_assets: {
+        Row: {
+          asset_type: string
+          created_at: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          is_active: boolean | null
+          position_data: Json | null
+          template_id: string | null
+          tenant_id: string
+          updated_at: string | null
+          uploaded_by: string
+        }
+        Insert: {
+          asset_type: string
+          created_at?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          position_data?: Json | null
+          template_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          uploaded_by: string
+        }
+        Update: {
+          asset_type?: string
+          created_at?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          position_data?: Json | null
+          template_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_template_assets_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "letter_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       letter_templates: {
         Row: {
           created_at: string
           created_by: string
           default_info_blocks: string[] | null
           default_sender_id: string | null
+          header_image_position: Json | null
+          header_image_url: string | null
+          header_layout_type: string | null
+          header_text_elements: Json | null
           id: string
           is_active: boolean | null
           is_default: boolean | null
@@ -2304,6 +2364,10 @@ export type Database = {
           created_by: string
           default_info_blocks?: string[] | null
           default_sender_id?: string | null
+          header_image_position?: Json | null
+          header_image_url?: string | null
+          header_layout_type?: string | null
+          header_text_elements?: Json | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
@@ -2319,6 +2383,10 @@ export type Database = {
           created_by?: string
           default_info_blocks?: string[] | null
           default_sender_id?: string | null
+          header_image_position?: Json | null
+          header_image_url?: string | null
+          header_layout_type?: string | null
+          header_text_elements?: Json | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
