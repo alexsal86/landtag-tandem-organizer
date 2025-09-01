@@ -49,7 +49,7 @@ export const useLetterArchiving = () => {
     setIsArchiving(true);
 
     try {
-      // Dynamically import LetterPDFExport to get PDF data
+      // Use generateLetterPDF from letterPDFGenerator which has the exact same logic as LetterPDFExport
       const { generateLetterPDF } = await import('@/utils/letterPDFGenerator');
       
       // Generate PDF blob using the exact same logic as LetterPDFExport
