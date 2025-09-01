@@ -15,6 +15,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
+import { FabricFooterEditor } from '@/components/letters/FabricFooterEditor';
 
 interface LetterTemplate {
   id: string;
@@ -67,7 +68,9 @@ const LetterTemplateManager: React.FC = () => {
     response_time_days: 21,
     default_sender_id: '',
     default_info_blocks: [] as string[],
-    header_elements: [] as any[]
+    header_elements: [] as any[],
+    footer_html: '',
+    footer_css: ''
   });
 
   useEffect(() => {
@@ -157,7 +160,9 @@ const LetterTemplateManager: React.FC = () => {
           default_sender_id: formData.default_sender_id || null,
           default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
           header_layout_type: formData.header_elements.length > 0 ? 'structured' : 'html',
-          header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null
+          header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null,
+          footer_html: formData.footer_html || null,
+          footer_css: formData.footer_css || null
         });
 
       if (error) throw error;
@@ -195,6 +200,8 @@ const LetterTemplateManager: React.FC = () => {
           default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
           header_layout_type: formData.header_elements.length > 0 ? 'structured' : 'html',
           header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null,
+          footer_html: formData.footer_html || null,
+          footer_css: formData.footer_css || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingTemplate.id);
@@ -254,7 +261,9 @@ const LetterTemplateManager: React.FC = () => {
       response_time_days: 21,
       default_sender_id: '',
       default_info_blocks: [],
-      header_elements: []
+      header_elements: [],
+      footer_html: '',
+      footer_css: ''
     });
   };
 
@@ -283,7 +292,9 @@ const LetterTemplateManager: React.FC = () => {
       response_time_days: template.response_time_days,
       default_sender_id: template.default_sender_id || '',
       default_info_blocks: template.default_info_blocks || [],
-      header_elements: headerElements
+      header_elements: headerElements,
+      footer_html: (template as any).footer_html || '',
+      footer_css: (template as any).footer_css || ''
     });
   };
 
@@ -382,8 +393,9 @@ const LetterTemplateManager: React.FC = () => {
             </DialogHeader>
             
             <Tabs defaultValue="header-designer" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
+                <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
               </TabsList>
@@ -397,6 +409,30 @@ const LetterTemplateManager: React.FC = () => {
                   <StructuredHeaderEditor
                     initialElements={formData.header_elements}
                     onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
+                  />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="footer-designer" className="space-y-4">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Footer-Designer</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Gestalten Sie Ihren Brief-Footer mit verschiedenen Elementen wie Adresse, Kontaktdaten und sozialen Medien.
+                  </p>
+                  <FabricFooterEditor
+                    template={{
+                      id: 'new',
+                      footer_html: formData.footer_html,
+                      footer_css: formData.footer_css
+                    }}
+                    onSave={(footerData) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        footer_html: footerData.footer_html || '',
+                        footer_css: footerData.footer_css || ''
+                      }));
+                    }}
+                    onCancel={() => {}}
                   />
                 </div>
               </TabsContent>
@@ -588,8 +624,9 @@ const LetterTemplateManager: React.FC = () => {
             </DialogHeader>
             
             <Tabs defaultValue="header-designer" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
+                <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
               </TabsList>
@@ -603,6 +640,30 @@ const LetterTemplateManager: React.FC = () => {
                   <StructuredHeaderEditor
                     initialElements={formData.header_elements}
                     onElementsChange={(elements) => setFormData(prev => ({ ...prev, header_elements: elements }))}
+                  />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="footer-designer" className="space-y-4">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Footer-Designer bearbeiten</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Bearbeiten Sie Ihren Brief-Footer mit verschiedenen Elementen wie Adresse, Kontaktdaten und sozialen Medien.
+                  </p>
+                  <FabricFooterEditor
+                    template={{
+                      ...editingTemplate,
+                      footer_html: formData.footer_html,
+                      footer_css: formData.footer_css
+                    }}
+                    onSave={(footerData) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        footer_html: footerData.footer_html || '',
+                        footer_css: footerData.footer_css || ''
+                      }));
+                    }}
+                    onCancel={() => {}}
                   />
                 </div>
               </TabsContent>
