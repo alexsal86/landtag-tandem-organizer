@@ -245,13 +245,15 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     } else {
       // New letter - always start fresh
       console.log('Creating new letter - no letter prop provided');
+      const currentDate = new Date().toISOString().split('T')[0];
       setEditedLetter({
         title: '',
         content: '',
         content_html: '',
         recipient_name: '',
         recipient_address: '',
-        status: 'draft'
+        status: 'draft',
+        letter_date: currentDate
       });
       // Reset proofreading mode and set default pagination for new letters
       setIsProofreadingMode(false);
@@ -1296,7 +1298,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     </div>
 
                     {/* Accordion Groups */}
-                    <Accordion type="multiple" defaultValue={["adressat", "basisinformationen"]} className="w-full">
+                    <Accordion type="multiple" defaultValue={["adressat"]} className="w-full">
                       {/* 1. Adressat */}
                       <AccordionItem value="adressat">
                         <AccordionTrigger className="flex items-center gap-2">
@@ -1373,8 +1375,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                               value={editedLetter.subject || ''}
                               onChange={(e) => {
                                 const value = e.target.value;
-                                setEditedLetter(prev => ({ ...prev, subject: value }));
+                                setEditedLetter(prev => ({ ...prev, subject: value, title: value }));
                                 broadcastContentChange('subject', value);
+                                broadcastContentChange('title', value);
                               }}
                               disabled={!canEdit}
                               placeholder="Betreff des Briefes"
@@ -1736,8 +1739,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   value={editedLetter.title || ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setEditedLetter(prev => ({ ...prev, title: value }));
+                    setEditedLetter(prev => ({ ...prev, title: value, subject: value }));
                     broadcastContentChange('title', value);
+                    broadcastContentChange('subject', value);
                   }}
                   disabled={!canEdit}
                   className="text-2xl font-bold border-none px-0 focus-visible:ring-0 bg-transparent"

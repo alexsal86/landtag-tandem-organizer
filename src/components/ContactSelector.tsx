@@ -184,7 +184,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
             </div>
           </div>
 
-          <ScrollArea className="max-h-60">
+          <ScrollArea className="max-h-80">
             {loading ? (
               <div className="p-4 text-center text-muted-foreground">
                 Kontakte werden geladen...
@@ -232,7 +232,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
                     </div>
 
                     <div className="flex flex-col items-end gap-1">
-                      {contact.category && (
+                      {contact.category && contact.category !== 'citizen' && (
                         <Badge 
                           variant="secondary" 
                           className={`text-xs ${getCategoryColor(contact.category)}`}
