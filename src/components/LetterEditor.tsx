@@ -669,15 +669,83 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         
         // Trigger archiving process for sent letters AFTER successful database update
         if (newStatus === 'sent') {
-          console.log('=== STARTING ARCHIVE PROCESS ===');
+          console.log('=== STARTING AUTOMATED ARCHIVE PROCESS ===');
           try {
-            console.log('Calling archive-letter function for letter:', letter.id);
-            const { data: archiveResult, error: archiveError } = await supabase.functions.invoke('archive-letter', {
-              body: { letterId: letter.id }
-            });
+            // Use the same PDF generation as LetterPDFExport for 1:1 identical PDFs
+            const { generateLetterPDF } = await import('@/utils/letterPDFGenerator');
             
-            console.log('Archive function result:', archiveResult);
-            console.log('Archive function error:', archiveError);
+            console.log('Generating PDF for archiving...');
+            const pdfResult = await generateLetterPDF(letter);
+            
+            if (pdfResult) {
+              const { blob: pdfBlob, filename } = pdfResult;
+              console.log('PDF generated successfully:', filename);
+              
+              // Upload PDF to storage
+              const filePath = `archived_letters/${filename}`;
+              const { error: uploadError } = await supabase.storage
+                .from('documents')
+                .upload(filePath, pdfBlob, {
+                  contentType: 'application/pdf',
+                  cacheControl: '3600',
+                  upsert: false
+                });
+
+              if (uploadError) {
+                console.error('Storage upload error:', uploadError);
+                throw uploadError;
+              }
+              console.log('PDF uploaded to storage:', filePath);
+
+              // Create document record in database
+              const { data: documentData, error: dbError } = await supabase
+                .from('documents')
+                .insert({
+                  user_id: user?.id,
+                  tenant_id: currentTenant?.id,
+                  title: `Archivierter Brief: ${letter.title}`,
+                  description: `Automatisch archiviert am ${new Date().toLocaleDateString('de-DE')}`,
+                  file_name: filename,
+                  file_path: filePath,
+                  file_size: pdfBlob.size,
+                  file_type: 'application/pdf',
+                  category: 'correspondence',
+                  status: 'archived',
+                  document_type: 'archived_letter',
+                  source_letter_id: letter.id,
+                  archived_attachments: []
+                })
+                .select()
+                .single();
+
+              if (dbError) {
+                console.error('Document creation error:', dbError);
+                throw dbError;
+              }
+              
+              console.log('Document record created:', documentData?.id);
+              
+              toast({
+                title: "Brief versendet und archiviert",
+                description: `Der Brief wurde automatisch als PDF archiviert: ${filename}`,
+              });
+            } else {
+              console.error('PDF generation failed');
+              toast({
+                title: "Archivierungsfehler",
+                description: "PDF konnte nicht generiert werden.",
+                variant: "destructive",
+              });
+            }
+          } catch (archiveError) {
+            console.error('Archive process error:', archiveError);
+            toast({
+              title: "Archivierungsfehler", 
+              description: "Der Brief wurde versendet, aber die Archivierung ist fehlgeschlagen.",
+              variant: "destructive",
+            });
+          }
+        }
             
             if (archiveError) {
               console.error('Archive function error:', archiveError);
@@ -713,10 +781,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           variant: "destructive",
         });
       }
-     }
-     
-     console.log('=== STATUS CHANGE PROCESS COMPLETED ===');
-     console.log('Final status:', newStatus);
+    }
+    
+    console.log('=== STATUS CHANGE PROCESS COMPLETED ===');
+    console.log('Final status:', newStatus);
 
      // Korrekturlesen automatisch aktivieren bei "review"
      if (newStatus === 'review') {

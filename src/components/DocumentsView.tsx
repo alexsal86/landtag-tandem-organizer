@@ -1039,17 +1039,7 @@ export function DocumentsView() {
                                  <Edit3 className="h-4 w-4 mr-1" />
                                  Bearbeiten
                                </Button>
-                                {letter.status === 'sent' && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleArchiveLetter(letter.id)}
-                                    disabled={isArchiving}
-                                  >
-                                    <Archive className="h-4 w-4 mr-1" />
-                                    {isArchiving ? 'Archiviere...' : 'Archivieren'}
-                                  </Button>
-                                )}
+                                {/* Archive button removed - now automatic on status "sent" */}
                              </>
                            ) : (
                              <>
@@ -1138,17 +1128,7 @@ export function DocumentsView() {
                                  >
                                    <Edit3 className="h-4 w-4" />
                                  </Button>
-                                  {letter.status === 'sent' && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleArchiveLetter(letter.id)}
-                                      disabled={isArchiving}
-                                      title={isArchiving ? 'Archiviere...' : 'Brief archivieren'}
-                                    >
-                                      <Archive className="h-4 w-4" />
-                                    </Button>
-                                  )}
+                                  {/* Archive button removed - now automatic on status "sent" */}
                                </>
                              ) : (
                                <>
