@@ -167,7 +167,22 @@ export class HeaderRenderer {
       
       console.log('Image position in mm:', { xInMm, yInMm, widthInMm, heightInMm });
 
-      // Fetch and convert image to base64
+      // Check if it's an SVG first (which jsPDF doesn't support directly)
+      if (imageUrl.toLowerCase().includes('.svg')) {
+        console.log('SVG detected, using placeholder');
+        this.pdf.setDrawColor(100, 100, 100);
+        this.pdf.setFillColor(245, 245, 245);
+        this.pdf.rect(xInMm, yInMm, widthInMm, heightInMm, 'FD');
+        
+        this.pdf.setFontSize(8);
+        this.pdf.setTextColor(100, 100, 100);
+        const fileName = imageUrl.split('/').pop() || 'SVG';
+        this.pdf.text(`[${fileName.substring(0, 20)}]`, xInMm + 2, yInMm + heightInMm / 2);
+        return;
+      }
+
+      // For JPG, PNG and other supported formats
+      console.log('Fetching image:', imageUrl);
       const response = await fetch(imageUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.statusText}`);
@@ -181,33 +196,18 @@ export class HeaderRenderer {
       const mimeType = blob.type.toLowerCase();
       if (mimeType.includes('png')) {
         format = 'PNG';
-      } else if (mimeType.includes('svg')) {
-        // For SVG, we need to handle it differently
-        format = 'SVG';
+      } else if (mimeType.includes('gif')) {
+        format = 'GIF';
       }
       
-      console.log('Image format detected:', format, 'MIME type:', mimeType);
+      console.log('Adding image to PDF:', { format, mimeType, size: blob.size });
 
-      if (format === 'SVG') {
-        // For SVG, convert to PNG first or render as rectangle with text
-        this.pdf.setDrawColor(100, 100, 100);
-        this.pdf.setFillColor(245, 245, 245);
-        this.pdf.rect(xInMm, yInMm, widthInMm, heightInMm, 'FD');
-        
-        this.pdf.setFontSize(8);
-        this.pdf.setTextColor(100, 100, 100);
-        const fileName = imageUrl.split('/').pop() || 'SVG';
-        this.pdf.text(`[${fileName.substring(0, 20)}]`, xInMm + 2, yInMm + heightInMm / 2);
-        
-        console.log('SVG rendered as placeholder');
-      } else {
-        // Render actual image
-        this.pdf.addImage(base64, format, xInMm, yInMm, widthInMm, heightInMm);
-        console.log('Image rendered successfully');
-      }
+      // Add the actual image to PDF
+      this.pdf.addImage(base64, format, xInMm, yInMm, widthInMm, heightInMm);
+      console.log('Image successfully added to PDF');
 
     } catch (error) {
-      console.warn('Error rendering image, using fallback:', error);
+      console.error('Error rendering image, using fallback:', error);
       
       // Fallback: render a simple placeholder
       const xInMm = (position.x / 595) * 210;
@@ -222,7 +222,7 @@ export class HeaderRenderer {
       this.pdf.setFontSize(8);
       this.pdf.setTextColor(128, 128, 128);
       const fileName = imageUrl.split('/').pop() || 'Bild';
-      this.pdf.text(`[${fileName.substring(0, 15)}...]`, xInMm + 1, yInMm + heightInMm / 2);
+      this.pdf.text(`[FEHLER: ${fileName.substring(0, 10)}...]`, xInMm + 1, yInMm + heightInMm / 2);
     }
   }
 
