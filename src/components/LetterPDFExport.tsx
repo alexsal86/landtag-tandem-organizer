@@ -38,6 +38,7 @@ interface LetterPDFExportProps {
   showPagination?: boolean;
   variant?: 'default' | 'icon-only';
   size?: 'sm' | 'default';
+  onPDFGenerated?: (pdfBlob: Blob, filename: string) => void;
 }
 
 const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
@@ -46,7 +47,8 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   debugMode = false,
   showPagination = false,
   variant = 'default',
-  size = 'default'
+  size = 'default',
+  onPDFGenerated
 }) => {
   const { toast } = useToast();
   const [template, setTemplate] = useState<LetterTemplate | null>(null);
@@ -186,7 +188,16 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
     }
   };
 
-  const exportWithDIN5008Features = async () => {
+  // New function to generate PDF and return it instead of downloading
+  const generatePDFBlob = async (): Promise<{ blob: Blob; filename: string }> => {
+    const result = await exportWithDIN5008Features(true);
+    if (!result) {
+      throw new Error('PDF generation failed');
+    }
+    return result;
+  };
+
+  const exportWithDIN5008Features = async (returnBlob: boolean = false): Promise<{ blob: Blob; filename: string } | void> => {
     try {
       // Create PDF with DIN 5008 compliant layout using text
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -690,14 +701,28 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         pdf.setTextColor(0, 0, 0);
       }
       
-      // Save the PDF
+      // Save the PDF or return blob
       const fileName = `${letter.title || 'Brief'}_${new Date().toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
       
-      toast({
-        title: "PDF erstellt",
-        description: `Der Brief wurde als PDF gespeichert: ${fileName}`,
-      });
+      if (returnBlob) {
+        // Return blob for archiving
+        const pdfBlob = pdf.output('blob');
+        return { blob: pdfBlob, filename: fileName };
+      } else {
+        // Download normally
+        pdf.save(fileName);
+        
+        toast({
+          title: "PDF erstellt",
+          description: `Der Brief wurde als PDF gespeichert: ${fileName}`,
+        });
+        
+        // Call onPDFGenerated callback if provided
+        if (onPDFGenerated) {
+          const pdfBlob = pdf.output('blob');
+          onPDFGenerated(pdfBlob, fileName);
+        }
+      }
     } catch (error) {
       console.error('Error creating PDF:', error);
       toast({
@@ -723,3 +748,6 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
 };
 
 export default LetterPDFExport;
+
+// Export the function for external use
+export { LetterPDFExport };

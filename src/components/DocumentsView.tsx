@@ -43,6 +43,7 @@ import LetterEditor from "./LetterEditor";
 import LetterTemplateSelector from "./LetterTemplateSelector";
 import LetterPDFExport from "./LetterPDFExport";
 import { ArchivedLetterDetails } from "./letters/ArchivedLetterDetails";
+import { useLetterArchiving } from "@/hooks/useLetterArchiving";
 
 interface Document {
   id: string;
@@ -104,6 +105,9 @@ export function DocumentsView() {
   const [showArchiveSettings, setShowArchiveSettings] = useState(false);
   const [showArchivedLetterDetails, setShowArchivedLetterDetails] = useState(false);
   const [selectedArchivedDocument, setSelectedArchivedDocument] = useState<Document | null>(null);
+  
+  // Letter archiving hook
+  const { archiveLetter, isArchiving } = useLetterArchiving();
 
   // Upload form state
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -415,32 +419,25 @@ export function DocumentsView() {
   };
 
   const handleArchiveLetter = async (letterId: string) => {
-    if (!confirm('Möchten Sie diesen Brief archivieren?')) return;
+    if (!confirm('Möchten Sie diesen Brief archivieren? Es wird automatisch ein PDF erstellt und in der Dokumentenverwaltung gespeichert.')) return;
 
-    try {
-      const { error } = await supabase
-        .from('letters')
-        .update({ 
-          status: 'archived',
-          archived_at: new Date().toISOString(),
-          archived_by: user?.id
-        })
-        .eq('id', letterId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Brief archiviert",
-        description: "Der Brief wurde erfolgreich archiviert.",
-      });
-
-      fetchLetters();
-    } catch (error: any) {
+    const letter = letters.find(l => l.id === letterId);
+    if (!letter) {
       toast({
         title: "Fehler",
-        description: "Der Brief konnte nicht archiviert werden.",
+        description: "Brief nicht gefunden.",
         variant: "destructive",
       });
+      return;
+    }
+
+    const success = await archiveLetter(letter);
+    if (success) {
+      // Refresh both letters and documents
+      fetchLetters();
+      if (activeTab === 'documents') {
+        fetchDocuments();
+      }
     }
   };
 
@@ -1042,16 +1039,17 @@ export function DocumentsView() {
                                  <Edit3 className="h-4 w-4 mr-1" />
                                  Bearbeiten
                                </Button>
-                               {letter.status === 'sent' && (
-                                 <Button
-                                   variant="outline"
-                                   size="sm"
-                                   onClick={() => handleArchiveLetter(letter.id)}
-                                 >
-                                   <Archive className="h-4 w-4 mr-1" />
-                                   Archivieren
-                                 </Button>
-                               )}
+                                {letter.status === 'sent' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleArchiveLetter(letter.id)}
+                                    disabled={isArchiving}
+                                  >
+                                    <Archive className="h-4 w-4 mr-1" />
+                                    {isArchiving ? 'Archiviere...' : 'Archivieren'}
+                                  </Button>
+                                )}
                              </>
                            ) : (
                              <>
@@ -1140,15 +1138,17 @@ export function DocumentsView() {
                                  >
                                    <Edit3 className="h-4 w-4" />
                                  </Button>
-                                 {letter.status === 'sent' && (
-                                   <Button
-                                     variant="ghost"
-                                     size="sm"
-                                     onClick={() => handleArchiveLetter(letter.id)}
-                                   >
-                                     <Archive className="h-4 w-4" />
-                                   </Button>
-                                 )}
+                                  {letter.status === 'sent' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleArchiveLetter(letter.id)}
+                                      disabled={isArchiving}
+                                      title={isArchiving ? 'Archiviere...' : 'Brief archivieren'}
+                                    >
+                                      <Archive className="h-4 w-4" />
+                                    </Button>
+                                  )}
                                </>
                              ) : (
                                <>
