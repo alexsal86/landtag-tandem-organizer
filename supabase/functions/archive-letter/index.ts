@@ -105,12 +105,11 @@ serve(async (req) => {
       }
     }
 
-    // Update letter with archived document reference
+    // Update letter with archived document reference but keep status as 'sent'
     const { error: updateError } = await supabase
       .from('letters')
       .update({
         archived_document_id: document.id,
-        status: 'archived',
         archived_at: new Date().toISOString(),
         archived_by: letter.created_by
       })
