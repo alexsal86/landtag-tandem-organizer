@@ -373,9 +373,44 @@ export function DocumentsView() {
   };
 
   const handleTemplateSelect = (template: any) => {
+    console.log('=== DOCUMENTSVIEW TEMPLATE SELECTION START ===');
+    console.log('Template selected:', template);
+    console.log('Template ID:', template?.id);
+    console.log('Template default_sender_id:', template?.default_sender_id);
+    console.log('Template default_info_blocks:', template?.default_info_blocks);
+    
     setShowTemplateSelector(false);
-    setSelectedLetter(undefined);
+    
+    // Create a new letter object with template information
+    const newLetter: any = {
+      id: undefined, // New letter has no ID yet
+      title: '',
+      content: '',
+      content_html: '',
+      status: 'draft',
+      template_id: template?.id,
+      sender_info_id: template?.default_sender_id,
+      information_block_ids: template?.default_info_blocks || [],
+      tenant_id: currentTenant?.id || '',
+      user_id: user?.id || '',
+      created_by: user?.id || '',
+      created_at: '',
+      updated_at: '',
+      recipient_name: '',
+      recipient_address: '',
+      archived_at: null
+    };
+    
+    console.log('=== DOCUMENTSVIEW NEW LETTER CREATED ===');
+    console.log('New letter object:', newLetter);
+    console.log('New letter template_id:', newLetter.template_id);
+    console.log('New letter sender_info_id:', newLetter.sender_info_id);
+    console.log('New letter information_block_ids:', newLetter.information_block_ids);
+    
+    setSelectedLetter(newLetter);
     setShowLetterEditor(true);
+    
+    console.log('=== DOCUMENTSVIEW TEMPLATE SELECTION END ===');
   };
 
   const handleEditLetter = (letter: Letter) => {
