@@ -113,9 +113,13 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
         
         // Trigger archiving process for sent letters
         try {
-          const { error: archiveError } = await supabase.functions.invoke('archive-letter', {
+          console.log('Calling archive-letter function for letter:', letter.id);
+          const { data: archiveResult, error: archiveError } = await supabase.functions.invoke('archive-letter', {
             body: { letterId: letter.id }
           });
+          
+          console.log('Archive function result:', archiveResult);
+          console.log('Archive function error:', archiveError);
           
           if (archiveError) {
             console.error('Archive function error:', archiveError);
@@ -125,9 +129,20 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
               description: "Brief wurde als versendet markiert. Archivierung wird im Hintergrund verarbeitet.",
               variant: "default",
             });
+          } else {
+            toast({
+              title: "Brief versendet und archiviert",
+              description: "Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.",
+              variant: "default",
+            });
           }
         } catch (error) {
           console.error('Failed to trigger archive:', error);
+          toast({
+            title: "Archivierungsfehler",
+            description: "Brief wurde versendet, aber die Archivierung ist fehlgeschlagen.",
+            variant: "destructive",
+          });
         }
       }
 
