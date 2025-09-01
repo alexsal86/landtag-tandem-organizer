@@ -239,11 +239,18 @@ export const FabricFooterEditor: React.FC<FabricFooterEditorProps> = ({
   const generateCommunication = (): string => {
     if (!senderInfo) return '';
     const parts = [];
-    if (senderInfo.phone) parts.push(`Tel: ${senderInfo.phone}`);
+    // Remove "Tel: " prefix from phone numbers
+    if (senderInfo.phone) parts.push(senderInfo.phone);
     if (senderInfo.fax) parts.push(`Fax: ${senderInfo.fax}`);
-    if (senderInfo.website) parts.push(`Web: ${senderInfo.website}`);
-    if (senderInfo.instagram_profile) parts.push(`Instagram: ${senderInfo.instagram_profile}`);
-    if (senderInfo.facebook_profile) parts.push(`Facebook: ${senderInfo.facebook_profile}`);
+    // Remove "https://www." from website but keep it clickable
+    if (senderInfo.website) {
+      const cleanWebsite = senderInfo.website.replace(/^https?:\/\/(www\.)?/, '');
+      parts.push(cleanWebsite);
+    }
+    // Replace "Instagram:" with icon symbol
+    if (senderInfo.instagram_profile) parts.push(`📷 ${senderInfo.instagram_profile}`);
+    // Replace "Facebook:" with icon symbol  
+    if (senderInfo.facebook_profile) parts.push(`👤 ${senderInfo.facebook_profile}`);
     return parts.join('\n');
   };
 

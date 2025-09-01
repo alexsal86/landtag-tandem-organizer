@@ -372,8 +372,29 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         lines.forEach((line: string) => {
           if (blockY > 290) return; // Don't go beyond page bounds
           
+          // Apply footer formatting rules
+          let formattedLine = line;
+          
+          // Remove "Tel: " prefix from phone numbers
+          if (formattedLine.startsWith('Tel: ')) {
+            formattedLine = formattedLine.replace('Tel: ', '');
+          }
+          
+          // Remove "Web: " prefix and clean website URLs
+          if (formattedLine.startsWith('Web: ')) {
+            formattedLine = formattedLine.replace('Web: ', '').replace(/^https?:\/\/(www\.)?/, '');
+          }
+          
+          // Replace social media text with icons
+          if (formattedLine.startsWith('Instagram: ')) {
+            formattedLine = formattedLine.replace('Instagram: ', '📷 ');
+          }
+          if (formattedLine.startsWith('Facebook: ')) {
+            formattedLine = formattedLine.replace('Facebook: ', '👤 ');
+          }
+          
           // Use jsPDF's text wrapping for better word breaks
-          const wrappedLines = pdf.splitTextToSize(line, blockWidth - 2);
+          const wrappedLines = pdf.splitTextToSize(formattedLine, blockWidth - 2);
           wrappedLines.forEach((wrappedLine: string) => {
             if (blockY <= 290) {
               pdf.text(wrappedLine, currentX + 1, blockY);
