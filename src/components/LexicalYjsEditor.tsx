@@ -21,6 +21,7 @@ import {
 } from 'lexical';
 import { 
   HeadingNode,
+  QuoteNode,
   $createHeadingNode
 } from '@lexical/rich-text';
 import { 
@@ -42,6 +43,7 @@ const editorNodes = [
   ParagraphNode,
   TextNode,
   HeadingNode,
+  QuoteNode,
   ListNode,
   ListItemNode,
   LinkNode,
