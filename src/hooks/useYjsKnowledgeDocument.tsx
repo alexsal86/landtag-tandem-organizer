@@ -100,7 +100,6 @@ export function useYjsKnowledgeDocument({
         .update({
           content: content,
           yjs_state: yjsStateBase64,
-          document_version: Date.now(), // Simple versioning
           updated_at: new Date().toISOString()
         })
         .eq('id', documentId);
