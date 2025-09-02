@@ -1,46 +1,20 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Bold, Italic, Underline, Strikethrough, Link, Type, MessageSquare, ChevronDown, Hash, List, ListOrdered, CheckSquare, ToggleLeft, Code, Quote, FileText } from 'lucide-react';
+import React from 'react';
+import { Bold, Italic, Underline, Strikethrough, Link, Type, ChevronDown, Hash, List, ListOrdered, CheckSquare, ToggleLeft, Code, Quote, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
-interface FloatingTextToolbarProps {
-  editorRef?: React.RefObject<HTMLDivElement>;
+interface FixedTextToolbarProps {
   onFormatText: (format: string) => void;
-  isVisible: boolean;
-  selectedText: string;
   activeFormats?: string[];
+  disabled?: boolean;
 }
 
-const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
-  editorRef,
+const FixedTextToolbar: React.FC<FixedTextToolbarProps> = ({
   onFormatText,
-  isVisible,
-  selectedText,
-  activeFormats = []
+  activeFormats = [],
+  disabled = false
 }) => {
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-  const toolbarRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isVisible || !selectedText) return;
-
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    const range = selection.getRangeAt(0);
-    const rangeRect = range.getBoundingClientRect();
-    
-    // Position toolbar above the selection, accounting for viewport position
-    const top = rangeRect.top - 60;
-    const left = rangeRect.left + (rangeRect.width / 2) - 150;
-
-    setPosition({
-      top: Math.max(10, top),
-      left: Math.min(window.innerWidth - 300, Math.max(10, left))
-    });
-  }, [isVisible, selectedText]);
-
   const formatButtons = [
     { icon: Bold, action: 'bold', label: 'Fett' },
     { icon: Italic, action: 'italic', label: 'Kursiv' },
@@ -63,29 +37,21 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
     { icon: Quote, action: 'quote', label: 'Quote', description: 'Zitat' }
   ];
 
-  if (!isVisible || !selectedText) return null;
-
   return (
-    <div
-      ref={toolbarRef}
-      className={cn(
-        "fixed z-50 bg-card border border-border rounded-lg shadow-lg p-1 flex items-center gap-1",
-        "animate-in fade-in-0 zoom-in-95 duration-200"
-      )}
-      style={{
-        top: position.top,
-        left: position.left
-      }}
-    >
+    <div className={cn(
+      "flex items-center gap-1 p-2 bg-muted/50 border-b border-border rounded-t-lg",
+      disabled && "opacity-50 pointer-events-none"
+    )}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
             className="h-8 px-2 hover:bg-muted flex items-center gap-1 text-xs"
+            disabled={disabled}
           >
             <Type className="h-3 w-3" />
-            Turn into
+            Format
             <ChevronDown className="h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
@@ -129,6 +95,7 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
             )}
             onClick={() => onFormatText(button.action)}
             title={button.label}
+            disabled={disabled}
           >
             <button.icon className="h-4 w-4" />
           </Button>
@@ -138,4 +105,4 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
   );
 };
 
-export default FloatingTextToolbar;
+export default FixedTextToolbar;

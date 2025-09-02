@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import RichTextEditor, { type RichTextEditorRef } from './RichTextEditor';
+import FixedTextToolbar from './FixedTextToolbar';
+import FloatingTextToolbar from './FloatingTextToolbar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -16,7 +18,6 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
-import FloatingTextToolbar from './FloatingTextToolbar';
 import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
@@ -1733,6 +1734,13 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           ) : (
             /* Regular Editor */
             <div className="max-w-full space-y-6">
+              {/* Fixed Text Toolbar */}
+              <FixedTextToolbar
+                onFormatText={handleFormatText}
+                activeFormats={activeFormats}
+                disabled={!canEdit}
+              />
+
               {/* Title */}
               <div>
                 <Input
@@ -1767,7 +1775,13 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   disabled={!canEdit}
                 />
                 
-                {/* Floating toolbar temporarily disabled for type compatibility */}
+                {/* Floating Text Toolbar */}
+                <FloatingTextToolbar
+                  onFormatText={handleFormatText}
+                  isVisible={showToolbar}
+                  selectedText={selectedText}
+                  activeFormats={activeFormats}
+                />
               </div>
 
             </div>
