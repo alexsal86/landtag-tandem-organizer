@@ -100,15 +100,27 @@ export function GeneralSettings() {
       const fileExt = file.name.split('.').pop();
       const fileName = `app-logo-${Date.now()}.${fileExt}`;
       
+      console.log('Starting file upload:', fileName, 'Size:', file.size);
+      
       const { data, error } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Upload error:', error);
+        throw error;
+      }
+
+      console.log('Upload successful:', data);
 
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
+
+      console.log('Public URL:', urlData.publicUrl);
 
       setSettings(prev => ({ ...prev, app_logo_url: urlData.publicUrl }));
       
@@ -120,7 +132,7 @@ export function GeneralSettings() {
       console.error('Error uploading file:', error);
       toast({
         title: "Fehler",
-        description: "Logo konnte nicht hochgeladen werden.",
+        description: `Logo konnte nicht hochgeladen werden: ${error.message || 'Unbekannter Fehler'}`,
         variant: "destructive"
       });
     } finally {
