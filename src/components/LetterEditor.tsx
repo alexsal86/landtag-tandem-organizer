@@ -979,12 +979,15 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     setShowToolbar(selectedText.length > 0);
   };
 
-  const handleFormatText = (format: string) => {
-    if (!selectedText || !richTextEditorRef.current) return;
+  const handleFormatText = (format: string, requireSelection: boolean = false) => {
+    if (requireSelection && !selectedText) return;
+    if (!richTextEditorRef.current) return;
     
     richTextEditorRef.current.formatSelection(format);
-    setShowToolbar(false);
-    setSelectedText('');
+    if (requireSelection) {
+      setShowToolbar(false);
+      setSelectedText('');
+    }
   };
 
   const handleAutoSave = async () => {
@@ -1736,7 +1739,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             <div className="max-w-full space-y-6">
               {/* Fixed Text Toolbar */}
               <FixedTextToolbar
-                onFormatText={handleFormatText}
+                onFormatText={(format) => handleFormatText(format, false)}
                 activeFormats={activeFormats}
                 disabled={!canEdit}
               />
@@ -1777,7 +1780,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 
                 {/* Floating Text Toolbar */}
                 <FloatingTextToolbar
-                  onFormatText={handleFormatText}
+                  onFormatText={(format) => handleFormatText(format, true)}
                   isVisible={showToolbar}
                   selectedText={selectedText}
                   activeFormats={activeFormats}

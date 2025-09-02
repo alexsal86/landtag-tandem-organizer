@@ -578,7 +578,27 @@ const RichTextEditor = React.memo(React.forwardRef<RichTextEditorRef, RichTextEd
     if (!editorRef.current || disabled) return;
     
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+    if (!selection) return;
+    
+    // If no selection, create one at current cursor position or at the end
+    if (selection.rangeCount === 0) {
+      const range = document.createRange();
+      const editorElement = editorRef.current;
+      
+      // Place cursor at the end of the editor content
+      if (editorElement.lastChild) {
+        if (editorElement.lastChild.nodeType === Node.TEXT_NODE) {
+          range.setStart(editorElement.lastChild, editorElement.lastChild.textContent?.length || 0);
+        } else {
+          range.setStart(editorElement, editorElement.childNodes.length);
+        }
+      } else {
+        range.setStart(editorElement, 0);
+      }
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
 
     // Prevent React from updating the DOM while we're manually manipulating it
     skipNextUpdateRef.current = true;
