@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import KnowledgeDocumentEditor from './KnowledgeDocumentEditor';
+import { LexicalKnowledgeEditor } from './LexicalKnowledgeEditor';
 
 interface KnowledgeDocument {
   id: string;
@@ -460,15 +460,11 @@ const KnowledgeBaseView = () => {
       {/* Document Editor Sidebar */}
       {selectedDocument && isEditorOpen && (
         <div className="w-1/2 border-l bg-background flex flex-col">
-          <KnowledgeDocumentEditor
-            document={selectedDocument}
-            isOpen={isEditorOpen}
+          <LexicalKnowledgeEditor
+            documentId={selectedDocument.id}
             onClose={() => {
               setIsEditorOpen(false);
               setSelectedDocument(null);
-            }}
-            onSave={() => {
-              fetchDocuments();
             }}
           />
         </div>
