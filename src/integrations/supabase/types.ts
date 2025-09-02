@@ -2086,7 +2086,7 @@ export type Database = {
           document_version: number | null
           id: string
           is_published: boolean | null
-          tenant_id: string | null
+          tenant_id: string
           title: string
           updated_at: string
           yjs_state: string | null
@@ -2100,7 +2100,7 @@ export type Database = {
           document_version?: number | null
           id?: string
           is_published?: boolean | null
-          tenant_id?: string | null
+          tenant_id: string
           title: string
           updated_at?: string
           yjs_state?: string | null
@@ -2114,7 +2114,7 @@ export type Database = {
           document_version?: number | null
           id?: string
           is_published?: boolean | null
-          tenant_id?: string | null
+          tenant_id?: string
           title?: string
           updated_at?: string
           yjs_state?: string | null

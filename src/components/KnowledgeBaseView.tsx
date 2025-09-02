@@ -128,6 +128,16 @@ const KnowledgeBaseView = () => {
     if (!user || !newDocument.title.trim()) return;
 
     try {
+      // Get user's primary tenant ID
+      const { data: tenantData, error: tenantError } = await supabase.rpc('get_user_primary_tenant_id', {
+        _user_id: user.id
+      });
+
+      if (tenantError) {
+        console.error('Error getting tenant ID:', tenantError);
+        throw new Error('Fehler beim Ermitteln der Tenant-ID');
+      }
+
       const { data, error } = await supabase
         .from('knowledge_documents')
         .insert([{
@@ -135,6 +145,7 @@ const KnowledgeBaseView = () => {
           content: newDocument.content,
           category: newDocument.category,
           created_by: user.id,
+          tenant_id: tenantData,
           is_published: newDocument.is_published
         }])
         .select()
