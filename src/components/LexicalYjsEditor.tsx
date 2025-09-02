@@ -106,48 +106,60 @@ function InitialContentPlugin({ initialContent }: { initialContent?: string }) {
   useEffect(() => {
     if (!initialContent || hasInitialized.current) return;
 
+    console.log('InitialContentPlugin: Initializing with content:', initialContent.length, 'characters');
+
     editor.update(() => {
       const root = $getRoot();
       
-      // Clear existing content
-      root.clear();
-      
-      // Simple markdown-like parsing for initial content
-      const lines = initialContent.split('\n');
-      
-      lines.forEach((line, index) => {
-        if (line.startsWith('# ')) {
-          const heading = $createHeadingNode('h1');
-          heading.append($createTextNode(line.slice(2)));
-          root.append(heading);
-        } else if (line.startsWith('## ')) {
-          const heading = $createHeadingNode('h2');
-          heading.append($createTextNode(line.slice(3)));
-          root.append(heading);
-        } else if (line.startsWith('### ')) {
-          const heading = $createHeadingNode('h3');
-          heading.append($createTextNode(line.slice(4)));
-          root.append(heading);
-        } else if (line.startsWith('- ')) {
-          const list = $createListNode('bullet');
-          const listItem = $createListItemNode();
-          listItem.append($createTextNode(line.slice(2)));
-          list.append(listItem);
-          root.append(list);
-        } else if (line.trim()) {
-          const paragraph = $createParagraphNode();
-          paragraph.append($createTextNode(line));
-          root.append(paragraph);
-        }
+      // Only initialize if the editor is truly empty
+      if (root.getChildrenSize() === 0 || (root.getChildrenSize() === 1 && root.getFirstChild()?.getTextContent() === '')) {
+        console.log('InitialContentPlugin: Editor is empty, setting initial content');
         
-        if (index < lines.length - 1) {
-          const paragraph = $createParagraphNode();
-          root.append(paragraph);
-        }
-      });
+        // Clear existing content
+        root.clear();
+        
+        // Simple markdown-like parsing for initial content
+        const lines = initialContent.split('\n');
+        
+        lines.forEach((line, index) => {
+          if (line.startsWith('# ')) {
+            const heading = $createHeadingNode('h1');
+            heading.append($createTextNode(line.slice(2)));
+            root.append(heading);
+          } else if (line.startsWith('## ')) {
+            const heading = $createHeadingNode('h2');
+            heading.append($createTextNode(line.slice(3)));
+            root.append(heading);
+          } else if (line.startsWith('### ')) {
+            const heading = $createHeadingNode('h3');
+            heading.append($createTextNode(line.slice(4)));
+            root.append(heading);
+          } else if (line.startsWith('- ')) {
+            const list = $createListNode('bullet');
+            const listItem = $createListItemNode();
+            listItem.append($createTextNode(line.slice(2)));
+            list.append(listItem);
+            root.append(list);
+          } else if (line.trim()) {
+            const paragraph = $createParagraphNode();
+            paragraph.append($createTextNode(line));
+            root.append(paragraph);
+          }
+          
+          // Add line breaks between content blocks, but not after the last line
+          if (index < lines.length - 1 && line.trim()) {
+            const paragraph = $createParagraphNode();
+            root.append(paragraph);
+          }
+        });
+        
+        hasInitialized.current = true;
+        console.log('InitialContentPlugin: Content initialized');
+      } else {
+        console.log('InitialContentPlugin: Editor already has content, skipping initialization');
+        hasInitialized.current = true;
+      }
     });
-
-    hasInitialized.current = true;
   }, [editor, initialContent]);
 
   return null;
