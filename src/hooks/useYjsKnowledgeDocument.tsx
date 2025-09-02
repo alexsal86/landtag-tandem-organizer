@@ -30,39 +30,25 @@ export function useYjsKnowledgeDocument({
   const loadDocument = useCallback(async () => {
     try {
       setIsLoading(true);
+      console.log('Loading knowledge document:', documentId);
       
       const { data: document, error } = await supabase
         .from('knowledge_documents')
-        .select('content, yjs_state, document_version')
+        .select('content, yjs_state')
         .eq('id', documentId)
-        .single();
+        .maybeSingle();
 
       if (error) {
+        console.error('Error loading document:', error);
         throw error;
       }
 
       if (document) {
-        // If we have Yjs state, restore it
-        if (document.yjs_state && typeof document.yjs_state === 'string') {
-          const doc = initializeYjsDoc();
-          try {
-            // Convert base64 string back to Uint8Array
-            const binaryString = atob(document.yjs_state);
-            const uint8Array = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              uint8Array[i] = binaryString.charCodeAt(i);
-            }
-            // Note: This is a simplified version - in a real implementation
-            // you'd use Y.applyUpdate(doc, uint8Array)
-          } catch (yjsError) {
-            console.warn('Failed to restore Yjs state, falling back to content:', yjsError);
-            // Fall back to markdown content
-            setInitialContent(document.content || '');
-          }
-        } else {
-          // No Yjs state, use markdown content
-          setInitialContent(document.content || '');
-        }
+        console.log('Document loaded successfully:', document.content?.length || 0, 'characters');
+        setInitialContent(document.content || '');
+      } else {
+        console.log('No document found, using empty content');
+        setInitialContent('');
       }
     } catch (error) {
       console.error('Error loading knowledge document:', error);
@@ -75,58 +61,23 @@ export function useYjsKnowledgeDocument({
   // Save document to Supabase
   const saveDocument = useCallback(async (content: string, html: string) => {
     try {
-      const doc = yjsDocRef.current;
-      let yjsStateBase64: string | null = null;
-
-      if (doc) {
-        // Get current Yjs state
-        try {
-          // In a real implementation, you'd use Y.encodeStateAsUpdate(doc)
-          // For now, we'll create a simple state representation
-          const simpleState = new Uint8Array([1, 2, 3]); // Simplified
-          // Convert to base64 for storage
-          const binaryString = Array.from(simpleState)
-            .map(byte => String.fromCharCode(byte))
-            .join('');
-          yjsStateBase64 = btoa(binaryString);
-        } catch (error) {
-          console.warn('Failed to encode Yjs state:', error);
-        }
-      }
-
-      // Update the document
+      console.log('Saving document:', documentId, 'content length:', content.length);
+      
+      // Simplified save - just update content and timestamp
       const { error } = await supabase
         .from('knowledge_documents')
         .update({
           content: content,
-          yjs_state: yjsStateBase64,
           updated_at: new Date().toISOString()
         })
         .eq('id', documentId);
 
       if (error) {
+        console.error('Save error:', error);
         throw error;
       }
-
-      // Create a snapshot periodically
-      if (yjsStateBase64 && Math.random() < 0.1) { // 10% chance to create snapshot
-        try {
-          // Convert base64 back to bytea for the function
-          const binaryString = atob(yjsStateBase64);
-          const uint8Array = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            uint8Array[i] = binaryString.charCodeAt(i);
-          }
-          
-          await supabase.rpc('create_knowledge_document_snapshot', {
-            _document_id: documentId,
-            _yjs_state: yjsStateBase64,
-            _snapshot_type: 'auto'
-          });
-        } catch (snapshotError) {
-          console.warn('Failed to create snapshot:', snapshotError);
-        }
-      }
+      
+      console.log('Document saved successfully');
     } catch (error) {
       console.error('Error saving knowledge document:', error);
       onError?.(error as Error);
