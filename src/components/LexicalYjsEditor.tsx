@@ -34,6 +34,7 @@ import {
   LinkNode,
   AutoLinkNode
 } from '@lexical/link';
+import { CodeNode } from '@lexical/code';
 import { TRANSFORMERS } from '@lexical/markdown';
 
 import { cn } from '@/lib/utils';
@@ -44,6 +45,7 @@ const editorNodes = [
   TextNode,
   HeadingNode,
   QuoteNode,
+  CodeNode,
   ListNode,
   ListItemNode,
   LinkNode,
