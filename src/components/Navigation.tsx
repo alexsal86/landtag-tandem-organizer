@@ -176,17 +176,17 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                {appSettings.app_logo_url ? (
-                  <img 
-                    src={appSettings.app_logo_url} 
-                    alt="App Logo" 
-                    className="size-4 object-contain"
-                  />
-                ) : (
+              {appSettings.app_logo_url ? (
+                <img 
+                  src={appSettings.app_logo_url} 
+                  alt="App Logo" 
+                  className="size-8 object-contain"
+                />
+              ) : (
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <FileText className="size-4" />
-                )}
-              </div>
+                </div>
+              )}
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{appSettings.app_name}</span>
                 <span className="truncate text-xs">{appSettings.app_subtitle}</span>
