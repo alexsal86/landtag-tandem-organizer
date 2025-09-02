@@ -54,9 +54,10 @@ export function useYjsKnowledgeDocument({
       console.error('Error loading knowledge document:', error);
       onError?.(error as Error);
     } finally {
+      console.log('useYjsKnowledgeDocument: Setting loading to false');
       setIsLoading(false);
     }
-  }, [documentId, initializeYjsDoc, onError]);
+  }, [documentId, onError]);
 
   // Save document to Supabase
   const saveDocument = useCallback(async (content: string, html: string) => {
