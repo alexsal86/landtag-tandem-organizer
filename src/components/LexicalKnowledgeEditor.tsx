@@ -11,6 +11,8 @@ interface LexicalKnowledgeEditorProps {
 export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledgeEditorProps) {
   const { toast } = useToast();
   
+  console.log('LexicalKnowledgeEditor: Starting with documentId:', documentId);
+  
   const {
     isLoading,
     initialContent,
@@ -18,6 +20,7 @@ export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledge
   } = useYjsKnowledgeDocument({
     documentId,
     onError: (error) => {
+      console.error('LexicalKnowledgeEditor: Error from useYjsKnowledgeDocument:', error);
       toast({
         title: "Fehler",
         description: "Ein Fehler ist beim Laden des Dokuments aufgetreten.",
@@ -26,7 +29,12 @@ export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledge
     }
   });
 
+  console.log('LexicalKnowledgeEditor: Hook state:', { isLoading, initialContentLength: initialContent?.length || 0 });
+
+  console.log('LexicalKnowledgeEditor: Render check - isLoading:', isLoading);
+
   if (isLoading) {
+    console.log('LexicalKnowledgeEditor: Showing loading state');
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
@@ -36,6 +44,8 @@ export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledge
       </div>
     );
   }
+
+  console.log('LexicalKnowledgeEditor: Rendering editor with content length:', initialContent?.length || 0);
 
   return (
     <div className="h-full flex flex-col">
