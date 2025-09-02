@@ -16,8 +16,13 @@ import {
   $createParagraphNode,
   $createTextNode,
   $getRoot,
+  $getSelection,
+  $isRangeSelection,
   ParagraphNode,
-  TextNode
+  TextNode,
+  FORMAT_TEXT_COMMAND,
+  UNDO_COMMAND,
+  REDO_COMMAND
 } from 'lexical';
 import { 
   HeadingNode,
@@ -28,7 +33,9 @@ import {
   ListNode,
   ListItemNode,
   $createListNode,
-  $createListItemNode
+  $createListItemNode,
+  INSERT_UNORDERED_LIST_COMMAND,
+  INSERT_ORDERED_LIST_COMMAND
 } from '@lexical/list';
 import { 
   LinkNode,
@@ -150,44 +157,93 @@ function InitialContentPlugin({ initialContent }: { initialContent?: string }) {
 function EditorToolbar() {
   const [editor] = useLexicalComposerContext();
 
-  const formatText = useCallback((command: string) => {
-    editor.dispatchCommand(command as any, undefined);
+  const formatBold = useCallback(() => {
+    editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
+  }, [editor]);
+
+  const formatItalic = useCallback(() => {
+    editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic');
+  }, [editor]);
+
+  const formatUnderline = useCallback(() => {
+    editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline');
+  }, [editor]);
+
+  const insertBulletList = useCallback(() => {
+    editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+  }, [editor]);
+
+  const insertNumberedList = useCallback(() => {
+    editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+  }, [editor]);
+
+  const undo = useCallback(() => {
+    editor.dispatchCommand(UNDO_COMMAND, undefined);
+  }, [editor]);
+
+  const redo = useCallback(() => {
+    editor.dispatchCommand(REDO_COMMAND, undefined);
   }, [editor]);
 
   return (
     <div className="lexical-toolbar border-b border-border p-2 flex items-center gap-2">
       <button 
         type="button"
-        className="lexical-toolbar-item px-2 py-1 text-sm rounded hover:bg-accent"
-        onClick={() => formatText('FORMAT_TEXT_COMMAND')}
-        title="Fett"
+        className="lexical-toolbar-item px-3 py-1 text-sm rounded hover:bg-accent font-bold"
+        onClick={formatBold}
+        title="Fett (Ctrl+B)"
       >
-        <strong>B</strong>
+        B
       </button>
       <button 
         type="button"
-        className="lexical-toolbar-item px-2 py-1 text-sm rounded hover:bg-accent"
-        onClick={() => formatText('FORMAT_TEXT_COMMAND')}
-        title="Kursiv"
+        className="lexical-toolbar-item px-3 py-1 text-sm rounded hover:bg-accent italic"
+        onClick={formatItalic}
+        title="Kursiv (Ctrl+I)"
       >
-        <em>I</em>
+        I
+      </button>
+      <button 
+        type="button"
+        className="lexical-toolbar-item px-3 py-1 text-sm rounded hover:bg-accent underline"
+        onClick={formatUnderline}
+        title="Unterstrichen (Ctrl+U)"
+      >
+        U
+      </button>
+      <div className="lexical-toolbar-divider w-px h-6 bg-border mx-1" />
+      <button 
+        type="button"
+        className="lexical-toolbar-item px-3 py-1 text-sm rounded hover:bg-accent"
+        onClick={insertBulletList}
+        title="Aufzählung"
+      >
+        • Liste
+      </button>
+      <button 
+        type="button"
+        className="lexical-toolbar-item px-3 py-1 text-sm rounded hover:bg-accent"
+        onClick={insertNumberedList}
+        title="Nummerierte Liste"
+      >
+        1. Liste
       </button>
       <div className="lexical-toolbar-divider w-px h-6 bg-border mx-1" />
       <button 
         type="button"
         className="lexical-toolbar-item px-2 py-1 text-sm rounded hover:bg-accent"
-        onClick={() => formatText('INSERT_UNORDERED_LIST_COMMAND')}
-        title="Liste"
+        onClick={undo}
+        title="Rückgängig (Ctrl+Z)"
       >
-        •
+        ↶
       </button>
       <button 
         type="button"
         className="lexical-toolbar-item px-2 py-1 text-sm rounded hover:bg-accent"
-        onClick={() => formatText('INSERT_ORDERED_LIST_COMMAND')}
-        title="Nummerierte Liste"
+        onClick={redo}
+        title="Wiederholen (Ctrl+Y)"
       >
-        1.
+        ↷
       </button>
     </div>
   );
