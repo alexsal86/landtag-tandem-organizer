@@ -2043,6 +2043,39 @@ export type Database = {
           },
         ]
       }
+      knowledge_document_snapshots: {
+        Row: {
+          created_at: string
+          created_by: string
+          document_id: string
+          document_version: number
+          id: string
+          metadata: Json | null
+          snapshot_type: string
+          yjs_state: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          document_id: string
+          document_version: number
+          id?: string
+          metadata?: Json | null
+          snapshot_type?: string
+          yjs_state: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          document_id?: string
+          document_version?: number
+          id?: string
+          metadata?: Json | null
+          snapshot_type?: string
+          yjs_state?: string
+        }
+        Relationships: []
+      }
       knowledge_documents: {
         Row: {
           category: string | null
@@ -2050,11 +2083,13 @@ export type Database = {
           content_html: string | null
           created_at: string
           created_by: string
+          document_version: number | null
           id: string
           is_published: boolean | null
           tenant_id: string | null
           title: string
           updated_at: string
+          yjs_state: string | null
         }
         Insert: {
           category?: string | null
@@ -2062,11 +2097,13 @@ export type Database = {
           content_html?: string | null
           created_at?: string
           created_by: string
+          document_version?: number | null
           id?: string
           is_published?: boolean | null
           tenant_id?: string | null
           title: string
           updated_at?: string
+          yjs_state?: string | null
         }
         Update: {
           category?: string | null
@@ -2074,11 +2111,13 @@ export type Database = {
           content_html?: string | null
           created_at?: string
           created_by?: string
+          document_version?: number | null
           id?: string
           is_published?: boolean | null
           tenant_id?: string | null
           title?: string
           updated_at?: string
+          yjs_state?: string | null
         }
         Relationships: [
           {
@@ -4683,6 +4722,14 @@ export type Database = {
           | { planning_id: string }
           | { planning_id: string; template_id_param?: string }
         Returns: undefined
+      }
+      create_knowledge_document_snapshot: {
+        Args: {
+          _document_id: string
+          _snapshot_type?: string
+          _yjs_state: string
+        }
+        Returns: string
       }
       create_notification: {
         Args: {
