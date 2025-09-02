@@ -57,33 +57,47 @@ const KnowledgeBaseView = () => {
   ];
 
   const fetchDocuments = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user available for fetchDocuments');
+      return;
+    }
 
+    console.log('Fetching knowledge documents for user:', user.id);
     try {
+      console.log('Starting supabase query...');
       const { data, error } = await supabase
         .from('knowledge_documents')
         .select('*')
         .order('updated_at', { ascending: false });
 
+      console.log('Supabase query result:', { data: data?.length || 0, error });
+
       if (error) throw error;
 
-      // Fetch creator names separately to avoid join issues
-      const documentsWithCreator = await Promise.all(
-        (data || []).map(async (doc) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('user_id', doc.created_by)
-            .maybeSingle();
-          
-          return {
-            ...doc,
-            creator_name: profile?.display_name || 'Unbekannt'
-          };
-        })
-      );
+      if (data && data.length > 0) {
+        console.log('Fetching creator names for', data.length, 'documents');
+        // Fetch creator names separately to avoid join issues
+        const documentsWithCreator = await Promise.all(
+          data.map(async (doc) => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('user_id', doc.created_by)
+              .maybeSingle();
+            
+            return {
+              ...doc,
+              creator_name: profile?.display_name || 'Unbekannt'
+            };
+          })
+        );
 
-      setDocuments(documentsWithCreator);
+        console.log('Setting documents with creators:', documentsWithCreator.length);
+        setDocuments(documentsWithCreator);
+      } else {
+        console.log('No documents found, setting empty array');
+        setDocuments([]);
+      }
     } catch (error) {
       console.error('Error fetching documents:', error);
       toast({
@@ -97,7 +111,13 @@ const KnowledgeBaseView = () => {
   };
 
   useEffect(() => {
-    fetchDocuments();
+    console.log('KnowledgeBaseView: useEffect triggered, user:', user?.id);
+    if (user) {
+      fetchDocuments();
+    } else {
+      console.log('No user, setting loading to false');
+      setLoading(false);
+    }
   }, [user]);
 
   // Real-time updates
@@ -221,10 +241,16 @@ const KnowledgeBaseView = () => {
     return categories.find(c => c.value === category)?.label || category;
   };
 
+  console.log('KnowledgeBaseView render:', { loading, documentsCount: documents.length, user: user?.id });
+
   if (loading) {
+    console.log('Showing loading state');
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Dokumente werden geladen...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <div className="text-muted-foreground">Dokumente werden geladen...</div>
+        </div>
       </div>
     );
   }
