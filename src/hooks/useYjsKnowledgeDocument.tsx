@@ -29,8 +29,8 @@ export function useYjsKnowledgeDocument({
   // Load document from Supabase
   const loadDocument = useCallback(async () => {
     try {
+      console.log('useYjsKnowledgeDocument: loadDocument called, setting loading to true');
       setIsLoading(true);
-      console.log('Loading knowledge document:', documentId);
       
       const { data: document, error } = await supabase
         .from('knowledge_documents')
@@ -96,10 +96,44 @@ export function useYjsKnowledgeDocument({
     }, 1000); // Save after 1 second of inactivity
   }, [saveDocument]);
 
-  // Load document on mount
+  // Load document on mount (only when documentId changes)
   useEffect(() => {
-    loadDocument();
-  }, [loadDocument]);
+    console.log('useYjsKnowledgeDocument: useEffect triggered for documentId:', documentId);
+    
+    const loadDoc = async () => {
+      try {
+        console.log('useYjsKnowledgeDocument: loadDocument called, setting loading to true');
+        setIsLoading(true);
+        
+        const { data: document, error } = await supabase
+          .from('knowledge_documents')
+          .select('content, yjs_state')
+          .eq('id', documentId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error loading document:', error);
+          throw error;
+        }
+
+        if (document) {
+          console.log('Document loaded successfully:', document.content?.length || 0, 'characters');
+          setInitialContent(document.content || '');
+        } else {
+          console.log('No document found, using empty content');
+          setInitialContent('');
+        }
+      } catch (error) {
+        console.error('Error loading knowledge document:', error);
+        onError?.(error as Error);
+      } finally {
+        console.log('useYjsKnowledgeDocument: Setting loading to false');
+        setIsLoading(false);
+      }
+    };
+
+    loadDoc();
+  }, [documentId, onError]); // Stable dependencies
 
   // Cleanup
   useEffect(() => {
