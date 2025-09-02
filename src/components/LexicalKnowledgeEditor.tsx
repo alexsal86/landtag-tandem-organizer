@@ -57,14 +57,24 @@ export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledge
           ← Zurück
         </button>
       </div>
-      <div className="flex-1 overflow-hidden">
-        <LexicalYjsEditor
-          documentId={documentId}
-          initialContent={initialContent}
-          onContentChange={saveDocument}
-          className="h-full border-0"
-          autoFocus
-        />
+      <div className="flex-1 overflow-hidden p-4">
+        <div className="border rounded-lg p-4 h-full bg-card">
+          <h3 className="font-semibold mb-2">Test Editor (Dokumentinhalt geladen)</h3>
+          <div className="text-sm text-muted-foreground mb-4">
+            Dokument ID: {documentId}
+          </div>
+          <div className="text-sm mb-4">
+            Inhalt ({initialContent?.length || 0} Zeichen):
+          </div>
+          <textarea 
+            className="w-full h-64 p-2 border rounded resize-none"
+            defaultValue={initialContent}
+            placeholder="Beginnen Sie zu tippen..."
+          />
+          <div className="mt-4 text-xs text-muted-foreground">
+            ✅ Dokument erfolgreich geladen - LexicalYjsEditor temporär deaktiviert für Tests
+          </div>
+        </div>
       </div>
     </div>
   );
