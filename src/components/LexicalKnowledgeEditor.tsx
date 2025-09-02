@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import LexicalYjsEditor from './LexicalYjsEditor';
 import { useYjsKnowledgeDocument } from '@/hooks/useYjsKnowledgeDocument';
 import { useToast } from '@/hooks/use-toast';
@@ -13,20 +13,23 @@ export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledge
   
   console.log('LexicalKnowledgeEditor: Starting with documentId:', documentId);
   
+  // Stable error handler
+  const handleError = useCallback((error: Error) => {
+    console.error('LexicalKnowledgeEditor: Error from useYjsKnowledgeDocument:', error);
+    toast({
+      title: "Fehler",
+      description: "Ein Fehler ist beim Laden des Dokuments aufgetreten.",
+      variant: "destructive"
+    });
+  }, [toast]);
+  
   const {
     isLoading,
     initialContent,
     saveDocument
   } = useYjsKnowledgeDocument({
     documentId,
-    onError: (error) => {
-      console.error('LexicalKnowledgeEditor: Error from useYjsKnowledgeDocument:', error);
-      toast({
-        title: "Fehler",
-        description: "Ein Fehler ist beim Laden des Dokuments aufgetreten.",
-        variant: "destructive"
-      });
-    }
+    onError: handleError
   });
 
   console.log('LexicalKnowledgeEditor: Hook state:', { isLoading, initialContentLength: initialContent?.length || 0 });
