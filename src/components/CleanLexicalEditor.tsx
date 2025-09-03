@@ -377,7 +377,7 @@ export function CleanLexicalEditor({
 }: CleanLexicalEditorProps) {
   const { session } = useAuth();
   
-  // Use the Yjs knowledge document hook
+  // Use the Yjs knowledge document hook - always call this hook
   const {
     yjsDoc,
     awareness,
@@ -393,40 +393,18 @@ export function CleanLexicalEditor({
     }
   });
 
-  // Debug-Log beim Mounten der Komponente
+  // Debug-Log beim Mounten der Komponente - always call this hook
   useEffect(() => {
     console.log('🚀 CleanLexicalEditor MOUNTED with documentId:', documentId);
     return () => console.log('🔥 CleanLexicalEditor UNMOUNTED');
   }, []);
 
+  // Always call this hook too
   useEffect(() => {
     console.log('🔄 CleanLexicalEditor documentId changed to:', documentId);
   }, [documentId]);
 
-  if (!documentId) {
-    console.log('❌ CleanLexicalEditor: No documentId provided');
-    return (
-      <div className="relative border border-border rounded-lg bg-background min-h-[400px] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-sm text-muted-foreground">Kein Dokument ausgewählt.</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading || !isInitialized || !yjsDoc) {
-    return (
-      <div className="relative border border-border rounded-lg bg-background min-h-[400px] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-sm text-muted-foreground">Dokument wird geladen...</div>
-        </div>
-      </div>
-    );
-  }
-
-  console.log('✅ CleanLexicalEditor: Rendering with documentId:', documentId);
-
-  // Provider factory that uses the existing Yjs document from the hook
+  // Provider factory that uses the existing Yjs document from the hook - always call this hook
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
     console.log('🏭 ProviderFactory: Called with document ID:', id);
     console.log('🏭 ProviderFactory: Current yjsDocMap size:', yjsDocMap.size);
@@ -526,6 +504,30 @@ export function CleanLexicalEditor({
     // Return WebsocketProvider directly, casting to Provider type
     return provider as unknown as Provider;
   }, [session?.user, yjsDoc, awareness]);
+
+  // Now handle conditional rendering AFTER all hooks are called
+  if (!documentId) {
+    console.log('❌ CleanLexicalEditor: No documentId provided');
+    return (
+      <div className="relative border border-border rounded-lg bg-background min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-sm text-muted-foreground">Kein Dokument ausgewählt.</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !isInitialized || !yjsDoc) {
+    return (
+      <div className="relative border border-border rounded-lg bg-background min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-sm text-muted-foreground">Dokument wird geladen...</div>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('✅ CleanLexicalEditor: Rendering with documentId:', documentId);
 
   return (
     <LexicalComposer initialConfig={editorConfig}>
