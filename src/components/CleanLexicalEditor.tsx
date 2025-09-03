@@ -14,7 +14,6 @@ import {
 } from '@lexical/list';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
-import { createBinding } from '@lexical/yjs';
 import { 
   LexicalComposer,
   InitialConfigType

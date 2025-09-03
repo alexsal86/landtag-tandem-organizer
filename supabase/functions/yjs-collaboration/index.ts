@@ -67,19 +67,31 @@ serve(async (req) => {
   };
 
   socket.onmessage = (event) => {
-    // Broadcast message to all clients in the same room
+    console.log('Received message in room:', roomId, 'message size:', event.data?.length || 0);
+    
+    // Get the room's WebSocket connections
     const room = rooms.get(roomId);
     if (room) {
-      room.forEach((client) => {
-        if (client !== socket && client.readyState === WebSocket.OPEN) {
-          client.send(event.data);
+      let broadcastCount = 0;
+      // Broadcast message to all other connections in the room (not the sender)
+      room.forEach((roomSocket) => {
+        if (roomSocket !== socket && roomSocket.readyState === WebSocket.OPEN) {
+          try {
+            roomSocket.send(event.data);
+            broadcastCount++;
+          } catch (error) {
+            console.error('Error broadcasting message to client:', error);
+            // Remove broken connection
+            room.delete(roomSocket);
+          }
         }
       });
+      console.log(`Broadcasted message to ${broadcastCount} clients in room ${roomId}`);
     }
   };
 
-  socket.onclose = () => {
-    console.log(`WebSocket closed in room ${roomId}`);
+  socket.onclose = (event) => {
+    console.log(`WebSocket closed in room ${roomId} - Code: ${event.code}, Reason: ${event.reason}`);
     connections.delete(connectionId);
     
     const room = rooms.get(roomId);
@@ -88,6 +100,8 @@ serve(async (req) => {
       if (room.size === 0) {
         rooms.delete(roomId);
         console.log(`Room ${roomId} deleted - no more connections`);
+      } else {
+        console.log(`Room ${roomId} still has ${room.size} connections`);
       }
     }
   };
