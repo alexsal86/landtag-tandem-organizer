@@ -102,34 +102,54 @@ export const useCollaborationPersistence = ({
     if (!enableCollaboration || !yDoc) return;
 
     let saveTimeout: NodeJS.Timeout;
-    let isInitialLoad = true;
+    let hasLoaded = false;
+    let changeCount = 0;
 
     const handleUpdate = (update: Uint8Array, origin: any) => {
-      // Skip auto-save during initial load to avoid overwriting with empty state
-      if (isInitialLoad && origin === 'load') return;
+      changeCount++;
       
-      console.log('Document auto-saved');
+      // Skip auto-save during initial load or if no meaningful changes
+      if (!hasLoaded) {
+        console.log('Skipping auto-save during initial load');
+        return;
+      }
+      
+      // Skip empty updates
+      if (update.length <= 2) {
+        console.log('Skipping empty update');
+        return;
+      }
+      
+      console.log(`Document updated (change #${changeCount}), scheduling auto-save in ${debounceMs}ms`);
       
       // Debounce saves to avoid too frequent database writes
       clearTimeout(saveTimeout);
       saveTimeout = setTimeout(() => {
+        console.log('Executing auto-save...');
         saveDocumentState(yDoc);
       }, debounceMs);
     };
 
-    // Load initial state
-    loadDocumentState(yDoc).then(() => {
-      isInitialLoad = false;
-    });
+    // Mark as loaded after initial state is processed
+    const markAsLoaded = () => {
+      setTimeout(() => {
+        hasLoaded = true;
+        console.log('Document marked as loaded, auto-save enabled');
+      }, 500); // Small delay to ensure initial sync is complete
+    };
 
     // Listen for changes
     yDoc.on('update', handleUpdate);
+    
+    // Mark as loaded after a brief delay
+    markAsLoaded();
 
     return () => {
       yDoc.off('update', handleUpdate);
       clearTimeout(saveTimeout);
+      console.log('Collaboration persistence cleanup');
     };
-  }, [yDoc, enableCollaboration, saveDocumentState, loadDocumentState, debounceMs]);
+  }, [yDoc, enableCollaboration, saveDocumentState, debounceMs]);
 
   // Manual save function
   const saveManual = useCallback(async () => {

@@ -105,62 +105,51 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     }
   }, [user, enableCollaboration]);
 
-  // Yjs collaboration setup
+  // Yjs collaboration setup - single shared instances
   const [yDoc, setYDoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
-
+  
   // Set up persistence hook
   const { saveManual, loadDocumentState } = useCollaborationPersistence({
     documentId,
     yDoc,
     enableCollaboration,
-    debounceMs: 3000
+    debounceMs: 2000
   });
 
-  const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
-    let doc = yjsDocMap.get(id);
-    
-    if (!doc) {
-      doc = new Y.Doc();
-      yjsDocMap.set(id, doc);
-      setYDoc(doc);
-      
-      // Load initial document state
-      if (documentId) {
-        setTimeout(() => loadDocumentState(doc), 100);
-      }
-    }
+  // Create Y.Doc and Provider once when collaboration is enabled
+  useEffect(() => {
+    if (!enableCollaboration || !documentId || !currentUser) return;
 
-    // Use the correct WebSocket URL for Supabase Edge Functions
+    console.log('Setting up collaboration for document:', documentId);
+    
+    // Create single Y.Doc instance
+    const doc = new Y.Doc();
+    setYDoc(doc);
+    
+    // Load initial document state synchronously
+    loadDocumentState(doc).then(() => {
+      console.log('Initial document state loaded');
+    });
+
+    // Create WebSocket provider with proper URL
+    const roomId = `knowledge-doc-${documentId}`;
     const wsProvider = new WebsocketProvider(
-      `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration`,
-      id,
-      doc
+      'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
+      roomId,
+      doc,
+      {
+        connect: false // Don't auto-connect, we'll connect manually
+      }
     );
 
-    // Set up connection status tracking
-    wsProvider.on('status', (event: any) => {
-      console.log('WebSocket status:', event);
-      setIsConnected(event.status === 'connected');
-    });
-
-    // Send join-room message after connection
-    wsProvider.on('status', (event: any) => {
-      if (event.status === 'connected' && wsProvider.ws) {
-        console.log('Joining room:', id);
-        wsProvider.ws.send(JSON.stringify({
-          type: 'join-room',
-          room: id
-        }));
-      }
-    });
-
-    // Set up awareness for user presence
-    if (currentUser && wsProvider.awareness) {
+    // Set up awareness BEFORE connecting
+    if (wsProvider.awareness) {
       wsProvider.awareness.setLocalStateField('user', {
         name: currentUser.name,
         color: currentUser.color,
-        avatar: currentUser.avatar
+        avatar: currentUser.avatar,
+        id: currentUser.id
       });
 
       // Track awareness changes
@@ -171,7 +160,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
         states.forEach((state, clientId) => {
           if (state.user && clientId !== wsProvider.awareness.clientID) {
             users.push({
-              id: clientId.toString(),
+              id: state.user.id || clientId.toString(),
               name: state.user.name,
               avatar: state.user.avatar,
               color: state.user.color
@@ -179,13 +168,65 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           }
         });
         
+        console.log('Collaboration users updated:', users.length);
         setCollaborationUsers(users);
       });
     }
 
+    // Set up connection status tracking
+    wsProvider.on('status', (event: any) => {
+      console.log('WebSocket status:', event);
+      setIsConnected(event.status === 'connected');
+      
+      // Join room after connection
+      if (event.status === 'connected' && wsProvider.ws) {
+        console.log('Joining room:', roomId);
+        wsProvider.ws.send(JSON.stringify({
+          type: 'join-room',
+          room: roomId
+        }));
+      }
+    });
+
+    wsProvider.on('connection-error', (error: any) => {
+      console.error('WebSocket connection error:', error);
+      setIsConnected(false);
+    });
+
+    // Connect the provider
+    wsProvider.connect();
     setProvider(wsProvider);
-    return wsProvider as any; // Type assertion to bypass compatibility issue
-  }, [currentUser, documentId, loadDocumentState]);
+
+    // Cleanup function
+    return () => {
+      console.log('Cleaning up collaboration');
+      wsProvider.awareness?.destroy();
+      wsProvider.disconnect();
+      doc.destroy();
+      setYDoc(null);
+      setProvider(null);
+      setIsConnected(false);
+      setCollaborationUsers([]);
+    };
+  }, [enableCollaboration, documentId, currentUser, loadDocumentState]);
+
+  // Provider factory for Lexical CollaborationPlugin
+  const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
+    console.log('Provider factory called for:', id);
+    
+    // Return existing provider if available
+    if (provider && yDoc) {
+      // Ensure the document is in the map
+      if (!yjsDocMap.has(id)) {
+        yjsDocMap.set(id, yDoc);
+      }
+      console.log('Returning existing provider');
+      return provider as any;
+    }
+    
+    console.warn('Provider factory called but no provider available');
+    return null;
+  }, [provider, yDoc]);
   const initialConfig = {
     namespace: 'KnowledgeBaseEditor',
     theme,
