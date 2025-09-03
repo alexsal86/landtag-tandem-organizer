@@ -130,14 +130,13 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       const doc = new Y.Doc();
       setYDoc(doc);
 
-      // Create WebSocket URL and room ID
-      const wsUrl = getWebSocketUrl();
-      const roomId = `knowledge-doc-${documentId}`;
+      // Create complete WebSocket URL including document ID
+      const completeUrl = `${getWebSocketUrl()}/knowledge-doc-${documentId}`;
       
-      console.log('Connecting to:', wsUrl, 'Room:', roomId);
+      console.log('Connecting to complete URL:', completeUrl);
 
-      // Create WebSocket provider - use base URL and pass roomId as parameter
-      const wsProvider = new WebsocketProvider(wsUrl, roomId, doc);
+      // Create WebSocket provider - pass complete URL and empty roomId to prevent duplication
+      const wsProvider = new WebsocketProvider(completeUrl, "", doc);
 
       // Set up awareness before connecting
       if (wsProvider.awareness) {
@@ -182,9 +181,9 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       wsProvider.on('status', (event: any) => {
         console.log('🔌 WebSocket status changed:', {
           status: event.status,
-          roomId,
+          documentId,
           timestamp: new Date().toISOString(),
-          providerUrl: wsUrl
+          providerUrl: completeUrl
         });
         setIsConnected(event.status === 'connected');
       });
@@ -192,8 +191,8 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       wsProvider.on('connection-error', (error: any) => {
         console.error('❌ WebSocket connection error:', {
           error,
-          roomId,
-          url: wsUrl,
+          documentId,
+          url: completeUrl,
           timestamp: new Date().toISOString()
         });
         setIsConnected(false);
@@ -202,7 +201,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       wsProvider.on('connection-close', (event: any) => {
         console.log('🚪 WebSocket connection closed:', {
           event,
-          roomId,
+          documentId,
           timestamp: new Date().toISOString()
         });
         setIsConnected(false);
