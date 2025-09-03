@@ -323,22 +323,39 @@ export function CleanLexicalEditor({
     const doc = new Y.Doc();
     yjsDocMap.set(id, doc);
     
-    // Use correct Supabase Edge Function WebSocket URL
-    const wsUrl = `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration/${id}`;
+    // Create WebSocket provider for collaboration
+    // Base URL without documentId - WebsocketProvider adds the room name automatically
+    const provider = new WebsocketProvider(
+      'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
+      id, // This becomes the room name
+      doc,
+      {
+        connect: true,
+        // Add some retry logic for better reliability
+        resyncInterval: 5000,
+      }
+    );
     
-    // Create WebSocket provider without authentication (Edge Function is public)
-    const provider = new WebsocketProvider(wsUrl, id, doc);
-    
-    // Set user awareness info
-    if (provider.awareness && session?.user) {
-      provider.awareness.setLocalStateField('user', {
+    // Set user awareness
+    const awareness = provider.awareness;
+    if (session?.user && awareness) {
+      awareness.setLocalStateField('user', {
         name: session.user.email || 'Anonymous',
-        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`,
-        clientId: doc.clientID
+        color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+        clientId: awareness.clientID
       });
     }
     
-    // Store provider reference on doc for access in awareness component
+    // Add connection event logging for debugging
+    provider.on('status', ({ status }: { status: string }) => {
+      console.log('WebSocket provider status:', status);
+    });
+    
+    provider.on('connection-error', (event: Event, provider: WebsocketProvider) => {
+      console.error('WebSocket connection error:', event);
+    });
+    
+    // Store provider on doc for awareness access
     const docWithProvider = doc as Y.Doc & { provider: WebsocketProvider };
     docWithProvider.provider = provider;
     

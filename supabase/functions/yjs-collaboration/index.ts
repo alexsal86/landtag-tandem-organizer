@@ -67,7 +67,11 @@ serve(async (req) => {
   };
 
   socket.onmessage = (event) => {
-    console.log('Received message in room:', roomId, 'message size:', event.data?.length || 0);
+    const messageSize = event.data instanceof ArrayBuffer ? event.data.byteLength : 
+                       event.data instanceof Uint8Array ? event.data.length :
+                       typeof event.data === 'string' ? event.data.length : 0;
+    
+    console.log('Received Yjs message in room:', roomId, 'type:', typeof event.data, 'size:', messageSize);
     
     // Get the room's WebSocket connections
     const room = rooms.get(roomId);
@@ -77,16 +81,17 @@ serve(async (req) => {
       room.forEach((roomSocket) => {
         if (roomSocket !== socket && roomSocket.readyState === WebSocket.OPEN) {
           try {
+            // Forward the raw binary data - Yjs handles protocol internally
             roomSocket.send(event.data);
             broadcastCount++;
           } catch (error) {
-            console.error('Error broadcasting message to client:', error);
+            console.error('Error broadcasting Yjs message to client:', error);
             // Remove broken connection
             room.delete(roomSocket);
           }
         }
       });
-      console.log(`Broadcasted message to ${broadcastCount} clients in room ${roomId}`);
+      console.log(`Broadcasted Yjs message to ${broadcastCount} clients in room ${roomId}`);
     }
   };
 
