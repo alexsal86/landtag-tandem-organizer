@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+console.log('🚨 CollaborationContext.tsx module loading');
+import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { useAuth } from '@/hooks/useAuth';
@@ -218,15 +219,4 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       {children}
     </CollaborationContext.Provider>
   );
-};
-
-export const useCollaboration = () => {
-  console.log('🎯 useCollaboration called');
-  const context = useContext(CollaborationContext);
-  console.log('🎯 useCollaboration context:', context);
-  if (!context) {
-    console.error('❌ No CollaborationContext found!');
-    throw new Error('useCollaboration must be used within a CollaborationProvider');
-  }
-  return context;
 };
