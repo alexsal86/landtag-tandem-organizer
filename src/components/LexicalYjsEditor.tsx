@@ -9,6 +9,8 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
 import { HashtagPlugin } from '@lexical/react/LexicalHashtagPlugin';
+import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
+import { ClearEditorPlugin } from '@lexical/react/LexicalClearEditorPlugin';
 import { TRANSFORMERS } from '@lexical/markdown';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -16,6 +18,7 @@ import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
 import { mergeRegister } from '@lexical/utils';
 import { $selectAll } from '@lexical/selection';
 import { copyToClipboard } from '@lexical/clipboard';
+import { $isMarkNode, $createMarkNode } from '@lexical/mark';
 import {
   $getRoot,
   $getSelection,
@@ -56,6 +59,26 @@ import {
   Copy,
   Upload,
   Hash,
+  FileImage,
+  Link,
+  Highlighter,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Indent,
+  Outdent,
+  Trash2,
+  Download,
+  Eye,
+  EyeOff,
+  PaintBucket,
+  Scissors,
+  ClipboardCopy,
+  RotateCcw,
+  FileText,
+  Search,
+  Replace,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -288,6 +311,91 @@ const EditorToolbar = ({ className }: { className?: string }) => {
     });
   };
 
+  const insertLink = () => {
+    editor.update(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        const url = prompt('Enter URL:');
+        if (url) {
+          selection.insertText(`[Link](${url})`);
+        }
+      }
+    });
+  };
+
+  const highlightText = () => {
+    editor.update(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection) && !selection.isCollapsed()) {
+        const markNode = $createMarkNode(['highlight']);
+        selection.insertNodes([markNode]);
+      }
+    });
+  };
+
+  const clearFormatting = () => {
+    editor.update(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        selection.getNodes().forEach(node => {
+          if (node.getTextContent) {
+            const textContent = node.getTextContent();
+            const textNode = $createTextNode(textContent);
+            node.replace(textNode);
+          }
+        });
+      }
+    });
+  };
+
+  const handleIndent = () => {
+    editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined);
+  };
+
+  const handleOutdent = () => {
+    editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
+  };
+
+  const clearEditor = () => {
+    editor.update(() => {
+      const root = $getRoot();
+      root.clear();
+      const paragraph = $createParagraphNode();
+      root.append(paragraph);
+      paragraph.select();
+    });
+  };
+
+  const exportAsPlainText = () => {
+    editor.getEditorState().read(() => {
+      const content = $getRoot().getTextContent();
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'document.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  };
+
+  const exportAsHTML = () => {
+    editor.getEditorState().read(() => {
+      const htmlContent = $generateHtmlFromNodes(editor, null);
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'document.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  };
+
   const handleRedo = () => {
     editor.dispatchCommand(REDO_COMMAND, undefined);
   };
@@ -439,7 +547,64 @@ const EditorToolbar = ({ className }: { className?: string }) => {
       
       <Separator orientation="vertical" className="h-6" />
       
-      {/* Advanced Features */}
+      {/* Links and Media */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={insertLink}
+          className="h-8 w-8 p-0"
+          title="Insert Link"
+        >
+          <Link className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={insertHashtag}
+          className="h-8 w-8 p-0"
+          title="Insert Hashtag"
+        >
+          <Hash className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={highlightText}
+          className="h-8 w-8 p-0"
+          title="Highlight Text"
+        >
+          <Highlighter className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <Separator orientation="vertical" className="h-6" />
+      
+      {/* Indentation */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleIndent}
+          className="h-8 w-8 p-0"
+          title="Increase Indent"
+        >
+          <Indent className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleOutdent}
+          className="h-8 w-8 p-0"
+          title="Decrease Indent"
+        >
+          <Outdent className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <Separator orientation="vertical" className="h-6" />
+      
+      {/* Copy and Clear Operations */}
       <div className="flex items-center gap-1">
         <Button
           variant="ghost"
@@ -453,11 +618,44 @@ const EditorToolbar = ({ className }: { className?: string }) => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={insertHashtag}
+          onClick={clearFormatting}
           className="h-8 w-8 p-0"
-          title="Insert Hashtag"
+          title="Clear Formatting"
         >
-          <Hash className="h-4 w-4" />
+          <PaintBucket className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearEditor}
+          className="h-8 w-8 p-0"
+          title="Clear All Content"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <Separator orientation="vertical" className="h-6" />
+      
+      {/* Export Options */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={exportAsPlainText}
+          className="h-8 w-8 p-0"
+          title="Export as Text"
+        >
+          <FileText className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={exportAsHTML}
+          className="h-8 w-8 p-0"
+          title="Export as HTML"
+        >
+          <Download className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -526,6 +724,7 @@ export function LexicalYjsEditor({
         <ListPlugin />
         <TablePlugin />
         <HashtagPlugin />
+        <ClearEditorPlugin />
         <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
         <FloatingTextFormatToolbarPlugin />
         <ContentChangePlugin onContentChange={onContentChange} />
