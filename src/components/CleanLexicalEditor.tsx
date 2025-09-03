@@ -318,7 +318,7 @@ export function CleanLexicalEditor({
     );
   }
 
-  // Provider factory that returns a compatible Provider type
+  // Provider factory that creates Yjs binding for CollaborationPlugin
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
     const doc = new Y.Doc();
     yjsDocMap.set(id, doc);
@@ -359,7 +359,7 @@ export function CleanLexicalEditor({
     const docWithProvider = doc as Y.Doc & { provider: WebsocketProvider };
     docWithProvider.provider = provider;
     
-    // Cast to Provider type for compatibility - WebsocketProvider implements the needed interface
+    // Return the provider - CollaborationPlugin will create the binding internally using createBinding
     return provider as unknown as Provider;
   }, [session?.user]);
 
