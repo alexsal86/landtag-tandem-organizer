@@ -339,6 +339,16 @@ export function CleanLexicalEditor({
 
   console.log('CleanLexicalEditor: isInitialized:', isInitialized, 'yjsDoc:', !!yjsDoc, 'awareness:', !!awareness);
 
+  if (!documentId) {
+    return (
+      <div className="relative border border-border rounded-lg bg-background min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-sm text-muted-foreground">Kein Dokument ausgewählt.</div>
+        </div>
+      </div>
+    );
+  }
+
   if (!isInitialized || !yjsDoc || !awareness) {
     console.log('CleanLexicalEditor: Still initializing...');
     return (

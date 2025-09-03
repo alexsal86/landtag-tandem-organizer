@@ -2,7 +2,7 @@ import React from 'react';
 import { CleanLexicalEditor } from './CleanLexicalEditor';
 
 interface LexicalKnowledgeEditorProps {
-  documentId: string;
+  documentId?: string;
   onClose: () => void;
 }
 

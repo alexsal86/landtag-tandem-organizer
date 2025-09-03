@@ -3,10 +3,11 @@ import { Doc, encodeStateAsUpdate, applyUpdate, UndoManager } from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
 import { WebsocketProvider } from 'y-websocket';
 import { useAuth } from './useAuth';
+import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UseYjsCollaborationProps {
-  documentId: string;
+  documentId?: string;
 }
 
 // Helper function to generate random user colors
@@ -19,7 +20,10 @@ function generateUserColor(): string {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
+export function useYjsCollaboration({ documentId: propDocumentId }: UseYjsCollaborationProps) {
+  const { documentId: urlDocumentId } = useParams<{ documentId: string }>();
+  const documentId = propDocumentId || urlDocumentId;
+  
   console.log('useYjsCollaboration: Hook called with documentId:', documentId);
   const { user, session } = useAuth();
   const yjsDocRef = useRef<Doc | null>(null);
@@ -31,6 +35,12 @@ export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
   // Initialize Yjs document and awareness
   useEffect(() => {
     console.log('useYjsCollaboration: Initializing for:', documentId);
+    
+    if (!documentId) {
+      console.log('useYjsCollaboration: No documentId available, skipping initialization');
+      setIsInitialized(false);
+      return;
+    }
     
     setIsInitialized(false);
     

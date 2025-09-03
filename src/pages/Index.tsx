@@ -113,8 +113,8 @@ const Index = () => {
         console.log('Rendering DocumentsView');
         return <DocumentsView />;
       case "knowledge":
-        console.log('Rendering KnowledgeBaseView with documentId:', documentId);
-        return <KnowledgeBaseView documentId={documentId} />;
+        console.log('Rendering KnowledgeBaseView');
+        return <KnowledgeBaseView />;
       case "settings":
         console.log('Rendering SettingsView');
         return <SettingsView />;
