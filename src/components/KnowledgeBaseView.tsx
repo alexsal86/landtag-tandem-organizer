@@ -550,7 +550,7 @@ const KnowledgeBaseView = () => {
         )}
       </div>
 
-      {/* Document Editor removed - Lexical/Yjs components deleted */}
+      
     </div>
   );
 };

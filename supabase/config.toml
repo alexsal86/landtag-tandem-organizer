@@ -34,9 +34,6 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
-[functions.yjs-collaboration]
-verify_jwt = false
-
 [functions.send-poll-invitation]
 verify_jwt = true
 
