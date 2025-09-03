@@ -5,14 +5,64 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Global rooms storage with enhanced room management
-interface RoomData {
+// Yjs message types (following y-websocket protocol)
+const MESSAGE_SYNC = 0;
+const MESSAGE_AWARENESS = 1;
+const MESSAGE_AUTH = 2;
+
+// Encoding/Decoding utilities
+const readVarUint = (decoder: { arr: Uint8Array; pos: number }): number => {
+  let num = 0;
+  let mult = 1;
+  const len = decoder.arr.length;
+  while (decoder.pos < len) {
+    const r = decoder.arr[decoder.pos++];
+    num = num + (r & 0x7F) * mult;
+    mult *= 128;
+    if (mult > 0x80000000) {
+      break;
+    }
+    if ((r & 0x80) === 0) {
+      break;
+    }
+  }
+  return num;
+};
+
+const writeVarUint = (encoder: { bufs: Uint8Array[] }, num: number): void => {
+  while (num > 0x7F) {
+    encoder.bufs.push(new Uint8Array([0x80 | (0x7F & num)]));
+    num = Math.floor(num / 128);
+  }
+  encoder.bufs.push(new Uint8Array([0x7F & num]));
+};
+
+const encodeMessage = (messageType: number, content: Uint8Array): Uint8Array => {
+  const encoder = { bufs: [] as Uint8Array[] };
+  writeVarUint(encoder, messageType);
+  encoder.bufs.push(content);
+  
+  const totalLength = encoder.bufs.reduce((sum, buf) => sum + buf.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  
+  for (const buf of encoder.bufs) {
+    result.set(buf, offset);
+    offset += buf.length;
+  }
+  
+  return result;
+};
+
+// Room management with Y.Doc state storage
+interface YjsRoom {
   sockets: Set<WebSocket>;
   lastActivity: number;
-  awareness: Map<WebSocket, any>;
+  docState: Uint8Array | null;
+  awarenessState: Map<WebSocket, Uint8Array>;
 }
 
-const globalRooms = new Map<string, RoomData>();
+const globalRooms = new Map<string, YjsRoom>();
 
 // Clean up inactive rooms every 5 minutes
 setInterval(() => {
@@ -21,13 +71,13 @@ setInterval(() => {
   
   for (const [roomId, roomData] of globalRooms.entries()) {
     if (now - roomData.lastActivity > ROOM_TIMEOUT && roomData.sockets.size === 0) {
-      console.log(`Cleaning up inactive room: ${roomId}`);
+      console.log(`🧹 Cleaning up inactive room: ${roomId}`);
       globalRooms.delete(roomId);
     }
   }
 }, 5 * 60 * 1000);
 
-console.log('YJS Collaboration server starting...');
+console.log('🚀 Native Yjs WebSocket Server starting...');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -46,162 +96,180 @@ serve(async (req) => {
   }
 
   try {
+    const url = new URL(req.url);
+    // Extract room ID from URL path (e.g., /roomId or ?roomId=xxx)
+    const roomId = url.pathname.slice(1) || url.searchParams.get('roomId') || 'default';
+    
+    console.log(`🔌 New WebSocket connection for room: ${roomId}`);
+
     const { socket, response } = Deno.upgradeWebSocket(req);
     
-    let currentRoom: string | null = null;
-    let isConnected = false;
-
+    // Initialize room if it doesn't exist
+    if (!globalRooms.has(roomId)) {
+      globalRooms.set(roomId, {
+        sockets: new Set(),
+        lastActivity: Date.now(),
+        docState: null,
+        awarenessState: new Map()
+      });
+      console.log(`🆕 Created new room: ${roomId}`);
+    }
+    
+    const room = globalRooms.get(roomId)!;
+    
     socket.onopen = () => {
-      console.log('WebSocket connection opened');
-      isConnected = true;
+      console.log(`✅ WebSocket opened for room: ${roomId}`);
+      room.sockets.add(socket);
+      room.lastActivity = Date.now();
+      
+      // Send existing document state to new client (sync step 1)
+      if (room.docState) {
+        console.log(`📤 Sending existing doc state to new client (${room.docState.length} bytes)`);
+        socket.send(encodeMessage(MESSAGE_SYNC, room.docState));
+      }
+      
+      // Send existing awareness states to new client
+      room.awarenessState.forEach((awarenessData, clientSocket) => {
+        if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
+          try {
+            socket.send(encodeMessage(MESSAGE_AWARENESS, awarenessData));
+          } catch (err) {
+            console.error('❌ Error sending awareness to new client:', err);
+          }
+        }
+      });
+      
+      console.log(`👥 Room ${roomId} now has ${room.sockets.size} clients`);
     };
 
-    socket.onmessage = async (event) => {
+    socket.onmessage = (event) => {
       try {
-        // Handle binary data (Yjs updates and awareness)
-        if (event.data instanceof ArrayBuffer) {
-          const data = new Uint8Array(event.data);
-          console.log(`Received binary data, length: ${data.length}, room: ${currentRoom}`);
-          
-          // Update room activity
-          if (currentRoom && globalRooms.has(currentRoom)) {
-            const roomData = globalRooms.get(currentRoom)!;
-            roomData.lastActivity = Date.now();
+        if (!(event.data instanceof ArrayBuffer)) {
+          console.warn('⚠️ Received non-binary data, ignoring');
+          return;
+        }
+        
+        const data = new Uint8Array(event.data);
+        console.log(`📥 Received binary message: ${data.length} bytes in room ${roomId}`);
+        
+        if (data.length === 0) {
+          console.warn('⚠️ Received empty message');
+          return;
+        }
+        
+        // Decode message type
+        const decoder = { arr: data, pos: 0 };
+        const messageType = readVarUint(decoder);
+        const content = data.slice(decoder.pos);
+        
+        console.log(`📋 Message type: ${messageType}, content: ${content.length} bytes`);
+        
+        room.lastActivity = Date.now();
+        
+        switch (messageType) {
+          case MESSAGE_SYNC:
+            console.log(`🔄 Sync message received (${content.length} bytes)`);
+            // Store document state
+            room.docState = content;
             
-            // Broadcast to all other clients in the room
-            let broadcastCount = 0;
-            roomData.sockets.forEach(clientSocket => {
+            // Broadcast sync update to all other clients
+            let syncBroadcastCount = 0;
+            room.sockets.forEach(clientSocket => {
               if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
                 try {
                   clientSocket.send(data);
-                  broadcastCount++;
+                  syncBroadcastCount++;
                 } catch (err) {
-                  console.error('Error broadcasting binary data:', err);
-                  // Remove failed socket
-                  roomData.sockets.delete(clientSocket);
+                  console.error('❌ Error broadcasting sync:', err);
+                  room.sockets.delete(clientSocket);
+                  room.awarenessState.delete(clientSocket);
                 }
               }
             });
-            console.log(`Broadcasted binary data to ${broadcastCount} clients in room ${currentRoom}`);
-          }
-          return;
-        }
-
-        // Handle text messages (room management, awareness, sync)
-        if (typeof event.data === 'string') {
-          const data = JSON.parse(event.data);
-          console.log('Received text message:', data.type, currentRoom ? `room: ${currentRoom}` : 'no room');
-          
-          switch (data.type) {
-            case 'join-room':
-              console.log(`Client joining room: ${data.room}`);
-              
-              // Leave current room if exists
-              if (currentRoom && globalRooms.has(currentRoom)) {
-                const oldRoomData = globalRooms.get(currentRoom)!;
-                oldRoomData.sockets.delete(socket);
-                oldRoomData.awareness.delete(socket);
-                console.log(`Left room ${currentRoom}, ${oldRoomData.sockets.size} clients remaining`);
-              }
-              
-              // Join new room
-              currentRoom = data.room;
-              if (!globalRooms.has(currentRoom)) {
-                globalRooms.set(currentRoom, {
-                  sockets: new Set(),
-                  lastActivity: Date.now(),
-                  awareness: new Map()
-                });
-                console.log(`Created new room: ${currentRoom}`);
-              }
-              
-              const roomData = globalRooms.get(currentRoom)!;
-              roomData.sockets.add(socket);
-              roomData.lastActivity = Date.now();
-              
-              console.log(`Joined room ${currentRoom}, ${roomData.sockets.size} clients total`);
-              break;
-
-            case 'awareness-update':
-            case 'sync-step-1':
-            case 'sync-step-2':
-              // Handle YJS protocol messages and awareness
-              if (currentRoom && globalRooms.has(currentRoom)) {
-                const roomData = globalRooms.get(currentRoom)!;
-                roomData.lastActivity = Date.now();
-                
-                // Store awareness data if available
-                if (data.type === 'awareness-update' && data.awareness) {
-                  roomData.awareness.set(socket, data.awareness);
+            console.log(`📡 Broadcasted sync to ${syncBroadcastCount} clients`);
+            break;
+            
+          case MESSAGE_AWARENESS:
+            console.log(`👁️ Awareness message received (${content.length} bytes)`);
+            // Store awareness state for this client
+            room.awarenessState.set(socket, content);
+            
+            // Broadcast awareness to all other clients
+            let awarenessBroadcastCount = 0;
+            room.sockets.forEach(clientSocket => {
+              if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
+                try {
+                  clientSocket.send(data);
+                  awarenessBroadcastCount++;
+                } catch (err) {
+                  console.error('❌ Error broadcasting awareness:', err);
+                  room.sockets.delete(clientSocket);
+                  room.awarenessState.delete(clientSocket);
                 }
-                
-                // Broadcast to all other clients in the room
-                let broadcastCount = 0;
-                roomData.sockets.forEach(clientSocket => {
-                  if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
-                    try {
-                      clientSocket.send(JSON.stringify(data));
-                      broadcastCount++;
-                    } catch (err) {
-                      console.error('Error broadcasting message:', err);
-                      roomData.sockets.delete(clientSocket);
-                      roomData.awareness.delete(clientSocket);
-                    }
-                  }
-                });
-                console.log(`Broadcasted ${data.type} to ${broadcastCount} clients in room ${currentRoom}`);
               }
-              break;
-
-            default:
-              console.log(`Unknown message type: ${data.type}`);
-          }
+            });
+            console.log(`📡 Broadcasted awareness to ${awarenessBroadcastCount} clients`);
+            break;
+            
+          case MESSAGE_AUTH:
+            console.log(`🔐 Auth message received (${content.length} bytes)`);
+            // For now, we don't implement authentication
+            // Just broadcast to other clients
+            room.sockets.forEach(clientSocket => {
+              if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
+                try {
+                  clientSocket.send(data);
+                } catch (err) {
+                  console.error('❌ Error broadcasting auth:', err);
+                  room.sockets.delete(clientSocket);
+                  room.awarenessState.delete(clientSocket);
+                }
+              }
+            });
+            break;
+            
+          default:
+            console.warn(`⚠️ Unknown message type: ${messageType}`);
         }
+        
       } catch (error) {
-        console.error('Error processing message:', error);
+        console.error('❌ Error processing message:', error);
       }
     };
 
     socket.onclose = () => {
-      // Remove socket from current room
-      if (currentRoom && globalRooms.has(currentRoom)) {
-        const roomData = globalRooms.get(currentRoom)!;
-        roomData.sockets.delete(socket);
-        roomData.awareness.delete(socket);
-        console.log(`Socket removed from room ${currentRoom}, ${roomData.sockets.size} clients remaining`);
+      console.log(`🚪 WebSocket closed for room: ${roomId}`);
+      room.sockets.delete(socket);
+      room.awarenessState.delete(socket);
+      
+      console.log(`👥 Room ${roomId} now has ${room.sockets.size} clients`);
+      
+      // Send awareness update to remaining clients (user left)
+      if (room.sockets.size > 0) {
+        // Create empty awareness for this client (indicates they left)
+        const emptyAwareness = new Uint8Array(0);
+        const awarenessUpdate = encodeMessage(MESSAGE_AWARENESS, emptyAwareness);
         
-        // Notify other clients about user leaving
-        if (roomData.sockets.size > 0) {
-          const leaveMessage = JSON.stringify({
-            type: 'user-left',
-            room: currentRoom,
-            clients: roomData.sockets.size,
-            timestamp: Date.now()
-          });
-          
-          roomData.sockets.forEach(clientSocket => {
-            if (clientSocket.readyState === WebSocket.OPEN) {
-              try {
-                clientSocket.send(leaveMessage);
-              } catch (err) {
-                console.error('Error notifying client of user leave:', err);
-              }
+        room.sockets.forEach(clientSocket => {
+          if (clientSocket.readyState === WebSocket.OPEN) {
+            try {
+              clientSocket.send(awarenessUpdate);
+            } catch (err) {
+              console.error('❌ Error notifying client of user leave:', err);
             }
-          });
-        }
+          }
+        });
       }
-      isConnected = false;
-      console.log('WebSocket connection closed');
     };
 
     socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      isConnected = false;
+      console.error(`❌ WebSocket error in room ${roomId}:`, error);
     };
 
     return response;
+    
   } catch (error) {
-    console.error('Error upgrading WebSocket:', error);
+    console.error('❌ Error upgrading WebSocket:', error);
     return new Response("Failed to upgrade to WebSocket", { 
       status: 500,
       headers: corsHeaders 
