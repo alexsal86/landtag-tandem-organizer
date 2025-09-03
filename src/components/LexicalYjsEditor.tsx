@@ -116,6 +116,7 @@ interface LexicalYjsEditorProps {
   autoFocus?: boolean;
   yjsDoc?: Doc;
   awareness?: Awareness;
+  isInitialized?: boolean;
 }
 
 // Content change tracking plugin with proper HTML serialization
@@ -679,7 +680,8 @@ export function LexicalYjsEditor({
   readOnly = false,
   autoFocus = false,
   yjsDoc,
-  awareness
+  awareness,
+  isInitialized = false
 }: LexicalYjsEditorProps) {
   const yjsDocRef = useRef<YDoc | null>(null);
   const contentEditableRef = useRef<HTMLDivElement>(null);
@@ -776,7 +778,7 @@ export function LexicalYjsEditor({
         <FloatingTextFormatToolbarPlugin />
         <ContentChangePlugin onContentChange={onContentChange} />
         <InitialContentPlugin initialContent={initialContent} />
-        {yjsDoc && awareness && (
+        {yjsDoc && awareness && isInitialized && (
           <CollaborationPlugin
             id={documentId}
             providerFactory={(id, yjsDocMap) => {

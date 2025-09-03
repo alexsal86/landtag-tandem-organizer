@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Doc, encodeStateAsUpdate, applyUpdate } from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from './useAuth';
 
 interface UseYjsKnowledgeDocumentProps {
   documentId: string;
@@ -28,11 +28,14 @@ export function useYjsKnowledgeDocument({
   const awarenessRef = useRef<Awareness | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initialContent, setInitialContent] = useState<string>('');
+  const [isInitialized, setIsInitialized] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize Yjs document and awareness on documentId change
   useEffect(() => {
     console.log('useYjsKnowledgeDocument: Initializing Yjs document for:', documentId);
+    
+    setIsInitialized(false);
     
     if (yjsDocRef.current) {
       yjsDocRef.current.destroy();
@@ -59,6 +62,7 @@ export function useYjsKnowledgeDocument({
         });
       }
       
+      setIsInitialized(true);
       console.log('useYjsKnowledgeDocument: Document and awareness initialized');
     }
   }, [documentId, user]);
@@ -219,6 +223,7 @@ export function useYjsKnowledgeDocument({
     awareness: awarenessRef.current,
     isLoading,
     initialContent,
+    isInitialized,
     saveDocument: debouncedSave,
     manualSave: saveDocument
   };

@@ -28,6 +28,7 @@ export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledge
     awareness,
     isLoading,
     initialContent,
+    isInitialized,
     saveDocument
   } = useYjsKnowledgeDocument({
     documentId,
@@ -71,6 +72,7 @@ export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledge
           autoFocus
           yjsDoc={yjsDoc}
           awareness={awareness}
+          isInitialized={isInitialized}
         />
       </div>
     </div>
