@@ -83,10 +83,33 @@ const ContentChangePlugin = ({ onContentChange }: { onContentChange?: (content: 
       editorState.read(() => {
         const root = $getRoot();
         const content = root.getTextContent();
-        const html = root.getChildren()
-          .map(child => child.getTextContent())
+        
+        // Generate proper HTML content from Lexical editor state
+        const htmlContent = root.getChildren()
+          .map(child => {
+            const nodeType = child.getType();
+            const textContent = child.getTextContent();
+            
+            if (nodeType === 'heading') {
+              const tag = (child as any).getTag();
+              return `<${tag}>${textContent}</${tag}>`;
+            } else if (nodeType === 'quote') {
+              return `<blockquote>${textContent}</blockquote>`;
+            } else if (nodeType === 'code') {
+              return `<pre><code>${textContent}</code></pre>`;
+            } else if (nodeType === 'list') {
+              const listType = (child as any).getListType();
+              const tag = listType === 'bullet' ? 'ul' : 'ol';
+              return `<${tag}><li>${textContent}</li></${tag}>`;
+            } else if (nodeType === 'paragraph' && textContent.trim()) {
+              return `<p>${textContent}</p>`;
+            }
+            return textContent.trim() ? `<p>${textContent}</p>` : '';
+          })
+          .filter(html => html)
           .join('\n');
-        onContentChange(content, html);
+        
+        onContentChange(content, htmlContent);
       });
     });
 
@@ -116,40 +139,100 @@ const InitialContentPlugin = ({ initialContent }: { initialContent?: string }) =
         // Clear existing content
         root.clear();
         
-        // Simple markdown-like parsing for initial content
-        const lines = initialContent.split('\n');
-        
-        lines.forEach((line, index) => {
-          if (line.startsWith('# ')) {
-            const heading = $createHeadingNode('h1');
-            heading.append($createTextNode(line.slice(2)));
-            root.append(heading);
-          } else if (line.startsWith('## ')) {
-            const heading = $createHeadingNode('h2');
-            heading.append($createTextNode(line.slice(3)));
-            root.append(heading);
-          } else if (line.startsWith('### ')) {
-            const heading = $createHeadingNode('h3');
-            heading.append($createTextNode(line.slice(4)));
-            root.append(heading);
-          } else if (line.startsWith('- ')) {
-            const list = $createListNode('bullet');
-            const listItem = $createListItemNode();
-            listItem.append($createTextNode(line.slice(2)));
-            list.append(listItem);
-            root.append(list);
-          } else if (line.trim()) {
-            const paragraph = $createParagraphNode();
-            paragraph.append($createTextNode(line));
-            root.append(paragraph);
-          }
+        // Check if content contains HTML
+        if (initialContent.includes('<') && initialContent.includes('>')) {
+          // Parse HTML content
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(initialContent, 'text/html');
+          const elements = doc.body.childNodes;
           
-          // Add line breaks between content blocks, but not after the last line
-          if (index < lines.length - 1 && line.trim()) {
-            const paragraph = $createParagraphNode();
-            root.append(paragraph);
-          }
-        });
+          elements.forEach((element) => {
+            if (element.nodeType === Node.ELEMENT_NODE) {
+              const elem = element as Element;
+              const textContent = elem.textContent || '';
+              
+              switch (elem.tagName?.toLowerCase()) {
+                case 'h1':
+                  const h1 = $createHeadingNode('h1');
+                  h1.append($createTextNode(textContent));
+                  root.append(h1);
+                  break;
+                case 'h2':
+                  const h2 = $createHeadingNode('h2');
+                  h2.append($createTextNode(textContent));
+                  root.append(h2);
+                  break;
+                case 'h3':
+                  const h3 = $createHeadingNode('h3');
+                  h3.append($createTextNode(textContent));
+                  root.append(h3);
+                  break;
+                case 'blockquote':
+                  const quote = $createQuoteNode();
+                  quote.append($createTextNode(textContent));
+                  root.append(quote);
+                  break;
+                case 'pre':
+                  const code = $createCodeNode();
+                  code.append($createTextNode(textContent));
+                  root.append(code);
+                  break;
+                case 'ul':
+                case 'ol':
+                  const list = $createListNode(elem.tagName.toLowerCase() === 'ul' ? 'bullet' : 'number');
+                  const listItems = elem.querySelectorAll('li');
+                  listItems.forEach((li) => {
+                    const listItem = $createListItemNode();
+                    listItem.append($createTextNode(li.textContent || ''));
+                    list.append(listItem);
+                  });
+                  root.append(list);
+                  break;
+                case 'p':
+                default:
+                  if (textContent.trim()) {
+                    const paragraph = $createParagraphNode();
+                    paragraph.append($createTextNode(textContent));
+                    root.append(paragraph);
+                  }
+                  break;
+              }
+            } else if (element.nodeType === Node.TEXT_NODE && element.textContent?.trim()) {
+              const paragraph = $createParagraphNode();
+              paragraph.append($createTextNode(element.textContent));
+              root.append(paragraph);
+            }
+          });
+        } else {
+          // Parse simple markdown-like text content
+          const lines = initialContent.split('\n');
+          
+          lines.forEach((line, index) => {
+            if (line.startsWith('# ')) {
+              const heading = $createHeadingNode('h1');
+              heading.append($createTextNode(line.slice(2)));
+              root.append(heading);
+            } else if (line.startsWith('## ')) {
+              const heading = $createHeadingNode('h2');
+              heading.append($createTextNode(line.slice(3)));
+              root.append(heading);
+            } else if (line.startsWith('### ')) {
+              const heading = $createHeadingNode('h3');
+              heading.append($createTextNode(line.slice(4)));
+              root.append(heading);
+            } else if (line.startsWith('- ')) {
+              const list = $createListNode('bullet');
+              const listItem = $createListItemNode();
+              listItem.append($createTextNode(line.slice(2)));
+              list.append(listItem);
+              root.append(list);
+            } else if (line.trim()) {
+              const paragraph = $createParagraphNode();
+              paragraph.append($createTextNode(line));
+              root.append(paragraph);
+            }
+          });
+        }
         
         hasInitialized.current = true;
         console.log('InitialContentPlugin: Content initialized');

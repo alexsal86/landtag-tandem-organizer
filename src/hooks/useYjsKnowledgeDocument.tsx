@@ -62,13 +62,13 @@ export function useYjsKnowledgeDocument({
   // Save document to Supabase
   const saveDocument = useCallback(async (content: string, html: string) => {
     try {
-      console.log('Saving document:', documentId, 'content length:', content.length);
+      console.log('Saving document:', documentId, 'content length:', content.length, 'html length:', html.length);
       
-      // Simplified save - just update content and timestamp
+      // Save both content (plain text) and HTML (formatted content)
       const { error } = await supabase
         .from('knowledge_documents')
         .update({
-          content: content,
+          content: html || content, // Use HTML if available, fallback to plain text
           updated_at: new Date().toISOString()
         })
         .eq('id', documentId);
@@ -78,7 +78,7 @@ export function useYjsKnowledgeDocument({
         throw error;
       }
       
-      console.log('Document saved successfully');
+      console.log('Document saved successfully with formatting');
     } catch (error) {
       console.error('Error saving knowledge document:', error);
       onError?.(error as Error);
