@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Database, MoreVertical, Users, Eye, Edit, Trash2, User } from 'lucide-react';
+import { Search, Plus, Database, MoreVertical, Users, Eye, Edit, Trash2, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +38,7 @@ const KnowledgeBaseView = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Create document form state
   const [newDocument, setNewDocument] = useState({
@@ -189,6 +190,7 @@ const KnowledgeBaseView = () => {
       // Open editor for the new document
       setSelectedDocument(data);
       setIsEditorOpen(true);
+      setIsSidebarCollapsed(true);
     } catch (error) {
       console.error('Error creating document:', error);
       toast({
@@ -258,230 +260,269 @@ const KnowledgeBaseView = () => {
   return (
     <div className="h-full flex bg-background">
       {/* Document Selection Sidebar - Collapsible */}
-      <div className={`${selectedDocument && isEditorOpen ? 'w-80 border-r border-border' : 'w-full'} flex flex-col transition-all duration-300`}>
-        {!(selectedDocument && isEditorOpen) && (
-        <div className="flex-none border-b border-border bg-card/50 backdrop-blur-sm">
-          <div className="p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <Database className="h-6 w-6 text-primary" />
-              <h1 className="text-2xl font-semibold text-foreground">Wissensdatenbank</h1>
-            </div>
+      <div className={`${
+        selectedDocument && isEditorOpen 
+          ? isSidebarCollapsed 
+            ? 'w-12' 
+            : 'w-80' 
+          : 'w-full'
+      } flex flex-col transition-all duration-300 border-r border-border`}>
+        
+        {/* Collapsed Sidebar Toggle */}
+        {selectedDocument && isEditorOpen && isSidebarCollapsed && (
+          <div className="p-2 border-b">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSidebarCollapsed(false)}
+              className="w-full h-8 p-0"
+              title="Sidebar öffnen"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
 
-            <Tabs defaultValue="manage" className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="add" className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Hinzufügen
-                </TabsTrigger>
-                <TabsTrigger value="manage" className="flex items-center gap-2">
-                  <Database className="h-4 w-4" />
-                  Verwalten ({documents.length})
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="add" className="mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Neues Dokument erstellen</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="title">Titel</Label>
-                      <Input
-                        id="title"
-                        value={newDocument.title}
-                        onChange={(e) => setNewDocument(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Titel des Dokuments..."
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="category">Kategorie</Label>
-                      <Select value={newDocument.category} onValueChange={(value) => setNewDocument(prev => ({ ...prev, category: value }))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.slice(1).map(category => (
-                            <SelectItem key={category.value} value={category.value}>
-                              {category.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="content">Inhalt</Label>
-                      <Textarea
-                        id="content"
-                        value={newDocument.content}
-                        onChange={(e) => setNewDocument(prev => ({ ...prev, content: e.target.value }))}
-                        placeholder="Inhalt des Dokuments..."
-                        rows={4}
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="published"
-                        checked={newDocument.is_published}
-                        onCheckedChange={(checked) => setNewDocument(prev => ({ ...prev, is_published: checked }))}
-                      />
-                      <Label htmlFor="published">Für alle sichtbar</Label>
-                    </div>
-                    <Button onClick={handleCreateDocument} disabled={!newDocument.title.trim()}>
-                      Dokument erstellen
-                    </Button>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="manage" className="mt-0">
-                <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Dokumente durchsuchen..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category.value} value={category.value}>
-                            {category.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+        {/* Full Sidebar Content */}
+        {(!selectedDocument || !isEditorOpen || !isSidebarCollapsed) && (
+          <div className="flex-1 flex flex-col">
+            {/* Header with collapse button when editor is open */}
+            <div className="flex-none border-b border-border bg-card/50 backdrop-blur-sm">
+              <div className="p-6">
+                <div className="flex items-center justify-between gap-3 mb-6">
+                  <div className="flex items-center gap-3">
+                    <Database className="h-6 w-6 text-primary" />
+                    <h1 className="text-2xl font-semibold text-foreground">Wissensdatenbank</h1>
                   </div>
-
-                  {filteredDocuments.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-12 text-center">
-                        <Database className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-2">
-                          {documents.length === 0 ? 'Keine Dokumente vorhanden' : 'Keine Ergebnisse gefunden'}
-                        </h3>
-                        <p className="text-muted-foreground">
-                          {documents.length === 0 
-                            ? 'Erstellen Sie Ihr erstes Dokument über den "Hinzufügen" Tab.'
-                            : 'Versuchen Sie andere Suchbegriffe oder Kategorien.'
-                          }
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="grid gap-4">
-                      {filteredDocuments.map((doc) => (
-                        <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                          <CardContent 
-                            className="p-4"
-                            onClick={() => {
-                              setSelectedDocument(doc);
-                              setIsEditorOpen(true);
-                            }}
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h3 className="font-medium text-foreground truncate">{doc.title}</h3>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {getCategoryLabel(doc.category)}
-                                  </Badge>
-                                  {doc.is_published && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Öffentlich
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                                  <span 
-                                    dangerouslySetInnerHTML={{
-                                      __html: (() => {
-                                        const content = doc.content || 'Kein Inhalt verfügbar...';
-                                        // Convert markdown to HTML for display
-                                        const htmlContent = content
-                                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                                          .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
-                                          .replace(/~~(.*?)~~/g, '<del>$1</del>')
-                                          .replace(/^### (.*$)/gm, '<strong>$1</strong>')
-                                          .replace(/^## (.*$)/gm, '<strong>$1</strong>')
-                                          .replace(/^# (.*$)/gm, '<strong>$1</strong>');
-                                        
-                                        // Remove HTML tags for length calculation
-                                        const textContent = htmlContent.replace(/<[^>]*>/g, '');
-                                        
-                                        if (textContent.length <= 100) {
-                                          return htmlContent;
-                                        }
-                                        
-                                        // Truncate to 100 characters and add ellipsis
-                                        const truncated = textContent.substring(0, 100);
-                                        const lastSpace = truncated.lastIndexOf(' ');
-                                        const cutPoint = lastSpace > 80 ? lastSpace : 100;
-                                        
-                                        // Apply formatting to truncated text
-                                        return content
-                                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                                          .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
-                                          .replace(/~~(.*?)~~/g, '<del>$1</del>')
-                                          .replace(/^### (.*$)/gm, '<strong>$1</strong>')
-                                          .replace(/^## (.*$)/gm, '<strong>$1</strong>')
-                                          .replace(/^# (.*$)/gm, '<strong>$1</strong>')
-                                          .replace(/<[^>]*>/g, '')
-                                          .substring(0, cutPoint) + '...';
-                                      })()
-                                    }}
-                                  />
-                                </p>
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <div className="flex items-center gap-1">
-                                    <User className="h-3 w-3" />
-                                    {doc.creator_name}
-                                  </div>
-                                  <div>
-                                    Hinzugefügt: {formatDate(doc.created_at)}
-                                  </div>
-                                  {doc.updated_at !== doc.created_at && (
-                                    <div>
-                                      Aktualisiert: {formatDate(doc.updated_at)}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                {doc.created_by === user?.id && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteDocument(doc.id);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    Löschen
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                  {selectedDocument && isEditorOpen && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsSidebarCollapsed(true)}
+                      title="Sidebar minimieren"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
-              </TabsContent>
-            </Tabs>
+
+                <Tabs defaultValue="manage" className="w-full">
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="add" className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Hinzufügen
+                    </TabsTrigger>
+                    <TabsTrigger value="manage" className="flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      Verwalten ({documents.length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="add" className="mt-0">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Neues Dokument erstellen</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <Label htmlFor="title">Titel</Label>
+                          <Input
+                            id="title"
+                            value={newDocument.title}
+                            onChange={(e) => setNewDocument(prev => ({ ...prev, title: e.target.value }))}
+                            placeholder="Titel des Dokuments..."
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="category">Kategorie</Label>
+                          <Select value={newDocument.category} onValueChange={(value) => setNewDocument(prev => ({ ...prev, category: value }))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories.slice(1).map(category => (
+                                <SelectItem key={category.value} value={category.value}>
+                                  {category.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="content">Inhalt</Label>
+                          <Textarea
+                            id="content"
+                            value={newDocument.content}
+                            onChange={(e) => setNewDocument(prev => ({ ...prev, content: e.target.value }))}
+                            placeholder="Inhalt des Dokuments..."
+                            rows={4}
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="published"
+                            checked={newDocument.is_published}
+                            onCheckedChange={(checked) => setNewDocument(prev => ({ ...prev, is_published: checked }))}
+                          />
+                          <Label htmlFor="published">Für alle sichtbar</Label>
+                        </div>
+                        <Button onClick={handleCreateDocument} disabled={!newDocument.title.trim()}>
+                          Dokument erstellen
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="manage" className="mt-0">
+                    <div className="space-y-4">
+                      <div className="flex gap-4">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Dokumente durchsuchen..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                          <SelectTrigger className="w-48">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map(category => (
+                              <SelectItem key={category.value} value={category.value}>
+                                {category.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {filteredDocuments.length === 0 ? (
+                        <Card>
+                          <CardContent className="py-12 text-center">
+                            <Database className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-foreground mb-2">
+                              {documents.length === 0 ? 'Keine Dokumente vorhanden' : 'Keine Ergebnisse gefunden'}
+                            </h3>
+                            <p className="text-muted-foreground">
+                              {documents.length === 0 
+                                ? 'Erstellen Sie Ihr erstes Dokument über den "Hinzufügen" Tab.'
+                                : 'Versuchen Sie andere Suchbegriffe oder Kategorien.'
+                              }
+                            </p>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <div className="grid gap-4">
+                          {filteredDocuments.map((doc) => (
+                            <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                              <CardContent 
+                                className="p-4"
+                                onClick={() => {
+                                  setSelectedDocument(doc);
+                                  setIsEditorOpen(true);
+                                  setIsSidebarCollapsed(true);
+                                }}
+                              >
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <h3 className="font-medium text-foreground truncate">{doc.title}</h3>
+                                      <Badge variant="secondary" className="text-xs">
+                                        {getCategoryLabel(doc.category)}
+                                      </Badge>
+                                      {doc.is_published && (
+                                        <Badge variant="outline" className="text-xs">
+                                          Öffentlich
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                                      <span 
+                                        dangerouslySetInnerHTML={{
+                                          __html: (() => {
+                                            const content = doc.content || 'Kein Inhalt verfügbar...';
+                                            // Convert markdown to HTML for display
+                                            const htmlContent = content
+                                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                                              .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
+                                              .replace(/~~(.*?)~~/g, '<del>$1</del>')
+                                              .replace(/^### (.*$)/gm, '<strong>$1</strong>')
+                                              .replace(/^## (.*$)/gm, '<strong>$1</strong>')
+                                              .replace(/^# (.*$)/gm, '<strong>$1</strong>');
+                                            
+                                            // Remove HTML tags for length calculation
+                                            const textContent = htmlContent.replace(/<[^>]*>/g, '');
+                                            
+                                            if (textContent.length <= 100) {
+                                              return htmlContent;
+                                            }
+                                            
+                                            // Truncate to 100 characters and add ellipsis
+                                            const truncated = textContent.substring(0, 100);
+                                            const lastSpace = truncated.lastIndexOf(' ');
+                                            const cutPoint = lastSpace > 80 ? lastSpace : 100;
+                                            
+                                            // Apply formatting to truncated text
+                                            return content
+                                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                                              .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
+                                              .replace(/~~(.*?)~~/g, '<del>$1</del>')
+                                              .replace(/^### (.*$)/gm, '<strong>$1</strong>')
+                                              .replace(/^## (.*$)/gm, '<strong>$1</strong>')
+                                              .replace(/^# (.*$)/gm, '<strong>$1</strong>')
+                                              .replace(/<[^>]*>/g, '')
+                                              .substring(0, cutPoint) + '...';
+                                          })()
+                                        }}
+                                      />
+                                    </p>
+                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                      <div className="flex items-center gap-1">
+                                        <User className="h-3 w-3" />
+                                        {doc.creator_name}
+                                      </div>
+                                      <div>
+                                        Hinzugefügt: {formatDate(doc.created_at)}
+                                      </div>
+                                      {doc.updated_at !== doc.created_at && (
+                                        <div>
+                                          Aktualisiert: {formatDate(doc.updated_at)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    {doc.created_by === user?.id && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteDocument(doc.id);
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-1" />
+                                        Löschen
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
           </div>
-        </div>
         )}
       </div>
 
@@ -493,6 +534,7 @@ const KnowledgeBaseView = () => {
             onClose={() => {
               setIsEditorOpen(false);
               setSelectedDocument(null);
+              setIsSidebarCollapsed(false);
             }}
           />
         </div>
