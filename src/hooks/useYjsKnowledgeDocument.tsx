@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { Doc } from 'yjs';
+import { Doc, encodeStateAsUpdate, applyUpdate } from 'yjs';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UseYjsKnowledgeDocumentProps {
@@ -34,7 +34,7 @@ export function useYjsKnowledgeDocument({
       
       const { data: document, error } = await supabase
         .from('knowledge_documents')
-        .select('content, yjs_state')
+        .select('content, content_html, yjs_state, document_version')
         .eq('id', documentId)
         .maybeSingle();
 
@@ -45,7 +45,24 @@ export function useYjsKnowledgeDocument({
 
       if (document) {
         console.log('Document loaded successfully:', document.content?.length || 0, 'characters');
-        setInitialContent(document.content || '');
+        
+         // Initialize Yjs document if state exists
+        if (document.yjs_state && yjsDocRef.current) {
+          try {
+            // Convert base64 string to Uint8Array if needed
+            const yjsStateBytes = typeof document.yjs_state === 'string' 
+              ? new Uint8Array(Buffer.from(document.yjs_state, 'base64'))
+              : new Uint8Array(document.yjs_state);
+            applyUpdate(yjsDocRef.current, yjsStateBytes);
+            console.log('useYjsKnowledgeDocument: Yjs state applied');
+          } catch (yjsError) {
+            console.error('useYjsKnowledgeDocument: Error applying Yjs state:', yjsError);
+          }
+        }
+        
+        // Prioritize HTML content over plain text
+        const contentToUse = document.content_html || document.content || '';
+        setInitialContent(contentToUse);
       } else {
         console.log('No document found, using empty content');
         setInitialContent('');
@@ -59,18 +76,32 @@ export function useYjsKnowledgeDocument({
     }
   }, [documentId, onError]);
 
-  // Save document to Supabase
+  // Save document to Supabase with both HTML and Yjs state
   const saveDocument = useCallback(async (content: string, html: string) => {
     try {
       console.log('Saving document:', documentId, 'content length:', content.length, 'html length:', html.length);
       
-      // Save both content (plain text) and HTML (formatted content)
+      // Get Yjs state if document exists
+      let yjsStateData = null;
+      if (yjsDocRef.current) {
+        const stateUpdate = encodeStateAsUpdate(yjsDocRef.current);
+        yjsStateData = Buffer.from(stateUpdate).toString('base64');
+      }
+      
+      const updateData: any = {
+        content: content, // Plain text content
+        content_html: html, // Formatted HTML content
+        updated_at: new Date().toISOString()
+      };
+      
+      // Include Yjs state if available
+      if (yjsStateData) {
+        updateData.yjs_state = yjsStateData;
+      }
+      
       const { error } = await supabase
         .from('knowledge_documents')
-        .update({
-          content: html || content, // Use HTML if available, fallback to plain text
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', documentId);
 
       if (error) {
@@ -78,7 +109,7 @@ export function useYjsKnowledgeDocument({
         throw error;
       }
       
-      console.log('Document saved successfully with formatting');
+      console.log('Document saved successfully with formatting and Yjs state');
     } catch (error) {
       console.error('Error saving knowledge document:', error);
       onError?.(error as Error);
@@ -100,6 +131,9 @@ export function useYjsKnowledgeDocument({
   useEffect(() => {
     console.log('useYjsKnowledgeDocument: useEffect triggered for documentId:', documentId);
     
+    // Initialize Yjs doc first
+    initializeYjsDoc();
+    
     const loadDoc = async () => {
       try {
         console.log('useYjsKnowledgeDocument: loadDocument called, setting loading to true');
@@ -107,7 +141,7 @@ export function useYjsKnowledgeDocument({
         
         const { data: document, error } = await supabase
           .from('knowledge_documents')
-          .select('content, yjs_state')
+          .select('content, content_html, yjs_state, document_version')
           .eq('id', documentId)
           .maybeSingle();
 
@@ -118,7 +152,24 @@ export function useYjsKnowledgeDocument({
 
         if (document) {
           console.log('Document loaded successfully:', document.content?.length || 0, 'characters');
-          setInitialContent(document.content || '');
+          
+          // Initialize Yjs document if state exists
+          if (document.yjs_state && yjsDocRef.current) {
+            try {
+              // Convert base64 string to Uint8Array if needed
+              const yjsStateBytes = typeof document.yjs_state === 'string' 
+                ? new Uint8Array(Buffer.from(document.yjs_state, 'base64'))
+                : new Uint8Array(document.yjs_state);
+              applyUpdate(yjsDocRef.current, yjsStateBytes);
+              console.log('useYjsKnowledgeDocument: Yjs state applied');
+            } catch (yjsError) {
+              console.error('useYjsKnowledgeDocument: Error applying Yjs state:', yjsError);
+            }
+          }
+          
+          // Prioritize HTML content over plain text
+          const contentToUse = document.content_html || document.content || '';
+          setInitialContent(contentToUse);
         } else {
           console.log('No document found, using empty content');
           setInitialContent('');
@@ -148,7 +199,7 @@ export function useYjsKnowledgeDocument({
   }, []);
 
   return {
-    yjsDoc: yjsDocRef.current,
+    yjsDoc: yjsDocRef.current || initializeYjsDoc(),
     isLoading,
     initialContent,
     saveDocument: debouncedSave,

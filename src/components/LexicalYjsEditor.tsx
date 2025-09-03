@@ -7,9 +7,11 @@ import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
 import { TRANSFORMERS } from '@lexical/markdown';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
 import {
   $getRoot,
   $getSelection,
@@ -70,9 +72,10 @@ interface LexicalYjsEditorProps {
   placeholder?: string;
   readOnly?: boolean;
   autoFocus?: boolean;
+  yjsDoc?: any;
 }
 
-// Content change tracking plugin
+// Content change tracking plugin with proper HTML serialization
 const ContentChangePlugin = ({ onContentChange }: { onContentChange?: (content: string, html: string) => void }) => {
   const [editor] = useLexicalComposerContext();
 
@@ -84,30 +87,8 @@ const ContentChangePlugin = ({ onContentChange }: { onContentChange?: (content: 
         const root = $getRoot();
         const content = root.getTextContent();
         
-        // Generate proper HTML content from Lexical editor state
-        const htmlContent = root.getChildren()
-          .map(child => {
-            const nodeType = child.getType();
-            const textContent = child.getTextContent();
-            
-            if (nodeType === 'heading') {
-              const tag = (child as any).getTag();
-              return `<${tag}>${textContent}</${tag}>`;
-            } else if (nodeType === 'quote') {
-              return `<blockquote>${textContent}</blockquote>`;
-            } else if (nodeType === 'code') {
-              return `<pre><code>${textContent}</code></pre>`;
-            } else if (nodeType === 'list') {
-              const listType = (child as any).getListType();
-              const tag = listType === 'bullet' ? 'ul' : 'ol';
-              return `<${tag}><li>${textContent}</li></${tag}>`;
-            } else if (nodeType === 'paragraph' && textContent.trim()) {
-              return `<p>${textContent}</p>`;
-            }
-            return textContent.trim() ? `<p>${textContent}</p>` : '';
-          })
-          .filter(html => html)
-          .join('\n');
+        // Use official Lexical HTML generation
+        const htmlContent = $generateHtmlFromNodes(editor, null);
         
         onContentChange(content, htmlContent);
       });
@@ -119,7 +100,7 @@ const ContentChangePlugin = ({ onContentChange }: { onContentChange?: (content: 
   return null;
 };
 
-// Initial content setup plugin
+// Initial content setup plugin with proper HTML parsing
 const InitialContentPlugin = ({ initialContent }: { initialContent?: string }) => {
   const [editor] = useLexicalComposerContext();
   const hasInitialized = useRef(false);
@@ -141,68 +122,12 @@ const InitialContentPlugin = ({ initialContent }: { initialContent?: string }) =
         
         // Check if content contains HTML
         if (initialContent.includes('<') && initialContent.includes('>')) {
-          // Parse HTML content
+          // Use official Lexical HTML parsing
           const parser = new DOMParser();
-          const doc = parser.parseFromString(initialContent, 'text/html');
-          const elements = doc.body.childNodes;
+          const dom = parser.parseFromString(initialContent, 'text/html');
+          const nodes = $generateNodesFromDOM(editor, dom);
           
-          elements.forEach((element) => {
-            if (element.nodeType === Node.ELEMENT_NODE) {
-              const elem = element as Element;
-              const textContent = elem.textContent || '';
-              
-              switch (elem.tagName?.toLowerCase()) {
-                case 'h1':
-                  const h1 = $createHeadingNode('h1');
-                  h1.append($createTextNode(textContent));
-                  root.append(h1);
-                  break;
-                case 'h2':
-                  const h2 = $createHeadingNode('h2');
-                  h2.append($createTextNode(textContent));
-                  root.append(h2);
-                  break;
-                case 'h3':
-                  const h3 = $createHeadingNode('h3');
-                  h3.append($createTextNode(textContent));
-                  root.append(h3);
-                  break;
-                case 'blockquote':
-                  const quote = $createQuoteNode();
-                  quote.append($createTextNode(textContent));
-                  root.append(quote);
-                  break;
-                case 'pre':
-                  const code = $createCodeNode();
-                  code.append($createTextNode(textContent));
-                  root.append(code);
-                  break;
-                case 'ul':
-                case 'ol':
-                  const list = $createListNode(elem.tagName.toLowerCase() === 'ul' ? 'bullet' : 'number');
-                  const listItems = elem.querySelectorAll('li');
-                  listItems.forEach((li) => {
-                    const listItem = $createListItemNode();
-                    listItem.append($createTextNode(li.textContent || ''));
-                    list.append(listItem);
-                  });
-                  root.append(list);
-                  break;
-                case 'p':
-                default:
-                  if (textContent.trim()) {
-                    const paragraph = $createParagraphNode();
-                    paragraph.append($createTextNode(textContent));
-                    root.append(paragraph);
-                  }
-                  break;
-              }
-            } else if (element.nodeType === Node.TEXT_NODE && element.textContent?.trim()) {
-              const paragraph = $createParagraphNode();
-              paragraph.append($createTextNode(element.textContent));
-              root.append(paragraph);
-            }
-          });
+          root.append(...nodes);
         } else {
           // Parse simple markdown-like text content
           const lines = initialContent.split('\n');
@@ -501,6 +426,7 @@ export function LexicalYjsEditor({
   placeholder = "Enter some text...",
   readOnly = false,
   autoFocus = false,
+  yjsDoc,
 }: LexicalYjsEditorProps) {
   const yjsDocRef = useRef<YDoc | null>(null);
 

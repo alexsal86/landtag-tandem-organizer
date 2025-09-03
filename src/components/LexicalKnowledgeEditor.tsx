@@ -24,6 +24,7 @@ export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledge
   }, [toast]);
   
   const {
+    yjsDoc,
     isLoading,
     initialContent,
     saveDocument
@@ -67,6 +68,7 @@ export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledge
           onContentChange={saveDocument}
           className="h-full border-0"
           autoFocus
+          yjsDoc={yjsDoc}
         />
       </div>
     </div>
