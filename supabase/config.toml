@@ -66,3 +66,6 @@ verify_jwt = false
 
 [functions.archive-letter]
 verify_jwt = true
+
+[functions.yjs-collaboration]
+verify_jwt = false

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { $getRoot, $getSelection } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -7,12 +7,15 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
+import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $createParagraphNode, $createTextNode } from 'lexical';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { LinkNode, AutoLinkNode } from '@lexical/link';
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 import FixedTextToolbar from './FixedTextToolbar';
 import ToolbarPlugin from './lexical/ToolbarPlugin';
 
@@ -36,6 +39,8 @@ interface LexicalEditorProps {
   onChange?: (content: string) => void;
   placeholder?: string;
   showToolbar?: boolean;
+  documentId?: string; // For collaboration room
+  enableCollaboration?: boolean;
 }
 
 function MyOnChangePlugin({ onChange }: { onChange?: (content: string) => void }) {
@@ -57,7 +62,9 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   initialContent = '', 
   onChange, 
   placeholder = 'Beginnen Sie zu schreiben...',
-  showToolbar = true
+  showToolbar = true,
+  documentId,
+  enableCollaboration = false
 }) => {
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
   const [formatCommand, setFormatCommand] = useState<string>('');
@@ -67,6 +74,38 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     // Reset command after a brief delay to allow processing
     setTimeout(() => setFormatCommand(''), 10);
   };
+
+  // Yjs collaboration setup
+  const [yDoc, setYDoc] = useState<Y.Doc | null>(null);
+  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
+
+  useEffect(() => {
+    if (enableCollaboration && documentId) {
+      const doc = new Y.Doc();
+      setYDoc(doc);
+
+      return () => {
+        doc.destroy();
+      };
+    }
+  }, [enableCollaboration, documentId]);
+
+  const providerFactory = React.useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
+    let doc = yjsDocMap.get(id);
+    
+    if (!doc) {
+      doc = new Y.Doc();
+      yjsDocMap.set(id, doc);
+    }
+
+    const wsProvider = new WebsocketProvider(
+      'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
+      id,
+      doc
+    );
+
+    return wsProvider as any; // Type assertion to bypass compatibility issue
+  }, []);
   const initialConfig = {
     namespace: 'KnowledgeBaseEditor',
     theme,
@@ -110,9 +149,16 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
             }
             ErrorBoundary={({ children }) => <div>{children}</div>}
           />
-          <HistoryPlugin />
+          {!enableCollaboration && <HistoryPlugin />}
           <ListPlugin />
           <LinkPlugin />
+          {enableCollaboration && documentId && (
+            <CollaborationPlugin
+              id={`knowledge-doc-${documentId}`}
+              providerFactory={providerFactory}
+              shouldBootstrap={true}
+            />
+          )}
           <ToolbarPlugin 
             onFormatChange={setActiveFormats}
             formatCommand={formatCommand}

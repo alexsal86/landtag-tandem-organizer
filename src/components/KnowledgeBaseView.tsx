@@ -585,6 +585,8 @@ const KnowledgeBaseView = () => {
                 console.log('Content changed:', content);
               }}
               placeholder="Beginnen Sie zu schreiben..."
+              documentId={selectedDocument.id}
+              enableCollaboration={true}
             />
           </div>
         </div>
