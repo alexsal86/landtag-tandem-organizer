@@ -78,6 +78,12 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   documentId,
   enableCollaboration = false
 }) => {
+  console.log('LexicalEditor render:', { 
+    documentId, 
+    enableCollaboration, 
+    hasInitialContent: !!initialContent 
+  });
+  
   const { user } = useAuth();
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
   const [formatCommand, setFormatCommand] = useState<string>('');
@@ -96,12 +102,16 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   // Set up current user for collaboration
   useEffect(() => {
     if (user && enableCollaboration) {
-      setCurrentUser({
+      const userData = {
         id: user.id,
         name: user.user_metadata?.display_name || user.email || 'Anonymous',
         avatar: user.user_metadata?.avatar_url,
         color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`
-      });
+      };
+      console.log('Setting current user for collaboration:', userData);
+      setCurrentUser(userData);
+    } else {
+      console.log('User setup skipped:', { user: !!user, enableCollaboration });
     }
   }, [user, enableCollaboration]);
 
@@ -119,12 +129,25 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
 
   // Create Y.Doc and Provider once when collaboration is enabled
   useEffect(() => {
-    if (!enableCollaboration || !documentId || !currentUser) {
-      console.log('Collaboration setup skipped:', {
-        enableCollaboration,
-        documentId: !!documentId,
-        currentUser: !!currentUser
-      });
+    console.log('Collaboration effect triggered:', {
+      enableCollaboration,
+      documentId,
+      hasCurrentUser: !!currentUser,
+      currentUserName: currentUser?.name
+    });
+    
+    if (!enableCollaboration) {
+      console.log('Collaboration disabled');
+      return;
+    }
+    
+    if (!documentId) {
+      console.log('No document ID provided');
+      return;
+    }
+    
+    if (!currentUser) {
+      console.log('No current user available yet');
       return;
     }
 
