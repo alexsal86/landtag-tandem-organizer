@@ -32,6 +32,8 @@ interface KnowledgeDocument {
 const KnowledgeBaseView = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { documentId } = useParams<{ documentId: string }>();
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
