@@ -162,86 +162,112 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
       console.log('Initial document state loaded');
     });
 
-    // Create WebSocket provider with proper URL
+    // Create WebSocket provider with proper error handling
     const roomId = `knowledge-doc-${documentId}`;
     console.log('Creating WebSocket provider for room:', roomId);
     
-    const wsProvider = new WebsocketProvider(
-      'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
-      roomId,
-      doc
-    );
+    let wsProvider: WebsocketProvider | null = null;
+    
+    try {
+      wsProvider = new WebsocketProvider(
+        'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
+        roomId,
+        doc,
+        {
+          // Disable reconnection attempts to reduce postMessage errors
+          maxBackoffTime: 2000,
+          resyncInterval: -1, // Disable automatic resync
+          // Reduce connection noise
+          connect: true,
+        }
+      );
 
-    // Set up awareness BEFORE connecting
-    if (wsProvider.awareness) {
-      console.log('Setting up awareness for user:', currentUser.name);
-      wsProvider.awareness.setLocalStateField('user', {
-        name: currentUser.name,
-        color: currentUser.color,
-        avatar: currentUser.avatar,
-        id: currentUser.id
-      });
-
-      // Track awareness changes
-      wsProvider.awareness.on('change', () => {
-        const states = wsProvider.awareness.getStates();
-        const users: CollaborationUser[] = [];
-        
-        states.forEach((state, clientId) => {
-          if (state.user && clientId !== wsProvider.awareness.clientID) {
-            users.push({
-              id: state.user.id || clientId.toString(),
-              name: state.user.name,
-              avatar: state.user.avatar,
-              color: state.user.color
-            });
-          }
+      // Set up awareness BEFORE connecting
+      if (wsProvider.awareness) {
+        console.log('Setting up awareness for user:', currentUser.name);
+        wsProvider.awareness.setLocalStateField('user', {
+          name: currentUser.name,
+          color: currentUser.color,
+          avatar: currentUser.avatar,
+          id: currentUser.id
         });
-        
-        console.log('Collaboration users updated:', users.length, users);
-        setCollaborationUsers(users);
-      });
-    } else {
-      console.error('WebSocket provider awareness not available');
-    }
 
-    // Set up connection status tracking
-    wsProvider.on('status', (event: any) => {
-      console.log('WebSocket status changed:', event);
-      const connected = event.status === 'connected';
-      setIsConnected(connected);
-      
-      // Join room after connection
-      if (connected && wsProvider.ws) {
-        console.log('WebSocket connected, joining room:', roomId);
-        wsProvider.ws.send(JSON.stringify({
-          type: 'join-room',
-          room: roomId
-        }));
+        // Track awareness changes
+        wsProvider.awareness.on('change', () => {
+          const states = wsProvider.awareness.getStates();
+          const users: CollaborationUser[] = [];
+          
+          states.forEach((state, clientId) => {
+            if (state.user && clientId !== wsProvider.awareness.clientID) {
+              users.push({
+                id: state.user.id || clientId.toString(),
+                name: state.user.name,
+                avatar: state.user.avatar,
+                color: state.user.color
+              });
+            }
+          });
+          
+          console.log('Collaboration users updated:', users.length, users);
+          setCollaborationUsers(users);
+        });
+      } else {
+        console.error('WebSocket provider awareness not available');
       }
-    });
 
-    wsProvider.on('connection-error', (error: any) => {
-      console.error('WebSocket connection error:', error);
+      // Set up connection status tracking
+      wsProvider.on('status', (event: any) => {
+        console.log('WebSocket status changed:', event);
+        const connected = event.status === 'connected';
+        setIsConnected(connected);
+        
+        // Join room after connection with error handling
+        if (connected && wsProvider?.ws) {
+          try {
+            console.log('WebSocket connected, joining room:', roomId);
+            wsProvider.ws.send(JSON.stringify({
+              type: 'join-room',
+              room: roomId
+            }));
+          } catch (error) {
+            console.error('Error joining room:', error);
+          }
+        }
+      });
+
+      wsProvider.on('connection-error', (error: any) => {
+        console.error('WebSocket connection error:', error);
+        setIsConnected(false);
+      });
+
+      wsProvider.on('connection-close', (event: any) => {
+        console.log('WebSocket connection closed:', event);
+        setIsConnected(false);
+      });
+
+      // Store provider
+      setProvider(wsProvider);
+      console.log('WebSocket provider created and connecting...');
+      
+    } catch (error) {
+      console.error('Error creating WebSocket provider:', error);
       setIsConnected(false);
-    });
-
-    wsProvider.on('connection-close', (event: any) => {
-      console.log('WebSocket connection closed:', event);
-      setIsConnected(false);
-    });
-
-    // Store provider
-    setProvider(wsProvider);
-    console.log('WebSocket provider created and connecting...');
+      // Continue without collaboration
+    }
 
     // Cleanup function
     return () => {
       console.log('Cleaning up collaboration');
-      if (wsProvider.awareness) {
-        wsProvider.awareness.destroy();
+      if (wsProvider) {
+        try {
+          if (wsProvider.awareness) {
+            wsProvider.awareness.destroy();
+          }
+          wsProvider.disconnect();
+        } catch (error) {
+          console.error('Error during cleanup:', error);
+        }
       }
-      wsProvider.disconnect();
       doc.destroy();
       setYDoc(null);
       setProvider(null);
