@@ -18,6 +18,7 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollaborationPersistence } from '@/hooks/useCollaborationPersistence';
+import { supabase } from '@/integrations/supabase/client';
 import FixedTextToolbar from './FixedTextToolbar';
 import ToolbarPlugin from './lexical/ToolbarPlugin';
 import CollaborationStatus from './CollaborationStatus';
@@ -109,23 +110,12 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
 
   // Set up persistence hook
-  const { saveManual } = useCollaborationPersistence({
+  const { saveManual, loadDocumentState } = useCollaborationPersistence({
     documentId,
     yDoc,
     enableCollaboration,
     debounceMs: 3000
   });
-
-  useEffect(() => {
-    if (enableCollaboration && documentId) {
-      const doc = new Y.Doc();
-      setYDoc(doc);
-
-      return () => {
-        doc.destroy();
-      };
-    }
-  }, [enableCollaboration, documentId]);
 
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
     let doc = yjsDocMap.get(id);
@@ -133,17 +123,36 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     if (!doc) {
       doc = new Y.Doc();
       yjsDocMap.set(id, doc);
+      setYDoc(doc);
+      
+      // Load initial document state
+      if (documentId) {
+        setTimeout(() => loadDocumentState(doc), 100);
+      }
     }
 
+    // Use the correct WebSocket URL for Supabase Edge Functions
     const wsProvider = new WebsocketProvider(
-      'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
+      `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration`,
       id,
       doc
     );
 
     // Set up connection status tracking
     wsProvider.on('status', (event: any) => {
+      console.log('WebSocket status:', event);
       setIsConnected(event.status === 'connected');
+    });
+
+    // Send join-room message after connection
+    wsProvider.on('status', (event: any) => {
+      if (event.status === 'connected' && wsProvider.ws) {
+        console.log('Joining room:', id);
+        wsProvider.ws.send(JSON.stringify({
+          type: 'join-room',
+          room: id
+        }));
+      }
     });
 
     // Set up awareness for user presence
@@ -160,7 +169,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
         const users: CollaborationUser[] = [];
         
         states.forEach((state, clientId) => {
-          if (state.user) {
+          if (state.user && clientId !== wsProvider.awareness.clientID) {
             users.push({
               id: clientId.toString(),
               name: state.user.name,
@@ -176,7 +185,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
 
     setProvider(wsProvider);
     return wsProvider as any; // Type assertion to bypass compatibility issue
-  }, [currentUser]);
+  }, [currentUser, documentId, loadDocumentState]);
   const initialConfig = {
     namespace: 'KnowledgeBaseEditor',
     theme,

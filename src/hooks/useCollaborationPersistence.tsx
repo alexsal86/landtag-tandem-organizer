@@ -36,19 +36,15 @@ export const useCollaborationPersistence = ({
       // Get the current document state as binary
       const state = Y.encodeStateAsUpdate(doc);
       
-      // Convert to base64 for database storage
+      // Convert to base64 for database storage  
       const base64State = btoa(String.fromCharCode(...state));
       
-      // Save to Supabase (assuming we need to call a different approach)
-      const { error } = await supabase
-        .from('knowledge_document_snapshots')
-        .insert({
-          document_id: documentId,
-          yjs_state: base64State,
-          document_version: 1,
-          created_by: (await supabase.auth.getUser()).data.user?.id,
-          snapshot_type: 'auto'
-        });
+      // Use function for creating snapshots with proper RLS checking
+      const { data, error } = await supabase.rpc('create_knowledge_document_snapshot', {
+        _document_id: documentId,
+        _yjs_state: base64State,
+        _snapshot_type: 'auto'
+      });
 
       if (error) {
         console.error('Error saving document state:', error);
