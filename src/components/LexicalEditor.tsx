@@ -88,6 +88,14 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   // Show warning if collaboration is enabled but context is not available
   const collaborationAvailable = enableCollaboration && collaborationContext && isReady;
   
+  // Debug logging
+  console.log('Collaboration State:', {
+    documentId,
+    hasYDoc: !!yDoc,
+    hasProvider: !!provider,
+    isConnected,
+  });
+  
   useEffect(() => {
     if (enableCollaboration && !collaborationContext) {
       setCollaborationError('Kollaboration nicht verfügbar - Editor läuft im Standalone-Modus');
