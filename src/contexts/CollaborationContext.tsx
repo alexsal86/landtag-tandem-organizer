@@ -136,8 +136,8 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       
       console.log('Connecting to:', wsUrl, 'Room:', roomId);
 
-      // Create WebSocket provider - room ID is now in URL path for native Yjs protocol
-      const wsProvider = new WebsocketProvider(`${wsUrl}/${roomId}`, roomId, doc);
+      // Create WebSocket provider - use base URL and pass roomId as parameter
+      const wsProvider = new WebsocketProvider(wsUrl, roomId, doc);
 
       // Set up awareness before connecting
       if (wsProvider.awareness) {
