@@ -5,6 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Global rooms storage - persist across connections
+const globalRooms = new Map<string, Set<WebSocket>>();
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -21,8 +24,6 @@ serve(async (req) => {
   try {
     const { socket, response } = Deno.upgradeWebSocket(req);
     
-    // Store for document rooms
-    const rooms = new Map<string, Set<WebSocket>>();
     let currentRoom: string | null = null;
 
     socket.onopen = () => {
@@ -37,11 +38,15 @@ serve(async (req) => {
           console.log('Received binary Yjs update, length:', data.length);
           
           // Broadcast to all clients in the current room
-          if (currentRoom && rooms.has(currentRoom)) {
-            const roomSockets = rooms.get(currentRoom)!;
+          if (currentRoom && globalRooms.has(currentRoom)) {
+            const roomSockets = globalRooms.get(currentRoom)!;
             roomSockets.forEach(clientSocket => {
               if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
-                clientSocket.send(data);
+                try {
+                  clientSocket.send(data);
+                } catch (err) {
+                  console.error('Error broadcasting to client:', err);
+                }
               }
             });
           }
@@ -55,28 +60,41 @@ serve(async (req) => {
         switch (data.type) {
           case 'join-room':
             console.log('Client joining room:', data.room);
-            currentRoom = data.room;
             
-            if (!rooms.has(currentRoom)) {
-              rooms.set(currentRoom, new Set());
+            // Leave current room if exists
+            if (currentRoom && globalRooms.has(currentRoom)) {
+              globalRooms.get(currentRoom)!.delete(socket);
+              if (globalRooms.get(currentRoom)!.size === 0) {
+                globalRooms.delete(currentRoom);
+              }
             }
-            rooms.get(currentRoom)!.add(socket);
+            
+            // Join new room
+            currentRoom = data.room;
+            if (!globalRooms.has(currentRoom)) {
+              globalRooms.set(currentRoom, new Set());
+            }
+            globalRooms.get(currentRoom)!.add(socket);
             
             // Send confirmation
             socket.send(JSON.stringify({
               type: 'room-joined',
               room: currentRoom,
-              clients: rooms.get(currentRoom)!.size
+              clients: globalRooms.get(currentRoom)!.size
             }));
             break;
 
           case 'awareness-update':
             // Broadcast awareness updates to room
-            if (currentRoom && rooms.has(currentRoom)) {
-              const roomSockets = rooms.get(currentRoom)!;
+            if (currentRoom && globalRooms.has(currentRoom)) {
+              const roomSockets = globalRooms.get(currentRoom)!;
               roomSockets.forEach(clientSocket => {
                 if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
-                  clientSocket.send(JSON.stringify(data));
+                  try {
+                    clientSocket.send(JSON.stringify(data));
+                  } catch (err) {
+                    console.error('Error broadcasting awareness:', err);
+                  }
                 }
               });
             }
@@ -88,13 +106,14 @@ serve(async (req) => {
     };
 
     socket.onclose = () => {
-      // Remove socket from all rooms
-      if (currentRoom && rooms.has(currentRoom)) {
-        const roomSockets = rooms.get(currentRoom)!;
+      // Remove socket from current room
+      if (currentRoom && globalRooms.has(currentRoom)) {
+        const roomSockets = globalRooms.get(currentRoom)!;
         roomSockets.delete(socket);
         if (roomSockets.size === 0) {
-          rooms.delete(currentRoom);
+          globalRooms.delete(currentRoom);
         }
+        console.log(`Socket removed from room ${currentRoom}, ${roomSockets.size} clients remaining`);
       }
       console.log('WebSocket connection closed');
     };

@@ -102,8 +102,14 @@ export const useCollaborationPersistence = ({
     if (!enableCollaboration || !yDoc) return;
 
     let saveTimeout: NodeJS.Timeout;
+    let isInitialLoad = true;
 
-    const handleUpdate = () => {
+    const handleUpdate = (update: Uint8Array, origin: any) => {
+      // Skip auto-save during initial load to avoid overwriting with empty state
+      if (isInitialLoad && origin === 'load') return;
+      
+      console.log('Document auto-saved');
+      
       // Debounce saves to avoid too frequent database writes
       clearTimeout(saveTimeout);
       saveTimeout = setTimeout(() => {
@@ -112,7 +118,9 @@ export const useCollaborationPersistence = ({
     };
 
     // Load initial state
-    loadDocumentState(yDoc);
+    loadDocumentState(yDoc).then(() => {
+      isInitialLoad = false;
+    });
 
     // Listen for changes
     yDoc.on('update', handleUpdate);

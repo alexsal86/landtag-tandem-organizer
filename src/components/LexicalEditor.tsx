@@ -19,8 +19,8 @@ import { WebsocketProvider } from 'y-websocket';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollaborationPersistence } from '@/hooks/useCollaborationPersistence';
 import { supabase } from '@/integrations/supabase/client';
-import FixedTextToolbar from './FixedTextToolbar';
 import ToolbarPlugin from './lexical/ToolbarPlugin';
+import FloatingTextToolbar from './FloatingTextToolbar';
 import CollaborationStatus from './CollaborationStatus';
 
 const theme = {
@@ -133,7 +133,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
 
     // Use the correct WebSocket URL for Supabase Edge Functions
     const wsProvider = new WebsocketProvider(
-      `ws://localhost:54321/functions/v1/yjs-collaboration`,
+      `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration`,
       id,
       doc
     );
@@ -214,7 +214,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     <LexicalComposer initialConfig={initialConfig}>
       <div className="editor-container">
         {showToolbar && (
-          <FixedTextToolbar
+          <FloatingTextToolbar
             onFormatText={handleFormatText}
             activeFormats={activeFormats}
           />
