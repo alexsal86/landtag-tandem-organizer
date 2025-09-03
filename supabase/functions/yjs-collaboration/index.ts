@@ -97,8 +97,14 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    // Extract room ID from URL path (e.g., /roomId or ?roomId=xxx)
-    const roomId = url.pathname.slice(1) || url.searchParams.get('roomId') || 'default';
+    // Extract room ID from URL path - handle both direct paths and nested function paths
+    let roomId = url.pathname.slice(1) || url.searchParams.get('roomId') || 'default';
+    
+    // If this is a Supabase Edge Function URL, extract the actual room ID from the end
+    if (roomId.includes('/')) {
+      const pathSegments = roomId.split('/');
+      roomId = pathSegments[pathSegments.length - 1] || 'default';
+    }
     
     console.log(`🔌 New WebSocket connection for room: ${roomId}`);
 
