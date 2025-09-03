@@ -27,6 +27,7 @@ import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useCollaborationContext } from '@lexical/react/LexicalCollaborationContext';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
+import { createBinding } from '@lexical/yjs';
 
 import { HeadingNode } from '@lexical/rich-text';
 import { ListItemNode, ListNode as LexicalListNode } from '@lexical/list';
@@ -264,8 +265,10 @@ function CollaborationAwareness() {
 
     // Get the first document and its provider
     const firstDoc = Array.from(yjsDocMap.values())[0];
-    if (firstDoc && (firstDoc as any).provider) {
-      const provider = (firstDoc as any).provider;
+    const docWithProvider = firstDoc as Y.Doc & { provider?: WebsocketProvider };
+    
+    if (docWithProvider && docWithProvider.provider) {
+      const provider = docWithProvider.provider;
       
       if (provider.awareness) {
         const updateAwareness = () => {
@@ -314,24 +317,18 @@ export function CleanLexicalEditor({
     );
   }
 
-  // Provider factory following official Lexical/Yjs documentation
+  // Provider factory that returns a WebSocket provider
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
     const doc = new Y.Doc();
     yjsDocMap.set(id, doc);
     
-    // Create WebSocket provider - follow y-websocket standards
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/functions/v1/yjs-collaboration/${id}`;
+    // Use correct Supabase Edge Function WebSocket URL
+    const wsUrl = `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration/${id}`;
     
-    const provider = new WebsocketProvider(wsUrl, id, doc, {
-      // Pass auth token in WebSocket params per y-websocket docs
-      params: {
-        authorization: `Bearer ${session?.access_token || ''}`
-      }
-    });
+    // Create WebSocket provider without authentication (Edge Function is public)
+    const provider = new WebsocketProvider(wsUrl, id, doc);
     
-    // Set user awareness info according to Yjs docs
+    // Set user awareness info
     if (provider.awareness && session?.user) {
       provider.awareness.setLocalStateField('user', {
         name: session.user.email || 'Anonymous',
@@ -340,8 +337,12 @@ export function CleanLexicalEditor({
       });
     }
     
+    // Store provider reference on doc for access in awareness component
+    const docWithProvider = doc as Y.Doc & { provider: WebsocketProvider };
+    docWithProvider.provider = provider;
+    
     return provider;
-  }, [session?.access_token, session?.user]) as any;
+  }, [session?.user]);
 
   return (
     <LexicalComposer initialConfig={editorConfig}>
@@ -375,7 +376,7 @@ export function CleanLexicalEditor({
       {/* Official CollaborationPlugin */}
       <CollaborationPlugin
         id={documentId}
-        providerFactory={providerFactory as any}
+        providerFactory={providerFactory}
         shouldBootstrap={true}
       />
       
