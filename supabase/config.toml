@@ -1,5 +1,8 @@
 project_id = "wawofclbehbkebjivdte"
 
+[functions.yjs-collaboration]
+verify_jwt = false
+
 [functions.send-poll-invitation]
 verify_jwt = true
 

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Doc, encodeStateAsUpdate, applyUpdate, UndoManager } from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
+import { WebsocketProvider } from 'y-websocket';
 import { useAuth } from './useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseYjsCollaborationProps {
   documentId: string;
@@ -19,10 +21,11 @@ function generateUserColor(): string {
 
 export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
   console.log('useYjsCollaboration: Hook called with documentId:', documentId);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const yjsDocRef = useRef<Doc | null>(null);
   const awarenessRef = useRef<Awareness | null>(null);
   const undoManagerRef = useRef<UndoManager | null>(null);
+  const providerRef = useRef<WebsocketProvider | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Initialize Yjs document and awareness
@@ -32,6 +35,9 @@ export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
     setIsInitialized(false);
     
     // Cleanup existing instances
+    if (providerRef.current) {
+      providerRef.current.destroy();
+    }
     if (undoManagerRef.current) {
       undoManagerRef.current.destroy();
     }
@@ -42,13 +48,38 @@ export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
       yjsDocRef.current.destroy();
     }
     
-    if (documentId) {
+    if (documentId && session?.access_token) {
       // Create new Yjs document
       const doc = new Doc({ guid: documentId });
       yjsDocRef.current = doc;
       
-      // Initialize awareness for real-time collaboration
-      const awareness = new Awareness(doc);
+      // Get WebSocket URL for the edge function
+      const wsUrl = 'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration';
+      
+      // Create WebSocket provider with authentication
+      const provider = new WebsocketProvider(
+        wsUrl,
+        documentId,
+        doc,
+        {
+          params: {
+            room: documentId
+          },
+          WebSocketPolyfill: class extends WebSocket {
+            constructor(url: string | URL, protocols?: string | string[]) {
+              // Add authorization header via URL params since WebSocket doesn't support headers directly
+              const urlWithAuth = new URL(url);
+              urlWithAuth.searchParams.set('authorization', `Bearer ${session.access_token}`);
+              super(urlWithAuth.toString(), protocols);
+            }
+          }
+        }
+      );
+      
+      providerRef.current = provider;
+      
+      // Get awareness from provider
+      const awareness = provider.awareness;
       awarenessRef.current = awareness;
       
       // Create undo manager for the editor text
@@ -74,7 +105,16 @@ export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
         });
       }
       
-      // Load from localStorage
+      // Wait for provider to connect
+      provider.on('status', (event: any) => {
+        console.log('WebSocket provider status:', event.status);
+        if (event.status === 'connected') {
+          setIsInitialized(true);
+          console.log('useYjsCollaboration: Connected and initialized successfully');
+        }
+      });
+      
+      // Load from localStorage as fallback
       loadFromLocalStorage();
       
       // Auto-save to localStorage on changes
@@ -82,14 +122,11 @@ export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
         saveToLocalStorage();
       }, 2000); // Save every 2 seconds
       
-      setIsInitialized(true);
-      console.log('useYjsCollaboration: Initialized successfully');
-      
       return () => {
         clearInterval(saveInterval);
       };
     }
-  }, [documentId, user]);
+  }, [documentId, user, session]);
 
   // Save document state to localStorage
   const saveToLocalStorage = useCallback(() => {
@@ -147,6 +184,9 @@ export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (providerRef.current) {
+        providerRef.current.destroy();
+      }
       if (undoManagerRef.current) {
         undoManagerRef.current.destroy();
       }
