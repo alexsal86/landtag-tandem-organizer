@@ -99,6 +99,9 @@ import { CollapsiblePlugin } from './editor/plugins/CollapsiblePlugin';
 import { TextColorPlugin } from './editor/plugins/TextColorPlugin';
 import { TextAlignmentPlugin } from './editor/plugins/TextAlignmentPlugin';
 import { ClearFormattingPlugin } from './editor/plugins/ClearFormattingPlugin';
+import { DraggableBlockPlugin } from './editor/plugins/DraggableBlockPlugin';
+import { BlockMenu } from './editor/components/BlockMenu';
+import { DropTargetLine } from './editor/components/DropTargetLine';
 
 // Component props interface
 interface LexicalYjsEditorProps {
@@ -675,6 +678,9 @@ export function LexicalYjsEditor({
   yjsDoc,
 }: LexicalYjsEditorProps) {
   const yjsDocRef = useRef<YDoc | null>(null);
+  const contentEditableRef = useRef<HTMLDivElement>(null);
+  const blockMenuRef = useRef<HTMLDivElement>(null);
+  const targetLineRef = useRef<HTMLDivElement>(null);
 
   const initializeYjsDoc = useCallback(() => {
     if (!yjsDocRef.current) {
@@ -696,28 +702,64 @@ export function LexicalYjsEditor({
     initializeYjsDoc();
   }, [initializeYjsDoc]);
 
+  const isOnBlockMenu = (element: HTMLElement): boolean => {
+    return blockMenuRef.current?.contains(element) || false;
+  };
+
   return (
     <div className={`lexical-editor ${className || ''}`}>
       <LexicalComposer initialConfig={initialConfig}>
         {!readOnly && <EditorToolbar />}
-        <div className="relative">
+        <div className="relative group">
           <RichTextPlugin
             contentEditable={
               <ContentEditable 
+                ref={contentEditableRef}
                 className="min-h-[400px] p-4 outline-none focus:outline-none resize-none overflow-auto"
                 style={{ 
                   caretColor: 'rgb(5, 5, 5)',
+                  paddingLeft: '44px', // Space for block handles
                 }}
                 readOnly={readOnly}
               />
             }
             placeholder={
-              <div className="absolute top-4 left-4 text-muted-foreground pointer-events-none select-none">
+              <div className="absolute top-4 left-11 text-muted-foreground pointer-events-none select-none">
                 {placeholder}
               </div>
             }
             ErrorBoundary={LexicalErrorBoundary}
           />
+          
+          {/* Draggable Block Plugin */}
+          {contentEditableRef.current && !readOnly && (
+            <DraggableBlockPlugin
+              anchorElem={contentEditableRef.current}
+              menuRef={blockMenuRef}
+              targetLineRef={targetLineRef}
+              menuComponent={
+                <div
+                  ref={blockMenuRef}
+                  className="absolute pointer-events-auto"
+                  style={{
+                    left: '4px',
+                    top: '0px',
+                  }}
+                >
+                  <BlockMenu />
+                </div>
+              }
+              targetLineComponent={
+                <div
+                  ref={targetLineRef}
+                  className="absolute pointer-events-none"
+                >
+                  <DropTargetLine />
+                </div>
+              }
+              isOnMenu={isOnBlockMenu}
+            />
+          )}
         </div>
         <HistoryPlugin />
         {autoFocus && <AutoFocusPlugin />}
