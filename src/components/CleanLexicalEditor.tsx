@@ -15,6 +15,7 @@ import {
   $isListNode,
   ListNode,
 } from '@lexical/list';
+import { Provider, createBinding } from '@lexical/yjs';
 import { 
   LexicalComposer,
   InitialConfigType
