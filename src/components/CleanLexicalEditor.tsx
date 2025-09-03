@@ -28,7 +28,6 @@ import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useCollaborationContext } from '@lexical/react/LexicalCollaborationContext';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
-import { createBinding } from '@lexical/yjs';
 
 import { HeadingNode } from '@lexical/rich-text';
 import { ListItemNode, ListNode as LexicalListNode } from '@lexical/list';
