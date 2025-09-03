@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { Upload, Download, FileText, Check, X, AlertCircle } from "lucide-react"
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import VCF from 'vcf';
+import { isValidEmail, findPotentialDuplicates, type Contact } from "@/lib/utils";
 
 interface ImportData {
   [key: string]: string;
@@ -78,10 +79,39 @@ export function ContactImport() {
   const [progress, setProgress] = useState(0);
   const [importedCount, setImportedCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
+  const [existingContacts, setExistingContacts] = useState<Contact[]>([]);
+  const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
   
   const { toast } = useToast();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+
+  // Fetch existing contacts when component mounts
+  useEffect(() => {
+    if (user && currentTenant) {
+      fetchExistingContacts();
+    }
+  }, [user, currentTenant]);
+
+  const fetchExistingContacts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, name, email, phone, organization')
+        .order('name');
+
+      if (error) throw error;
+      setExistingContacts(data?.map(contact => ({
+        id: contact.id,
+        name: contact.name,
+        email: contact.email,
+        phone: contact.phone,
+        organization: contact.organization,
+      })) || []);
+    } catch (error) {
+      console.error('Error fetching existing contacts:', error);
+    }
+  };
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = event.target.files?.[0];
@@ -237,10 +267,12 @@ export function ContactImport() {
     setProgress(0);
     setImportedCount(0);
     setErrors([]);
+    setDuplicateWarnings([]);
 
     const validMappings = fieldMappings.filter(m => m.targetField);
     let successCount = 0;
     let errorCount = 0;
+    let duplicateCount = 0;
 
     for (let i = 0; i < data.length; i++) {
       try {
@@ -263,6 +295,37 @@ export function ContactImport() {
           contactData.name = `${contactData.first_name || ''} ${contactData.last_name || ''}`.trim();
         }
 
+        // Skip if no name
+        if (!contactData.name || contactData.name.trim() === '') {
+          setErrors(prev => [...prev, `Zeile ${i + 1}: Kein Name angegeben`]);
+          errorCount++;
+          continue;
+        }
+
+        // Validate email if provided
+        if (contactData.email && !isValidEmail(contactData.email)) {
+          setErrors(prev => [...prev, `Zeile ${i + 1}: Ungültige E-Mail-Adresse (${contactData.email})`]);
+          errorCount++;
+          continue;
+        }
+
+        // Check for duplicates
+        const currentContactData = {
+          name: contactData.name,
+          email: contactData.email,
+          phone: contactData.phone,
+          organization: contactData.organization,
+        };
+        
+        const duplicates = findPotentialDuplicates(currentContactData, existingContacts);
+        
+        if (duplicates.length > 0) {
+          const duplicateInfo = duplicates.map(dup => `${dup.contact.name} (${dup.matchType})`).join(', ');
+          setDuplicateWarnings(prev => [...prev, `Zeile ${i + 1}: ${contactData.name} - Mögliche Duplikate: ${duplicateInfo}`]);
+          duplicateCount++;
+          // Continue with import despite duplicates
+        }
+
         // Set default values
         if (!contactData.contact_type) contactData.contact_type = 'person';
         if (!contactData.category) contactData.category = 'citizen';
@@ -277,6 +340,14 @@ export function ContactImport() {
           errorCount++;
         } else {
           successCount++;
+          // Add to existing contacts list for future duplicate checks
+          setExistingContacts(prev => [...prev, {
+            id: 'temp-' + i,
+            name: contactData.name,
+            email: contactData.email,
+            phone: contactData.phone,
+            organization: contactData.organization,
+          }]);
         }
       } catch (error) {
         setErrors(prev => [...prev, `Zeile ${i + 1}: Unbekannter Fehler`]);
@@ -287,10 +358,14 @@ export function ContactImport() {
       setImportedCount(successCount);
     }
 
+    const message = `${successCount} Kontakte erfolgreich importiert` +
+      `${errorCount > 0 ? `, ${errorCount} Fehler` : ''}` +
+      `${duplicateCount > 0 ? `, ${duplicateCount} mögliche Duplikate` : ''}`;
+
     toast({
       title: "Import abgeschlossen",
-      description: `${successCount} Kontakte erfolgreich importiert${errorCount > 0 ? `, ${errorCount} Fehler` : ''}`,
-      variant: errorCount > 0 ? "destructive" : "default"
+      description: message,
+      variant: errorCount > 0 ? "destructive" : duplicateCount > 0 ? "default" : "default"
     });
 
     setStep('complete');
@@ -304,6 +379,7 @@ export function ContactImport() {
     setProgress(0);
     setImportedCount(0);
     setErrors([]);
+    setDuplicateWarnings([]);
   };
 
   const downloadTemplate = () => {
@@ -502,6 +578,25 @@ export function ContactImport() {
                       ))}
                       {errors.length > 5 && (
                         <p className="text-sm">... und {errors.length - 5} weitere</p>
+                      )}
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {duplicateWarnings.length > 0 && (
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription>
+                  <div>
+                    <p className="font-medium mb-2 text-yellow-800">{duplicateWarnings.length} mögliche Duplikate gefunden:</p>
+                    <div className="max-h-32 overflow-auto">
+                      {duplicateWarnings.slice(0, 5).map((warning, index) => (
+                        <p key={index} className="text-sm text-yellow-700">{warning}</p>
+                      ))}
+                      {duplicateWarnings.length > 5 && (
+                        <p className="text-sm text-yellow-700">... und {duplicateWarnings.length - 5} weitere</p>
                       )}
                     </div>
                   </div>
