@@ -4,18 +4,14 @@ import {
   $isRangeSelection,
   FORMAT_TEXT_COMMAND,
   TextFormatType,
-  EditorState,
-  $createParagraphNode,
-  $getRoot,
 } from 'lexical';
 import { $isHeadingNode, $createHeadingNode, HeadingTagType } from '@lexical/rich-text';
 import {
   INSERT_UNORDERED_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND,
-  $isListNode,
-  ListNode,
 } from '@lexical/list';
-import { Provider, createBinding } from '@lexical/yjs';
+import { Doc } from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 import { 
   LexicalComposer,
   InitialConfigType
@@ -28,6 +24,7 @@ import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { useCollaborationContext } from '@lexical/react/LexicalCollaborationContext';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 
 import { HeadingNode } from '@lexical/rich-text';
@@ -47,10 +44,9 @@ import {
   Heading3,
   List,
   ListOrdered,
-  Users,
-  Minus
+  Users
 } from 'lucide-react';
-import { useYjsCollaboration } from '@/hooks/useYjsCollaboration';
+import { useAuth } from '@/hooks/useAuth';
 import './CleanLexicalEditor.css';
 
 // Define our editor theme
@@ -74,10 +70,6 @@ const editorTheme = {
     italic: 'italic',
     underline: 'underline',
   },
-  collaboration: {
-    cursor: 'Collaboration__cursor',
-    selection: 'Collaboration__selection'
-  }
 };
 
 // Editor configuration
@@ -256,75 +248,12 @@ function EditorToolbar() {
   );
 }
 
-// Collaboration Awareness Display Component
-function CollaborationAwareness({ awareness }: { awareness: any }) {
-  const [users, setUsers] = useState<any[]>([]);
-  
-  useEffect(() => {
-    if (!awareness) return;
-    
-    const updateUsers = () => {
-      console.log('Awareness: Updating users...');
-      const states = awareness.getStates();
-      console.log('Awareness: States:', states);
-      
-      const userList = Array.from(states.entries())
-        .map(([clientId, state]: [number, any]) => {
-          console.log('Awareness: User state:', { clientId, state });
-          return {
-            clientId,
-            name: state.user?.name || 'Anonymous',
-            color: state.user?.color || '#000000'
-          };
-        })
-        .filter(user => user.name && user.name !== 'Anonymous'); // Filter out invalid users
-      
-      console.log('Awareness: Final user list:', userList);
-      setUsers(userList);
-    };
-    
-    // Subscribe to awareness changes
-    awareness.on('change', updateUsers);
-    
-    // Initial update
-    updateUsers();
-    
-    // Force update awareness with current user info
-    const currentUser = awareness.getLocalState();
-    console.log('Awareness: Current local state:', currentUser);
-    
-    return () => {
-      awareness.off('change', updateUsers);
-    };
-  }, [awareness]);
-  
-  console.log('Awareness: Rendering with users:', users);
-  
+// Simple Collaboration Awareness Display Component
+function CollaborationAwareness() {
   return (
     <div className="flex items-center gap-2 px-2">
       <Users className="h-4 w-4 text-muted-foreground" />
-      <span className="text-sm text-muted-foreground">
-        {users.length > 0 ? `${users.length} online` : 'Solo'}
-      </span>
-      {users.length > 0 && (
-        <div className="flex -space-x-1">
-          {users.slice(0, 3).map((user) => (
-            <div
-              key={user.clientId}
-              className="w-6 h-6 rounded-full border-2 border-background flex items-center justify-center text-xs text-white font-medium"
-              style={{ backgroundColor: user.color }}
-              title={user.name}
-            >
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-          ))}
-          {users.length > 3 && (
-            <div className="w-6 h-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs">
-              +{users.length - 3}
-            </div>
-          )}
-        </div>
-      )}
+      <span className="text-sm text-muted-foreground">Online</span>
     </div>
   );
 }
@@ -335,10 +264,7 @@ export function CleanLexicalEditor({
   readOnly = false,
   autoFocus = false 
 }: CleanLexicalEditorProps) {
-  console.log('CleanLexicalEditor: Rendering with documentId:', documentId);
-  const { yjsDoc, awareness, isInitialized } = useYjsCollaboration({ documentId });
-
-  console.log('CleanLexicalEditor: isInitialized:', isInitialized, 'yjsDoc:', !!yjsDoc, 'awareness:', !!awareness);
+  const { session } = useAuth();
 
   if (!documentId) {
     return (
@@ -350,19 +276,29 @@ export function CleanLexicalEditor({
     );
   }
 
-  if (!isInitialized || !yjsDoc || !awareness) {
-    console.log('CleanLexicalEditor: Still initializing...');
-    return (
-      <div className="relative border border-border rounded-lg bg-background min-h-[400px] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
-          <div className="text-sm text-muted-foreground">Collaboration wird initialisiert...</div>
-        </div>
-      </div>
-    );
-  }
-
-  console.log('CleanLexicalEditor: About to render LexicalComposer');
+  // Simple provider factory following official Lexical/Yjs documentation
+  const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Doc>) => {
+    const doc = new Doc();
+    yjsDocMap.set(id, doc);
+    
+    // Create WebSocket provider with authentication
+    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/functions/v1/yjs-collaboration`;
+    const provider = new WebsocketProvider(wsUrl, id, doc, { 
+      params: { 
+        token: session?.access_token || ''
+      }
+    });
+    
+    // Set user awareness info
+    if (provider.awareness && session?.user) {
+      provider.awareness.setLocalStateField('user', {
+        name: session.user.email || 'Anonymous',
+        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`
+      });
+    }
+    
+    return provider as any;
+  }, [session?.access_token, session?.user]);
 
   return (
     <LexicalComposer initialConfig={editorConfig}>
@@ -370,7 +306,7 @@ export function CleanLexicalEditor({
         {!readOnly && (
           <div className="flex items-center justify-between border-b border-border p-2">
             <EditorToolbar />
-            <CollaborationAwareness awareness={awareness} />
+            <CollaborationAwareness />
           </div>
         )}
         <div className="relative">
@@ -393,7 +329,13 @@ export function CleanLexicalEditor({
         </div>
       </div>
       
-      {/* Basic History Plugin for now - removed MarkdownShortcutPlugin to fix HorizontalRule dependency */}
+      {/* Official CollaborationPlugin */}
+      <CollaborationPlugin
+        id={documentId}
+        providerFactory={providerFactory}
+        shouldBootstrap={true}
+      />
+      
       <HistoryPlugin />
       {autoFocus && <AutoFocusPlugin />}
       <LinkPlugin />
