@@ -4724,11 +4724,17 @@ export type Database = {
         Returns: undefined
       }
       create_knowledge_document_snapshot: {
-        Args: {
-          _document_id: string
-          _snapshot_type?: string
-          _yjs_state: string
-        }
+        Args:
+          | {
+              _document_id: string
+              _snapshot_type?: string
+              _yjs_state: string
+            }
+          | {
+              _document_id: string
+              _snapshot_type?: string
+              _yjs_state: string
+            }
         Returns: string
       }
       create_notification: {

@@ -77,15 +77,20 @@ export const useCollaborationPersistence = ({
       }
 
       if (data?.yjs_state && typeof data.yjs_state === 'string') {
-        // Convert from base64 back to Uint8Array
-        const binaryString = atob(data.yjs_state);
-        const state = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          state[i] = binaryString.charCodeAt(i);
+        try {
+          // Convert from base64 back to Uint8Array
+          const binaryString = atob(data.yjs_state);
+          const state = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            state[i] = binaryString.charCodeAt(i);
+          }
+          
+          Y.applyUpdate(doc, state);
+          console.log('Document state loaded successfully');
+        } catch (yError) {
+          console.error('Error applying Y.js update:', yError);
+          // Skip malformed state data
         }
-        
-        Y.applyUpdate(doc, state);
-        console.log('Document state loaded successfully');
       }
     } catch (error) {
       console.error('Error in loadDocumentState:', error);

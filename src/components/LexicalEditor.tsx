@@ -133,7 +133,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
 
     // Use the correct WebSocket URL for Supabase Edge Functions
     const wsProvider = new WebsocketProvider(
-      `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration`,
+      `ws://localhost:54321/functions/v1/yjs-collaboration`,
       id,
       doc
     );
@@ -223,11 +223,21 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
         {/* Collaboration Status */}
         {enableCollaboration && documentId && (
           <div className="p-3 border-b border-border">
-            <CollaborationStatus
-              isConnected={isConnected}
-              users={collaborationUsers}
-              currentUser={currentUser}
-            />
+            <div className="flex items-center justify-between">
+              <CollaborationStatus
+                isConnected={isConnected}
+                users={collaborationUsers}
+                currentUser={currentUser}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={saveManual}
+                  className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                >
+                  Snapshot speichern
+                </button>
+              </div>
+            </div>
           </div>
         )}
         
