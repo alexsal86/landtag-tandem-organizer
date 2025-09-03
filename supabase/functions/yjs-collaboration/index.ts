@@ -29,7 +29,29 @@ serve(async (req) => {
   // Extract room ID and auth token from URL
   const url = new URL(req.url);
   const roomId = url.searchParams.get('room') || 'default';
-  const token = url.searchParams.get('token');
+  let token = url.searchParams.get('token');
+  
+  // Also try to get token from Authorization header
+  if (!token) {
+    const authHeader = headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
+
+  // Upgrade WebSocket first
+  const { socket, response } = Deno.upgradeWebSocket(req, {
+    headers: corsHeaders
+  });
+
+  // If no token, close connection immediately
+  if (!token) {
+    console.log('No authentication token provided');
+    socket.onopen = () => {
+      socket.close(1008, "Authentication required");
+    };
+    return response;
+  }
 
   // Verify token with Supabase
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -40,18 +62,14 @@ serve(async (req) => {
   const { data: { user }, error } = await supabase.auth.getUser(token);
   
   if (error || !user) {
-    console.log('Authentication failed:', error);
-    socket.close(1008, "Invalid token");
+    console.log('Authentication failed:', error?.message || 'Unknown error');
+    socket.onopen = () => {
+      socket.close(1008, "Invalid token");
+    };
     return response;
   }
 
   console.log('User authenticated:', user.email, 'for room:', roomId);
-
-  console.log('User authenticated:', user.email, 'for room:', roomId);
-
-  const { socket, response } = Deno.upgradeWebSocket(req, {
-    headers: corsHeaders
-  });
 
   const connectionId = crypto.randomUUID();
   connections.set(connectionId, socket);

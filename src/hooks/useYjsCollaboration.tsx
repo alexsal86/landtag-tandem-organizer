@@ -67,16 +67,13 @@ export function useYjsCollaboration({ documentId: propDocumentId }: UseYjsCollab
       const wsUrl = 'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration';
       
       // Create WebSocket provider with authentication
+      const wsUrlWithParams = `${wsUrl}?room=${encodeURIComponent(documentId)}&token=${encodeURIComponent(session.access_token)}`;
+      console.log('useYjsCollaboration: Connecting to WebSocket URL:', wsUrlWithParams.replace(session.access_token, '[TOKEN]'));
+      
       const provider = new WebsocketProvider(
-        wsUrl,
+        wsUrlWithParams,
         documentId,
-        doc,
-        {
-          params: {
-            room: documentId,
-            token: session.access_token
-          }
-        }
+        doc
       );
       
       providerRef.current = provider;
