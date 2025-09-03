@@ -3,6 +3,7 @@ import { ListNode, ListItemNode } from '@lexical/list';
 import { AutoLinkNode, LinkNode } from '@lexical/link';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
+import { HashtagNode } from '@lexical/hashtag';
 
 export const editorNodes = [
   HeadingNode,
@@ -16,4 +17,5 @@ export const editorNodes = [
   TableNode,
   TableCellNode,
   TableRowNode,
+  HashtagNode,
 ];

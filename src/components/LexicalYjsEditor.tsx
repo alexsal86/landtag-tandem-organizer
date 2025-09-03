@@ -8,10 +8,13 @@ import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
+import { HashtagPlugin } from '@lexical/react/LexicalHashtagPlugin';
 import { TRANSFORMERS } from '@lexical/markdown';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
+import { mergeRegister } from '@lexical/utils';
+import { $selectAll } from '@lexical/selection';
 import {
   $getRoot,
   $getSelection,
@@ -478,10 +481,18 @@ export function LexicalYjsEditor({
         <LinkPlugin />
         <ListPlugin />
         <TablePlugin />
+        <HashtagPlugin />
         <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
         <FloatingTextFormatToolbarPlugin />
         <ContentChangePlugin onContentChange={onContentChange} />
         <InitialContentPlugin initialContent={initialContent} />
+        {yjsDoc && (
+          <CollaborationPlugin
+            id={documentId}
+            providerFactory={(id, yjsDocMap) => null}
+            shouldBootstrap={false}
+          />
+        )}
       </LexicalComposer>
       
       <style>{`
