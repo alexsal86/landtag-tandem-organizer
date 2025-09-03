@@ -224,8 +224,16 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
       return provider as any;
     }
     
-    console.warn('Provider factory called but no provider available');
-    return null;
+    // Create a placeholder provider that won't crash on disconnect
+    console.warn('Provider factory called but no provider available, returning placeholder');
+    return {
+      disconnect: () => console.log('Placeholder provider disconnect called'),
+      awareness: null,
+      ws: null,
+      on: () => {},
+      off: () => {},
+      destroy: () => {}
+    } as any;
   }, [provider, yDoc]);
   const initialConfig = {
     namespace: 'KnowledgeBaseEditor',
@@ -295,7 +303,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           {!enableCollaboration && <HistoryPlugin />}
           <ListPlugin />
           <LinkPlugin />
-          {enableCollaboration && documentId && (
+          {enableCollaboration && documentId && provider && yDoc && (
             <CollaborationPlugin
               id={`knowledge-doc-${documentId}`}
               providerFactory={providerFactory}
