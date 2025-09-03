@@ -84,7 +84,12 @@ const KnowledgeBaseView = () => {
   ];
 
   const fetchDocuments = async () => {
-    console.log('Fetching knowledge documents (anonymous access enabled)');
+    if (!user) {
+      console.log('No user available for fetchDocuments');
+      return;
+    }
+
+    console.log('Fetching knowledge documents for user:', user.id);
     try {
       console.log('Starting supabase query...');
       const { data, error } = await supabase
@@ -133,12 +138,19 @@ const KnowledgeBaseView = () => {
   };
 
   useEffect(() => {
-    console.log('KnowledgeBaseView: useEffect triggered, loading documents for anonymous/authenticated users');
-    fetchDocuments();
-  }, []); // Remove user dependency to allow anonymous access
+    console.log('KnowledgeBaseView: useEffect triggered, user:', user?.id);
+    if (user) {
+      fetchDocuments();
+    } else {
+      console.log('No user, setting loading to false');
+      setLoading(false);
+    }
+  }, [user]);
 
   // Real-time updates
   useEffect(() => {
+    if (!user) return;
+
     const channel = supabase
       .channel('knowledge-documents-changes')
       .on(
@@ -157,39 +169,29 @@ const KnowledgeBaseView = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []); // Remove user dependency to allow anonymous real-time updates
+  }, [user]);
 
   const handleCreateDocument = async () => {
-    if (!newDocument.title.trim()) return;
+    if (!user || !newDocument.title.trim()) return;
 
     try {
-      let tenantData = null;
-      let createdBy = 'anonymous';
+      // Get user's primary tenant ID
+      const { data: tenantData, error: tenantError } = await supabase.rpc('get_user_primary_tenant_id', {
+        _user_id: user.id
+      });
 
-      // If user is authenticated, try to get their tenant, otherwise use defaults
-      if (user) {
-        try {
-          const { data: tenantResult, error: tenantError } = await supabase.rpc('get_user_primary_tenant_id', {
-            _user_id: user.id
-          });
-
-          if (!tenantError) {
-            tenantData = tenantResult;
-            createdBy = user.id;
-          }
-        } catch (error) {
-          console.log('Failed to get tenant ID, using anonymous defaults:', error);
-        }
+      if (tenantError) {
+        console.error('Error getting tenant ID:', tenantError);
+        throw new Error('Fehler beim Ermitteln der Tenant-ID');
       }
 
-      // Create document with anonymous user support
       const { data, error } = await supabase
         .from('knowledge_documents')
         .insert([{
           title: newDocument.title,
           content: newDocument.content,
           category: newDocument.category,
-          created_by: createdBy,
+          created_by: user.id,
           tenant_id: tenantData,
           is_published: newDocument.is_published
         }])
@@ -520,17 +522,19 @@ const KnowledgeBaseView = () => {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteDocument(doc.id);
-                                      }}
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-1" />
-                                      Löschen
-                                    </Button>
+                                    {doc.created_by === user?.id && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteDocument(doc.id);
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-1" />
+                                        Löschen
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                               </CardContent>
