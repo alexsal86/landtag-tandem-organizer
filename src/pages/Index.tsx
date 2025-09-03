@@ -1,25 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigation } from "@/components/Navigation";
 import { Dashboard } from "@/components/Dashboard";
-import { CustomizableDashboard } from "@/components/CustomizableDashboard";
-import { CalendarView } from "@/components/CalendarView";
-import { ContactsView } from "@/components/ContactsView";
-import { DocumentsView } from "@/components/DocumentsView";
-import KnowledgeBaseView from "@/components/KnowledgeBaseView";
-import { TasksView } from "@/components/TasksView";
-import { SettingsView } from "@/components/SettingsView";
-import { MeetingsView } from "@/components/MeetingsView";
-import { EventPlanningView } from "@/components/EventPlanningView";
-import { EmployeesView } from "@/components/EmployeesView";
-import TimeTrackingView from "@/components/TimeTrackingView";
-import Administration from "@/pages/Administration";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import React from "react";
+
+// Lazy load heavy components that aren't immediately needed
+const CustomizableDashboard = React.lazy(() => import("@/components/CustomizableDashboard"));
+const CalendarView = React.lazy(() => import("@/components/CalendarView"));
+const ContactsView = React.lazy(() => import("@/components/ContactsView"));
+const DocumentsView = React.lazy(() => import("@/components/DocumentsView"));
+const KnowledgeBaseView = React.lazy(() => import("@/components/KnowledgeBaseView"));
+const TasksView = React.lazy(() => import("@/components/TasksView"));
+const SettingsView = React.lazy(() => import("@/components/SettingsView"));
+const MeetingsView = React.lazy(() => import("@/components/MeetingsView"));
+const EventPlanningView = React.lazy(() => import("@/components/EventPlanningView"));
+const EmployeesView = React.lazy(() => import("@/components/EmployeesView"));
+const TimeTrackingView = React.lazy(() => import("@/components/TimeTrackingView"));
+const Administration = React.lazy(() => import("@/pages/Administration"));
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -36,12 +39,13 @@ const Index = () => {
   
   const [activeSection, setActiveSection] = useState(() => getActiveSectionFromPath(location.pathname));
 
+  // Memoize to prevent unnecessary recalculations
+  const currentSection = useMemo(() => getActiveSectionFromPath(location.pathname), [location.pathname]);
+
   // Update active section when URL changes
   useEffect(() => {
-    const newSection = getActiveSectionFromPath(location.pathname);
-    setActiveSection(newSection);
-    console.log('Active section changed to:', newSection);
-  }, [location.pathname]);
+    setActiveSection(currentSection);
+  }, [currentSection]);
 
   // Handle navigation to sections
   const handleSectionChange = (section: string) => {
@@ -83,50 +87,34 @@ const Index = () => {
     );
   }
 
-  const renderActiveSection = () => {
-    console.log('=== renderActiveSection called ===');
-    console.log('Current activeSection:', activeSection);
-    
+  const renderActiveSection = () => {    
     switch (activeSection) {
       case 'dashboard':
-        console.log('Rendering CustomizableDashboard');
         return <CustomizableDashboard />;
       case "calendar":
-        console.log('Rendering CalendarView');
         return <CalendarView />;
       case "contacts":
-        console.log('Rendering ContactsView');
         return <ContactsView />;
       case "tasks":
-        console.log('Rendering TasksView');
         return <TasksView />;
       case "time":
-        console.log('Rendering TimeTrackingView');
         return <TimeTrackingView />;
       case "meetings":
-        console.log('Rendering MeetingsView');
         return <MeetingsView />;
       case "eventplanning":
-        console.log('Rendering EventPlanningView');
         return <EventPlanningView />;
       case "documents":
-        console.log('Rendering DocumentsView');
         return <DocumentsView />;
       case "knowledge":
-        console.log('Rendering KnowledgeBaseView');
         return <KnowledgeBaseView />;
       case "settings":
-        console.log('Rendering SettingsView');
         return <SettingsView />;
       case "employee":
-        console.log('Rendering EmployeesView');
         // Admin-only view is handled inside the component
         return <EmployeesView />;
       case "administration":
-        console.log('Rendering Administration');
         return <Administration />;
       default:
-        console.log('Rendering default Dashboard');
         return <Dashboard />;
     }
   };
@@ -140,7 +128,13 @@ const Index = () => {
             onSectionChange={handleSectionChange} 
           />
           <main className="flex-1">
-            {renderActiveSection()}
+            <Suspense fallback={
+              <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            }>
+              {renderActiveSection()}
+            </Suspense>
           </main>
         </div>
       </SidebarProvider>

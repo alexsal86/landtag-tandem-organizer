@@ -1,4 +1,4 @@
-import React, { useState, useEffect, startTransition } from "react";
+import React, { useState, useEffect, startTransition, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, MapPin, Users, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +36,7 @@ export interface CalendarEvent {
   is_all_day?: boolean; // Add all-day flag
 }
 
-export function CalendarView() {
+function CalendarView() {
   const navigate = useNavigate();
   const { currentTenant } = useTenant();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('calendar');
@@ -55,9 +55,9 @@ export function CalendarView() {
     } else {
       fetchTodaysAppointments();
     }
-  }, [currentDate, view]);
+  }, [currentDate, view, fetchWeekAppointments, fetchTodaysAppointments]);
 
-  const fetchWeekAppointments = async () => {
+  const fetchWeekAppointments = useCallback(async () => {
     try {
       setLoading(true);
       const weekStart = getWeekStart(currentDate);
@@ -91,9 +91,9 @@ export function CalendarView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDate, tenant?.id, processAppointments]);
 
-  const fetchTodaysAppointments = async () => {
+  const fetchTodaysAppointments = useCallback(async () => {
     try {
       setLoading(true);
       const startOfDay = new Date(currentDate);
@@ -128,9 +128,9 @@ export function CalendarView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDate, tenant?.id, processAppointments]);
 
-  const processAppointments = async (appointmentsData: any[], startDate: Date, endDate: Date) => {
+  const processAppointments = useCallback(async (appointmentsData: any[], startDate: Date, endDate: Date) => {
     try {
       console.log('🔍 Processing appointments for date range:', startDate.toISOString(), 'to', endDate.toISOString());
       
@@ -333,7 +333,7 @@ export function CalendarView() {
       console.error('Error processing appointments:', error);
       setAppointments([]);
     }
-  };
+  }, [tenant?.id]);
 
   const getEventTypeColor = (type: CalendarEvent["type"]) => {
     switch (type) {
@@ -558,3 +558,6 @@ export function CalendarView() {
     </div>
   );
 }
+
+// Export with memo for performance optimization
+export default React.memo(CalendarView);

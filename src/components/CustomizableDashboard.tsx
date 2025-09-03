@@ -43,7 +43,7 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 type DashboardMode = 'classic' | 'hybrid' | 'realtime';
 
-export const CustomizableDashboard: React.FC = () => {
+const CustomizableDashboard: React.FC = () => {
   const {
     layouts,
     currentLayout,
@@ -394,3 +394,6 @@ export const CustomizableDashboard: React.FC = () => {
     </div>
   );
 };
+
+// Export with memo for performance optimization
+export default React.memo(CustomizableDashboard);
