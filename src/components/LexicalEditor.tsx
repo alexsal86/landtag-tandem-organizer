@@ -102,7 +102,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
         destroyCollaboration();
       };
     }
-  }, [enableCollaboration, documentId, initializeCollaboration, destroyCollaboration]);
+  }, [enableCollaboration, documentId]); // Removed functions from dependency array
 
   // Load document state when Y.Doc is ready
   useEffect(() => {
@@ -111,7 +111,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
         console.log('Document state loaded');
       });
     }
-  }, [yDoc, documentId, enableCollaboration, loadDocumentState]);
+  }, [yDoc, documentId, enableCollaboration]); // Removed loadDocumentState from dependency array
 
   // Provider factory for Lexical CollaborationPlugin
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {

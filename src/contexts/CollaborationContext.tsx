@@ -36,6 +36,7 @@ interface CollaborationProviderProps {
 }
 
 export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ children }) => {
+  console.log('🔄 CollaborationProvider rendering');
   const { user } = useAuth();
   const [yDoc, setYDoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
@@ -195,6 +196,13 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     destroyCollaboration
   };
 
+  console.log('🚀 CollaborationProvider providing context:', { 
+    hasYDoc: !!yDoc, 
+    hasProvider: !!provider, 
+    isConnected, 
+    currentUser: currentUser?.name 
+  });
+
   return (
     <CollaborationContext.Provider value={value}>
       {children}
@@ -203,8 +211,11 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
 };
 
 export const useCollaboration = () => {
+  console.log('🎯 useCollaboration called');
   const context = useContext(CollaborationContext);
+  console.log('🎯 useCollaboration context:', context);
   if (!context) {
+    console.error('❌ No CollaborationContext found!');
     throw new Error('useCollaboration must be used within a CollaborationProvider');
   }
   return context;
