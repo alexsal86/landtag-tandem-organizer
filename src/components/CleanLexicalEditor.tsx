@@ -49,6 +49,8 @@ import {
   Users
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useYjsKnowledgeDocument } from '@/hooks/useYjsKnowledgeDocument';
+import { toast } from 'sonner';
 import './CleanLexicalEditor.css';
 
 // Define our editor theme
@@ -374,6 +376,22 @@ export function CleanLexicalEditor({
   autoFocus = false 
 }: CleanLexicalEditorProps) {
   const { session } = useAuth();
+  
+  // Use the Yjs knowledge document hook
+  const {
+    yjsDoc,
+    awareness,
+    isLoading,
+    initialContent,
+    isInitialized,
+    saveDocument
+  } = useYjsKnowledgeDocument({
+    documentId: documentId || '',
+    onError: (error) => {
+      console.error('Yjs document error:', error);
+      toast.error('Fehler beim Laden des Dokuments');
+    }
+  });
 
   // Debug-Log beim Mounten der Komponente
   useEffect(() => {
@@ -396,37 +414,49 @@ export function CleanLexicalEditor({
     );
   }
 
+  if (isLoading || !isInitialized || !yjsDoc) {
+    return (
+      <div className="relative border border-border rounded-lg bg-background min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-sm text-muted-foreground">Dokument wird geladen...</div>
+        </div>
+      </div>
+    );
+  }
+
   console.log('✅ CleanLexicalEditor: Rendering with documentId:', documentId);
 
-  // Enhanced provider factory with detailed debugging
+  // Provider factory that uses the existing Yjs document from the hook
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
     console.log('🏭 ProviderFactory: Called with document ID:', id);
     console.log('🏭 ProviderFactory: Current yjsDocMap size:', yjsDocMap.size);
     console.log('🏭 ProviderFactory: Documents in map:', Array.from(yjsDocMap.keys()));
     
-    // Create or get the Yjs document
-    let doc = yjsDocMap.get(id);
-    if (!doc) {
-      console.log('🏭 ProviderFactory: Creating new Yjs document');
-      doc = new Y.Doc();
-      yjsDocMap.set(id, doc);
-      console.log('✅ ProviderFactory: Document added to map, new size:', yjsDocMap.size);
-    } else {
-      console.log('🏭 ProviderFactory: Using existing Yjs document');
+    // Use the existing Yjs document from the hook
+    if (!yjsDoc) {
+      console.error('❌ ProviderFactory: No Yjs document available from hook');
+      throw new Error('No Yjs document available');
     }
     
-    // Verify document is in map
-    if (yjsDocMap.has(id)) {
-      console.log('✅ ProviderFactory: Document confirmed in map');
+    // Add the existing document to the map if not already there
+    if (!yjsDocMap.has(id)) {
+      console.log('🏭 ProviderFactory: Adding existing Yjs document to map');
+      yjsDocMap.set(id, yjsDoc);
+      console.log('✅ ProviderFactory: Document added to map, new size:', yjsDocMap.size);
     } else {
-      console.error('❌ ProviderFactory: Document NOT found in map after setting!');
+      console.log('🏭 ProviderFactory: Document already in map');
     }
+    
+    const doc = yjsDoc;
     
     // Create WebSocket provider with detailed logging
     const wsUrl = 'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration';
     console.log('🏭 ProviderFactory: Creating WebSocket provider', { wsUrl, roomId: id });
     
-    const provider = new WebsocketProvider(wsUrl, id, doc);
+    // Create provider with existing document and awareness
+    const provider = new WebsocketProvider(wsUrl, id, doc, {
+      awareness: awareness || undefined
+    });
 
     // Enhanced event logging with correct event names
     provider.on('status', (event: any) => {
@@ -452,8 +482,8 @@ export function CleanLexicalEditor({
       });
     }
 
-    // Set user awareness with detailed logging
-    if (session?.user && provider.awareness) {
+    // Set user awareness with detailed logging (only if we don't have awareness from hook)
+    if (session?.user && provider.awareness && !awareness) {
       const userInfo = {
         name: session.user.email || 'Anonymous',
         color: '#' + Math.floor(Math.random() * 16777215).toString(16),
@@ -495,7 +525,7 @@ export function CleanLexicalEditor({
     
     // Return WebsocketProvider directly, casting to Provider type
     return provider as unknown as Provider;
-  }, [session?.user]);
+  }, [session?.user, yjsDoc, awareness]);
 
   return (
     <LexicalComposer initialConfig={editorConfig}>
