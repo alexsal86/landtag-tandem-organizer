@@ -194,42 +194,61 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           />
         )}
         
-        {/* Collaboration Error Warning */}
+        {/* Enhanced Collaboration Status with Better UX */}
         {collaborationError && (
-          <div className="p-3 border-b border-warning/20 bg-warning/10">
-            <div className="flex items-center gap-2 text-warning">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm">{collaborationError}</span>
+          <div className="p-4 border-b border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="font-medium text-amber-800 dark:text-amber-200 mb-1">
+                  Editor im Standalone-Modus
+                </div>
+                <div className="text-sm text-amber-700 dark:text-amber-300 mb-2">
+                  Für die volle Funktionalität mit Echtzeit-Kollaboration und automatischem Speichern melden Sie sich an.
+                </div>
+                <div className="text-xs text-amber-600 dark:text-amber-400">
+                  <strong>Verfügbare Features:</strong> Rich-Text-Formatierung, lokale Bearbeitung
+                  <br />
+                  <strong>Erfordert Anmeldung:</strong> Kollaboration, automatisches Speichern, Dokumentenverwaltung
+                </div>
+              </div>
             </div>
           </div>
         )}
         
-        {/* Collaboration Status */}
+        {/* Enhanced Collaboration Status with Better Design */}
         {collaborationAvailable && documentId && (
-          <div className="p-3 border-b border-border bg-muted/50">
+          <div className="p-4 border-b border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                    Kollaboration aktiv
+                  </span>
+                </div>
                 <CollaborationStatus
                   isConnected={isConnected}
                   users={collaborationUsers}
                   currentUser={currentUser || undefined}
                 />
                 {!isConnected && (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-amber-600 dark:text-amber-400">
                     Verbindung wird hergestellt...
                   </div>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={saveManual}
-                  className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                  className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors disabled:opacity-50"
                   disabled={!yDoc}
+                  title="Manueller Snapshot"
                 >
-                  Snapshot speichern
+                  💾 Speichern
                 </button>
-                <div className="text-xs text-muted-foreground">
-                  {yDoc ? 'Kollaboration aktiv' : 'Wird geladen...'}
+                <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                  {isConnected ? '🟢 Verbunden' : '🟡 Verbindet...'}
                 </div>
               </div>
             </div>

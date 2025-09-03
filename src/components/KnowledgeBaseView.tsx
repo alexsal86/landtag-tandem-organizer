@@ -554,7 +554,7 @@ const KnowledgeBaseView = () => {
       {/* Enhanced Document Editor with Demo Features */}
       {selectedDocument && isEditorOpen && (
         <div className="flex-1 flex flex-col">
-          <div className="border-b border-border p-4 bg-card/50 backdrop-blur-sm">
+          <div className="border-b border-border p-4 bg-gradient-to-r from-card/50 to-accent/30 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">{selectedDocument.title}</h2>
@@ -563,10 +563,17 @@ const KnowledgeBaseView = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="default" className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  Kollaboration aktiv
-                </Badge>
+                {user ? (
+                  <Badge variant="default" className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    Kollaboration verfügbar
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="flex items-center gap-1 bg-amber-100 text-amber-800 border-amber-200">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                    Standalone-Modus
+                  </Badge>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -584,27 +591,29 @@ const KnowledgeBaseView = () => {
           </div>
           
           <div className="flex-1 p-4">
-            <Card>
+            <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
                   Kollaborativer Editor: {selectedDocument.title}
                 </CardTitle>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <div>• Änderungen werden in Echtzeit synchronisiert</div>
-                  <div>• Cursor-Positionen anderer Benutzer werden angezeigt</div>
-                  <div>• Automatisches Speichern alle paar Sekunden</div>
-                  <div>• Vollständige Rich-Text Formatierung verfügbar</div>
+                <div className="text-sm text-muted-foreground space-y-1 bg-muted/30 p-3 rounded-md">
+                  <div className="font-medium text-foreground mb-2">✨ Funktionen:</div>
+                  <div>• 🔄 Rich-Text Formatierung mit vollständiger Toolbar</div>
+                  <div>• ⚡ Echtzeit-Änderungen (bei Anmeldung)</div>
+                  <div>• 👥 Cursor-Tracking anderer Benutzer (bei Anmeldung)</div>
+                  <div>• 💾 Automatisches Speichern (bei Anmeldung)</div>
+                  <div>• 🎯 Optimale Benutzerfreundlichkeit</div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="border rounded-lg min-h-[400px]">
+                <div className="border rounded-lg min-h-[400px] shadow-inner">
                   <LexicalEditor
                     key={selectedDocument.id}
                     documentId={selectedDocument.id}
                     enableCollaboration={true}
                     initialContent=""
-                    placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
+                    placeholder={`✍️ Beginnen Sie zu schreiben in "${selectedDocument.title}"...\n\nTipp: Nutzen Sie die Toolbar oben für Rich-Text-Formatierung.`}
                     showToolbar={true}
                     onChange={(content) => {
                       console.log('Document content changed:', content.length, 'characters');

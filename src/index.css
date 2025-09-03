@@ -245,22 +245,37 @@ All colors MUST be HSL.
   }
 }
 
-/* Lexical Editor Styles */
+/* Editor container with better visual hierarchy */
 .editor-container {
-  @apply relative w-full min-h-[400px] max-w-none;
+  @apply relative w-full min-h-[400px] max-w-none overflow-hidden;
+  background: linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)/0.98));
 }
 
 .editor-inner {
-  @apply relative;
+  @apply relative min-h-[300px];
 }
 
+/* Enhanced content editable area */
 .editor-input {
   @apply min-h-[400px] w-full resize-none text-sm leading-relaxed p-4 border-0 outline-none;
   font-family: inherit;
+  background: transparent;
+  transition: all 0.2s ease-in-out;
 }
 
+.editor-input:focus {
+  @apply ring-2 ring-primary/20 ring-inset;
+}
+
+/* Enhanced placeholder styling */
 .editor-placeholder {
   @apply absolute top-4 left-4 text-muted-foreground pointer-events-none select-none;
+  opacity: 0.7;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.editor-input:focus + .editor-placeholder {
+  opacity: 0.5;
 }
 
 .editor-paragraph {

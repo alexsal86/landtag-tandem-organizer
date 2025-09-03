@@ -44,7 +44,10 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
   ];
 
   return (
-    <div className="flex flex-wrap gap-1 p-3 border-b border-border bg-background">
+    <div className="flex flex-wrap gap-1 p-3 border-b border-border bg-background/95 backdrop-blur-sm">
+      <div className="text-xs text-muted-foreground mb-2 w-full">
+        Rich-Text Formatierung
+      </div>
       {formatButtons.map(({ format, icon: Icon, label }) => {
         const isActive = activeFormats.includes(format);
         return (
@@ -54,7 +57,11 @@ const FloatingTextToolbar: React.FC<FloatingTextToolbarProps> = ({
             size="sm"
             onClick={() => onFormatText(format)}
             title={label}
-            className="h-8 w-8 p-0"
+            className={`h-8 w-8 p-0 transition-all duration-200 ${
+              isActive 
+                ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20" 
+                : "hover:bg-accent hover:text-accent-foreground"
+            }`}
           >
             <Icon className="h-4 w-4" />
           </Button>
