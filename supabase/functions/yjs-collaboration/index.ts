@@ -26,15 +26,23 @@ serve(async (req) => {
     });
   }
 
-  // Extract room ID from URL path
+  // Extract room ID from URL path - y-websocket standard
   const url = new URL(req.url);
-  const pathParts = url.pathname.split('/');
+  const pathParts = url.pathname.split('/').filter(Boolean);
   const roomId = pathParts[pathParts.length - 1] || 'default';
   
-  // Get auth token from headers or params
-  let token = headers.get('authorization')?.replace('Bearer ', '');
+  // Get auth token from WebSocket params (y-websocket style)
+  let token = url.searchParams.get('authorization');
+  if (token?.startsWith('Bearer ')) {
+    token = token.slice(7);
+  }
+  
+  // Also check authorization header as fallback
   if (!token) {
-    token = url.searchParams.get('authorization')?.replace('Bearer ', '');
+    const authHeader = headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
   }
 
   // Upgrade WebSocket first

@@ -4,13 +4,15 @@ import {
   $isRangeSelection,
   FORMAT_TEXT_COMMAND,
   TextFormatType,
+  UNDO_COMMAND,
+  REDO_COMMAND,
 } from 'lexical';
 import { $isHeadingNode, $createHeadingNode, HeadingTagType } from '@lexical/rich-text';
 import {
   INSERT_UNORDERED_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND,
 } from '@lexical/list';
-import { Doc } from 'yjs';
+import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { 
   LexicalComposer,
@@ -18,7 +20,6 @@ import {
 } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
@@ -72,7 +73,7 @@ const editorTheme = {
   },
 };
 
-// Editor configuration
+// Editor configuration - no HistoryPlugin as CollaborationPlugin handles history
 const editorConfig: InitialConfigType = {
   namespace: 'CleanLexicalEditor',
   nodes: [HeadingNode, LinkNode, LexicalListNode, ListItemNode, CodeNode],
@@ -145,7 +146,7 @@ function EditorToolbar() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => editor.dispatchCommand('UNDO_COMMAND' as any, undefined)}
+        onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}
         className="h-8 w-8 p-0"
         title="Rückgängig"
       >
@@ -154,7 +155,7 @@ function EditorToolbar() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => editor.dispatchCommand('REDO_COMMAND' as any, undefined)}
+        onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)}
         className="h-8 w-8 p-0"
         title="Wiederholen"
       >
@@ -248,12 +249,22 @@ function EditorToolbar() {
   );
 }
 
-// Simple Collaboration Awareness Display Component
+// Simplified Collaboration Awareness Display
 function CollaborationAwareness() {
+  const { yjsDocMap } = useCollaborationContext();
+  const [connectedUsers, setConnectedUsers] = useState<number>(0);
+
+  useEffect(() => {
+    // Simple connection counter
+    setConnectedUsers(yjsDocMap.size > 0 ? 1 : 0);
+  }, [yjsDocMap]);
+
   return (
     <div className="flex items-center gap-2 px-2">
       <Users className="h-4 w-4 text-muted-foreground" />
-      <span className="text-sm text-muted-foreground">Online</span>
+      <span className="text-sm text-muted-foreground">
+        {connectedUsers > 0 ? `${connectedUsers} connected` : 'Connecting...'}
+      </span>
     </div>
   );
 }
@@ -276,29 +287,34 @@ export function CleanLexicalEditor({
     );
   }
 
-  // Simple provider factory following official Lexical/Yjs documentation
-  const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Doc>) => {
-    const doc = new Doc();
+  // Provider factory following official Lexical/Yjs documentation
+  const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
+    const doc = new Y.Doc();
     yjsDocMap.set(id, doc);
     
-    // Create WebSocket provider with authentication
-    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/functions/v1/yjs-collaboration`;
-    const provider = new WebsocketProvider(wsUrl, id, doc, { 
-      params: { 
-        token: session?.access_token || ''
+    // Create WebSocket provider - follow y-websocket standards
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/functions/v1/yjs-collaboration/${id}`;
+    
+    const provider = new WebsocketProvider(wsUrl, id, doc, {
+      // Pass auth token in WebSocket params per y-websocket docs
+      params: {
+        authorization: `Bearer ${session?.access_token || ''}`
       }
     });
     
-    // Set user awareness info
+    // Set user awareness info according to Yjs docs
     if (provider.awareness && session?.user) {
       provider.awareness.setLocalStateField('user', {
         name: session.user.email || 'Anonymous',
-        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`
+        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`,
+        clientId: doc.clientID
       });
     }
     
-    return provider as any;
-  }, [session?.access_token, session?.user]);
+    return provider;
+  }, [session?.access_token, session?.user]) as any;
 
   return (
     <LexicalComposer initialConfig={editorConfig}>
