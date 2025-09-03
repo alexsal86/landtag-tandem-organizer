@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { $getRoot } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -15,11 +15,12 @@ import { ListNode, ListItemNode } from '@lexical/list';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { LinkNode, AutoLinkNode } from '@lexical/link';
 import * as Y from 'yjs';
-import { useCollaboration } from '@/contexts/CollaborationContext';
+import { CollaborationContext } from '@/contexts/CollaborationContext';
 import { useCollaborationPersistence } from '@/hooks/useCollaborationPersistence';
 import ToolbarPlugin from './lexical/ToolbarPlugin';
 import FloatingTextToolbar from './FloatingTextToolbar';
 import CollaborationStatus from './CollaborationStatus';
+import { AlertTriangle } from 'lucide-react';
 
 const theme = {
   ltr: 'ltr',
@@ -66,17 +67,33 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
 }) => {
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
   const [formatCommand, setFormatCommand] = useState<string>('');
+  const [collaborationError, setCollaborationError] = useState<string | null>(null);
   
-  // Use collaboration context
+  // Use context directly with null check - this prevents the error
+  const collaborationContext = useContext(CollaborationContext);
+  
+  // Default fallback values when context is not available
   const {
-    yDoc,
-    provider,
-    isConnected,
-    users: collaborationUsers,
-    currentUser,
-    initializeCollaboration,
-    destroyCollaboration
-  } = useCollaboration();
+    yDoc = null,
+    provider = null,
+    isConnected = false,
+    users: collaborationUsers = [],
+    currentUser = null,
+    initializeCollaboration = () => {},
+    destroyCollaboration = () => {},
+    isReady = false
+  } = collaborationContext || {};
+
+  // Show warning if collaboration is enabled but context is not available
+  const collaborationAvailable = enableCollaboration && collaborationContext && isReady;
+  
+  useEffect(() => {
+    if (enableCollaboration && !collaborationContext) {
+      setCollaborationError('Kollaboration nicht verfügbar - Editor läuft im Standalone-Modus');
+    } else {
+      setCollaborationError(null);
+    }
+  }, [enableCollaboration, collaborationContext]);
 
   const handleFormatText = (format: string) => {
     setFormatCommand(format);
@@ -91,9 +108,9 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     debounceMs: 2000
   });
 
-  // Initialize collaboration when enabled
+  // Initialize collaboration when enabled and available
   useEffect(() => {
-    if (enableCollaboration && documentId) {
+    if (collaborationAvailable && documentId) {
       console.log('Initializing collaboration for document:', documentId);
       initializeCollaboration(documentId);
       
@@ -102,16 +119,16 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
         destroyCollaboration();
       };
     }
-  }, [enableCollaboration, documentId]); // Removed functions from dependency array
+  }, [collaborationAvailable, documentId]); // Use collaborationAvailable instead
 
   // Load document state when Y.Doc is ready
   useEffect(() => {
-    if (yDoc && documentId && enableCollaboration) {
+    if (yDoc && documentId && collaborationAvailable) {
       loadDocumentState(yDoc).then(() => {
         console.log('Document state loaded');
       });
     }
-  }, [yDoc, documentId, enableCollaboration]); // Removed loadDocumentState from dependency array
+  }, [yDoc, documentId, collaborationAvailable]); // Use collaborationAvailable instead
 
   // Provider factory for Lexical CollaborationPlugin
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
@@ -169,8 +186,18 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           />
         )}
         
+        {/* Collaboration Error Warning */}
+        {collaborationError && (
+          <div className="p-3 border-b border-warning/20 bg-warning/10">
+            <div className="flex items-center gap-2 text-warning">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm">{collaborationError}</span>
+            </div>
+          </div>
+        )}
+        
         {/* Collaboration Status */}
-        {enableCollaboration && documentId && (
+        {collaborationAvailable && documentId && (
           <div className="p-3 border-b border-border bg-muted/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -214,7 +241,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           {!enableCollaboration && <HistoryPlugin />}
           <ListPlugin />
           <LinkPlugin />
-          {enableCollaboration && documentId && provider && yDoc && (
+          {collaborationAvailable && documentId && provider && yDoc && (
             <CollaborationPlugin
               id={`knowledge-doc-${documentId}`}
               providerFactory={providerFactory}

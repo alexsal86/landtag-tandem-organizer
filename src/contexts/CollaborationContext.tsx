@@ -18,9 +18,12 @@ interface CollaborationContextValue {
   currentUser: CollaborationUser | null;
   initializeCollaboration: (documentId: string) => void;
   destroyCollaboration: () => void;
+  isReady: boolean;
 }
 
 const CollaborationContext = createContext<CollaborationContextValue | null>(null);
+
+export { CollaborationContext };
 
 const getWebSocketUrl = () => {
   // Use localhost for development, production URL for production
@@ -43,6 +46,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
   const [isConnected, setIsConnected] = useState(false);
   const [users, setUsers] = useState<CollaborationUser[]>([]);
   const [currentUser, setCurrentUser] = useState<CollaborationUser | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
   // Set up current user
   useEffect(() => {
@@ -186,6 +190,11 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     };
   }, [destroyCollaboration]);
 
+  // Set up isReady when provider is available
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
+
   const value: CollaborationContextValue = {
     yDoc,
     provider,
@@ -193,7 +202,8 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     users,
     currentUser,
     initializeCollaboration,
-    destroyCollaboration
+    destroyCollaboration,
+    isReady
   };
 
   console.log('🚀 CollaborationProvider providing context:', { 
