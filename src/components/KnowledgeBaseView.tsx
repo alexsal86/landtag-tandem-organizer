@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import LexicalEditor from '@/components/LexicalEditor';
 
 
 interface KnowledgeDocument {
@@ -550,7 +551,44 @@ const KnowledgeBaseView = () => {
         )}
       </div>
 
-      
+      {/* Document Editor */}
+      {selectedDocument && isEditorOpen && (
+        <div className="flex-1 flex flex-col">
+          <div className="border-b border-border p-4 bg-card/50 backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">{selectedDocument.title}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {getCategoryLabel(selectedDocument.category)} • {formatDate(selectedDocument.updated_at)}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsEditorOpen(false);
+                  setSelectedDocument(null);
+                  setIsSidebarCollapsed(false);
+                  navigate('/knowledge');
+                }}
+              >
+                Schließen
+              </Button>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-4">
+            <LexicalEditor
+              initialContent={selectedDocument.content}
+              onChange={(content) => {
+                // Handle content changes here
+                console.log('Content changed:', content);
+              }}
+              placeholder="Beginnen Sie zu schreiben..."
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

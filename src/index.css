@@ -241,3 +241,25 @@ All colors MUST be HSL.
     padding: 0.25rem 0 0.25rem 0.25rem !important;
   }
 }
+
+/* Lexical Editor Styles */
+.editor-container {
+  @apply relative w-full min-h-[400px] max-w-none;
+}
+
+.editor-inner {
+  @apply relative;
+}
+
+.editor-input {
+  @apply min-h-[400px] w-full resize-none text-sm leading-relaxed p-4 border-0 outline-none;
+  font-family: inherit;
+}
+
+.editor-placeholder {
+  @apply absolute top-4 left-4 text-muted-foreground pointer-events-none select-none;
+}
+
+.editor-paragraph {
+  @apply my-2;
+}
