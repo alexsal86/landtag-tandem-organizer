@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import LexicalEditor from '@/components/LexicalEditor';
+import { CollaborationProvider } from '@/contexts/CollaborationContext';
 
 
 interface KnowledgeDocument {
@@ -641,39 +642,41 @@ const KnowledgeBaseView = () => {
           
           <div className="flex-1 p-4">
             <div className="border rounded-lg min-h-[400px]">
-              <LexicalEditor
-                key={selectedDocument.id} // Force re-mount when document changes for proper collaboration
-                documentId={selectedDocument.id}
-                enableCollaboration={true}
-                initialContent={selectedDocument.content}
-                showToolbar={true}
-                onChange={async (content) => {
-                  // Auto-save document content only when not in anonymous mode
-                  if (anonymousMode) {
-                    console.log('Anonymous mode: content changed but not saving to database');
-                    return;
-                  }
-                  
-                  try {
-                    const { error } = await supabase
-                      .from('knowledge_documents')
-                      .update({ 
-                        content,
-                        updated_at: new Date().toISOString()
-                      })
-                      .eq('id', selectedDocument.id);
-                    
-                    if (error) {
-                      console.error('Error auto-saving document:', error);
-                    } else {
-                      console.log('Document auto-saved');
+              <CollaborationProvider>
+                <LexicalEditor
+                  key={selectedDocument.id} // Force re-mount when document changes for proper collaboration
+                  documentId={selectedDocument.id}
+                  enableCollaboration={true}
+                  initialContent={selectedDocument.content}
+                  showToolbar={true}
+                  onChange={async (content) => {
+                    // Auto-save document content only when not in anonymous mode
+                    if (anonymousMode) {
+                      console.log('Anonymous mode: content changed but not saving to database');
+                      return;
                     }
-                  } catch (error) {
-                    console.error('Error in auto-save:', error);
-                  }
-                }}
-                placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
-              />
+                    
+                    try {
+                      const { error } = await supabase
+                        .from('knowledge_documents')
+                        .update({ 
+                          content,
+                          updated_at: new Date().toISOString()
+                        })
+                        .eq('id', selectedDocument.id);
+                      
+                      if (error) {
+                        console.error('Error auto-saving document:', error);
+                      } else {
+                        console.log('Document auto-saved');
+                      }
+                    } catch (error) {
+                      console.error('Error in auto-save:', error);
+                    }
+                  }}
+                  placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
+                />
+              </CollaborationProvider>
             </div>
           </div>
         </div>
