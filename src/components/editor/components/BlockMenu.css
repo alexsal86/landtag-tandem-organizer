@@ -18,3 +18,12 @@
   height: 4px;
   pointer-events: none;
 }
+
+/* Debug: Make block menu always visible temporarily */
+.lexical-editor .ContentEditable__root {
+  position: relative;
+}
+
+.lexical-editor .ContentEditable__root > * {
+  position: relative;
+}

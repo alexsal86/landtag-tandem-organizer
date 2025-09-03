@@ -101,9 +101,7 @@ import { CollapsiblePlugin } from './editor/plugins/CollapsiblePlugin';
 import { TextColorPlugin } from './editor/plugins/TextColorPlugin';
 import { TextAlignmentPlugin } from './editor/plugins/TextAlignmentPlugin';
 import { ClearFormattingPlugin } from './editor/plugins/ClearFormattingPlugin';
-import { DraggableBlockPlugin } from './editor/plugins/DraggableBlockPlugin';
-import { BlockMenu } from './editor/components/BlockMenu';
-import { DropTargetLine } from './editor/components/DropTargetLine';
+import { DraggableMenuWrapper } from './editor/components/DraggableMenuWrapper';
 
 // Component props interface
 interface LexicalYjsEditorProps {
@@ -687,6 +685,7 @@ export function LexicalYjsEditor({
   const contentEditableRef = useRef<HTMLDivElement>(null);
   const blockMenuRef = useRef<HTMLDivElement>(null);
   const targetLineRef = useRef<HTMLDivElement>(null);
+  const [anchorElem, setAnchorElem] = useState<HTMLElement | null>(null);
 
   const initializeYjsDoc = useCallback(() => {
     if (!yjsDocRef.current) {
@@ -706,7 +705,20 @@ export function LexicalYjsEditor({
 
   useEffect(() => {
     initializeYjsDoc();
+    
+    // Set anchor element when contentEditableRef is available
+    if (contentEditableRef.current) {
+      console.log('Setting anchor element:', contentEditableRef.current);
+      setAnchorElem(contentEditableRef.current);
+    }
   }, [initializeYjsDoc]);
+
+  // Update anchor element when ref changes
+  useEffect(() => {
+    if (contentEditableRef.current && !anchorElem) {
+      setAnchorElem(contentEditableRef.current);
+    }
+  }, [anchorElem]);
 
   const isOnBlockMenu = (element: HTMLElement): boolean => {
     return blockMenuRef.current?.contains(element) || false;
@@ -717,12 +729,12 @@ export function LexicalYjsEditor({
       <LexicalComposer initialConfig={initialConfig}>
         {!readOnly && <EditorToolbar />}
         <div className="relative group min-h-[400px]">
-          <div className="relative h-full">
+          <div className="relative h-full editor-container">
             <RichTextPlugin
               contentEditable={
                 <ContentEditable 
                   ref={contentEditableRef}
-                  className="min-h-[400px] p-4 outline-none focus:outline-none resize-none overflow-auto"
+                  className="ContentEditable__root min-h-[400px] p-4 outline-none focus:outline-none resize-none overflow-auto"
                   style={{ 
                     caretColor: 'rgb(5, 5, 5)',
                     paddingLeft: '44px', // Space for block handles
@@ -739,30 +751,10 @@ export function LexicalYjsEditor({
             />
           </div>
           
-          {/* Block handles - positioned outside content area */}
-          <div
-            ref={blockMenuRef}
-            className="absolute pointer-events-auto opacity-0 transition-opacity duration-200 z-10"
-            style={{
-              left: '4px',
-              top: '0px',
-            }}
-          >
-            <BlockMenu />
-          </div>
+          {/* Block handles will be positioned by DraggableMenuWrapper */}
           
-          {/* Draggable Block Plugin */}
-          <DraggableBlockPlugin
-            menuRef={blockMenuRef}
-            targetLineRef={targetLineRef}
-            menuComponent={
-              <BlockMenu />
-            }
-            targetLineComponent={
-              <DropTargetLine />
-            }
-            isOnMenu={isOnBlockMenu}
-          />
+          {/* Draggable Block Plugin Wrapper */}
+          <DraggableMenuWrapper contentEditableRef={contentEditableRef} />
         </div>
         <HistoryPlugin />
         {autoFocus && <AutoFocusPlugin />}
