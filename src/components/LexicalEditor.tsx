@@ -88,6 +88,9 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   // Show warning if collaboration is enabled but context is not available
   const collaborationAvailable = enableCollaboration && collaborationContext && isReady;
   
+  // Stabilize collaborationAvailable to prevent re-initialization loops
+  const [isInitialized, setIsInitialized] = useState(false);
+  
   useEffect(() => {
     if (enableCollaboration && !collaborationContext) {
       setCollaborationError('Kollaboration nicht verfügbar - Editor läuft im Standalone-Modus');
@@ -109,27 +112,29 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     debounceMs: 2000
   });
 
-  // Initialize collaboration when enabled and available
+  // Initialize collaboration ONCE when enabled and available
   useEffect(() => {
-    if (collaborationAvailable && documentId) {
+    if (collaborationAvailable && documentId && !isInitialized) {
       console.log('Initializing collaboration for document:', documentId);
       initializeCollaboration(documentId);
+      setIsInitialized(true);
       
       return () => {
         console.log('Cleaning up collaboration');
         destroyCollaboration();
+        setIsInitialized(false);
       };
     }
-  }, [collaborationAvailable, documentId]); // Use collaborationAvailable instead
+  }, [collaborationAvailable, documentId, isInitialized]); // Only depend on stable values
 
-  // Load document state when Y.Doc is ready
+  // Load document state when Y.Doc is ready and initialized
   useEffect(() => {
-    if (yDoc && documentId && collaborationAvailable) {
+    if (yDoc && documentId && isInitialized) {
       loadDocumentState(yDoc).then(() => {
         console.log('Document state loaded');
       });
     }
-  }, [yDoc, documentId, collaborationAvailable]); // Use collaborationAvailable instead
+  }, [yDoc, documentId, isInitialized]); // Use isInitialized instead of collaborationAvailable
 
   // Provider factory for Lexical CollaborationPlugin
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
