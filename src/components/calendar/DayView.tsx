@@ -312,7 +312,7 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                             // Multi-day event - extends to end of day
                             if (hour === startHour) {
                               const hoursToEndOfDay = 24 - hour;
-                              eventHeight = hoursToEndOfDay * 52 - 2; // Use 52px per hour
+                              eventHeight = hoursToEndOfDay * 60 - 2;
                             } else if (hour > startHour) {
                               // Don't render - covered by start hour
                               return null;
@@ -322,7 +322,7 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                           // Fallback to duration calculation
                           const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
                           if (hour === startHour) {
-                            eventHeight = Math.max((durationMinutes / 60) * 52, 20); // Use 52px per hour
+                            eventHeight = Math.max(durationMinutes, 58);
                           } else {
                             return null; // Don't render for other hours
                           }
@@ -340,7 +340,7 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                             if (hour === 0) {
                               // Show from start of day until end
                               const hoursSpanned = endHour + (endMinutes > 0 ? 1 : 0);
-                              eventHeight = Math.max(hoursSpanned * 52 - 2, 50); // Use 52px per hour
+                              eventHeight = Math.max(hoursSpanned * 60 - 2, 58);
                             } else if (hour > 0 && hour < endHour) {
                               // Don't render - covered by hour 0
                               return null;
@@ -351,7 +351,7 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                           } else {
                             // Event continues past today
                             if (hour === 0) {
-                              eventHeight = 24 * 52 - 2; // Full day with 52px per hour
+                              eventHeight = 24 * 60 - 2; // Full day
                             } else {
                               return null; // Don't render - covered by hour 0
                             }
@@ -366,16 +366,14 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                         if (eventDate === viewDate && hour === startHour) {
                           // Calculate exact position within the hour
                           const [startHours, startMinutes] = event.time.split(':').map(Number);
-                          // Account for 4px top padding and use 52px available content height
-                          topOffset = 4 + (startMinutes / 60) * 52; // Convert minutes to pixels within available space
+                          topOffset = (startMinutes / 60) * 60; // Convert minutes to pixels (60px per hour)
                           
                           if (event.endTime) {
                             const eventStart = new Date(event.date);
                             const eventEnd = new Date(event.endTime);
                             const durationMs = eventEnd.getTime() - eventStart.getTime();
                             const durationHours = durationMs / (1000 * 60 * 60);
-                            // Use 52px per hour (available content height) instead of 60px
-                            preciseHeight = Math.max(durationHours * 52, 20); // Minimum 20px height
+                            preciseHeight = Math.max(durationHours * 60, 20); // Minimum 20px height
                           }
                         }
 
