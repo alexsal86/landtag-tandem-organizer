@@ -7,7 +7,6 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $createParagraphNode, $createTextNode } from 'lexical';
-import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 
 const theme = {
   // Theme styling
@@ -75,7 +74,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
             placeholder={
               <div className="editor-placeholder">{placeholder}</div>
             }
-            ErrorBoundary={({ children }: { children: React.ReactNode }) => <div>{children}</div>}
+            ErrorBoundary={({ children }) => <div>{children}</div>}
           />
           <HistoryPlugin />
           <MyOnChangePlugin onChange={onChange} />
