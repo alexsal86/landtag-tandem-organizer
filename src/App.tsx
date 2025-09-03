@@ -23,7 +23,6 @@ import { TaskArchiveView } from "./components/TaskArchiveView";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import LexicalDemoPage from "./pages/LexicalDemoPage";
-import CalendarTest from "./pages/CalendarTest";
 
 const queryClient = new QueryClient();
 
@@ -65,7 +64,6 @@ const App = () => (
             <Route path="/poll-guest/:pollId" element={<PollGuest />} />
             <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
             <Route path="/lexical-demo" element={<LexicalDemoPage />} />
-            <Route path="/calendar-test" element={<CalendarTest />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             
             <Route path="*" element={<NotFound />} />
