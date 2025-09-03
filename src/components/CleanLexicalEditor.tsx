@@ -336,7 +336,6 @@ export function CleanLexicalEditor({
         shouldBootstrap={true}
       />
       
-      <HistoryPlugin />
       {autoFocus && <AutoFocusPlugin />}
       <LinkPlugin />
       <ListPlugin />
