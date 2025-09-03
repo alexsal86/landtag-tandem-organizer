@@ -101,11 +101,11 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     setTimeout(() => setFormatCommand(''), 10);
   };
 
-  // Set up persistence hook
+  // Set up persistence hook - only when we have valid parameters
   const { saveManual, loadDocumentState } = useCollaborationPersistence({
-    documentId,
+    documentId: documentId || undefined, // Ensure we don't pass empty string
     yDoc,
-    enableCollaboration,
+    enableCollaboration: enableCollaboration && !!documentId, // Only enable if we have documentId
     debounceMs: 2000
   });
 

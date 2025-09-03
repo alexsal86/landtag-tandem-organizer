@@ -26,11 +26,16 @@ export const useCollaborationPersistence = ({
   enableCollaboration,
   debounceMs = 5000
 }: UseCollaborationPersistenceProps) => {
+  console.log('🔍 useCollaborationPersistence called with:', { documentId, yDoc: !!yDoc, enableCollaboration });
   const { toast } = useToast();
 
   // Save document state to database
   const saveDocumentState = useCallback(async (doc: Y.Doc) => {
-    if (!documentId || !doc) return;
+    console.log('🔍 saveDocumentState called with:', { documentId, doc: !!doc });
+    if (!documentId || !doc) {
+      console.log('🚫 Skipping save - missing documentId or doc');
+      return;
+    }
 
     try {
       // Get the current document state as binary
@@ -39,6 +44,12 @@ export const useCollaborationPersistence = ({
       // Convert to base64 for database storage  
       const base64State = btoa(String.fromCharCode(...state));
       
+      console.log('🔍 About to call RPC with params:', { 
+        _document_id: documentId, 
+        _yjs_state: base64State?.substring(0, 50) + '...',
+        _snapshot_type: 'auto' 
+      });
+
       // Use function for creating snapshots with proper RLS checking
       const { data, error } = await supabase.rpc('create_knowledge_document_snapshot', {
         _document_id: documentId,
