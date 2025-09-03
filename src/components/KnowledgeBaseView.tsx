@@ -579,30 +579,15 @@ const KnowledgeBaseView = () => {
           
           <div className="flex-1 p-4">
             <LexicalEditor
+              key={selectedDocument.id}
               documentId={selectedDocument.id}
               enableCollaboration={true}
               initialContent={selectedDocument.content}
-              onChange={async (content) => {
-                // Auto-save document content to knowledge_documents table
-                try {
-                  const { error } = await supabase
-                    .from('knowledge_documents')
-                    .update({ 
-                      content,
-                      updated_at: new Date().toISOString()
-                    })
-                    .eq('id', selectedDocument.id);
-                  
-                  if (error) {
-                    console.error('Error auto-saving document:', error);
-                  } else {
-                    console.log('Document auto-saved');
-                  }
-                } catch (error) {
-                  console.error('Error in auto-save:', error);
-                }
-              }}
               placeholder="Beginnen Sie zu schreiben..."
+              showToolbar={true}
+              onChange={(content) => {
+                console.log('Document content changed:', content.length, 'characters');
+              }}
             />
           </div>
         </div>
