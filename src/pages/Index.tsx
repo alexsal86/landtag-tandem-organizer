@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigation } from "@/components/Navigation";
@@ -25,6 +25,7 @@ const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { documentId } = useParams();
   
   // Determine active section from URL
   const getActiveSectionFromPath = (pathname: string) => {
@@ -112,8 +113,8 @@ const Index = () => {
         console.log('Rendering DocumentsView');
         return <DocumentsView />;
       case "knowledge":
-        console.log('Rendering KnowledgeBaseView');
-        return <KnowledgeBaseView />;
+        console.log('Rendering KnowledgeBaseView with documentId:', documentId);
+        return <KnowledgeBaseView documentId={documentId} />;
       case "settings":
         console.log('Rendering SettingsView');
         return <SettingsView />;
