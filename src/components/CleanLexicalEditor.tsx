@@ -318,9 +318,9 @@ export function CleanLexicalEditor({
     );
   }
 
-  // Binding factory with improved WebSocket lifecycle management
-  const bindingFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
-    console.log('bindingFactory called with id:', id);
+  // Simple provider factory - exactly as per Lexical-Yjs documentation
+  const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
+    console.log('providerFactory called with id:', id);
     
     // Create or get the Yjs document
     let doc = yjsDocMap.get(id);
@@ -329,147 +329,26 @@ export function CleanLexicalEditor({
       yjsDocMap.set(id, doc);
     }
     
-    // Create WebSocket provider with improved lifecycle management
+    // Create simple WebSocket provider
     const provider = new WebsocketProvider(
       'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
       id,
-      doc,
-      {
-        connect: true,
-        resyncInterval: 5000,
-        // Add connection parameters for better reliability
-        params: {},
-        // Disable automatic reconnection initially to manage it manually
-        disableBc: false,
-        // WebSocket connection options
-        WebSocketPolyfill: undefined,
-        // Connection timeout
-        maxBackoffTime: 2500,
-      }
+      doc
     );
 
-    // Enhanced connection state tracking
-    let connectionState = 'connecting';
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
-
-    // Set user awareness with better error handling
-    const awareness = provider.awareness;
-    if (session?.user && awareness) {
-      try {
-        awareness.setLocalStateField('user', {
-          name: session.user.email || 'Anonymous',
-          color: '#' + Math.floor(Math.random() * 16777215).toString(16),
-          clientId: awareness.clientID,
-          timestamp: Date.now()
-        });
-        console.log('User awareness set successfully for:', session.user.email);
-      } catch (error) {
-        console.error('Failed to set user awareness:', error);
-      }
+    // Set user awareness
+    if (session?.user && provider.awareness) {
+      provider.awareness.setLocalStateField('user', {
+        name: session.user.email || 'Anonymous',
+        color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+      });
+      console.log('User awareness set for:', session.user.email);
     }
 
-    // Enhanced connection event handling
-    provider.on('status', ({ status }: { status: string }) => {
-      connectionState = status;
-      console.log('WebSocket provider status changed:', status, 'for document:', id);
-      
-      if (status === 'connected') {
-        reconnectAttempts = 0;
-        if (reconnectTimeout) {
-          clearTimeout(reconnectTimeout);
-          reconnectTimeout = null;
-        }
-        console.log('Successfully connected to collaboration server');
-      } else if (status === 'disconnected') {
-        console.log('Disconnected from collaboration server, will attempt reconnection');
-        handleReconnection();
-      }
-    });
-
-    provider.on('connection-error', (event: Event) => {
-      console.error('WebSocket connection error for document:', id, event);
-      handleReconnection();
-    });
-
-    // Add sync event listener (correct event name is 'sync', not 'synced')
-    provider.on('sync', (isSynced: boolean) => {
-      console.log('Document sync status:', isSynced ? 'synced' : 'not synced', 'for document:', id);
-    });
-
-    // Improved reconnection logic
-    const handleReconnection = () => {
-      if (reconnectAttempts >= maxReconnectAttempts) {
-        console.error('Max reconnection attempts reached for document:', id);
-        return;
-      }
-
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-      }
-
-      reconnectAttempts++;
-      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
-      
-      console.log(`Attempting reconnection ${reconnectAttempts}/${maxReconnectAttempts} in ${delay}ms for document:`, id);
-      
-      reconnectTimeout = setTimeout(() => {
-        try {
-          if (provider && provider.wsconnected === false) {
-            console.log('Manually reconnecting WebSocket for document:', id);
-            provider.connect();
-          }
-        } catch (error) {
-          console.error('Failed to reconnect WebSocket:', error);
-        }
-      }, delay);
-    };
-
-    // Store provider on doc for awareness access with enhanced cleanup
-    const docWithProvider = doc as Y.Doc & { 
-      provider: WebsocketProvider;
-      cleanup?: () => void;
-    };
-    docWithProvider.provider = provider;
+    // Store provider on doc for awareness access
+    (doc as any).provider = provider;
     
-    // Enhanced cleanup function
-    docWithProvider.cleanup = () => {
-      console.log('Cleaning up provider for document:', id);
-      
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-        reconnectTimeout = null;
-      }
-      
-      try {
-        // Remove all event listeners
-        provider.off('status', () => {});
-        provider.off('connection-error', () => {});
-        provider.off('sync', () => {});
-        
-        // Disconnect and destroy provider
-        if (provider.wsconnected) {
-          provider.disconnect();
-        }
-        provider.destroy();
-        
-        console.log('Provider cleanup completed for document:', id);
-      } catch (error) {
-        console.error('Error during provider cleanup:', error);
-      }
-    };
-
-    // Force initial connection attempt
-    setTimeout(() => {
-      if (!provider.wsconnected && connectionState !== 'connected') {
-        console.log('Forcing initial connection for document:', id);
-        provider.connect();
-      }
-    }, 100);
-
-    console.log('Created enhanced provider for document:', id, 'with lifecycle management');
-    
+    console.log('Created WebSocket provider for document:', id);
     return provider as unknown as Provider;
   }, [session?.user]);
 
@@ -505,7 +384,7 @@ export function CleanLexicalEditor({
       {/* CollaborationPlugin with corrected parameters */}
       <CollaborationPlugin
         id={documentId}
-        providerFactory={bindingFactory}
+        providerFactory={providerFactory}
         shouldBootstrap={true}
       />
       
