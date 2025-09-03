@@ -22,6 +22,7 @@ import DecisionResponse from "./pages/DecisionResponse";
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import LexicalDemoPage from "./pages/LexicalDemoPage";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/poll-guest/:pollId" element={<PollGuest />} />
             <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
+            <Route path="/lexical-demo" element={<LexicalDemoPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             
             <Route path="*" element={<NotFound />} />
