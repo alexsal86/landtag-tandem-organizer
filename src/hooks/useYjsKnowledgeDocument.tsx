@@ -46,13 +46,21 @@ export function useYjsKnowledgeDocument({
       if (document) {
         console.log('Document loaded successfully:', document.content?.length || 0, 'characters');
         
-         // Initialize Yjs document if state exists
+        // Initialize Yjs document if state exists
         if (document.yjs_state && yjsDocRef.current) {
           try {
-            // Convert base64 string to Uint8Array if needed
-            const yjsStateBytes = typeof document.yjs_state === 'string' 
-              ? new Uint8Array(Buffer.from(document.yjs_state, 'base64'))
-              : new Uint8Array(document.yjs_state);
+            // Handle Yjs state (could be base64 string or Uint8Array)
+            let yjsStateBytes: Uint8Array;
+            if (typeof document.yjs_state === 'string') {
+              // Convert base64 string to Uint8Array
+              const binaryString = atob(document.yjs_state);
+              yjsStateBytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                yjsStateBytes[i] = binaryString.charCodeAt(i);
+              }
+            } else {
+              yjsStateBytes = new Uint8Array(document.yjs_state);
+            }
             applyUpdate(yjsDocRef.current, yjsStateBytes);
             console.log('useYjsKnowledgeDocument: Yjs state applied');
           } catch (yjsError) {
@@ -85,7 +93,9 @@ export function useYjsKnowledgeDocument({
       let yjsStateData = null;
       if (yjsDocRef.current) {
         const stateUpdate = encodeStateAsUpdate(yjsDocRef.current);
-        yjsStateData = Buffer.from(stateUpdate).toString('base64');
+        // Convert Uint8Array to base64 string for storage
+        const binaryString = Array.from(stateUpdate, byte => String.fromCharCode(byte)).join('');
+        yjsStateData = btoa(binaryString);
       }
       
       const updateData: any = {
@@ -156,10 +166,18 @@ export function useYjsKnowledgeDocument({
           // Initialize Yjs document if state exists
           if (document.yjs_state && yjsDocRef.current) {
             try {
-              // Convert base64 string to Uint8Array if needed
-              const yjsStateBytes = typeof document.yjs_state === 'string' 
-                ? new Uint8Array(Buffer.from(document.yjs_state, 'base64'))
-                : new Uint8Array(document.yjs_state);
+              // Handle Yjs state (could be base64 string or Uint8Array)
+              let yjsStateBytes: Uint8Array;
+              if (typeof document.yjs_state === 'string') {
+                // Convert base64 string to Uint8Array
+                const binaryString = atob(document.yjs_state);
+                yjsStateBytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                  yjsStateBytes[i] = binaryString.charCodeAt(i);
+                }
+              } else {
+                yjsStateBytes = new Uint8Array(document.yjs_state);
+              }
               applyUpdate(yjsDocRef.current, yjsStateBytes);
               console.log('useYjsKnowledgeDocument: Yjs state applied');
             } catch (yjsError) {
