@@ -7,6 +7,7 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $createParagraphNode, $createTextNode } from 'lexical';
+import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 
 const theme = {
   // Theme styling
@@ -53,6 +54,10 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     namespace: 'KnowledgeBaseEditor',
     theme,
     onError,
+    nodes: [
+      HeadingNode,
+      QuoteNode,
+    ],
     editorState: () => {
       const root = $getRoot();
       if (root.getFirstChild() === null && initialContent) {
