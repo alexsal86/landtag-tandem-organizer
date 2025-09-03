@@ -57,23 +57,14 @@ export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
       const wsUrl = 'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration';
       
       // Create WebSocket provider with authentication
+      const wsUrlWithAuth = `${wsUrl}?room=${encodeURIComponent(documentId)}&token=${encodeURIComponent(session.access_token)}`;
+      
+      console.log('useYjsCollaboration: Connecting to WebSocket URL:', wsUrlWithAuth.replace(session.access_token, '[TOKEN]'));
+      
       const provider = new WebsocketProvider(
-        wsUrl,
+        wsUrlWithAuth,
         documentId,
-        doc,
-        {
-          params: {
-            room: documentId
-          },
-          WebSocketPolyfill: class extends WebSocket {
-            constructor(url: string | URL, protocols?: string | string[]) {
-              // Add authorization header via URL params since WebSocket doesn't support headers directly
-              const urlWithAuth = new URL(url);
-              urlWithAuth.searchParams.set('authorization', `Bearer ${session.access_token}`);
-              super(urlWithAuth.toString(), protocols);
-            }
-          }
-        }
+        doc
       );
       
       providerRef.current = provider;
@@ -105,14 +96,29 @@ export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
         });
       }
       
-      // Wait for provider to connect
+      // Wait for provider to connect with better error handling
       provider.on('status', (event: any) => {
         console.log('WebSocket provider status:', event.status);
         if (event.status === 'connected') {
           setIsInitialized(true);
           console.log('useYjsCollaboration: Connected and initialized successfully');
+        } else if (event.status === 'disconnected') {
+          setIsInitialized(false);
+          console.log('useYjsCollaboration: Disconnected');
         }
       });
+
+      provider.on('connection-error', (error: any) => {
+        console.error('WebSocket connection error:', error);
+        setIsInitialized(false);
+      });
+
+      // Set connected status initially to prevent indefinite loading
+      setTimeout(() => {
+        if (provider.wsconnected) {
+          setIsInitialized(true);
+        }
+      }, 1000);
       
       // Load from localStorage as fallback
       loadFromLocalStorage();

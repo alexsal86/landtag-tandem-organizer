@@ -26,11 +26,13 @@ serve(async (req) => {
     });
   }
 
-  // Extract auth token from headers
-  const authHeader = headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "");
+  // Extract room ID and auth token from URL
+  const url = new URL(req.url);
+  const roomId = url.searchParams.get('room') || 'default';
+  const token = url.searchParams.get('token');
 
   if (!token) {
+    console.log('No token provided');
     return new Response("Authentication required", { 
       status: 401,
       headers: corsHeaders 
@@ -53,13 +55,7 @@ serve(async (req) => {
     });
   }
 
-  console.log('User authenticated:', user.email);
-
-  // Extract room ID from URL
-  const url = new URL(req.url);
-  const roomId = url.searchParams.get('room') || 'default';
-  
-  console.log('WebSocket connection for room:', roomId);
+  console.log('User authenticated:', user.email, 'for room:', roomId);
 
   const { socket, response } = Deno.upgradeWebSocket(req, {
     headers: corsHeaders
