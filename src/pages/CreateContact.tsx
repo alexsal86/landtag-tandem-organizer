@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact } from "@/lib/utils";
+import { DuplicateWarning } from "@/components/DuplicateWarning";
 
 interface ContactFormData {
   contact_type: "person" | "organization";
@@ -84,10 +86,16 @@ export function CreateContact() {
   });
 
   const [organizations, setOrganizations] = useState<any[]>([]);
+  const [existingContacts, setExistingContacts] = useState<Contact[]>([]);
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [emailValidationError, setEmailValidationError] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchOrganizations();
+      fetchExistingContacts();
     }
   }, [user]);
 
@@ -106,13 +114,70 @@ export function CreateContact() {
     }
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fetchExistingContacts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, name, email, phone, organization')
+        .order('name');
+
+      if (error) throw error;
+      setExistingContacts(data?.map(contact => ({
+        id: contact.id,
+        name: contact.name,
+        email: contact.email,
+        phone: contact.phone,
+        organization: contact.organization,
+      })) || []);
+    } catch (error) {
+      console.error('Error fetching existing contacts:', error);
+    }
+  };
+
+  const validateEmail = (email: string) => {
+    if (!email) {
+      setEmailValidationError('');
+      return true;
+    }
+    
+    if (!isValidEmail(email)) {
+      setEmailValidationError('Bitte geben Sie eine gültige E-Mail-Adresse ein (z.B. name@beispiel.de)');
+      return false;
+    }
+    
+    setEmailValidationError('');
+    return true;
+  };
+
+  const checkForDuplicates = (contactData: Omit<Contact, 'id'>) => {
+    const matches = findPotentialDuplicates(contactData, existingContacts);
+    setDuplicateMatches(matches);
+    return matches;
+  };
 
   const handleInputChange = (field: keyof ContactFormData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+    
+    // Validate email on change
+    if (field === 'email') {
+      validateEmail(value);
+    }
+    
+    // Check for duplicates when key fields change
+    if (['name', 'email', 'phone', 'organization'].includes(field)) {
+      const updatedData = { ...formData, [field]: value };
+      if (updatedData.name) { // Only check if name is present
+        checkForDuplicates({
+          name: updatedData.name,
+          email: updatedData.email,
+          phone: updatedData.phone,
+          organization: updatedData.organization,
+        });
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,6 +198,30 @@ export function CreateContact() {
       return;
     }
 
+    // Validate email if provided
+    if (formData.email && !validateEmail(formData.email)) {
+      return;
+    }
+
+    // Check for duplicates before saving
+    const currentContactData = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      organization: formData.organization,
+    };
+    
+    const duplicates = checkForDuplicates(currentContactData);
+    
+    if (duplicates.length > 0 && !showDuplicateWarning) {
+      setShowDuplicateWarning(true);
+      return;
+    }
+
+    await performSave();
+  };
+
+  const performSave = async () => {
     if (!user) {
       toast({
         title: "Fehler",
@@ -199,6 +288,7 @@ export function CreateContact() {
       });
     } finally {
       setIsSubmitting(false);
+      setShowDuplicateWarning(false);
     }
   };
 
@@ -279,6 +369,19 @@ export function CreateContact() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Duplicate Warning */}
+              {duplicateMatches.length > 0 && (
+                <DuplicateWarning
+                  duplicates={duplicateMatches}
+                  onContinueAnyway={performSave}
+                  onCancel={() => {
+                    setShowDuplicateWarning(false);
+                    setDuplicateMatches([]);
+                  }}
+                  showActions={showDuplicateWarning}
+                />
+              )}
 
               {/* Grunddaten */}
               <Card className="bg-card shadow-card border-border">
@@ -412,7 +515,11 @@ export function CreateContact() {
                         value={formData.email}
                         onChange={(e) => handleInputChange("email", e.target.value)}
                         required={formData.contact_type === 'person'}
+                        className={emailValidationError ? 'border-destructive' : ''}
                       />
+                      {emailValidationError && (
+                        <p className="text-sm text-destructive mt-1">{emailValidationError}</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="phone">Telefonnummer</Label>

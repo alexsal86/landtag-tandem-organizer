@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact as UtilContact } from "@/lib/utils";
+import { DuplicateWarning } from "@/components/DuplicateWarning";
 
 interface Contact {
   id: string;
@@ -49,12 +51,17 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [useCustomOrganization, setUseCustomOrganization] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [existingContacts, setExistingContacts] = useState<UtilContact[]>([]);
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [emailValidationError, setEmailValidationError] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
     if (contact.contact_type === "person") {
       fetchOrganizations();
     }
+    fetchExistingContacts();
   }, [contact.contact_type]);
 
   useEffect(() => {
@@ -79,8 +86,75 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
   };
 
+  const fetchExistingContacts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, name, email, phone, organization')
+        .neq('id', contact.id) // Exclude current contact being edited
+        .order('name');
+
+      if (error) throw error;
+      setExistingContacts(data?.map(c => ({
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        organization: c.organization,
+      })) || []);
+    } catch (error) {
+      console.error('Error fetching existing contacts:', error);
+    }
+  };
+
+  const validateEmail = (email: string) => {
+    if (!email) {
+      setEmailValidationError('');
+      return true;
+    }
+    
+    if (!isValidEmail(email)) {
+      setEmailValidationError('Bitte geben Sie eine gültige E-Mail-Adresse ein (z.B. name@beispiel.de)');
+      return false;
+    }
+    
+    setEmailValidationError('');
+    return true;
+  };
+
+  const checkForDuplicates = (contactData: Omit<UtilContact, 'id'>) => {
+    const matches = findPotentialDuplicates(contactData, existingContacts);
+    setDuplicateMatches(matches);
+    return matches;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate email if provided
+    if (formData.email && !validateEmail(formData.email)) {
+      return;
+    }
+
+    // Check for duplicates before saving
+    const currentContactData = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      organization: formData.organization,
+    };
+    
+    const duplicates = checkForDuplicates(currentContactData);
+    
+    if (duplicates.length > 0 && !showDuplicateWarning) {
+      setShowDuplicateWarning(true);
+      return;
+    }
+
+    await performUpdate();
+  };
+
+  const performUpdate = async () => {
     setLoading(true);
 
     try {
@@ -106,15 +180,47 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       });
     } finally {
       setLoading(false);
+      setShowDuplicateWarning(false);
     }
   };
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Validate email on change
+    if (field === 'email') {
+      validateEmail(value);
+    }
+    
+    // Check for duplicates when key fields change
+    if (['name', 'email', 'phone', 'organization'].includes(field)) {
+      const updatedData = { ...formData, [field]: value };
+      if (updatedData.name) { // Only check if name is present
+        checkForDuplicates({
+          name: updatedData.name,
+          email: updatedData.email,
+          phone: updatedData.phone,
+          organization: updatedData.organization,
+        });
+      }
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Duplicate Warning */}
+      {duplicateMatches.length > 0 && (
+        <DuplicateWarning
+          duplicates={duplicateMatches}
+          onContinueAnyway={performUpdate}
+          onCancel={() => {
+            setShowDuplicateWarning(false);
+            setDuplicateMatches([]);
+          }}
+          showActions={showDuplicateWarning}
+        />
+      )}
+
       {/* Basic Information */}
       <Card>
         <CardHeader>
@@ -281,7 +387,11 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
               type="email"
               value={formData.email || ''}
               onChange={(e) => handleChange('email', e.target.value)}
+              className={emailValidationError ? 'border-destructive' : ''}
             />
+            {emailValidationError && (
+              <p className="text-sm text-destructive mt-1">{emailValidationError}</p>
+            )}
           </div>
 
           <div>
