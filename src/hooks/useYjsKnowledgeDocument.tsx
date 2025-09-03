@@ -25,15 +25,9 @@ export function useYjsKnowledgeDocument({
       const doc = new Doc({ guid: documentId });
       yjsDocRef.current = doc;
       
-      // Create WebSocket provider for collaboration
-      const wsUrl = 'wss://yjs-websocket-server.fly.dev'; // Public Yjs server
-      const provider = new WebsocketProvider(wsUrl, `knowledge-doc-${documentId}`, doc);
-      providerRef.current = provider;
-      
-      // Add provider to doc for access in components
-      (doc as any).provider = provider;
-      
-      console.log('useYjsKnowledgeDocument: Document and provider initialized');
+      // For now, don't create WebSocket provider to avoid connection issues
+      // We'll implement proper Supabase-based collaboration later
+      console.log('useYjsKnowledgeDocument: Document initialized without WebSocket provider');
     }
   }, [documentId]);
 
