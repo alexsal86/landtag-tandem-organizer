@@ -85,21 +85,16 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     isReady = false
   } = collaborationContext || {};
 
-  // Show warning if collaboration is enabled but context is not available or no user
-  const collaborationAvailable = enableCollaboration && collaborationContext && isReady && currentUser;
-  
-  // Stabilize collaborationAvailable to prevent re-initialization loops
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Show warning if collaboration is enabled but context is not available
+  const collaborationAvailable = enableCollaboration && collaborationContext && isReady;
   
   useEffect(() => {
     if (enableCollaboration && !collaborationContext) {
       setCollaborationError('Kollaboration nicht verfügbar - Editor läuft im Standalone-Modus');
-    } else if (enableCollaboration && collaborationContext && !currentUser) {
-      setCollaborationError('Benutzer-Anmeldung erforderlich - Editor läuft im Standalone-Modus');
     } else {
       setCollaborationError(null);
     }
-  }, [enableCollaboration, collaborationContext, currentUser]);
+  }, [enableCollaboration, collaborationContext]);
 
   const handleFormatText = (format: string) => {
     setFormatCommand(format);
@@ -114,29 +109,27 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     debounceMs: 2000
   });
 
-  // Initialize collaboration ONCE when enabled and available
+  // Initialize collaboration when enabled and available
   useEffect(() => {
-    if (collaborationAvailable && documentId && !isInitialized) {
+    if (collaborationAvailable && documentId) {
       console.log('Initializing collaboration for document:', documentId);
       initializeCollaboration(documentId);
-      setIsInitialized(true);
       
       return () => {
         console.log('Cleaning up collaboration');
         destroyCollaboration();
-        setIsInitialized(false);
       };
     }
-  }, [collaborationAvailable, documentId, isInitialized, initializeCollaboration, destroyCollaboration]);
+  }, [collaborationAvailable, documentId]); // Use collaborationAvailable instead
 
-  // Load document state when Y.Doc is ready and initialized
+  // Load document state when Y.Doc is ready
   useEffect(() => {
-    if (yDoc && documentId && isInitialized) {
+    if (yDoc && documentId && collaborationAvailable) {
       loadDocumentState(yDoc).then(() => {
         console.log('Document state loaded');
       });
     }
-  }, [yDoc, documentId, isInitialized, loadDocumentState]);
+  }, [yDoc, documentId, collaborationAvailable]); // Use collaborationAvailable instead
 
   // Provider factory for Lexical CollaborationPlugin
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {

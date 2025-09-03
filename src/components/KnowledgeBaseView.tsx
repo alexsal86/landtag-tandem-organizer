@@ -551,7 +551,7 @@ const KnowledgeBaseView = () => {
         )}
       </div>
 
-      {/* Enhanced Document Editor with Demo Features */}
+      {/* Document Editor */}
       {selectedDocument && isEditorOpen && (
         <div className="flex-1 flex flex-col">
           <div className="border-b border-border p-4 bg-card/50 backdrop-blur-sm">
@@ -562,57 +562,48 @@ const KnowledgeBaseView = () => {
                   {getCategoryLabel(selectedDocument.category)} • {formatDate(selectedDocument.updated_at)}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="default" className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  Kollaboration aktiv
-                </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setIsEditorOpen(false);
-                    setSelectedDocument(null);
-                    setIsSidebarCollapsed(false);
-                    navigate('/knowledge');
-                  }}
-                >
-                  Schließen
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsEditorOpen(false);
+                  setSelectedDocument(null);
+                  setIsSidebarCollapsed(false);
+                  navigate('/knowledge');
+                }}
+              >
+                Schließen
+              </Button>
             </div>
           </div>
           
           <div className="flex-1 p-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Kollaborativer Editor: {selectedDocument.title}
-                </CardTitle>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <div>• Änderungen werden in Echtzeit synchronisiert</div>
-                  <div>• Cursor-Positionen anderer Benutzer werden angezeigt</div>
-                  <div>• Automatisches Speichern alle paar Sekunden</div>
-                  <div>• Vollständige Rich-Text Formatierung verfügbar</div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg min-h-[400px]">
-                  <LexicalEditor
-                    key={selectedDocument.id}
-                    documentId={selectedDocument.id}
-                    enableCollaboration={true}
-                    initialContent=""
-                    placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
-                    showToolbar={true}
-                    onChange={(content) => {
-                      console.log('Document content changed:', content.length, 'characters');
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <LexicalEditor
+              documentId={selectedDocument.id}
+              enableCollaboration={true}
+              initialContent={selectedDocument.content}
+              onChange={async (content) => {
+                // Auto-save document content to knowledge_documents table
+                try {
+                  const { error } = await supabase
+                    .from('knowledge_documents')
+                    .update({ 
+                      content,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', selectedDocument.id);
+                  
+                  if (error) {
+                    console.error('Error auto-saving document:', error);
+                  } else {
+                    console.log('Document auto-saved');
+                  }
+                } catch (error) {
+                  console.error('Error in auto-save:', error);
+                }
+              }}
+              placeholder="Beginnen Sie zu schreiben..."
+            />
           </div>
         </div>
       )}
