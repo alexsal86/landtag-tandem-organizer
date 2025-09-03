@@ -6,6 +6,9 @@
 All colors MUST be HSL.
 */
 
+/* Import Lexical Editor Styling */
+@import './components/lexical/lexical-editor.css';
+
 @layer base {
   :root {
     --background: 210 20% 98%;

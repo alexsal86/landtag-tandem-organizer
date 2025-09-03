@@ -1,0 +1,161 @@
+/* Lexical Editor Styling Enhancements */
+
+/* Main editor container */
+.editor-container {
+  @apply border border-border rounded-lg overflow-hidden bg-background;
+}
+
+.editor-inner {
+  @apply relative min-h-[300px];
+}
+
+/* Content editable area */
+.editor-input {
+  @apply p-4 text-sm leading-relaxed focus:outline-none resize-none min-h-[300px];
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* Placeholder styling */
+.editor-placeholder {
+  @apply absolute top-4 left-4 text-muted-foreground text-sm pointer-events-none select-none;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* Paragraph styling */
+.editor-paragraph {
+  @apply mb-2 last:mb-0;
+}
+
+/* Heading styles */
+.editor-input h1 {
+  @apply text-3xl font-bold mb-4 mt-6 first:mt-0 text-foreground;
+}
+
+.editor-input h2 {
+  @apply text-2xl font-bold mb-3 mt-5 first:mt-0 text-foreground;
+}
+
+.editor-input h3 {
+  @apply text-xl font-bold mb-2 mt-4 first:mt-0 text-foreground;
+}
+
+/* List styling */
+.editor-input ul {
+  @apply list-disc ml-6 mb-4 space-y-1;
+}
+
+.editor-input ol {
+  @apply list-decimal ml-6 mb-4 space-y-1;
+}
+
+.editor-input li {
+  @apply mb-1;
+}
+
+/* Quote styling */
+.editor-input blockquote {
+  @apply border-l-4 border-muted-foreground pl-4 py-2 my-4 italic text-muted-foreground bg-muted/30 rounded-r;
+}
+
+/* Code styling */
+.editor-input code {
+  @apply bg-muted px-2 py-1 rounded text-sm font-mono text-foreground;
+}
+
+.editor-input pre {
+  @apply bg-muted p-4 rounded my-4 overflow-x-auto;
+}
+
+.editor-input pre code {
+  @apply bg-transparent p-0 rounded-none;
+}
+
+/* Link styling */
+.editor-input a {
+  @apply text-primary underline hover:text-primary/80 transition-colors;
+}
+
+/* Strong/Bold styling */
+.editor-input strong {
+  @apply font-bold text-foreground;
+}
+
+/* Emphasis/Italic styling */
+.editor-input em {
+  @apply italic;
+}
+
+/* Underline styling */
+.editor-input [style*="text-decoration: underline"] {
+  @apply underline;
+}
+
+/* Strikethrough styling */
+.editor-input [style*="text-decoration: line-through"] {
+  @apply line-through;
+}
+
+/* Selection styling */
+.editor-input ::selection {
+  @apply bg-primary/20 text-foreground;
+}
+
+/* Focus styling */
+.editor-input:focus {
+  @apply ring-0 outline-none;
+}
+
+/* Collaborative cursors */
+.lexical-collaboration-cursor {
+  @apply relative;
+}
+
+.lexical-collaboration-cursor::after {
+  content: '';
+  @apply absolute top-0 w-0.5 h-5 bg-current opacity-75;
+}
+
+/* Collaboration user indicator */
+.collaboration-user {
+  @apply inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium;
+}
+
+/* Error boundary */
+.lexical-error-boundary {
+  @apply border border-destructive/50 bg-destructive/5 p-4 rounded text-destructive text-sm;
+}
+
+/* Loading state */
+.lexical-loading {
+  @apply animate-pulse bg-muted/50;
+}
+
+/* Toolbar enhancements */
+.floating-text-toolbar {
+  @apply shadow-lg border border-border bg-popover;
+}
+
+.floating-text-toolbar button {
+  @apply transition-all duration-200 hover:bg-accent hover:text-accent-foreground;
+}
+
+.floating-text-toolbar button[data-active="true"] {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* Status indicators */
+.collaboration-status {
+  @apply text-xs text-muted-foreground;
+}
+
+.collaboration-status.connected {
+  @apply text-green-600;
+}
+
+.collaboration-status.disconnected {
+  @apply text-red-600;
+}
+
+.collaboration-status.connecting {
+  @apply text-amber-600;
+}
