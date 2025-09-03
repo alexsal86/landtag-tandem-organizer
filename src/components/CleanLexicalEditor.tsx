@@ -12,6 +12,7 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { $generateHtmlFromNodes } from '@lexical/html';
 import { $getRoot } from 'lexical';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -47,6 +48,29 @@ interface CleanLexicalEditorProps {
   autoFocus?: boolean;
 }
 
+// Content change plugin component
+function ContentChangePlugin({ onContentChange }: { onContentChange?: (content: string, html: string) => void }) {
+  const [editor] = useLexicalComposerContext();
+  
+  const handleChange = useCallback((editorState: any) => {
+    if (onContentChange) {
+      editorState.read(() => {
+        const root = $getRoot();
+        const textContent = root.getTextContent();
+        try {
+          const htmlContent = $generateHtmlFromNodes(editor, null);
+          onContentChange(textContent, htmlContent);
+        } catch (error) {
+          console.error('Error generating HTML:', error);
+          onContentChange(textContent, '');
+        }
+      });
+    }
+  }, [editor, onContentChange]);
+
+  return <OnChangePlugin onChange={handleChange} />;
+}
+
 export function CleanLexicalEditor({
   documentId,
   initialContent,
@@ -56,18 +80,6 @@ export function CleanLexicalEditor({
   autoFocus = false,
 }: CleanLexicalEditorProps) {
   
-  // Content change handler
-  const handleContentChange = useCallback((editorState: any) => {
-    if (onContentChange) {
-      editorState.read(() => {
-        const root = $getRoot();
-        const textContent = root.getTextContent();
-        const htmlContent = $generateHtmlFromNodes(editorState._editor, null);
-        onContentChange(textContent, htmlContent);
-      });
-    }
-  }, [onContentChange]);
-
   return (
     <div className="h-full flex flex-col bg-background">
       <LexicalComposer initialConfig={editorConfig}>
@@ -88,7 +100,7 @@ export function CleanLexicalEditor({
             ErrorBoundary={LexicalErrorBoundary}
           />
           
-          <OnChangePlugin onChange={handleContentChange} />
+          <ContentChangePlugin onContentChange={onContentChange} />
           <HistoryPlugin />
           {autoFocus && <AutoFocusPlugin />}
           <LinkPlugin />
