@@ -375,7 +375,18 @@ export function CleanLexicalEditor({
 }: CleanLexicalEditorProps) {
   const { session } = useAuth();
 
+  // Debug-Log beim Mounten der Komponente
+  useEffect(() => {
+    console.log('🚀 CleanLexicalEditor MOUNTED with documentId:', documentId);
+    return () => console.log('🔥 CleanLexicalEditor UNMOUNTED');
+  }, []);
+
+  useEffect(() => {
+    console.log('🔄 CleanLexicalEditor documentId changed to:', documentId);
+  }, [documentId]);
+
   if (!documentId) {
+    console.log('❌ CleanLexicalEditor: No documentId provided');
     return (
       <div className="relative border border-border rounded-lg bg-background min-h-[400px] flex items-center justify-center">
         <div className="text-center">
@@ -384,6 +395,8 @@ export function CleanLexicalEditor({
       </div>
     );
   }
+
+  console.log('✅ CleanLexicalEditor: Rendering with documentId:', documentId);
 
   // Enhanced provider factory with detailed debugging
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
