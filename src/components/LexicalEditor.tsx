@@ -1,13 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { $getRoot, $getSelection } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
+import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $createParagraphNode, $createTextNode } from 'lexical';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+import { ListNode, ListItemNode } from '@lexical/list';
+import { CodeNode, CodeHighlightNode } from '@lexical/code';
+import { LinkNode, AutoLinkNode } from '@lexical/link';
+import FixedTextToolbar from './FixedTextToolbar';
+import ToolbarPlugin from './lexical/ToolbarPlugin';
 
 const theme = {
   // Theme styling
@@ -28,6 +35,7 @@ interface LexicalEditorProps {
   initialContent?: string;
   onChange?: (content: string) => void;
   placeholder?: string;
+  showToolbar?: boolean;
 }
 
 function MyOnChangePlugin({ onChange }: { onChange?: (content: string) => void }) {
@@ -48,8 +56,17 @@ function MyOnChangePlugin({ onChange }: { onChange?: (content: string) => void }
 const LexicalEditor: React.FC<LexicalEditorProps> = ({ 
   initialContent = '', 
   onChange, 
-  placeholder = 'Beginnen Sie zu schreiben...' 
+  placeholder = 'Beginnen Sie zu schreiben...',
+  showToolbar = true
 }) => {
+  const [activeFormats, setActiveFormats] = useState<string[]>([]);
+  const [formatCommand, setFormatCommand] = useState<string>('');
+
+  const handleFormatText = (format: string) => {
+    setFormatCommand(format);
+    // Reset command after a brief delay to allow processing
+    setTimeout(() => setFormatCommand(''), 10);
+  };
   const initialConfig = {
     namespace: 'KnowledgeBaseEditor',
     theme,
@@ -57,6 +74,12 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     nodes: [
       HeadingNode,
       QuoteNode,
+      ListNode,
+      ListItemNode,
+      CodeNode,
+      CodeHighlightNode,
+      LinkNode,
+      AutoLinkNode,
     ],
     editorState: () => {
       const root = $getRoot();
@@ -71,6 +94,12 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <div className="editor-container">
+        {showToolbar && (
+          <FixedTextToolbar
+            onFormatText={handleFormatText}
+            activeFormats={activeFormats}
+          />
+        )}
         <div className="editor-inner">
           <RichTextPlugin
             contentEditable={
@@ -82,6 +111,12 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
             ErrorBoundary={({ children }) => <div>{children}</div>}
           />
           <HistoryPlugin />
+          <ListPlugin />
+          <LinkPlugin />
+          <ToolbarPlugin 
+            onFormatChange={setActiveFormats}
+            formatCommand={formatCommand}
+          />
           <MyOnChangePlugin onChange={onChange} />
         </div>
       </div>
