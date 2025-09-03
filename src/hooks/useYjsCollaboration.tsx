@@ -58,10 +58,19 @@ export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
       
       // Set user information in awareness
       if (user) {
-        awareness.setLocalStateField('user', {
+        const userInfo = {
           name: user.email || 'Anonymous User',
           color: generateUserColor(),
           clientId: doc.clientID
+        };
+        console.log('useYjsCollaboration: Setting user info in awareness:', userInfo);
+        awareness.setLocalStateField('user', userInfo);
+        
+        // Also set the user state immediately to trigger awareness
+        awareness.setLocalState({
+          user: userInfo,
+          cursor: null,
+          selection: null
         });
       }
       

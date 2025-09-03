@@ -263,30 +263,49 @@ function CollaborationAwareness({ awareness }: { awareness: any }) {
     if (!awareness) return;
     
     const updateUsers = () => {
+      console.log('Awareness: Updating users...');
       const states = awareness.getStates();
-      const userList = Array.from(states.entries()).map(([clientId, state]: [number, any]) => ({
-        clientId,
-        name: state.user?.name || 'Anonymous',
-        color: state.user?.color || '#000000'
-      }));
+      console.log('Awareness: States:', states);
+      
+      const userList = Array.from(states.entries())
+        .map(([clientId, state]: [number, any]) => {
+          console.log('Awareness: User state:', { clientId, state });
+          return {
+            clientId,
+            name: state.user?.name || 'Anonymous',
+            color: state.user?.color || '#000000'
+          };
+        })
+        .filter(user => user.name && user.name !== 'Anonymous'); // Filter out invalid users
+      
+      console.log('Awareness: Final user list:', userList);
       setUsers(userList);
     };
     
+    // Subscribe to awareness changes
     awareness.on('change', updateUsers);
+    
+    // Initial update
     updateUsers();
+    
+    // Force update awareness with current user info
+    const currentUser = awareness.getLocalState();
+    console.log('Awareness: Current local state:', currentUser);
     
     return () => {
       awareness.off('change', updateUsers);
     };
   }, [awareness]);
   
+  console.log('Awareness: Rendering with users:', users);
+  
   return (
     <div className="flex items-center gap-2 px-2">
       <Users className="h-4 w-4 text-muted-foreground" />
       <span className="text-sm text-muted-foreground">
-        {users.length > 1 ? `${users.length} online` : 'Solo'}
+        {users.length > 0 ? `${users.length} online` : 'Solo'}
       </span>
-      {users.length > 1 && (
+      {users.length > 0 && (
         <div className="flex -space-x-1">
           {users.slice(0, 3).map((user) => (
             <div
@@ -298,6 +317,11 @@ function CollaborationAwareness({ awareness }: { awareness: any }) {
               {user.name.charAt(0).toUpperCase()}
             </div>
           ))}
+          {users.length > 3 && (
+            <div className="w-6 h-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs">
+              +{users.length - 3}
+            </div>
+          )}
         </div>
       )}
     </div>
