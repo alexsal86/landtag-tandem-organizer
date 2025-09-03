@@ -14,6 +14,7 @@ import {
 } from '@lexical/list';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import { Provider } from '@lexical/yjs';
 import { 
   LexicalComposer,
   InitialConfigType
@@ -317,7 +318,7 @@ export function CleanLexicalEditor({
     );
   }
 
-  // Provider factory that returns a WebSocket provider
+  // Provider factory that returns a compatible Provider type
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
     const doc = new Y.Doc();
     yjsDocMap.set(id, doc);
@@ -341,7 +342,8 @@ export function CleanLexicalEditor({
     const docWithProvider = doc as Y.Doc & { provider: WebsocketProvider };
     docWithProvider.provider = provider;
     
-    return provider;
+    // Cast to Provider type for compatibility - WebsocketProvider implements the needed interface
+    return provider as unknown as Provider;
   }, [session?.user]);
 
   return (
