@@ -318,24 +318,26 @@ export function CleanLexicalEditor({
     );
   }
 
-  // Provider factory that creates Yjs binding for CollaborationPlugin
+  // Rewritten providerFactory that properly uses createBinding
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
-    const doc = new Y.Doc();
-    yjsDocMap.set(id, doc);
+    // Create or get the Yjs document
+    let doc = yjsDocMap.get(id);
+    if (!doc) {
+      doc = new Y.Doc();
+      yjsDocMap.set(id, doc);
+    }
     
     // Create WebSocket provider for collaboration
-    // Base URL without documentId - WebsocketProvider adds the room name automatically
     const provider = new WebsocketProvider(
       'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
-      id, // This becomes the room name
+      id,
       doc,
       {
         connect: true,
-        // Add some retry logic for better reliability
         resyncInterval: 5000,
       }
     );
-    
+
     // Set user awareness
     const awareness = provider.awareness;
     if (session?.user && awareness) {
@@ -345,21 +347,23 @@ export function CleanLexicalEditor({
         clientId: awareness.clientID
       });
     }
-    
+
     // Add connection event logging for debugging
     provider.on('status', ({ status }: { status: string }) => {
       console.log('WebSocket provider status:', status);
     });
-    
-    provider.on('connection-error', (event: Event, provider: WebsocketProvider) => {
+
+    provider.on('connection-error', (event: Event) => {
       console.error('WebSocket connection error:', event);
     });
-    
+
     // Store provider on doc for awareness access
     const docWithProvider = doc as Y.Doc & { provider: WebsocketProvider };
     docWithProvider.provider = provider;
+
+    console.log('Created provider for document:', id);
     
-    // Return the provider - CollaborationPlugin will create the binding internally using createBinding
+    // Return the provider - CollaborationPlugin will internally use createBinding
     return provider as unknown as Provider;
   }, [session?.user]);
 
