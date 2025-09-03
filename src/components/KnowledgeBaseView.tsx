@@ -556,9 +556,7 @@ const KnowledgeBaseView = () => {
           <LexicalKnowledgeEditor
             documentId={selectedDocument.id}
             onClose={() => {
-              setIsEditorOpen(false);
-              setSelectedDocument(null);
-              setIsSidebarCollapsed(false);
+              navigate('/knowledge');
             }}
           />
         </div>

@@ -31,14 +31,6 @@ serve(async (req) => {
   const roomId = url.searchParams.get('room') || 'default';
   const token = url.searchParams.get('token');
 
-  if (!token) {
-    console.log('No token provided');
-    return new Response("Authentication required", { 
-      status: 401,
-      headers: corsHeaders 
-    });
-  }
-
   // Verify token with Supabase
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -49,11 +41,11 @@ serve(async (req) => {
   
   if (error || !user) {
     console.log('Authentication failed:', error);
-    return new Response("Invalid token", { 
-      status: 401,
-      headers: corsHeaders 
-    });
+    socket.close(1008, "Invalid token");
+    return response;
   }
+
+  console.log('User authenticated:', user.email, 'for room:', roomId);
 
   console.log('User authenticated:', user.email, 'for room:', roomId);
 
