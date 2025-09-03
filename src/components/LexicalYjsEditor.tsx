@@ -15,6 +15,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
 import { mergeRegister } from '@lexical/utils';
 import { $selectAll } from '@lexical/selection';
+import { copyToClipboard } from '@lexical/clipboard';
 import {
   $getRoot,
   $getSelection,
@@ -52,10 +53,9 @@ import {
   Table,
   Subscript,
   Superscript,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
+  Copy,
+  Upload,
+  Hash,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -268,6 +268,26 @@ const EditorToolbar = ({ className }: { className?: string }) => {
     editor.dispatchCommand(UNDO_COMMAND, undefined);
   };
 
+  const handleCopyAll = () => {
+    editor.update(() => {
+      $selectAll();
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        const textContent = selection.getTextContent();
+        navigator.clipboard.writeText(textContent);
+      }
+    });
+  };
+
+  const insertHashtag = () => {
+    editor.update(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        selection.insertText('#hashtag ');
+      }
+    });
+  };
+
   const handleRedo = () => {
     editor.dispatchCommand(REDO_COMMAND, undefined);
   };
@@ -414,6 +434,30 @@ const EditorToolbar = ({ className }: { className?: string }) => {
           title="Redo (Ctrl+Y)"
         >
           <Redo className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <Separator orientation="vertical" className="h-6" />
+      
+      {/* Advanced Features */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCopyAll}
+          className="h-8 w-8 p-0"
+          title="Copy All (Ctrl+A, Ctrl+C)"
+        >
+          <Copy className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={insertHashtag}
+          className="h-8 w-8 p-0"
+          title="Insert Hashtag"
+        >
+          <Hash className="h-4 w-4" />
         </Button>
       </div>
     </div>
