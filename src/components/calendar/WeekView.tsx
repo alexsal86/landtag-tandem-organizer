@@ -64,8 +64,22 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
   
   const getEventsForDay = (day: Date) => {
     return timedEvents.filter(event => {
-      // Filter by the actual event date
-      return event.date.toDateString() === day.toDateString();
+      // For single-day events, check if event starts on this day
+      if (!event.endTime) {
+        return event.date.toDateString() === day.toDateString();
+      }
+      
+      // For multi-day events, check if this day falls within the event span
+      const eventStart = new Date(event.date);
+      const eventEnd = new Date(event.endTime);
+      const dayToCheck = new Date(day);
+      
+      // Set times to compare dates only
+      eventStart.setHours(0, 0, 0, 0);
+      eventEnd.setHours(23, 59, 59, 999);
+      dayToCheck.setHours(12, 0, 0, 0); // Middle of day for comparison
+      
+      return dayToCheck >= eventStart && dayToCheck <= eventEnd;
     });
   };
 
@@ -352,29 +366,57 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
                         const [startHour, startMinutes] = event.time.split(':').map(Number);
                         let topOffset = startHour * 64 + (startMinutes / 60) * 64; // Convert to pixels (64px per hour)
                         let eventHeight = 62; // Default height
+                        let eventTitle = event.title;
+                        let isEventStart = false;
+                        let isEventEnd = false;
+                        let isEventContinuation = false;
                         
                         if (event.endTime) {
-                          // Calculate actual height based on end time
+                          const eventStart = new Date(event.date);
                           const eventEnd = new Date(event.endTime);
+                          const currentDay = new Date(day);
                           
-                          if (eventEnd.toDateString() === day.toDateString()) {
-                            // Event ends on same day
+                          // Check if this is a multi-day event
+                          const isMultiDay = eventStart.toDateString() !== eventEnd.toDateString();
+                          
+                          if (isMultiDay) {
+                            // Determine the relationship of current day to the event
+                            isEventStart = eventStart.toDateString() === currentDay.toDateString();
+                            isEventEnd = eventEnd.toDateString() === currentDay.toDateString();
+                            isEventContinuation = !isEventStart && !isEventEnd;
+                            
+                            if (isEventStart) {
+                              // First day: from start time to end of day
+                              const hoursToEndOfDay = 24 - startHour;
+                              const minutesToEndOfDay = hoursToEndOfDay * 60 - startMinutes;
+                              eventHeight = (minutesToEndOfDay * 64) / 60;
+                              eventTitle = `${event.title} →`;
+                            } else if (isEventEnd) {
+                              // Last day: from start of day to end time
+                              topOffset = 0; // Start from beginning of day
+                              const endHour = eventEnd.getHours();
+                              const endMinutes = eventEnd.getMinutes();
+                              const endTotalMinutes = endHour * 60 + endMinutes;
+                              eventHeight = (endTotalMinutes * 64) / 60;
+                              eventTitle = `→ ${event.title}`;
+                            } else if (isEventContinuation) {
+                              // Middle day: full day
+                              topOffset = 0;
+                              eventHeight = 24 * 64; // Full day height
+                              eventTitle = `→ ${event.title} →`;
+                            }
+                          } else {
+                            // Single day event - calculate actual height based on end time
                             const endHour = eventEnd.getHours();
                             const endMinutes = eventEnd.getMinutes();
                             
-                            // Calculate total duration in pixels
                             const startTotalMinutes = startHour * 60 + startMinutes;
                             const endTotalMinutes = endHour * 60 + endMinutes;
                             const durationMinutes = endTotalMinutes - startTotalMinutes;
                             eventHeight = Math.max((durationMinutes * 64) / 60, 20); // Minimum 20px height
-                          } else {
-                            // Multi-day event - extends to end of day
-                            const hoursToEndOfDay = 24 - startHour;
-                            const minutesToEndOfDay = hoursToEndOfDay * 60 - startMinutes;
-                            eventHeight = (minutesToEndOfDay * 64) / 60;
                           }
                         } else {
-                          // Fallback to duration calculation
+                          // Fallback to duration calculation for single day events
                           const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
                           eventHeight = Math.max((durationMinutes * 64) / 60, 20);
                         }
@@ -382,7 +424,7 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
                         return (
                           <div
                             key={event.id}
-                            className={`absolute pt-1 pb-1 pl-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto group ${getEventTypeColor(event)}`}
+                            className={`absolute pt-1 pb-1 pl-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto group ${getEventTypeColor(event)} ${isEventContinuation ? 'border-l-4 border-dashed' : ''} ${isEventStart ? 'rounded-r-none' : ''} ${isEventEnd ? 'rounded-l-none' : ''} ${isEventContinuation ? 'rounded-none' : ''}`}
                             style={{ 
                               width: `${widthPercentage - 1}%`,
                               left: `${leftOffset}%`,
@@ -396,7 +438,7 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
                             onClick={() => onAppointmentClick?.(event)}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="font-medium truncate text-xs">{event.title}</div>
+                              <div className="font-medium truncate text-xs">{eventTitle}</div>
                               <div className="flex items-center space-x-1">
                                 {documentCounts[event.id] > 0 && (
                                   <div className="flex items-center space-x-1">
