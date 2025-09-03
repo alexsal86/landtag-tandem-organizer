@@ -50,32 +50,8 @@ serve(async (req) => {
     headers: corsHeaders
   });
 
-  // If no token, close connection immediately
-  if (!token) {
-    console.log('No authentication token provided');
-    socket.onopen = () => {
-      socket.close(1008, "Authentication required");
-    };
-    return response;
-  }
-
-  // Verify token with Supabase
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  
-  if (error || !user) {
-    console.log('Authentication failed:', error?.message || 'Unknown error');
-    socket.onopen = () => {
-      socket.close(1008, "Invalid token");
-    };
-    return response;
-  }
-
-  console.log('User authenticated:', user.email, 'for room:', roomId);
+  console.log('WebSocket connection established for room:', roomId);
+  // Note: No authentication required - function is public
 
   const connectionId = crypto.randomUUID();
   connections.set(connectionId, socket);
@@ -87,7 +63,7 @@ serve(async (req) => {
   rooms.get(roomId)!.add(socket);
 
   socket.onopen = () => {
-    console.log(`WebSocket opened for user ${user.email} in room ${roomId}`);
+    console.log(`WebSocket opened in room ${roomId}`);
   };
 
   socket.onmessage = (event) => {
@@ -103,7 +79,7 @@ serve(async (req) => {
   };
 
   socket.onclose = () => {
-    console.log(`WebSocket closed for user ${user.email} in room ${roomId}`);
+    console.log(`WebSocket closed in room ${roomId}`);
     connections.delete(connectionId);
     
     const room = rooms.get(roomId);
@@ -111,6 +87,7 @@ serve(async (req) => {
       room.delete(socket);
       if (room.size === 0) {
         rooms.delete(roomId);
+        console.log(`Room ${roomId} deleted - no more connections`);
       }
     }
   };
