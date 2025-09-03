@@ -375,7 +375,7 @@ export function CleanLexicalEditor({
       {/* Official CollaborationPlugin */}
       <CollaborationPlugin
         id={documentId}
-        providerFactory={providerFactory as any}
+        providerFactory={providerFactory}
         shouldBootstrap={true}
       />
       
