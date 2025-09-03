@@ -253,17 +253,44 @@ function EditorToolbar() {
 function CollaborationAwareness() {
   const { yjsDocMap } = useCollaborationContext();
   const [connectedUsers, setConnectedUsers] = useState<number>(0);
+  const [connectionStatus, setConnectionStatus] = useState<string>('Connecting...');
 
   useEffect(() => {
-    // Simple connection counter
-    setConnectedUsers(yjsDocMap.size > 0 ? 1 : 0);
+    if (yjsDocMap.size === 0) {
+      setConnectionStatus('Connecting...');
+      setConnectedUsers(0);
+      return;
+    }
+
+    // Get the first document and its provider
+    const firstDoc = Array.from(yjsDocMap.values())[0];
+    if (firstDoc && (firstDoc as any).provider) {
+      const provider = (firstDoc as any).provider;
+      
+      if (provider.awareness) {
+        const updateAwareness = () => {
+          const states = provider.awareness.getStates();
+          setConnectedUsers(states.size);
+          setConnectionStatus(provider.wsconnected ? 'Connected' : 'Connecting...');
+        };
+
+        provider.awareness.on('change', updateAwareness);
+        provider.on('status', updateAwareness);
+        updateAwareness();
+
+        return () => {
+          provider.awareness.off('change', updateAwareness);
+          provider.off('status', updateAwareness);
+        };
+      }
+    }
   }, [yjsDocMap]);
 
   return (
     <div className="flex items-center gap-2 px-2">
       <Users className="h-4 w-4 text-muted-foreground" />
       <span className="text-sm text-muted-foreground">
-        {connectedUsers > 0 ? `${connectedUsers} connected` : 'Connecting...'}
+        {connectionStatus} {connectedUsers > 0 && `(${connectedUsers} users)`}
       </span>
     </div>
   );
