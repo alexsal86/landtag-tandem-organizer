@@ -47,7 +47,8 @@ import {
   Heading3,
   List,
   ListOrdered,
-  Users
+  Users,
+  Minus
 } from 'lucide-react';
 import { useYjsCollaboration } from '@/hooks/useYjsCollaboration';
 import './CleanLexicalEditor.css';
@@ -352,12 +353,11 @@ export function CleanLexicalEditor({
         </div>
       </div>
       
-      {/* Basic History Plugin for now - Collaboration can be added later */}
+      {/* Basic History Plugin for now - removed MarkdownShortcutPlugin to fix HorizontalRule dependency */}
       <HistoryPlugin />
       {autoFocus && <AutoFocusPlugin />}
       <LinkPlugin />
       <ListPlugin />
-      <MarkdownShortcutPlugin />
     </LexicalComposer>
   );
 }
