@@ -402,6 +402,7 @@ export function CleanLexicalEditor({
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
     console.log('🏭 ProviderFactory: Called with document ID:', id);
     console.log('🏭 ProviderFactory: Current yjsDocMap size:', yjsDocMap.size);
+    console.log('🏭 ProviderFactory: Documents in map:', Array.from(yjsDocMap.keys()));
     
     // Create or get the Yjs document
     let doc = yjsDocMap.get(id);
@@ -409,8 +410,16 @@ export function CleanLexicalEditor({
       console.log('🏭 ProviderFactory: Creating new Yjs document');
       doc = new Y.Doc();
       yjsDocMap.set(id, doc);
+      console.log('✅ ProviderFactory: Document added to map, new size:', yjsDocMap.size);
     } else {
       console.log('🏭 ProviderFactory: Using existing Yjs document');
+    }
+    
+    // Verify document is in map
+    if (yjsDocMap.has(id)) {
+      console.log('✅ ProviderFactory: Document confirmed in map');
+    } else {
+      console.error('❌ ProviderFactory: Document NOT found in map after setting!');
     }
     
     // Create WebSocket provider with detailed logging
@@ -482,7 +491,9 @@ export function CleanLexicalEditor({
     // Store provider on doc for awareness access
     (doc as any).provider = provider;
     
-    console.log('🏭 ProviderFactory: WebSocket provider created and configured for document:', id);
+    console.log('🏭 ProviderFactory: Returning WebsocketProvider as Provider for:', id);
+    
+    // Return WebsocketProvider directly, casting to Provider type
     return provider as unknown as Provider;
   }, [session?.user]);
 
