@@ -10,7 +10,7 @@ interface BlockMenuProps {
 
 export function BlockMenu({ onAddClick }: BlockMenuProps) {
   return (
-    <div className="block-menu">
+    <div className="draggable-block-menu">
       <Popover>
         <PopoverTrigger asChild>
           <Button

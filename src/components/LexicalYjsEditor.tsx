@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -6,15 +7,16 @@ import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
-import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
-import { HashtagPlugin } from '@lexical/react/LexicalHashtagPlugin';
-import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
-import { ClearEditorPlugin } from '@lexical/react/LexicalClearEditorPlugin';
 import { TRANSFORMERS } from '@lexical/markdown';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+import { HashtagPlugin } from '@lexical/react/LexicalHashtagPlugin';
+import { ClearEditorPlugin } from '@lexical/react/LexicalClearEditorPlugin';
+import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import type { Awareness } from 'y-protocols/awareness';
+import type { Doc } from 'yjs';
 import { mergeRegister } from '@lexical/utils';
 import { $selectAll } from '@lexical/selection';
 import { copyToClipboard } from '@lexical/clipboard';
@@ -112,7 +114,8 @@ interface LexicalYjsEditorProps {
   placeholder?: string;
   readOnly?: boolean;
   autoFocus?: boolean;
-  yjsDoc?: any;
+  yjsDoc?: Doc;
+  awareness?: Awareness;
 }
 
 // Content change tracking plugin with proper HTML serialization
@@ -676,6 +679,7 @@ export function LexicalYjsEditor({
   readOnly = false,
   autoFocus = false,
   yjsDoc,
+  awareness
 }: LexicalYjsEditorProps) {
   const yjsDocRef = useRef<YDoc | null>(null);
   const contentEditableRef = useRef<HTMLDivElement>(null);
@@ -772,28 +776,31 @@ export function LexicalYjsEditor({
         <FloatingTextFormatToolbarPlugin />
         <ContentChangePlugin onContentChange={onContentChange} />
         <InitialContentPlugin initialContent={initialContent} />
-        {/* Temporarily disable CollaborationPlugin due to WebSocket provider issues
-        {yjsDoc && (yjsDoc as any).provider && (
+        {yjsDoc && awareness && (
           <CollaborationPlugin
             id={documentId}
             providerFactory={(id, yjsDocMap) => {
-              console.log('CollaborationPlugin: Creating provider for', id);
-              if (!yjsDoc || !(yjsDoc as any).provider) {
-                console.error('CollaborationPlugin: No provider available');
-                return null;
-              }
-              // Ensure the provider has the document
-              const provider = (yjsDoc as any).provider;
-              if (!provider.doc) {
-                console.error('CollaborationPlugin: Provider has no document');
-                return null;
-              }
-              return provider;
+              // Create a mock provider that implements the required interface
+              return {
+                disconnect: () => {},
+                connect: () => {},
+                doc: yjsDoc,
+                awareness: awareness,
+                // Add required event emitter methods
+                on: () => {},
+                off: () => {}
+              } as any;
             }}
             shouldBootstrap={false}
+            username={awareness.getLocalState()?.user?.name || 'Anonymous'}
+            cursorColor={awareness.getLocalState()?.user?.color || '#ff0000'}
+            cursorsContainerRef={{
+              current: null
+            }}
+            initialEditorState={null}
+            excludedProperties={new Map()}
           />
         )}
-        */}
       </LexicalComposer>
       
       <style>{`

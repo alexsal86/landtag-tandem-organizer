@@ -1,93 +1,67 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Doc, encodeStateAsUpdate, applyUpdate } from 'yjs';
-import { WebsocketProvider } from 'y-websocket';
+import { Awareness } from 'y-protocols/awareness';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UseYjsKnowledgeDocumentProps {
   documentId: string;
   onError?: (error: Error) => void;
 }
 
-export function useYjsKnowledgeDocument({ 
-  documentId, 
-  onError 
+// Helper function to generate random user colors
+function generateUserColor(): string {
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
+    '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
+    '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA'
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+export function useYjsKnowledgeDocument({
+  documentId,
+  onError
 }: UseYjsKnowledgeDocumentProps) {
+  const { user } = useAuth();
   const yjsDocRef = useRef<Doc | null>(null);
-  const providerRef = useRef<WebsocketProvider | null>(null);
+  const awarenessRef = useRef<Awareness | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initialContent, setInitialContent] = useState<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize Yjs document with WebSocket provider only once
+  // Initialize Yjs document and awareness on documentId change
   useEffect(() => {
-    if (!yjsDocRef.current && !providerRef.current) {
-      console.log('useYjsKnowledgeDocument: Initializing Yjs document for', documentId);
+    console.log('useYjsKnowledgeDocument: Initializing Yjs document for:', documentId);
+    
+    if (yjsDocRef.current) {
+      yjsDocRef.current.destroy();
+    }
+    
+    if (awarenessRef.current) {
+      awarenessRef.current.destroy();
+    }
+    
+    if (documentId) {
       const doc = new Doc({ guid: documentId });
       yjsDocRef.current = doc;
       
-      // For now, don't create WebSocket provider to avoid connection issues
-      // We'll implement proper Supabase-based collaboration later
-      console.log('useYjsKnowledgeDocument: Document initialized without WebSocket provider');
-    }
-  }, [documentId]);
-
-  // Load document from Supabase and initialize Yjs if needed
-  const loadDocument = useCallback(async () => {
-    try {
-      console.log('useYjsKnowledgeDocument: loadDocument called, setting loading to true');
-      setIsLoading(true);
+      // Initialize awareness for user identification
+      const awareness = new Awareness(doc);
+      awarenessRef.current = awareness;
       
-      const { data: document, error } = await supabase
-        .from('knowledge_documents')
-        .select('content, content_html, yjs_state, document_version')
-        .eq('id', documentId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error loading document:', error);
-        throw error;
+      // Set user information in awareness if user is available
+      if (user) {
+        awareness.setLocalStateField('user', {
+          name: user.email || 'Anonymous User',
+          color: generateUserColor(),
+          clientId: doc.clientID
+        });
       }
-
-      if (document) {
-        console.log('Document loaded successfully:', document.content?.length || 0, 'characters');
-        
-        // Initialize Yjs document if state exists
-        if (document.yjs_state && yjsDocRef.current) {
-          try {
-            // Handle Yjs state (could be base64 string or Uint8Array)
-            let yjsStateBytes: Uint8Array;
-            if (typeof document.yjs_state === 'string') {
-              // Convert base64 string to Uint8Array
-              const binaryString = atob(document.yjs_state);
-              yjsStateBytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) {
-                yjsStateBytes[i] = binaryString.charCodeAt(i);
-              }
-            } else {
-              yjsStateBytes = new Uint8Array(document.yjs_state);
-            }
-            applyUpdate(yjsDocRef.current, yjsStateBytes);
-            console.log('useYjsKnowledgeDocument: Yjs state applied');
-          } catch (yjsError) {
-            console.error('useYjsKnowledgeDocument: Error applying Yjs state:', yjsError);
-          }
-        }
-        
-        // Prioritize HTML content over plain text
-        const contentToUse = document.content_html || document.content || '';
-        setInitialContent(contentToUse);
-      } else {
-        console.log('No document found, using empty content');
-        setInitialContent('');
-      }
-    } catch (error) {
-      console.error('Error loading knowledge document:', error);
-      onError?.(error as Error);
-    } finally {
-      console.log('useYjsKnowledgeDocument: Setting loading to false');
-      setIsLoading(false);
+      
+      console.log('useYjsKnowledgeDocument: Document and awareness initialized');
     }
-  }, [documentId, onError]);
+  }, [documentId, user]);
 
   // Save document to Supabase with both HTML and Yjs state
   const saveDocument = useCallback(async (content: string, html: string) => {
@@ -225,14 +199,14 @@ export function useYjsKnowledgeDocument({
     }
   }, [documentId, onError]); // Load when document or dependencies change
 
-  // Cleanup
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      if (providerRef.current) {
-        providerRef.current.destroy();
+      if (awarenessRef.current) {
+        awarenessRef.current.destroy();
       }
       if (yjsDocRef.current) {
         yjsDocRef.current.destroy();
@@ -242,6 +216,7 @@ export function useYjsKnowledgeDocument({
 
   return {
     yjsDoc: yjsDocRef.current,
+    awareness: awarenessRef.current,
     isLoading,
     initialContent,
     saveDocument: debouncedSave,
