@@ -139,18 +139,19 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     }
   }, [yDoc, documentId, collaborationAvailable]); // Use collaborationAvailable instead
 
-  // Provider factory for Lexical CollaborationPlugin
+  // Provider factory for Lexical CollaborationPlugin - simplified to use existing provider
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
-    console.log('Provider factory called for:', id);
+    console.log('Provider factory called for neutral ID:', id);
     
     if (provider && yDoc) {
+      // Use the neutral ID to map to our actual Y.Doc
       if (!yjsDocMap.has(id)) {
         yjsDocMap.set(id, yDoc);
       }
       return provider as any;
     }
     
-    // Safe placeholder provider
+    // Safe placeholder provider when not available
     return {
       disconnect: () => {},
       awareness: null,
@@ -252,7 +253,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           <LinkPlugin />
           {collaborationAvailable && documentId && provider && yDoc && (
             <CollaborationPlugin
-              id={`knowledge-doc-${documentId}`}
+              id="lexical-editor"
               providerFactory={providerFactory}
               shouldBootstrap={true}
             />
