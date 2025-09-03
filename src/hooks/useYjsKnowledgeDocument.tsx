@@ -183,17 +183,27 @@ export function useYjsKnowledgeDocument({
               // Handle both base64 string and direct Uint8Array
               let yjsStateBytes: Uint8Array;
               if (typeof document.yjs_state === 'string') {
-                // Decode base64 string
-                const binaryString = atob(document.yjs_state);
-                yjsStateBytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                  yjsStateBytes[i] = binaryString.charCodeAt(i);
+                // Validate and decode base64 string
+                const base64String = document.yjs_state;
+                // Check if it's a valid base64 string
+                if (/^[A-Za-z0-9+/]*={0,2}$/.test(base64String) && base64String.length % 4 === 0) {
+                  const binaryString = atob(base64String);
+                  yjsStateBytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    yjsStateBytes[i] = binaryString.charCodeAt(i);
+                  }
+                } else {
+                  console.warn('Invalid base64 Yjs state, skipping:', base64String);
+                  yjsStateBytes = new Uint8Array(0); // Empty state
                 }
               } else {
                 yjsStateBytes = new Uint8Array(document.yjs_state);
               }
-              applyUpdate(yjsDocRef.current, yjsStateBytes);
-              console.log('useYjsKnowledgeDocument: Yjs state applied');
+              
+              if (yjsStateBytes.length > 0) {
+                applyUpdate(yjsDocRef.current, yjsStateBytes);
+                console.log('useYjsKnowledgeDocument: Yjs state applied');
+              }
             } catch (yjsError) {
               console.error('useYjsKnowledgeDocument: Error applying Yjs state:', yjsError);
             }

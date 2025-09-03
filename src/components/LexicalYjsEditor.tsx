@@ -777,7 +777,17 @@ export function LexicalYjsEditor({
             id={documentId}
             providerFactory={(id, yjsDocMap) => {
               console.log('CollaborationPlugin: Creating provider for', id);
-              return (yjsDoc as any).provider;
+              if (!yjsDoc || !(yjsDoc as any).provider) {
+                console.error('CollaborationPlugin: No provider available');
+                return null;
+              }
+              // Ensure the provider has the document
+              const provider = (yjsDoc as any).provider;
+              if (!provider.doc) {
+                console.error('CollaborationPlugin: Provider has no document');
+                return null;
+              }
+              return provider;
             }}
             shouldBootstrap={false}
           />
