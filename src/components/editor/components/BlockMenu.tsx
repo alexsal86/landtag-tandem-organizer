@@ -2,6 +2,7 @@ import { Plus, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { InsertDropdown } from './InsertDropdown';
+import './BlockMenu.css';
 
 interface BlockMenuProps {
   onAddClick?: () => void;
@@ -9,7 +10,7 @@ interface BlockMenuProps {
 
 export function BlockMenu({ onAddClick }: BlockMenuProps) {
   return (
-    <div className="flex items-center gap-1 p-1 bg-card border rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="block-menu">
       <Popover>
         <PopoverTrigger asChild>
           <Button

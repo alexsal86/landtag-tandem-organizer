@@ -731,35 +731,39 @@ export function LexicalYjsEditor({
             ErrorBoundary={LexicalErrorBoundary}
           />
           
+          {/* Block handles - positioned outside content area */}
+          <div
+            ref={blockMenuRef}
+            className="absolute pointer-events-auto opacity-0 transition-opacity duration-200 z-10"
+            style={{
+              left: '4px',
+              top: '0px',
+            }}
+          >
+            <BlockMenu />
+          </div>
+          
+          {/* Drop target line for dragging */}
+          <div
+            ref={targetLineRef}
+            className="absolute pointer-events-none z-20"
+          >
+            <DropTargetLine />
+          </div>
+          
           {/* Draggable Block Plugin */}
-          {contentEditableRef.current && !readOnly && (
-            <DraggableBlockPlugin
-              anchorElem={contentEditableRef.current}
-              menuRef={blockMenuRef}
-              targetLineRef={targetLineRef}
-              menuComponent={
-                <div
-                  ref={blockMenuRef}
-                  className="absolute pointer-events-auto"
-                  style={{
-                    left: '4px',
-                    top: '0px',
-                  }}
-                >
-                  <BlockMenu />
-                </div>
-              }
-              targetLineComponent={
-                <div
-                  ref={targetLineRef}
-                  className="absolute pointer-events-none"
-                >
-                  <DropTargetLine />
-                </div>
-              }
-              isOnMenu={isOnBlockMenu}
-            />
-          )}
+          <DraggableBlockPlugin
+            anchorElem={contentEditableRef.current || undefined}
+            menuRef={blockMenuRef}
+            targetLineRef={targetLineRef}
+            menuComponent={
+              <BlockMenu />
+            }
+            targetLineComponent={
+              <DropTargetLine />
+            }
+            isOnMenu={isOnBlockMenu}
+          />
         </div>
         <HistoryPlugin />
         {autoFocus && <AutoFocusPlugin />}
@@ -776,10 +780,13 @@ export function LexicalYjsEditor({
         <FloatingTextFormatToolbarPlugin />
         <ContentChangePlugin onContentChange={onContentChange} />
         <InitialContentPlugin initialContent={initialContent} />
-        {yjsDoc && yjsDoc.provider && (
+        {yjsDoc && (yjsDoc as any).provider && (
           <CollaborationPlugin
             id={documentId}
-            providerFactory={(id, yjsDocMap) => yjsDoc.provider}
+            providerFactory={(id, yjsDocMap) => {
+              console.log('CollaborationPlugin: Creating provider for', id);
+              return (yjsDoc as any).provider;
+            }}
             shouldBootstrap={false}
           />
         )}

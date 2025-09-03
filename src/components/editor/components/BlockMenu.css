@@ -1,0 +1,28 @@
+/* Block menu hover effects */
+.lexical-editor .group:hover .block-menu {
+  opacity: 1;
+}
+
+/* Block menu positioning and styling */
+.block-menu {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+/* Show block menu on hover */
+.lexical-editor .ContentEditable__root p:hover + .block-menu,
+.lexical-editor .ContentEditable__root h1:hover + .block-menu,
+.lexical-editor .ContentEditable__root h2:hover + .block-menu,
+.lexical-editor .ContentEditable__root h3:hover + .block-menu,
+.lexical-editor .ContentEditable__root li:hover + .block-menu,
+.lexical-editor .ContentEditable__root blockquote:hover + .block-menu {
+  opacity: 1;
+}

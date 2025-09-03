@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { Doc, encodeStateAsUpdate, applyUpdate } from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UseYjsKnowledgeDocumentProps {
@@ -12,18 +13,29 @@ export function useYjsKnowledgeDocument({
   onError 
 }: UseYjsKnowledgeDocumentProps) {
   const yjsDocRef = useRef<Doc | null>(null);
+  const providerRef = useRef<WebsocketProvider | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initialContent, setInitialContent] = useState<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize Yjs document
+  // Initialize Yjs document with WebSocket provider
   const initializeYjsDoc = useCallback(() => {
-    if (yjsDocRef.current) return yjsDocRef.current;
+    if (yjsDocRef.current && providerRef.current) {
+      return { doc: yjsDocRef.current, provider: providerRef.current };
+    }
 
     const doc = new Doc({ guid: documentId });
     yjsDocRef.current = doc;
     
-    return doc;
+    // Create WebSocket provider for collaboration
+    const wsUrl = 'wss://yjs-websocket-server.fly.dev'; // Public Yjs server
+    const provider = new WebsocketProvider(wsUrl, `knowledge-doc-${documentId}`, doc);
+    providerRef.current = provider;
+    
+    // Add provider to doc for access in components
+    (doc as any).provider = provider;
+    
+    return { doc, provider };
   }, [documentId]);
 
   // Load document from Supabase
@@ -210,14 +222,19 @@ export function useYjsKnowledgeDocument({
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
+      if (providerRef.current) {
+        providerRef.current.destroy();
+      }
       if (yjsDocRef.current) {
         yjsDocRef.current.destroy();
       }
     };
   }, []);
 
+  const docWithProvider = yjsDocRef.current || initializeYjsDoc().doc;
+  
   return {
-    yjsDoc: yjsDocRef.current || initializeYjsDoc(),
+    yjsDoc: docWithProvider,
     isLoading,
     initialContent,
     saveDocument: debouncedSave,
