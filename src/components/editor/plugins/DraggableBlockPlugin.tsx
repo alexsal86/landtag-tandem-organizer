@@ -417,12 +417,25 @@ function useDraggableBlockMenu(
 
   return createPortal(
     <>
-      <div draggable={true} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <div 
+        ref={menuRef as React.RefObject<HTMLDivElement>}
+        draggable={true} 
+        onDragStart={onDragStart} 
+        onDragEnd={onDragEnd}
+        className="absolute pointer-events-none z-30"
+        style={{ opacity: '0', transform: 'translate(-10000px, -10000px)' }}
+      >
         {isEditable && menuComponent}
       </div>
-      {targetLineComponent}
+      <div 
+        ref={targetLineRef as React.RefObject<HTMLDivElement>}
+        className="absolute pointer-events-none z-20"
+        style={{ opacity: '0', transform: 'translate(-10000px, -10000px)' }}
+      >
+        {targetLineComponent}
+      </div>
     </>,
-    anchorElem,
+    document.body,
   );
 }
 

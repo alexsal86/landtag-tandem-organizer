@@ -743,14 +743,6 @@ export function LexicalYjsEditor({
             <BlockMenu />
           </div>
           
-          {/* Drop target line for dragging */}
-          <div
-            ref={targetLineRef}
-            className="absolute pointer-events-none z-20"
-          >
-            <DropTargetLine />
-          </div>
-          
           {/* Draggable Block Plugin */}
           <DraggableBlockPlugin
             anchorElem={contentEditableRef.current || undefined}
