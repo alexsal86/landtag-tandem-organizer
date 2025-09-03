@@ -18,27 +18,26 @@ export function useYjsKnowledgeDocument({
   const [initialContent, setInitialContent] = useState<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize Yjs document with WebSocket provider
-  const initializeYjsDoc = useCallback(() => {
-    if (yjsDocRef.current && providerRef.current) {
-      return { doc: yjsDocRef.current, provider: providerRef.current };
+  // Initialize Yjs document with WebSocket provider only once
+  useEffect(() => {
+    if (!yjsDocRef.current && !providerRef.current) {
+      console.log('useYjsKnowledgeDocument: Initializing Yjs document for', documentId);
+      const doc = new Doc({ guid: documentId });
+      yjsDocRef.current = doc;
+      
+      // Create WebSocket provider for collaboration
+      const wsUrl = 'wss://yjs-websocket-server.fly.dev'; // Public Yjs server
+      const provider = new WebsocketProvider(wsUrl, `knowledge-doc-${documentId}`, doc);
+      providerRef.current = provider;
+      
+      // Add provider to doc for access in components
+      (doc as any).provider = provider;
+      
+      console.log('useYjsKnowledgeDocument: Document and provider initialized');
     }
-
-    const doc = new Doc({ guid: documentId });
-    yjsDocRef.current = doc;
-    
-    // Create WebSocket provider for collaboration
-    const wsUrl = 'wss://yjs-websocket-server.fly.dev'; // Public Yjs server
-    const provider = new WebsocketProvider(wsUrl, `knowledge-doc-${documentId}`, doc);
-    providerRef.current = provider;
-    
-    // Add provider to doc for access in components
-    (doc as any).provider = provider;
-    
-    return { doc, provider };
   }, [documentId]);
 
-  // Load document from Supabase
+  // Load document from Supabase and initialize Yjs if needed
   const loadDocument = useCallback(async () => {
     try {
       console.log('useYjsKnowledgeDocument: loadDocument called, setting loading to true');
@@ -151,12 +150,13 @@ export function useYjsKnowledgeDocument({
 
   // Load document on mount (only when documentId changes)
   useEffect(() => {
-    console.log('useYjsKnowledgeDocument: useEffect triggered for documentId:', documentId);
-    
-    // Initialize Yjs doc first
-    initializeYjsDoc();
-    
     const loadDoc = async () => {
+      // Ensure Yjs document is initialized before loading
+      if (!yjsDocRef.current) {
+        console.log('useYjsKnowledgeDocument: Waiting for document initialization');
+        return;
+      }
+
       try {
         console.log('useYjsKnowledgeDocument: loadDocument called, setting loading to true');
         setIsLoading(true);
@@ -169,19 +169,21 @@ export function useYjsKnowledgeDocument({
 
         if (error) {
           console.error('Error loading document:', error);
-          throw error;
+          onError?.(error);
+          return;
         }
 
+        console.log('useYjsKnowledgeDocument: Document loaded:', document);
+
         if (document) {
-          console.log('Document loaded successfully:', document.content?.length || 0, 'characters');
-          
-          // Initialize Yjs document if state exists
+          // Apply Yjs state if available
           if (document.yjs_state && yjsDocRef.current) {
+            console.log('useYjsKnowledgeDocument: Applying Yjs state');
             try {
-              // Handle Yjs state (could be base64 string or Uint8Array)
+              // Handle both base64 string and direct Uint8Array
               let yjsStateBytes: Uint8Array;
               if (typeof document.yjs_state === 'string') {
-                // Convert base64 string to Uint8Array
+                // Decode base64 string
                 const binaryString = atob(document.yjs_state);
                 yjsStateBytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
@@ -213,8 +215,11 @@ export function useYjsKnowledgeDocument({
       }
     };
 
-    loadDoc();
-  }, [documentId, onError]); // Stable dependencies
+    // Only load document after Yjs document is initialized  
+    if (yjsDocRef.current) {
+      loadDoc();
+    }
+  }, [documentId, onError]); // Load when document or dependencies change
 
   // Cleanup
   useEffect(() => {
@@ -231,10 +236,8 @@ export function useYjsKnowledgeDocument({
     };
   }, []);
 
-  const docWithProvider = yjsDocRef.current || initializeYjsDoc().doc;
-  
   return {
-    yjsDoc: docWithProvider,
+    yjsDoc: yjsDocRef.current,
     isLoading,
     initialContent,
     saveDocument: debouncedSave,
