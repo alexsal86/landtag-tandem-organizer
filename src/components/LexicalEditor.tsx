@@ -65,15 +65,13 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   documentId,
   enableCollaboration = false
 }) => {
-  console.log('🔥 LexicalEditor: Starting render - NEW VERSION');
+  // Force cache refresh - v2.0
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
   const [formatCommand, setFormatCommand] = useState<string>('');
   const [collaborationError, setCollaborationError] = useState<string | null>(null);
   
-  console.log('🔥 LexicalEditor: About to call useContext');
   // Use context directly with null check - this prevents the error
   const collaborationContext = useContext(CollaborationContext);
-  console.log('🔥 LexicalEditor: Got collaborationContext:', !!collaborationContext);
   
   // Default fallback values when context is not available
   const {
