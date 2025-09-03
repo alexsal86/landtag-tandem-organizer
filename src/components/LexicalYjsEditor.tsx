@@ -1,4 +1,3 @@
-import React, { useEffect, useCallback, useRef } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -7,58 +6,62 @@ import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+import { TRANSFORMERS } from '@lexical/markdown';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
-import { Doc } from 'yjs';
-
-import { 
-  $createParagraphNode,
-  $createTextNode,
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import {
   $getRoot,
   $getSelection,
   $isRangeSelection,
-  ParagraphNode,
-  TextNode,
+  $createParagraphNode,
+  $createTextNode,
+  SELECTION_CHANGE_COMMAND,
+  COMMAND_PRIORITY_CRITICAL,
   FORMAT_TEXT_COMMAND,
+  INDENT_CONTENT_COMMAND,
+  OUTDENT_CONTENT_COMMAND,
   UNDO_COMMAND,
-  REDO_COMMAND
+  REDO_COMMAND,
+  TextFormatType,
 } from 'lexical';
+import { $createHeadingNode, $createQuoteNode } from '@lexical/rich-text';
+import { $createListNode, $createListItemNode, INSERT_UNORDERED_LIST_COMMAND, INSERT_ORDERED_LIST_COMMAND } from '@lexical/list';
+import { $createCodeNode } from '@lexical/code';
+import { INSERT_TABLE_COMMAND } from '@lexical/table';
 import { 
-  HeadingNode,
-  QuoteNode,
-  $createHeadingNode
-} from '@lexical/rich-text';
-import { 
-  ListNode,
-  ListItemNode,
-  $createListNode,
-  $createListItemNode,
-  INSERT_UNORDERED_LIST_COMMAND,
-  INSERT_ORDERED_LIST_COMMAND
-} from '@lexical/list';
-import { 
-  LinkNode,
-  AutoLinkNode
-} from '@lexical/link';
-import { CodeNode } from '@lexical/code';
-import { TRANSFORMERS } from '@lexical/markdown';
+  Bold, 
+  Italic, 
+  Underline, 
+  Strikethrough,
+  Code,
+  List, 
+  ListOrdered, 
+  Undo, 
+  Redo,
+  Heading1,
+  Heading2,
+  Heading3,
+  Type,
+  Quote,
+  Table,
+  Subscript,
+  Superscript,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Doc as YDoc } from 'yjs';
+import { editorNodes } from './editor/config/editorNodes';
+import { editorTheme } from './editor/config/editorTheme';
+import { ToolbarDropdown } from './editor/components/ToolbarDropdown';
+import { FloatingTextFormatToolbarPlugin } from './editor/plugins/FloatingTextFormatToolbarPlugin';
 
-import { cn } from '@/lib/utils';
-
-// Node types for Lexical
-const editorNodes = [
-  ParagraphNode,
-  TextNode,
-  HeadingNode,
-  QuoteNode,
-  CodeNode,
-  ListNode,
-  ListItemNode,
-  LinkNode,
-  AutoLinkNode,
-];
-
+// Component props interface
 interface LexicalYjsEditorProps {
   documentId: string;
   initialContent?: string;
@@ -69,37 +72,32 @@ interface LexicalYjsEditorProps {
   autoFocus?: boolean;
 }
 
-// Custom plugin to handle content changes
-function ContentChangePlugin({ 
-  onContentChange
-}: { 
-  onContentChange?: (content: string, html: string) => void;
-}) {
+// Content change tracking plugin
+const ContentChangePlugin = ({ onContentChange }: { onContentChange?: (content: string, html: string) => void }) => {
   const [editor] = useLexicalComposerContext();
-  
+
   useEffect(() => {
     if (!onContentChange) return;
 
-    const removeListener = editor.registerUpdateListener(({ editorState }) => {
+    const unregister = editor.registerUpdateListener(({ editorState }) => {
       editorState.read(() => {
         const root = $getRoot();
-        const textContent = root.getTextContent();
-        
-        // Export as HTML for storage
-        const htmlContent = $getRoot().getTextContent(); // Simplified for now
-        
-        onContentChange(textContent, htmlContent);
+        const content = root.getTextContent();
+        const html = root.getChildren()
+          .map(child => child.getTextContent())
+          .join('\n');
+        onContentChange(content, html);
       });
     });
 
-    return removeListener;
+    return unregister;
   }, [editor, onContentChange]);
 
   return null;
-}
+};
 
-// Custom plugin to initialize content from markdown
-function InitialContentPlugin({ initialContent }: { initialContent?: string }) {
+// Initial content setup plugin
+const InitialContentPlugin = ({ initialContent }: { initialContent?: string }) => {
   const [editor] = useLexicalComposerContext();
   const hasInitialized = useRef(false);
 
@@ -163,270 +161,377 @@ function InitialContentPlugin({ initialContent }: { initialContent?: string }) {
   }, [editor, initialContent]);
 
   return null;
-}
+};
 
-// Toolbar component for formatting
-function EditorToolbar() {
+// Enhanced EditorToolbar component
+const EditorToolbar = ({ className }: { className?: string }) => {
   const [editor] = useLexicalComposerContext();
+  const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
+  const [blockType, setBlockType] = useState('paragraph');
 
-  const formatBold = useCallback(() => {
-    editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
+  useEffect(() => {
+    return editor.registerCommand(
+      SELECTION_CHANGE_COMMAND,
+      () => {
+        editor.getEditorState().read(() => {
+          const selection = $getSelection();
+          if ($isRangeSelection(selection)) {
+            const formats = new Set<string>();
+            if (selection.hasFormat('bold')) formats.add('bold');
+            if (selection.hasFormat('italic')) formats.add('italic');
+            if (selection.hasFormat('underline')) formats.add('underline');
+            if (selection.hasFormat('strikethrough')) formats.add('strikethrough');
+            if (selection.hasFormat('code')) formats.add('code');
+            if (selection.hasFormat('subscript')) formats.add('subscript');
+            if (selection.hasFormat('superscript')) formats.add('superscript');
+            setActiveFormats(formats);
+
+            // Detect current block type
+            const anchorNode = selection.anchor.getNode();
+            const element = anchorNode.getKey() === 'root' ? anchorNode : anchorNode.getTopLevelElementOrThrow();
+            const elementType = element.getType();
+            
+            if (elementType === 'heading') {
+              setBlockType(`heading-${(element as any).getTag()}`);
+            } else if (elementType === 'quote') {
+              setBlockType('quote');
+            } else if (elementType === 'code') {
+              setBlockType('code');
+            } else {
+              setBlockType('paragraph');
+            }
+          }
+        });
+        return false;
+      },
+      COMMAND_PRIORITY_CRITICAL
+    );
   }, [editor]);
 
-  const formatItalic = useCallback(() => {
-    editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic');
-  }, [editor]);
+  const formatText = (format: TextFormatType) => {
+    editor.dispatchCommand(FORMAT_TEXT_COMMAND, format);
+  };
 
-  const formatUnderline = useCallback(() => {
-    editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline');
-  }, [editor]);
+  const insertList = (listType: 'bullet' | 'number') => {
+    if (listType === 'bullet') {
+      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+    } else {
+      editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+    }
+  };
 
-  const insertBulletList = useCallback(() => {
-    editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-  }, [editor]);
+  const formatBlockType = (type: string) => {
+    editor.update(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        const anchorNode = selection.anchor.getNode();
+        const element = anchorNode.getKey() === 'root' ? anchorNode : anchorNode.getTopLevelElementOrThrow();
+        
+        if (type === 'paragraph') {
+          const paragraph = $createParagraphNode();
+          paragraph.append($createTextNode(element.getTextContent()));
+          element.replace(paragraph);
+        } else if (type.startsWith('heading-')) {
+          const tag = type.replace('heading-', '') as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+          const heading = $createHeadingNode(tag);
+          heading.append($createTextNode(element.getTextContent()));
+          element.replace(heading);
+        } else if (type === 'quote') {
+          const quote = $createQuoteNode();
+          quote.append($createTextNode(element.getTextContent()));
+          element.replace(quote);
+        } else if (type === 'code') {
+          const code = $createCodeNode();
+          code.append($createTextNode(element.getTextContent()));
+          element.replace(code);
+        }
+      }
+    });
+  };
 
-  const insertNumberedList = useCallback(() => {
-    editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-  }, [editor]);
+  const insertTable = () => {
+    editor.dispatchCommand(INSERT_TABLE_COMMAND, { columns: '3', rows: '3', includeHeaders: true });
+  };
 
-  const undo = useCallback(() => {
+  const handleUndo = () => {
     editor.dispatchCommand(UNDO_COMMAND, undefined);
-  }, [editor]);
+  };
 
-  const redo = useCallback(() => {
+  const handleRedo = () => {
     editor.dispatchCommand(REDO_COMMAND, undefined);
-  }, [editor]);
+  };
+
+  const blockTypeOptions = [
+    { key: 'paragraph', label: 'Normal Text', icon: <Type className="h-4 w-4" />, onClick: () => formatBlockType('paragraph') },
+    { key: 'heading-h1', label: 'Heading 1', icon: <Heading1 className="h-4 w-4" />, onClick: () => formatBlockType('heading-h1') },
+    { key: 'heading-h2', label: 'Heading 2', icon: <Heading2 className="h-4 w-4" />, onClick: () => formatBlockType('heading-h2') },
+    { key: 'heading-h3', label: 'Heading 3', icon: <Heading3 className="h-4 w-4" />, onClick: () => formatBlockType('heading-h3') },
+    { key: 'quote', label: 'Quote', icon: <Quote className="h-4 w-4" />, onClick: () => formatBlockType('quote') },
+    { key: 'code', label: 'Code Block', icon: <Code className="h-4 w-4" />, onClick: () => formatBlockType('code') },
+  ];
 
   return (
-    <div className="lexical-toolbar border-b border-border p-2 flex items-center gap-2">
-      <button 
-        type="button"
-        className="lexical-toolbar-item px-3 py-1 text-sm rounded hover:bg-accent font-bold"
-        onClick={formatBold}
-        title="Fett (Ctrl+B)"
-      >
-        B
-      </button>
-      <button 
-        type="button"
-        className="lexical-toolbar-item px-3 py-1 text-sm rounded hover:bg-accent italic"
-        onClick={formatItalic}
-        title="Kursiv (Ctrl+I)"
-      >
-        I
-      </button>
-      <button 
-        type="button"
-        className="lexical-toolbar-item px-3 py-1 text-sm rounded hover:bg-accent underline"
-        onClick={formatUnderline}
-        title="Unterstrichen (Ctrl+U)"
-      >
-        U
-      </button>
-      <div className="lexical-toolbar-divider w-px h-6 bg-border mx-1" />
-      <button 
-        type="button"
-        className="lexical-toolbar-item px-3 py-1 text-sm rounded hover:bg-accent"
-        onClick={insertBulletList}
-        title="Aufzählung"
-      >
-        • Liste
-      </button>
-      <button 
-        type="button"
-        className="lexical-toolbar-item px-3 py-1 text-sm rounded hover:bg-accent"
-        onClick={insertNumberedList}
-        title="Nummerierte Liste"
-      >
-        1. Liste
-      </button>
-      <div className="lexical-toolbar-divider w-px h-6 bg-border mx-1" />
-      <button 
-        type="button"
-        className="lexical-toolbar-item px-2 py-1 text-sm rounded hover:bg-accent"
-        onClick={undo}
-        title="Rückgängig (Ctrl+Z)"
-      >
-        ↶
-      </button>
-      <button 
-        type="button"
-        className="lexical-toolbar-item px-2 py-1 text-sm rounded hover:bg-accent"
-        onClick={redo}
-        title="Wiederholen (Ctrl+Y)"
-      >
-        ↷
-      </button>
+    <div className={`flex items-center gap-2 p-2 border-b bg-background flex-wrap ${className || ''}`}>
+      {/* Block Type Dropdown */}
+      <ToolbarDropdown
+        options={blockTypeOptions}
+        selectedKey={blockType}
+        buttonLabel="Format"
+        className="min-w-32"
+      />
+      
+      <Separator orientation="vertical" className="h-6" />
+      
+      {/* Text Formatting */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant={activeFormats.has('bold') ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => formatText('bold')}
+          className="h-8 w-8 p-0"
+          title="Bold (Ctrl+B)"
+        >
+          <Bold className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={activeFormats.has('italic') ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => formatText('italic')}
+          className="h-8 w-8 p-0"
+          title="Italic (Ctrl+I)"
+        >
+          <Italic className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={activeFormats.has('underline') ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => formatText('underline')}
+          className="h-8 w-8 p-0"
+          title="Underline (Ctrl+U)"
+        >
+          <Underline className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={activeFormats.has('strikethrough') ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => formatText('strikethrough')}
+          className="h-8 w-8 p-0"
+          title="Strikethrough"
+        >
+          <Strikethrough className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={activeFormats.has('code') ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => formatText('code')}
+          className="h-8 w-8 p-0"
+          title="Inline Code"
+        >
+          <Code className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={activeFormats.has('subscript') ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => formatText('subscript')}
+          className="h-8 w-8 p-0"
+          title="Subscript"
+        >
+          <Subscript className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={activeFormats.has('superscript') ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => formatText('superscript')}
+          className="h-8 w-8 p-0"
+          title="Superscript"
+        >
+          <Superscript className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <Separator orientation="vertical" className="h-6" />
+      
+      {/* Lists and Structure */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => insertList('bullet')}
+          className="h-8 w-8 p-0"
+          title="Bullet List"
+        >
+          <List className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => insertList('number')}
+          className="h-8 w-8 p-0"
+          title="Numbered List"
+        >
+          <ListOrdered className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={insertTable}
+          className="h-8 w-8 p-0"
+          title="Insert Table"
+        >
+          <Table className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <Separator orientation="vertical" className="h-6" />
+      
+      {/* History */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleUndo}
+          className="h-8 w-8 p-0"
+          title="Undo (Ctrl+Z)"
+        >
+          <Undo className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleRedo}
+          className="h-8 w-8 p-0"
+          title="Redo (Ctrl+Y)"
+        >
+          <Redo className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
-}
+};
 
+// Main component
 export function LexicalYjsEditor({
   documentId,
   initialContent,
   onContentChange,
   className,
-  placeholder = "Beginnen Sie zu tippen...",
+  placeholder = "Enter some text...",
   readOnly = false,
-  autoFocus = false
+  autoFocus = false,
 }: LexicalYjsEditorProps) {
-  const yjsDocRef = useRef<Doc | null>(null);
+  const yjsDocRef = useRef<YDoc | null>(null);
 
-  // Initialize Yjs document
-  const initializeYjs = useCallback(() => {
-    if (yjsDocRef.current) return yjsDocRef.current;
+  const initializeYjsDoc = useCallback(() => {
+    if (!yjsDocRef.current) {
+      yjsDocRef.current = new YDoc();
+    }
+    return yjsDocRef.current;
+  }, []);
 
-    const yjsDoc = new Doc({ guid: documentId });
-    yjsDocRef.current = yjsDoc;
-
-    return yjsDoc;
-  }, [documentId]);
-
-  // Initialize on mount
-  useEffect(() => {
-    initializeYjs();
-  }, [initializeYjs]);
-
-  // Editor configuration
   const initialConfig = {
-    namespace: `KnowledgeEditor-${documentId}`,
+    namespace: 'YjsEditor',
     nodes: editorNodes,
-    editorState: null,
-    theme: {
-      root: 'lexical-editor',
-      paragraph: 'lexical-paragraph',
-      heading: {
-        h1: 'lexical-heading-h1 text-3xl font-bold mb-4',
-        h2: 'lexical-heading-h2 text-2xl font-semibold mb-3',
-        h3: 'lexical-heading-h3 text-xl font-medium mb-2',
-      },
-      list: {
-        nested: {
-          listitem: 'lexical-nested-listitem',
-        },
-        ol: 'lexical-list-ol list-decimal ml-6',
-        ul: 'lexical-list-ul list-disc ml-6',
-        listitem: 'lexical-listitem',
-      },
-      link: 'lexical-link text-primary hover:underline cursor-pointer',
-      text: {
-        bold: 'lexical-text-bold font-bold',
-        italic: 'lexical-text-italic italic',
-        underline: 'lexical-text-underline underline',
-        strikethrough: 'lexical-text-strikethrough line-through',
-      },
-    },
     onError: (error: Error) => {
-      console.error('Lexical Editor Error:', error);
+      console.error('Lexical error:', error);
     },
-    editable: !readOnly,
+    theme: editorTheme,
   };
 
+  useEffect(() => {
+    initializeYjsDoc();
+  }, [initializeYjsDoc]);
+
   return (
-    <div className={cn("lexical-editor-container border border-input rounded-md", className)}>
+    <div className={`lexical-editor ${className || ''}`}>
       <LexicalComposer initialConfig={initialConfig}>
-        <div className="lexical-editor-inner">
-          {/* Toolbar */}
-          {!readOnly && <EditorToolbar />}
-          
-          {/* Main Editor */}
-          <div className="relative">
-            <RichTextPlugin
-              contentEditable={
-                <ContentEditable 
-                  className={cn(
-                    "lexical-content-editable",
-                    "min-h-[400px] outline-none p-4 prose prose-sm max-w-none",
-                    "focus-within:bg-accent/5",
-                    readOnly && "cursor-default"
-                  )}
-                  style={{
-                    resize: 'none',
-                  }}
-                />
-              }
-              placeholder={
-                <div className="lexical-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
-                  {placeholder}
-                </div>
-              }
-              ErrorBoundary={LexicalErrorBoundary}
-            />
-            
-            {/* Core Plugins */}
-            <HistoryPlugin />
-            <LinkPlugin />
-            <ListPlugin />
-            <TabIndentationPlugin />
-            <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-            
-            {/* Auto Focus Plugin */}
-            {autoFocus && <AutoFocusPlugin />}
-            
-            {/* Custom Content Change Plugin */}
-            <ContentChangePlugin onContentChange={onContentChange} />
-            
-            {/* Initial Content Plugin */}
-            {initialContent && (
-              <InitialContentPlugin initialContent={initialContent} />
-            )}
-          </div>
+        {!readOnly && <EditorToolbar />}
+        <div className="relative">
+          <RichTextPlugin
+            contentEditable={
+              <ContentEditable 
+                className="min-h-[400px] p-4 outline-none focus:outline-none resize-none overflow-auto"
+                style={{ 
+                  caretColor: 'rgb(5, 5, 5)',
+                }}
+                readOnly={readOnly}
+              />
+            }
+            placeholder={
+              <div className="absolute top-4 left-4 text-muted-foreground pointer-events-none select-none">
+                {placeholder}
+              </div>
+            }
+            ErrorBoundary={LexicalErrorBoundary}
+          />
         </div>
+        <HistoryPlugin />
+        {autoFocus && <AutoFocusPlugin />}
+        <LinkPlugin />
+        <ListPlugin />
+        <TablePlugin />
+        <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+        <FloatingTextFormatToolbarPlugin />
+        <ContentChangePlugin onContentChange={onContentChange} />
+        <InitialContentPlugin initialContent={initialContent} />
       </LexicalComposer>
       
-      {/* Custom Styles */}
       <style>{`
-        .lexical-editor {
-          position: relative;
+        .lexical-editor .ContentEditable__root {
+          border: none;
+          font-size: 15px;
+          line-height: 1.7;
+          color: #000;
         }
-        
-        .lexical-paragraph {
-          margin: 0 0 1em 0;
+        .lexical-editor .ContentEditable__root:focus {
+          outline: none;
         }
-        
-        .lexical-paragraph:last-child {
-          margin-bottom: 0;
+        .lexical-editor .ContentEditable__root p {
+          margin: 0 0 8px 0;
         }
-        
-        .lexical-heading-h1,
-        .lexical-heading-h2,
-        .lexical-heading-h3 {
-          margin: 1.5em 0 0.5em 0;
+        .lexical-editor .ContentEditable__root h1,
+        .lexical-editor .ContentEditable__root h2,
+        .lexical-editor .ContentEditable__root h3 {
+          margin: 16px 0 8px 0;
         }
-        
-        .lexical-heading-h1:first-child,
-        .lexical-heading-h2:first-child,
-        .lexical-heading-h3:first-child {
-          margin-top: 0;
+        .lexical-editor .ContentEditable__root ul,
+        .lexical-editor .ContentEditable__root ol {
+          margin: 8px 0;
+          padding-left: 20px;
         }
-        
-        .lexical-list-ol,
-        .lexical-list-ul {
-          margin: 0 0 1em 0;
+        .lexical-editor .ContentEditable__root blockquote {
+          margin: 16px 0;
+          border-left: 4px solid #e2e8f0;
+          padding-left: 16px;
+          color: #64748b;
+          font-style: italic;
         }
-        
-        .lexical-listitem {
-          margin: 0.25em 0;
+        .lexical-editor .ContentEditable__root pre {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          padding: 16px;
+          margin: 16px 0;
+          overflow-x: auto;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+          font-size: 14px;
+          line-height: 1.5;
         }
-        
-        .lexical-nested-listitem {
-          list-style: none;
+        .lexical-editor .ContentEditable__root table {
+          border-collapse: collapse;
+          width: 100%;
+          margin: 16px 0;
         }
-        
-        .lexical-link {
-          cursor: pointer;
+        .lexical-editor .ContentEditable__root td,
+        .lexical-editor .ContentEditable__root th {
+          border: 1px solid #e2e8f0;
+          padding: 8px 12px;
+          text-align: left;
         }
-        
-        .lexical-toolbar-item {
-          transition: background-color 0.2s;
-        }
-        
-        .lexical-toolbar-item:hover {
-          background-color: hsl(var(--accent));
+        .lexical-editor .ContentEditable__root th {
+          background-color: #f8fafc;
+          font-weight: 600;
         }
       `}</style>
     </div>
   );
 }
-
-export default LexicalYjsEditor;
