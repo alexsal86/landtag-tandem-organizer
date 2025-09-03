@@ -24,6 +24,7 @@ serve(async (req) => {
     // Store for document rooms
     const rooms = new Map<string, Set<WebSocket>>();
     const documentStates = new Map<string, Uint8Array>();
+    const awarenessStates = new Map<string, Map<number, Uint8Array>>();
 
     socket.onopen = () => {
       console.log('WebSocket connection opened');
@@ -31,58 +32,87 @@ serve(async (req) => {
 
     socket.onmessage = (event) => {
       try {
+        // Handle binary data (Yjs updates)
+        if (event.data instanceof ArrayBuffer) {
+          const data = new Uint8Array(event.data);
+          
+          // Extract message type and room from first bytes (simplified)
+          // In a real implementation, you'd parse the Yjs message format properly
+          console.log('Received binary Yjs update, length:', data.length);
+          
+          // For now, we'll broadcast to all rooms
+          // This is a simplified approach - in production you'd need proper message parsing
+          rooms.forEach((sockets, room) => {
+            sockets.forEach(clientSocket => {
+              if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
+                clientSocket.send(data);
+              }
+            });
+          });
+          return;
+        }
+
+        // Handle JSON messages (room management and awareness)
         const data = JSON.parse(event.data);
-        const { type, room, content } = data;
+        const { type, room, content, messageType } = data;
 
         switch (type) {
           case 'join-room':
+            console.log('Client joining room:', room);
             if (!rooms.has(room)) {
               rooms.set(room, new Set());
+              awarenessStates.set(room, new Map());
             }
             rooms.get(room)?.add(socket);
             
             // Send existing document state if available
             if (documentStates.has(room)) {
-              socket.send(JSON.stringify({
-                type: 'sync-doc',
-                room,
-                content: Array.from(documentStates.get(room)!)
-              }));
+              const docData = documentStates.get(room)!;
+              socket.send(docData.buffer);
             }
             break;
 
-          case 'update-doc':
-            // Store document state
-            documentStates.set(room, new Uint8Array(content));
-            
-            // Broadcast to all clients in the room except sender
-            const roomSockets = rooms.get(room);
-            if (roomSockets) {
-              roomSockets.forEach(clientSocket => {
-                if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
-                  clientSocket.send(JSON.stringify({
-                    type: 'doc-update',
-                    room,
-                    content
-                  }));
-                }
-              });
+          case 'yjs-update':
+            // Handle Yjs document updates
+            if (content && room) {
+              const updateData = new Uint8Array(content);
+              documentStates.set(room, updateData);
+              
+              // Broadcast to all clients in the room except sender
+              const roomSockets = rooms.get(room);
+              if (roomSockets) {
+                roomSockets.forEach(clientSocket => {
+                  if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
+                    clientSocket.send(updateData.buffer);
+                  }
+                });
+              }
             }
             break;
 
           case 'awareness-update':
-            // Broadcast awareness info to room
-            const awarenessRoom = rooms.get(room);
-            if (awarenessRoom) {
-              awarenessRoom.forEach(clientSocket => {
-                if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
-                  clientSocket.send(JSON.stringify({
-                    type: 'awareness-update',
-                    room,
-                    content
-                  }));
+            // Handle awareness updates (cursors, user presence)
+            if (content && room) {
+              const awarenessRoom = awarenessStates.get(room);
+              if (awarenessRoom) {
+                const clientId = content.clientId || 0;
+                const updateData = new Uint8Array(content.update);
+                awarenessRoom.set(clientId, updateData);
+                
+                // Broadcast to all clients in the room except sender
+                const roomSockets = rooms.get(room);
+                if (roomSockets) {
+                  roomSockets.forEach(clientSocket => {
+                    if (clientSocket !== socket && clientSocket.readyState === WebSocket.OPEN) {
+                      clientSocket.send(JSON.stringify({
+                        type: 'awareness-update',
+                        room,
+                        content: content
+                      }));
+                    }
+                  });
                 }
-              });
+              }
             }
             break;
         }
@@ -97,6 +127,7 @@ serve(async (req) => {
         sockets.delete(socket);
         if (sockets.size === 0) {
           rooms.delete(room);
+          awarenessStates.delete(room);
         }
       });
       console.log('WebSocket connection closed');

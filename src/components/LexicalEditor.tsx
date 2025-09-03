@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { $getRoot, $getSelection } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -16,8 +16,11 @@ import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { LinkNode, AutoLinkNode } from '@lexical/link';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import { useAuth } from '@/hooks/useAuth';
+import { useCollaborationPersistence } from '@/hooks/useCollaborationPersistence';
 import FixedTextToolbar from './FixedTextToolbar';
 import ToolbarPlugin from './lexical/ToolbarPlugin';
+import CollaborationStatus from './CollaborationStatus';
 
 const theme = {
   // Theme styling
@@ -32,6 +35,14 @@ const theme = {
 // try to recover gracefully without losing user data.
 function onError(error: Error) {
   console.error(error);
+}
+
+interface CollaborationUser {
+  id: string;
+  name?: string;
+  avatar?: string;
+  color?: string;
+  cursor?: { x: number; y: number };
 }
 
 interface LexicalEditorProps {
@@ -66,8 +77,14 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   documentId,
   enableCollaboration = false
 }) => {
+  const { user } = useAuth();
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
   const [formatCommand, setFormatCommand] = useState<string>('');
+  
+  // Collaboration state
+  const [isConnected, setIsConnected] = useState(false);
+  const [collaborationUsers, setCollaborationUsers] = useState<CollaborationUser[]>([]);
+  const [currentUser, setCurrentUser] = useState<CollaborationUser | undefined>();
 
   const handleFormatText = (format: string) => {
     setFormatCommand(format);
@@ -75,9 +92,29 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     setTimeout(() => setFormatCommand(''), 10);
   };
 
+  // Set up current user for collaboration
+  useEffect(() => {
+    if (user && enableCollaboration) {
+      setCurrentUser({
+        id: user.id,
+        name: user.user_metadata?.display_name || user.email || 'Anonymous',
+        avatar: user.user_metadata?.avatar_url,
+        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`
+      });
+    }
+  }, [user, enableCollaboration]);
+
   // Yjs collaboration setup
   const [yDoc, setYDoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
+
+  // Set up persistence hook
+  const { saveManual } = useCollaborationPersistence({
+    documentId,
+    yDoc,
+    enableCollaboration,
+    debounceMs: 3000
+  });
 
   useEffect(() => {
     if (enableCollaboration && documentId) {
@@ -90,7 +127,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     }
   }, [enableCollaboration, documentId]);
 
-  const providerFactory = React.useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
+  const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
     let doc = yjsDocMap.get(id);
     
     if (!doc) {
@@ -104,8 +141,42 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
       doc
     );
 
+    // Set up connection status tracking
+    wsProvider.on('status', (event: any) => {
+      setIsConnected(event.status === 'connected');
+    });
+
+    // Set up awareness for user presence
+    if (currentUser && wsProvider.awareness) {
+      wsProvider.awareness.setLocalStateField('user', {
+        name: currentUser.name,
+        color: currentUser.color,
+        avatar: currentUser.avatar
+      });
+
+      // Track awareness changes
+      wsProvider.awareness.on('change', () => {
+        const states = wsProvider.awareness.getStates();
+        const users: CollaborationUser[] = [];
+        
+        states.forEach((state, clientId) => {
+          if (state.user) {
+            users.push({
+              id: clientId.toString(),
+              name: state.user.name,
+              avatar: state.user.avatar,
+              color: state.user.color
+            });
+          }
+        });
+        
+        setCollaborationUsers(users);
+      });
+    }
+
+    setProvider(wsProvider);
     return wsProvider as any; // Type assertion to bypass compatibility issue
-  }, []);
+  }, [currentUser]);
   const initialConfig = {
     namespace: 'KnowledgeBaseEditor',
     theme,
@@ -139,6 +210,18 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
             activeFormats={activeFormats}
           />
         )}
+        
+        {/* Collaboration Status */}
+        {enableCollaboration && documentId && (
+          <div className="p-3 border-b border-border">
+            <CollaborationStatus
+              isConnected={isConnected}
+              users={collaborationUsers}
+              currentUser={currentUser}
+            />
+          </div>
+        )}
+        
         <div className="editor-inner">
           <RichTextPlugin
             contentEditable={
