@@ -119,9 +119,16 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
 
   // Create Y.Doc and Provider once when collaboration is enabled
   useEffect(() => {
-    if (!enableCollaboration || !documentId || !currentUser) return;
+    if (!enableCollaboration || !documentId || !currentUser) {
+      console.log('Collaboration setup skipped:', {
+        enableCollaboration,
+        documentId: !!documentId,
+        currentUser: !!currentUser
+      });
+      return;
+    }
 
-    console.log('Setting up collaboration for document:', documentId);
+    console.log('Setting up collaboration for document:', documentId, 'user:', currentUser.name);
     
     // Create single Y.Doc instance
     const doc = new Y.Doc();
@@ -134,17 +141,17 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
 
     // Create WebSocket provider with proper URL
     const roomId = `knowledge-doc-${documentId}`;
+    console.log('Creating WebSocket provider for room:', roomId);
+    
     const wsProvider = new WebsocketProvider(
       'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
       roomId,
-      doc,
-      {
-        connect: false // Don't auto-connect, we'll connect manually
-      }
+      doc
     );
 
     // Set up awareness BEFORE connecting
     if (wsProvider.awareness) {
+      console.log('Setting up awareness for user:', currentUser.name);
       wsProvider.awareness.setLocalStateField('user', {
         name: currentUser.name,
         color: currentUser.color,
@@ -168,19 +175,22 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           }
         });
         
-        console.log('Collaboration users updated:', users.length);
+        console.log('Collaboration users updated:', users.length, users);
         setCollaborationUsers(users);
       });
+    } else {
+      console.error('WebSocket provider awareness not available');
     }
 
     // Set up connection status tracking
     wsProvider.on('status', (event: any) => {
-      console.log('WebSocket status:', event);
-      setIsConnected(event.status === 'connected');
+      console.log('WebSocket status changed:', event);
+      const connected = event.status === 'connected';
+      setIsConnected(connected);
       
       // Join room after connection
-      if (event.status === 'connected' && wsProvider.ws) {
-        console.log('Joining room:', roomId);
+      if (connected && wsProvider.ws) {
+        console.log('WebSocket connected, joining room:', roomId);
         wsProvider.ws.send(JSON.stringify({
           type: 'join-room',
           room: roomId
@@ -193,14 +203,21 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
       setIsConnected(false);
     });
 
-    // Connect the provider
-    wsProvider.connect();
+    wsProvider.on('connection-close', (event: any) => {
+      console.log('WebSocket connection closed:', event);
+      setIsConnected(false);
+    });
+
+    // Store provider
     setProvider(wsProvider);
+    console.log('WebSocket provider created and connecting...');
 
     // Cleanup function
     return () => {
       console.log('Cleaning up collaboration');
-      wsProvider.awareness?.destroy();
+      if (wsProvider.awareness) {
+        wsProvider.awareness.destroy();
+      }
       wsProvider.disconnect();
       doc.destroy();
       setYDoc(null);
@@ -271,20 +288,31 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
         
         {/* Collaboration Status */}
         {enableCollaboration && documentId && (
-          <div className="p-3 border-b border-border">
+          <div className="p-3 border-b border-border bg-muted/50">
             <div className="flex items-center justify-between">
-              <CollaborationStatus
-                isConnected={isConnected}
-                users={collaborationUsers}
-                currentUser={currentUser}
-              />
+              <div className="flex items-center gap-4">
+                <CollaborationStatus
+                  isConnected={isConnected}
+                  users={collaborationUsers}
+                  currentUser={currentUser}
+                />
+                {!isConnected && (
+                  <div className="text-sm text-muted-foreground">
+                    Verbindung wird hergestellt...
+                  </div>
+                )}
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={saveManual}
                   className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                  disabled={!yDoc}
                 >
                   Snapshot speichern
                 </button>
+                <div className="text-xs text-muted-foreground">
+                  {yDoc ? 'Kollaboration aktiv' : 'Wird geladen...'}
+                </div>
               </div>
             </div>
           </div>
