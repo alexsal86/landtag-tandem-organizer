@@ -716,26 +716,28 @@ export function LexicalYjsEditor({
     <div className={`lexical-editor ${className || ''}`}>
       <LexicalComposer initialConfig={initialConfig}>
         {!readOnly && <EditorToolbar />}
-        <div className="relative group">
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable 
-                ref={contentEditableRef}
-                className="min-h-[400px] p-4 outline-none focus:outline-none resize-none overflow-auto"
-                style={{ 
-                  caretColor: 'rgb(5, 5, 5)',
-                  paddingLeft: '44px', // Space for block handles
-                }}
-                readOnly={readOnly}
-              />
-            }
-            placeholder={
-              <div className="absolute top-4 left-11 text-muted-foreground pointer-events-none select-none">
-                {placeholder}
-              </div>
-            }
-            ErrorBoundary={LexicalErrorBoundary}
-          />
+        <div className="relative group min-h-[400px]">
+          <div className="relative h-full">
+            <RichTextPlugin
+              contentEditable={
+                <ContentEditable 
+                  ref={contentEditableRef}
+                  className="min-h-[400px] p-4 outline-none focus:outline-none resize-none overflow-auto"
+                  style={{ 
+                    caretColor: 'rgb(5, 5, 5)',
+                    paddingLeft: '44px', // Space for block handles
+                  }}
+                  readOnly={readOnly}
+                />
+              }
+              placeholder={
+                <div className="absolute top-4 left-11 text-muted-foreground pointer-events-none select-none">
+                  {placeholder}
+                </div>
+              }
+              ErrorBoundary={LexicalErrorBoundary}
+            />
+          </div>
           
           {/* Block handles - positioned outside content area */}
           <div
@@ -751,7 +753,6 @@ export function LexicalYjsEditor({
           
           {/* Draggable Block Plugin */}
           <DraggableBlockPlugin
-            anchorElem={contentEditableRef.current || undefined}
             menuRef={blockMenuRef}
             targetLineRef={targetLineRef}
             menuComponent={
