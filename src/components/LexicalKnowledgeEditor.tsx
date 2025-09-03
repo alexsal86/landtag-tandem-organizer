@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { LexicalYjsEditor } from './LexicalYjsEditor';
+import { CleanLexicalEditor } from './CleanLexicalEditor';
 import { useYjsKnowledgeDocument } from '@/hooks/useYjsKnowledgeDocument';
 import { useToast } from '@/hooks/use-toast';
 
@@ -64,15 +64,11 @@ export function LexicalKnowledgeEditor({ documentId, onClose }: LexicalKnowledge
         </button>
       </div>
       <div className="flex-1 overflow-hidden">
-        <LexicalYjsEditor
+        <CleanLexicalEditor
           documentId={documentId}
           initialContent={initialContent}
           onContentChange={saveDocument}
-          className="h-full border-0"
           autoFocus
-          yjsDoc={yjsDoc}
-          awareness={awareness}
-          isInitialized={isInitialized}
         />
       </div>
     </div>
