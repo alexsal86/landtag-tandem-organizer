@@ -43,6 +43,28 @@ const KnowledgeBaseView = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  // Handle URL-based document selection
+  useEffect(() => {
+    console.log('URL change detected - documentId:', documentId, 'documents count:', documents.length);
+    if (documentId && documents.length > 0) {
+      const doc = documents.find(d => d.id === documentId);
+      if (doc) {
+        console.log('Document found for URL:', doc.title);
+        setSelectedDocument(doc);
+        setIsEditorOpen(true);
+        setIsSidebarCollapsed(true);
+      } else {
+        console.log('Document not found for ID:', documentId, 'redirecting to /knowledge');
+        navigate('/knowledge');
+      }
+    } else if (!documentId) {
+      console.log('No documentId in URL, closing editor');
+      setSelectedDocument(null);
+      setIsEditorOpen(false);
+      setIsSidebarCollapsed(false);
+    }
+  }, [documentId, documents, navigate]);
+
   // Create document form state
   const [newDocument, setNewDocument] = useState({
     title: '',
@@ -424,9 +446,8 @@ const KnowledgeBaseView = () => {
                               <CardContent 
                                 className="p-4"
                                 onClick={() => {
-                                  setSelectedDocument(doc);
-                                  setIsEditorOpen(true);
-                                  setIsSidebarCollapsed(true);
+                                  console.log('Document clicked:', doc.id, 'navigating to:', `/knowledge/${doc.id}`);
+                                  navigate(`/knowledge/${doc.id}`);
                                 }}
                               >
                                 <div className="flex items-start justify-between gap-4">
