@@ -18,6 +18,7 @@ function generateUserColor(): string {
 }
 
 export function useYjsCollaboration({ documentId }: UseYjsCollaborationProps) {
+  console.log('useYjsCollaboration: Hook called with documentId:', documentId);
   const { user } = useAuth();
   const yjsDocRef = useRef<Doc | null>(null);
   const awarenessRef = useRef<Awareness | null>(null);

@@ -25,7 +25,6 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
-import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
@@ -311,9 +310,13 @@ export function CleanLexicalEditor({
   readOnly = false,
   autoFocus = false 
 }: CleanLexicalEditorProps) {
+  console.log('CleanLexicalEditor: Rendering with documentId:', documentId);
   const { yjsDoc, awareness, isInitialized } = useYjsCollaboration({ documentId });
 
+  console.log('CleanLexicalEditor: isInitialized:', isInitialized, 'yjsDoc:', !!yjsDoc, 'awareness:', !!awareness);
+
   if (!isInitialized || !yjsDoc || !awareness) {
+    console.log('CleanLexicalEditor: Still initializing...');
     return (
       <div className="relative border border-border rounded-lg bg-background min-h-[400px] flex items-center justify-center">
         <div className="text-center">
@@ -323,6 +326,8 @@ export function CleanLexicalEditor({
       </div>
     );
   }
+
+  console.log('CleanLexicalEditor: About to render LexicalComposer');
 
   return (
     <LexicalComposer initialConfig={editorConfig}>
