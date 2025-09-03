@@ -87,6 +87,10 @@ import { Doc as YDoc } from 'yjs';
 import { editorNodes } from './editor/config/editorNodes';
 import { editorTheme } from './editor/config/editorTheme';
 import { ToolbarDropdown } from './editor/components/ToolbarDropdown';
+import { FontFamilyDropdown } from './editor/components/FontFamilyDropdown';
+import { FontSizeDropdown } from './editor/components/FontSizeDropdown';
+import { ColorPicker } from './editor/components/ColorPicker';
+import { InsertDropdown } from './editor/components/InsertDropdown';
 import { FloatingTextFormatToolbarPlugin } from './editor/plugins/FloatingTextFormatToolbarPlugin';
 
 // Component props interface
