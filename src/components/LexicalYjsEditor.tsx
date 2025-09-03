@@ -778,6 +778,7 @@ export function LexicalYjsEditor({
         <FloatingTextFormatToolbarPlugin />
         <ContentChangePlugin onContentChange={onContentChange} />
         <InitialContentPlugin initialContent={initialContent} />
+        {/* CollaborationPlugin temporarily disabled due to initialization issues
         {yjsDoc && awareness && isInitialized && (
           <CollaborationPlugin
             id={documentId}
@@ -803,6 +804,7 @@ export function LexicalYjsEditor({
             excludedProperties={new Map()}
           />
         )}
+        */}
       </LexicalComposer>
       
       <style>{`
