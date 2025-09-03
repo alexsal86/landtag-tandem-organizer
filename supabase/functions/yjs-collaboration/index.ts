@@ -119,14 +119,6 @@ serve(async (req) => {
               roomData.sockets.add(socket);
               roomData.lastActivity = Date.now();
               
-              // Send confirmation with room info
-              socket.send(JSON.stringify({
-                type: 'room-joined',
-                room: currentRoom,
-                clients: roomData.sockets.size,
-                timestamp: Date.now()
-              }));
-              
               console.log(`Joined room ${currentRoom}, ${roomData.sockets.size} clients total`);
               break;
 

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
+import { CollaborationProvider } from "@/contexts/CollaborationContext";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
 import CreateAppointment from "./pages/CreateAppointment";
@@ -28,10 +29,11 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TenantProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-        <BrowserRouter>
+        <CollaborationProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+          <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Index />} />
@@ -65,7 +67,8 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-        </TooltipProvider>
+          </TooltipProvider>
+        </CollaborationProvider>
       </TenantProvider>
     </AuthProvider>
   </QueryClientProvider>
