@@ -4,6 +4,10 @@ import { AutoLinkNode, LinkNode } from '@lexical/link';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
 import { HashtagNode } from '@lexical/hashtag';
+import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode';
+import { EquationNode } from '../nodes/EquationNode';
+import { ImageNode } from '../nodes/ImageNode';
+import { CollapsibleNode } from '../nodes/CollapsibleNode';
 
 export const editorNodes = [
   HeadingNode,
@@ -18,4 +22,8 @@ export const editorNodes = [
   TableCellNode,
   TableRowNode,
   HashtagNode,
+  HorizontalRuleNode,
+  EquationNode,
+  ImageNode,
+  CollapsibleNode,
 ];

@@ -92,6 +92,10 @@ import { FontSizeDropdown } from './editor/components/FontSizeDropdown';
 import { ColorPicker } from './editor/components/ColorPicker';
 import { InsertDropdown } from './editor/components/InsertDropdown';
 import { FloatingTextFormatToolbarPlugin } from './editor/plugins/FloatingTextFormatToolbarPlugin';
+import { HorizontalRulePlugin } from './editor/plugins/HorizontalRulePlugin';
+import { EquationPlugin } from './editor/plugins/EquationPlugin';
+import { ImagePlugin } from './editor/plugins/ImagePlugin';
+import { CollapsiblePlugin } from './editor/plugins/CollapsiblePlugin';
 
 // Component props interface
 interface LexicalYjsEditorProps {
@@ -414,253 +418,288 @@ const EditorToolbar = ({ className }: { className?: string }) => {
   ];
 
   return (
-    <div className={`flex items-center gap-2 p-2 border-b bg-background flex-wrap ${className || ''}`}>
-      {/* Block Type Dropdown */}
-      <ToolbarDropdown
-        options={blockTypeOptions}
-        selectedKey={blockType}
-        buttonLabel="Format"
-        className="min-w-32"
-      />
-      
-      <Separator orientation="vertical" className="h-6" />
-      
-      {/* Text Formatting */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant={activeFormats.has('bold') ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => formatText('bold')}
-          className="h-8 w-8 p-0"
-          title="Bold (Ctrl+B)"
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={activeFormats.has('italic') ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => formatText('italic')}
-          className="h-8 w-8 p-0"
-          title="Italic (Ctrl+I)"
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={activeFormats.has('underline') ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => formatText('underline')}
-          className="h-8 w-8 p-0"
-          title="Underline (Ctrl+U)"
-        >
-          <Underline className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={activeFormats.has('strikethrough') ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => formatText('strikethrough')}
-          className="h-8 w-8 p-0"
-          title="Strikethrough"
-        >
-          <Strikethrough className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={activeFormats.has('code') ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => formatText('code')}
-          className="h-8 w-8 p-0"
-          title="Inline Code"
-        >
-          <Code className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={activeFormats.has('subscript') ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => formatText('subscript')}
-          className="h-8 w-8 p-0"
-          title="Subscript"
-        >
-          <Subscript className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={activeFormats.has('superscript') ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => formatText('superscript')}
-          className="h-8 w-8 p-0"
-          title="Superscript"
-        >
-          <Superscript className="h-4 w-4" />
-        </Button>
+    <div className={`toolbar-container border-b bg-card ${className || ''}`}>
+      {/* First Row - Main Controls */}
+      <div className="flex items-center gap-2 p-2 flex-wrap">
+        {/* History */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleUndo}
+            className="h-8 w-8 p-0"
+            title="Undo (Ctrl+Z)"
+          >
+            <Undo className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRedo}
+            className="h-8 w-8 p-0"
+            title="Redo (Ctrl+Y)"
+          >
+            <Redo className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Block Type */}
+        <ToolbarDropdown
+          options={blockTypeOptions}
+          selectedKey={blockType}
+          buttonLabel="Format"
+          className="min-w-32"
+        />
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Font Controls */}
+        <div className="flex items-center gap-1">
+          <FontFamilyDropdown selectedFontFamily="" />
+          <FontSizeDropdown selectedFontSize="16px" />
+        </div>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Text Formatting */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant={activeFormats.has('bold') ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => formatText('bold')}
+            className="h-8 w-8 p-0"
+            title="Bold (Ctrl+B)"
+          >
+            <Bold className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={activeFormats.has('italic') ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => formatText('italic')}
+            className="h-8 w-8 p-0"
+            title="Italic (Ctrl+I)"
+          >
+            <Italic className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={activeFormats.has('underline') ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => formatText('underline')}
+            className="h-8 w-8 p-0"
+            title="Underline (Ctrl+U)"
+          >
+            <Underline className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={activeFormats.has('strikethrough') ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => formatText('strikethrough')}
+            className="h-8 w-8 p-0"
+            title="Strikethrough"
+          >
+            <Strikethrough className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={activeFormats.has('code') ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => formatText('code')}
+            className="h-8 w-8 p-0"
+            title="Inline Code"
+          >
+            <Code className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={activeFormats.has('subscript') ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => formatText('subscript')}
+            className="h-8 w-8 p-0"
+            title="Subscript"
+          >
+            <Subscript className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={activeFormats.has('superscript') ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => formatText('superscript')}
+            className="h-8 w-8 p-0"
+            title="Superscript"
+          >
+            <Superscript className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Color Controls */}
+        <div className="flex items-center gap-1">
+          <ColorPicker
+            color="#000000"
+            onColorChange={() => {}}
+            icon={<Type className="h-4 w-4" />}
+            label="Text"
+          />
+          <ColorPicker
+            color="#ffffff"
+            onColorChange={() => {}}
+            icon={<Highlighter className="h-4 w-4" />}
+            label="Background"
+          />
+        </div>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Text Alignment */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {}}
+            className="h-8 w-8 p-0"
+            title="Align Left"
+          >
+            <AlignLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {}}
+            className="h-8 w-8 p-0"
+            title="Align Center"
+          >
+            <AlignCenter className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {}}
+            className="h-8 w-8 p-0"
+            title="Align Right"
+          >
+            <AlignRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {}}
+            className="h-8 w-8 p-0"
+            title="Justify"
+          >
+            <AlignJustify className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-      
-      <Separator orientation="vertical" className="h-6" />
-      
-      {/* Lists and Structure */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => insertList('bullet')}
-          className="h-8 w-8 p-0"
-          title="Bullet List"
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => insertList('number')}
-          className="h-8 w-8 p-0"
-          title="Numbered List"
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={insertTable}
-          className="h-8 w-8 p-0"
-          title="Insert Table"
-        >
-          <Table className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      <Separator orientation="vertical" className="h-6" />
-      
-      {/* History */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleUndo}
-          className="h-8 w-8 p-0"
-          title="Undo (Ctrl+Z)"
-        >
-          <Undo className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRedo}
-          className="h-8 w-8 p-0"
-          title="Redo (Ctrl+Y)"
-        >
-          <Redo className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      <Separator orientation="vertical" className="h-6" />
-      
-      {/* Links and Media */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={insertLink}
-          className="h-8 w-8 p-0"
-          title="Insert Link"
-        >
-          <Link className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={insertHashtag}
-          className="h-8 w-8 p-0"
-          title="Insert Hashtag"
-        >
-          <Hash className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={highlightText}
-          className="h-8 w-8 p-0"
-          title="Highlight Text"
-        >
-          <Highlighter className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      <Separator orientation="vertical" className="h-6" />
-      
-      {/* Indentation */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleIndent}
-          className="h-8 w-8 p-0"
-          title="Increase Indent"
-        >
-          <Indent className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleOutdent}
-          className="h-8 w-8 p-0"
-          title="Decrease Indent"
-        >
-          <Outdent className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      <Separator orientation="vertical" className="h-6" />
-      
-      {/* Copy and Clear Operations */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCopyAll}
-          className="h-8 w-8 p-0"
-          title="Copy All (Ctrl+A, Ctrl+C)"
-        >
-          <Copy className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={clearFormatting}
-          className="h-8 w-8 p-0"
-          title="Clear Formatting"
-        >
-          <PaintBucket className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={clearEditor}
-          className="h-8 w-8 p-0"
-          title="Clear All Content"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      <Separator orientation="vertical" className="h-6" />
-      
-      {/* Export Options */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={exportAsPlainText}
-          className="h-8 w-8 p-0"
-          title="Export as Text"
-        >
-          <FileText className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={exportAsHTML}
-          className="h-8 w-8 p-0"
-          title="Export as HTML"
-        >
-          <Download className="h-4 w-4" />
-        </Button>
+
+      {/* Second Row - Lists, Insert, and Advanced Controls */}
+      <div className="flex items-center gap-2 p-2 pt-0 flex-wrap border-t">
+        {/* Insert Menu */}
+        <InsertDropdown />
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Lists */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => insertList('bullet')}
+            className="h-8 w-8 p-0"
+            title="Bullet List"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => insertList('number')}
+            className="h-8 w-8 p-0"
+            title="Numbered List"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Indentation */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleOutdent}
+            className="h-8 w-8 p-0"
+            title="Decrease Indent"
+          >
+            <Outdent className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleIndent}
+            className="h-8 w-8 p-0"
+            title="Increase Indent"
+          >
+            <Indent className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Links and Special */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={insertLink}
+            className="h-8 w-8 p-0"
+            title="Insert Link"
+          >
+            <Link className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={insertHashtag}
+            className="h-8 w-8 p-0"
+            title="Insert Hashtag"
+          >
+            <Hash className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Clear and Export */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFormatting}
+            className="h-8 w-8 p-0"
+            title="Clear Formatting"
+          >
+            <PaintBucket className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearEditor}
+            className="h-8 w-8 p-0"
+            title="Clear All Content"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={exportAsHTML}
+            className="h-8 w-8 p-0"
+            title="Export as HTML"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -729,6 +768,10 @@ export function LexicalYjsEditor({
         <TablePlugin />
         <HashtagPlugin />
         <ClearEditorPlugin />
+        <HorizontalRulePlugin />
+        <EquationPlugin />
+        <ImagePlugin />
+        <CollapsiblePlugin />
         <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
         <FloatingTextFormatToolbarPlugin />
         <ContentChangePlugin onContentChange={onContentChange} />
