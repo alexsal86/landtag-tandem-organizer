@@ -1,4 +1,3 @@
-console.log('🚨 LexicalEditor.tsx module loading');
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { $getRoot } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';

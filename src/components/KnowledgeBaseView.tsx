@@ -579,6 +579,8 @@ const KnowledgeBaseView = () => {
           
           <div className="flex-1 p-4">
             <LexicalEditor
+              documentId={selectedDocument.id}
+              enableCollaboration={true}
               initialContent={selectedDocument.content}
               onChange={async (content) => {
                 // Auto-save document content to knowledge_documents table
@@ -601,8 +603,6 @@ const KnowledgeBaseView = () => {
                 }
               }}
               placeholder="Beginnen Sie zu schreiben..."
-              documentId={selectedDocument.id}
-              enableCollaboration={true}
             />
           </div>
         </div>

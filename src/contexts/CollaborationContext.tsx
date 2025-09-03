@@ -1,4 +1,3 @@
-console.log('🚨 CollaborationContext.tsx module loading');
 import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
