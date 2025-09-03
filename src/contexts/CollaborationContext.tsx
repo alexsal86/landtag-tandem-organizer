@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { useAuth } from '@/hooks/useAuth';
@@ -48,6 +48,19 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
   const [currentUser, setCurrentUser] = useState<CollaborationUser | null>(null);
   const [isReady, setIsReady] = useState(false);
 
+  // Generate stable color based on user ID
+  const generateUserColor = useCallback((userId: string) => {
+    // Generate stable color based on user ID hash
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      const char = userId.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 70%, 50%)`;
+  }, []);
+
   // Set up current user
   useEffect(() => {
     if (user) {
@@ -55,13 +68,13 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
         id: user.id,
         name: user.user_metadata?.display_name || user.email || 'Anonymous',
         avatar: user.user_metadata?.avatar_url,
-        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`
+        color: generateUserColor(user.id)
       };
       setCurrentUser(userData);
     } else {
       setCurrentUser(null);
     }
-  }, [user]);
+  }, [user, generateUserColor]);
 
   const destroyCollaboration = useCallback(() => {
     console.log('Destroying collaboration');
@@ -195,7 +208,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     setIsReady(true);
   }, []);
 
-  const value: CollaborationContextValue = {
+  const value: CollaborationContextValue = useMemo(() => ({
     yDoc,
     provider,
     isConnected,
@@ -204,7 +217,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     initializeCollaboration,
     destroyCollaboration,
     isReady
-  };
+  }), [yDoc, provider, isConnected, users, currentUser, initializeCollaboration, destroyCollaboration, isReady]);
 
   console.log('🚀 CollaborationProvider providing context:', { 
     hasYDoc: !!yDoc, 
