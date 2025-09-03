@@ -86,7 +86,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   } = collaborationContext || {};
 
   // Show warning if collaboration is enabled but context is not available
-  const collaborationAvailable = enableCollaboration && collaborationContext && isReady;
+  const collaborationAvailable = enableCollaboration && collaborationContext;
   
   // Debug logging
   console.log('Collaboration State:', {
