@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { LexicalKnowledgeEditor } from './LexicalKnowledgeEditor';
+
 
 interface KnowledgeDocument {
   id: string;
@@ -550,17 +550,7 @@ const KnowledgeBaseView = () => {
         )}
       </div>
 
-      {/* Document Editor - Takes full remaining space when open */}
-      {selectedDocument && isEditorOpen && (
-        <div className="flex-1 bg-background flex flex-col">
-          <LexicalKnowledgeEditor
-            documentId={selectedDocument.id}
-            onClose={() => {
-              navigate('/knowledge');
-            }}
-          />
-        </div>
-      )}
+      {/* Document Editor removed - Lexical/Yjs components deleted */}
     </div>
   );
 };
