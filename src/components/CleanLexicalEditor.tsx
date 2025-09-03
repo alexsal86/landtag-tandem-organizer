@@ -51,7 +51,6 @@ import {
   Minus
 } from 'lucide-react';
 import { useYjsCollaboration } from '@/hooks/useYjsCollaboration';
-import { YjsCollaborationPlugin } from '@/components/editor/plugins/YjsCollaborationPlugin';
 import './CleanLexicalEditor.css';
 
 // Define our editor theme

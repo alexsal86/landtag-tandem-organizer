@@ -34,13 +34,21 @@ export function useYjsCollaboration({ documentId: propDocumentId }: UseYjsCollab
 
   // Initialize Yjs document and awareness
   useEffect(() => {
-    console.log('useYjsCollaboration: Initializing for:', documentId);
+    console.log('🔄 useYjsCollaboration: useEffect triggered for documentId:', documentId, 'isInitialized:', isInitialized);
     
-    if (!documentId) {
-      console.log('useYjsCollaboration: No documentId available, skipping initialization');
+    if (!documentId || !session?.access_token) {
+      console.log('⚠️ useYjsCollaboration: Missing documentId or session, skipping initialization');
       setIsInitialized(false);
       return;
     }
+    
+    // Prevent re-initialization if already initialized for same document
+    if (isInitialized && yjsDocRef.current && awarenessRef.current && providerRef.current) {
+      console.log('✅ useYjsCollaboration: Already initialized for this document, skipping re-initialization');
+      return;
+    }
+    
+    console.log('🚀 useYjsCollaboration: Starting initialization for document:', documentId);
     
     setIsInitialized(false);
     
@@ -58,7 +66,7 @@ export function useYjsCollaboration({ documentId: propDocumentId }: UseYjsCollab
       yjsDocRef.current.destroy();
     }
     
-    if (documentId && session?.access_token) {
+    if (documentId && session?.access_token && user) {
       // Create new Yjs document
       const doc = new Doc({ guid: documentId });
       yjsDocRef.current = doc;
@@ -141,7 +149,7 @@ export function useYjsCollaboration({ documentId: propDocumentId }: UseYjsCollab
         clearInterval(saveInterval);
       };
     }
-  }, [documentId, user, session]);
+  }, [documentId, session?.access_token]); // Removed user dependency to prevent loop
 
   // Save document state to localStorage
   const saveToLocalStorage = useCallback(() => {
