@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import LexicalYjsEditor from './LexicalYjsEditor';
+import { LexicalYjsEditor } from './LexicalYjsEditor';
 import { useYjsKnowledgeDocument } from '@/hooks/useYjsKnowledgeDocument';
 import { useToast } from '@/hooks/use-toast';
 

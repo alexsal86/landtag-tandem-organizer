@@ -257,8 +257,9 @@ const KnowledgeBaseView = () => {
 
   return (
     <div className="h-full flex bg-background">
-      {/* Main Content */}
-      <div className={`${selectedDocument && isEditorOpen ? 'w-1/2' : 'w-full'} flex flex-col`}>
+      {/* Document Selection Sidebar - Collapsible */}
+      <div className={`${selectedDocument && isEditorOpen ? 'w-80 border-r border-border' : 'w-full'} flex flex-col transition-all duration-300`}>
+        {!(selectedDocument && isEditorOpen) && (
         <div className="flex-none border-b border-border bg-card/50 backdrop-blur-sm">
           <div className="p-6">
             <div className="flex items-center gap-3 mb-6">
@@ -481,11 +482,12 @@ const KnowledgeBaseView = () => {
             </Tabs>
           </div>
         </div>
+        )}
       </div>
 
-      {/* Document Editor Sidebar */}
+      {/* Document Editor - Takes full remaining space when open */}
       {selectedDocument && isEditorOpen && (
-        <div className="w-1/2 border-l bg-background flex flex-col">
+        <div className="flex-1 bg-background flex flex-col">
           <LexicalKnowledgeEditor
             documentId={selectedDocument.id}
             onClose={() => {
