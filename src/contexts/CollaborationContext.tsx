@@ -61,7 +61,24 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     return `hsl(${hue}, 70%, 50%)`;
   }, []);
 
-  // Set up current user
+  // Generate anonymous user ID for non-authenticated users
+  const generateAnonymousUser = useCallback(() => {
+    const anonymousId = `anon-${Math.random().toString(36).substr(2, 9)}`;
+    const anonymousNames = [
+      'Anonymous Writer', 'Guest Editor', 'Collaborative User', 'Document Editor', 
+      'Knowledge Contributor', 'Anonymous Collaborator', 'Guest User'
+    ];
+    const randomName = anonymousNames[Math.floor(Math.random() * anonymousNames.length)];
+    
+    return {
+      id: anonymousId,
+      name: randomName,
+      avatar: undefined,
+      color: generateUserColor(anonymousId)
+    };
+  }, [generateUserColor]);
+
+  // Set up current user (authenticated or anonymous)
   useEffect(() => {
     if (user) {
       const userData: CollaborationUser = {
@@ -72,9 +89,11 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       };
       setCurrentUser(userData);
     } else {
-      setCurrentUser(null);
+      // Create anonymous user for non-authenticated users
+      const anonymousUser = generateAnonymousUser();
+      setCurrentUser(anonymousUser);
     }
-  }, [user, generateUserColor]);
+  }, [user, generateUserColor, generateAnonymousUser]);
 
   const destroyCollaboration = useCallback(() => {
     console.log('Destroying collaboration');
@@ -106,7 +125,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
 
   const initializeCollaboration = useCallback((documentId: string) => {
     if (!currentUser) {
-      console.log('Cannot initialize collaboration: no current user');
+      console.log('Cannot initialize collaboration: no current user (still loading)');
       return;
     }
 

@@ -50,10 +50,11 @@ const Index = () => {
   };
 
   useEffect(() => {
-    if (!loading && !user) {
+    // Only redirect to auth if user is not authenticated AND not accessing knowledge section
+    if (!loading && !user && !location.pathname.startsWith('/knowledge') && activeSection !== 'knowledge') {
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, location.pathname, activeSection]);
 
   if (loading) {
     return (
@@ -63,7 +64,7 @@ const Index = () => {
     );
   }
 
-  if (!user) {
+  if (!user && activeSection !== 'knowledge' && !location.pathname.startsWith('/knowledge')) {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-6">
         <Card className="w-full max-w-md text-center">

@@ -85,8 +85,8 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     isReady = false
   } = collaborationContext || {};
 
-  // Show warning if collaboration is enabled but context is not available or no user
-  const collaborationAvailable = enableCollaboration && collaborationContext && isReady && currentUser;
+  // Show warning if collaboration is enabled but context is not available
+  const collaborationAvailable = enableCollaboration && collaborationContext && isReady;
   
   // Stabilize collaborationAvailable to prevent re-initialization loops
   const [isInitialized, setIsInitialized] = useState(false);
@@ -94,12 +94,10 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   useEffect(() => {
     if (enableCollaboration && !collaborationContext) {
       setCollaborationError('Kollaboration nicht verfügbar - Editor läuft im Standalone-Modus');
-    } else if (enableCollaboration && collaborationContext && !currentUser) {
-      setCollaborationError('Benutzer-Anmeldung erforderlich - Editor läuft im Standalone-Modus');
     } else {
       setCollaborationError(null);
     }
-  }, [enableCollaboration, collaborationContext, currentUser]);
+  }, [enableCollaboration, collaborationContext]);
 
   const handleFormatText = (format: string) => {
     setFormatCommand(format);
