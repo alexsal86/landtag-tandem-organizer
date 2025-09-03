@@ -318,9 +318,9 @@ export function CleanLexicalEditor({
     );
   }
 
-  // Provider factory with proper cleanup handling
-  const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
-    console.log('providerFactory called with id:', id);
+  // Binding factory that creates proper Yjs binding for CollaborationPlugin
+  const bindingFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
+    console.log('bindingFactory called with id:', id);
     
     // Create or get the Yjs document
     let doc = yjsDocMap.get(id);
@@ -359,31 +359,14 @@ export function CleanLexicalEditor({
       console.error('WebSocket connection error:', event);
     });
 
-    // Store provider on doc for awareness access and add proper cleanup
+    // Store provider on doc for awareness access
     const docWithProvider = doc as Y.Doc & { provider: WebsocketProvider };
     docWithProvider.provider = provider;
 
-    // Create a wrapper object that ensures proper cleanup
-    const providerWrapper = {
-      ...provider,
-      disconnect: () => {
-        console.log('Disconnecting provider for:', id);
-        try {
-          if (provider && typeof provider.disconnect === 'function') {
-            provider.disconnect();
-          }
-          if (provider && typeof provider.destroy === 'function') {
-            provider.destroy();
-          }
-        } catch (error) {
-          console.error('Error during provider cleanup:', error);
-        }
-      }
-    };
-
-    console.log('Created provider wrapper for document:', id);
+    console.log('Created provider for binding factory, document:', id);
     
-    return providerWrapper as unknown as Provider;
+    // Return the provider (CollaborationPlugin will use this to create binding)
+    return provider as unknown as Provider;
   }, [session?.user]);
 
   return (
@@ -415,10 +398,10 @@ export function CleanLexicalEditor({
         </div>
       </div>
       
-      {/* Official CollaborationPlugin */}
+      {/* CollaborationPlugin with corrected parameters */}
       <CollaborationPlugin
         id={documentId}
-        providerFactory={providerFactory}
+        providerFactory={bindingFactory}
         shouldBootstrap={true}
       />
       
