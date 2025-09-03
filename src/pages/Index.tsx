@@ -50,10 +50,11 @@ const Index = () => {
   };
 
   useEffect(() => {
-    if (!loading && !user) {
+    // Allow access to knowledge section without authentication (demo mode)
+    if (!loading && !user && activeSection !== 'knowledge') {
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, activeSection]);
 
   if (loading) {
     return (
@@ -63,7 +64,7 @@ const Index = () => {
     );
   }
 
-  if (!user) {
+  if (!user && activeSection !== 'knowledge') {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-6">
         <Card className="w-full max-w-md text-center">

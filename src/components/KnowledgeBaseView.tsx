@@ -43,6 +43,12 @@ const KnowledgeBaseView = () => {
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Token-based one-time authentication for documents
+  const [authToken, setAuthToken] = useState<string | null>(
+    localStorage.getItem('knowledge_auth_token')
+  );
+  const [anonymousMode, setAnonymousMode] = useState(!user && !authToken);
 
   // Handle URL-based document selection
   useEffect(() => {
@@ -84,12 +90,59 @@ const KnowledgeBaseView = () => {
   ];
 
   const fetchDocuments = async () => {
-    if (!user) {
-      console.log('No user available for fetchDocuments');
+    console.log('Fetching knowledge documents - user:', user?.id, 'token:', !!authToken, 'anonymous:', anonymousMode);
+    
+    // In anonymous mode, create demo documents for collaboration testing
+    if (anonymousMode) {
+      console.log('Running in anonymous mode - using demo documents');
+      const demoDocuments: KnowledgeDocument[] = [
+        {
+          id: 'demo-knowledge-1',
+          title: 'Collaborative Meeting Notes',
+          content: 'Diese Notizen können in Echtzeit mit anderen Benutzern bearbeitet werden.',
+          category: 'meeting',
+          created_by: 'anonymous',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          is_published: true,
+          creator_name: 'Anonymous'
+        },
+        {
+          id: 'demo-knowledge-2', 
+          title: 'Policy Draft Document',
+          content: 'Ein Richtlinienentwurf zur gemeinsamen Bearbeitung mit Yjs-Kollaboration.',
+          category: 'policy',
+          created_by: 'anonymous',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          is_published: true,
+          creator_name: 'Anonymous'
+        },
+        {
+          id: 'demo-knowledge-3',
+          title: 'Technical Documentation',
+          content: 'Technische Dokumentation mit Echtzeit-Kollaboration über Yjs und WebSocket.',
+          category: 'technical',
+          created_by: 'anonymous',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          is_published: true,
+          creator_name: 'Anonymous'
+        }
+      ];
+      setDocuments(demoDocuments);
+      setLoading(false);
+      return;
+    }
+    
+    // Regular Supabase-authenticated mode
+    if (!user && !authToken) {
+      console.log('No user or token available for fetchDocuments');
+      setLoading(false);
       return;
     }
 
-    console.log('Fetching knowledge documents for user:', user.id);
+    console.log('Fetching knowledge documents for user:', user?.id);
     try {
       console.log('Starting supabase query...');
       const { data, error } = await supabase
@@ -138,14 +191,9 @@ const KnowledgeBaseView = () => {
   };
 
   useEffect(() => {
-    console.log('KnowledgeBaseView: useEffect triggered, user:', user?.id);
-    if (user) {
-      fetchDocuments();
-    } else {
-      console.log('No user, setting loading to false');
-      setLoading(false);
-    }
-  }, [user]);
+    console.log('KnowledgeBaseView: useEffect triggered, user:', user?.id, 'anonymous mode:', anonymousMode);
+    fetchDocuments();
+  }, [user, anonymousMode]);
 
   // Real-time updates
   useEffect(() => {
@@ -315,7 +363,7 @@ const KnowledgeBaseView = () => {
             {/* Header with collapse button when editor is open */}
             <div className="flex-none border-b border-border bg-card/50 backdrop-blur-sm">
               <div className="p-6">
-                <div className="flex items-center justify-between gap-3 mb-6">
+                <div className="flex items-center justify-between gap-3 mb-4">
                   <div className="flex items-center gap-3">
                     <Database className="h-6 w-6 text-primary" />
                     <h1 className="text-2xl font-semibold text-foreground">Wissensdatenbank</h1>
@@ -331,6 +379,20 @@ const KnowledgeBaseView = () => {
                     </Button>
                   )}
                 </div>
+
+                {/* Mode Indicator */}
+                {anonymousMode && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Users className="h-4 w-4" />
+                      <span className="text-sm font-medium">Demo-Modus mit Yjs-Kollaboration</span>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Sie können diese Demo-Dokumente bearbeiten und die Echtzeit-Kollaboration testen. 
+                      Änderungen werden nicht gespeichert, sondern nur über Yjs synchronisiert.
+                    </p>
+                  </div>
+                )}
 
                 <Tabs defaultValue="manage" className="w-full">
                   <TabsList className="mb-4">
@@ -578,32 +640,41 @@ const KnowledgeBaseView = () => {
           </div>
           
           <div className="flex-1 p-4">
-            <LexicalEditor
-              documentId={selectedDocument.id}
-              enableCollaboration={true}
-              initialContent={selectedDocument.content}
-              onChange={async (content) => {
-                // Auto-save document content to knowledge_documents table
-                try {
-                  const { error } = await supabase
-                    .from('knowledge_documents')
-                    .update({ 
-                      content,
-                      updated_at: new Date().toISOString()
-                    })
-                    .eq('id', selectedDocument.id);
-                  
-                  if (error) {
-                    console.error('Error auto-saving document:', error);
-                  } else {
-                    console.log('Document auto-saved');
+            <div className="border rounded-lg min-h-[400px]">
+              <LexicalEditor
+                key={selectedDocument.id} // Force re-mount when document changes for proper collaboration
+                documentId={selectedDocument.id}
+                enableCollaboration={true}
+                initialContent={selectedDocument.content}
+                showToolbar={true}
+                onChange={async (content) => {
+                  // Auto-save document content only when not in anonymous mode
+                  if (anonymousMode) {
+                    console.log('Anonymous mode: content changed but not saving to database');
+                    return;
                   }
-                } catch (error) {
-                  console.error('Error in auto-save:', error);
-                }
-              }}
-              placeholder="Beginnen Sie zu schreiben..."
-            />
+                  
+                  try {
+                    const { error } = await supabase
+                      .from('knowledge_documents')
+                      .update({ 
+                        content,
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('id', selectedDocument.id);
+                    
+                    if (error) {
+                      console.error('Error auto-saving document:', error);
+                    } else {
+                      console.log('Document auto-saved');
+                    }
+                  } catch (error) {
+                    console.error('Error in auto-save:', error);
+                  }
+                }}
+                placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
+              />
+            </div>
           </div>
         </div>
       )}

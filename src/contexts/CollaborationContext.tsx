@@ -59,7 +59,18 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       };
       setCurrentUser(userData);
     } else {
-      setCurrentUser(null);
+      // Allow anonymous collaboration for knowledge management without Supabase auth
+      const anonymousId = localStorage.getItem('anonymous_user_id') || 
+        `anonymous_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('anonymous_user_id', anonymousId);
+      
+      const anonymousUserData: CollaborationUser = {
+        id: anonymousId,
+        name: 'Anonymous User',
+        avatar: undefined,
+        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`
+      };
+      setCurrentUser(anonymousUserData);
     }
   }, [user]);
 
@@ -93,14 +104,14 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
 
   const initializeCollaboration = useCallback((documentId: string) => {
     if (!currentUser) {
-      console.log('Cannot initialize collaboration: no current user');
+      console.log('Cannot initialize collaboration: no current user available yet');
       return;
     }
 
     // Clean up existing collaboration
     destroyCollaboration();
 
-    console.log('Initializing collaboration for document:', documentId);
+    console.log('Initializing collaboration for document:', documentId, 'with user:', currentUser?.name);
 
     try {
       // Create new Y.Doc
