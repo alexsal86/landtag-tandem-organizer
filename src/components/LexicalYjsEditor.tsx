@@ -729,10 +729,10 @@ export function LexicalYjsEditor({
         <FloatingTextFormatToolbarPlugin />
         <ContentChangePlugin onContentChange={onContentChange} />
         <InitialContentPlugin initialContent={initialContent} />
-        {yjsDoc && (
+        {yjsDoc && yjsDoc.provider && (
           <CollaborationPlugin
             id={documentId}
-            providerFactory={(id, yjsDocMap) => null}
+            providerFactory={(id, yjsDocMap) => yjsDoc.provider}
             shouldBootstrap={false}
           />
         )}
