@@ -318,8 +318,10 @@ export function CleanLexicalEditor({
     );
   }
 
-  // Rewritten providerFactory that properly uses createBinding
+  // Provider factory with proper cleanup handling
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
+    console.log('providerFactory called with id:', id);
+    
     // Create or get the Yjs document
     let doc = yjsDocMap.get(id);
     if (!doc) {
@@ -357,14 +359,31 @@ export function CleanLexicalEditor({
       console.error('WebSocket connection error:', event);
     });
 
-    // Store provider on doc for awareness access
+    // Store provider on doc for awareness access and add proper cleanup
     const docWithProvider = doc as Y.Doc & { provider: WebsocketProvider };
     docWithProvider.provider = provider;
 
-    console.log('Created provider for document:', id);
+    // Create a wrapper object that ensures proper cleanup
+    const providerWrapper = {
+      ...provider,
+      disconnect: () => {
+        console.log('Disconnecting provider for:', id);
+        try {
+          if (provider && typeof provider.disconnect === 'function') {
+            provider.disconnect();
+          }
+          if (provider && typeof provider.destroy === 'function') {
+            provider.destroy();
+          }
+        } catch (error) {
+          console.error('Error during provider cleanup:', error);
+        }
+      }
+    };
+
+    console.log('Created provider wrapper for document:', id);
     
-    // Return the provider - CollaborationPlugin will internally use createBinding
-    return provider as unknown as Provider;
+    return providerWrapper as unknown as Provider;
   }, [session?.user]);
 
   return (
