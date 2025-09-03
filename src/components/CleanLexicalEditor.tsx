@@ -250,16 +250,23 @@ function EditorToolbar() {
   );
 }
 
-// Simplified Collaboration Awareness Display
+// Enhanced Collaboration Awareness Display with Debugging
 function CollaborationAwareness() {
   const { yjsDocMap } = useCollaborationContext();
   const [connectedUsers, setConnectedUsers] = useState<number>(0);
-  const [connectionStatus, setConnectionStatus] = useState<string>('Connecting...');
+  const [connectionStatus, setConnectionStatus] = useState<string>('Initializing...');
+  const [synced, setSynced] = useState<boolean>(false);
+  const [userList, setUserList] = useState<string[]>([]);
 
   useEffect(() => {
+    console.log('🔗 CollaborationAwareness: yjsDocMap size:', yjsDocMap.size);
+    
     if (yjsDocMap.size === 0) {
-      setConnectionStatus('Connecting...');
+      console.log('🔗 CollaborationAwareness: No documents in map');
+      setConnectionStatus('Initializing...');
       setConnectedUsers(0);
+      setSynced(false);
+      setUserList([]);
       return;
     }
 
@@ -267,34 +274,95 @@ function CollaborationAwareness() {
     const firstDoc = Array.from(yjsDocMap.values())[0];
     const docWithProvider = firstDoc as Y.Doc & { provider?: WebsocketProvider };
     
+    console.log('🔗 CollaborationAwareness: Document found, checking provider');
+    
     if (docWithProvider && docWithProvider.provider) {
       const provider = docWithProvider.provider;
+      console.log('🔗 CollaborationAwareness: Provider found, wsconnected:', provider.wsconnected);
       
       if (provider.awareness) {
         const updateAwareness = () => {
           const states = provider.awareness.getStates();
+          const users: string[] = [];
+          
+          states.forEach((state: any) => {
+            if (state.user && state.user.name) {
+              users.push(state.user.name);
+            }
+          });
+          
           setConnectedUsers(states.size);
-          setConnectionStatus(provider.wsconnected ? 'Connected' : 'Connecting...');
+          setUserList(users);
+          
+          const status = provider.wsconnected ? 'Connected' : 'Connecting...';
+          setConnectionStatus(status);
+          
+          console.log('🔗 Awareness Update:', {
+            connectedUsers: states.size,
+            users: users,
+            wsConnected: provider.wsconnected,
+            status: status
+          });
         };
 
+        const updateSync = () => {
+          setSynced(provider.synced || false);
+          console.log('🔗 Sync Status:', provider.synced);
+        };
+
+        // Register event listeners
         provider.awareness.on('change', updateAwareness);
-        provider.on('status', updateAwareness);
+        provider.on('status', (event: any) => {
+          console.log('🔗 Provider Status Event:', event);
+          updateAwareness();
+          updateSync();
+        });
+        provider.on('sync', updateSync);
+        
+        // Initial update
         updateAwareness();
+        updateSync();
 
         return () => {
+          console.log('🔗 CollaborationAwareness: Cleaning up event listeners');
           provider.awareness.off('change', updateAwareness);
           provider.off('status', updateAwareness);
+          provider.off('sync', updateSync);
         };
       }
     }
   }, [yjsDocMap]);
 
+  const getStatusColor = () => {
+    if (connectionStatus === 'Connected' && synced) return 'text-green-600';
+    if (connectionStatus === 'Connected') return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getStatusIcon = () => {
+    if (connectionStatus === 'Connected' && synced) return '🟢';
+    if (connectionStatus === 'Connected') return '🟡';
+    return '🔴';
+  };
+
   return (
     <div className="flex items-center gap-2 px-2">
       <Users className="h-4 w-4 text-muted-foreground" />
-      <span className="text-sm text-muted-foreground">
-        {connectionStatus} {connectedUsers > 0 && `(${connectedUsers} users)`}
-      </span>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1">
+          <span className="text-xs">{getStatusIcon()}</span>
+          <span className={`text-sm ${getStatusColor()}`}>
+            {connectionStatus}
+          </span>
+          {synced && <span className="text-xs text-green-600">(synced)</span>}
+        </div>
+        {connectedUsers > 0 && (
+          <div className="text-xs text-muted-foreground">
+            {connectedUsers} user{connectedUsers !== 1 ? 's' : ''}
+            {userList.length > 0 && `: ${userList.join(', ')}`}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -317,37 +385,91 @@ export function CleanLexicalEditor({
     );
   }
 
-  // Simple provider factory - exactly as per Lexical-Yjs documentation
+  // Enhanced provider factory with detailed debugging
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
-    console.log('providerFactory called with id:', id);
+    console.log('🏭 ProviderFactory: Called with document ID:', id);
+    console.log('🏭 ProviderFactory: Current yjsDocMap size:', yjsDocMap.size);
     
     // Create or get the Yjs document
     let doc = yjsDocMap.get(id);
     if (!doc) {
+      console.log('🏭 ProviderFactory: Creating new Yjs document');
       doc = new Y.Doc();
       yjsDocMap.set(id, doc);
+    } else {
+      console.log('🏭 ProviderFactory: Using existing Yjs document');
     }
     
-    // Create simple WebSocket provider
-    const provider = new WebsocketProvider(
-      'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
-      id,
-      doc
-    );
+    // Create WebSocket provider with detailed logging
+    const wsUrl = 'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration';
+    console.log('🏭 ProviderFactory: Creating WebSocket provider', { wsUrl, roomId: id });
+    
+    const provider = new WebsocketProvider(wsUrl, id, doc);
 
-    // Set user awareness
+    // Enhanced event logging with correct event names
+    provider.on('status', (event: any) => {
+      console.log('🌐 WebSocket Status:', event);
+    });
+
+    provider.on('connection-close', (event: any) => {
+      console.log('🌐 WebSocket: Connection closed for document:', id, event);
+    });
+
+    provider.on('connection-error', (event: any) => {
+      console.error('🌐 WebSocket: Connection error for document:', id, event);
+    });
+
+    provider.on('sync', (isSynced: boolean) => {
+      console.log('🔄 Document sync status:', isSynced ? 'Synced' : 'Not synced', 'for document:', id);
+    });
+
+    // Log when WebSocket connects (using status event)
+    if (provider.ws) {
+      provider.ws.addEventListener('open', () => {
+        console.log('🌐 WebSocket: Connection opened for document:', id);
+      });
+    }
+
+    // Set user awareness with detailed logging
     if (session?.user && provider.awareness) {
-      provider.awareness.setLocalStateField('user', {
+      const userInfo = {
         name: session.user.email || 'Anonymous',
         color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+        clientId: provider.awareness.clientID,
+      };
+      
+      provider.awareness.setLocalStateField('user', userInfo);
+      console.log('👤 User awareness set:', userInfo);
+
+      // Log awareness changes
+      provider.awareness.on('change', (changes: any) => {
+        console.log('👥 Awareness changed:', changes);
+        const states = provider.awareness.getStates();
+        console.log('👥 Current awareness states:', Array.from(states.entries()));
       });
-      console.log('User awareness set for:', session.user.email);
     }
+
+    // Enhanced Yjs document event logging
+    doc.on('update', (update: Uint8Array, origin: any) => {
+      console.log('📝 Document updated:', {
+        updateSize: update.length,
+        origin: origin,
+        documentId: id
+      });
+    });
+
+    doc.on('beforeTransaction', (tr: any, doc: Y.Doc) => {
+      console.log('🔄 Before transaction:', tr, 'on document:', id);
+    });
+
+    doc.on('afterTransaction', (tr: any, doc: Y.Doc) => {
+      console.log('✅ After transaction:', tr, 'on document:', id);
+    });
 
     // Store provider on doc for awareness access
     (doc as any).provider = provider;
     
-    console.log('Created WebSocket provider for document:', id);
+    console.log('🏭 ProviderFactory: WebSocket provider created and configured for document:', id);
     return provider as unknown as Provider;
   }, [session?.user]);
 
