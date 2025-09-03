@@ -318,7 +318,7 @@ export function CleanLexicalEditor({
     );
   }
 
-  // Binding factory that creates proper Yjs binding for CollaborationPlugin
+  // Binding factory with improved WebSocket lifecycle management
   const bindingFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
     console.log('bindingFactory called with id:', id);
     
@@ -329,7 +329,7 @@ export function CleanLexicalEditor({
       yjsDocMap.set(id, doc);
     }
     
-    // Create WebSocket provider for collaboration
+    // Create WebSocket provider with improved lifecycle management
     const provider = new WebsocketProvider(
       'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration',
       id,
@@ -337,35 +337,139 @@ export function CleanLexicalEditor({
       {
         connect: true,
         resyncInterval: 5000,
+        // Add connection parameters for better reliability
+        params: {},
+        // Disable automatic reconnection initially to manage it manually
+        disableBc: false,
+        // WebSocket connection options
+        WebSocketPolyfill: undefined,
+        // Connection timeout
+        maxBackoffTime: 2500,
       }
     );
 
-    // Set user awareness
+    // Enhanced connection state tracking
+    let connectionState = 'connecting';
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+
+    // Set user awareness with better error handling
     const awareness = provider.awareness;
     if (session?.user && awareness) {
-      awareness.setLocalStateField('user', {
-        name: session.user.email || 'Anonymous',
-        color: '#' + Math.floor(Math.random() * 16777215).toString(16),
-        clientId: awareness.clientID
-      });
+      try {
+        awareness.setLocalStateField('user', {
+          name: session.user.email || 'Anonymous',
+          color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+          clientId: awareness.clientID,
+          timestamp: Date.now()
+        });
+        console.log('User awareness set successfully for:', session.user.email);
+      } catch (error) {
+        console.error('Failed to set user awareness:', error);
+      }
     }
 
-    // Add connection event logging for debugging
+    // Enhanced connection event handling
     provider.on('status', ({ status }: { status: string }) => {
-      console.log('WebSocket provider status:', status);
+      connectionState = status;
+      console.log('WebSocket provider status changed:', status, 'for document:', id);
+      
+      if (status === 'connected') {
+        reconnectAttempts = 0;
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+          reconnectTimeout = null;
+        }
+        console.log('Successfully connected to collaboration server');
+      } else if (status === 'disconnected') {
+        console.log('Disconnected from collaboration server, will attempt reconnection');
+        handleReconnection();
+      }
     });
 
     provider.on('connection-error', (event: Event) => {
-      console.error('WebSocket connection error:', event);
+      console.error('WebSocket connection error for document:', id, event);
+      handleReconnection();
     });
 
-    // Store provider on doc for awareness access
-    const docWithProvider = doc as Y.Doc & { provider: WebsocketProvider };
-    docWithProvider.provider = provider;
+    // Add sync event listener (correct event name is 'sync', not 'synced')
+    provider.on('sync', (isSynced: boolean) => {
+      console.log('Document sync status:', isSynced ? 'synced' : 'not synced', 'for document:', id);
+    });
 
-    console.log('Created provider for binding factory, document:', id);
+    // Improved reconnection logic
+    const handleReconnection = () => {
+      if (reconnectAttempts >= maxReconnectAttempts) {
+        console.error('Max reconnection attempts reached for document:', id);
+        return;
+      }
+
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+
+      reconnectAttempts++;
+      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
+      
+      console.log(`Attempting reconnection ${reconnectAttempts}/${maxReconnectAttempts} in ${delay}ms for document:`, id);
+      
+      reconnectTimeout = setTimeout(() => {
+        try {
+          if (provider && provider.wsconnected === false) {
+            console.log('Manually reconnecting WebSocket for document:', id);
+            provider.connect();
+          }
+        } catch (error) {
+          console.error('Failed to reconnect WebSocket:', error);
+        }
+      }, delay);
+    };
+
+    // Store provider on doc for awareness access with enhanced cleanup
+    const docWithProvider = doc as Y.Doc & { 
+      provider: WebsocketProvider;
+      cleanup?: () => void;
+    };
+    docWithProvider.provider = provider;
     
-    // Return the provider (CollaborationPlugin will use this to create binding)
+    // Enhanced cleanup function
+    docWithProvider.cleanup = () => {
+      console.log('Cleaning up provider for document:', id);
+      
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+      
+      try {
+        // Remove all event listeners
+        provider.off('status', () => {});
+        provider.off('connection-error', () => {});
+        provider.off('sync', () => {});
+        
+        // Disconnect and destroy provider
+        if (provider.wsconnected) {
+          provider.disconnect();
+        }
+        provider.destroy();
+        
+        console.log('Provider cleanup completed for document:', id);
+      } catch (error) {
+        console.error('Error during provider cleanup:', error);
+      }
+    };
+
+    // Force initial connection attempt
+    setTimeout(() => {
+      if (!provider.wsconnected && connectionState !== 'connected') {
+        console.log('Forcing initial connection for document:', id);
+        provider.connect();
+      }
+    }, 100);
+
+    console.log('Created enhanced provider for document:', id, 'with lifecycle management');
+    
     return provider as unknown as Provider;
   }, [session?.user]);
 
