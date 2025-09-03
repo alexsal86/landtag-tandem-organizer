@@ -96,6 +96,9 @@ import { HorizontalRulePlugin } from './editor/plugins/HorizontalRulePlugin';
 import { EquationPlugin } from './editor/plugins/EquationPlugin';
 import { ImagePlugin } from './editor/plugins/ImagePlugin';
 import { CollapsiblePlugin } from './editor/plugins/CollapsiblePlugin';
+import { TextColorPlugin } from './editor/plugins/TextColorPlugin';
+import { TextAlignmentPlugin } from './editor/plugins/TextAlignmentPlugin';
+import { ClearFormattingPlugin } from './editor/plugins/ClearFormattingPlugin';
 
 // Component props interface
 interface LexicalYjsEditorProps {
@@ -533,62 +536,17 @@ const EditorToolbar = ({ className }: { className?: string }) => {
         <Separator orientation="vertical" className="h-6" />
 
         {/* Color Controls */}
-        <div className="flex items-center gap-1">
-          <ColorPicker
-            color="#000000"
-            onColorChange={() => {}}
-            icon={<Type className="h-4 w-4" />}
-            label="Text"
-          />
-          <ColorPicker
-            color="#ffffff"
-            onColorChange={() => {}}
-            icon={<Highlighter className="h-4 w-4" />}
-            label="Background"
-          />
-        </div>
+        <TextColorPlugin />
 
         <Separator orientation="vertical" className="h-6" />
 
         {/* Text Alignment */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {}}
-            className="h-8 w-8 p-0"
-            title="Align Left"
-          >
-            <AlignLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {}}
-            className="h-8 w-8 p-0"
-            title="Align Center"
-          >
-            <AlignCenter className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {}}
-            className="h-8 w-8 p-0"
-            title="Align Right"
-          >
-            <AlignRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {}}
-            className="h-8 w-8 p-0"
-            title="Justify"
-          >
-            <AlignJustify className="h-4 w-4" />
-          </Button>
-        </div>
+        <TextAlignmentPlugin />
+        
+        <Separator orientation="vertical" className="h-6" />
+        
+        {/* Clear Formatting */}
+        <ClearFormattingPlugin />
       </div>
 
       {/* Second Row - Lists, Insert, and Advanced Controls */}
