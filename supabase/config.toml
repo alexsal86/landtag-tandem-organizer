@@ -62,10 +62,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.process-decision-response]
-verify_jwt = false
+verify_jwt = true
 
 [functions.archive-letter]
 verify_jwt = true
 
 [functions.yjs-collaboration]
-verify_jwt = false
+verify_jwt = true

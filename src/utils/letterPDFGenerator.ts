@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { safeSetInnerHTML } from './htmlSanitizer';
 
 interface Letter {
   id: string;
@@ -88,7 +89,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       if (typeof document === 'undefined') return html; // Fallback for server-side
       
       const temp = document.createElement('div');
-      temp.innerHTML = html;
+      safeSetInnerHTML(temp, html);
       
       const processElement = (element: Element): string => {
         let text = '';

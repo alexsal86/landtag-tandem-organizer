@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { safeSetInnerHTML } from '@/utils/htmlSanitizer';
 
 interface RichTextEditorProps {
   value: string;
@@ -74,7 +75,7 @@ const RichTextEditor = React.memo(React.forwardRef<RichTextEditorRef, RichTextEd
     
     // Create temporary DOM to parse HTML accurately
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
+    safeSetInnerHTML(tempDiv, html);
     
     // Handle todo items with accurate checked state detection
     const todoItems = tempDiv.querySelectorAll('.todo-item');
@@ -161,7 +162,7 @@ const RichTextEditor = React.memo(React.forwardRef<RichTextEditorRef, RichTextEd
       console.log('RichTextEditor: Cleaned value:', cleanedValue);
       
       const html = convertToHtml(cleanedValue);
-      editorRef.current.innerHTML = html;
+      safeSetInnerHTML(editorRef.current, html);
       lastValueRef.current = cleanedValue;
       
       // Set up todo click handlers after content is updated - with longer delay for remote updates
@@ -206,7 +207,7 @@ const RichTextEditor = React.memo(React.forwardRef<RichTextEditorRef, RichTextEd
         
         const html = convertToHtml(cleanedValue);
         console.log('RichTextEditor: Converting cleaned markdown to HTML', { original: value, cleaned: cleanedValue, html });
-        editorRef.current.innerHTML = html;
+        safeSetInnerHTML(editorRef.current, html);
         
         // Set up click handlers for todo items and ensure checkboxes are non-editable
         console.log('RichTextEditor: Setting up simple todo click handlers');
