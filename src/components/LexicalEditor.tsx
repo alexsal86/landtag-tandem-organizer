@@ -19,24 +19,13 @@ function Placeholder() {
 }
 
 export default function LexicalEditor({ value, onChange }: { value?: string, onChange?: (editorState: any) => void }) {
-  // Editor-Konfiguration
-  const initialConfig = {
-    namespace: 'MyEditor',
-    theme,
-    onError(error: any) {
-      throw error;
-    },
-    // Optionally initial editor state here
-  };
-  
-// Catch any errors that occur during Lexical updates and log them
-// or throw them as needed. If you don't throw them, Lexical will
-// try to recover gracefully without losing user data.
-function onError(error) {
-  console.error(error);
-}
+  // Catch any errors that occur during Lexical updates and log them
+  // or throw them as needed. If you don't throw them, Lexical will
+  // try to recover gracefully without losing user data.
+  function onError(error: any) {
+    console.error(error);
+  }
 
-function Editor() {
   const initialConfig = {
     namespace: 'MyEditor',
     theme,
@@ -49,6 +38,7 @@ function Editor() {
         <RichTextPlugin
           contentEditable={<ContentEditable className="min-h-[150px] outline-none" />}
           placeholder={<Placeholder />}
+          ErrorBoundary={LexicalErrorBoundary}
         />
         <HistoryPlugin />
         {onChange && (
