@@ -665,30 +665,9 @@ const KnowledgeBaseView = () => {
                   enableCollaboration={true}
                   initialContent={selectedDocument.content}
                   showToolbar={true}
-                  onChange={async (content) => {
-                    // Auto-save document content only when not in anonymous mode
-                    if (anonymousMode) {
-                      console.log('Anonymous mode: content changed but not saving to database');
-                      return;
-                    }
-                    
-                    try {
-                      const { error } = await supabase
-                        .from('knowledge_documents')
-                        .update({ 
-                          content,
-                          updated_at: new Date().toISOString()
-                        })
-                        .eq('id', selectedDocument.id);
-                      
-                      if (error) {
-                        console.error('Error auto-saving document:', error);
-                      } else {
-                        console.log('Document auto-saved');
-                      }
-                    } catch (error) {
-                      console.error('Error in auto-save:', error);
-                    }
+                  onChange={(content) => {
+                    // Just log content changes - let collaboration persistence handle saving
+                    console.log('Document content changed:', content.length, 'characters');
                   }}
                   placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
                 />

@@ -100,25 +100,17 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     
     if (provider) {
       try {
-        // Remove from active connections tracking
+        // Simple cleanup
         const roomId = provider.roomname;
-        if (roomId && activeConnections.get(roomId) === provider) {
+        if (roomId) {
           activeConnections.delete(roomId);
         }
         
-        // Remove all event listeners first
-        provider.off('status', () => {});
-        provider.off('connection-error', () => {});
-        provider.off('connection-close', () => {});
-        
-        // Properly destroy awareness
+        // Destroy awareness and provider
         if (provider.awareness) {
-          provider.awareness.off('change', () => {});
-          provider.awareness.off('update', () => {});
           provider.awareness.destroy();
         }
         
-        // Disconnect and destroy provider
         provider.disconnect();
         provider.destroy?.();
       } catch (error) {
@@ -129,12 +121,6 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     
     if (yDoc) {
       try {
-        // Remove all event listeners from Y.Doc
-        yDoc.off('update', () => {});
-        yDoc.off('beforeTransaction', () => {});
-        yDoc.off('afterTransaction', () => {});
-        
-        // Destroy the document
         yDoc.destroy();
       } catch (error) {
         console.error('Error destroying Y.Doc:', error);
@@ -189,28 +175,16 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       
       console.log('Connecting to:', wsUrl, 'Room:', roomId);
 
-      // Check for existing connection to prevent duplicates
-      const existingProvider = activeConnections.get(roomId);
-      if (existingProvider && existingProvider.ws && existingProvider.ws.readyState === WebSocket.OPEN) {
-        console.log('⚠️ Reusing existing connection for room:', roomId);
-        setProvider(existingProvider);
-        setYDoc(existingProvider.doc);
-        setIsConnected(true);
-        setIsReady(true);
-        return;
-      }
-
-      // Create WebSocket provider with connection options
+      // Create WebSocket provider - simplified, don't reuse connections for now
       const wsProvider = new WebsocketProvider(wsUrl, roomId, doc, {
         connect: true,
-        awareness: true,
         params: {
           userId: currentUser.id,
           userName: currentUser.name,
         }
       });
 
-      // Track this connection
+      // Track this connection (simplified)
       activeConnections.set(roomId, wsProvider);
 
       // Set up awareness before connecting with better error handling
@@ -226,17 +200,13 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
             timestamp: Date.now()
           });
 
-          // Enhanced awareness change handler
-          const handleAwarenessChange = (changes: any) => {
-            console.log('👥 Awareness change event:', changes);
-            const states = wsProvider.awareness.getStates();
-            console.log('👥 All awareness states:', states);
-            
+          // Enhanced awareness change handler (simplified)
+          const handleAwarenessChange = () => {
+            const states = wsProvider.awareness.getStates();            
             const otherUsers: CollaborationUser[] = [];
             
             states.forEach((state, clientId) => {
               if (state.user && clientId !== wsProvider.awareness.clientID) {
-                // Validate user data before adding
                 if (state.user.id && state.user.name) {
                   otherUsers.push({
                     id: state.user.id,
@@ -248,63 +218,50 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
               }
             });
             
-            console.log('👥 Valid other users:', otherUsers);
             setUsers(otherUsers);
           };
 
           wsProvider.awareness.on('change', handleAwarenessChange);
-
-          wsProvider.awareness.on('update', (update: any) => {
-            console.log('📡 Awareness update:', update);
-          });
           
         } catch (awarenessError) {
           console.error('Error setting up awareness:', awarenessError);
         }
       }
 
-      // Enhanced connection status handling
-      const handleStatusChange = (event: any) => {
-        console.log('🔌 WebSocket status changed:', {
-          status: event.status,
-          roomId,
-          timestamp: new Date().toISOString(),
-          providerUrl: wsUrl
-        });
-        
-        const isConnected = event.status === 'connected';
-        setIsConnected(isConnected);
-        
-        // Set ready state when connected
-        if (isConnected) {
+      // Simplified connection status handling
+      const handleStatusChange = (event: { status: string }) => {
+        console.log('WebSocket status:', event.status);
+        const connected = event.status === 'connected';
+        setIsConnected(connected);
+        if (connected) {
           setIsReady(true);
         }
       };
 
-      const handleConnectionError = (error: any) => {
-        console.error('❌ WebSocket connection error:', {
-          error,
-          roomId,
-          url: wsUrl,
-          timestamp: new Date().toISOString()
-        });
-        setIsConnected(false);
-        setIsReady(false);
-      };
-
-      const handleConnectionClose = (event: any) => {
-        console.log('🚪 WebSocket connection closed:', {
-          event,
-          roomId,
-          timestamp: new Date().toISOString()
-        });
+      const handleConnectionError = (error: Error) => {
+        console.error('WebSocket error:', error);
         setIsConnected(false);
         setIsReady(false);
       };
 
       wsProvider.on('status', handleStatusChange);
       wsProvider.on('connection-error', handleConnectionError);
-      wsProvider.on('connection-close', handleConnectionClose);
+
+      // Add connection timeout - if not connected within 15 seconds, mark as failed
+      const connectionTimeout = setTimeout(() => {
+        if (!isConnected) {
+          console.warn('WebSocket connection timeout - collaboration may not be available');
+          setIsConnected(false);
+          setIsReady(false);
+        }
+      }, 15000);
+
+      // Cleanup timeout when component unmounts
+      const cleanup = () => {
+        clearTimeout(connectionTimeout);
+      };
+
+      return cleanup;
 
       // Enhanced Y.Doc event logging with better error handling
       const handleDocUpdate = (update: Uint8Array, origin: any) => {
