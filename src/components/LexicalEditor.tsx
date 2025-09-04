@@ -53,50 +53,97 @@ function EditorStateManager({
   );
 }
 
-function Placeholder() {
-  return <div className="editor-placeholder">Hier schreiben...</div>;
+function Placeholder({ text }: { text?: string }) {
+  return <div className="editor-placeholder">{text || "Hier schreiben..."}</div>;
 }
 
-export default function LexicalEditor({ value, onChange }: { value?: string, onChange?: (editorState: EditorState) => void }) {
+interface LexicalEditorProps {
+  value?: string;
+  onChange?: (editorState: EditorState) => void;
+  placeholder?: string;
+  className?: string;
+  documentId?: string;
+  tenantId?: string;
+  onSave?: (jsonContent: string) => Promise<void>;
+}
+
+export default function LexicalEditor({ 
+  value, 
+  onChange, 
+  placeholder,
+  className,
+  documentId,
+  tenantId,
+  onSave 
+}: LexicalEditorProps) {
   const [currentEditorState, setCurrentEditorState] = useState<string>('');
   const [initialEditorState, setInitialEditorState] = useState<string | null>(null);
 
-  // Load initial state from localStorage on mount
+  // Load initial state from value prop (for Supabase) or localStorage on mount
   useEffect(() => {
     try {
-      const savedState = localStorage.getItem(STORAGE_KEY);
-      if (savedState) {
-        console.log('Loading editor state from localStorage');
-        setInitialEditorState(savedState);
-        setCurrentEditorState(savedState);
+      // If documentId is provided, use the value prop (from Supabase)
+      if (documentId && value) {
+        console.log('Loading editor state from provided value for document:', documentId);
+        setInitialEditorState(value);
+        setCurrentEditorState(value);
+      } else {
+        // Fallback to localStorage for standalone mode
+        const savedState = localStorage.getItem(STORAGE_KEY);
+        if (savedState) {
+          console.log('Loading editor state from localStorage');
+          setInitialEditorState(savedState);
+          setCurrentEditorState(savedState);
+        }
       }
     } catch (error) {
-      console.warn('Failed to load editor state from localStorage:', error);
+      console.warn('Failed to load editor state:', error);
     }
-  }, []);
+  }, [documentId, value]);
 
-  // Save state to localStorage and call onChange callback
-  const handleEditorChange = (editorState: EditorState) => {
+  // Save state and call callbacks
+  const handleEditorChange = async (editorState: EditorState) => {
     try {
       const jsonState = JSON.stringify(editorState.toJSON());
       
-      // Save to localStorage
-      // TODO: In a real application, this would also sync with backend database
-      localStorage.setItem(STORAGE_KEY, jsonState);
-      
+      // Always update local state for JSON display
       setCurrentEditorState(jsonState);
+      
+      // Save to external system (Supabase) if callback provided
+      if (onSave && documentId) {
+        try {
+          await onSave(jsonState);
+        } catch (error) {
+          console.error('Failed to save to external system:', error);
+        }
+      } else {
+        // Fallback to localStorage for standalone mode
+        localStorage.setItem(STORAGE_KEY, jsonState);
+      }
       
       // Call the onChange callback if provided
       if (onChange) {
         onChange(editorState);
       }
     } catch (error) {
-      console.error('Failed to save editor state:', error);
+      console.error('Failed to handle editor change:', error);
     }
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     setCurrentEditorState('');
+    
+    // Clear from external system if callback provided
+    if (onSave && documentId) {
+      try {
+        await onSave('');
+      } catch (error) {
+        console.error('Failed to clear external content:', error);
+      }
+    } else {
+      // Clear localStorage for standalone mode
+      localStorage.removeItem(STORAGE_KEY);
+    }
   };
 
   // Catch any errors that occur during Lexical updates and log them
@@ -117,10 +164,10 @@ export default function LexicalEditor({ value, onChange }: { value?: string, onC
   return (
     <div className="space-y-4">
       <LexicalComposer initialConfig={initialConfig}>
-        <div className="border rounded p-3 min-h-[200px] bg-white">
+        <div className={`border rounded p-3 bg-white ${className || 'min-h-[200px]'}`}>
           <RichTextPlugin
             contentEditable={<ContentEditable className="min-h-[150px] outline-none" />}
-            placeholder={<Placeholder />}
+            placeholder={<Placeholder text={placeholder} />}
             ErrorBoundary={LexicalErrorBoundary}
           />
           <HistoryPlugin />
@@ -144,8 +191,11 @@ export default function LexicalEditor({ value, onChange }: { value?: string, onC
           }
         </pre>
         <p className="text-xs text-gray-500 mt-1">
-          {/* TODO: Backend Integration Point - This state would be synchronized with database */}
-          State is automatically saved to localStorage (key: '{STORAGE_KEY}')
+          {documentId ? (
+            `State is synchronized with document ID: ${documentId}${tenantId ? ` (Tenant: ${tenantId})` : ''}`
+          ) : (
+            `State is automatically saved to localStorage (key: '${STORAGE_KEY}')`
+          )}
         </p>
       </div>
     </div>
