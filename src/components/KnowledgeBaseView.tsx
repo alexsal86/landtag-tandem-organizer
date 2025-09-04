@@ -685,34 +685,11 @@ const KnowledgeBaseView = () => {
                 className="min-h-[400px]"
               />
 
-              {/* LexicalEditor einfügen */}
-              <LexicalEditor
-                value={selectedDocument.content}
-                onChange={(content) => {
-                   console.log('Document content changed:', content.length, 'characters');
-                  // Update the selected document content locally
-                  setSelectedDocument(prev => prev ? { ...prev, content } : null);
-                  
-                  // Save to database if user is authenticated
-                  if (user && selectedDocument.id && !anonymousMode) {
-                    // Debounced save to prevent too many requests
-                    const saveTimeout = setTimeout(async () => {
-                      try {
-                        await supabase
-                          .from('knowledge_documents')
-                          .update({ content, updated_at: new Date().toISOString() })
-                          .eq('id', selectedDocument.id);
-                      } catch (error) {
-                        console.error('Error saving document:', error);
-                      }
-                    }, 1000);
-                    
-                    return () => clearTimeout(saveTimeout);
-                  }
-                }}
-                placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
-                className="min-h-[400px] mt-6"
-              />
+              {/* Lexical Editor - Basic implementation */}
+              <div className="p-4 border border-border rounded-lg mt-6">
+                <h3 className="text-sm font-medium mb-2">Lexical Editor (Demo)</h3>
+                <LexicalEditor />
+              </div>
             </div>
           </div>
         </div>

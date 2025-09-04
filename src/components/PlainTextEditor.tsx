@@ -62,7 +62,7 @@ const PlainTextEditor = forwardRef<PlainTextEditorRef, PlainTextEditorProps>(({
 
   return (
     <div className={`plaintext-editor ${className}`}>
-      <style jsx>{`
+      <style>{`
         .plaintext-editor {
           border: 1px solid #d1d5db;
           border-radius: 8px;

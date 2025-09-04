@@ -43,3 +43,5 @@ function Editor() {
     </LexicalComposer>
   );
 }
+
+export default Editor;
