@@ -6,44 +6,36 @@
   background: white;
   overflow: hidden;
 }
-
 .lexical-editor-inner {
   outline: none;
   min-height: 120px;
   padding: 0.75rem;
   line-height: 1.5;
 }
-
 .lexical-editor-inner p {
   margin: 0 0 0.75rem 0;
 }
-
 .lexical-editor-inner p:last-child {
   margin-bottom: 0;
 }
-
 .lexical-editor-inner h1,
 .lexical-editor-inner h2,
 .lexical-editor-inner h3 {
   margin: 0 0 0.75rem 0;
   font-weight: 600;
 }
-
 .lexical-editor-inner h1 {
   font-size: 1.875rem;
   line-height: 2.25rem;
 }
-
 .lexical-editor-inner h2 {
   font-size: 1.5rem;
   line-height: 2rem;
 }
-
 .lexical-editor-inner h3 {
   font-size: 1.25rem;
   line-height: 1.75rem;
 }
-
 .lexical-placeholder {
   position: absolute;
   top: 0.75rem;
@@ -52,7 +44,6 @@
   color: #9ca3af;
   font-style: italic;
 }
-
 /* Toolbar Styles */
 .lexical-toolbar {
   display: flex;
@@ -63,13 +54,11 @@
   background: #f9fafb;
   flex-wrap: wrap;
 }
-
-toolbar-group {
+.toolbar-group {
   display: flex;
   align-items: center;
   gap: 0.25rem;
 }
-
 .toolbar-button {
   display: inline-flex;
   align-items: center;
@@ -86,35 +75,29 @@ toolbar-group {
   cursor: pointer;
   transition: all 0.15s ease;
 }
-
 .toolbar-button:hover {
   background: #f3f4f6;
   border-color: #9ca3af;
 }
-
 .toolbar-button:active {
   background: #e5e7eb;
   border-color: #6b7280;
 }
-
 .toolbar-button:focus {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
-
 .toolbar-divider {
   width: 1px;
   height: 1.5rem;
   background: #d1d5db;
   margin: 0 0.25rem;
 }
-
 /* Focus styles */
 .lexical-editor:focus-within {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
-
 /* Export button styles */
 .export-button {
   margin-left: auto;
@@ -122,12 +105,10 @@ toolbar-group {
   color: white;
   border-color: #10b981;
 }
-
 .export-button:hover {
   background: #059669;
   border-color: #059669;
 }
-
 /* PlainText Editor specific styles */
 .plaintext-editor {
   border: 1px solid #d1d5db;
@@ -135,7 +116,6 @@ toolbar-group {
   background: white;
   position: relative;
 }
-
 .plaintext-editor textarea {
   width: 100%;
   min-height: 120px;
@@ -148,12 +128,10 @@ toolbar-group {
   line-height: 1.5;
   background: transparent;
 }
-
 .plaintext-editor:focus-within {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
-
 .plaintext-placeholder {
   position: absolute;
   top: 0.75rem;
@@ -163,7 +141,6 @@ toolbar-group {
   pointer-events: none;
   z-index: 1;
 }
-
 /* Awareness badges */
 .toolbar-awareness {
   display: flex;
@@ -203,6 +180,17 @@ toolbar-group {
   right: 8px;
   background: #263238;
   color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+.lexical-collab-syncing {
+  position: absolute;
+  top: 46px;
+  left: 8px;
+  background: #fbbf24;
+  color: #111;
   padding: 6px 10px;
   border-radius: 4px;
   font-size: 12px;
