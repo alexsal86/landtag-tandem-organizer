@@ -15,6 +15,8 @@ interface CollaborationUser {
 }
 
 export const useNativeYjsCollaboration = ({ documentId, enabled }: UseNativeYjsCollaborationProps) => {
+  console.log('🎯 useNativeYjsCollaboration called with:', { documentId, enabled });
+  
   const [yDoc, setYDoc] = useState<Y.Doc | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [users, setUsers] = useState<CollaborationUser[]>([]);
@@ -117,10 +119,14 @@ export const useNativeYjsCollaboration = ({ documentId, enabled }: UseNativeYjsC
   }, [socket, yDoc]);
 
   useEffect(() => {
+    console.log('🔄 useNativeYjsCollaboration useEffect triggered:', { enabled, documentId });
+    
     if (enabled && documentId) {
+      console.log('✅ Starting collaboration initialization');
       const cleanup = initializeCollaboration(documentId);
       return cleanup;
     } else {
+      console.log('❌ Not starting collaboration:', { enabled, documentId });
       destroyCollaboration();
     }
   }, [enabled, documentId, initializeCollaboration, destroyCollaboration]);

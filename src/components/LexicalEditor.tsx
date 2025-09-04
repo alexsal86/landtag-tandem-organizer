@@ -70,6 +70,13 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   const [formatCommand, setFormatCommand] = useState<string>('');
   
   // Use native Yjs collaboration instead of the context-based approach
+  console.log('🔄 LexicalEditor: Creating native collaboration hook with:', {
+    documentId: documentId || '',
+    enabled: enableCollaboration && !!documentId,
+    enableCollaboration,
+    hasDocumentId: !!documentId
+  });
+  
   const collaboration = useNativeYjsCollaboration({
     documentId: documentId || '',
     enabled: enableCollaboration && !!documentId
@@ -78,11 +85,12 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   const { yDoc, isConnected, users } = collaboration;
   
   // Debug logging
-  console.log('Native Collaboration State:', {
+  console.log('🎯 Native Collaboration State:', {
     documentId,
     hasYDoc: !!yDoc,
     isConnected,
-    enableCollaboration
+    enableCollaboration,
+    users: users.length
   });
 
   const handleFormatText = (format: string) => {
