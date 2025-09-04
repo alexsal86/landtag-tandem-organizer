@@ -15,8 +15,8 @@ import { ListNode, ListItemNode } from '@lexical/list';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { LinkNode, AutoLinkNode } from '@lexical/link';
 import * as Y from 'yjs';
-import { Awareness } from 'y-protocols/awareness';
-import { useNativeYjsCollaboration } from '@/hooks/useNativeYjsCollaboration';
+import { CollaborationContext } from '@/contexts/CollaborationContext';
+import { useCollaborationPersistence } from '@/hooks/useCollaborationPersistence';
 import ToolbarPlugin from './lexical/ToolbarPlugin';
 import FloatingTextToolbar from './FloatingTextToolbar';
 import CollaborationStatus from './CollaborationStatus';
@@ -68,59 +68,99 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   // Force cache refresh - v2.0
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
   const [formatCommand, setFormatCommand] = useState<string>('');
+  const [collaborationError, setCollaborationError] = useState<string | null>(null);
   
-  // Use native Yjs collaboration instead of the context-based approach
-  console.log('🔄 LexicalEditor: Creating native collaboration hook with:', {
-    documentId: documentId || '',
-    enabled: enableCollaboration && !!documentId,
-    enableCollaboration,
-    hasDocumentId: !!documentId
-  });
+  // Use context directly with null check - this prevents the error
+  const collaborationContext = useContext(CollaborationContext);
   
-  const collaboration = useNativeYjsCollaboration({
-    documentId: documentId || '',
-    enabled: enableCollaboration && !!documentId
-  });
+  // Default fallback values when context is not available
+  const {
+    yDoc = null,
+    provider = null,
+    isConnected = false,
+    users: collaborationUsers = [],
+    currentUser = null,
+    initializeCollaboration = () => {},
+    destroyCollaboration = () => {},
+    isReady = false
+  } = collaborationContext || {};
 
-  const { yDoc, isConnected, users } = collaboration;
+  // Show warning if collaboration is enabled but context is not available
+  const collaborationAvailable = enableCollaboration && collaborationContext;
   
   // Debug logging
-  console.log('🎯 Native Collaboration State:', {
+  console.log('Collaboration State:', {
     documentId,
     hasYDoc: !!yDoc,
+    hasProvider: !!provider,
     isConnected,
-    enableCollaboration,
-    users: users.length
   });
+  
+  useEffect(() => {
+    if (enableCollaboration && !collaborationContext) {
+      setCollaborationError('Kollaboration nicht verfügbar - Editor läuft im Standalone-Modus');
+    } else {
+      setCollaborationError(null);
+    }
+  }, [enableCollaboration, collaborationContext]);
 
   const handleFormatText = (format: string) => {
     setFormatCommand(format);
     setTimeout(() => setFormatCommand(''), 10);
   };
 
-  // Simple provider factory for native Yjs
+  // Set up persistence hook - only when we have valid parameters
+  const { saveManual, loadDocumentState } = useCollaborationPersistence({
+    documentId: documentId || undefined, // Ensure we don't pass empty string
+    yDoc,
+    enableCollaboration: enableCollaboration && !!documentId, // Only enable if we have documentId
+    debounceMs: 2000
+  });
+
+  // Initialize collaboration when enabled and available
+  useEffect(() => {
+    if (collaborationAvailable && documentId) {
+      console.log('Initializing collaboration for document:', documentId);
+      initializeCollaboration(documentId);
+      
+      return () => {
+        console.log('Cleaning up collaboration');
+        destroyCollaboration();
+      };
+    }
+  }, [collaborationAvailable, documentId]); // Use collaborationAvailable instead
+
+  // Load document state when Y.Doc is ready
+  useEffect(() => {
+    if (yDoc && documentId && collaborationAvailable) {
+      loadDocumentState(yDoc).then(() => {
+        console.log('Document state loaded');
+      });
+    }
+  }, [yDoc, documentId, collaborationAvailable]); // Use collaborationAvailable instead
+
+  // Provider factory for Lexical CollaborationPlugin - simplified to use existing provider
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
-    console.log('Provider factory called for:', id);
+    console.log('Provider factory called for neutral ID:', id);
     
-    if (yDoc) {
-      // Map the neutral ID to our Y.Doc
+    if (provider && yDoc) {
+      // Use the neutral ID to map to our actual Y.Doc
       if (!yjsDocMap.has(id)) {
         yjsDocMap.set(id, yDoc);
       }
-      
-      // Return a minimal provider interface for Lexical
-      return {
-        connect: () => {},
-        disconnect: () => {},
-        awareness: new Awareness(yDoc),
-        on: () => {},
-        off: () => {},
-        destroy: () => {}
-      } as any;
+      return provider as any;
     }
     
-    return null;
-  }, [yDoc]);
+    // Safe placeholder provider when not available
+    return {
+      disconnect: () => {},
+      awareness: null,
+      ws: null,
+      on: () => {},
+      off: () => {},
+      destroy: () => {}
+    } as any;
+  }, [provider, yDoc]);
 
   const initialConfig = {
     namespace: 'KnowledgeBaseEditor',
@@ -156,15 +196,25 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           />
         )}
         
+        {/* Collaboration Error Warning */}
+        {collaborationError && (
+          <div className="p-3 border-b border-warning/20 bg-warning/10">
+            <div className="flex items-center gap-2 text-warning">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm">{collaborationError}</span>
+            </div>
+          </div>
+        )}
+        
         {/* Collaboration Status */}
-        {enableCollaboration && documentId && (
+        {collaborationAvailable && documentId && (
           <div className="p-3 border-b border-border bg-muted/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <CollaborationStatus
                   isConnected={isConnected}
-                  users={users}
-                  currentUser={undefined}
+                  users={collaborationUsers}
+                  currentUser={currentUser || undefined}
                 />
                 {!isConnected && (
                   <div className="text-sm text-muted-foreground">
@@ -173,8 +223,15 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
                 )}
               </div>
               <div className="flex gap-2">
+                <button
+                  onClick={saveManual}
+                  className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                  disabled={!yDoc}
+                >
+                  Snapshot speichern
+                </button>
                 <div className="text-xs text-muted-foreground">
-                  {yDoc ? 'Native Kollaboration aktiv' : 'Wird geladen...'}
+                  {yDoc ? 'Kollaboration aktiv' : 'Wird geladen...'}
                 </div>
               </div>
             </div>
@@ -194,9 +251,9 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           {!enableCollaboration && <HistoryPlugin />}
           <ListPlugin />
           <LinkPlugin />
-          {enableCollaboration && documentId && yDoc && (
+          {collaborationAvailable && documentId && provider && yDoc && (
             <CollaborationPlugin
-              id="native-yjs-editor"
+              id="lexical-editor"
               providerFactory={providerFactory}
               shouldBootstrap={true}
             />

@@ -26,12 +26,12 @@ const CollaborationContext = createContext<CollaborationContextValue | null>(nul
 export { CollaborationContext };
 
 const getWebSocketUrl = () => {
-  // Return only base WebSocket URL without path - we'll control the full URL construction
+  // Use localhost for development, production URL for production
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   if (isDev) {
-    return 'ws://localhost:54321';
+    return 'ws://localhost:54321/functions/v1/yjs-collaboration';
   }
-  return 'wss://wawofclbehbkebjivdte.supabase.co';
+  return 'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration';
 };
 
 interface CollaborationProviderProps {
@@ -130,20 +130,14 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       const doc = new Y.Doc();
       setYDoc(doc);
 
-      // Construct full WebSocket URL with proper path
-      const baseUrl = getWebSocketUrl();
+      // Use base WebSocket URL and pass room ID as second parameter
+      const wsUrl = getWebSocketUrl();
       const roomId = `knowledge-doc-${documentId}`;
-      const fullUrl = `${baseUrl}/functions/v1/yjs-collaboration`;
       
-      console.log('🔗 Connecting to URL:', fullUrl, 'with Room ID:', roomId);
-      console.log('🔍 DocumentId validation:', {
-        documentId,
-        roomId,
-        isValidUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(documentId)
-      });
+      console.log('Connecting to:', wsUrl, 'Room:', roomId);
 
-      // Create WebSocket provider with controlled URL construction
-      const wsProvider = new WebsocketProvider(fullUrl, roomId, doc);
+      // Create WebSocket provider - use base URL and pass roomId as parameter
+      const wsProvider = new WebsocketProvider(wsUrl, roomId, doc);
 
       // Set up awareness before connecting
       if (wsProvider.awareness) {
@@ -190,7 +184,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
           status: event.status,
           roomId,
           timestamp: new Date().toISOString(),
-          providerUrl: fullUrl
+          providerUrl: wsUrl
         });
         setIsConnected(event.status === 'connected');
       });
@@ -199,7 +193,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
         console.error('❌ WebSocket connection error:', {
           error,
           roomId,
-          url: fullUrl,
+          url: wsUrl,
           timestamp: new Date().toISOString()
         });
         setIsConnected(false);
