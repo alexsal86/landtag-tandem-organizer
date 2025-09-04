@@ -19,6 +19,73 @@ import { debounce } from '@/utils/debounce';
 
 import LexicalEditor from '@/components/LexicalEditor';
 
+/**
+ * Helper function to ensure content is valid Lexical JSON format.
+ * Converts plain text to Lexical JSON if necessary.
+ * 
+ * Based on Lexical documentation best practices:
+ * https://lexical.dev/docs/concepts/editor-state#editor-state-json
+ */
+function ensureValidLexicalJSON(content: string): string {
+  if (!content || content.trim() === '') {
+    // Return empty Lexical JSON structure for empty content
+    return JSON.stringify({
+      root: {
+        children: [],
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        type: 'root',
+        version: 1
+      }
+    });
+  }
+
+  try {
+    // Try to parse as JSON first
+    const parsed = JSON.parse(content);
+    
+    // Check if it's a valid Lexical JSON structure
+    if (parsed && typeof parsed === 'object' && parsed.root && parsed.root.type === 'root') {
+      return content; // Already valid Lexical JSON
+    }
+    
+    // If it's JSON but not Lexical format, treat as plain text
+    throw new Error('Not Lexical JSON format');
+  } catch (error) {
+    // Not valid JSON or not Lexical format, convert plain text to Lexical JSON
+    return JSON.stringify({
+      root: {
+        children: [
+          {
+            children: [
+              {
+                detail: 0,
+                format: 0,
+                mode: 'normal',
+                style: '',
+                text: content,
+                type: 'text',
+                version: 1
+              }
+            ],
+            direction: 'ltr',
+            format: '',
+            indent: 0,
+            type: 'paragraph',
+            version: 1
+          }
+        ],
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        type: 'root',
+        version: 1
+      }
+    });
+  }
+}
+
 interface KnowledgeDocument {
   id: string;
   title: string;
@@ -721,7 +788,7 @@ const KnowledgeBaseView = () => {
                   Lexical Editor - {selectedDocument.title}
                 </h3>
                 <LexicalEditor 
-                  value={selectedDocument.content}
+                  value={ensureValidLexicalJSON(selectedDocument.content)}
                   documentId={selectedDocument.id}
                   tenantId={tenantId || undefined}
                   onChange={(editorState) => {
