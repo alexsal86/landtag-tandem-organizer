@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, ExternalLinkIcon, EditIcon, SaveIcon, XIcon, MapPinIcon, ClockIcon } from "lucide-react";
+import { CalendarIcon, ExternalLinkIcon, EditIcon, SaveIcon, XIcon, MapPinIcon, ClockIcon, UserIcon, PlusIcon } from "lucide-react";
 import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import { supabase } from "@/integrations/supabase/client";
 import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
 import { CalendarEvent } from "@/components/CalendarView";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AppointmentPreparationOverviewTabProps {
   preparation: AppointmentPreparation;
@@ -20,51 +21,84 @@ export function AppointmentPreparationOverviewTab({
   preparation, 
   onUpdate 
 }: AppointmentPreparationOverviewTabProps) {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     title: preparation.title,
     status: preparation.status,
-    notes: preparation.notes || ""
+    notes: preparation.notes || "",
+    contact_name: (preparation.preparation_data as any)?.contact_name || "",
+    contact_info: (preparation.preparation_data as any)?.contact_info || ""
   });
   const [saving, setSaving] = useState(false);
   const [appointmentDetails, setAppointmentDetails] = useState<any>(null);
   const [loadingAppointment, setLoadingAppointment] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<CalendarEvent | null>(null);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [selectedContactId, setSelectedContactId] = useState<string>("");
+  const [showCustomContact, setShowCustomContact] = useState(false);
 
-  // Fetch appointment details if appointment_id exists
+  // Fetch contacts and appointment details
   useEffect(() => {
-    const fetchAppointmentDetails = async () => {
-      if (!preparation.appointment_id) return;
-      
+    const fetchData = async () => {
+      if (!user) return;
+
       try {
-        setLoadingAppointment(true);
-        const { data, error } = await supabase
-          .from('appointments')
+        // Fetch contacts
+        const { data: contactsData, error: contactsError } = await supabase
+          .from('contacts')
           .select('*')
-          .eq('id', preparation.appointment_id)
-          .maybeSingle();
-          
-        if (error) {
-          console.error('Error fetching appointment:', error);
-          return;
+          .eq('user_id', user.id)
+          .order('name');
+
+        if (contactsError) {
+          console.error('Error fetching contacts:', contactsError);
+        } else {
+          setContacts(contactsData || []);
         }
-        
-        setAppointmentDetails(data);
+
+        // Fetch appointment details if appointment_id exists
+        if (preparation.appointment_id) {
+          setLoadingAppointment(true);
+          const { data, error } = await supabase
+            .from('appointments')
+            .select('*')
+            .eq('id', preparation.appointment_id)
+            .maybeSingle();
+            
+          if (error) {
+            console.error('Error fetching appointment:', error);
+          } else {
+            setAppointmentDetails(data);
+          }
+          setLoadingAppointment(false);
+        }
       } catch (error) {
-        console.error('Error fetching appointment details:', error);
-      } finally {
-        setLoadingAppointment(false);
+        console.error('Error fetching data:', error);
       }
     };
 
-    fetchAppointmentDetails();
-  }, [preparation.appointment_id]);
+    fetchData();
+  }, [user, preparation.appointment_id]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      await onUpdate(editData);
+      
+      // Merge contact data into preparation_data
+      const updatedPreparationData = {
+        ...preparation.preparation_data,
+        contact_name: editData.contact_name,
+        contact_info: editData.contact_info
+      };
+      
+      await onUpdate({
+        title: editData.title,
+        status: editData.status,
+        notes: editData.notes,
+        preparation_data: updatedPreparationData
+      });
       setIsEditing(false);
     } catch (error) {
       console.error("Error saving changes:", error);
@@ -77,9 +111,36 @@ export function AppointmentPreparationOverviewTab({
     setEditData({
       title: preparation.title,
       status: preparation.status,
-      notes: preparation.notes || ""
+      notes: preparation.notes || "",
+      contact_name: (preparation.preparation_data as any)?.contact_name || "",
+      contact_info: (preparation.preparation_data as any)?.contact_info || ""
     });
+    setSelectedContactId("");
+    setShowCustomContact(false);
     setIsEditing(false);
+  };
+
+  const handleContactSelect = (contactId: string) => {
+    if (contactId === "custom") {
+      setShowCustomContact(true);
+      setSelectedContactId("");
+      setEditData(prev => ({ ...prev, contact_name: "", contact_info: "" }));
+    } else if (contactId === "") {
+      setShowCustomContact(false);
+      setSelectedContactId("");
+      setEditData(prev => ({ ...prev, contact_name: "", contact_info: "" }));
+    } else {
+      const selectedContact = contacts.find(c => c.id === contactId);
+      if (selectedContact) {
+        setShowCustomContact(false);
+        setSelectedContactId(contactId);
+        setEditData(prev => ({
+          ...prev,
+          contact_name: selectedContact.name,
+          contact_info: `${selectedContact.email || ''} ${selectedContact.phone || ''}`.trim()
+        }));
+      }
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -93,14 +154,6 @@ export function AppointmentPreparationOverviewTab({
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
-  };
-
-  const getCompletionPercentage = () => {
-    if (!preparation.checklist_items || preparation.checklist_items.length === 0) {
-      return 0;
-    }
-    const completed = preparation.checklist_items.filter(item => item.completed).length;
-    return Math.round((completed / preparation.checklist_items.length) * 100);
   };
 
   const handleOpenAppointment = () => {
@@ -158,13 +211,13 @@ export function AppointmentPreparationOverviewTab({
 
   return (
     <div className="space-y-6">
-      {/* Basic Information Card */}
+      {/* Combined Basic Information and Appointment Details Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
-              Grundinformationen
+              Grundinformationen & Termindetails
             </CardTitle>
             {!isEditing && (
               <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
@@ -174,7 +227,7 @@ export function AppointmentPreparationOverviewTab({
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {isEditing ? (
             <div className="space-y-4">
               <div>
@@ -199,6 +252,47 @@ export function AppointmentPreparationOverviewTab({
                   </SelectContent>
                 </Select>
               </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Kontakt</label>
+                <Select value={selectedContactId || (showCustomContact ? "custom" : "")} onValueChange={handleContactSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Kontakt auswählen oder manuell eingeben" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Kein Kontakt</SelectItem>
+                    <SelectItem value="custom">
+                      <div className="flex items-center gap-2">
+                        <PlusIcon className="h-4 w-4" />
+                        Manuell eingeben
+                      </div>
+                    </SelectItem>
+                    {contacts.map((contact) => (
+                      <SelectItem key={contact.id} value={contact.id}>
+                        <div className="flex items-center gap-2">
+                          <UserIcon className="h-4 w-4" />
+                          {contact.name} {contact.email && `(${contact.email})`}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {showCustomContact && (
+                  <div className="space-y-3 mt-3">
+                    <Input
+                      value={editData.contact_name}
+                      onChange={(e) => setEditData(prev => ({ ...prev, contact_name: e.target.value }))}
+                      placeholder="Name des Kontakts"
+                    />
+                    <Input
+                      value={editData.contact_info}
+                      onChange={(e) => setEditData(prev => ({ ...prev, contact_info: e.target.value }))}
+                      placeholder="Kontaktinformationen (E-Mail, Telefon, etc.)"
+                    />
+                  </div>
+                )}
+              </div>
               
               <div>
                 <label className="text-sm font-medium mb-2 block">Notizen</label>
@@ -222,164 +316,153 @@ export function AppointmentPreparationOverviewTab({
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Titel</label>
-                <p className="text-lg font-medium">{preparation.title}</p>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Status</label>
-                <div className="mt-1">
-                  {getStatusBadge(preparation.status)}
+            <div className="space-y-6">
+              {/* Basic Information Section */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-lg">Grundinformationen</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Titel</label>
+                    <p className="text-lg font-medium">{preparation.title}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Status</label>
+                    <div className="mt-1">
+                      {getStatusBadge(preparation.status)}
+                    </div>
+                  </div>
+
+                  {((preparation.preparation_data as any)?.contact_name || (preparation.preparation_data as any)?.contact_info) && (
+                    <div className="md:col-span-2">
+                      <label className="text-sm font-medium text-muted-foreground">Kontakt</label>
+                      <div className="mt-1 p-3 bg-muted/30 rounded-lg">
+                        {(preparation.preparation_data as any)?.contact_name && (
+                          <p className="font-medium">{(preparation.preparation_data as any).contact_name}</p>
+                        )}
+                        {(preparation.preparation_data as any)?.contact_info && (
+                          <p className="text-sm text-muted-foreground">{(preparation.preparation_data as any).contact_info}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {preparation.notes && (
+                    <div className="md:col-span-2">
+                      <label className="text-sm font-medium text-muted-foreground">Notizen</label>
+                      <p className="mt-1 text-sm whitespace-pre-wrap">{preparation.notes}</p>
+                    </div>
+                  )}
                 </div>
               </div>
-              
-              {preparation.notes && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Notizen</label>
-                  <p className="mt-1 text-sm whitespace-pre-wrap">{preparation.notes}</p>
-                </div>
+
+              {/* Appointment Details Section */}
+              {preparation.appointment_id && (
+                <>
+                  <div className="border-t pt-6">
+                    <h3 className="font-medium text-lg mb-4">Termindetails</h3>
+                    {loadingAppointment ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                      </div>
+                    ) : appointmentDetails ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex items-center gap-2">
+                            <ClockIcon className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">Datum & Zeit</p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(appointmentDetails.start_time).toLocaleString('de-DE', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                                {appointmentDetails.end_time && (
+                                  <> - {new Date(appointmentDetails.end_time).toLocaleTimeString('de-DE', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}</>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {appointmentDetails.location && (
+                            <div className="flex items-center gap-2">
+                              <MapPinIcon className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <p className="text-sm font-medium">Ort</p>
+                                <p className="text-sm text-muted-foreground">{appointmentDetails.location}</p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center gap-2">
+                            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">Art der Veranstaltung</p>
+                              <p className="text-sm text-muted-foreground">
+                                {appointmentDetails.category === 'meeting' ? 'Besprechung' :
+                                 appointmentDetails.category === 'event' ? 'Veranstaltung' :
+                                 appointmentDetails.category === 'deadline' ? 'Termin' :
+                                 appointmentDetails.category || 'Sonstiges'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {appointmentDetails.priority && (
+                            <div className="flex items-center gap-2">
+                              <div className="h-4 w-4 flex items-center justify-center">
+                                <div className={`h-2 w-2 rounded-full ${
+                                  appointmentDetails.priority === 'high' ? 'bg-red-500' :
+                                  appointmentDetails.priority === 'medium' ? 'bg-yellow-500' :
+                                  'bg-green-500'
+                                }`} />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">Priorität</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {appointmentDetails.priority === 'high' ? 'Hoch' :
+                                   appointmentDetails.priority === 'medium' ? 'Mittel' :
+                                   'Niedrig'}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {appointmentDetails.description && (
+                          <div>
+                            <p className="text-sm font-medium mb-2">Beschreibung</p>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {appointmentDetails.description}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-end">
+                          <Button variant="outline" size="sm" onClick={handleOpenAppointment}>
+                            <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                            Termin öffnen
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Termindetails konnten nicht geladen werden.
+                      </p>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Progress Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Fortschritt</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Checkliste</span>
-                <span className="text-sm text-muted-foreground">
-                  {getCompletionPercentage()}% abgeschlossen
-                </span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div
-                  className="bg-primary h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${getCompletionPercentage()}%` }}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {preparation.checklist_items?.filter(item => item.completed).length || 0} von{" "}
-                {preparation.checklist_items?.length || 0} Aufgaben erledigt
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Linked Appointment */}
-      {preparation.appointment_id && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Termindetails</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadingAppointment ? (
-              <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              </div>
-            ) : appointmentDetails ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <ClockIcon className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Datum & Zeit</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(appointmentDetails.start_time).toLocaleString('de-DE', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                        {appointmentDetails.end_time && (
-                          <> - {new Date(appointmentDetails.end_time).toLocaleTimeString('de-DE', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}</>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {appointmentDetails.location && (
-                    <div className="flex items-center gap-2">
-                      <MapPinIcon className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">Ort</p>
-                        <p className="text-sm text-muted-foreground">{appointmentDetails.location}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Art der Veranstaltung</p>
-                      <p className="text-sm text-muted-foreground">
-                        {appointmentDetails.category === 'meeting' ? 'Besprechung' :
-                         appointmentDetails.category === 'event' ? 'Veranstaltung' :
-                         appointmentDetails.category === 'deadline' ? 'Termin' :
-                         appointmentDetails.category || 'Sonstiges'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {appointmentDetails.priority && (
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 flex items-center justify-center">
-                        <div className={`h-2 w-2 rounded-full ${
-                          appointmentDetails.priority === 'high' ? 'bg-red-500' :
-                          appointmentDetails.priority === 'medium' ? 'bg-yellow-500' :
-                          'bg-green-500'
-                        }`} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Priorität</p>
-                        <p className="text-sm text-muted-foreground">
-                          {appointmentDetails.priority === 'high' ? 'Hoch' :
-                           appointmentDetails.priority === 'medium' ? 'Mittel' :
-                           'Niedrig'}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {appointmentDetails.description && (
-                  <div>
-                    <p className="text-sm font-medium mb-2">Beschreibung</p>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {appointmentDetails.description}
-                    </p>
-                  </div>
-                )}
-                
-                <div className="flex justify-end">
-                  <Button variant="outline" size="sm" onClick={handleOpenAppointment}>
-                    <ExternalLinkIcon className="h-4 w-4 mr-2" />
-                    Termin öffnen
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Termindetails konnten nicht geladen werden.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Appointment Details Sidebar */}
       <AppointmentDetailsSidebar
@@ -388,35 +471,6 @@ export function AppointmentPreparationOverviewTab({
         onClose={() => setSidebarOpen(false)}
         onUpdate={handleSidebarUpdate}
       />
-
-      {/* Metadata */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Metadaten</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">Erstellt am:</span>
-              <p className="font-medium">
-                {new Date(preparation.created_at).toLocaleString('de-DE')}
-              </p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Zuletzt bearbeitet:</span>
-              <p className="font-medium">
-                {new Date(preparation.updated_at).toLocaleString('de-DE')}
-              </p>
-            </div>
-            {preparation.template_id && (
-              <div className="col-span-2">
-                <span className="text-muted-foreground">Template ID:</span>
-                <p className="font-mono text-xs">{preparation.template_id}</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
