@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ArrowUpWideNarrow, ArrowDownWideNarrow } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,8 @@ export function ContactsView() {
   });
   const [activeTab, setActiveTab] = useState<"contacts" | "distribution-lists" | "archive">("contacts");
   const [showFilters, setShowFilters] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -264,7 +266,64 @@ export function ContactsView() {
     }
   };
 
-  const filteredContacts = contacts.filter(contact => {
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const getSortedContacts = (contacts: Contact[]) => {
+    if (!sortColumn) return contacts;
+
+    return [...contacts].sort((a, b) => {
+      let aValue: string | number = "";
+      let bValue: string | number = "";
+
+      switch (sortColumn) {
+        case "name":
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case "organization":
+          aValue = (a.contact_type === "organization" 
+            ? `${a.legal_form ? a.legal_form + " • " : ""}${a.industry || a.main_contact_person || ""}`
+            : a.organization || a.role || "").toLowerCase();
+          bValue = (b.contact_type === "organization" 
+            ? `${b.legal_form ? b.legal_form + " • " : ""}${b.industry || b.main_contact_person || ""}`
+            : b.organization || b.role || "").toLowerCase();
+          break;
+        case "email":
+          aValue = (a.email || "").toLowerCase();
+          bValue = (b.email || "").toLowerCase();
+          break;
+        case "phone":
+          aValue = (a.phone || "").toLowerCase();
+          bValue = (b.phone || "").toLowerCase();
+          break;
+        case "address":
+          aValue = (a.address || a.location || "").toLowerCase();
+          bValue = (b.address || b.location || "").toLowerCase();
+          break;
+        case "last_contact":
+          aValue = a.last_contact || "";
+          bValue = b.last_contact || "";
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortDirection === "asc") {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+  };
+
+  const filteredContacts = getSortedContacts(contacts.filter(contact => {
     // Filter out archive contacts from regular view
     if (activeTab === "contacts" && contact.contact_type === 'archive') return false;
     if (activeTab === "archive" && contact.contact_type !== 'archive') return false;
@@ -281,11 +340,39 @@ export function ContactsView() {
     const matchesType = selectedType === "all" || contact.contact_type === selectedType;
     
     return matchesSearch && matchesCategory && matchesType;
-  });
+  }));
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
+
+  const SortableTableHead = ({ children, sortKey, className = "" }: { 
+    children: React.ReactNode; 
+    sortKey: string; 
+    className?: string; 
+  }) => (
+    <TableHead className={`cursor-pointer select-none hover:bg-muted/50 ${className}`} onClick={() => handleSort(sortKey)}>
+      <div className="flex items-center gap-2">
+        {children}
+        <div className="flex flex-col">
+          <ArrowUpWideNarrow 
+            className={`h-3 w-3 transition-colors ${
+              sortColumn === sortKey && sortDirection === "asc" 
+                ? "text-primary" 
+                : "text-muted-foreground/50"
+            }`} 
+          />
+          <ArrowDownWideNarrow 
+            className={`h-3 w-3 transition-colors ${
+              sortColumn === sortKey && sortDirection === "desc" 
+                ? "text-primary" 
+                : "text-muted-foreground/50"
+            }`} 
+          />
+        </div>
+      </div>
+    </TableHead>
+  );
 
   if (loading) {
     return (
@@ -569,11 +656,11 @@ export function ContactsView() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">Avatar</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Organisation/Rolle</TableHead>
-                <TableHead>Kontakt</TableHead>
-                <TableHead>Adresse</TableHead>
-                <TableHead>Letzter Kontakt</TableHead>
+                <SortableTableHead sortKey="name">Name</SortableTableHead>
+                <SortableTableHead sortKey="organization">Organisation/Rolle</SortableTableHead>
+                <SortableTableHead sortKey="email">Kontakt</SortableTableHead>
+                <SortableTableHead sortKey="address">Adresse</SortableTableHead>
+                <SortableTableHead sortKey="last_contact">Letzter Kontakt</SortableTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
