@@ -15,8 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import LexicalEditor from '@/components/LexicalEditor';
-import { CollaborationProvider } from '@/contexts/CollaborationContext';
+import RichTextEditor from '@/components/RichTextEditor';
 
 
 interface KnowledgeDocument {
@@ -108,8 +107,8 @@ const KnowledgeBaseView = () => {
       const demoDocuments: KnowledgeDocument[] = [
         {
           id: 'demo-knowledge-1',
-          title: 'Collaborative Meeting Notes',
-          content: 'Diese Notizen können in Echtzeit mit anderen Benutzern bearbeitet werden.',
+          title: 'Meeting Notes',
+          content: 'Diese Notizen können bearbeitet werden.',
           category: 'meeting',
           created_by: 'anonymous',
           created_at: new Date().toISOString(),
@@ -120,7 +119,7 @@ const KnowledgeBaseView = () => {
         {
           id: 'demo-knowledge-2', 
           title: 'Policy Draft Document',
-          content: 'Ein Richtlinienentwurf zur gemeinsamen Bearbeitung mit Yjs-Kollaboration.',
+          content: 'Ein Richtlinienentwurf zur Bearbeitung.',
           category: 'policy',
           created_by: 'anonymous',
           created_at: new Date().toISOString(),
@@ -131,7 +130,7 @@ const KnowledgeBaseView = () => {
         {
           id: 'demo-knowledge-3',
           title: 'Technical Documentation',
-          content: 'Technische Dokumentation mit Echtzeit-Kollaboration über Yjs und WebSocket.',
+          content: 'Technische Dokumentation.',
           category: 'technical',
           created_by: 'anonymous',
           created_at: new Date().toISOString(),
@@ -402,11 +401,11 @@ const KnowledgeBaseView = () => {
                   <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center gap-2 text-blue-700">
                       <Users className="h-4 w-4" />
-                      <span className="text-sm font-medium">Demo-Modus mit Yjs-Kollaboration</span>
+                      <span className="text-sm font-medium">Demo-Modus</span>
                     </div>
                     <p className="text-xs text-blue-600 mt-1">
-                      Sie können diese Demo-Dokumente bearbeiten und die Echtzeit-Kollaboration testen. 
-                      Änderungen werden nicht gespeichert, sondern nur über Yjs synchronisiert.
+                      Sie können diese Demo-Dokumente bearbeiten. 
+                      Änderungen werden nicht gespeichert.
                     </p>
                   </div>
                 )}
@@ -657,18 +656,34 @@ const KnowledgeBaseView = () => {
           </div>
           
           <div className="flex-1 p-4">
-            <div className="border rounded-lg min-h-[400px]">
-              <CollaborationProvider>
-                <LexicalEditor
-                  key={selectedDocument.id}
-                  initialContent={selectedDocument.content}
-                  showToolbar={true}
-                  onChange={(content) => {
-                    console.log('Document content changed:', content.length, 'characters');
-                  }}
-                  placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
-                />
-              </CollaborationProvider>
+            <div className="border rounded-lg min-h-[400px] p-4">
+              <RichTextEditor
+                value={selectedDocument.content}
+                onChange={(content) => {
+                  console.log('Document content changed:', content.length, 'characters');
+                  // Update the selected document content locally
+                  setSelectedDocument(prev => prev ? { ...prev, content } : null);
+                  
+                  // Save to database if user is authenticated
+                  if (user && selectedDocument.id && !anonymousMode) {
+                    // Debounced save to prevent too many requests
+                    const saveTimeout = setTimeout(async () => {
+                      try {
+                        await supabase
+                          .from('knowledge_documents')
+                          .update({ content, updated_at: new Date().toISOString() })
+                          .eq('id', selectedDocument.id);
+                      } catch (error) {
+                        console.error('Error saving document:', error);
+                      }
+                    }, 1000);
+                    
+                    return () => clearTimeout(saveTimeout);
+                  }
+                }}
+                placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
+                className="min-h-[400px]"
+              />
             </div>
           </div>
         </div>

@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
-import { CollaborationProvider } from "@/contexts/CollaborationContext";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
 import CreateAppointment from "./pages/CreateAppointment";
@@ -22,9 +21,6 @@ import DecisionResponse from "./pages/DecisionResponse";
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import LexicalDemoPage from "./pages/LexicalDemoPage";
-import EditorPage from "./pages/EditorPage";
-import EditorTestPage from "./pages/EditorTestPage";
 
 const queryClient = new QueryClient();
 
@@ -32,7 +28,6 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TenantProvider>
-        <CollaborationProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -65,16 +60,12 @@ const App = () => (
             <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/poll-guest/:pollId" element={<PollGuest />} />
             <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
-            <Route path="/lexical-demo" element={<LexicalDemoPage />} />
-            <Route path="/editor" element={<EditorPage />} />
-            <Route path="/editor-test" element={<EditorTestPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
           </TooltipProvider>
-        </CollaborationProvider>
       </TenantProvider>
     </AuthProvider>
   </QueryClientProvider>
