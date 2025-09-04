@@ -97,13 +97,56 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    // Extract room ID from URL path - handle both direct paths and nested function paths
-    let roomId = url.pathname.slice(1) || url.searchParams.get('roomId') || 'default';
+    // Robust room ID extraction supporting multiple URL patterns
+    let roomId = 'default';
     
-    // If this is a Supabase Edge Function URL, extract the actual room ID from the end
-    if (roomId.includes('/')) {
-      const pathSegments = roomId.split('/');
-      roomId = pathSegments[pathSegments.length - 1] || 'default';
+    console.log(`🔍 Analyzing URL for room ID extraction:`, {
+      pathname: url.pathname,
+      searchParams: url.searchParams.toString()
+    });
+    
+    // Try multiple extraction methods in order of preference
+    if (url.searchParams.has('roomId')) {
+      // Method 1: Query parameter (most reliable)
+      roomId = url.searchParams.get('roomId') || 'default';
+      console.log(`📋 Room ID from query parameter: ${roomId}`);
+    } else if (url.pathname && url.pathname !== '/') {
+      // Method 2: Path-based extraction with robust parsing
+      const pathname = url.pathname.slice(1); // Remove leading slash
+      
+      // Handle various path patterns:
+      // - "knowledge-doc-uuid" (direct)
+      // - "functions/v1/yjs-collaboration/knowledge-doc-uuid" (nested function)
+      // - "yjs-collaboration/knowledge-doc-uuid" (alternative)
+      const pathSegments = pathname.split('/').filter(segment => segment.length > 0);
+      
+      console.log(`🗂️ Path segments:`, pathSegments);
+      
+      // Find the segment that looks like a knowledge-doc room ID
+      const knowledgeDocSegment = pathSegments.find(segment => 
+        segment.startsWith('knowledge-doc-') && 
+        /^knowledge-doc-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment)
+      );
+      
+      if (knowledgeDocSegment) {
+        roomId = knowledgeDocSegment;
+        console.log(`✅ Valid knowledge-doc room ID found: ${roomId}`);
+      } else {
+        // Fallback: use the last segment if it's not empty
+        const lastSegment = pathSegments[pathSegments.length - 1];
+        if (lastSegment && lastSegment !== 'yjs-collaboration') {
+          roomId = lastSegment;
+          console.log(`⚠️ Using last path segment as room ID: ${roomId}`);
+        } else {
+          console.log(`❌ No valid room ID found, using default`);
+        }
+      }
+    }
+    
+    // Validate room ID format
+    const isValidFormat = /^knowledge-doc-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomId);
+    if (!isValidFormat && roomId !== 'default') {
+      console.log(`⚠️ Room ID "${roomId}" doesn't match expected format, keeping as-is for debugging`);
     }
     
     console.log(`🔌 New WebSocket connection for room: ${roomId}`);
