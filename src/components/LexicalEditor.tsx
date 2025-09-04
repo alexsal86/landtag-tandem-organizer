@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { $getRoot } from 'lexical';
+import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
+import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -8,8 +8,6 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $createParagraphNode, $createTextNode } from 'lexical';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
@@ -20,6 +18,8 @@ import { useCollaborationPersistence } from '@/hooks/useCollaborationPersistence
 import ToolbarPlugin from './lexical/ToolbarPlugin';
 import FloatingTextToolbar from './FloatingTextToolbar';
 import CollaborationStatus from './CollaborationStatus';
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
+import { debounce } from '@/utils/debounce';
 
 const theme = {
   ltr: 'ltr',
@@ -41,37 +41,42 @@ interface LexicalEditorProps {
   enableCollaboration?: boolean;
 }
 
-function MyOnChangePlugin({ onChange }: { onChange?: (content: string) => void }) {
-  const [editor] = useLexicalComposerContext();
+function DebouncedOnChangePlugin({ onChange }: { onChange?: (content: string) => void }) {
+  const debounced = useMemo(
+    () =>
+      debounce((content: string) => {
+        onChange?.(content);
+      }, 300),
+    [onChange]
+  );
+
   return (
     <OnChangePlugin
       onChange={(editorState) => {
+        if (!onChange) return;
         editorState.read(() => {
           const root = $getRoot();
           const content = root.getTextContent();
-          onChange?.(content);
+            debounced(content);
         });
       }}
     />
   );
 }
 
-const LexicalEditor: React.FC<LexicalEditorProps> = ({ 
-  initialContent = '', 
-  onChange, 
+const LexicalEditor: React.FC<LexicalEditorProps> = ({
+  initialContent = '',
+  onChange,
   placeholder = 'Beginnen Sie zu schreiben...',
   showToolbar = true,
   documentId,
-  enableCollaboration = false
+  enableCollaboration = false,
 }) => {
-  // Force cache refresh - v2.0
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
   const [formatCommand, setFormatCommand] = useState<string>('');
-  
-  // Use context directly with null check - this prevents the error
+
   const collaborationContext = useContext(CollaborationContext);
-  
-  // Default fallback values when context is not available
+
   const {
     yDoc = null,
     provider = null,
@@ -80,16 +85,14 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     currentUser = null,
     initializeCollaboration = () => {},
     destroyCollaboration = () => {},
-    isReady = false
+    isReady = false,
   } = collaborationContext || {};
 
-  // Show warning if collaboration is enabled but context is not available
-  const collaborationAvailable = enableCollaboration && collaborationContext && documentId;
-  
-  // Simplify collaboration error handling
+  const collaborationAvailable = enableCollaboration && !!collaborationContext && !!documentId;
+
   useEffect(() => {
     if (enableCollaboration && !collaborationContext) {
-      console.warn('Kollaboration nicht verfügbar - Editor läuft im Standalone-Modus');
+      console.warn('Kollaboration nicht verfügbar – Fallback auf Single-User-Modus.');
     }
   }, [enableCollaboration, collaborationContext]);
 
@@ -98,73 +101,63 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     setTimeout(() => setFormatCommand(''), 10);
   };
 
-  // Set up persistence hook - only when we have valid parameters
   const { saveManual, loadDocumentState } = useCollaborationPersistence({
-    documentId: documentId || undefined, // Ensure we don't pass empty string
+    documentId: documentId || undefined,
     yDoc,
-    enableCollaboration: enableCollaboration && !!documentId, // Only enable if we have documentId
-    debounceMs: 2000
+    enableCollaboration: collaborationAvailable,
+    debounceMs: 2000,
   });
 
-  // Initialize collaboration when enabled and available (with timeout fallback)
   useEffect(() => {
     if (collaborationAvailable && documentId) {
-      console.log('Initializing collaboration for document:', documentId);
       initializeCollaboration(documentId);
-      
-      // Add timeout fallback - if collaboration doesn't initialize within 10 seconds, 
-      // the editor should still be usable
-      const fallbackTimeout = setTimeout(() => {
-        console.warn('Collaboration initialization timeout - editor will work in standalone mode');
+      const timeout = setTimeout(() => {
+        if (!isConnected) {
+          console.warn('[LexicalEditor] Noch keine Verbindung nach 10s – arbeite weiter (degraded).');
+        }
       }, 10000);
-      
       return () => {
-        clearTimeout(fallbackTimeout);
-        console.log('Cleaning up collaboration for document:', documentId);
+        clearTimeout(timeout);
         destroyCollaboration();
       };
     } else {
-      // Cleanup if collaboration is disabled or document ID is missing
-      console.log('Collaboration not available - editor running in standalone mode');
       destroyCollaboration();
     }
-  }, [collaborationAvailable, documentId, initializeCollaboration, destroyCollaboration]);
+  }, [
+    collaborationAvailable,
+    documentId,
+    initializeCollaboration,
+    destroyCollaboration,
+    isConnected,
+  ]);
 
-  // Load document state when Y.Doc is ready (simplified timing)
   useEffect(() => {
     if (yDoc && documentId && collaborationAvailable && isReady) {
-      console.log('Y.Doc ready, loading document state for:', documentId);
-      
-      loadDocumentState(yDoc).then(() => {
-        console.log('Document state loading completed for:', documentId);
-      }).catch((error) => {
-        console.error('Error during document state loading:', error);
-      });
+      loadDocumentState(yDoc).catch((err) =>
+        console.error('Fehler beim Laden des Dokumentzustands:', err)
+      );
     }
   }, [yDoc, documentId, collaborationAvailable, isReady, loadDocumentState]);
 
-  // Provider factory for Lexical CollaborationPlugin - simplified to use existing provider
-  const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
-    console.log('Provider factory called for neutral ID:', id);
-    
-    if (provider && yDoc) {
-      // Use the neutral ID to map to our actual Y.Doc
-      if (!yjsDocMap.has(id)) {
-        yjsDocMap.set(id, yDoc);
+  const providerFactory = useCallback(
+    (id: string, yjsDocMap: Map<string, Y.Doc>) => {
+      if (provider && yDoc) {
+        if (!yjsDocMap.has(id)) {
+          yjsDocMap.set(id, yDoc);
+        }
+        return provider;
       }
-      return provider;
-    }
-    
-    // Safe placeholder provider when not available
-    return {
-      disconnect: () => {},
-      awareness: null,
-      ws: null,
-      on: () => {},
-      off: () => {},
-      destroy: () => {}
-    };
-  }, [provider, yDoc]);
+      return {
+        disconnect: () => {},
+        awareness: null,
+        ws: null,
+        on: () => {},
+        off: () => {},
+        destroy: () => {},
+      };
+    },
+    [provider, yDoc]
+  );
 
   const initialConfig = {
     namespace: 'KnowledgeBaseEditor',
@@ -199,8 +192,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
             activeFormats={activeFormats}
           />
         )}
-        
-        {/* Collaboration Status */}
+
         {collaborationAvailable && (
           <div className="p-3 border-b border-border bg-muted/50">
             <div className="flex items-center justify-between">
@@ -225,43 +217,41 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
                   Snapshot speichern
                 </button>
                 <div className="text-xs text-muted-foreground">
-                  {yDoc ? 'Kollaboration aktiv' : 'Wird geladen...'}
+                  {yDoc
+                    ? isConnected
+                      ? 'Kollaboration aktiv'
+                      : 'Warten auf Verbindung...'
+                    : 'Lade...'}
                 </div>
               </div>
             </div>
           </div>
         )}
-        
+
         <div className="editor-inner">
           <RichTextPlugin
-            contentEditable={
-              <ContentEditable className="editor-input" />
-            }
-            placeholder={
-              <div className="editor-placeholder">{placeholder}</div>
-            }
-            ErrorBoundary={({ children }) => <div>{children}</div>}
+            contentEditable={<ContentEditable className="editor-input" />}
+            placeholder={<div className="editor-placeholder">{placeholder}</div>}
+            ErrorBoundary={LexicalErrorBoundary}
           />
           <ListPlugin />
-          <LinkPlugin />
-          {/* Always show CollaborationPlugin if we have the required pieces */}
-          {collaborationAvailable && provider && yDoc && (
-            <CollaborationPlugin
-              id="lexical-editor"
-              providerFactory={providerFactory}
-              shouldBootstrap={true}
+            <LinkPlugin />
+            {collaborationAvailable && provider && yDoc && (
+              <CollaborationPlugin
+                id="lexical-editor"
+                providerFactory={providerFactory}
+                shouldBootstrap={true}
+              />
+            )}
+            {!collaborationAvailable && <HistoryPlugin />}
+            <ToolbarPlugin
+              onFormatChange={setActiveFormats}
+              formatCommand={formatCommand}
             />
-          )}
-          {/* Always include HistoryPlugin for standalone mode or as fallback */}
-          {!collaborationAvailable && <HistoryPlugin />}
-          <ToolbarPlugin 
-            onFormatChange={setActiveFormats}
-            formatCommand={formatCommand}
-          />
-          <MyOnChangePlugin onChange={onChange} />
+            <DebouncedOnChangePlugin onChange={onChange} />
+          </div>
         </div>
-      </div>
-    </LexicalComposer>
+      </LexicalComposer>
   );
 };
 
