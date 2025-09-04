@@ -57,7 +57,7 @@ function Placeholder() {
   return <div className="editor-placeholder">Hier schreiben...</div>;
 }
 
-export default function LexicalEditor({ value, onChange }: { value?: string, onChange?: (editorState: any) => void }) {
+export default function LexicalEditor({ value, onChange }: { value?: string, onChange?: (editorState: EditorState) => void }) {
   const [currentEditorState, setCurrentEditorState] = useState<string>('');
   const [initialEditorState, setInitialEditorState] = useState<string | null>(null);
 
@@ -102,7 +102,7 @@ export default function LexicalEditor({ value, onChange }: { value?: string, onC
   // Catch any errors that occur during Lexical updates and log them
   // or throw them as needed. If you don't throw them, Lexical will
   // try to recover gracefully without losing user data.
-  function onError(error: any) {
+  function onError(error: Error) {
     console.error(error);
   }
 
