@@ -49,8 +49,6 @@ const EditorPage: React.FC = () => {
           <CardContent>
             <div className="border rounded-lg min-h-[600px]">
               <LexicalEditor
-                documentId="shared-document"
-                enableCollaboration={true}
                 initialContent=""
                 placeholder="Start writing your document..."
                 showToolbar={true}

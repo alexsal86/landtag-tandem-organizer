@@ -660,13 +660,10 @@ const KnowledgeBaseView = () => {
             <div className="border rounded-lg min-h-[400px]">
               <CollaborationProvider>
                 <LexicalEditor
-                  key={selectedDocument.id} // Force re-mount when document changes for proper collaboration
-                  documentId={selectedDocument.id}
-                  enableCollaboration={true}
+                  key={selectedDocument.id}
                   initialContent={selectedDocument.content}
                   showToolbar={true}
                   onChange={(content) => {
-                    // Just log content changes - let collaboration persistence handle saving
                     console.log('Document content changed:', content.length, 'characters');
                   }}
                   placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}

@@ -122,9 +122,7 @@ const LexicalCollaborationDemo: React.FC = () => {
         <CardContent>
           <div className="border rounded-lg min-h-[400px]">
             <LexicalEditor
-              key={documentId} // Force re-mount when document changes
-              documentId={documentId}
-              enableCollaboration={enableCollaboration}
+              key={documentId}
               initialContent=""
               placeholder={`Beginnen Sie zu schreiben in Dokument "${documentId}"...`}
               showToolbar={true}

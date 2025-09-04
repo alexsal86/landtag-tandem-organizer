@@ -203,7 +203,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
         wsProvider.on('status', handleStatusChange);
 
         connectionTimeoutRef.current = setTimeout(() => {
-          if (!wsProvider.connected) {
+          if (!wsProvider.wsconnected) {
             console.warn('WebSocket connection timeout – collaboration not ready.');
             setIsConnected(false);
             setIsReady(false);
