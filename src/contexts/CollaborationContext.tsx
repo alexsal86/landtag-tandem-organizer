@@ -200,10 +200,10 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
         return;
       }
 
-      // Create WebSocket provider with connection options
+      // Create WebSocket provider with connection options  
+      // Note: Remove awareness option to let provider create it internally
       const wsProvider = new WebsocketProvider(wsUrl, roomId, doc, {
         connect: true,
-        awareness: true,
         params: {
           userId: currentUser.id,
           userName: currentUser.name,
