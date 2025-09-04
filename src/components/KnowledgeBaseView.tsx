@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import RichTextEditor from '@/components/RichTextEditor';
+
 import LexicalEditor from '@/components/LexicalEditor';
 
 interface KnowledgeDocument {
