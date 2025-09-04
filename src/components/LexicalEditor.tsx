@@ -25,7 +25,8 @@ import {
 
 /**
  * Lexical editor with OPTIONAL Yjs collaboration.
- * Variant B: Uses providerFactory + CollaborationPlugin (no external custom hook needed).
+ * Uses providerFactory + CollaborationPlugin (no external custom hook needed).
+ * This version enforces a fixed production websocket URL for all environments.
  */
 
 interface CollaborationUser {
@@ -43,7 +44,6 @@ interface LexicalEditorProps {
   enableCollaboration?: boolean;
   documentId?: string;
   user?: CollaborationUser;
-  websocketUrl?: string;
 }
 
 const Placeholder: React.FC<{ text: string }> = ({ text }) => (
@@ -71,13 +71,8 @@ function onError(error: Error) {
   console.error(error);
 }
 
-function getDefaultWebSocketUrl() {
-  if (typeof window === 'undefined') return '';
-  const isDev = window.location.hostname === 'localhost';
-  return isDev
-    ? 'ws://localhost:54321/functions/v1/yjs-collaboration'
-    : 'wss://YOUR-PROD-DOMAIN/functions/v1/yjs-collaboration';
-}
+// Fixed production websocket URL (always used)
+const COLLAB_WS_URL = 'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration';
 
 interface AwarenessUserState {
   name: string;
@@ -95,7 +90,6 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   enableCollaboration = false,
   documentId,
   user,
-  websocketUrl,
 }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [hasSynced, setHasSynced] = useState(false);
@@ -108,7 +102,6 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
 
   const collabActive = enableCollaboration && !!documentId;
 
-  // Cleanup helper
   function cleanupProvider() {
     if (providerRef.current) {
       try { providerRef.current.destroy(); } catch {}
@@ -123,14 +116,13 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     setAwarenessUsers([]);
   }
 
-  // Provider Factory (Variant B)
   const providerFactory = useCallback(
     (id: string, yjsDocMap: Map<string, Y.Doc>) => {
       let doc = yjsDocMap.get(id);
       if (!doc) {
         doc = new Y.Doc();
         yjsDocMap.set(id, doc);
-        // Apply persisted state if present
+        // Load persisted state if any
         try {
           const persisted = loadDocumentState(id);
           if (persisted) {
@@ -139,12 +131,11 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           }
         } catch (e) {
           // eslint-disable-next-line no-console
-            console.warn('Persisted state load failed', e);
+          console.warn('Persisted state load failed', e);
         }
       }
 
-      const url = websocketUrl || getDefaultWebSocketUrl();
-      const provider = new WebsocketProvider(url, id, doc, { connect: true });
+      const provider = new WebsocketProvider(COLLAB_WS_URL, id, doc, { connect: true });
 
       provider.awareness.setLocalStateField('user', {
         name: user?.name || 'Anonymous',
@@ -173,17 +164,16 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
 
       return provider;
     },
-    [websocketUrl, user?.name, user?.color, user?.avatarUrl, snapshots.length]
+    [user?.name, user?.color, user?.avatarUrl, snapshots.length]
   );
 
-  // Effect for awareness + status reflecting providerRef after plugin mount
   useEffect(() => {
     if (!collabActive || !documentId) {
       cleanupProvider();
       return;
     }
     const provider = providerRef.current;
-    if (!provider) return; // Will run again after provider is set
+    if (!provider) return;
 
     const statusHandler = (event: { status: string }) => setIsConnected(event.status === 'connected');
     const syncHandler = () => setHasSynced(true);
@@ -209,14 +199,12 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     };
   }, [collabActive, documentId]);
 
-  // Snapshot create
   function createSnapshot(note?: string) {
     if (!collabActive || !yDocRef.current || !documentId) return;
     const meta: SnapshotMeta = saveSnapshot(documentId, encodeStateAsBase64(yDocRef.current), note);
     setSnapshots((prev) => [meta, ...prev]);
   }
 
-  // Snapshot restore
   function restoreSnapshot(id: string) {
     if (!collabActive || !yDocRef.current || !documentId) return;
     const snap = snapshots.find((s) => s.id === id);
@@ -325,7 +313,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
               </>
             )}
             {onExportJSON && (
-              <> 
+              <>
                 <div className="toolbar-divider"></div>
                 <button
                   type="button"
