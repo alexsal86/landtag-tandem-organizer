@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarIcon, ExternalLinkIcon, EditIcon, SaveIcon, XIcon, MapPinIcon, ClockIcon } from "lucide-react";
 import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import { supabase } from "@/integrations/supabase/client";
+import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
+import { CalendarEvent } from "@/components/CalendarView";
 
 interface AppointmentPreparationOverviewTabProps {
   preparation: AppointmentPreparation;
@@ -27,6 +29,8 @@ export function AppointmentPreparationOverviewTab({
   const [saving, setSaving] = useState(false);
   const [appointmentDetails, setAppointmentDetails] = useState<any>(null);
   const [loadingAppointment, setLoadingAppointment] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<CalendarEvent | null>(null);
 
   // Fetch appointment details if appointment_id exists
   useEffect(() => {
@@ -97,6 +101,59 @@ export function AppointmentPreparationOverviewTab({
     }
     const completed = preparation.checklist_items.filter(item => item.completed).length;
     return Math.round((completed / preparation.checklist_items.length) * 100);
+  };
+
+  const handleOpenAppointment = () => {
+    if (!appointmentDetails) return;
+    
+    // Convert appointment to CalendarEvent format
+    const calendarEvent: CalendarEvent = {
+      id: appointmentDetails.id,
+      title: appointmentDetails.title,
+      description: appointmentDetails.description,
+      time: new Date(appointmentDetails.start_time).toTimeString().slice(0, 5),
+      duration: appointmentDetails.end_time ? 
+        `${Math.floor((new Date(appointmentDetails.end_time).getTime() - new Date(appointmentDetails.start_time).getTime()) / (1000 * 60))} Min.` : 
+        "60 Min.",
+      date: new Date(appointmentDetails.start_time),
+      endTime: appointmentDetails.end_time ? new Date(appointmentDetails.end_time) : undefined,
+      location: appointmentDetails.location,
+      type: appointmentDetails.category as CalendarEvent["type"],
+      priority: appointmentDetails.priority as CalendarEvent["priority"],
+      is_all_day: appointmentDetails.is_all_day
+    };
+    
+    setSelectedAppointment(calendarEvent);
+    setSidebarOpen(true);
+  };
+
+  const handleSidebarUpdate = () => {
+    // Refresh appointment details when sidebar updates
+    if (!preparation.appointment_id) return;
+    
+    const fetchAppointmentDetails = async () => {
+      try {
+        setLoadingAppointment(true);
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('id', preparation.appointment_id)
+          .maybeSingle();
+          
+        if (error) {
+          console.error('Error fetching appointment:', error);
+          return;
+        }
+        
+        setAppointmentDetails(data);
+      } catch (error) {
+        console.error('Error fetching appointment details:', error);
+      } finally {
+        setLoadingAppointment(false);
+      }
+    };
+
+    fetchAppointmentDetails();
   };
 
   return (
@@ -309,7 +366,7 @@ export function AppointmentPreparationOverviewTab({
                 )}
                 
                 <div className="flex justify-end">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handleOpenAppointment}>
                     <ExternalLinkIcon className="h-4 w-4 mr-2" />
                     Termin öffnen
                   </Button>
@@ -323,6 +380,14 @@ export function AppointmentPreparationOverviewTab({
           </CardContent>
         </Card>
       )}
+
+      {/* Appointment Details Sidebar */}
+      <AppointmentDetailsSidebar
+        appointment={selectedAppointment}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onUpdate={handleSidebarUpdate}
+      />
 
       {/* Metadata */}
       <Card>
