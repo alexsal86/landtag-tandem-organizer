@@ -117,27 +117,45 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     debounceMs: 2000
   });
 
-  // Initialize collaboration when enabled and available
+  // Initialize collaboration when enabled and available (improved cleanup)
   useEffect(() => {
     if (collaborationAvailable && documentId) {
       console.log('Initializing collaboration for document:', documentId);
       initializeCollaboration(documentId);
       
       return () => {
-        console.log('Cleaning up collaboration');
-        destroyCollaboration();
+        console.log('Cleaning up collaboration for document:', documentId);
+        // Add a small delay to prevent race conditions
+        setTimeout(() => {
+          destroyCollaboration();
+        }, 100);
+      };
+    } else {
+      // Cleanup if collaboration is disabled or document ID is missing
+      console.log('Collaboration not available or missing documentId, cleaning up');
+      destroyCollaboration();
+    }
+  }, [collaborationAvailable, documentId, initializeCollaboration, destroyCollaboration]);
+
+  // Load document state when Y.Doc is ready (improved timing)
+  useEffect(() => {
+    if (yDoc && documentId && collaborationAvailable && isReady) {
+      console.log('Y.Doc ready, loading document state for:', documentId);
+      
+      // Add a small delay to ensure the collaboration is fully initialized
+      const loadTimer = setTimeout(() => {
+        loadDocumentState(yDoc).then(() => {
+          console.log('Document state loading completed for:', documentId);
+        }).catch((error) => {
+          console.error('Error during document state loading:', error);
+        });
+      }, 500);
+
+      return () => {
+        clearTimeout(loadTimer);
       };
     }
-  }, [collaborationAvailable, documentId]); // Use collaborationAvailable instead
-
-  // Load document state when Y.Doc is ready
-  useEffect(() => {
-    if (yDoc && documentId && collaborationAvailable) {
-      loadDocumentState(yDoc).then(() => {
-        console.log('Document state loaded');
-      });
-    }
-  }, [yDoc, documentId, collaborationAvailable]); // Use collaborationAvailable instead
+  }, [yDoc, documentId, collaborationAvailable, isReady, loadDocumentState]);
 
   // Provider factory for Lexical CollaborationPlugin - simplified to use existing provider
   const providerFactory = useCallback((id: string, yjsDocMap: Map<string, Y.Doc>) => {
