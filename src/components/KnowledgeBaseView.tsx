@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { debounce } from '@/utils/debounce';
 
 import LexicalEditor from '@/components/LexicalEditor';
 
@@ -43,12 +44,40 @@ const KnowledgeBaseView = () => {
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [tenantId, setTenantId] = useState<string | null>(null);
   
   // Token-based one-time authentication for documents
   const [authToken, setAuthToken] = useState<string | null>(
     localStorage.getItem('knowledge_auth_token')
   );
   const [anonymousMode, setAnonymousMode] = useState(!user && !authToken);
+
+  // Debounced save function for Supabase
+  const debouncedSave = debounce(async (documentId: string, content: string) => {
+    if (!user || anonymousMode) return;
+    
+    try {
+      console.log('Saving document content to Supabase:', documentId);
+      const { error } = await supabase
+        .from('knowledge_documents')
+        .update({ 
+          content, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', documentId);
+        
+      if (error) {
+        console.error('Error saving document:', error);
+        toast({
+          title: "Fehler beim Speichern",
+          description: "Das Dokument konnte nicht gespeichert werden.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error saving document:', error);
+    }
+  }, 1000);
 
   // Handle URL-based document selection with better error handling
   useEffect(() => {
@@ -202,6 +231,33 @@ const KnowledgeBaseView = () => {
   useEffect(() => {
     console.log('KnowledgeBaseView: useEffect triggered, user:', user?.id, 'anonymous mode:', anonymousMode);
     fetchDocuments();
+  }, [user, anonymousMode]);
+
+  // Fetch tenant ID when user changes
+  useEffect(() => {
+    const fetchTenantId = async () => {
+      if (!user || anonymousMode) {
+        setTenantId(null);
+        return;
+      }
+
+      try {
+        const { data: tenantData, error: tenantError } = await supabase.rpc('get_user_primary_tenant_id', {
+          _user_id: user.id
+        });
+
+        if (tenantError) {
+          console.error('Error getting tenant ID:', tenantError);
+        } else {
+          setTenantId(tenantData);
+          console.log('Tenant ID fetched:', tenantData);
+        }
+      } catch (error) {
+        console.error('Error fetching tenant ID:', error);
+      }
+    };
+
+    fetchTenantId();
   }, [user, anonymousMode]);
 
   // Real-time updates
@@ -659,34 +715,31 @@ const KnowledgeBaseView = () => {
             <div className="border rounded-lg min-h-[400px] p-4">
              
 
-              {/* Lexical Editor - Basic implementation */}
+              {/* Lexical Editor - Supabase Integration */}
               <div className="p-4 border border-border rounded-lg mt-6">
-                <h3 className="text-sm font-medium mb-2">Lexical Editor (Demo)</h3>
-                <LexicalEditor value={selectedDocument.content}
-                onChange={(content) => {
-                  console.log('Document content changed:', content.length, 'characters');
-                  // Update the selected document content locally
-                  setSelectedDocument(prev => prev ? { ...prev, content } : null);
-                  
-                  // Save to database if user is authenticated
-                  if (user && selectedDocument.id && !anonymousMode) {
-                    // Debounced save to prevent too many requests
-                    const saveTimeout = setTimeout(async () => {
-                      try {
-                        await supabase
-                          .from('knowledge_documents')
-                          .update({ content, updated_at: new Date().toISOString() })
-                          .eq('id', selectedDocument.id);
-                      } catch (error) {
-                        console.error('Error saving document:', error);
-                      }
-                    }, 1000);
+                <h3 className="text-sm font-medium mb-2">
+                  Lexical Editor - {selectedDocument.title}
+                </h3>
+                <LexicalEditor 
+                  value={selectedDocument.content}
+                  documentId={selectedDocument.id}
+                  tenantId={tenantId || undefined}
+                  onChange={(editorState) => {
+                    // This now receives EditorState correctly
+                    console.log('Editor state changed for document:', selectedDocument.id);
+                  }}
+                  onSave={async (jsonContent: string) => {
+                    // Update the selected document content locally for UI consistency
+                    setSelectedDocument(prev => prev ? { ...prev, content: jsonContent } : null);
                     
-                    return () => clearTimeout(saveTimeout);
-                  }
-                }}
-                placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
-                className="min-h-[400px]"/>
+                    // Use debounced save to Supabase
+                    if (selectedDocument.id) {
+                      debouncedSave(selectedDocument.id, jsonContent);
+                    }
+                  }}
+                  placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
+                  className="min-h-[400px]"
+                />
               </div>
             </div>
           </div>
