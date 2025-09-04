@@ -100,11 +100,33 @@ serve(async (req) => {
     // Extract room ID from URL path - handle both direct paths and nested function paths
     let roomId = url.pathname.slice(1) || url.searchParams.get('roomId') || 'default';
     
-    // If this is a Supabase Edge Function URL, extract the actual room ID from the end
+    // Robust roomId extraction handling both formats: /roomId and /roomId/roomId
     if (roomId.includes('/')) {
-      const pathSegments = roomId.split('/');
-      roomId = pathSegments[pathSegments.length - 1] || 'default';
+      // Split path segments and filter out empty ones (handles trailing slashes)
+      const pathSegments = roomId.split('/').filter(segment => segment.trim() !== '');
+      
+      if (pathSegments.length > 0) {
+        // For Supabase Edge Function URLs like /functions/v1/yjs-collaboration/roomId
+        // Extract the last non-empty segment as the roomId
+        roomId = pathSegments[pathSegments.length - 1];
+        
+        // Handle duplicate roomId patterns like /roomId/roomId
+        if (pathSegments.length >= 2) {
+          const lastSegment = pathSegments[pathSegments.length - 1];
+          const secondLastSegment = pathSegments[pathSegments.length - 2];
+          
+          // If the last two segments are identical, use just one
+          if (lastSegment === secondLastSegment) {
+            roomId = lastSegment;
+          }
+        }
+      } else {
+        roomId = 'default';
+      }
     }
+    
+    // Sanitize roomId to ensure it's valid (alphanumeric, hyphens, underscores only)
+    roomId = roomId.replace(/[^a-zA-Z0-9\-_]/g, '') || 'default';
     
     console.log(`🔌 New WebSocket connection for room: ${roomId}`);
 

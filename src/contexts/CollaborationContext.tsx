@@ -28,6 +28,8 @@ export { CollaborationContext };
 const getWebSocketUrl = () => {
   // Use localhost for development, production URL for production
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  // Return base WebSocket URL without trailing slash to ensure proper roomId appending
   if (isDev) {
     return 'ws://localhost:54321/functions/v1/yjs-collaboration';
   }
@@ -132,7 +134,9 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
 
       // Use base WebSocket URL and pass room ID as second parameter
       const wsUrl = getWebSocketUrl();
-      const roomId = `knowledge-doc-${documentId}`;
+      // Sanitize documentId and construct roomId to ensure no duplicate parts or invalid characters
+      const sanitizedDocumentId = documentId.replace(/[^a-zA-Z0-9\-_]/g, '');
+      const roomId = `knowledge-doc-${sanitizedDocumentId}`;
       
       console.log('Connecting to:', wsUrl, 'Room:', roomId);
 
