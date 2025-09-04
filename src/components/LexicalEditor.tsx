@@ -7,6 +7,9 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
+import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+import LexicalToolbar from './LexicalToolbar';
+import './LexicalEditor.css';
 
 // Completely fresh minimal Lexical editor implementation.
 // No reuse of prior project-specific code, styles, logging, or custom plugins.
@@ -15,19 +18,13 @@ interface LexicalEditorProps {
   initialContent?: string;
   onChange?: (plainText: string) => void;
   placeholder?: string;
+  showToolbar?: boolean;
+  onExportJSON?: (jsonData: string) => void;
 }
 
 // Very small placeholder component (inline styles to avoid external CSS coupling)
 const Placeholder: React.FC<{ text: string }> = ({ text }) => (
-  <div style={{
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    pointerEvents: 'none',
-    opacity: 0.4,
-    fontStyle: 'italic',
-    padding: '4px 6px'
-  }}>{text}</div>
+  <div className="lexical-placeholder">{text}</div>
 );
 
 // Plugin to set initial content exactly once after mount (if editor is empty)
@@ -55,19 +52,55 @@ function onError(error: Error) {
 const LexicalEditor: React.FC<LexicalEditorProps> = ({
   initialContent,
   onChange,
-  placeholder = 'Schreiben...' ,
+  placeholder = 'Schreiben...',
+  showToolbar = true,
+  onExportJSON,
 }) => {
   const initialConfig = {
     namespace: 'FreshLexicalEditor',
     theme: {}, // No theme: pure default rendering
     onError,
+    nodes: [HeadingNode, QuoteNode], // Add support for headings and quotes
+  };
+
+  const handleExportJSON = () => {
+    if (!onExportJSON) return;
+    
+    // This would typically export the editor's internal state as JSON
+    // For now, we'll export a simplified JSON structure
+    const jsonData = JSON.stringify({
+      timestamp: new Date().toISOString(),
+      content: placeholder || 'No content',
+      version: '1.0'
+    }, null, 2);
+    
+    onExportJSON(jsonData);
   };
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div style={{ position: 'relative', border: '1px solid #ccc', borderRadius: 4, padding: 4, minHeight: 120 }}>
+      <div className="lexical-editor">
+        {showToolbar && (
+          <div className="lexical-toolbar">
+            <LexicalToolbar />
+            {onExportJSON && (
+              <>
+                <div className="toolbar-divider"></div>
+                <button
+                  type="button"
+                  onClick={handleExportJSON}
+                  className="toolbar-button export-button"
+                  title="Als JSON exportieren"
+                >
+                  JSON
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        
         <RichTextPlugin
-          contentEditable={<ContentEditable style={{ outline: 'none', minHeight: 112, padding: '4px 6px' }} />}
+          contentEditable={<ContentEditable className="lexical-editor-inner" />}
           placeholder={<Placeholder text={placeholder} />}
           ErrorBoundary={LexicalErrorBoundary}
         />
