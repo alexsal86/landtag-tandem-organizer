@@ -688,12 +688,7 @@ const KnowledgeBaseView = () => {
               {/* Lexical Editor - Basic implementation */}
               <div className="p-4 border border-border rounded-lg mt-6">
                 <h3 className="text-sm font-medium mb-2">Lexical Editor (Demo)</h3>
-                <LexicalEditor  value={selectedDocument.content}
-  onChange={(editorState) => {
-    // Hier kannst du den State auslesen und ggf. speichern
-    // Zum Beispiel: editorState.toJSON() oder als HTML/Text exportieren
-    // TODO: Implementiere die Speicherung nach Bedarf!
-  }}/>
+                <LexicalEditor  />
               </div>
             </div>
           </div>
