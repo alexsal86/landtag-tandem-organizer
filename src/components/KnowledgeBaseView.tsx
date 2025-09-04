@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import RichTextEditor from '@/components/RichTextEditor';
-
+import LexicalEditor from '@/components/LexicalEditor';
 
 interface KnowledgeDocument {
   id: string;
@@ -683,6 +683,35 @@ const KnowledgeBaseView = () => {
                 }}
                 placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
                 className="min-h-[400px]"
+              />
+
+              {/* LexicalEditor einfügen */}
+              <LexicalEditor
+                value={selectedDocument.content}
+                onChange={(content) => {
+                   console.log('Document content changed:', content.length, 'characters');
+                  // Update the selected document content locally
+                  setSelectedDocument(prev => prev ? { ...prev, content } : null);
+                  
+                  // Save to database if user is authenticated
+                  if (user && selectedDocument.id && !anonymousMode) {
+                    // Debounced save to prevent too many requests
+                    const saveTimeout = setTimeout(async () => {
+                      try {
+                        await supabase
+                          .from('knowledge_documents')
+                          .update({ content, updated_at: new Date().toISOString() })
+                          .eq('id', selectedDocument.id);
+                      } catch (error) {
+                        console.error('Error saving document:', error);
+                      }
+                    }, 1000);
+                    
+                    return () => clearTimeout(saveTimeout);
+                  }
+                }}
+                placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
+                className="min-h-[400px] mt-6"
               />
             </div>
           </div>
