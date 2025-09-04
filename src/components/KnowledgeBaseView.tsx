@@ -51,6 +51,15 @@ const KnowledgeBaseView = () => {
   );
   const [anonymousMode, setAnonymousMode] = useState(!user && !authToken);
 
+  // Update anonymous mode when user or authToken changes
+  useEffect(() => {
+    const isAnonymous = !user && !authToken;
+    if (isAnonymous !== anonymousMode) {
+      console.log('Updating anonymous mode:', { isAnonymous, user: user?.id, authToken: !!authToken });
+      setAnonymousMode(isAnonymous);
+    }
+  }, [user, authToken, anonymousMode]);
+
   // Handle URL-based document selection with better error handling
   useEffect(() => {
     console.log('URL change detected - documentId:', documentId, 'documents count:', documents.length);
@@ -138,6 +147,17 @@ const KnowledgeBaseView = () => {
           updated_at: new Date().toISOString(),
           is_published: true,
           creator_name: 'Anonymous'
+        },
+        {
+          id: 'demo-knowledge-4',
+          title: 'General Information',
+          content: 'Allgemeine Informationen die ohne Anmeldung bearbeitet werden können.',
+          category: 'general',
+          created_by: 'anonymous',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          is_published: true,
+          creator_name: 'Anonymous'
         }
       ];
       setDocuments(demoDocuments);
@@ -147,7 +167,9 @@ const KnowledgeBaseView = () => {
     
     // Regular Supabase-authenticated mode
     if (!user && !authToken) {
-      console.log('No user or token available for fetchDocuments');
+      console.log('No user or token available - should have been caught by anonymous mode check');
+      // Fallback to anonymous mode if somehow we reach here
+      setAnonymousMode(true);
       setLoading(false);
       return;
     }
@@ -192,9 +214,15 @@ const KnowledgeBaseView = () => {
       console.error('Error fetching documents:', error);
       toast({
         title: "Fehler beim Laden der Dokumente",
-        description: "Die Dokumente konnten nicht geladen werden.",
+        description: "Die Dokumente konnten nicht geladen werden. Wechsle zum anonymen Modus für Demo-Dokumente.",
         variant: "destructive",
       });
+      
+      // In case of error, offer anonymous mode as fallback
+      if (!anonymousMode) {
+        console.log('Switching to anonymous mode due to fetch error');
+        setAnonymousMode(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -203,12 +231,13 @@ const KnowledgeBaseView = () => {
   useEffect(() => {
     console.log('KnowledgeBaseView: useEffect triggered, user:', user?.id, 'anonymous mode:', anonymousMode);
     fetchDocuments();
-  }, [user, anonymousMode]);
+  }, [user, anonymousMode, authToken]);
 
-  // Real-time updates
+  // Real-time updates (only for authenticated users)
   useEffect(() => {
-    if (!user) return;
+    if (!user || anonymousMode) return;
 
+    console.log('Setting up real-time subscription for authenticated user');
     const channel = supabase
       .channel('knowledge-documents-changes')
       .on(
@@ -219,15 +248,17 @@ const KnowledgeBaseView = () => {
           table: 'knowledge_documents'
         },
         () => {
+          console.log('Real-time update detected, refetching documents');
           fetchDocuments();
         }
       )
       .subscribe();
 
     return () => {
+      console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, anonymousMode]);
 
   const handleCreateDocument = async () => {
     if (!user || !newDocument.title.trim()) return;
@@ -402,12 +433,34 @@ const KnowledgeBaseView = () => {
                   <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center gap-2 text-blue-700">
                       <Users className="h-4 w-4" />
-                      <span className="text-sm font-medium">Demo-Modus mit Yjs-Kollaboration</span>
+                      <span className="text-sm font-medium">Anonymer Demo-Modus</span>
+                      <Badge variant="outline" className="text-xs bg-blue-100">
+                        Kollaboration aktiv
+                      </Badge>
                     </div>
                     <p className="text-xs text-blue-600 mt-1">
                       Sie können diese Demo-Dokumente bearbeiten und die Echtzeit-Kollaboration testen. 
-                      Änderungen werden nicht gespeichert, sondern nur über Yjs synchronisiert.
+                      Änderungen werden über Yjs in Echtzeit synchronisiert, aber nicht dauerhaft gespeichert.
                     </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate('/auth')}
+                        className="text-xs"
+                      >
+                        Anmelden für vollständige Funktionen
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {!anonymousMode && user && (
+                  <div className="mb-4 p-2 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-green-700">
+                      <User className="h-4 w-4" />
+                      <span className="text-sm">Angemeldet als: {user.user_metadata?.display_name || user.email}</span>
+                    </div>
                   </div>
                 )}
 
@@ -429,51 +482,69 @@ const KnowledgeBaseView = () => {
                         <CardTitle>Neues Dokument erstellen</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div>
-                          <Label htmlFor="title">Titel</Label>
-                          <Input
-                            id="title"
-                            value={newDocument.title}
-                            onChange={(e) => setNewDocument(prev => ({ ...prev, title: e.target.value }))}
-                            placeholder="Titel des Dokuments..."
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="category">Kategorie</Label>
-                          <Select value={newDocument.category} onValueChange={(value) => setNewDocument(prev => ({ ...prev, category: value }))}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {categories.slice(1).map(category => (
-                                <SelectItem key={category.value} value={category.value}>
-                                  {category.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="content">Inhalt</Label>
-                          <Textarea
-                            id="content"
-                            value={newDocument.content}
-                            onChange={(e) => setNewDocument(prev => ({ ...prev, content: e.target.value }))}
-                            placeholder="Inhalt des Dokuments..."
-                            rows={4}
-                          />
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="published"
-                            checked={newDocument.is_published}
-                            onCheckedChange={(checked) => setNewDocument(prev => ({ ...prev, is_published: checked }))}
-                          />
-                          <Label htmlFor="published">Für alle sichtbar</Label>
-                        </div>
-                        <Button onClick={handleCreateDocument} disabled={!newDocument.title.trim()}>
-                          Dokument erstellen
-                        </Button>
+                        {anonymousMode ? (
+                          <div className="text-center py-8 space-y-4">
+                            <div className="text-muted-foreground">
+                              <Database className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                              <h3 className="font-medium mb-2">Dokument-Erstellung nicht verfügbar</h3>
+                              <p className="text-sm">
+                                Im anonymen Demo-Modus können keine neuen Dokumente erstellt werden.
+                                Die vorhandenen Demo-Dokumente können aber vollständig mit Kollaboration bearbeitet werden.
+                              </p>
+                            </div>
+                            <Button onClick={() => navigate('/auth')} className="mt-4">
+                              Jetzt anmelden
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <div>
+                              <Label htmlFor="title">Titel</Label>
+                              <Input
+                                id="title"
+                                value={newDocument.title}
+                                onChange={(e) => setNewDocument(prev => ({ ...prev, title: e.target.value }))}
+                                placeholder="Titel des Dokuments..."
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="category">Kategorie</Label>
+                              <Select value={newDocument.category} onValueChange={(value) => setNewDocument(prev => ({ ...prev, category: value }))}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categories.slice(1).map(category => (
+                                    <SelectItem key={category.value} value={category.value}>
+                                      {category.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="content">Inhalt</Label>
+                              <Textarea
+                                id="content"
+                                value={newDocument.content}
+                                onChange={(e) => setNewDocument(prev => ({ ...prev, content: e.target.value }))}
+                                placeholder="Inhalt des Dokuments..."
+                                rows={4}
+                              />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id="published"
+                                checked={newDocument.is_published}
+                                onCheckedChange={(checked) => setNewDocument(prev => ({ ...prev, is_published: checked }))}
+                              />
+                              <Label htmlFor="published">Für alle sichtbar</Label>
+                            </div>
+                            <Button onClick={handleCreateDocument} disabled={!newDocument.title.trim()}>
+                              Dokument erstellen
+                            </Button>
+                          </>
+                        )}
                       </CardContent>
                     </Card>
                   </TabsContent>
@@ -540,6 +611,12 @@ const KnowledgeBaseView = () => {
                                       {doc.is_published && (
                                         <Badge variant="outline" className="text-xs">
                                           Öffentlich
+                                        </Badge>
+                                      )}
+                                      {anonymousMode && doc.created_by === 'anonymous' && (
+                                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                          <Users className="h-3 w-3 mr-1" />
+                                          Demo
                                         </Badge>
                                       )}
                                     </div>
@@ -658,41 +735,39 @@ const KnowledgeBaseView = () => {
           
           <div className="flex-1 p-4">
             <div className="border rounded-lg min-h-[400px]">
-              <CollaborationProvider>
-                <LexicalEditor
-                  key={selectedDocument.id} // Force re-mount when document changes for proper collaboration
-                  documentId={selectedDocument.id}
-                  enableCollaboration={true}
-                  initialContent={selectedDocument.content}
-                  showToolbar={true}
-                  onChange={async (content) => {
-                    // Auto-save document content only when not in anonymous mode
-                    if (anonymousMode) {
-                      console.log('Anonymous mode: content changed but not saving to database');
-                      return;
-                    }
+              <LexicalEditor
+                key={selectedDocument.id} // Force re-mount when document changes for proper collaboration
+                documentId={selectedDocument.id}
+                enableCollaboration={true}
+                initialContent={selectedDocument.content}
+                showToolbar={true}
+                onChange={async (content) => {
+                  // Auto-save document content only when not in anonymous mode
+                  if (anonymousMode) {
+                    console.log('Anonymous mode: content changed but not saving to database');
+                    return;
+                  }
+                  
+                  try {
+                    const { error } = await supabase
+                      .from('knowledge_documents')
+                      .update({ 
+                        content,
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('id', selectedDocument.id);
                     
-                    try {
-                      const { error } = await supabase
-                        .from('knowledge_documents')
-                        .update({ 
-                          content,
-                          updated_at: new Date().toISOString()
-                        })
-                        .eq('id', selectedDocument.id);
-                      
-                      if (error) {
-                        console.error('Error auto-saving document:', error);
-                      } else {
-                        console.log('Document auto-saved');
-                      }
-                    } catch (error) {
-                      console.error('Error in auto-save:', error);
+                    if (error) {
+                      console.error('Error auto-saving document:', error);
+                    } else {
+                      console.log('Document auto-saved');
                     }
-                  }}
-                  placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
-                />
-              </CollaborationProvider>
+                  } catch (error) {
+                    console.error('Error in auto-save:', error);
+                  }
+                }}
+                placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
+              />
             </div>
           </div>
         </div>
