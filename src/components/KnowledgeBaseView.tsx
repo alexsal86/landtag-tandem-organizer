@@ -51,27 +51,36 @@ const KnowledgeBaseView = () => {
   );
   const [anonymousMode, setAnonymousMode] = useState(!user && !authToken);
 
-  // Handle URL-based document selection
+  // Handle URL-based document selection with better error handling
   useEffect(() => {
     console.log('URL change detected - documentId:', documentId, 'documents count:', documents.length);
+    
     if (documentId && documents.length > 0) {
       const doc = documents.find(d => d.id === documentId);
       if (doc) {
         console.log('Document found for URL:', doc.title);
-        setSelectedDocument(doc);
-        setIsEditorOpen(true);
-        setIsSidebarCollapsed(true);
+        // Only update if it's actually a different document
+        if (!selectedDocument || selectedDocument.id !== doc.id) {
+          setSelectedDocument(doc);
+          setIsEditorOpen(true);
+          setIsSidebarCollapsed(true);
+        }
       } else {
-        console.log('Document not found for ID:', documentId, 'redirecting to /knowledge');
-        navigate('/knowledge');
+        console.log('Document not found for ID:', documentId, 'available IDs:', documents.map(d => d.id));
+        // Check if we're still loading documents
+        if (!loading) {
+          console.log('Documents loaded but document not found, redirecting to /knowledge');
+          navigate('/knowledge', { replace: true });
+        }
       }
-    } else if (!documentId) {
+    } else if (!documentId && (isEditorOpen || selectedDocument)) {
+      // Clean URL navigation - close editor and clear selection
       console.log('No documentId in URL, closing editor');
       setSelectedDocument(null);
       setIsEditorOpen(false);
       setIsSidebarCollapsed(false);
     }
-  }, [documentId, documents, navigate]);
+  }, [documentId, documents, navigate, loading, selectedDocument, isEditorOpen]);
 
   // Create document form state
   const [newDocument, setNewDocument] = useState({
@@ -262,10 +271,17 @@ const KnowledgeBaseView = () => {
         is_published: false
       });
 
-      // Open editor for the new document
-      setSelectedDocument(data);
+      // Open editor for the new document with proper URL navigation
+      const docWithCreator = {
+        ...data,
+        creator_name: user.user_metadata?.display_name || user.email || 'Unknown'
+      };
+      setSelectedDocument(docWithCreator);
       setIsEditorOpen(true);
       setIsSidebarCollapsed(true);
+      
+      // Navigate to the document URL for proper routing
+      navigate(`/knowledge/${data.id}`, { replace: true });
     } catch (error) {
       console.error('Error creating document:', error);
       toast({
@@ -632,7 +648,7 @@ const KnowledgeBaseView = () => {
                   setIsEditorOpen(false);
                   setSelectedDocument(null);
                   setIsSidebarCollapsed(false);
-                  navigate('/knowledge');
+                  navigate('/knowledge', { replace: true });
                 }}
               >
                 Schließen

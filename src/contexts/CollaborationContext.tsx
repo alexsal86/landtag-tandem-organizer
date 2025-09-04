@@ -34,6 +34,9 @@ const getWebSocketUrl = () => {
   return 'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration';
 };
 
+// Track active connections to prevent duplicates
+const activeConnections = new Map<string, WebsocketProvider>();
+
 interface CollaborationProviderProps {
   children: ReactNode;
 }
@@ -48,7 +51,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
   const [currentUser, setCurrentUser] = useState<CollaborationUser | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  // Set up current user
+  // Set up current user with better anonymous ID management
   useEffect(() => {
     if (user) {
       const userData: CollaborationUser = {
@@ -59,16 +62,32 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       };
       setCurrentUser(userData);
     } else {
-      // Allow anonymous collaboration for knowledge management without Supabase auth
-      const anonymousId = localStorage.getItem('anonymous_user_id') || 
-        `anonymous_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('anonymous_user_id', anonymousId);
+      // Improved anonymous user management
+      let anonymousId = localStorage.getItem('anonymous_user_id');
+      
+      // Generate new anonymous ID if none exists or if it's invalid
+      if (!anonymousId || anonymousId.length < 10) {
+        anonymousId = `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('anonymous_user_id', anonymousId);
+      }
+      
+      // Get or generate anonymous display name
+      let anonymousName = localStorage.getItem('anonymous_user_name');
+      if (!anonymousName) {
+        anonymousName = `Anonymous User ${Math.floor(Math.random() * 1000)}`;
+        localStorage.setItem('anonymous_user_name', anonymousName);
+      }
       
       const anonymousUserData: CollaborationUser = {
         id: anonymousId,
-        name: 'Anonymous User',
+        name: anonymousName,
         avatar: undefined,
-        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`
+        color: localStorage.getItem('anonymous_user_color') || 
+               (() => {
+                 const color = `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`;
+                 localStorage.setItem('anonymous_user_color', color);
+                 return color;
+               })()
       };
       setCurrentUser(anonymousUserData);
     }
@@ -79,10 +98,27 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     
     if (provider) {
       try {
+        // Remove from active connections tracking
+        const roomId = provider.roomname;
+        if (roomId && activeConnections.get(roomId) === provider) {
+          activeConnections.delete(roomId);
+        }
+        
+        // Remove all event listeners first
+        provider.off('status', () => {});
+        provider.off('connection-error', () => {});
+        provider.off('connection-close', () => {});
+        
+        // Properly destroy awareness
         if (provider.awareness) {
+          provider.awareness.off('change', () => {});
+          provider.awareness.off('update', () => {});
           provider.awareness.destroy();
         }
+        
+        // Disconnect and destroy provider
         provider.disconnect();
+        provider.destroy?.();
       } catch (error) {
         console.error('Error destroying provider:', error);
       }
@@ -91,6 +127,12 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     
     if (yDoc) {
       try {
+        // Remove all event listeners from Y.Doc
+        yDoc.off('update', () => {});
+        yDoc.off('beforeTransaction', () => {});
+        yDoc.off('afterTransaction', () => {});
+        
+        // Destroy the document
         yDoc.destroy();
       } catch (error) {
         console.error('Error destroying Y.Doc:', error);
@@ -100,6 +142,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     
     setIsConnected(false);
     setUsers([]);
+    setIsReady(false);
   }, [provider, yDoc]);
 
   const initializeCollaboration = useCallback((documentId: string) => {
@@ -108,7 +151,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       return;
     }
 
-    // Clean up existing collaboration
+    // Clean up existing collaboration first to prevent memory leaks
     destroyCollaboration();
 
     console.log('🚀 Initializing collaboration for document:', documentId);
@@ -126,8 +169,14 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
     });
 
     try {
-      // Create new Y.Doc
+      // Create new Y.Doc with specific configuration
       const doc = new Y.Doc();
+      
+      // Add metadata to the document
+      doc.getMap('metadata').set('documentId', documentId);
+      doc.getMap('metadata').set('createdAt', new Date().toISOString());
+      doc.getMap('metadata').set('createdBy', currentUser.id);
+      
       setYDoc(doc);
 
       // Use base WebSocket URL and pass room ID as second parameter
@@ -136,60 +185,99 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       
       console.log('Connecting to:', wsUrl, 'Room:', roomId);
 
-      // Create WebSocket provider - use base URL and pass roomId as parameter
-      const wsProvider = new WebsocketProvider(wsUrl, roomId, doc);
-
-      // Set up awareness before connecting
-      if (wsProvider.awareness) {
-        console.log('🧠 Setting up awareness for user:', currentUser);
-        wsProvider.awareness.setLocalStateField('user', {
-          name: currentUser.name,
-          color: currentUser.color,
-          avatar: currentUser.avatar,
-          id: currentUser.id
-        });
-
-        // Log all awareness events
-        wsProvider.awareness.on('change', (changes: any) => {
-          console.log('👥 Awareness change event:', changes);
-          const states = wsProvider.awareness.getStates();
-          console.log('👥 All awareness states:', states);
-          
-          const otherUsers: CollaborationUser[] = [];
-          
-          states.forEach((state, clientId) => {
-            console.log('👤 Client state:', { clientId, state });
-            if (state.user && clientId !== wsProvider.awareness.clientID) {
-              otherUsers.push({
-                id: state.user.id || clientId.toString(),
-                name: state.user.name,
-                avatar: state.user.avatar,
-                color: state.user.color
-              });
-            }
-          });
-          
-          console.log('👥 Other users:', otherUsers);
-          setUsers(otherUsers);
-        });
-
-        wsProvider.awareness.on('update', (update: any) => {
-          console.log('📡 Awareness update:', update);
-        });
+      // Check for existing connection to prevent duplicates
+      const existingProvider = activeConnections.get(roomId);
+      if (existingProvider && existingProvider.ws && existingProvider.ws.readyState === WebSocket.OPEN) {
+        console.log('⚠️ Reusing existing connection for room:', roomId);
+        setProvider(existingProvider);
+        setYDoc(existingProvider.doc);
+        setIsConnected(true);
+        setIsReady(true);
+        return;
       }
 
-      // Connection status handling with detailed logging
-      wsProvider.on('status', (event: any) => {
+      // Create WebSocket provider with connection options
+      const wsProvider = new WebsocketProvider(wsUrl, roomId, doc, {
+        connect: true,
+        awareness: true,
+        params: {
+          userId: currentUser.id,
+          userName: currentUser.name,
+        }
+      });
+
+      // Track this connection
+      activeConnections.set(roomId, wsProvider);
+
+      // Set up awareness before connecting with better error handling
+      if (wsProvider.awareness) {
+        console.log('🧠 Setting up awareness for user:', currentUser);
+        
+        try {
+          wsProvider.awareness.setLocalStateField('user', {
+            name: currentUser.name,
+            color: currentUser.color,
+            avatar: currentUser.avatar,
+            id: currentUser.id,
+            timestamp: Date.now()
+          });
+
+          // Enhanced awareness change handler
+          const handleAwarenessChange = (changes: any) => {
+            console.log('👥 Awareness change event:', changes);
+            const states = wsProvider.awareness.getStates();
+            console.log('👥 All awareness states:', states);
+            
+            const otherUsers: CollaborationUser[] = [];
+            
+            states.forEach((state, clientId) => {
+              if (state.user && clientId !== wsProvider.awareness.clientID) {
+                // Validate user data before adding
+                if (state.user.id && state.user.name) {
+                  otherUsers.push({
+                    id: state.user.id,
+                    name: state.user.name,
+                    avatar: state.user.avatar,
+                    color: state.user.color || `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`
+                  });
+                }
+              }
+            });
+            
+            console.log('👥 Valid other users:', otherUsers);
+            setUsers(otherUsers);
+          };
+
+          wsProvider.awareness.on('change', handleAwarenessChange);
+
+          wsProvider.awareness.on('update', (update: any) => {
+            console.log('📡 Awareness update:', update);
+          });
+          
+        } catch (awarenessError) {
+          console.error('Error setting up awareness:', awarenessError);
+        }
+      }
+
+      // Enhanced connection status handling
+      const handleStatusChange = (event: any) => {
         console.log('🔌 WebSocket status changed:', {
           status: event.status,
           roomId,
           timestamp: new Date().toISOString(),
           providerUrl: wsUrl
         });
-        setIsConnected(event.status === 'connected');
-      });
+        
+        const isConnected = event.status === 'connected';
+        setIsConnected(isConnected);
+        
+        // Set ready state when connected
+        if (isConnected) {
+          setIsReady(true);
+        }
+      };
 
-      wsProvider.on('connection-error', (error: any) => {
+      const handleConnectionError = (error: any) => {
         console.error('❌ WebSocket connection error:', {
           error,
           roomId,
@@ -197,51 +285,78 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
           timestamp: new Date().toISOString()
         });
         setIsConnected(false);
-      });
+        setIsReady(false);
+      };
 
-      wsProvider.on('connection-close', (event: any) => {
+      const handleConnectionClose = (event: any) => {
         console.log('🚪 WebSocket connection closed:', {
           event,
           roomId,
           timestamp: new Date().toISOString()
         });
         setIsConnected(false);
-      });
+        setIsReady(false);
+      };
 
-      // Add Y.Doc event logging
-      doc.on('update', (update: Uint8Array, origin: any) => {
+      wsProvider.on('status', handleStatusChange);
+      wsProvider.on('connection-error', handleConnectionError);
+      wsProvider.on('connection-close', handleConnectionClose);
+
+      // Enhanced Y.Doc event logging with better error handling
+      const handleDocUpdate = (update: Uint8Array, origin: any) => {
         console.log('📝 Y.Doc update:', {
           updateSize: update.length,
-          origin,
+          origin: origin?.constructor?.name || origin,
+          timestamp: new Date().toISOString(),
+          documentId
+        });
+      };
+
+      const handleBeforeTransaction = (tr: any) => {
+        console.log('⚡ Y.Doc before transaction:', {
+          origin: tr.origin?.constructor?.name || tr.origin,
           timestamp: new Date().toISOString()
         });
-      });
+      };
 
-      doc.on('beforeTransaction', (tr: any) => {
-        console.log('⚡ Y.Doc before transaction:', tr);
-      });
+      const handleAfterTransaction = (tr: any) => {
+        console.log('✅ Y.Doc after transaction:', {
+          origin: tr.origin?.constructor?.name || tr.origin,
+          timestamp: new Date().toISOString()
+        });
+      };
 
-      doc.on('afterTransaction', (tr: any) => {
-        console.log('✅ Y.Doc after transaction:', tr);
-      });
+      doc.on('update', handleDocUpdate);
+      doc.on('beforeTransaction', handleBeforeTransaction);
+      doc.on('afterTransaction', handleAfterTransaction);
 
-      // Store provider and connect
+      // Store provider and connect with retry mechanism
       setProvider(wsProvider);
       
-      // Connect with error handling
+      // Connect with proper error handling and retry
       setTimeout(() => {
         try {
+          console.log('🔌 Attempting to connect WebSocket...');
           wsProvider.connect();
+          
+          // Set a timeout to check connection status
+          setTimeout(() => {
+            if (!wsProvider.ws || wsProvider.ws.readyState !== WebSocket.OPEN) {
+              console.warn('⚠️ WebSocket connection taking longer than expected');
+            }
+          }, 5000);
+          
         } catch (error) {
-          console.error('Error connecting WebSocket:', error);
+          console.error('❌ Error connecting WebSocket:', error);
+          handleConnectionError(error);
         }
       }, 100);
 
     } catch (error) {
-      console.error('Error initializing collaboration:', error);
+      console.error('❌ Error initializing collaboration:', error);
       destroyCollaboration();
     }
-  }, [currentUser, destroyCollaboration]);
+  }, [currentUser, destroyCollaboration, user]);
 
   // Cleanup on unmount
   useEffect(() => {

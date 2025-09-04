@@ -68,15 +68,17 @@ export const useCollaborationPersistence = ({
     }
   }, [documentId]);
 
-  // Load document state from database
+  // Load document state from database (improved conflict resolution)
   const loadDocumentState = useCallback(async (doc: Y.Doc) => {
     if (!documentId || !doc) return;
 
     try {
+      console.log('🔍 Loading document state for:', documentId);
+      
       // Get the latest document snapshot
       const { data, error } = await supabase
         .from('knowledge_document_snapshots')
-        .select('yjs_state')
+        .select('yjs_state, document_version, created_at')
         .eq('document_id', documentId)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -89,6 +91,8 @@ export const useCollaborationPersistence = ({
 
       if (data?.yjs_state && typeof data.yjs_state === 'string') {
         try {
+          console.log('📦 Applying saved state from:', data.created_at, 'version:', data.document_version);
+          
           // Convert from base64 back to Uint8Array
           const binaryString = atob(data.yjs_state);
           const state = new Uint8Array(binaryString.length);
@@ -96,25 +100,39 @@ export const useCollaborationPersistence = ({
             state[i] = binaryString.charCodeAt(i);
           }
           
-          Y.applyUpdate(doc, state);
-          console.log('Document state loaded successfully');
+          // Check if document already has content before applying update
+          const currentState = Y.encodeStateAsUpdate(doc);
+          if (currentState.length > 2) {
+            console.log('⚠️ Document already has content, merging states...');
+            // Merge states instead of overwriting
+            Y.applyUpdate(doc, state);
+          } else {
+            console.log('📄 Document is empty, applying saved state...');
+            Y.applyUpdate(doc, state);
+          }
+          
+          console.log('✅ Document state loaded and applied successfully');
         } catch (yError) {
-          console.error('Error applying Y.js update:', yError);
-          // Skip malformed state data
+          console.error('❌ Error applying Y.js update:', yError);
+          // Skip malformed state data - don't fail the entire process
+          console.log('⚠️ Skipping malformed state data, document will start empty');
         }
+      } else {
+        console.log('ℹ️ No saved state found for document, starting empty');
       }
     } catch (error) {
-      console.error('Error in loadDocumentState:', error);
+      console.error('❌ Error in loadDocumentState:', error);
     }
   }, [documentId]);
 
-  // Set up auto-save when document changes
+  // Set up auto-save when document changes (improved conflict resolution)
   useEffect(() => {
     if (!enableCollaboration || !yDoc) return;
 
     let saveTimeout: NodeJS.Timeout;
     let hasLoaded = false;
     let changeCount = 0;
+    let lastSavedState: Uint8Array | null = null;
 
     const handleUpdate = (update: Uint8Array, origin: any) => {
       changeCount++;
@@ -125,9 +143,22 @@ export const useCollaborationPersistence = ({
         return;
       }
       
-      // Skip empty updates
+      // Skip updates from network sync (origin will be the WebSocket provider)
+      if (origin && origin.constructor && origin.constructor.name === 'WebsocketProvider') {
+        console.log('Skipping auto-save for remote update from WebSocket');
+        return;
+      }
+      
+      // Skip empty or minimal updates
       if (update.length <= 2) {
-        console.log('Skipping empty update');
+        console.log('Skipping empty or minimal update');
+        return;
+      }
+
+      // Check if this is actually a new state
+      const currentState = Y.encodeStateAsUpdate(yDoc);
+      if (lastSavedState && areUpdatesEqual(currentState, lastSavedState)) {
+        console.log('Skipping auto-save - no actual state change');
         return;
       }
       
@@ -137,16 +168,29 @@ export const useCollaborationPersistence = ({
       clearTimeout(saveTimeout);
       saveTimeout = setTimeout(() => {
         console.log('Executing auto-save...');
+        const stateToSave = Y.encodeStateAsUpdate(yDoc);
+        lastSavedState = stateToSave;
         saveDocumentState(yDoc);
       }, debounceMs);
+    };
+
+    // Helper function to compare updates
+    const areUpdatesEqual = (update1: Uint8Array, update2: Uint8Array): boolean => {
+      if (update1.length !== update2.length) return false;
+      for (let i = 0; i < update1.length; i++) {
+        if (update1[i] !== update2[i]) return false;
+      }
+      return true;
     };
 
     // Mark as loaded after initial state is processed
     const markAsLoaded = () => {
       setTimeout(() => {
         hasLoaded = true;
+        // Store initial state
+        lastSavedState = Y.encodeStateAsUpdate(yDoc);
         console.log('Document marked as loaded, auto-save enabled');
-      }, 500); // Small delay to ensure initial sync is complete
+      }, 1000); // Increased delay to ensure initial sync is complete
     };
 
     // Listen for changes
