@@ -145,7 +145,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
       if (!yjsDocMap.has(id)) {
         yjsDocMap.set(id, yDoc);
       }
-      return provider as any;
+      return provider;
     }
     
     // Safe placeholder provider when not available
@@ -156,7 +156,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
       on: () => {},
       off: () => {},
       destroy: () => {}
-    } as any;
+    };
   }, [provider, yDoc]);
 
   const initialConfig = {

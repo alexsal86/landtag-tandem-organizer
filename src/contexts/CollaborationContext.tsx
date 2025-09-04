@@ -229,7 +229,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       }
 
       // Simplified connection status handling
-      const handleStatusChange = (event: any) => {
+      const handleStatusChange = (event: { status: string }) => {
         console.log('WebSocket status:', event.status);
         const connected = event.status === 'connected';
         setIsConnected(connected);
@@ -238,7 +238,7 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
         }
       };
 
-      const handleConnectionError = (error: any) => {
+      const handleConnectionError = (error: Error) => {
         console.error('WebSocket error:', error);
         setIsConnected(false);
         setIsReady(false);
