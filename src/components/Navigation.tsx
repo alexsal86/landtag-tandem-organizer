@@ -131,6 +131,34 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     loadData();
   }, [user, currentTenant]);
 
+  // Update favicon when app logo changes
+  useEffect(() => {
+    if (!appSettings.app_logo_url) return;
+
+    // Remove existing favicon links
+    const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
+    existingFavicons.forEach(link => link.remove());
+
+    // Create new favicon link
+    const faviconLink = document.createElement('link');
+    faviconLink.rel = 'icon';
+    faviconLink.href = appSettings.app_logo_url;
+    
+    // Set appropriate type based on file extension
+    const url = appSettings.app_logo_url.toLowerCase();
+    if (url.includes('.svg')) {
+      faviconLink.type = 'image/svg+xml';
+    } else if (url.includes('.png')) {
+      faviconLink.type = 'image/png';
+    } else {
+      // Default to png for other formats
+      faviconLink.type = 'image/png';
+    }
+
+    // Add the new favicon to the document head
+    document.head.appendChild(faviconLink);
+  }, [appSettings.app_logo_url]);
+
   // Check admin role and load user role
   useEffect(() => {
     if (!user) return;
