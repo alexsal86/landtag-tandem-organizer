@@ -296,8 +296,9 @@ export function ContactsView() {
             : b.organization || b.role || "").toLowerCase();
           break;
         case "email":
-          aValue = (a.email || "").toLowerCase();
-          bValue = (b.email || "").toLowerCase();
+          // Sort by email first, then phone as fallback
+          aValue = (a.email || a.phone || "").toLowerCase();
+          bValue = (b.email || b.phone || "").toLowerCase();
           break;
         case "phone":
           aValue = (a.phone || "").toLowerCase();
@@ -351,22 +352,22 @@ export function ContactsView() {
     sortKey: string; 
     className?: string; 
   }) => (
-    <TableHead className={`cursor-pointer select-none hover:bg-muted/50 ${className}`} onClick={() => handleSort(sortKey)}>
+    <TableHead className={`cursor-pointer select-none hover:bg-muted/50 transition-colors ${className}`} onClick={() => handleSort(sortKey)}>
       <div className="flex items-center gap-2">
         {children}
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-0">
           <ArrowUpWideNarrow 
             className={`h-3 w-3 transition-colors ${
               sortColumn === sortKey && sortDirection === "asc" 
                 ? "text-primary" 
-                : "text-muted-foreground/50"
+                : "text-muted-foreground/40 hover:text-muted-foreground/60"
             }`} 
           />
           <ArrowDownWideNarrow 
-            className={`h-3 w-3 transition-colors ${
+            className={`h-3 w-3 transition-colors -mt-0.5 ${
               sortColumn === sortKey && sortDirection === "desc" 
                 ? "text-primary" 
-                : "text-muted-foreground/50"
+                : "text-muted-foreground/40 hover:text-muted-foreground/60"
             }`} 
           />
         </div>
