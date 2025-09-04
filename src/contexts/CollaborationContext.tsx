@@ -247,6 +247,22 @@ export const CollaborationProvider: React.FC<CollaborationProviderProps> = ({ ch
       wsProvider.on('status', handleStatusChange);
       wsProvider.on('connection-error', handleConnectionError);
 
+      // Add connection timeout - if not connected within 15 seconds, mark as failed
+      const connectionTimeout = setTimeout(() => {
+        if (!isConnected) {
+          console.warn('WebSocket connection timeout - collaboration may not be available');
+          setIsConnected(false);
+          setIsReady(false);
+        }
+      }, 15000);
+
+      // Cleanup timeout when component unmounts
+      const cleanup = () => {
+        clearTimeout(connectionTimeout);
+      };
+
+      return cleanup;
+
       // Enhanced Y.Doc event logging with better error handling
       const handleDocUpdate = (update: Uint8Array, origin: any) => {
         console.log('📝 Y.Doc update:', {

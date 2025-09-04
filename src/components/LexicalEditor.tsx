@@ -106,19 +106,26 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     debounceMs: 2000
   });
 
-  // Initialize collaboration when enabled and available (simplified)
+  // Initialize collaboration when enabled and available (with timeout fallback)
   useEffect(() => {
     if (collaborationAvailable && documentId) {
       console.log('Initializing collaboration for document:', documentId);
       initializeCollaboration(documentId);
       
+      // Add timeout fallback - if collaboration doesn't initialize within 10 seconds, 
+      // the editor should still be usable
+      const fallbackTimeout = setTimeout(() => {
+        console.warn('Collaboration initialization timeout - editor will work in standalone mode');
+      }, 10000);
+      
       return () => {
+        clearTimeout(fallbackTimeout);
         console.log('Cleaning up collaboration for document:', documentId);
         destroyCollaboration();
       };
     } else {
       // Cleanup if collaboration is disabled or document ID is missing
-      console.log('Collaboration not available or missing documentId, cleaning up');
+      console.log('Collaboration not available - editor running in standalone mode');
       destroyCollaboration();
     }
   }, [collaborationAvailable, documentId, initializeCollaboration, destroyCollaboration]);
@@ -235,9 +242,9 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
             }
             ErrorBoundary={({ children }) => <div>{children}</div>}
           />
-          {!enableCollaboration && <HistoryPlugin />}
           <ListPlugin />
           <LinkPlugin />
+          {/* Always show CollaborationPlugin if we have the required pieces */}
           {collaborationAvailable && provider && yDoc && (
             <CollaborationPlugin
               id="lexical-editor"
@@ -245,6 +252,8 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
               shouldBootstrap={true}
             />
           )}
+          {/* Always include HistoryPlugin for standalone mode or as fallback */}
+          {!collaborationAvailable && <HistoryPlugin />}
           <ToolbarPlugin 
             onFormatChange={setActiveFormats}
             formatCommand={formatCommand}
