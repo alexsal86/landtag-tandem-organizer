@@ -4,81 +4,76 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
-import { ListPlugin } from '@lexical/react/LexicalListPlugin';
-import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
-import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
-import { HeadingNode, QuoteNode } from '@lexical/rich-text';
-import { ListNode, ListItemNode } from '@lexical/list';
-import { CodeNode, CodeHighlightNode } from '@lexical/code';
-import { LinkNode, AutoLinkNode } from '@lexical/link';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
 
-// Minimal theme (can be expanded later as needed)
-const theme = {
-  ltr: 'ltr',
-  rtl: 'rtl',
-  placeholder: 'editor-placeholder',
-  paragraph: 'editor-paragraph',
+// Completely fresh minimal Lexical editor implementation.
+// No reuse of prior project-specific code, styles, logging, or custom plugins.
+
+interface LexicalEditorProps {
+  initialContent?: string;
+  onChange?: (plainText: string) => void;
+  placeholder?: string;
+}
+
+// Very small placeholder component (inline styles to avoid external CSS coupling)
+const Placeholder: React.FC<{ text: string }> = ({ text }) => (
+  <div style={{
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    pointerEvents: 'none',
+    opacity: 0.4,
+    fontStyle: 'italic',
+    padding: '4px 6px'
+  }}>{text}</div>
+);
+
+// Plugin to set initial content exactly once after mount (if editor is empty)
+const InitialContentPlugin: React.FC<{ initialContent?: string }> = ({ initialContent }) => {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    if (!initialContent) return;
+    editor.update(() => {
+      const root = $getRoot();
+      if (root.getFirstChild() === null) {
+        const p = $createParagraphNode();
+        p.append($createTextNode(initialContent));
+        root.append(p);
+      }
+    });
+  }, [editor, initialContent]);
+  return null;
 };
 
 function onError(error: Error) {
-  // Basic error logging; avoid noisy custom handling
-  console.error('[LexicalEditor] Error:', error);
-}
-
-// Retain the original prop interface for compatibility with existing usages
-// Collaboration related props are now ignored intentionally.
-interface LexicalEditorProps {
-  initialContent?: string;
-  onChange?: (content: string) => void;
-  placeholder?: string;
-  showToolbar?: boolean;              // Ignored in minimal version
-  documentId?: string;                // Ignored
-  enableCollaboration?: boolean;      // Ignored
+  // Let the error surface; minimal logging only.
+  console.error(error); // eslint-disable-line no-console
 }
 
 const LexicalEditor: React.FC<LexicalEditorProps> = ({
-  initialContent = '',
+  initialContent,
   onChange,
-  placeholder = 'Beginnen Sie zu schreiben...',
+  placeholder = 'Schreiben...' ,
 }) => {
-  // Set up the initial editor config exactly following Lexical's minimal rich text example philosophy
   const initialConfig = {
-    namespace: 'MinimalLexicalEditor',
-    theme,
+    namespace: 'FreshLexicalEditor',
+    theme: {}, // No theme: pure default rendering
     onError,
-    nodes: [
-      HeadingNode,
-      QuoteNode,
-      ListNode,
-      ListItemNode,
-      CodeNode,
-      CodeHighlightNode,
-      LinkNode,
-      AutoLinkNode,
-    ],
-    editorState: () => {
-      const root = $getRoot();
-      if (root.getFirstChild() === null && initialContent) {
-        const paragraph = $createParagraphNode();
-        paragraph.append($createTextNode(initialContent));
-        root.append(paragraph);
-      }
-    },
   };
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className="editor-container">
-        <div className="editor-inner">
-          <RichTextPlugin
-            contentEditable={<ContentEditable className="editor-input" />}
-            placeholder={<div className="editor-placeholder">{placeholder}</div>}
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <HistoryPlugin />
-          <ListPlugin />
-          <LinkPlugin />
+      <div style={{ position: 'relative', border: '1px solid #ccc', borderRadius: 4, padding: 4, minHeight: 120 }}>
+        <RichTextPlugin
+          contentEditable={<ContentEditable style={{ outline: 'none', minHeight: 112, padding: '4px 6px' }} />}
+          placeholder={<Placeholder text={placeholder} />}
+          ErrorBoundary={LexicalErrorBoundary}
+        />
+        <HistoryPlugin />
+        <InitialContentPlugin initialContent={initialContent} />
+        {onChange && (
           <OnChangePlugin
             onChange={(editorState) => {
               if (!onChange) return;
@@ -88,7 +83,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
               });
             }}
           />
-        </div>
+        )}
       </div>
     </LexicalComposer>
   );
