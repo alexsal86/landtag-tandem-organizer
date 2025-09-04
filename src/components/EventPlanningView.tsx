@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -161,6 +162,7 @@ export function EventPlanningView() {
   console.log('=== EventPlanningView component loaded ===');
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('eventplanning');
   const [plannings, setPlannings] = useState<EventPlanning[]>([]);
@@ -452,8 +454,7 @@ export function EventPlanningView() {
   };
 
   const handlePreparationClick = (preparation: AppointmentPreparation) => {
-    // TODO: Implement sidebar functionality
-    console.log('Clicked preparation:', preparation.title);
+    navigate(`/appointment-preparation/${preparation.id}`);
   };
 
   const EventPlanningTable = ({ plannings }: { plannings: EventPlanning[] }) => (
