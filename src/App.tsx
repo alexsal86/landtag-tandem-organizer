@@ -24,6 +24,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import LexicalDemoPage from "./pages/LexicalDemoPage";
 import EditorPage from "./pages/EditorPage";
+import EditorTestPage from "./pages/EditorTestPage";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
             <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
             <Route path="/lexical-demo" element={<LexicalDemoPage />} />
             <Route path="/editor" element={<EditorPage />} />
+            <Route path="/editor-test" element={<EditorTestPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             
             <Route path="*" element={<NotFound />} />
