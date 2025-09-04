@@ -658,7 +658,13 @@ const KnowledgeBaseView = () => {
           <div className="flex-1 p-4">
             <div className="border rounded-lg min-h-[400px] p-4">
               <RichTextEditor
-                value={selectedDocument.content}
+              
+              />
+
+              {/* Lexical Editor - Basic implementation */}
+              <div className="p-4 border border-border rounded-lg mt-6">
+                <h3 className="text-sm font-medium mb-2">Lexical Editor (Demo)</h3>
+                <LexicalEditor value={selectedDocument.content}
                 onChange={(content) => {
                   console.log('Document content changed:', content.length, 'characters');
                   // Update the selected document content locally
@@ -682,13 +688,7 @@ const KnowledgeBaseView = () => {
                   }
                 }}
                 placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
-                className="min-h-[400px]"
-              />
-
-              {/* Lexical Editor - Basic implementation */}
-              <div className="p-4 border border-border rounded-lg mt-6">
-                <h3 className="text-sm font-medium mb-2">Lexical Editor (Demo)</h3>
-                <LexicalEditor  />
+                className="min-h-[400px]"/>
               </div>
             </div>
           </div>
