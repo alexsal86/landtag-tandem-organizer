@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, ExternalLinkIcon, EditIcon, SaveIcon, XIcon } from "lucide-react";
+import { CalendarIcon, ExternalLinkIcon, EditIcon, SaveIcon, XIcon, MapPinIcon, ClockIcon } from "lucide-react";
 import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AppointmentPreparationOverviewTabProps {
   preparation: AppointmentPreparation;
@@ -24,6 +25,37 @@ export function AppointmentPreparationOverviewTab({
     notes: preparation.notes || ""
   });
   const [saving, setSaving] = useState(false);
+  const [appointmentDetails, setAppointmentDetails] = useState<any>(null);
+  const [loadingAppointment, setLoadingAppointment] = useState(false);
+
+  // Fetch appointment details if appointment_id exists
+  useEffect(() => {
+    const fetchAppointmentDetails = async () => {
+      if (!preparation.appointment_id) return;
+      
+      try {
+        setLoadingAppointment(true);
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('id', preparation.appointment_id)
+          .maybeSingle();
+          
+        if (error) {
+          console.error('Error fetching appointment:', error);
+          return;
+        }
+        
+        setAppointmentDetails(data);
+      } catch (error) {
+        console.error('Error fetching appointment details:', error);
+      } finally {
+        setLoadingAppointment(false);
+      }
+    };
+
+    fetchAppointmentDetails();
+  }, [preparation.appointment_id]);
 
   const handleSave = async () => {
     try {
@@ -190,20 +222,104 @@ export function AppointmentPreparationOverviewTab({
       {preparation.appointment_id && (
         <Card>
           <CardHeader>
-            <CardTitle>Verknüpfter Termin</CardTitle>
+            <CardTitle>Termindetails</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Diese Terminplanung ist mit einem Termin verknüpft.
-                </p>
+            {loadingAppointment ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
               </div>
-              <Button variant="outline" size="sm">
-                <ExternalLinkIcon className="h-4 w-4 mr-2" />
-                Termin öffnen
-              </Button>
-            </div>
+            ) : appointmentDetails ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <ClockIcon className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Datum & Zeit</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(appointmentDetails.start_time).toLocaleString('de-DE', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                        {appointmentDetails.end_time && (
+                          <> - {new Date(appointmentDetails.end_time).toLocaleTimeString('de-DE', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}</>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {appointmentDetails.location && (
+                    <div className="flex items-center gap-2">
+                      <MapPinIcon className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Ort</p>
+                        <p className="text-sm text-muted-foreground">{appointmentDetails.location}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Art der Veranstaltung</p>
+                      <p className="text-sm text-muted-foreground">
+                        {appointmentDetails.category === 'meeting' ? 'Besprechung' :
+                         appointmentDetails.category === 'event' ? 'Veranstaltung' :
+                         appointmentDetails.category === 'deadline' ? 'Termin' :
+                         appointmentDetails.category || 'Sonstiges'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {appointmentDetails.priority && (
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 flex items-center justify-center">
+                        <div className={`h-2 w-2 rounded-full ${
+                          appointmentDetails.priority === 'high' ? 'bg-red-500' :
+                          appointmentDetails.priority === 'medium' ? 'bg-yellow-500' :
+                          'bg-green-500'
+                        }`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Priorität</p>
+                        <p className="text-sm text-muted-foreground">
+                          {appointmentDetails.priority === 'high' ? 'Hoch' :
+                           appointmentDetails.priority === 'medium' ? 'Mittel' :
+                           'Niedrig'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {appointmentDetails.description && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Beschreibung</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {appointmentDetails.description}
+                    </p>
+                  </div>
+                )}
+                
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm">
+                    <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                    Termin öffnen
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Termindetails konnten nicht geladen werden.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
