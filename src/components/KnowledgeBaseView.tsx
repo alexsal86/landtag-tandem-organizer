@@ -657,9 +657,7 @@ const KnowledgeBaseView = () => {
           
           <div className="flex-1 p-4">
             <div className="border rounded-lg min-h-[400px] p-4">
-              <RichTextEditor
-              
-              />
+             
 
               {/* Lexical Editor - Basic implementation */}
               <div className="p-4 border border-border rounded-lg mt-6">
