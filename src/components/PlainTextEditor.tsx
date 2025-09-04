@@ -1,5 +1,4 @@
 import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
-import './LexicalEditor.css';
 
 interface PlainTextEditorProps {
   initialContent?: string;
@@ -63,8 +62,58 @@ const PlainTextEditor = forwardRef<PlainTextEditorRef, PlainTextEditorProps>(({
 
   return (
     <div className={`plaintext-editor ${className}`}>
+      <style jsx>{`
+        .plaintext-editor {
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          background: white;
+        }
+        .toolbar {
+          padding: 8px;
+          border-bottom: 1px solid #e5e7eb;
+          background: #f9fafb;
+          border-radius: 8px 8px 0 0;
+        }
+        .toolbar-button {
+          padding: 6px 12px;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 500;
+        }
+        .toolbar-button:hover {
+          background: #2563eb;
+        }
+        .toolbar-button:disabled {
+          background: #9ca3af;
+          cursor: not-allowed;
+        }
+        .plaintext-placeholder {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          color: #9ca3af;
+          pointer-events: none;
+          font-size: 14px;
+        }
+        .plaintext-textarea {
+          width: 100%;
+          min-height: 300px;
+          padding: 12px;
+          border: none;
+          outline: none;
+          resize: vertical;
+          font-family: inherit;
+          font-size: 14px;
+          line-height: 1.5;
+          background: transparent;
+        }
+      `}</style>
       {onExportJSON && (
-        <div className="lexical-toolbar">
+        <div className="toolbar">
           <button
             type="button"
             onClick={handleExportJSON}
