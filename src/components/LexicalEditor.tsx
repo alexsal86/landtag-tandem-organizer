@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -10,11 +10,12 @@ import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
 import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 import LexicalToolbar from './LexicalToolbar';
-import CollaborationStatus from './CollaborationStatus';
 import './LexicalEditor.css';
-import { useCollaborationEditor } from '@/hooks/useCollaborationEditor';
 import {
+  loadDocumentState,
+  saveDocumentStateDebouncedFactory,
   loadSnapshots,
   saveSnapshot,
   decodeUpdateFromBase64,
@@ -23,15 +24,15 @@ import {
 } from '../utils/yjsPersistence';
 
 /**
- * Lexical editor with Yjs collaboration integration via CollaborationContext
- * Features: Rich text editing, real-time collaboration, user awareness, persistence, snapshots
+ * Lexical editor with OPTIONAL Yjs collaboration.
+ * Uses providerFactory + CollaborationPlugin (no external custom hook needed).
+ * This version enforces a fixed production websocket URL for all environments.
  */
 
 interface CollaborationUser {
-  id: string;
-  name?: string;
+  name: string;
   color?: string;
-  avatar?: string;
+  avatarUrl?: string;
 }
 
 interface LexicalEditorProps {
@@ -67,7 +68,17 @@ const InitialContentPlugin: React.FC<{ initialContent?: string }> = ({ initialCo
 
 function onError(error: Error) {
   // eslint-disable-next-line no-console
-  console.error('Lexical Editor Error:', error);
+  console.error(error);
+}
+
+// Fixed production websocket URL (always used)
+const COLLAB_WS_URL = 'wss://wawofclbehbkebjivdte.supabase.co/functions/v1/yjs-collaboration';
+
+interface AwarenessUserState {
+  name: string;
+  color?: string;
+  avatar?: string | null;
+  isLocal?: boolean;
 }
 
 const LexicalEditor: React.FC<LexicalEditorProps> = ({
@@ -78,34 +89,142 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
   onExportJSON,
   enableCollaboration = false,
   documentId,
+  user,
 }) => {
-  // State for snapshots functionality
+  const [isConnected, setIsConnected] = useState(false);
+  const [hasSynced, setHasSynced] = useState(false);
+  const [awarenessUsers, setAwarenessUsers] = useState<AwarenessUserState[]>([]);
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);
   const [restoringSnapshotId, setRestoringSnapshotId] = useState<string | null>(null);
 
-  // Use collaboration hook for integration with CollaborationContext
-  const {
-    yDoc,
-    provider,
-    isConnected,
-    users,
-    currentUser,
-    isReady
-  } = useCollaborationEditor({
-    documentId,
-    enableCollaboration
-  });
+  const yDocRef = useRef<Y.Doc | null>(null);
+  const providerRef = useRef<WebsocketProvider | null>(null);
 
-  const collabActive = enableCollaboration && !!documentId && !!yDoc && !!provider;
+  const collabActive = enableCollaboration && !!documentId;
 
-  // Load snapshots when collaboration is active
-  useEffect(() => {
-    if (collabActive && documentId) {
-      setSnapshots(loadSnapshots(documentId));
-    } else {
-      setSnapshots([]);
+  function cleanupProvider() {
+    if (providerRef.current) {
+      try { providerRef.current.destroy(); } catch {}
+      providerRef.current = null;
     }
+    if (yDocRef.current) {
+      try { yDocRef.current.destroy(); } catch {}
+      yDocRef.current = null;
+    }
+    setIsConnected(false);
+    setHasSynced(false);
+    setAwarenessUsers([]);
+  }
+
+  const providerFactory = useCallback(
+    (id: string, yjsDocMap: Map<string, Y.Doc>) => {
+      let doc = yjsDocMap.get(id);
+      if (!doc) {
+        doc = new Y.Doc();
+        yjsDocMap.set(id, doc);
+        // Load persisted state if any
+        try {
+          const persisted = loadDocumentState(id);
+          if (persisted) {
+            const update = decodeUpdateFromBase64(persisted);
+            Y.applyUpdate(doc, update);
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('Persisted state load failed', e);
+        }
+      }
+
+      const provider = new WebsocketProvider(COLLAB_WS_URL, id, doc, { connect: true });
+
+      provider.awareness.setLocalStateField('user', {
+        name: user?.name || 'Anonymous',
+        color: user?.color || '#558b2f',
+        avatar: user?.avatarUrl || null,
+        isLocal: true,
+      });
+
+      providerRef.current = provider;
+      yDocRef.current = doc;
+
+      const saveDebounced = saveDocumentStateDebouncedFactory(id, () => {
+        if (!yDocRef.current) return null;
+        return encodeStateAsBase64(yDocRef.current);
+      });
+      const updateHandler = () => saveDebounced();
+      doc.on('update', updateHandler);
+
+      provider.once('destroy', () => {
+        try { doc.off('update', updateHandler); } catch {}
+      });
+
+      if (snapshots.length === 0) {
+        setSnapshots(loadSnapshots(id));
+      }
+
+      return provider;
+    },
+    [user?.name, user?.color, user?.avatarUrl, snapshots.length]
+  );
+
+  useEffect(() => {
+    if (!collabActive || !documentId) {
+      cleanupProvider();
+      return;
+    }
+    const provider = providerRef.current;
+    if (!provider) return;
+
+    const statusHandler = (event: { status: string }) => setIsConnected(event.status === 'connected');
+    const syncHandler = () => setHasSynced(true);
+    const awarenessHandler = () => {
+      const states: AwarenessUserState[] = [];
+      provider.awareness.getStates().forEach((val: any) => {
+        if (val.user) states.push(val.user as AwarenessUserState);
+      });
+      states.sort((a, b) => a.name.localeCompare(b.name));
+      setAwarenessUsers(states);
+    };
+
+    provider.on('status', statusHandler);
+    provider.once('sync', syncHandler);
+    provider.awareness.on('change', awarenessHandler);
+    awarenessHandler();
+
+    return () => {
+      try {
+        provider.awareness.off('change', awarenessHandler);
+        provider.off('status', statusHandler);
+      } catch {}
+    };
   }, [collabActive, documentId]);
+
+  function createSnapshot(note?: string) {
+    if (!collabActive || !yDocRef.current || !documentId) return;
+    const meta: SnapshotMeta = saveSnapshot(documentId, encodeStateAsBase64(yDocRef.current), note);
+    setSnapshots((prev) => [meta, ...prev]);
+  }
+
+  function restoreSnapshot(id: string) {
+    if (!collabActive || !yDocRef.current || !documentId) return;
+    const snap = snapshots.find((s) => s.id === id);
+    if (!snap) return;
+    setRestoringSnapshotId(id);
+    try {
+      const update = decodeUpdateFromBase64(snap.updateBase64);
+      const ydoc = yDocRef.current;
+      ydoc?.transact(() => {
+        const temp = new Y.Doc();
+        Y.applyUpdate(temp, update);
+        const fullUpdate = Y.encodeStateAsUpdate(temp);
+        if (ydoc) {
+          Y.applyUpdate(ydoc, fullUpdate);
+        }
+      });
+    } finally {
+      setTimeout(() => setRestoringSnapshotId(null), 300);
+    }
+  }
 
   const initialConfig = {
     namespace: 'FreshLexicalEditor',
@@ -121,10 +240,9 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
         timestamp: new Date().toISOString(),
         documentId: documentId || null,
         collaboration: collabActive,
-        connected: isConnected,
-        ready: isReady,
+        synced: hasSynced,
         snapshots: snapshots.length,
-        version: '2.0',
+        version: '1.3',
       },
       null,
       2
@@ -132,52 +250,39 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
     onExportJSON(jsonData);
   };
 
-  function createSnapshot(note?: string) {
-    if (!collabActive || !yDoc || !documentId) return;
-    const meta: SnapshotMeta = saveSnapshot(documentId, encodeStateAsBase64(yDoc), note);
-    setSnapshots((prev) => [meta, ...prev]);
-  }
-
-  function restoreSnapshot(id: string) {
-    if (!collabActive || !yDoc || !documentId) return;
-    const snap = snapshots.find((s) => s.id === id);
-    if (!snap) return;
-    setRestoringSnapshotId(id);
-    try {
-      const update = decodeUpdateFromBase64(snap.updateBase64);
-      // Apply snapshot to the Y.Doc using Y.js methods
-      yDoc.transact(() => {
-        // Create a temporary doc with the snapshot state
-        const temp = new Y.Doc();
-        Y.applyUpdate(temp, update);
-        // Get the full state and apply it to current doc
-        const fullUpdate = Y.encodeStateAsUpdate(temp);
-        Y.applyUpdate(yDoc, fullUpdate);
-      });
-    } catch (error) {
-      console.error('Error restoring snapshot:', error);
-    } finally {
-      setTimeout(() => setRestoringSnapshotId(null), 300);
-    }
-  }
-
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <div className="lexical-editor">
         {showToolbar && (
           <div className="lexical-toolbar">
             <LexicalToolbar />
-            
-            {/* Collaboration Status */}
             {collabActive && (
-              <CollaborationStatus
-                isConnected={isConnected}
-                users={users}
-                currentUser={currentUser}
-              />
+              <span className="toolbar-status" title={isConnected ? 'Verbunden' : 'Offline'}>
+                {isConnected ? '🔌 Online' : '⚠ Offline'}
+              </span>
             )}
-            
-            {/* Snapshots Controls */}
+            {collabActive && (
+              <div className="toolbar-awareness">
+                {awarenessUsers.map((u) => (
+                  <div
+                    key={u.name + (u.isLocal ? '-local' : '')}
+                    className="awareness-user"
+                    title={u.name + (u.isLocal ? ' (Du)' : '')}
+                    style={{
+                      background: u.color || '#888',
+                      opacity: u.isLocal ? 1 : 0.85,
+                      border: u.isLocal ? '2px solid #222' : '1px solid #444',
+                    }}
+                  >
+                    {u.avatar ? (
+                      <img src={u.avatar} alt={u.name} />
+                    ) : (
+                      <span>{u.name.slice(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             {collabActive && (
               <>
                 <div className="toolbar-divider"></div>
@@ -186,7 +291,6 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
                   className="toolbar-button"
                   onClick={() => createSnapshot()}
                   title="Snapshot speichern"
-                  disabled={!isReady}
                 >
                   Snapshot
                 </button>
@@ -197,7 +301,6 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
                     onChange={(e) => {
                       if (e.target.value) restoreSnapshot(e.target.value);
                     }}
-                    disabled={!isReady}
                   >
                     <option value="">Snapshots</option>
                     {snapshots.map((s) => (
@@ -209,8 +312,6 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
                 )}
               </>
             )}
-            
-            {/* Export Controls */}
             {onExportJSON && (
               <>
                 <div className="toolbar-divider"></div>
@@ -232,28 +333,19 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           placeholder={<Placeholder text={placeholder} />}
           ErrorBoundary={LexicalErrorBoundary}
         />
-        
         <HistoryPlugin />
-        
-        {/* Initial Content Plugin */}
-        <InitialContentPlugin initialContent={initialContent} />
 
-        {/* Collaboration Plugin - Re-enabled with proper integration */}
-        {collabActive && yDoc && provider && (
+        {!collabActive && <InitialContentPlugin initialContent={initialContent} />}
+
+        {collabActive && documentId && (
           <CollaborationPlugin
-            id={`collaboration-${documentId}`}
-            providerFactory={(id, yjsDocMap) => {
-              const doc = yjsDocMap.get(id);
-              if (doc !== yDoc) {
-                yjsDocMap.set(id, yDoc);
-              }
-              return provider;
-            }}
+            id={documentId}
+            providerFactory={providerFactory}
             shouldBootstrap={true}
+            username={user?.name || 'Anonymous'}
           />
         )}
 
-        {/* OnChange Plugin for non-collaborative mode */}
         {!collabActive && onChange && (
           <OnChangePlugin
             onChange={(editorState) => {
@@ -266,8 +358,7 @@ const LexicalEditor: React.FC<LexicalEditorProps> = ({
           />
         )}
 
-        {/* Status Messages */}
-        {collabActive && !isReady && (
+        {collabActive && !hasSynced && (
           <div className="lexical-collab-syncing">Synchronisiere...</div>
         )}
         {restoringSnapshotId && (
