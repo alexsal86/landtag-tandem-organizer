@@ -1,49 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ArrowUpWideNarrow, ArrowDownWideNarrow, Star } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ArrowUpWideNarrow, ArrowDownWideNarrow, Star, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { ContactDetailSheet } from "./ContactDetailSheet";
-
-interface Contact {
-  id: string;
-  contact_type: "person" | "organization" | "archive";
-  name: string;
-  role?: string;
-  organization?: string;
-  organization_id?: string;
-  email?: string;
-  phone?: string;
-  location?: string;
-  address?: string;
-  birthday?: string;
-  website?: string;
-  linkedin?: string;
-  twitter?: string;
-  facebook?: string;
-  instagram?: string;
-  xing?: string;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
-  priority?: "low" | "medium" | "high";
-  last_contact?: string;
-  avatar_url?: string;
-  notes?: string;
-  additional_info?: string;
-  is_favorite?: boolean;
-  // Organization-specific fields
-  legal_form?: string;
-  industry?: string;
-  main_contact_person?: string;
-  business_description?: string;
-}
+import { useInfiniteContacts, Contact } from "@/hooks/useInfiniteContacts";
+import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
+import { ContactSkeleton } from "./ContactSkeleton";
+import { debounce } from "@/utils/debounce";
 
 interface DistributionList {
   id: string;
@@ -57,12 +30,10 @@ interface DistributionList {
 
 export function ContactsView() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [distributionLists, setDistributionLists] = useState<DistributionList[]>([]);
-  const [loading, setLoading] = useState(true);
   const [distributionListsLoading, setDistributionListsLoading] = useState(true);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -73,101 +44,60 @@ export function ContactsView() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
 
+  // Use infinite contacts hook
+  const {
+    contacts,
+    loading,
+    loadingMore,
+    hasMore,
+    totalCount,
+    loadMore,
+    toggleFavorite,
+    refreshContacts
+  } = useInfiniteContacts({
+    searchTerm: debouncedSearchTerm,
+    selectedCategory,
+    selectedType,
+    activeTab,
+    sortColumn,
+    sortDirection,
+  });
+
+  // Debounced search
+  useEffect(() => {
+    const debouncedUpdate = debounce(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    
+    debouncedUpdate();
+  }, [searchTerm]);
+
+  // Fetch distribution lists
   useEffect(() => {
     if (user && currentTenant) {
-      fetchContacts();
       fetchDistributionLists();
     }
   }, [user, currentTenant]);
 
-  const fetchContacts = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .eq('tenant_id', currentTenant?.id || '')
-        .order('is_favorite', { ascending: false })
-        .order('name');
+  // Scroll event listener for back-to-top button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 500);
+    };
 
-      if (error) throw error;
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-      // If no contacts exist, insert sample data
-      if (!data || data.length === 0) {
-        await insertSampleContacts();
-        return;
-      }
-
-      setContacts(data?.map(contact => ({
-        id: contact.id,
-        contact_type: (contact.contact_type as "person" | "organization" | "archive") || "person",
-        name: contact.name,
-        role: contact.role,
-        organization: contact.organization,
-        organization_id: contact.organization_id,
-        email: contact.email,
-        phone: contact.phone,
-        location: contact.location,
-        address: contact.address,
-        birthday: contact.birthday,
-        website: contact.website,
-        linkedin: contact.linkedin,
-        twitter: contact.twitter,
-        facebook: contact.facebook,
-        instagram: contact.instagram,
-        xing: contact.xing,
-        category: contact.category as Contact["category"],
-        priority: contact.priority as Contact["priority"],
-        last_contact: contact.last_contact,
-        avatar_url: contact.avatar_url,
-        notes: contact.notes,
-        additional_info: contact.additional_info,
-        legal_form: contact.legal_form,
-        industry: contact.industry,
-        main_contact_person: contact.main_contact_person,
-        business_description: contact.business_description,
-        is_favorite: contact.is_favorite,
-      })) || []);
-    } catch (error) {
-      console.error('Error fetching contacts:', error);
-      toast({
-        title: "Fehler",
-        description: "Kontakte konnten nicht geladen werden.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const insertSampleContacts = async () => {
-    try {
-      const { error } = await supabase.rpc('insert_sample_contacts', {
-        target_user_id: user!.id
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Willkommen!",
-        description: "Beispielkontakte wurden zu Ihrem Account hinzugefügt.",
-      });
-
-      // Fetch the newly inserted contacts
-      fetchContacts();
-    } catch (error) {
-      console.error('Error inserting sample contacts:', error);
-      toast({
-        title: "Fehler",
-        description: "Beispielkontakte konnten nicht erstellt werden.",
-        variant: "destructive",
-      });
-    }
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const fetchDistributionLists = async () => {
@@ -233,41 +163,11 @@ export function ContactsView() {
     }
   };
 
-  const toggleFavorite = async (contactId: string, isFavorite: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('contacts')
-        .update({ is_favorite: isFavorite })
-        .eq('id', contactId);
-
-      if (error) throw error;
-
-      // Update local state
-      setContacts(contacts.map(contact => 
-        contact.id === contactId 
-          ? { ...contact, is_favorite: isFavorite }
-          : contact
-      ));
-
-      toast({
-        title: "Erfolg",
-        description: isFavorite 
-          ? "Kontakt zu Favoriten hinzugefügt" 
-          : "Kontakt aus Favoriten entfernt",
-      });
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-      toast({
-        title: "Fehler",
-        description: "Favorit konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
-    }
-  };
+  // toggleFavorite is now handled by the hook
 
   const categories = [
-    { value: "all", label: "Alle Kontakte", count: contacts.filter(c => c.contact_type !== 'archive').length },
-    { value: "favorites", label: "Favoriten", count: contacts.filter(c => c.is_favorite && c.contact_type !== 'archive').length },
+    { value: "all", label: "Alle Kontakte", count: totalCount },
+    { value: "favorites", label: "Favoriten", count: contacts.filter(c => c.is_favorite).length },
     { value: "citizen", label: "Bürger", count: contacts.filter(c => c.category === "citizen").length },
     { value: "colleague", label: "Kollegen", count: contacts.filter(c => c.category === "colleague").length },
     { value: "business", label: "Wirtschaft", count: contacts.filter(c => c.category === "business").length },
@@ -312,76 +212,8 @@ export function ContactsView() {
     }
   };
 
-  const getSortedContacts = (contacts: Contact[]) => {
-    if (!sortColumn) return contacts;
-
-    return [...contacts].sort((a, b) => {
-      let aValue: string | number = "";
-      let bValue: string | number = "";
-
-      switch (sortColumn) {
-        case "name":
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
-          break;
-        case "organization":
-          aValue = (a.contact_type === "organization" 
-            ? `${a.legal_form ? a.legal_form + " • " : ""}${a.industry || a.main_contact_person || ""}`
-            : a.organization || a.role || "").toLowerCase();
-          bValue = (b.contact_type === "organization" 
-            ? `${b.legal_form ? b.legal_form + " • " : ""}${b.industry || b.main_contact_person || ""}`
-            : b.organization || b.role || "").toLowerCase();
-          break;
-        case "email":
-          // Sort by email first, then phone as fallback
-          aValue = (a.email || a.phone || "").toLowerCase();
-          bValue = (b.email || b.phone || "").toLowerCase();
-          break;
-        case "phone":
-          aValue = (a.phone || "").toLowerCase();
-          bValue = (b.phone || "").toLowerCase();
-          break;
-        case "address":
-          aValue = (a.address || a.location || "").toLowerCase();
-          bValue = (b.address || b.location || "").toLowerCase();
-          break;
-        case "last_contact":
-          aValue = a.last_contact || "";
-          bValue = b.last_contact || "";
-          break;
-        default:
-          return 0;
-      }
-
-      if (sortDirection === "asc") {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      }
-    });
-  };
-
-  const filteredContacts = getSortedContacts(contacts.filter(contact => {
-    // Filter out archive contacts from regular view
-    if (activeTab === "contacts" && contact.contact_type === 'archive') return false;
-    if (activeTab === "archive" && contact.contact_type !== 'archive') return false;
-    
-    const matchesSearch = 
-      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (contact.organization && contact.organization.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (contact.role && contact.role.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (contact.industry && contact.industry.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (contact.main_contact_person && contact.main_contact_person.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (contact.legal_form && contact.legal_form.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesCategory = 
-      selectedCategory === "all" || 
-      (selectedCategory === "favorites" && contact.is_favorite) ||
-      (selectedCategory !== "favorites" && contact.category === selectedCategory);
-    const matchesType = selectedType === "all" || contact.contact_type === selectedType;
-    
-    return matchesSearch && matchesCategory && matchesType;
-  }));
+  // Contacts are now filtered server-side by the hook
+  const filteredContacts = contacts;
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
@@ -468,7 +300,7 @@ export function ContactsView() {
             className="gap-2"
           >
             <User className="h-4 w-4" />
-            Kontakte ({contacts.filter(c => c.contact_type !== 'archive').length})
+            Kontakte ({activeTab === "contacts" ? totalCount : contacts.filter(c => c.contact_type !== 'archive').length})
           </Button>
           <Button
             variant={activeTab === "distribution-lists" ? "default" : "outline"}
@@ -486,7 +318,7 @@ export function ContactsView() {
             className="gap-2"
           >
             <Archive className="h-4 w-4" />
-            Archiv ({contacts.filter(c => c.contact_type === 'archive').length})
+            Archiv ({activeTab === "archive" ? totalCount : contacts.filter(c => c.contact_type === 'archive').length})
           </Button>
         </div>
 
@@ -587,9 +419,14 @@ export function ContactsView() {
 
       {/* Content Display */}
       {activeTab === "contacts" ? (
-        viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredContacts.map((contact) => (
+        <div className="space-y-6">
+          {loading && contacts.length === 0 ? (
+            <ContactSkeleton count={12} viewMode={viewMode} />
+          ) : (
+            <>
+              {viewMode === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredContacts.map((contact) => (
             <Card
               key={contact.id}
               className={`bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer ${getPriorityColor(
@@ -705,10 +542,10 @@ export function ContactsView() {
                   </Button>
                 </div>
               </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
+                    </Card>
+                  ))}
+                </div>
+              ) : (
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -805,10 +642,69 @@ export function ContactsView() {
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          
+          {/* Loading More Indicator */}
+          {loadingMore && (
+            <div className="py-8">
+              <ContactSkeleton count={6} viewMode={viewMode} />
+            </div>
+          )}
+          
+          {/* Infinite Scroll Trigger */}
+          <InfiniteScrollTrigger
+            onLoadMore={loadMore}
+            loading={loadingMore}
+            hasMore={hasMore}
+          />
+          
+          {/* Load More Button (Fallback) */}
+          {!loadingMore && hasMore && filteredContacts.length > 0 && (
+            <div className="text-center py-6">
+              <Button 
+                variant="outline" 
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="gap-2"
+              >
+                Weitere Kontakte laden ({totalCount - contacts.length} verbleibend)
+              </Button>
+            </div>
+          )}
+          
+          {/* No More Results */}
+          {!hasMore && filteredContacts.length > 0 && (
+            <div className="text-center py-6 text-muted-foreground">
+              <p>Alle Kontakte wurden geladen.</p>
+            </div>
+          )}
+          
+          {/* Empty State */}
+          {!loading && filteredContacts.length === 0 && (
+            <Card className="bg-card shadow-card border-border">
+              <CardContent className="text-center py-12">
+                <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Keine Kontakte gefunden</h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchTerm || selectedCategory !== "all" || selectedType !== "all"
+                    ? "Versuchen Sie es mit anderen Suchkriterien."
+                    : "Erstellen Sie Ihren ersten Kontakt."}
+                </p>
+                <Link to="/contacts/new">
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Neuen Kontakt erstellen
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+        </>
+          )}
         </div>
-        )
       ) : activeTab === "archive" ? (
         // Archive Display
         <div className="space-y-6">
@@ -974,29 +870,15 @@ export function ContactsView() {
         </div>
       )}
 
-      {/* No contacts message */}
-      {activeTab === "contacts" && filteredContacts.length === 0 && (
-        <Card className="bg-card shadow-card border-border">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <User className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">
-              {selectedType === "organization" ? "Keine Organisationen gefunden" :
-               selectedType === "person" ? "Keine Personen gefunden" : "Keine Kontakte gefunden"}
-            </h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Es wurden keine {selectedType === "organization" ? "Organisationen" : 
-                             selectedType === "person" ? "Personen" : "Kontakte"} gefunden, 
-              die Ihren Suchkriterien entsprechen.
-            </p>
-            <Link to="/contacts/new">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                {selectedType === "organization" ? "Neue Organisation hinzufügen" :
-                 selectedType === "person" ? "Neue Person hinzufügen" : "Neuen Kontakt hinzufügen"}
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+      {/* Back to Top Button */}
+      {showScrollTop && (
+        <Button
+          className="fixed bottom-6 right-6 rounded-full p-3 shadow-lg z-50"
+          onClick={scrollToTop}
+          size="sm"
+        >
+          <ChevronUp className="h-4 w-4" />
+        </Button>
       )}
 
       <ContactDetailSheet
@@ -1006,7 +888,7 @@ export function ContactsView() {
           setIsSheetOpen(false);
           setSelectedContactId(null);
         }}
-        onContactUpdate={fetchContacts}
+        onContactUpdate={refreshContacts}
       />
     </div>
   );
