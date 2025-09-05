@@ -21,6 +21,7 @@ import { NewUserForm } from "@/components/NewUserForm";
 import { CreateDemoUsers } from "@/components/CreateDemoUsers";
 import { TenantCollaboration } from "@/components/TenantCollaboration";
 import { DecisionEmailTemplates } from "@/components/task-decisions/DecisionEmailTemplates";
+import { DefaultGuestsAdmin } from "@/components/DefaultGuestsAdmin";
 import AppointmentPreparationTemplateAdmin from "@/components/AppointmentPreparationTemplateAdmin";
 import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
 import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
@@ -509,6 +510,7 @@ export default function Administration() {
           <TabsTrigger value="status">Status</TabsTrigger>
           <TabsTrigger value="expenses">Kosten</TabsTrigger>
           <TabsTrigger value="appointments">Termine</TabsTrigger>
+          <TabsTrigger value="guests">Standard-Gäste</TabsTrigger>
           <TabsTrigger value="preparation">Vorbereitung</TabsTrigger>
           <TabsTrigger value="tasks">Aufgaben</TabsTrigger>
           <TabsTrigger value="todos">ToDos</TabsTrigger>
@@ -564,6 +566,10 @@ export default function Administration() {
 
         <TabsContent value="collaboration" className="space-y-6">
           <TenantCollaboration />
+        </TabsContent>
+
+        <TabsContent value="guests" className="space-y-6">
+          <DefaultGuestsAdmin />
         </TabsContent>
 
         <TabsContent value="appointments" className="space-y-6">

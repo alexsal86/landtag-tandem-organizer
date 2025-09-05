@@ -10,6 +10,7 @@ import { CalendarEvent } from "../CalendarView";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatEventDisplay } from "@/lib/timeUtils";
+import { GuestManager } from "../GuestManager";
 
 interface AppointmentDetailsSidebarProps {
   appointment: CalendarEvent | null;
@@ -618,7 +619,7 @@ export function AppointmentDetailsSidebar({
                   <Users className="h-4 w-4" />
                   Gäste ({guests.length})
                 </h3>
-                {guests.length > 0 && (
+                {guests.length > 0 && !isEditing && (
                   <Button
                     onClick={sendInvitations}
                     variant="outline"
@@ -631,45 +632,56 @@ export function AppointmentDetailsSidebar({
                 )}
               </div>
 
-              {isLoadingGuests ? (
-                <div className="text-sm text-muted-foreground">Lade Gäste...</div>
-              ) : guests.length > 0 ? (
-                <div className="space-y-2">
-                  {guests.map((guest) => (
-                    <div key={guest.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{guest.name}</div>
-                        <div className="text-sm text-muted-foreground truncate">{guest.email}</div>
-                        {guest.response_note && (
-                          <div className="text-xs text-muted-foreground mt-1 italic">
-                            "{guest.response_note}"
+              {isEditing && (
+                <div className="mt-3">
+                  <GuestManager
+                    guests={guests.map(g => ({ name: g.name, email: g.email }))}
+                    onGuestsChange={(updatedGuests) => {
+                      // We'll handle guest updates when saving the appointment
+                      console.log('Guest updates:', updatedGuests);
+                    }}
+                  />
+                </div>
+              )}
+
+              {!isEditing && (
+                <>
+                  {isLoadingGuests ? (
+                    <div className="text-sm text-muted-foreground">Lade Gäste...</div>
+                  ) : guests.length > 0 ? (
+                    <div className="space-y-2">
+                      {guests.map((guest) => (
+                        <div key={guest.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{guest.name}</div>
+                            <div className="text-sm text-muted-foreground truncate">{guest.email}</div>
+                            {guest.response_note && (
+                              <div className="text-xs text-muted-foreground mt-1 italic">
+                                "{guest.response_note}"
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge className={`text-xs ${getGuestStatusColor(guest.status)}`}>
-                          <div className="flex items-center gap-1">
-                            {getGuestStatusIcon(guest.status)}
-                            {getGuestStatusText(guest.status)}
+                          <div className="flex items-center gap-2">
+                            <Badge className={`text-xs ${getGuestStatusColor(guest.status)}`}>
+                              <div className="flex items-center gap-1">
+                                {getGuestStatusIcon(guest.status)}
+                                {getGuestStatusText(guest.status)}
+                              </div>
+                            </Badge>
                           </div>
-                        </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-4 text-center">
+                      <UserPlus className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                      <div>Keine Gäste für diesen Termin</div>
+                      <div className="text-xs mt-1">
+                        Bearbeiten Sie den Termin, um Gäste hinzuzufügen
                       </div>
                     </div>
-                  ))}
-                  
-                  {/* Show last invitation sent if available */}
-                  <div className="text-xs text-muted-foreground mt-2">
-                    Verwalten Sie Gäste über "Bearbeiten" → Gäste hinzufügen
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-4 text-center">
-                  <UserPlus className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                  <div>Keine Gäste für diesen Termin</div>
-                  <div className="text-xs mt-1">
-                    Bearbeiten Sie den Termin, um Gäste hinzuzufügen
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </div>
           )}

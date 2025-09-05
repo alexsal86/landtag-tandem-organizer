@@ -199,6 +199,7 @@ const CreateAppointment = () => {
           user_id: user.id,
           tenant_id: currentTenant.id,
           is_all_day: values.is_all_day,
+          has_external_guests: appointmentGuests.length > 0,
         })
         .select()
         .single();
@@ -221,6 +222,23 @@ const CreateAppointment = () => {
           .insert(contactLinks);
 
         if (contactError) throw contactError;
+      }
+
+      // Add external guests to appointment
+      if (appointmentGuests.length > 0 && appointment) {
+        const guestEntries = appointmentGuests.map(guest => ({
+          appointment_id: appointment.id,
+          tenant_id: currentTenant.id,
+          name: guest.name,
+          email: guest.email,
+          status: 'invited',
+        }));
+
+        const { error: guestsError } = await supabase
+          .from('appointment_guests')
+          .insert(guestEntries);
+
+        if (guestsError) throw guestsError;
       }
 
       toast({
@@ -712,15 +730,26 @@ const CreateAppointment = () => {
 
                 <Separator />
 
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    <h3 className="text-lg font-semibold">Dokumente</h3>
-                  </div>
-                  <AppointmentFileUpload 
-                    onFilesChange={setUploadedFiles}
-                  />
-                </div>
+                 <div className="space-y-4">
+                   <div className="flex items-center gap-2">
+                     <Users className="h-5 w-5" />
+                     <h3 className="text-lg font-semibold">Externe Gäste</h3>
+                   </div>
+                   <GuestManager
+                     guests={appointmentGuests}
+                     onGuestsChange={setAppointmentGuests}
+                   />
+                 </div>
+
+                 <div className="space-y-4">
+                   <div className="flex items-center gap-2">
+                     <Clock className="h-5 w-5" />
+                     <h3 className="text-lg font-semibold">Dokumente</h3>
+                   </div>
+                   <AppointmentFileUpload 
+                     onFilesChange={setUploadedFiles}
+                   />
+                 </div>
 
                 <div className="flex justify-end gap-4 pt-6">
                   <Button
