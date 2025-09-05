@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, User, Building, Check } from 'lucide-react';
+import { Search, User, Building, Check, Star, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,6 +17,9 @@ interface Contact {
   contact_type: 'person' | 'organization';
   category?: string;
   avatar_url?: string;
+  is_favorite?: boolean;
+  usage_count?: number;
+  last_used_at?: string;
   // Address fields for DIN 5008
   business_street?: string;
   business_house_number?: string;
@@ -69,23 +72,49 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data: contactsData, error: contactsError } = await supabase
         .from('contacts')
         .select(`
-          id, name, organization, email, phone, contact_type, category, avatar_url,
+          id, name, organization, email, phone, contact_type, category, avatar_url, is_favorite,
           business_street, business_house_number, business_postal_code, business_city, business_country,
           private_street, private_house_number, private_postal_code, private_city, private_country,
           address
         `)
         .eq('tenant_id', currentTenant.id)
-        .neq('contact_type', 'archive')
-        .order('name');
+        .neq('contact_type', 'archive');
 
-      if (error) throw error;
-      setContacts((data || []).map(contact => ({
+      if (contactsError) throw contactsError;
+
+      // Fetch usage stats for contacts
+      const { data: usageData } = await supabase
+        .from('contact_usage_stats')
+        .select('contact_id, usage_count, last_used_at')
+        .eq('tenant_id', currentTenant.id);
+
+      // Merge contacts with usage stats
+      const contactsWithStats = (contactsData || []).map(contact => ({
         ...contact,
-        contact_type: contact.contact_type as 'person' | 'organization'
-      })));
+        contact_type: contact.contact_type as 'person' | 'organization',
+        usage_count: usageData?.find(u => u.contact_id === contact.id)?.usage_count || 0,
+        last_used_at: usageData?.find(u => u.contact_id === contact.id)?.last_used_at
+      }));
+
+      // Sort contacts: favorites first, then by usage frequency, then alphabetically
+      const sortedContacts = contactsWithStats.sort((a, b) => {
+        // Favorites come first
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        
+        // If both are favorites or both aren't, sort by usage count
+        if (a.usage_count !== b.usage_count) {
+          return (b.usage_count || 0) - (a.usage_count || 0);
+        }
+        
+        // Finally sort alphabetically
+        return a.name.localeCompare(b.name);
+      });
+
+      setContacts(sortedContacts);
     } catch (error) {
       console.error('Error fetching contacts:', error);
     } finally {
@@ -112,10 +141,20 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
     return businessAddr || privateAddr || contact.address || '';
   };
 
-  const handleContactSelect = (contact: Contact) => {
+  const handleContactSelect = async (contact: Contact) => {
     setSelectedContact(contact);
     setIsOpen(false);
     setSearchTerm('');
+    
+    // Track contact usage
+    try {
+      await supabase.rpc('update_contact_usage', {
+        p_contact_id: contact.id,
+        p_tenant_id: currentTenant?.id
+      });
+    } catch (error) {
+      console.error('Error tracking contact usage:', error);
+    }
     
     // Add formatted address to contact object
     const contactWithAddress = {
@@ -141,6 +180,64 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
     }
   };
 
+  const ContactItem: React.FC<{ contact: Contact }> = ({ contact }) => (
+    <div
+      className="flex items-center gap-3 p-2 hover:bg-muted rounded-sm cursor-pointer"
+      onClick={() => handleContactSelect(contact)}
+    >
+      <Avatar className="h-8 w-8">
+        <AvatarImage src={contact.avatar_url} />
+        <AvatarFallback>
+          {getInitials(contact.name)}
+        </AvatarFallback>
+      </Avatar>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium truncate">{contact.name}</span>
+          {contact.is_favorite && (
+            <Star className="h-3 w-3 text-yellow-500 fill-current" />
+          )}
+          {!contact.is_favorite && (contact.usage_count || 0) > 0 && (
+            <Flame className="h-3 w-3 text-orange-500" />
+          )}
+          {contact.contact_type === 'organization' ? (
+            <Building className="h-3 w-3 text-muted-foreground" />
+          ) : (
+            <User className="h-3 w-3 text-muted-foreground" />
+          )}
+        </div>
+        
+        {contact.organization && (
+          <div className="text-sm text-muted-foreground truncate">
+            {contact.organization}
+          </div>
+        )}
+        
+        {contact.email && (
+          <div className="text-xs text-muted-foreground truncate">
+            {contact.email}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col items-end gap-1">
+        {contact.category && contact.category !== 'citizen' && (
+          <Badge 
+            variant="secondary" 
+            className={`text-xs ${getCategoryColor(contact.category)}`}
+          >
+            {contact.category}
+          </Badge>
+        )}
+        
+        {selectedContactId === contact.id && (
+          <Check className="h-4 w-4 text-primary" />
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className={`relative ${className}`}>
       <Button
@@ -157,6 +254,9 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
               </AvatarFallback>
             </Avatar>
             <span className="truncate">{selectedContact.name}</span>
+            {selectedContact.is_favorite && (
+              <Star className="h-3 w-3 text-yellow-500 fill-current" />
+            )}
             {selectedContact.organization && (
               <span className="text-muted-foreground text-sm">
                 ({selectedContact.organization})
@@ -195,58 +295,51 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
               </div>
             ) : (
               <div className="p-1">
-                {filteredContacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    className="flex items-center gap-3 p-2 hover:bg-muted rounded-sm cursor-pointer"
-                    onClick={() => handleContactSelect(contact)}
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={contact.avatar_url} />
-                      <AvatarFallback>
-                        {getInitials(contact.name)}
-                      </AvatarFallback>
-                    </Avatar>
+                {/* Favorites Section */}
+                {filteredContacts.some(c => c.is_favorite) && (
+                  <>
+                    <div className="px-2 py-1 text-xs font-medium text-muted-foreground bg-muted/50 rounded-sm mb-1 flex items-center gap-1">
+                      <Star className="h-3 w-3" />
+                      Favoriten
+                    </div>
+                    {filteredContacts
+                      .filter(contact => contact.is_favorite)
+                      .map((contact) => (
+                        <ContactItem key={contact.id} contact={contact} />
+                      ))}
+                  </>
+                )}
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{contact.name}</span>
-                        {contact.contact_type === 'organization' ? (
-                          <Building className="h-3 w-3 text-muted-foreground" />
-                        ) : (
-                          <User className="h-3 w-3 text-muted-foreground" />
-                        )}
+                {/* Frequently Contacted Section */}
+                {filteredContacts.some(c => !c.is_favorite && (c.usage_count || 0) > 0) && (
+                  <>
+                    <div className="px-2 py-1 text-xs font-medium text-muted-foreground bg-muted/50 rounded-sm mb-1 mt-2 flex items-center gap-1">
+                      <Flame className="h-3 w-3" />
+                      Häufig kontaktiert
+                    </div>
+                    {filteredContacts
+                      .filter(contact => !contact.is_favorite && (contact.usage_count || 0) > 0)
+                      .map((contact) => (
+                        <ContactItem key={contact.id} contact={contact} />
+                      ))}
+                  </>
+                )}
+
+                {/* All Other Contacts */}
+                {filteredContacts.some(c => !c.is_favorite && (c.usage_count || 0) === 0) && (
+                  <>
+                    {(filteredContacts.some(c => c.is_favorite) || filteredContacts.some(c => !c.is_favorite && (c.usage_count || 0) > 0)) && (
+                      <div className="px-2 py-1 text-xs font-medium text-muted-foreground bg-muted/50 rounded-sm mb-1 mt-2">
+                        Alle Kontakte
                       </div>
-                      
-                      {contact.organization && (
-                        <div className="text-sm text-muted-foreground truncate">
-                          {contact.organization}
-                        </div>
-                      )}
-                      
-                      {contact.email && (
-                        <div className="text-xs text-muted-foreground truncate">
-                          {contact.email}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col items-end gap-1">
-                      {contact.category && contact.category !== 'citizen' && (
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-xs ${getCategoryColor(contact.category)}`}
-                        >
-                          {contact.category}
-                        </Badge>
-                      )}
-                      
-                      {selectedContactId === contact.id && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                    </div>
-                  </div>
-                ))}
+                    )}
+                    {filteredContacts
+                      .filter(contact => !contact.is_favorite && (contact.usage_count || 0) === 0)
+                      .map((contact) => (
+                        <ContactItem key={contact.id} contact={contact} />
+                      ))}
+                  </>
+                )}
               </div>
             )}
           </ScrollArea>

@@ -739,6 +739,39 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_usage_stats: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          last_used_at: string
+          tenant_id: string
+          updated_at: string
+          usage_count: number
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          last_used_at?: string
+          tenant_id: string
+          updated_at?: string
+          usage_count?: number
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          last_used_at?: string
+          tenant_id?: string
+          updated_at?: string
+          usage_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           accessibility_features: string[] | null
@@ -790,6 +823,7 @@ export type Database = {
           id: string
           industry: string | null
           instagram: string | null
+          is_favorite: boolean | null
           key_contacts: string[] | null
           languages_supported: string[] | null
           last_contact: string | null
@@ -892,6 +926,7 @@ export type Database = {
           id?: string
           industry?: string | null
           instagram?: string | null
+          is_favorite?: boolean | null
           key_contacts?: string[] | null
           languages_supported?: string[] | null
           last_contact?: string | null
@@ -994,6 +1029,7 @@ export type Database = {
           id?: string
           industry?: string | null
           instagram?: string | null
+          is_favorite?: boolean | null
           key_contacts?: string[] | null
           languages_supported?: string[] | null
           last_contact?: string | null
@@ -4856,6 +4892,10 @@ export type Database = {
       }
       sync_birthday_appointments: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_contact_usage: {
+        Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
       }
       user_can_access_task_decision: {

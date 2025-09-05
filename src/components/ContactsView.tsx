@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ArrowUpWideNarrow, ArrowDownWideNarrow } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ArrowUpWideNarrow, ArrowDownWideNarrow, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ interface Contact {
   avatar_url?: string;
   notes?: string;
   additional_info?: string;
+  is_favorite?: boolean;
   // Organization-specific fields
   legal_form?: string;
   industry?: string;
@@ -58,6 +59,7 @@ export function ContactsView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [distributionLists, setDistributionLists] = useState<DistributionList[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +92,7 @@ export function ContactsView() {
         .from('contacts')
         .select('*')
         .eq('tenant_id', currentTenant?.id || '')
+        .order('is_favorite', { ascending: false })
         .order('name');
 
       if (error) throw error;
@@ -128,6 +131,7 @@ export function ContactsView() {
         industry: contact.industry,
         main_contact_person: contact.main_contact_person,
         business_description: contact.business_description,
+        is_favorite: contact.is_favorite,
       })) || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -229,8 +233,41 @@ export function ContactsView() {
     }
   };
 
+  const toggleFavorite = async (contactId: string, isFavorite: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .update({ is_favorite: isFavorite })
+        .eq('id', contactId);
+
+      if (error) throw error;
+
+      // Update local state
+      setContacts(contacts.map(contact => 
+        contact.id === contactId 
+          ? { ...contact, is_favorite: isFavorite }
+          : contact
+      ));
+
+      toast({
+        title: "Erfolg",
+        description: isFavorite 
+          ? "Kontakt zu Favoriten hinzugefügt" 
+          : "Kontakt aus Favoriten entfernt",
+      });
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: "Fehler",
+        description: "Favorit konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const categories = [
     { value: "all", label: "Alle Kontakte", count: contacts.filter(c => c.contact_type !== 'archive').length },
+    { value: "favorites", label: "Favoriten", count: contacts.filter(c => c.is_favorite && c.contact_type !== 'archive').length },
     { value: "citizen", label: "Bürger", count: contacts.filter(c => c.category === "citizen").length },
     { value: "colleague", label: "Kollegen", count: contacts.filter(c => c.category === "colleague").length },
     { value: "business", label: "Wirtschaft", count: contacts.filter(c => c.category === "business").length },
@@ -337,7 +374,10 @@ export function ContactsView() {
       (contact.main_contact_person && contact.main_contact_person.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (contact.legal_form && contact.legal_form.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesCategory = selectedCategory === "all" || contact.category === selectedCategory;
+    const matchesCategory = 
+      selectedCategory === "all" || 
+      (selectedCategory === "favorites" && contact.is_favorite) ||
+      (selectedCategory !== "favorites" && contact.category === selectedCategory);
     const matchesType = selectedType === "all" || contact.contact_type === selectedType;
     
     return matchesSearch && matchesCategory && matchesType;
@@ -560,27 +600,44 @@ export function ContactsView() {
                 setIsSheetOpen(true);
               }}
             >
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-3">
-                     <Avatar>
-                       <AvatarImage src={contact.avatar_url} />
-                       <AvatarFallback className="bg-primary text-primary-foreground">
-                         {getInitials(contact.name)}
-                       </AvatarFallback>
-                     </Avatar>
-                      <div className="flex-1">
-                        <CardTitle className="text-lg mb0">{contact.name}</CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          {contact.contact_type === "organization" 
-                            ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
-                            : contact.role
-                          }
-                        </p>                       
-                      </div>
-                   </div>
-                </div>
-              </CardHeader>
+               <CardHeader className="pb-3">
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage src={contact.avatar_url} />
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {getInitials(contact.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                       <div className="flex-1">
+                         <CardTitle className="text-lg mb0">{contact.name}</CardTitle>
+                         <p className="text-sm text-muted-foreground">
+                           {contact.contact_type === "organization" 
+                             ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
+                             : contact.role
+                           }
+                         </p>                       
+                       </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(contact.id, !contact.is_favorite);
+                      }}
+                      className="p-2"
+                    >
+                      <Star 
+                        className={`h-4 w-4 transition-colors ${
+                          contact.is_favorite 
+                            ? 'text-yellow-500 fill-current' 
+                            : 'text-muted-foreground hover:text-yellow-500'
+                        }`} 
+                      />
+                    </Button>
+                 </div>
+               </CardHeader>
               <CardContent>
                 { /* <div className="mt-2">
                    <Badge className={getCategoryColor(contact.category)}>
@@ -656,6 +713,7 @@ export function ContactsView() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">Favorit</TableHead>
                 <TableHead className="w-12">Avatar</TableHead>
                 <SortableTableHead sortKey="name">Name</SortableTableHead>
                 <SortableTableHead sortKey="organization">Organisation/Rolle</SortableTableHead>
@@ -674,6 +732,25 @@ export function ContactsView() {
                     setIsSheetOpen(true);
                   }}
                 >
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(contact.id, !contact.is_favorite);
+                      }}
+                      className="p-1 h-6 w-6"
+                    >
+                      <Star 
+                        className={`h-3 w-3 transition-colors ${
+                          contact.is_favorite 
+                            ? 'text-yellow-500 fill-current' 
+                            : 'text-muted-foreground hover:text-yellow-500'
+                        }`} 
+                      />
+                    </Button>
+                  </TableCell>
                   <TableCell>
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={contact.avatar_url} />
