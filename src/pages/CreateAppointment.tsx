@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { AppointmentPollCreator } from "@/components/poll/AppointmentPollCreator";
 import { AppointmentFileUpload } from "@/components/appointments/AppointmentFileUpload";
+import { ContactSelector } from "@/components/ContactSelector";
 
 // Helper functions for intelligent date/time defaults
 const getDefaultStartTime = () => {
@@ -93,7 +94,6 @@ const CreateAppointment = () => {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [contacts, setContacts] = useState<any[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
   const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string }>>([]);
   const [appointmentStatuses, setAppointmentStatuses] = useState<Array<{ name: string; label: string }>>([]);
@@ -126,23 +126,18 @@ const CreateAppointment = () => {
       if (!user) return;
       
       const [
-        { data: contactsData, error: contactsError },
         { data: categoriesData, error: categoriesError },
         { data: statusesData, error: statusesError },
         { data: locationsData, error: locationsError }
       ] = await Promise.all([
-        supabase.from('contacts').select('*').eq('user_id', user.id).order('name'),
         supabase.from('appointment_categories').select('name, label').eq('is_active', true).order('order_index'),
         supabase.from('appointment_statuses').select('name, label').eq('is_active', true).order('order_index'),
         supabase.from('appointment_locations').select('id, name, address').eq('is_active', true).order('order_index')
       ]);
       
-      if (contactsError) console.error('Error fetching contacts:', contactsError);
       if (categoriesError) console.error('Error fetching categories:', categoriesError);
       if (statusesError) console.error('Error fetching statuses:', statusesError);
       if (locationsError) console.error('Error fetching locations:', locationsError);
-      
-      setContacts(contactsData || []);
       setAppointmentCategories(categoriesData || []);
       setAppointmentStatuses(statusesData || []);
       setAppointmentLocations(locationsData || []);
@@ -571,23 +566,10 @@ const CreateAppointment = () => {
                       </div>
                       
                       <div className="space-y-4">
-                        <Select onValueChange={(value) => {
-                          const contact = contacts.find(c => c.id === value);
-                          if (contact) addContact(contact);
-                        }}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Kontakt hinzufügen" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {contacts
-                              .filter(contact => !selectedContacts.find(c => c.id === contact.id))
-                              .map((contact) => (
-                                <SelectItem key={contact.id} value={contact.id}>
-                                  {contact.name} {contact.email && `(${contact.email})`}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+                        <ContactSelector
+                          onSelect={addContact}
+                          placeholder="Kontakt aus Favoriten oder Liste auswählen..."
+                        />
 
                         {selectedContacts.length > 0 && (
                           <div className="flex flex-wrap gap-2">

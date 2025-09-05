@@ -14,6 +14,7 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { ContactSelector } from '@/components/ContactSelector';
 
 interface TimeSlot {
   id: string;
@@ -47,29 +48,6 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [newParticipantEmail, setNewParticipantEmail] = useState('');
-  const [contacts, setContacts] = useState<any[]>([]);
-
-  // Load contacts on component mount
-  useEffect(() => {
-    const loadContacts = async () => {
-      if (!user) return;
-      
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-        
-      if (error) {
-        console.error('Error loading contacts:', error);
-        return;
-      }
-      
-      setContacts(data || []);
-    };
-    
-    loadContacts();
-  }, [user]);
 
   const addTimeSlot = () => {
     if (!selectedDate) {
@@ -103,6 +81,16 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
       toast({
         title: "Keine E-Mail-Adresse",
         description: "Dieser Kontakt hat keine E-Mail-Adresse.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if participant already exists
+    if (participants.find(p => p.email === contact.email)) {
+      toast({
+        title: "Bereits hinzugefügt",
+        description: "Dieser Kontakt wurde bereits hinzugefügt.",
         variant: "destructive",
       });
       return;
@@ -438,21 +426,10 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
           {/* Add from contacts */}
           <div>
             <Label className="text-sm">Aus Kontakten hinzufügen</Label>
-            <Select onValueChange={(contactId) => {
-              const contact = contacts.find(c => c.id === contactId);
-              if (contact) addParticipantFromContact(contact);
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Kontakt auswählen..." />
-              </SelectTrigger>
-              <SelectContent>
-                {contacts.map((contact) => (
-                  <SelectItem key={contact.id} value={contact.id}>
-                    {contact.name} {contact.email && `(${contact.email})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ContactSelector
+              onSelect={addParticipantFromContact}
+              placeholder="Kontakt aus Favoriten oder Liste auswählen..."
+            />
           </div>
 
           {/* Add external participant */}
