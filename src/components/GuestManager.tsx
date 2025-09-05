@@ -43,12 +43,30 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
   const [selectedDefaults, setSelectedDefaults] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load default guests
+  // Load default guests and auto-add active ones
   useEffect(() => {
     if (currentTenant?.id) {
       fetchDefaultGuests();
     }
   }, [currentTenant?.id]);
+
+  // Auto-add active default guests when component mounts or defaults change
+  useEffect(() => {
+    if (defaultGuests.length > 0) {
+      const activeDefaults = defaultGuests.filter(dg => 
+        dg.is_active && !guests.some(g => g.email.toLowerCase() === dg.email.toLowerCase())
+      );
+      
+      if (activeDefaults.length > 0) {
+        const newGuests = activeDefaults.map(dg => ({
+          name: dg.name,
+          email: dg.email,
+        }));
+        onGuestsChange([...guests, ...newGuests]);
+        setSelectedDefaults([...selectedDefaults, ...activeDefaults.map(dg => dg.id)]);
+      }
+    }
+  }, [defaultGuests]);
 
   const fetchDefaultGuests = async () => {
     if (!currentTenant?.id) return;
