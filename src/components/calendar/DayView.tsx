@@ -284,14 +284,14 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
             <React.Fragment key={hour}>
               {/* Time label */}
               <div 
-                className="p-2 text-sm text-muted-foreground border-b border-border bg-muted/30 sticky left-0 z-10"
+                className="h-[60px] p-2 text-sm text-muted-foreground border-b border-border bg-muted/30 sticky left-0 z-10 flex items-center"
                 id={hour === 9 ? 'hour-9' : undefined}
               >
                 {hour.toString().padStart(2, '0')}:00
               </div>
               
                {/* Event slot */}
-               <div className="min-h-[60px] p-1 border-b border-border relative">
+               <div className="h-[60px] p-1 border-b border-border relative">
                  {(() => {
                    const hourEvents = getEventsForHour(hour);
                    const eventLayout = getEventLayout(hourEvents);
