@@ -684,7 +684,8 @@ export function AppointmentPreparationDataTab({
             time: format(new Date(appointmentDetails.start), 'HH:mm', { locale: de }),
             duration: Math.round((new Date(appointmentDetails.end).getTime() - new Date(appointmentDetails.start).getTime()) / (1000 * 60)).toString(),
             date: new Date(appointmentDetails.start),
-            type: (appointmentDetails.category || 'meeting') as 'deadline' | 'birthday' | 'vacation' | 'meeting' | 'appointment' | 'session' | 'blocked' | 'veranstaltung' | 'vacation_request'
+            type: (appointmentDetails.category || 'meeting') as 'deadline' | 'birthday' | 'vacation' | 'meeting' | 'appointment' | 'session' | 'blocked' | 'veranstaltung' | 'vacation_request',
+            priority: (appointmentDetails.priority as 'high' | 'low' | 'medium') || 'medium'
           }}
           open={showAppointmentSidebar}
           onClose={() => setShowAppointmentSidebar(false)}

@@ -1,13 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, Archive, Calendar, CheckSquare, FileText, Settings } from "lucide-react";
+import { ArrowLeft, Edit, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppointmentPreparation } from "@/hooks/useAppointmentPreparation";
-import { AppointmentPreparationOverviewTab } from "@/components/appointment-preparations/AppointmentPreparationOverviewTab";
 import { AppointmentPreparationDataTab } from "@/components/appointment-preparations/AppointmentPreparationDataTab";
 import { AppointmentPreparationChecklistTab } from "@/components/appointment-preparations/AppointmentPreparationChecklistTab";
 import { AppointmentPreparationDetailsTab } from "@/components/appointment-preparations/AppointmentPreparationDetailsTab";
@@ -16,7 +15,7 @@ export default function AppointmentPreparationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("preparation"); // Changed default from "overview"
 
   const {
     preparation,
@@ -25,16 +24,6 @@ export default function AppointmentPreparationDetail() {
     updatePreparation,
     archivePreparation
   } = useAppointmentPreparation(id);
-
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: "Fehler",
-        description: "Terminplanung konnte nicht geladen werden.",
-        variant: "destructive",
-      });
-    }
-  }, [error, toast]);
 
   if (loading) {
     return (
@@ -47,7 +36,7 @@ export default function AppointmentPreparationDetail() {
     );
   }
 
-  if (!preparation) {
+  if (error || !preparation) {
     return (
       <div className="min-h-screen bg-gradient-subtle p-6">
         <div className="max-w-6xl mx-auto">
@@ -62,7 +51,7 @@ export default function AppointmentPreparationDetail() {
           <Card className="bg-card shadow-card border-border">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <h3 className="text-lg font-semibold mb-2">Terminplanung nicht gefunden</h3>
-              <p className="text-muted-foreground">Die angeforderte Terminplanung existiert nicht.</p>
+              <p className="text-muted-foreground">{error || "Die angeforderte Terminplanung existiert nicht."}</p>
             </CardContent>
           </Card>
         </div>
@@ -112,13 +101,6 @@ export default function AppointmentPreparationDetail() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Zurück zu Planungen
           </Button>
-          
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleArchive}>
-              <Archive className="h-4 w-4 mr-2" />
-              Archivieren
-            </Button>
-          </div>
         </div>
 
         {/* Title Card */}
@@ -142,35 +124,24 @@ export default function AppointmentPreparationDetail() {
           </CardHeader>
         </Card>
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation - Removed Overview Tab */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Übersicht
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="preparation" className="flex items-center gap-2">
               <Edit className="h-4 w-4" />
               Vorbereitung
             </TabsTrigger>
             <TabsTrigger value="checklist" className="flex items-center gap-2">
-              <CheckSquare className="h-4 w-4" />
+              <FileText className="h-4 w-4" />
               Checkliste
             </TabsTrigger>
             <TabsTrigger value="details" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
+              <FileText className="h-4 w-4" />
               Details
             </TabsTrigger>
           </TabsList>
 
           <div className="mt-6">
-            <TabsContent value="overview">
-              <AppointmentPreparationOverviewTab 
-                preparation={preparation}
-                onUpdate={updatePreparation}
-              />
-            </TabsContent>
-
             <TabsContent value="preparation">
               <AppointmentPreparationDataTab
                 preparation={preparation}
