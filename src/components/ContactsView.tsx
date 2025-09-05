@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ArrowUpWideNarrow, ArrowDownWideNarrow, Star, ChevronUp } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ArrowUpWideNarrow, ArrowDownWideNarrow, Star, ChevronUp, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { ContactDetailSheet } from "./ContactDetailSheet";
 import { useInfiniteContacts, Contact } from "@/hooks/useInfiniteContacts";
 import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
 import { ContactSkeleton } from "./ContactSkeleton";
+import { ContactCard } from "./ContactCard";
 import { debounce } from "@/utils/debounce";
 import { useCounts } from "@/hooks/useCounts";
 
@@ -169,6 +170,9 @@ export function ContactsView() {
 
   // toggleFavorite is now handled by the hook
 
+  // Contacts are now filtered server-side by the hook
+  const filteredContacts = contacts;
+
   const categories = [
     { value: "all", label: "Alle Kontakte", count: totalCount },
     { value: "favorites", label: "Favoriten", count: contacts.filter(c => c.is_favorite).length },
@@ -196,17 +200,6 @@ export function ContactsView() {
     }
   };
 
-  const getPriorityColor = (priority: Contact["priority"]) => {
-    switch (priority) {
-      case "high":
-        return "border-l-4 border-l-destructive";
-      case "medium":
-        return "border-l-4 border-l-government-gold";
-      case "low":
-        return "border-l-4 border-l-muted-foreground";
-    }
-  };
-
   const handleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -216,11 +209,53 @@ export function ContactsView() {
     }
   };
 
-  // Contacts are now filtered server-side by the hook
-  const filteredContacts = contacts;
-
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
+  };
+
+  const exportContacts = () => {
+    try {
+      const csvContent = [
+        // CSV Header
+        "Name,E-Mail,Telefon,Organisation,Adresse,Ort,Kategorie,Priorität,Kontakt-Typ,Letzter Kontakt,Notizen",
+        // CSV Data
+        ...contacts.map(contact => [
+          `"${contact.name || ''}"`,
+          `"${contact.email || ''}"`,
+          `"${contact.phone || ''}"`,
+          `"${contact.organization || ''}"`,
+          `"${contact.address || ''}"`,
+          `"${contact.location || ''}"`,
+          `"${contact.category || ''}"`,
+          `"${contact.priority || ''}"`,
+          `"${contact.contact_type || ''}"`,
+          `"${contact.last_contact || ''}"`,
+          `"${contact.notes?.replace(/"/g, '""') || ''}"`
+        ].join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `kontakte-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Export erfolgreich",
+        description: `${contacts.length} Kontakte wurden exportiert.`,
+      });
+    } catch (error) {
+      console.error('Error exporting contacts:', error);
+      toast({
+        title: "Export fehlgeschlagen",
+        description: "Die Kontakte konnten nicht exportiert werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const SortableTableHead = ({ children, sortKey, className = "" }: { 
@@ -286,6 +321,15 @@ export function ContactsView() {
                 Kontakte importieren
               </Button>
             </Link>
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={exportContacts}
+              disabled={contacts.length === 0}
+            >
+              <Download className="h-4 w-4" />
+              Exportieren
+            </Button>
             <Link to="/distribution-lists/new">
               <Button variant="outline" className="gap-2">
                 <Users className="h-4 w-4" />
@@ -431,122 +475,15 @@ export function ContactsView() {
               {viewMode === "grid" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredContacts.map((contact) => (
-            <Card
-              key={contact.id}
-              className={`bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer ${getPriorityColor(
-                contact.priority
-              )}`}
-              onClick={() => {
-                setSelectedContactId(contact.id);
-                setIsSheetOpen(true);
-              }}
-            >
-               <CardHeader className="pb-3">
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarImage src={contact.avatar_url} />
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {getInitials(contact.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                       <div className="flex-1">
-                         <CardTitle className="text-lg mb0">{contact.name}</CardTitle>
-                         <p className="text-sm text-muted-foreground">
-                           {contact.contact_type === "organization" 
-                             ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
-                             : contact.role
-                           }
-                         </p>                       
-                       </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(contact.id, !contact.is_favorite);
+                    <ContactCard
+                      key={contact.id}
+                      contact={contact}
+                      onContactClick={(contactId) => {
+                        setSelectedContactId(contactId);
+                        setIsSheetOpen(true);
                       }}
-                      className="p-2"
-                    >
-                      <Star 
-                        className={`h-4 w-4 transition-colors ${
-                          contact.is_favorite 
-                            ? 'text-yellow-500 fill-current' 
-                            : 'text-muted-foreground hover:text-yellow-500'
-                        }`} 
-                      />
-                    </Button>
-                 </div>
-               </CardHeader>
-              <CardContent>
-                { /* <div className="mt-2">
-                   <Badge className={getCategoryColor(contact.category)}>
-                            {contact.category === "citizen" && "Bürger"}
-                            {contact.category === "colleague" && "Kollege"}
-                            {contact.category === "business" && "Wirtschaft"}
-                            {contact.category === "media" && "Medien"}
-                            {contact.category === "lobbyist" && "Lobbyist"}
-                          </Badge>
-                </div> */}
-                <div className="space-y-3">
-                  {contact.contact_type === "person" ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Building className="h-4 w-4" />
-                      <span className="truncate">{contact.organization || "Keine Organisation"}</span>
-                    </div>
-                  ) : contact.business_description ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Building className="h-4 w-4" />
-                      <span className="truncate">{contact.business_description}</span>
-                    </div>
-                  ) : null}
-                  
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    <span className="truncate">{contact.email || "Keine E-Mail"}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4" />
-                    <span>{contact.phone || "Keine Telefonnummer"}</span>
-                  </div>
-                  
-                  {contact.location && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span>{contact.location}</span>
-                  </div>
-                )}
-
-                {contact.address && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span className="truncate">{contact.address}</span>
-                  </div>
-                )}
-                
-                {contact.last_contact && (
-                  <div className="pt-2 border-t border-border">
-                    <span className="text-xs text-muted-foreground">
-                      Letzter Kontakt: {contact.last_contact}
-                    </span>
-                  </div>
-                )}
-                </div>
-                
-                <div className="flex gap-2 mt-4">
-                  <Button size="sm" variant="outline" className="flex-1">
-                    <Mail className="h-4 w-4 mr-1" />
-                    E-Mail
-                  </Button>
-                  <Button size="sm" variant="outline" className="flex-1">
-                    <Phone className="h-4 w-4 mr-1" />
-                    Anrufen
-                  </Button>
-                </div>
-              </CardContent>
-                    </Card>
+                      onToggleFavorite={toggleFavorite}
+                    />
                   ))}
                 </div>
               ) : (
@@ -559,6 +496,8 @@ export function ContactsView() {
                 <SortableTableHead sortKey="name">Name</SortableTableHead>
                 <SortableTableHead sortKey="organization">Organisation/Rolle</SortableTableHead>
                 <SortableTableHead sortKey="email">Kontakt</SortableTableHead>
+                <SortableTableHead sortKey="category">Kategorie</SortableTableHead>
+                <SortableTableHead sortKey="priority">Priorität</SortableTableHead>
                 <SortableTableHead sortKey="address">Adresse</SortableTableHead>
                 <SortableTableHead sortKey="last_contact">Letzter Kontakt</SortableTableHead>
               </TableRow>
@@ -572,6 +511,16 @@ export function ContactsView() {
                     setSelectedContactId(contact.id);
                     setIsSheetOpen(true);
                   }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Kontakt ${contact.name} öffnen`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedContactId(contact.id);
+                      setIsSheetOpen(true);
+                    }
+                  }}
                 >
                   <TableCell>
                     <Button
@@ -582,6 +531,7 @@ export function ContactsView() {
                         toggleFavorite(contact.id, !contact.is_favorite);
                       }}
                       className="p-1 h-6 w-6"
+                      aria-label={contact.is_favorite ? `${contact.name} aus Favoriten entfernen` : `${contact.name} zu Favoriten hinzufügen`}
                     >
                       <Star 
                         className={`h-3 w-3 transition-colors ${
@@ -622,6 +572,25 @@ export function ContactsView() {
                         </div>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getCategoryColor(contact.category)} variant="outline">
+                      {contact.category === "citizen" && "Bürger"}
+                      {contact.category === "colleague" && "Kollege"}
+                      {contact.category === "business" && "Wirtschaft"}
+                      {contact.category === "media" && "Medien"}
+                      {contact.category === "lobbyist" && "Lobbyist"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {contact.priority && (
+                      <Badge 
+                        variant={contact.priority === 'high' ? 'destructive' : contact.priority === 'medium' ? 'default' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {contact.priority === 'high' ? 'Hoch' : contact.priority === 'medium' ? 'Mittel' : 'Niedrig'}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
