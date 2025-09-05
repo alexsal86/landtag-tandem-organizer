@@ -230,7 +230,7 @@ export const useInfiniteContacts = ({
       });
 
       // Fetch the newly inserted contacts
-      fetchContacts();
+      fetchContacts(false);
     } catch (error) {
       console.error('Error inserting sample contacts:', error);
       toast({
