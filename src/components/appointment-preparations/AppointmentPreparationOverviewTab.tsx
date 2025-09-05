@@ -45,11 +45,11 @@ export function AppointmentPreparationOverviewTab({
       if (!user) return;
 
       try {
-        // Fetch contacts
+        // Fetch contacts - using tenant_id instead of user_id
         const { data: contactsData, error: contactsError } = await supabase
           .from('contacts')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('tenant_id', preparation.tenant_id)
           .order('name');
 
         if (contactsError) {
@@ -80,7 +80,18 @@ export function AppointmentPreparationOverviewTab({
     };
 
     fetchData();
-  }, [user, preparation.appointment_id]);
+  }, [user, preparation.appointment_id, preparation.tenant_id]);
+
+  // Update editData when preparation changes
+  useEffect(() => {
+    setEditData({
+      title: preparation.title,
+      status: preparation.status,
+      notes: preparation.notes || "",
+      contact_name: (preparation.preparation_data as any)?.contact_name || "",
+      contact_info: (preparation.preparation_data as any)?.contact_info || ""
+    });
+  }, [preparation]);
 
   const handleSave = async () => {
     try {
