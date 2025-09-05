@@ -48,7 +48,7 @@ interface ContactEditFormProps {
 
 export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFormProps) {
   const [formData, setFormData] = useState(contact);
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<{ id: string; name: string; }[]>([]);
   const [useCustomOrganization, setUseCustomOrganization] = useState(false);
   const [loading, setLoading] = useState(false);
   const [existingContacts, setExistingContacts] = useState<UtilContact[]>([]);
@@ -388,9 +388,13 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
               value={formData.email || ''}
               onChange={(e) => handleChange('email', e.target.value)}
               className={emailValidationError ? 'border-destructive' : ''}
+              aria-invalid={emailValidationError ? 'true' : 'false'}
+              aria-describedby={emailValidationError ? 'email-error' : undefined}
             />
             {emailValidationError && (
-              <p className="text-sm text-destructive mt-1">{emailValidationError}</p>
+              <p id="email-error" className="text-sm text-destructive mt-1" role="alert">
+                {emailValidationError}
+              </p>
             )}
           </div>
 

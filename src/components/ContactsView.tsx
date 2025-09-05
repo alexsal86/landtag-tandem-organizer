@@ -308,32 +308,36 @@ export function ContactsView() {
               Verwalten Sie Ihre wichtigsten Kontakte, Organisationen und Beziehungen
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Link to="/contacts/new">
-              <Button className="gap-2">
+              <Button className="gap-2 w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
-                Neuer Kontakt
+                <span className="hidden sm:inline">Neuer Kontakt</span>
+                <span className="sm:hidden">Neu</span>
               </Button>
             </Link>
             <Link to="/contacts/import">
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2 w-full sm:w-auto">
                 <Upload className="h-4 w-4" />
-                Kontakte importieren
+                <span className="hidden sm:inline">Kontakte importieren</span>
+                <span className="sm:hidden">Import</span>
               </Button>
             </Link>
             <Button 
               variant="outline" 
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
               onClick={exportContacts}
               disabled={contacts.length === 0}
             >
               <Download className="h-4 w-4" />
-              Exportieren
+              <span className="hidden sm:inline">Exportieren</span>
+              <span className="sm:hidden">Export</span>
             </Button>
             <Link to="/distribution-lists/new">
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2 w-full sm:w-auto">
                 <Users className="h-4 w-4" />
-                Neuer Verteiler
+                <span className="hidden sm:inline">Neuer Verteiler</span>
+                <span className="sm:hidden">Verteiler</span>
               </Button>
             </Link>
           </div>

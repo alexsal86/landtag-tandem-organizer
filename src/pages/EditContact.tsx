@@ -42,7 +42,7 @@ export default function EditContact() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<{ id: string; name: string; }[]>([]);
   const [useCustomOrganization, setUseCustomOrganization] = useState(false);
   const [contact, setContact] = useState<Contact>({
     id: "",
@@ -425,7 +425,7 @@ export default function EditContact() {
                     <Label htmlFor="category">Kategorie</Label>
                     <Select
                       value={contact.category}
-                      onValueChange={(value: any) => setContact({ ...contact, category: value })}
+                      onValueChange={(value) => setContact({ ...contact, category: value as Contact["category"] })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -444,7 +444,7 @@ export default function EditContact() {
                     <Label htmlFor="priority">Priorität</Label>
                     <Select
                       value={contact.priority}
-                      onValueChange={(value: any) => setContact({ ...contact, priority: value })}
+                      onValueChange={(value) => setContact({ ...contact, priority: value as Contact["priority"] })}
                     >
                       <SelectTrigger>
                         <SelectValue />
