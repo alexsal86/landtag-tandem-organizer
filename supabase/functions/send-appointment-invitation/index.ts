@@ -17,27 +17,17 @@ interface InvitationRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  console.log("=== APPOINTMENT INVITATION FUNCTION CALLED ===");
-  console.log("Method:", req.method);
-  console.log("Headers:", Object.fromEntries(req.headers.entries()));
-  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    console.log("Handling OPTIONS request");
-    return new Response(null, { 
-      status: 200,
-      headers: corsHeaders 
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("Creating Supabase client...");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    console.log("Parsing request body...");
     const { appointmentId, guestIds, sendToAll }: InvitationRequest = await req.json();
 
     console.log("=== SEND APPOINTMENT INVITATION DEBUG ===");
@@ -47,35 +37,33 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("=== END DEBUG INFO ===");
 
     // Get appointment data
-    console.log("Fetching appointment data...");
     const { data: appointment, error: appointmentError } = await supabase
       .from('appointments')
       .select('*')
       .eq('id', appointmentId)
-      .single();
+      .maybeSingle();
 
-    if (appointmentError || !appointment) {
-      console.error("Error getting appointment:", appointmentError);
+    if (appointmentError) {
+      console.error("Error getting appointment data:", appointmentError);
+    }
+
+    if (!appointment) {
+      console.error("Appointment not found:", appointmentId);
       throw new Error('Termin nicht gefunden');
     }
 
-    console.log("Appointment found:", appointment.title);
-
     // Get organizer data
-    console.log("Fetching organizer data...");
     const { data: organizer, error: organizerError } = await supabase
       .from('profiles')
       .select('display_name')
       .eq('user_id', appointment.user_id)
-      .single();
+      .maybeSingle();
 
     if (organizerError) {
-      console.error("Error getting organizer:", organizerError);
-      throw new Error('Organisator nicht gefunden');
+      console.error("Error getting organizer profile:", organizerError);
     }
 
     // Get organizer email from auth.users using service role
-    console.log("Fetching organizer email...");
     const { data: authUserData, error: authError } = await supabase.auth.admin.getUserById(appointment.user_id);
     
     if (authError || !authUserData.user?.email) {
@@ -86,15 +74,12 @@ const handler = async (req: Request): Promise<Response> => {
     const organizerName = organizer?.display_name || 'Unbekannter Organisator';
     const organizerEmail = authUserData.user.email;
 
-    console.log("Organizer:", organizerName, organizerEmail);
-
     // Get guests to invite
-    console.log("Fetching guests...");
     let guestsQuery = supabase
       .from('appointment_guests')
       .select('*')
       .eq('appointment_id', appointmentId);
-    
+
     if (!sendToAll && guestIds && guestIds.length > 0) {
       guestsQuery = guestsQuery.in('id', guestIds);
     }
@@ -103,38 +88,41 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (guestsError) {
       console.error("Error getting guests:", guestsError);
-      throw new Error('Gäste nicht gefunden');
+      throw new Error('Fehler beim Laden der Gäste');
     }
 
     if (!guests || guests.length === 0) {
-      console.log("No guests found to invite");
       throw new Error('Keine Gäste zum Einladen gefunden');
     }
 
-    console.log(`Found ${guests.length} guests to invite`);
-
     const emailResults = [];
-
-    // Format appointment dates
-    const startDate = new Date(appointment.start_time);
-    const endDate = new Date(appointment.end_time);
-    
-    const formatDate = (date: Date) => date.toLocaleDateString('de-DE', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    
-    const formatTime = (date: Date) => date.toLocaleTimeString('de-DE', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
 
     // Send invitations to each guest
     for (const guest of guests) {
       try {
         console.log("Processing guest:", guest.name, guest.email);
+
+        // Format dates
+        const startDate = new Date(appointment.start_time);
+        const endDate = new Date(appointment.end_time);
+        
+        const dateOptions: Intl.DateTimeFormatOptions = {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'Europe/Berlin'
+        };
+        
+        const timeOptions: Intl.DateTimeFormatOptions = {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Europe/Berlin'
+        };
+
+        const formattedDate = startDate.toLocaleDateString('de-DE', dateOptions);
+        const formattedStartTime = startDate.toLocaleTimeString('de-DE', timeOptions);
+        const formattedEndTime = endDate.toLocaleTimeString('de-DE', timeOptions);
 
         // Get current domain dynamically
         const origin = req.headers.get('origin') || req.headers.get('referer');
@@ -143,13 +131,13 @@ const handler = async (req: Request): Promise<Response> => {
         // Generate response URL with guest token
         const responseUrl = `${domain}/guest-response/${guest.invitation_token}`;
 
-        console.log("Sending email via Resend...");
-        
+        console.log("About to send email to:", guest.email, "for guest:", guest.name);
+
         // Send appointment invitation email
         const emailResponse = await resend.emails.send({
           from: "Termineinladung <noreply@alexander-salomon.de>",
           to: [guest.email],
-          subject: `Termineinladung: ${appointment.title}`,
+          subject: `Einladung: ${appointment.title}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">Termineinladung</h1>
@@ -157,15 +145,16 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="color: #666; font-size: 16px; margin-bottom: 16px;">Hallo ${guest.name},</p>
               
               <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
-                ${organizerName} lädt Sie zu folgendem Termin ein:
+                ${organizerName} hat Sie zu folgendem Termin eingeladen:
               </p>
               
               <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 4px;">
                 <h3 style="margin: 0 0 8px 0; color: #333; font-size: 18px;">${appointment.title}</h3>
-                <p style="margin: 5px 0; color: #666;"><strong>📅 Datum:</strong> ${formatDate(startDate)}</p>
-                <p style="margin: 5px 0; color: #666;"><strong>🕐 Zeit:</strong> ${formatTime(startDate)} - ${formatTime(endDate)}</p>
-                ${appointment.location ? `<p style="margin: 5px 0; color: #666;"><strong>📍 Ort:</strong> ${appointment.location}</p>` : ''}
-                ${appointment.description ? `<p style="margin: 8px 0 0 0; color: #666;">${appointment.description}</p>` : ''}
+                ${appointment.description ? `<p style="margin: 0 0 8px 0; color: #666; font-size: 14px;">${appointment.description}</p>` : ''}
+                <p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Datum:</strong> ${formattedDate}</p>
+                <p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Zeit:</strong> ${formattedStartTime} - ${formattedEndTime}</p>
+                ${appointment.location ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Ort:</strong> ${appointment.location}</p>` : ''}
+                ${appointment.meeting_link ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Meeting-Link:</strong> <a href="${appointment.meeting_link}">${appointment.meeting_link}</a></p>` : ''}
               </div>
               
               <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
@@ -173,22 +162,27 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${responseUrl}" 
-                   style="background: #22c55e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);">
-                  ✅ Teilnahme bestätigen
+                <a href="${responseUrl}?response=accepted" 
+                   style="background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px; box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);">
+                  ✓ Zusagen
+                </a>
+                <a href="${responseUrl}?response=declined" 
+                   style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);">
+                  ✗ Absagen
                 </a>
               </div>
               
               <p style="color: #666; font-size: 16px; margin-bottom: 10px;">
-                Vielen Dank!
+                Vielen Dank für Ihre Rückmeldung!
               </p>
               
               <p style="color: #666; font-size: 16px; font-weight: 500;">
                 ${organizerName}
               </p>
+              
               <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
               <p style="color: #999; font-size: 12px;">
-                Diese E-Mail wurde automatisch generiert. Bei Fragen können Sie direkt auf diese E-Mail antworten.
+                Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-Mail.
               </p>
             </div>
           `,
@@ -204,22 +198,17 @@ const handler = async (req: Request): Promise<Response> => {
           if (isTestModeError) {
             emailResults.push({ 
               guestId: guest.id, 
-              email: guest.email,
               success: false, 
               error: "Domain nicht verifiziert - E-Mails können nur an verifizierte Adressen gesendet werden" 
             });
           } else {
-            emailResults.push({ 
-              guestId: guest.id, 
-              email: guest.email,
-              success: false, 
-              error: errorMessage 
-            });
+            emailResults.push({ guestId: guest.id, success: false, error: errorMessage });
           }
         } else {
           console.log("Email sent successfully to:", guest.email, "ID:", emailResponse.data?.id);
-          
-          // Update guest status
+          emailResults.push({ guestId: guest.id, success: true, messageId: emailResponse.data?.id });
+
+          // Update guest status and invitation timestamp
           await supabase
             .from('appointment_guests')
             .update({ 
@@ -227,23 +216,11 @@ const handler = async (req: Request): Promise<Response> => {
               invited_at: new Date().toISOString()
             })
             .eq('id', guest.id);
-
-          emailResults.push({ 
-            guestId: guest.id, 
-            email: guest.email,
-            success: true, 
-            messageId: emailResponse.data?.id 
-          });
         }
 
       } catch (emailError: any) {
-        console.error("Error sending email to guest", guest.email, ":", emailError);
-        emailResults.push({ 
-          guestId: guest.id, 
-          email: guest.email,
-          success: false, 
-          error: emailError.message || "Unbekannter Fehler" 
-        });
+        console.error("Error sending email to guest", guest.id, ":", emailError);
+        emailResults.push({ guestId: guest.id, success: false, error: emailError.message || "Unbekannter Fehler" });
       }
     }
 
@@ -265,9 +242,7 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: successCount > 0, 
         message: `${successCount}/${emailResults.length} Einladungen erfolgreich versendet`,
-        results: emailResults,
-        totalSent: successCount,
-        totalFailed: emailResults.length - successCount
+        results: emailResults
       }),
       {
         status: 200, // Always return 200 for better debugging
@@ -285,7 +260,7 @@ const handler = async (req: Request): Promise<Response> => {
         error: error.message,
         stack: error.stack,
         success: false,
-        message: "Fehler beim Einladungsversand"
+        message: "Fehler beim Versenden der Einladungen"
       }),
       {
         status: 500,
