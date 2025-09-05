@@ -17,17 +17,27 @@ interface InvitationRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log("=== APPOINTMENT INVITATION FUNCTION CALLED ===");
+  console.log("Method:", req.method);
+  console.log("Headers:", Object.fromEntries(req.headers.entries()));
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    console.log("Handling OPTIONS request");
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
   }
 
   try {
+    console.log("Creating Supabase client...");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    console.log("Parsing request body...");
     const { appointmentId, guestIds, sendToAll }: InvitationRequest = await req.json();
 
     console.log("=== SEND APPOINTMENT INVITATION DEBUG ===");
@@ -37,6 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("=== END DEBUG INFO ===");
 
     // Get appointment data
+    console.log("Fetching appointment data...");
     const { data: appointment, error: appointmentError } = await supabase
       .from('appointments')
       .select('*')
@@ -48,7 +59,10 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Termin nicht gefunden');
     }
 
+    console.log("Appointment found:", appointment.title);
+
     // Get organizer data
+    console.log("Fetching organizer data...");
     const { data: organizer, error: organizerError } = await supabase
       .from('profiles')
       .select('display_name')
@@ -61,6 +75,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get organizer email from auth.users using service role
+    console.log("Fetching organizer email...");
     const { data: authUserData, error: authError } = await supabase.auth.admin.getUserById(appointment.user_id);
     
     if (authError || !authUserData.user?.email) {
@@ -71,7 +86,10 @@ const handler = async (req: Request): Promise<Response> => {
     const organizerName = organizer?.display_name || 'Unbekannter Organisator';
     const organizerEmail = authUserData.user.email;
 
+    console.log("Organizer:", organizerName, organizerEmail);
+
     // Get guests to invite
+    console.log("Fetching guests...");
     let guestsQuery = supabase
       .from('appointment_guests')
       .select('*')
@@ -89,8 +107,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!guests || guests.length === 0) {
+      console.log("No guests found to invite");
       throw new Error('Keine Gäste zum Einladen gefunden');
     }
+
+    console.log(`Found ${guests.length} guests to invite`);
 
     const emailResults = [];
 
@@ -122,6 +143,8 @@ const handler = async (req: Request): Promise<Response> => {
         // Generate response URL with guest token
         const responseUrl = `${domain}/guest-response/${guest.invitation_token}`;
 
+        console.log("Sending email via Resend...");
+        
         // Send appointment invitation email
         const emailResponse = await resend.emails.send({
           from: "Termineinladung <noreply@alexander-salomon.de>",
