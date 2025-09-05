@@ -28,7 +28,7 @@ interface GuestData {
   response_note?: string;
 }
 
-export default function GuestResponse() {
+function GuestResponse() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -367,3 +367,5 @@ export default function GuestResponse() {
     </div>
   );
 }
+
+export default GuestResponse;
