@@ -429,6 +429,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
             <ContactSelector
               onSelect={addParticipantFromContact}
               placeholder="Kontakt aus Favoriten oder Liste auswählen..."
+              clearAfterSelect={true}
             />
           </div>
 

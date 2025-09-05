@@ -105,6 +105,7 @@ const CreateAppointment = () => {
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
+    mode: "onSubmit", // Only validate on submit, not on change
     defaultValues: {
       title: "",
       description: "",
@@ -569,6 +570,7 @@ const CreateAppointment = () => {
                         <ContactSelector
                           onSelect={addContact}
                           placeholder="Kontakt aus Favoriten oder Liste auswählen..."
+                          clearAfterSelect={true}
                         />
 
                         {selectedContacts.length > 0 && (

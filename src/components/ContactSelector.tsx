@@ -39,13 +39,15 @@ interface ContactSelectorProps {
   selectedContactId?: string;
   placeholder?: string;
   className?: string;
+  clearAfterSelect?: boolean;
 }
 
 export const ContactSelector: React.FC<ContactSelectorProps> = ({
   onSelect,
   selectedContactId,
   placeholder = "Kontakt auswählen...",
-  className = ""
+  className = "",
+  clearAfterSelect = false
 }) => {
   const { currentTenant } = useTenant();
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -142,7 +144,13 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
   };
 
   const handleContactSelect = async (contact: Contact) => {
-    setSelectedContact(contact);
+    if (clearAfterSelect) {
+      // For multi-select scenarios, clear immediately
+      setSelectedContact(null);
+    } else {
+      // For single-select scenarios, show the selected contact
+      setSelectedContact(contact);
+    }
     setIsOpen(false);
     setSearchTerm('');
     
@@ -242,7 +250,12 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
     <div className={`relative ${className}`}>
       <Button
         variant="outline"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        type="button"
         className="w-full justify-between text-left"
       >
         {selectedContact ? (
