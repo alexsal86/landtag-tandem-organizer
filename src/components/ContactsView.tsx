@@ -420,11 +420,9 @@ export function ContactsView() {
     });
   };
 
-  // For archive tab, we need to fetch archive contacts separately
-  // For contacts tab, we already filter server-side
-  const filteredContacts = activeTab === "archive" ? 
-    contacts.filter(contact => contact.contact_type === 'archive') : 
-    contacts;
+  // For contacts tab, we already filter server-side to exclude archives
+  // For archive tab, we need to fetch archive contacts separately and filter client-side
+  const filteredContacts = contacts;
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
@@ -751,7 +749,7 @@ export function ContactsView() {
             </Card>
           ))}
         </div>
-      ) : (
+        ) : (
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -853,8 +851,8 @@ export function ContactsView() {
         </div>
         )
 
-        {/* Pagination Controls - Only show for contacts tab */}
-        {activeTab === "contacts" && (
+        {/* Pagination Controls - Only show when there are multiple pages */}
+        {totalContacts > 0 && Math.ceil(totalContacts / pageSize) > 1 && (
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>
@@ -875,101 +873,98 @@ export function ContactsView() {
               </Select>
             </div>
             
-            {Math.ceil(totalContacts / pageSize) > 1 && (
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious 
-                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                      className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                  </PaginationItem>
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                    className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                
+                {(() => {
+                  const totalPages = Math.ceil(totalContacts / pageSize);
+                  const pages = [];
                   
-                  {(() => {
-                    const totalPages = Math.ceil(totalContacts / pageSize);
-                    const pages = [];
-                    
-                    // Always show first page
-                    if (totalPages > 0) {
-                      pages.push(
-                        <PaginationItem key={1}>
-                          <PaginationLink
-                            onClick={() => setCurrentPage(1)}
-                            isActive={currentPage === 1}
-                            className="cursor-pointer"
-                          >
-                            1
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
-                    }
-                    
-                    // Show ellipsis if current page is far from start
-                    if (currentPage > 3) {
-                      pages.push(
-                        <PaginationItem key="ellipsis-start">
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      );
-                    }
-                    
-                    // Show pages around current page
-                    const startPage = Math.max(2, currentPage - 1);
-                    const endPage = Math.min(totalPages - 1, currentPage + 1);
-                    
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(
-                        <PaginationItem key={i}>
-                          <PaginationLink
-                            onClick={() => setCurrentPage(i)}
-                            isActive={currentPage === i}
-                            className="cursor-pointer"
-                          >
-                            {i}
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
-                    }
-                    
-                    // Show ellipsis if current page is far from end
-                    if (currentPage < totalPages - 2) {
-                      pages.push(
-                        <PaginationItem key="ellipsis-end">
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      );
-                    }
-                    
-                    // Always show last page
-                    if (totalPages > 1) {
-                      pages.push(
-                        <PaginationItem key={totalPages}>
-                          <PaginationLink
-                            onClick={() => setCurrentPage(totalPages)}
-                            isActive={currentPage === totalPages}
-                            className="cursor-pointer"
-                          >
-                            {totalPages}
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
-                    }
-                    
-                    return pages;
-                  })()}
+                  // Always show first page
+                  if (totalPages > 0) {
+                    pages.push(
+                      <PaginationItem key={1}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(1)}
+                          isActive={currentPage === 1}
+                          className="cursor-pointer"
+                        >
+                          1
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
                   
-                  <PaginationItem>
-                    <PaginationNext 
-                      onClick={() => currentPage < Math.ceil(totalContacts / pageSize) && setCurrentPage(currentPage + 1)}
-                      className={currentPage >= Math.ceil(totalContacts / pageSize) ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            )}
+                  // Show ellipsis if current page is far from start
+                  if (currentPage > 3) {
+                    pages.push(
+                      <PaginationItem key="ellipsis-start">
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  // Show pages around current page
+                  const startPage = Math.max(2, currentPage - 1);
+                  const endPage = Math.min(totalPages - 1, currentPage + 1);
+                  
+                  for (let i = startPage; i <= endPage; i++) {
+                    pages.push(
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(i)}
+                          isActive={currentPage === i}
+                          className="cursor-pointer"
+                        >
+                          {i}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  // Show ellipsis if current page is far from end
+                  if (currentPage < totalPages - 2) {
+                    pages.push(
+                      <PaginationItem key="ellipsis-end">
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  // Always show last page
+                  if (totalPages > 1) {
+                    pages.push(
+                      <PaginationItem key={totalPages}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(totalPages)}
+                          isActive={currentPage === totalPages}
+                          className="cursor-pointer"
+                        >
+                          {totalPages}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  return pages;
+                })()}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => currentPage < Math.ceil(totalContacts / pageSize) && setCurrentPage(currentPage + 1)}
+                    className={currentPage >= Math.ceil(totalContacts / pageSize) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         )}
-        
       ) : activeTab === "archive" ? (
         // Archive Display
         <div className="space-y-6">
