@@ -221,6 +221,37 @@ export function AppointmentDetailsSidebar({
 
         if (guestsError) {
           console.error('Error saving guests:', guestsError);
+        } else {
+          // Automatically send invitations to all guests
+          try {
+            const { error: invitationError } = await supabase.functions.invoke('send-appointment-invitation', {
+              body: { 
+                appointmentId: appointment.id,
+                sendToAll: true 
+              }
+            });
+
+            if (invitationError) {
+              console.error('Error sending invitations:', invitationError);
+              toast({
+                title: "Warnung",
+                description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden.",
+                variant: "destructive"
+              });
+            } else {
+              toast({
+                title: "Einladungen versendet",
+                description: `Einladungen wurden an ${guests.length} Gäste versendet.`
+              });
+            }
+          } catch (error) {
+            console.error('Error sending invitations:', error);
+            toast({
+              title: "Warnung",
+              description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden.",
+              variant: "destructive"
+            });
+          }
         }
       }
 
