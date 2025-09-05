@@ -17,6 +17,7 @@ import { useInfiniteContacts, Contact } from "@/hooks/useInfiniteContacts";
 import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
 import { ContactSkeleton } from "./ContactSkeleton";
 import { debounce } from "@/utils/debounce";
+import { useCounts } from "@/hooks/useCounts";
 
 interface DistributionList {
   id: string;
@@ -50,6 +51,9 @@ export function ContactsView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  
+  // Get accurate counts for tab badges
+  const { contactsCount, archiveCount, distributionListsCount } = useCounts();
 
   // Use infinite contacts hook
   const {
@@ -300,7 +304,7 @@ export function ContactsView() {
             className="gap-2"
           >
             <User className="h-4 w-4" />
-            Kontakte ({activeTab === "contacts" ? totalCount : contacts.filter(c => c.contact_type !== 'archive').length})
+            Kontakte ({contactsCount})
           </Button>
           <Button
             variant={activeTab === "distribution-lists" ? "default" : "outline"}
@@ -309,7 +313,7 @@ export function ContactsView() {
             className="gap-2"
           >
             <Users className="h-4 w-4" />
-            Verteiler ({distributionLists.length})
+            Verteiler ({distributionListsCount})
           </Button>
           <Button
             variant={activeTab === "archive" ? "default" : "outline"}
@@ -318,7 +322,7 @@ export function ContactsView() {
             className="gap-2"
           >
             <Archive className="h-4 w-4" />
-            Archiv ({activeTab === "archive" ? totalCount : contacts.filter(c => c.contact_type === 'archive').length})
+            Archiv ({archiveCount})
           </Button>
         </div>
 

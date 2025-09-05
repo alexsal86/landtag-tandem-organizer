@@ -74,14 +74,17 @@ export const useInfiniteContacts = ({
     setTotalCount(0);
   }, []);
 
-  // Debounced search effect
+  // Reset pagination when filters change
   useEffect(() => {
-    const debouncedReset = debounce(() => {
-      resetPagination();
-    }, 300);
-    
-    debouncedReset();
+    resetPagination();
   }, [searchTerm, selectedCategory, selectedType, activeTab, sortColumn, sortDirection, resetPagination]);
+
+  // Initial fetch when user and tenant are available or when pagination resets
+  useEffect(() => {
+    if (user && currentTenant && currentPage === 0) {
+      fetchContacts(false);
+    }
+  }, [user, currentTenant, currentPage]);
 
   const buildQuery = useCallback((offset: number, limit: number) => {
     let query = supabase
