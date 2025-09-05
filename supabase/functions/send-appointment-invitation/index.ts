@@ -31,6 +31,64 @@ interface InvitationRequest {
   sendToAll?: boolean;
 }
 
+// ICS Calendar generation functions
+function generateUID(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2)}@lovable.app`;
+}
+
+function formatDateToICS(date: string): string {
+  return new Date(date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+}
+
+function escapeICSValue(value: string | undefined | null): string {
+  if (!value) return '';
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '');
+}
+
+function generateICS(appointment: any, organizer: { name: string; email: string }): string {
+  const uid = generateUID();
+  const startTime = formatDateToICS(appointment.start_time);
+  const endTime = formatDateToICS(appointment.end_time);
+  const now = formatDateToICS(new Date().toISOString());
+  
+  let icsContent = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Lovable//Appointment Scheduler//DE',
+    'CALSCALE:GREGORIAN',
+    'METHOD:REQUEST',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${now}`,
+    `DTSTART:${startTime}`,
+    `DTEND:${endTime}`,
+    `SUMMARY:${escapeICSValue(appointment.title)}`,
+    `ORGANIZER;CN=${escapeICSValue(organizer.name)}:mailto:${organizer.email}`,
+  ];
+
+  if (appointment.description) {
+    icsContent.push(`DESCRIPTION:${escapeICSValue(appointment.description)}`);
+  }
+
+  if (appointment.location) {
+    icsContent.push(`LOCATION:${escapeICSValue(appointment.location)}`);
+  }
+
+  icsContent.push(
+    'STATUS:CONFIRMED',
+    'SEQUENCE:0',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  );
+
+  return icsContent.join('\r\n');
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -148,7 +206,16 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log("About to send email to:", guest.email, "for guest:", guest.name);
 
-        // Send appointment invitation email
+        // Generate ICS calendar file
+        const icsContent = generateICS(appointment, { 
+          name: organizerName, 
+          email: organizerEmail 
+        });
+        
+        // Convert ICS content to base64 for attachment
+        const icsBase64 = btoa(icsContent);
+
+        // Send appointment invitation email with ICS attachment
         const emailResponse = await resend.emails.send({
           from: "Termineinladung <noreply@alexander-salomon.de>",
           to: [guest.email],
@@ -170,6 +237,13 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Zeit:</strong> ${formattedStartTime} - ${formattedEndTime}</p>
                 ${appointment.location ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Ort:</strong> ${appointment.location}</p>` : ''}
                 ${appointment.meeting_link ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Meeting-Link:</strong> <a href="${appointment.meeting_link}">${appointment.meeting_link}</a></p>` : ''}
+              </div>
+              
+              <div style="background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px; padding: 12px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404; font-size: 14px;">
+                  📅 <strong>Kalender-Datei:</strong> Diese E-Mail enthält eine Kalender-Datei im Anhang. 
+                  Öffnen Sie die angehängte .ics-Datei, um den Termin zu Ihrem Kalender hinzuzufügen.
+                </p>
               </div>
               
               <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
@@ -201,6 +275,13 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
             </div>
           `,
+          attachments: [
+            {
+              filename: "termin.ics",
+              content: icsBase64,
+              type: "text/calendar",
+            }
+          ]
         });
 
         if (emailResponse.error) {
