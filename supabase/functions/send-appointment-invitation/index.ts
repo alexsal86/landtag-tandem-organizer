@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 console.log('🚀 send-appointment-invitation function starting...');
 
@@ -212,8 +213,15 @@ const handler = async (req: Request): Promise<Response> => {
           email: organizerEmail 
         });
         
-        // Convert ICS content to base64 for attachment
-        const icsBase64 = btoa(icsContent);
+        console.log("Generated ICS content:", icsContent.substring(0, 200) + "...");
+        console.log("Generated ICS content length:", icsContent.length);
+        
+        // Convert ICS content to base64 using Deno's built-in encoding
+        const encoder = new TextEncoder();
+        const data = encoder.encode(icsContent);
+        const icsBase64 = encode(data);
+        
+        console.log("Base64 encoded ICS length:", icsBase64.length);
 
         // Send appointment invitation email with ICS attachment
         const emailResponse = await resend.emails.send({
