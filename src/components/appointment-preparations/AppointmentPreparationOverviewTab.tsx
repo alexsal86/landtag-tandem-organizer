@@ -136,7 +136,7 @@ export function AppointmentPreparationOverviewTab({
       setShowCustomContact(true);
       setSelectedContactId("");
       setEditData(prev => ({ ...prev, contact_name: "", contact_info: "" }));
-    } else if (contactId === "") {
+    } else if (contactId === "none") {
       setShowCustomContact(false);
       setSelectedContactId("");
       setEditData(prev => ({ ...prev, contact_name: "", contact_info: "" }));
@@ -266,12 +266,12 @@ export function AppointmentPreparationOverviewTab({
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Kontakt</label>
-                <Select value={selectedContactId || (showCustomContact ? "custom" : "")} onValueChange={handleContactSelect}>
+                <Select value={selectedContactId || (showCustomContact ? "custom" : "none")} onValueChange={handleContactSelect}>
                   <SelectTrigger>
                     <SelectValue placeholder="Kontakt auswählen oder manuell eingeben" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Kein Kontakt</SelectItem>
+                    <SelectItem value="none">Kein Kontakt</SelectItem>
                     <SelectItem value="custom">
                       <div className="flex items-center gap-2">
                         <PlusIcon className="h-4 w-4" />
