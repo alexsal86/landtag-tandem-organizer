@@ -92,10 +92,18 @@ export function AppointmentPreparationDataTab({
   useEffect(() => {
     setEditData({
       ...preparation.preparation_data,
-      contact_name: extendedPreparation.contact_name || "",
-      contact_info: extendedPreparation.contact_info || "",
+      // Get contact info from preparation_data
+      contact_name: preparation.preparation_data.contact_name || "",
+      contact_info: preparation.preparation_data.contact_info || "",
       notes: preparation.notes || ""
     });
+    
+    // Initialize contact selection from preparation_data
+    if (preparation.preparation_data.contact_name && preparation.preparation_data.contact_info) {
+      setShowCustomContact(true);
+    } else if (preparation.preparation_data.contact_id) {
+      setSelectedContactId(preparation.preparation_data.contact_id);
+    }
   }, [preparation]);
 
   const fetchAppointmentDetails = async () => {
@@ -148,30 +156,22 @@ export function AppointmentPreparationDataTab({
   const handleSave = async () => {
     try {
       setSaving(true);
-      const updates: Partial<ExtendedAppointmentPreparation> = {
-        preparation_data: editData,
+      
+      // Store all data including contact info in preparation_data
+      const updatedPreparationData = {
+        ...editData,
+        // Move contact fields into preparation_data
+        contact_name: showCustomContact ? editData.contact_name : (selectedContactId ? contacts.find(c => c.id === selectedContactId)?.name : null),
+        contact_info: showCustomContact ? editData.contact_info : (selectedContactId ? `${contacts.find(c => c.id === selectedContactId)?.email || ""}${contacts.find(c => c.id === selectedContactId)?.phone ? ` | ${contacts.find(c => c.id === selectedContactId)?.phone}` : ""}`.trim().replace(/^\|/, '').trim() : null),
+        contact_id: showCustomContact ? null : selectedContactId || null
+      };
+
+      const updates: Partial<AppointmentPreparation> = {
+        preparation_data: updatedPreparationData,
         notes: editData.notes || "",
       };
 
-      // Handle contact information
-      if (showCustomContact) {
-        updates.contact_name = editData.contact_name;
-        updates.contact_info = editData.contact_info;
-        updates.contact_id = null;
-      } else if (selectedContactId) {
-        const selectedContact = contacts.find(c => c.id === selectedContactId);
-        if (selectedContact) {
-          updates.contact_name = selectedContact.name;
-          updates.contact_info = `${selectedContact.email || ""}${selectedContact.phone ? ` | ${selectedContact.phone}` : ""}`.trim().replace(/^\|/, '').trim();
-          updates.contact_id = selectedContactId;
-        }
-      } else {
-        updates.contact_name = null;
-        updates.contact_info = null;
-        updates.contact_id = null;
-      }
-
-      await onUpdate(updates as Partial<AppointmentPreparation>);
+      await onUpdate(updates);
       setIsEditing(false);
       
       toast({
@@ -193,13 +193,13 @@ export function AppointmentPreparationDataTab({
   const handleCancel = () => {
     setEditData({
       ...preparation.preparation_data,
-      contact_name: extendedPreparation.contact_name || "",
-      contact_info: extendedPreparation.contact_info || "",
+      contact_name: preparation.preparation_data.contact_name || "",
+      contact_info: preparation.preparation_data.contact_info || "",
       notes: preparation.notes || ""
     });
     setIsEditing(false);
-    setShowCustomContact(!!(extendedPreparation.contact_name && extendedPreparation.contact_info));
-    setSelectedContactId(extendedPreparation.contact_id || "");
+    setShowCustomContact(!!(preparation.preparation_data.contact_name && preparation.preparation_data.contact_info));
+    setSelectedContactId(preparation.preparation_data.contact_id || "");
   };
 
   const handleContactSelect = (contactId: string) => {
@@ -519,12 +519,12 @@ export function AppointmentPreparationDataTab({
               </div>
             ) : (
               <div>
-                {extendedPreparation.contact_name ? (
+                {preparation.preparation_data.contact_name ? (
                   <div className="space-y-2">
-                    <div className="font-medium">{extendedPreparation.contact_name}</div>
-                    {extendedPreparation.contact_info && (
+                    <div className="font-medium">{preparation.preparation_data.contact_name}</div>
+                    {preparation.preparation_data.contact_info && (
                       <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {extendedPreparation.contact_info}
+                        {preparation.preparation_data.contact_info}
                       </div>
                     )}
                   </div>

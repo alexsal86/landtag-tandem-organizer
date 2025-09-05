@@ -28,6 +28,11 @@ export interface AppointmentPreparation {
     technology_setup?: string;
     dress_code?: string;
     event_type?: string;
+    // Contact information fields
+    contact_name?: string;
+    contact_info?: string;
+    contact_id?: string;
+    notes?: string;
   };
   checklist_items: Array<{
     id: string;
