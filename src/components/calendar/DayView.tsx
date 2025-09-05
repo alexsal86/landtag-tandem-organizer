@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { CalendarEvent } from "../CalendarView";
 import { formatEventDisplay, isMultiDayEvent, getEventDays } from "@/lib/timeUtils";
-import { FileText } from "lucide-react";
+import { FileText, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { NewItemIndicator } from "../NewItemIndicator";
@@ -16,6 +16,7 @@ interface DayViewProps {
 export function DayView({ date, events, onAppointmentClick, onPreparationClick }: DayViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
+  const [guestCounts, setGuestCounts] = useState<Record<string, { total: number; confirmed: number; declined: number }>>({});
   const { isItemNew } = useNewItemIndicators('calendar');
   
   // Separate all-day and timed events
@@ -33,28 +34,49 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
   }, [date]);
 
   useEffect(() => {
-    // Fetch document counts for all events
-    const fetchDocumentCounts = async () => {
-      const appointmentIds = events.map(event => event.id).filter(Boolean);
+    // Fetch document counts and guest counts for all events
+    const fetchCounts = async () => {
+      const appointmentIds = events.map(event => event.id).filter(id => !id.startsWith('blocked-'));
       if (appointmentIds.length === 0) return;
 
       try {
-        const { data } = await supabase
+        // Fetch document counts
+        const { data: docData } = await supabase
           .from('appointment_documents')
           .select('appointment_id')
           .in('appointment_id', appointmentIds);
 
-        const counts: Record<string, number> = {};
-        data?.forEach(doc => {
-          counts[doc.appointment_id] = (counts[doc.appointment_id] || 0) + 1;
+        const docCounts: Record<string, number> = {};
+        docData?.forEach(doc => {
+          docCounts[doc.appointment_id] = (docCounts[doc.appointment_id] || 0) + 1;
         });
-        setDocumentCounts(counts);
+        setDocumentCounts(docCounts);
+
+        // Fetch guest counts
+        const { data: guestData } = await supabase
+          .from('appointment_guests')
+          .select('appointment_id, status')
+          .in('appointment_id', appointmentIds);
+
+        const guestCountsTemp: Record<string, { total: number; confirmed: number; declined: number }> = {};
+        guestData?.forEach(guest => {
+          if (!guestCountsTemp[guest.appointment_id]) {
+            guestCountsTemp[guest.appointment_id] = { total: 0, confirmed: 0, declined: 0 };
+          }
+          guestCountsTemp[guest.appointment_id].total++;
+          if (guest.status === 'confirmed') {
+            guestCountsTemp[guest.appointment_id].confirmed++;
+          } else if (guest.status === 'declined') {
+            guestCountsTemp[guest.appointment_id].declined++;
+          }
+        });
+        setGuestCounts(guestCountsTemp);
       } catch (error) {
-        console.error('Error fetching document counts:', error);
+        console.error('Error fetching counts:', error);
       }
     };
 
-    fetchDocumentCounts();
+    fetchCounts();
   }, [events]);
   const hours = Array.from({ length: 24 }, (_, i) => i);
   
@@ -225,6 +247,12 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                               <div className="flex items-center space-x-1">
                                 <FileText className="h-3 w-3" />
                                 <span className="text-xs">{documentCounts[event.id]}</span>
+                              </div>
+                            )}
+                            {guestCounts[event.id] && guestCounts[event.id].total > 0 && (
+                              <div className="flex items-center space-x-1" title={`${guestCounts[event.id].confirmed} zugesagt, ${guestCounts[event.id].declined} abgesagt, ${guestCounts[event.id].total - guestCounts[event.id].confirmed - guestCounts[event.id].declined} ausstehend`}>
+                                <Users className="h-3 w-3" />
+                                <span className="text-xs">{guestCounts[event.id].total}</span>
                               </div>
                             )}
                             <button
@@ -402,18 +430,24 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                                <div className="font-medium truncate">
                                  {isEventContinuation ? `→ ${event.title}` : event.title}
                                </div>
-                               <div className="flex items-center space-x-1">
-                                 {documentCounts[event.id] > 0 && (
-                                   <div className="flex items-center space-x-1">
-                                     <FileText className="h-3 w-3" />
-                                     <span className="text-xs">{documentCounts[event.id]}</span>
-                                   </div>
-                                 )}
-                                 <button
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     onPreparationClick?.(event);
-                                   }}
+                                <div className="flex items-center space-x-1">
+                                  {documentCounts[event.id] > 0 && (
+                                    <div className="flex items-center space-x-1">
+                                      <FileText className="h-3 w-3" />
+                                      <span className="text-xs">{documentCounts[event.id]}</span>
+                                    </div>
+                                  )}
+                                  {guestCounts[event.id] && guestCounts[event.id].total > 0 && (
+                                    <div className="flex items-center space-x-1" title={`${guestCounts[event.id].confirmed} zugesagt, ${guestCounts[event.id].declined} abgesagt, ${guestCounts[event.id].total - guestCounts[event.id].confirmed - guestCounts[event.id].declined} ausstehend`}>
+                                      <Users className="h-3 w-3" />
+                                      <span className="text-xs">{guestCounts[event.id].total}</span>
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onPreparationClick?.(event);
+                                    }}
                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
                                    title="Vorbereitung erstellen/bearbeiten"
                                  >

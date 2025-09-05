@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save } from "lucide-react";
+import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -28,6 +28,16 @@ export function AppointmentDetailsSidebar({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string; color: string }>>([]);
+  const [guests, setGuests] = useState<Array<{
+    id: string;
+    name: string;
+    email: string;
+    status: string;
+    responded_at?: string;
+    response_note?: string;
+  }>>([]);
+  const [isLoadingGuests, setIsLoadingGuests] = useState(false);
+  const [isSendingInvitations, setIsSendingInvitations] = useState(false);
   const [editData, setEditData] = useState({
     title: "",
     description: "",
@@ -54,6 +64,71 @@ export function AppointmentDetailsSidebar({
 
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (appointment && !appointment.id.startsWith('blocked-')) {
+      fetchGuests();
+    }
+  }, [appointment]);
+
+  const fetchGuests = async () => {
+    if (!appointment || appointment.id.startsWith('blocked-')) return;
+    
+    setIsLoadingGuests(true);
+    try {
+      const { data: guestsData, error } = await supabase
+        .from('appointment_guests')
+        .select('*')
+        .eq('appointment_id', appointment.id)
+        .order('name');
+
+      if (error) throw error;
+      setGuests(guestsData || []);
+    } catch (error) {
+      console.error('Error fetching guests:', error);
+    } finally {
+      setIsLoadingGuests(false);
+    }
+  };
+
+  const sendInvitations = async () => {
+    if (!appointment || !guests.length || appointment.id.startsWith('blocked-')) return;
+    
+    setIsSendingInvitations(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-appointment-invitation', {
+        body: { 
+          appointmentId: appointment.id,
+          sendToAll: true 
+        }
+      });
+
+      if (error) throw error;
+
+      // Update last invitation sent timestamp
+      await supabase
+        .from('appointments')
+        .update({ last_invitation_sent_at: new Date().toISOString() })
+        .eq('id', appointment.id);
+
+      toast({
+        title: "Einladungen versendet",
+        description: `${guests.length} Einladung(en) wurden erfolgreich versendet.`
+      });
+
+      onUpdate();
+      fetchGuests();
+    } catch (error) {
+      console.error('Error sending invitations:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Einladungen konnten nicht versendet werden.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSendingInvitations(false);
+    }
+  };
 
   const handleEdit = () => {
     if (!appointment) return;
@@ -239,6 +314,45 @@ export function AppointmentDetailsSidebar({
         return "bg-green-500 text-green-50";
       default:
         return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const getGuestStatusColor = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "bg-green-100 text-green-800 border-green-300";
+      case "declined":
+        return "bg-red-100 text-red-800 border-red-300";
+      case "invited":
+        return "bg-blue-100 text-blue-800 border-blue-300";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
+    }
+  };
+
+  const getGuestStatusIcon = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return <Check className="h-3 w-3" />;
+      case "declined":
+        return <XIcon className="h-3 w-3" />;
+      case "invited":
+        return <Mail className="h-3 w-3" />;
+      default:
+        return null;
+    }
+  };
+
+  const getGuestStatusText = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "Zugesagt";
+      case "declined":
+        return "Abgesagt";
+      case "invited":
+        return "Eingeladen";
+      default:
+        return status;
     }
   };
 
@@ -493,6 +607,70 @@ export function AppointmentDetailsSidebar({
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Guests Section */}
+          {!appointment.id.startsWith('blocked-') && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Gäste ({guests.length})
+                </h3>
+                {guests.length > 0 && (
+                  <Button
+                    onClick={sendInvitations}
+                    variant="outline"
+                    size="sm"
+                    disabled={isSendingInvitations}
+                  >
+                    <Mail className="h-3 w-3 mr-1" />
+                    {isSendingInvitations ? "Wird gesendet..." : "Einladungen senden"}
+                  </Button>
+                )}
+              </div>
+
+              {isLoadingGuests ? (
+                <div className="text-sm text-muted-foreground">Lade Gäste...</div>
+              ) : guests.length > 0 ? (
+                <div className="space-y-2">
+                  {guests.map((guest) => (
+                    <div key={guest.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{guest.name}</div>
+                        <div className="text-sm text-muted-foreground truncate">{guest.email}</div>
+                        {guest.response_note && (
+                          <div className="text-xs text-muted-foreground mt-1 italic">
+                            "{guest.response_note}"
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`text-xs ${getGuestStatusColor(guest.status)}`}>
+                          <div className="flex items-center gap-1">
+                            {getGuestStatusIcon(guest.status)}
+                            {getGuestStatusText(guest.status)}
+                          </div>
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Show last invitation sent if available */}
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Verwalten Sie Gäste über "Bearbeiten" → Gäste hinzufügen
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-4 text-center">
+                  <UserPlus className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                  <div>Keine Gäste für diesen Termin</div>
+                  <div className="text-xs mt-1">
+                    Bearbeiten Sie den Termin, um Gäste hinzuzufügen
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
