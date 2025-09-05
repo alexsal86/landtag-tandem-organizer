@@ -95,16 +95,26 @@ export function AppointmentDetailsSidebar({
   };
 
   const sendInvitations = async () => {
-    if (!appointment || !guests.length || appointment.id.startsWith('blocked-')) return;
+    if (!appointment || !guests.length || appointment.id.startsWith('blocked-')) {
+      console.log('Cannot send invitations:', { 
+        hasAppointment: !!appointment, 
+        guestsCount: guests.length, 
+        isBlocked: appointment?.id.startsWith('blocked-') 
+      });
+      return;
+    }
     
+    console.log('Sending invitations for appointment:', appointment.id, 'to guests:', guests);
     setIsSendingInvitations(true);
     try {
-      const { error } = await supabase.functions.invoke('send-appointment-invitation', {
+      const { data, error } = await supabase.functions.invoke('send-appointment-invitation', {
         body: { 
           appointmentId: appointment.id,
           sendToAll: true 
         }
       });
+
+      console.log('Invitation response:', { data, error });
 
       if (error) throw error;
 
@@ -125,7 +135,7 @@ export function AppointmentDetailsSidebar({
       console.error('Error sending invitations:', error);
       toast({
         title: "Fehler",
-        description: "Die Einladungen konnten nicht versendet werden.",
+        description: `Die Einladungen konnten nicht versendet werden: ${error.message}`,
         variant: "destructive"
       });
     } finally {
@@ -701,8 +711,22 @@ export function AppointmentDetailsSidebar({
                   <GuestManager
                     guests={guests.map(g => ({ name: g.name, email: g.email }))}
                     onGuestsChange={(updatedGuests) => {
-                      // We'll handle guest updates when saving the appointment
-                      console.log('Guest updates:', updatedGuests);
+                      // Update local guests state immediately
+                      const updatedGuestsWithId = updatedGuests.map((guest, index) => ({
+                        id: guests[index]?.id || crypto.randomUUID(),
+                        appointment_id: appointment.id,
+                        tenant_id: currentTenant?.id || '',
+                        name: guest.name,
+                        email: guest.email,
+                        status: 'pending' as const,
+                        invitation_token: crypto.randomUUID(),
+                        invited_at: null,
+                        responded_at: null,
+                        response_note: null,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                      }));
+                      setGuests(updatedGuestsWithId);
                     }}
                   />
                 </div>
