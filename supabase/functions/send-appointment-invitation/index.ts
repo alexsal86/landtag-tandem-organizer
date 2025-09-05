@@ -2,7 +2,22 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+console.log('🚀 send-appointment-invitation function starting...');
+
+// Initialize Resend with error handling
+let resend: Resend;
+try {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) {
+    console.error('❌ RESEND_API_KEY is not available');
+    throw new Error('RESEND_API_KEY environment variable is required');
+  }
+  resend = new Resend(apiKey);
+  console.log('✅ Resend initialized successfully');
+} catch (error) {
+  console.error('❌ Failed to initialize Resend:', error);
+  throw error;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
