@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -73,6 +75,11 @@ export function ContactsView() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalContacts, setTotalContacts] = useState(0);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -83,22 +90,74 @@ export function ContactsView() {
       fetchContacts();
       fetchDistributionLists();
     }
-  }, [user, currentTenant]);
+  }, [user, currentTenant, currentPage, pageSize]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    } else {
+      fetchContacts();
+    }
+  }, [searchTerm, selectedCategory, selectedType, sortColumn, sortDirection, activeTab]);
 
   const fetchContacts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Build the base query with filters
+      let query = supabase
         .from('contacts')
-        .select('*')
-        .eq('tenant_id', currentTenant?.id || '')
-        .order('is_favorite', { ascending: false })
-        .order('name');
+        .select('*', { count: 'exact' })
+        .eq('tenant_id', currentTenant?.id || '');
+
+      // For contacts tab, exclude archive contacts
+      if (activeTab === "contacts") {
+        query = query.neq('contact_type', 'archive');
+      }
+      
+      // For archive tab, only include archive contacts
+      if (activeTab === "archive") {
+        query = query.eq('contact_type', 'archive');
+      }
+
+      // Apply filters
+      if (selectedType !== "all") {
+        query = query.eq('contact_type', selectedType);
+      }
+      
+      if (selectedCategory === "favorites") {
+        query = query.eq('is_favorite', true);
+      } else if (selectedCategory !== "all") {
+        query = query.eq('category', selectedCategory);
+      }
+
+      // Apply search
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,organization.ilike.%${searchTerm}%,role.ilike.%${searchTerm}%,industry.ilike.%${searchTerm}%,main_contact_person.ilike.%${searchTerm}%,legal_form.ilike.%${searchTerm}%`);
+      }
+
+      // Apply sorting
+      if (sortColumn) {
+        query = query.order(sortColumn, { ascending: sortDirection === "asc" });
+      } else {
+        query = query.order('is_favorite', { ascending: false }).order('name');
+      }
+
+      // Apply pagination
+      const from = (currentPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
 
-      // If no contacts exist, insert sample data
-      if (!data || data.length === 0) {
+      // Set total count
+      setTotalContacts(count || 0);
+
+      // If no contacts exist and we're on page 1, insert sample data
+      if ((!data || data.length === 0) && currentPage === 1 && !searchTerm && selectedCategory === "all" && selectedType === "all") {
         await insertSampleContacts();
         return;
       }
@@ -266,13 +325,13 @@ export function ContactsView() {
   };
 
   const categories = [
-    { value: "all", label: "Alle Kontakte", count: contacts.filter(c => c.contact_type !== 'archive').length },
-    { value: "favorites", label: "Favoriten", count: contacts.filter(c => c.is_favorite && c.contact_type !== 'archive').length },
-    { value: "citizen", label: "Bürger", count: contacts.filter(c => c.category === "citizen").length },
-    { value: "colleague", label: "Kollegen", count: contacts.filter(c => c.category === "colleague").length },
-    { value: "business", label: "Wirtschaft", count: contacts.filter(c => c.category === "business").length },
-    { value: "media", label: "Medien", count: contacts.filter(c => c.category === "media").length },
-    { value: "lobbyist", label: "Lobbyisten", count: contacts.filter(c => c.category === "lobbyist").length },
+    { value: "all", label: "Alle Kontakte", count: totalContacts },
+    { value: "favorites", label: "Favoriten", count: "?" },
+    { value: "citizen", label: "Bürger", count: "?" },
+    { value: "colleague", label: "Kollegen", count: "?" },
+    { value: "business", label: "Wirtschaft", count: "?" },
+    { value: "media", label: "Medien", count: "?" },
+    { value: "lobbyist", label: "Lobbyisten", count: "?" },
   ];
 
   const getCategoryColor = (category: Contact["category"]) => {
@@ -361,27 +420,11 @@ export function ContactsView() {
     });
   };
 
-  const filteredContacts = getSortedContacts(contacts.filter(contact => {
-    // Filter out archive contacts from regular view
-    if (activeTab === "contacts" && contact.contact_type === 'archive') return false;
-    if (activeTab === "archive" && contact.contact_type !== 'archive') return false;
-    
-    const matchesSearch = 
-      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (contact.organization && contact.organization.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (contact.role && contact.role.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (contact.industry && contact.industry.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (contact.main_contact_person && contact.main_contact_person.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (contact.legal_form && contact.legal_form.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesCategory = 
-      selectedCategory === "all" || 
-      (selectedCategory === "favorites" && contact.is_favorite) ||
-      (selectedCategory !== "favorites" && contact.category === selectedCategory);
-    const matchesType = selectedType === "all" || contact.contact_type === selectedType;
-    
-    return matchesSearch && matchesCategory && matchesType;
-  }));
+  // For archive tab, we need to fetch archive contacts separately
+  // For contacts tab, we already filter server-side
+  const filteredContacts = activeTab === "archive" ? 
+    contacts.filter(contact => contact.contact_type === 'archive') : 
+    contacts;
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
@@ -468,7 +511,7 @@ export function ContactsView() {
             className="gap-2"
           >
             <User className="h-4 w-4" />
-            Kontakte ({contacts.filter(c => c.contact_type !== 'archive').length})
+            Kontakte ({totalContacts})
           </Button>
           <Button
             variant={activeTab === "distribution-lists" ? "default" : "outline"}
@@ -486,7 +529,7 @@ export function ContactsView() {
             className="gap-2"
           >
             <Archive className="h-4 w-4" />
-            Archiv ({contacts.filter(c => c.contact_type === 'archive').length})
+            Archiv (?)
           </Button>
         </div>
 
@@ -546,7 +589,7 @@ export function ContactsView() {
             onClick={() => setSelectedType("all")}
             className="whitespace-nowrap"
           >
-            Alle ({contacts.length})
+            Alle ({totalContacts})
           </Button>
           <Button
             variant={selectedType === "person" ? "default" : "outline"}
@@ -554,7 +597,7 @@ export function ContactsView() {
             onClick={() => setSelectedType("person")}
             className="whitespace-nowrap"
           >
-            Personen ({contacts.filter(c => c.contact_type === "person").length})
+            Personen (?)
           </Button>
           <Button
             variant={selectedType === "organization" ? "default" : "outline"}
@@ -562,7 +605,7 @@ export function ContactsView() {
             onClick={() => setSelectedType("organization")}
             className="whitespace-nowrap"
           >
-            Organisationen ({contacts.filter(c => c.contact_type === "organization").length})
+            Organisationen (?)
           </Button>
         </div>
         )}
@@ -809,6 +852,124 @@ export function ContactsView() {
           </Table>
         </div>
         )
+
+        {/* Pagination Controls - Only show for contacts tab */}
+        {activeTab === "contacts" && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                Zeige {((currentPage - 1) * pageSize) + 1} bis {Math.min(currentPage * pageSize, totalContacts)} von {totalContacts} Kontakten
+              </span>
+              <Select value={pageSize.toString()} onValueChange={(value) => {
+                setPageSize(Number(value));
+                setCurrentPage(1);
+              }}>
+                <SelectTrigger className="w-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25 pro Seite</SelectItem>
+                  <SelectItem value="50">50 pro Seite</SelectItem>
+                  <SelectItem value="100">100 pro Seite</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {Math.ceil(totalContacts / pageSize) > 1 && (
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                      className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  
+                  {(() => {
+                    const totalPages = Math.ceil(totalContacts / pageSize);
+                    const pages = [];
+                    
+                    // Always show first page
+                    if (totalPages > 0) {
+                      pages.push(
+                        <PaginationItem key={1}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(1)}
+                            isActive={currentPage === 1}
+                            className="cursor-pointer"
+                          >
+                            1
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+                    
+                    // Show ellipsis if current page is far from start
+                    if (currentPage > 3) {
+                      pages.push(
+                        <PaginationItem key="ellipsis-start">
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    
+                    // Show pages around current page
+                    const startPage = Math.max(2, currentPage - 1);
+                    const endPage = Math.min(totalPages - 1, currentPage + 1);
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(
+                        <PaginationItem key={i}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(i)}
+                            isActive={currentPage === i}
+                            className="cursor-pointer"
+                          >
+                            {i}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+                    
+                    // Show ellipsis if current page is far from end
+                    if (currentPage < totalPages - 2) {
+                      pages.push(
+                        <PaginationItem key="ellipsis-end">
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    
+                    // Always show last page
+                    if (totalPages > 1) {
+                      pages.push(
+                        <PaginationItem key={totalPages}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(totalPages)}
+                            isActive={currentPage === totalPages}
+                            className="cursor-pointer"
+                          >
+                            {totalPages}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+                    
+                    return pages;
+                  })()}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => currentPage < Math.ceil(totalContacts / pageSize) && setCurrentPage(currentPage + 1)}
+                      className={currentPage >= Math.ceil(totalContacts / pageSize) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
+          </div>
+        )}
+        
       ) : activeTab === "archive" ? (
         // Archive Display
         <div className="space-y-6">
