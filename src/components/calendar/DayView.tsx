@@ -300,119 +300,70 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                       const widthPercentage = 100 / totalColumns;
                       const leftOffset = (widthPercentage * column);
                       
-                      // Calculate event height based on duration
-                      let eventHeight = 58; // Default single hour height
-                      let isEventStart = false;
-                      let isEventContinuation = false;
-                      
-                      const eventDate = event.date.toDateString();
-                      const viewDate = date.toDateString();
-                      const [startHour] = event.time.split(':').map(Number);
-                      
-                      if (eventDate === viewDate) {
-                        // Event starts on this day
-                        isEventStart = hour === startHour;
-                        
-                        if (event.endTime) {
-                          // Calculate actual height based on end time
-                          const eventStart = new Date(event.date);
-                          const eventEnd = new Date(event.endTime);
-                          const hourStart = new Date(date);
-                          hourStart.setHours(hour, 0, 0, 0);
-                          
-                          if (eventEnd.toDateString() === date.toDateString()) {
-                            // Event ends on same day
-                            const endHour = eventEnd.getHours();
-                            const endMinutes = eventEnd.getMinutes();
-                            
-                            if (hour === startHour) {
-                              // This is the starting hour
-                              const hoursSpanned = endHour - hour + (endMinutes > 0 ? 1 : 0);
-                              eventHeight = Math.max(hoursSpanned * 60 - 2, 58);
-                            } else if (hour > startHour && hour < endHour) {
-                              // This is a middle hour - don't render, it's covered by the start hour
-                              return null;
-                            } else if (hour === endHour && endMinutes > 0) {
-                              // This is the end hour with partial time - don't render, covered by start
-                              return null;
-                            }
-                          } else {
-                            // Multi-day event - extends to end of day
-                            if (hour === startHour) {
-                              const hoursToEndOfDay = 24 - hour;
-                              eventHeight = hoursToEndOfDay * 60 - 2;
-                            } else if (hour > startHour) {
-                              // Don't render - covered by start hour
-                              return null;
-                            }
-                          }
-                        } else {
-                          // Fallback to duration calculation
-                          const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-                          if (hour === startHour) {
-                            eventHeight = Math.max(durationMinutes, 58);
-                          } else {
-                            return null; // Don't render for other hours
-                          }
-                        }
-                      } else {
-                        // Event continuation from previous day
-                        isEventContinuation = true;
-                        if (event.endTime) {
-                          const eventEnd = new Date(event.endTime);
-                          if (eventEnd.toDateString() === date.toDateString()) {
-                            // Event ends today
-                            const endHour = eventEnd.getHours();
-                            const endMinutes = eventEnd.getMinutes();
-                            
-                            if (hour === 0) {
-                              // Show from start of day until end
-                              const hoursSpanned = endHour + (endMinutes > 0 ? 1 : 0);
-                              eventHeight = Math.max(hoursSpanned * 60 - 2, 58);
-                            } else if (hour > 0 && hour < endHour) {
-                              // Don't render - covered by hour 0
-                              return null;
-                            } else if (hour === endHour && endMinutes > 0) {
-                              // Don't render - covered by hour 0
-                              return null;
-                            }
-                          } else {
-                            // Event continues past today
-                            if (hour === 0) {
-                              eventHeight = 24 * 60 - 2; // Full day
-                            } else {
-                              return null; // Don't render - covered by hour 0
-                            }
-                          }
-                        }
-                      }
-                      
-                        // Calculate precise positioning within the hour
-                        let topOffset = 0;
-                        let preciseHeight = eventHeight;
-                        
-                        if (eventDate === viewDate && hour === startHour) {
-                          // Calculate exact position within the hour
-                          const [startHours, startMinutes] = event.time.split(':').map(Number);
-                          topOffset = (startMinutes / 60) * 60; // Convert minutes to pixels (60px per hour)
-                          
-                          if (event.endTime) {
-                            const eventStart = new Date(event.date);
-                            const eventEnd = new Date(event.endTime);
-                            const durationMs = eventEnd.getTime() - eventStart.getTime();
-                            const durationHours = durationMs / (1000 * 60 * 60);
-                            preciseHeight = Math.max(durationHours * 60, 20); // Minimum 20px height
-                          }
-                        }
+                       // Calculate event height and positioning based on duration
+                       let eventHeight = 58;
+                       let topOffset = 0;
+                       let isEventStart = false;
+                       let isEventContinuation = false;
+                       
+                       const eventDate = event.date.toDateString();
+                       const viewDate = date.toDateString();
+                       const [startHour, startMinutes] = event.time.split(':').map(Number);
+                       
+                       if (eventDate === viewDate) {
+                         // Event starts on this day
+                         isEventStart = hour === startHour;
+                         
+                         if (hour === startHour) {
+                           // Calculate precise positioning and height
+                           topOffset = (startMinutes / 60) * 60; // Minutes within the hour as pixels
+                           
+                           if (event.endTime) {
+                             // Use actual end time for precise calculation
+                             const eventStart = new Date(event.date);
+                             const eventEnd = new Date(event.endTime);
+                             const durationMs = eventEnd.getTime() - eventStart.getTime();
+                             const durationMinutes = durationMs / (1000 * 60);
+                             eventHeight = Math.max(durationMinutes, 15); // 1px per minute, minimum 15px
+                           } else {
+                             // Fallback to duration string
+                             const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+                             eventHeight = Math.max(durationMinutes, 15);
+                           }
+                         } else {
+                           // Not the starting hour, don't render (covered by starting hour)
+                           return null;
+                         }
+                       } else {
+                         // Event continuation from previous day
+                         isEventContinuation = true;
+                         if (event.endTime && hour === 0) {
+                           // Show continuation from start of day
+                           const eventEnd = new Date(event.endTime);
+                           if (eventEnd.toDateString() === date.toDateString()) {
+                             // Event ends today
+                             const endHour = eventEnd.getHours();
+                             const endMinutes = eventEnd.getMinutes();
+                             const totalMinutesToEnd = endHour * 60 + endMinutes;
+                             eventHeight = Math.max(totalMinutesToEnd, 15);
+                           } else {
+                             // Event continues past today - full day
+                             eventHeight = 24 * 60;
+                           }
+                         } else if (hour > 0) {
+                           // Don't render continuation in other hours
+                           return null;
+                         }
+                       }
 
                          return (
                            <div
                             key={`${event.id}-${hour}`}
                             className={`absolute p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity group relative ${getEventTypeColor(event)} ${isEventContinuation ? 'border-l-4 border-l-yellow-400' : ''}`}
-                            style={{ 
-                              width: `${widthPercentage - 2}%`, // Reduced width to create spacing
-                              left: `${leftOffset + 1}%`, // Add left margin for spacing
-                              height: `${preciseHeight}px`,
+                             style={{ 
+                               width: `${widthPercentage - 2}%`, // Reduced width to create spacing
+                               left: `${leftOffset + 1}%`, // Add left margin for spacing
+                               height: `${eventHeight}px`,
                               top: `${topOffset}px`,
                               marginBottom: '2px',
                               marginLeft: `${column * 4}px`, // Additional left indent for overlapping events
