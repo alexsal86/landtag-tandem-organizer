@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatEventDisplay } from "@/lib/timeUtils";
 import { GuestManager } from "../GuestManager";
+import { useTenant } from "@/hooks/useTenant";
 
 interface AppointmentDetailsSidebarProps {
   appointment: CalendarEvent | null;
@@ -26,6 +27,7 @@ export function AppointmentDetailsSidebar({
   onUpdate 
 }: AppointmentDetailsSidebarProps) {
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string; color: string }>>([]);
@@ -189,6 +191,37 @@ export function AppointmentDetailsSidebar({
 
       if (error) {
         throw error;
+      }
+
+      // Update guests if in edit mode (when GuestManager is active)
+      if (guests.length > 0) {
+        // Delete existing guests first
+        const { error: deleteError } = await supabase
+          .from('appointment_guests')
+          .delete()
+          .eq('appointment_id', appointment.id);
+
+        if (deleteError) {
+          console.error('Error deleting existing guests:', deleteError);
+        }
+
+        // Insert updated guests with tokens
+        const guestEntries = guests.map(guest => ({
+          appointment_id: appointment.id,
+          tenant_id: currentTenant?.id,
+          name: guest.name,
+          email: guest.email,
+          status: 'pending' as const,
+          invitation_token: crypto.randomUUID() + '-' + Date.now(),
+        }));
+
+        const { error: guestsError } = await supabase
+          .from('appointment_guests')
+          .insert(guestEntries);
+
+        if (guestsError) {
+          console.error('Error saving guests:', guestsError);
+        }
       }
 
       toast({

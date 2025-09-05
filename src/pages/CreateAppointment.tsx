@@ -231,7 +231,8 @@ const CreateAppointment = () => {
           tenant_id: currentTenant.id,
           name: guest.name,
           email: guest.email,
-          status: 'invited',
+          status: 'invited' as const,
+          invitation_token: crypto.randomUUID() + '-' + Date.now(), // Generate unique token
         }));
 
         const { error: guestsError } = await supabase
