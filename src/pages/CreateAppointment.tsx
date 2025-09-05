@@ -22,6 +22,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { AppointmentPollCreator } from "@/components/poll/AppointmentPollCreator";
 import { AppointmentFileUpload } from "@/components/appointments/AppointmentFileUpload";
 import { ContactSelector } from "@/components/ContactSelector";
+import { GuestManager } from "@/components/GuestManager";
 
 // Helper functions for intelligent date/time defaults
 const getDefaultStartTime = () => {
@@ -102,6 +103,7 @@ const CreateAppointment = () => {
   const [isAllDay, setIsAllDay] = useState(false);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [appointmentGuests, setAppointmentGuests] = useState<Array<{name: string, email: string}>>([]);
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
