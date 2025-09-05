@@ -31,7 +31,8 @@ function formatDateToICS(date: string): string {
   return new Date(date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 }
 
-function escapeICSValue(value: string): string {
+function escapeICSValue(value: string | undefined | null): string {
+  if (!value) return '';
   return value
     .replace(/\\/g, '\\\\')
     .replace(/;/g, '\\;')
