@@ -231,7 +231,7 @@ const handler = async (req: Request): Promise<Response> => {
         
         // Send email with ICS attachment
         const emailResponse = await resend.emails.send({
-          from: `${organizerData.display_name} <onboarding@resend.dev>`,
+          from: `Termineinladung <noreply@alexander-salomon.de>`,
           to: [guest.email],
           subject: `Termineinladung: ${appointment.title}`,
           html: emailHtml,
