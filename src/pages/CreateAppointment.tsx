@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format } from "date-fns";
+import { format, addHours, addMinutes } from "date-fns";
 import { de } from "date-fns/locale";
 import { Calendar, Clock, MapPin, Users, ArrowLeft, Save, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,11 +22,46 @@ import { useTenant } from "@/hooks/useTenant";
 import { AppointmentPollCreator } from "@/components/poll/AppointmentPollCreator";
 import { AppointmentFileUpload } from "@/components/appointments/AppointmentFileUpload";
 
+// Helper functions for intelligent date/time defaults
+const getDefaultStartTime = () => {
+  const now = new Date();
+  // Round to next quarter hour
+  const minutes = now.getMinutes();
+  const roundedMinutes = Math.ceil(minutes / 15) * 15;
+  const roundedTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), roundedMinutes);
+  
+  // If we're past the hour, add an hour
+  if (roundedMinutes >= 60) {
+    roundedTime.setHours(roundedTime.getHours() + 1);
+    roundedTime.setMinutes(0);
+  }
+  
+  return roundedTime;
+};
+
+const getDefaultEndTime = (startTime: Date) => {
+  return addHours(startTime, 1);
+};
+
+const formatDateForInput = (date: Date) => {
+  return format(date, 'yyyy-MM-dd');
+};
+
+const formatTimeForInput = (date: Date) => {
+  return format(date, 'HH:mm');
+};
+
+const formatDateTimeForInput = (date: Date) => {
+  return format(date, "yyyy-MM-dd'T'HH:mm");
+};
+
 const appointmentSchema = z.object({
   title: z.string().min(1, "Titel ist erforderlich"),
   description: z.string().optional(),
-  start_time: z.string().min(1, "Startzeit ist erforderlich"),
-  end_time: z.string().min(1, "Endzeit ist erforderlich"),
+  start_date: z.string().min(1, "Startdatum ist erforderlich"),
+  start_time: z.string().optional(),
+  end_date: z.string().optional(),
+  end_time: z.string().optional(),
   location: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]),
   category: z.string().min(1, "Kategorie ist erforderlich"),
@@ -36,14 +71,14 @@ const appointmentSchema = z.object({
 }).refine((data) => {
   if (data.is_all_day) {
     // For all-day events, only check dates
-    const startDate = new Date(data.start_time);
-    const endDate = new Date(data.end_time);
+    const startDate = new Date(data.start_date);
+    const endDate = new Date(data.end_date || data.start_date);
     return endDate >= startDate;
   } else {
     // For regular events, check full datetime
-    const startTime = new Date(data.start_time);
-    const endTime = new Date(data.end_time);
-    return endTime > startTime;
+    const startDateTime = new Date(`${data.start_date}T${data.start_time || '00:00'}`);
+    const endDateTime = new Date(`${data.end_date || data.start_date}T${data.end_time || '00:00'}`);
+    return endDateTime > startDateTime;
   }
 }, {
   message: "Endzeit muss nach der Startzeit liegen",
@@ -73,8 +108,10 @@ const CreateAppointment = () => {
     defaultValues: {
       title: "",
       description: "",
-      start_time: "",
-      end_time: "",
+      start_date: formatDateForInput(getDefaultStartTime()),
+      start_time: formatTimeForInput(getDefaultStartTime()),
+      end_date: formatDateForInput(getDefaultStartTime()),
+      end_time: formatTimeForInput(getDefaultEndTime(getDefaultStartTime())),
       location: "",
       priority: "medium",
       category: "meeting",
@@ -136,13 +173,16 @@ const CreateAppointment = () => {
 
     setLoading(true);
     try {
-      let startTime = values.start_time;
-      let endTime = values.end_time;
+      let startTime: string;
+      let endTime: string;
       
-      // For all-day events, set proper times
+      // Build datetime strings from separate date/time fields
       if (values.is_all_day) {
-        startTime = values.start_time + "T00:00:00";
-        endTime = values.end_time + "T23:59:59";
+        startTime = values.start_date + "T00:00:00";
+        endTime = (values.end_date || values.start_date) + "T23:59:59";
+      } else {
+        startTime = values.start_date + "T" + (values.start_time || "09:00") + ":00";
+        endTime = (values.end_date || values.start_date) + "T" + (values.end_time || "10:00") + ":00";
       }
 
       // Create appointment
@@ -217,35 +257,37 @@ const CreateAppointment = () => {
     form.setValue("is_all_day", checked);
     
     if (checked) {
-      // Convert datetime-local to date format
-      const currentStartTime = form.getValues("start_time");
-      const currentEndTime = form.getValues("end_time");
+      // For all-day events, use date fields only
+      // If end_date not set, set it to start_date
+      const currentStartDate = form.getValues("start_date");
+      const currentEndDate = form.getValues("end_date");
       
-      if (currentStartTime) {
-        const startDate = currentStartTime.split("T")[0];
-        form.setValue("start_time", startDate);
-      }
-      
-      if (currentEndTime) {
-        const endDate = currentEndTime.split("T")[0];
-        form.setValue("end_time", endDate);
-      } else if (currentStartTime) {
-        // Set end date to same as start date if not set
-        const startDate = currentStartTime.split("T")[0];
-        form.setValue("end_time", startDate);
+      if (!currentEndDate && currentStartDate) {
+        form.setValue("end_date", currentStartDate);
       }
     } else {
-      // Convert date back to datetime-local format
+      // For timed events, ensure we have time values
       const currentStartTime = form.getValues("start_time");
       const currentEndTime = form.getValues("end_time");
       
-      if (currentStartTime && !currentStartTime.includes("T")) {
-        form.setValue("start_time", currentStartTime + "T09:00");
+      if (!currentStartTime) {
+        form.setValue("start_time", formatTimeForInput(getDefaultStartTime()));
       }
-      
-      if (currentEndTime && !currentEndTime.includes("T")) {
-        form.setValue("end_time", currentEndTime + "T10:00");
+      if (!currentEndTime) {
+        const startTime = currentStartTime ? new Date(`2000-01-01T${currentStartTime}`) : getDefaultStartTime();
+        form.setValue("end_time", formatTimeForInput(addHours(startTime, 1)));
       }
+    }
+  };
+
+  const handleStartTimeChange = (timeValue: string) => {
+    form.setValue("start_time", timeValue);
+    
+    // Auto-calculate end time (1 hour later)
+    if (!isAllDay && timeValue) {
+      const startDateTime = new Date(`2000-01-01T${timeValue}`);
+      const endDateTime = addHours(startDateTime, 1);
+      form.setValue("end_time", formatTimeForInput(endDateTime));
     }
   };
 
@@ -335,63 +377,113 @@ const CreateAppointment = () => {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="start_time"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          Startzeit *
-                        </FormLabel>
-                        <FormControl>
-                          <Input 
-                            type={isAllDay ? "date" : "datetime-local"}
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Date and Time Section */}
+                  <div className="md:col-span-2 space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Clock className="h-5 w-5" />
+                      <h3 className="text-lg font-semibold">Datum & Zeit</h3>
+                    </div>
+                    
+                    {/* All-day toggle */}
+                    <FormField
+                      control={form.control}
+                      name="is_all_day"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={handleAllDayChange}
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-normal cursor-pointer">
+                            Ganztägige Veranstaltung
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="is_all_day"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-2 space-y-0 md:col-span-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={handleAllDayChange}
-                          />
-                        </FormControl>
-                        <FormLabel className="text-sm font-normal cursor-pointer">
-                          Ganztägige Veranstaltung
-                        </FormLabel>
-                      </FormItem>
-                    )}
-                  />
+                    {/* Date and time fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="start_date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Startdatum *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="date"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                  <FormField
-                    control={form.control}
-                    name="end_time"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          {isAllDay ? "Enddatum *" : "Endzeit *"}
-                        </FormLabel>
-                        <FormControl>
-                          <Input 
-                            type={isAllDay ? "date" : "datetime-local"}
-                            {...field} 
+                      {!isAllDay && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name="start_time"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Startzeit *</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="time"
+                                    {...field}
+                                    onChange={(e) => {
+                                      field.onChange(e.target.value);
+                                      handleStartTimeChange(e.target.value);
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
                           />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+
+                          <FormField
+                            control={form.control}
+                            name="end_time"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Endzeit *</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="time"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
+
+                      {isAllDay && (
+                        <FormField
+                          control={form.control}
+                          name="end_date"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Enddatum</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="date"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
+                  </div>
 
                     <FormField
                       control={form.control}
@@ -469,6 +561,54 @@ const CreateAppointment = () => {
                         </FormItem>
                       )}
                     />
+
+                  {/* Participants Section - moved here between location and category */}
+                  <div className="md:col-span-2">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        <h3 className="text-lg font-semibold">Teilnehmer</h3>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <Select onValueChange={(value) => {
+                          const contact = contacts.find(c => c.id === value);
+                          if (contact) addContact(contact);
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Kontakt hinzufügen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {contacts
+                              .filter(contact => !selectedContacts.find(c => c.id === contact.id))
+                              .map((contact) => (
+                                <SelectItem key={contact.id} value={contact.id}>
+                                  {contact.name} {contact.email && `(${contact.email})`}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+
+                        {selectedContacts.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {selectedContacts.map((contact) => (
+                              <Badge key={contact.id} variant="secondary" className="gap-1">
+                                {contact.name}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 hover:bg-transparent"
+                                  onClick={() => removeContact(contact.id)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
                   <FormField
                     control={form.control}
@@ -594,53 +734,6 @@ const CreateAppointment = () => {
                   <AppointmentFileUpload 
                     onFilesChange={setUploadedFiles}
                   />
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    <h3 className="text-lg font-semibold">Teilnehmer</h3>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <Select onValueChange={(value) => {
-                      const contact = contacts.find(c => c.id === value);
-                      if (contact) addContact(contact);
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Kontakt hinzufügen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {contacts
-                          .filter(contact => !selectedContacts.find(c => c.id === contact.id))
-                          .map((contact) => (
-                            <SelectItem key={contact.id} value={contact.id}>
-                              {contact.name} {contact.email && `(${contact.email})`}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-
-                    {selectedContacts.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {selectedContacts.map((contact) => (
-                          <Badge key={contact.id} variant="secondary" className="gap-1">
-                            {contact.name}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-4 w-4 p-0 hover:bg-transparent"
-                              onClick={() => removeContact(contact.id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 <div className="flex justify-end gap-4 pt-6">
