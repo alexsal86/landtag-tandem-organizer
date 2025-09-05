@@ -187,6 +187,51 @@ export type Database = {
           },
         ]
       }
+      appointment_guests: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          email: string
+          id: string
+          invitation_token: string | null
+          invited_at: string | null
+          name: string
+          responded_at: string | null
+          response_note: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          email: string
+          id?: string
+          invitation_token?: string | null
+          invited_at?: string | null
+          name: string
+          responded_at?: string | null
+          response_note?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          invitation_token?: string | null
+          invited_at?: string | null
+          name?: string
+          responded_at?: string | null
+          response_note?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       appointment_locations: {
         Row: {
           address: string | null
@@ -460,14 +505,17 @@ export type Database = {
       }
       appointments: {
         Row: {
+          calendar_uid: string | null
           call_log_id: string | null
           category: string | null
           contact_id: string | null
           created_at: string
           description: string | null
           end_time: string
+          has_external_guests: boolean | null
           id: string
           is_all_day: boolean
+          last_invitation_sent_at: string | null
           location: string | null
           meeting_details: string | null
           meeting_id: string | null
@@ -483,14 +531,17 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          calendar_uid?: string | null
           call_log_id?: string | null
           category?: string | null
           contact_id?: string | null
           created_at?: string
           description?: string | null
           end_time: string
+          has_external_guests?: boolean | null
           id?: string
           is_all_day?: boolean
+          last_invitation_sent_at?: string | null
           location?: string | null
           meeting_details?: string | null
           meeting_id?: string | null
@@ -506,14 +557,17 @@ export type Database = {
           user_id: string
         }
         Update: {
+          calendar_uid?: string | null
           call_log_id?: string | null
           category?: string | null
           contact_id?: string | null
           created_at?: string
           description?: string | null
           end_time?: string
+          has_external_guests?: boolean | null
           id?: string
           is_all_day?: boolean
+          last_invitation_sent_at?: string | null
           location?: string | null
           meeting_details?: string | null
           meeting_id?: string | null
@@ -1166,6 +1220,42 @@ export type Database = {
           question_prompt?: string
           signature?: string
           subject?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      default_appointment_guests: {
+        Row: {
+          created_at: string
+          created_by: string
+          email: string
+          id: string
+          is_active: boolean
+          name: string
+          order_index: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          email: string
+          id?: string
+          is_active?: boolean
+          name: string
+          order_index?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_index?: number
           tenant_id?: string
           updated_at?: string
         }
@@ -4793,6 +4883,10 @@ export type Database = {
         Returns: string
       }
       generate_decision_participant_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_guest_invitation_token: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
