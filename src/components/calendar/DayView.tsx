@@ -13,16 +13,22 @@ interface DayViewProps {
   onPreparationClick?: (appointment: CalendarEvent) => void;
 }
 
+interface EventWithPosition extends CalendarEvent {
+  startTimeInMinutes: number;
+  durationInMinutes: number;
+}
+
 export function DayView({ date, events, onAppointmentClick, onPreparationClick }: DayViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
   const [guestCounts, setGuestCounts] = useState<Record<string, { total: number; confirmed: number; declined: number }>>({});
+  const [currentTime, setCurrentTime] = useState(new Date());
   const { isItemNew } = useNewItemIndicators('calendar');
   
   // Separate all-day and timed events
   const allDayEvents = events.filter(event => event.is_all_day);
   const timedEvents = events.filter(event => !event.is_all_day);
-  
+
   useEffect(() => {
     // Scroll to 9 AM on mount
     if (scrollContainerRef.current) {
@@ -32,6 +38,15 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
       }
     }
   }, [date]);
+
+  useEffect(() => {
+    // Update current time every minute
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Fetch document counts and guest counts for all events
@@ -78,86 +93,75 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
 
     fetchCounts();
   }, [events]);
+
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  
-  
-  const getEventsForHour = (hour: number) => {
-    return timedEvents.filter(event => {
-      const eventDate = event.date.toDateString();
-      const viewDate = date.toDateString();
+
+  // Helper to get current time position
+  const getCurrentTimePosition = () => {
+    if (date.toDateString() !== new Date().toDateString()) return null;
+    
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    return hours * 60 + minutes; // Total minutes from midnight
+  };
+
+  // Helper to check if event is in the past
+  const isPastEvent = (event: CalendarEvent) => {
+    const eventStart = new Date(event.date);
+    const [hours, minutes] = event.time.split(':').map(Number);
+    eventStart.setHours(hours, minutes);
+    
+    if (event.endTime) {
+      const eventEnd = new Date(event.endTime);
+      return eventEnd < currentTime;
+    } else {
+      const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
+      const eventEnd = new Date(eventStart.getTime() + durationMinutes * 60 * 1000);
+      return eventEnd < currentTime;
+    }
+  };
+
+  // Get events with positioning data for absolute positioning
+  const getEventsForDisplay = (): EventWithPosition[] => {
+    return timedEvents.map(event => {
+      const [startHour, startMinutes] = event.time.split(':').map(Number);
+      const startTimeInMinutes = startHour * 60 + startMinutes;
       
-      // If it's not the same date, check if it's a multi-day event
-      if (eventDate !== viewDate) {
-        // Check if this day is within the event's span
-        if (event.endTime) {
-          const eventStart = new Date(event.date);
-          const eventEnd = new Date(event.endTime);
-          const currentDay = new Date(date);
-          
-          // Set times to beginning/end of day for comparison
-          eventStart.setHours(0, 0, 0, 0);
-          eventEnd.setHours(23, 59, 59, 999);
-          currentDay.setHours(12, 0, 0, 0); // Middle of day
-          
-          if (currentDay >= eventStart && currentDay <= eventEnd) {
-            // This is a continuation of a multi-day event
-            // Show it starting from hour 0 if event started on previous day
-            return hour === 0;
-          }
-        }
-        return false;
-      }
-      
-      // Same day - check if event starts at this hour or spans through it
-      const [startHours] = event.time.split(':').map(Number);
-      
+      let durationInMinutes = 60; // Default 1 hour
       if (event.endTime) {
-        // Use actual end time
         const eventStart = new Date(event.date);
-        eventStart.setHours(startHours);
         const eventEnd = new Date(event.endTime);
-        
-        const hourStart = new Date(date);
-        hourStart.setHours(hour, 0, 0, 0);
-        const hourEnd = new Date(date);
-        hourEnd.setHours(hour + 1, 0, 0, 0);
-        
-        // Event overlaps with this hour slot
-        return eventStart < hourEnd && eventEnd > hourStart;
-      } else {
-        // Fallback to duration calculation
-        const [startMinutes] = event.time.split(':').map((_, i) => i === 1 ? Number(_) : 0);
-        const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-        const eventEndHour = Math.floor((startHours * 60 + startMinutes + durationMinutes) / 60);
-        
-        return hour >= startHours && hour < eventEndHour;
+        durationInMinutes = (eventEnd.getTime() - eventStart.getTime()) / (1000 * 60);
+      } else if (event.duration) {
+        durationInMinutes = parseInt(event.duration.replace(/\D/g, ''));
       }
+
+      return {
+        ...event,
+        startTimeInMinutes,
+        durationInMinutes
+      };
     });
   };
 
   // Helper function to check if two events overlap
-  const eventsOverlap = (event1: CalendarEvent, event2: CalendarEvent): boolean => {
-    const getEventTimes = (event: CalendarEvent) => {
-      const [hours, minutes] = event.time.split(':').map(Number);
-      const startMinutes = hours * 60 + minutes;
-      const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-      const endMinutes = startMinutes + durationMinutes;
-      return { start: startMinutes, end: endMinutes };
-    };
+  const eventsOverlap = (event1: EventWithPosition, event2: EventWithPosition): boolean => {
+    const start1 = event1.startTimeInMinutes;
+    const end1 = event1.startTimeInMinutes + event1.durationInMinutes;
+    const start2 = event2.startTimeInMinutes;
+    const end2 = event2.startTimeInMinutes + event2.durationInMinutes;
 
-    const times1 = getEventTimes(event1);
-    const times2 = getEventTimes(event2);
-
-    return times1.start < times2.end && times2.start < times1.end;
+    return start1 < end2 && start2 < end1;
   };
 
   // Helper function to get layout for overlapping events
-  const getEventLayout = (hourEvents: CalendarEvent[]) => {
-    const layout: Array<{ event: CalendarEvent; column: number; totalColumns: number }> = [];
-    const groups: CalendarEvent[][] = [];
+  const getEventLayout = (events: EventWithPosition[]) => {
+    const layout: Array<{ event: EventWithPosition; column: number; totalColumns: number }> = [];
+    const groups: EventWithPosition[][] = [];
 
     // Group overlapping events
-    hourEvents.forEach(event => {
+    events.forEach(event => {
       let addedToGroup = false;
       
       for (const group of groups) {
@@ -238,35 +242,35 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                     size="sm" 
                     className="top-0 right-0"
                   />
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium truncate">
-                            {event.title}
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            {documentCounts[event.id] > 0 && (
-                              <div className="flex items-center space-x-1">
-                                <FileText className="h-3 w-3" />
-                                <span className="text-xs">{documentCounts[event.id]}</span>
-                              </div>
-                            )}
-                            {guestCounts[event.id] && guestCounts[event.id].total > 0 && (
-                              <div className="flex items-center space-x-1" title={`${guestCounts[event.id].confirmed} zugesagt, ${guestCounts[event.id].declined} abgesagt, ${guestCounts[event.id].total - guestCounts[event.id].confirmed - guestCounts[event.id].declined} ausstehend`}>
-                                <Users className="h-3 w-3" />
-                                <span className="text-xs">{guestCounts[event.id].total}</span>
-                              </div>
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onPreparationClick?.(event);
-                              }}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
-                              title="Vorbereitung erstellen/bearbeiten"
-                            >
-                              📋
-                            </button>
-                          </div>
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium truncate">
+                      {event.title}
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      {documentCounts[event.id] > 0 && (
+                        <div className="flex items-center space-x-1">
+                          <FileText className="h-3 w-3" />
+                          <span className="text-xs">{documentCounts[event.id]}</span>
                         </div>
+                      )}
+                      {guestCounts[event.id] && guestCounts[event.id].total > 0 && (
+                        <div className="flex items-center space-x-1" title={`${guestCounts[event.id].confirmed} zugesagt, ${guestCounts[event.id].declined} abgesagt, ${guestCounts[event.id].total - guestCounts[event.id].confirmed - guestCounts[event.id].declined} ausstehend`}>
+                          <Users className="h-3 w-3" />
+                          <span className="text-xs">{guestCounts[event.id].total}</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPreparationClick?.(event);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
+                        title="Vorbereitung erstellen/bearbeiten"
+                      >
+                        📋
+                      </button>
+                    </div>
+                  </div>
                   {event.location && (
                     <div className="opacity-70 truncate text-xs">{event.location}</div>
                   )}
@@ -279,150 +283,118 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
       
       {/* Time grid */}
       <div className="flex-1 overflow-auto" ref={scrollContainerRef} style={{ maxHeight: 'calc(100vh - 200px)' }}>
-        <div className="grid grid-cols-[80px,1fr] border border-border">
-          {hours.map((hour) => (
-            <React.Fragment key={hour}>
-              {/* Time label */}
-              <div 
-                className="h-[60px] p-2 text-sm text-muted-foreground border-b border-border bg-muted/30 sticky left-0 z-10 flex items-center"
-                id={hour === 9 ? 'hour-9' : undefined}
-              >
-                {hour.toString().padStart(2, '0')}:00
-              </div>
-              
-               {/* Event slot */}
-               {/* p-1 entfernt */}
-               <div className="h-[60px] border-b border-border relative"> 
-                 {(() => {
-                   const hourEvents = getEventsForHour(hour);
-                   const eventLayout = getEventLayout(hourEvents);
-                   
-                    return eventLayout.map(({ event, column, totalColumns }) => {
-                      const widthPercentage = 100 / totalColumns;
-                      const leftOffset = (widthPercentage * column);
-                      
-                       // Calculate event height and positioning based on duration
-                       let eventHeight = 58;
-                       let topOffset = 0;
-                       let isEventStart = false;
-                       let isEventContinuation = false;
-                       
-                       const eventDate = event.date.toDateString();
-                       const viewDate = date.toDateString();
-                       const [startHour, startMinutes] = event.time.split(':').map(Number);
-                       
-                       if (eventDate === viewDate) {
-                         // Event starts on this day
-                         isEventStart = hour === startHour;
-                         
-                         if (hour === startHour) {
-                           // Calculate precise positioning and height
-                           topOffset = (startMinutes / 60) * 60; // Minutes within the hour as pixels
-                           
-                           if (event.endTime) {
-                             // Use actual end time for precise calculation
-                             const eventStart = new Date(event.date);
-                             const eventEnd = new Date(event.endTime);
-                             const durationMs = eventEnd.getTime() - eventStart.getTime();
-                             const durationMinutes = durationMs / (1000 * 60);
-                             eventHeight = Math.max(durationMinutes, 15); // 1px per minute, minimum 15px
-                           } else {
-                             // Fallback to duration string
-                             const durationMinutes = parseInt(event.duration.replace(/\D/g, ''));
-                             eventHeight = Math.max(durationMinutes, 15);
-                           }
-                         } else {
-                           // Not the starting hour, don't render (covered by starting hour)
-                           return null;
-                         }
-                       } else {
-                         // Event continuation from previous day
-                         isEventContinuation = true;
-                         if (event.endTime && hour === 0) {
-                           // Show continuation from start of day
-                           const eventEnd = new Date(event.endTime);
-                           if (eventEnd.toDateString() === date.toDateString()) {
-                             // Event ends today
-                             const endHour = eventEnd.getHours();
-                             const endMinutes = eventEnd.getMinutes();
-                             const totalMinutesToEnd = endHour * 60 + endMinutes;
-                             eventHeight = Math.max(totalMinutesToEnd, 15);
-                           } else {
-                             // Event continues past today - full day
-                             eventHeight = 24 * 60;
-                           }
-                         } else if (hour > 0) {
-                           // Don't render continuation in other hours
-                           return null;
-                         }
-                       }
+        <div className="relative">
+          {/* Current time indicator */}
+          {(() => {
+            const currentTimePos = getCurrentTimePosition();
+            if (currentTimePos !== null) {
+              return (
+                <div
+                  className="absolute left-0 right-0 z-50 pointer-events-none"
+                  style={{ top: `${60 + currentTimePos}px` }}
+                >
+                  <div className="flex items-center">
+                    <div className="w-[80px] bg-red-500 h-0.5"></div>
+                    <div className="flex-1 bg-red-500 h-0.5"></div>
+                  </div>
+                  <div 
+                    className="absolute -left-1 -top-1 w-2 h-2 bg-red-500 rounded-full"
+                  ></div>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
-                         return (
-                           <div
-                            key={`${event.id}-${hour}`}
-                            className={`absolute p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity group relative ${getEventTypeColor(event)} ${isEventContinuation ? 'border-l-4 border-l-yellow-400' : ''}`}
-                             style={{ 
-                               width: `${widthPercentage - 2}%`, // Reduced width to create spacing
-                               left: `${leftOffset + 1}%`, // Add left margin for spacing
-                               height: `${eventHeight}px`,
-                              top: `${topOffset}px`,
-                              marginBottom: '2px',
-                              marginLeft: `${column * 4}px`, // Additional left indent for overlapping events
-                              backgroundColor: event.category_color || undefined,
-                              zIndex: isEventStart || isEventContinuation ? 2 : 1
-                            }}
-                            onClick={() => onAppointmentClick?.(event)}
-                           >
-                            <NewItemIndicator 
-                              isVisible={isItemNew(event.id, event.date)} 
-                              size="sm" 
-                              className="top-0 right-0"
-                            />
-                             <div className="flex items-center justify-between">
-                               <div className="font-medium truncate">
-                                 {isEventContinuation ? `→ ${event.title}` : event.title}
-                               </div>
-                                <div className="flex items-center space-x-1">
-                                  {documentCounts[event.id] > 0 && (
-                                    <div className="flex items-center space-x-1">
-                                      <FileText className="h-3 w-3" />
-                                      <span className="text-xs">{documentCounts[event.id]}</span>
-                                    </div>
-                                  )}
-                                  {guestCounts[event.id] && guestCounts[event.id].total > 0 && (
-                                    <div className="flex items-center space-x-1" title={`${guestCounts[event.id].confirmed} zugesagt, ${guestCounts[event.id].declined} abgesagt, ${guestCounts[event.id].total - guestCounts[event.id].confirmed - guestCounts[event.id].declined} ausstehend`}>
-                                      <Users className="h-3 w-3" />
-                                      <span className="text-xs">{guestCounts[event.id].total}</span>
-                                    </div>
-                                  )}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onPreparationClick?.(event);
-                                    }}
-                                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
-                                   title="Vorbereitung erstellen/bearbeiten"
-                                 >
-                                   📋
-                                 </button>
-                               </div>
-                             </div>
-                            <div className="opacity-80 text-xs">
-                              {isEventContinuation 
-                                ? `→ ${formatEventDisplay(event)}`
-                                : formatEventDisplay(event)
-                              }
-                            </div>
-                           {event.location && (
-                             <div className="opacity-70 truncate text-xs">{event.location}</div>
-                           )}
-                         </div>
-                      );
-                    }).filter(Boolean); // Remove null entries
-                 })()}
-               </div>
-            </React.Fragment>
-          ))}
+          <div className="grid grid-cols-[80px,1fr] border border-border">
+            {hours.map((hour) => (
+              <React.Fragment key={hour}>
+                {/* Time label */}
+                <div 
+                  className="h-[60px] p-2 text-sm text-muted-foreground border-b border-border bg-muted/30 sticky left-0 z-10 flex items-center"
+                  id={hour === 9 ? 'hour-9' : undefined}
+                >
+                  {hour.toString().padStart(2, '0')}:00
+                </div>
+                
+                {/* Event slot */}
+                <div className="h-[60px] border-b border-border relative"></div>
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Absolutely positioned events */}
+          <div className="absolute top-0 left-[80px] right-0 pointer-events-none">
+            {(() => {
+              const eventsForDisplay = getEventsForDisplay();
+              const eventLayout = getEventLayout(eventsForDisplay);
+              
+              return eventLayout.map(({ event, column, totalColumns }) => {
+                const widthPercentage = 100 / totalColumns;
+                const leftOffset = (widthPercentage * column);
+                const topPosition = 60 + event.startTimeInMinutes; // 60px offset for first hour
+                const height = event.durationInMinutes;
+                const isPast = isPastEvent(event);
+                
+                return (
+                  <div
+                    key={event.id}
+                    className={`absolute p-2 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity group relative pointer-events-auto ${getEventTypeColor(event)} ${isPast ? 'opacity-50' : ''}`}
+                    style={{ 
+                      width: `${widthPercentage - 1}%`,
+                      left: `${leftOffset + 0.5}%`,
+                      height: `${Math.max(height, 20)}px`,
+                      top: `${topPosition}px`,
+                      backgroundColor: event.category_color || undefined,
+                      zIndex: 10
+                    }}
+                    onClick={() => onAppointmentClick?.(event)}
+                  >
+                    <NewItemIndicator 
+                      isVisible={isItemNew(event.id, event.date)} 
+                      size="sm" 
+                      className="top-0 right-0"
+                    />
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium truncate">
+                        {event.title}
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        {documentCounts[event.id] > 0 && (
+                          <div className="flex items-center space-x-1">
+                            <FileText className="h-3 w-3" />
+                            <span className="text-xs">{documentCounts[event.id]}</span>
+                          </div>
+                        )}
+                        {guestCounts[event.id] && guestCounts[event.id].total > 0 && (
+                          <div className="flex items-center space-x-1" title={`${guestCounts[event.id].confirmed} zugesagt, ${guestCounts[event.id].declined} abgesagt, ${guestCounts[event.id].total - guestCounts[event.id].confirmed - guestCounts[event.id].declined} ausstehend`}>
+                            <Users className="h-3 w-3" />
+                            <span className="text-xs">{guestCounts[event.id].total}</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPreparationClick?.(event);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded text-xs"
+                          title="Vorbereitung erstellen/bearbeiten"
+                        >
+                          📋
+                        </button>
+                      </div>
+                    </div>
+                    {event.location && (
+                      <div className="opacity-70 truncate text-xs">{event.location}</div>
+                    )}
+                    <div className="opacity-70 text-xs">
+                      {formatEventDisplay(event)}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
         </div>
       </div>
     </div>
