@@ -291,7 +291,8 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
               </div>
               
                {/* Event slot */}
-               <div className="h-[60px] p-1 border-b border-border relative">
+               {/* p-1 entfernt */}
+               <div className="h-[60px] border-b border-border relative"> 
                  {(() => {
                    const hourEvents = getEventsForHour(hour);
                    const eventLayout = getEventLayout(hourEvents);
