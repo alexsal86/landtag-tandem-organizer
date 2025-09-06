@@ -160,32 +160,63 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
     const layout: Array<{ event: EventWithPosition; column: number; totalColumns: number }> = [];
     const groups: EventWithPosition[][] = [];
 
-    // Group overlapping events
-    events.forEach(event => {
-      let addedToGroup = false;
-      
+    // Sort events by start time for consistent layout
+    const sortedEvents = [...events].sort((a, b) => a.startTimeInMinutes - b.startTimeInMinutes);
+
+    // Group overlapping events using recursive overlap detection
+    const findOverlappingGroup = (event: EventWithPosition, groups: EventWithPosition[][]): EventWithPosition[] | null => {
       for (const group of groups) {
+        // Check if this event overlaps with ANY event in the group
         if (group.some(groupEvent => eventsOverlap(event, groupEvent))) {
-          group.push(event);
-          addedToGroup = true;
-          break;
+          return group;
         }
       }
+      return null;
+    };
+
+    sortedEvents.forEach(event => {
+      console.log(`Processing event: ${event.title} at ${event.startTimeInMinutes} minutes`);
       
-      if (!addedToGroup) {
+      const overlappingGroup = findOverlappingGroup(event, groups);
+      
+      if (overlappingGroup) {
+        overlappingGroup.push(event);
+        console.log(`Added to existing group. Group size: ${overlappingGroup.length}`);
+        
+        // Merge groups if this event creates a bridge between them
+        const otherGroups = groups.filter(g => g !== overlappingGroup);
+        for (let i = otherGroups.length - 1; i >= 0; i--) {
+          const otherGroup = otherGroups[i];
+          if (otherGroup.some(otherEvent => eventsOverlap(event, otherEvent))) {
+            // Merge the groups
+            overlappingGroup.push(...otherGroup);
+            groups.splice(groups.indexOf(otherGroup), 1);
+            console.log(`Merged groups. New group size: ${overlappingGroup.length}`);
+          }
+        }
+      } else {
         groups.push([event]);
+        console.log(`Created new group for event: ${event.title}`);
       }
     });
 
-    // Create layout information
-    groups.forEach(group => {
+    console.log(`Total groups: ${groups.length}`);
+
+    // Create layout information with proper column assignment
+    groups.forEach((group, groupIndex) => {
+      console.log(`Group ${groupIndex}: ${group.length} events`);
       const totalColumns = group.length;
-      group.forEach((event, index) => {
+      
+      // Sort group events by start time for consistent column assignment
+      const sortedGroupEvents = group.sort((a, b) => a.startTimeInMinutes - b.startTimeInMinutes);
+      
+      sortedGroupEvents.forEach((event, index) => {
         layout.push({
           event,
           column: index,
           totalColumns
         });
+        console.log(`  Event: ${event.title}, Column: ${index}/${totalColumns-1}`);
       });
     });
 
@@ -291,7 +322,7 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
               return (
                 <div
                   className="absolute left-0 right-0 z-50 pointer-events-none"
-                  style={{ top: `${60 + currentTimePos}px` }}
+                  style={{ top: `${currentTimePos}px` }}
                 >
                   <div className="flex items-center">
                     <div className="w-[80px] bg-red-500 h-0.5"></div>
@@ -332,9 +363,11 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
               return eventLayout.map(({ event, column, totalColumns }) => {
                 const widthPercentage = 100 / totalColumns;
                 const leftOffset = (widthPercentage * column);
-                const topPosition = 60 + event.startTimeInMinutes; // 60px offset for first hour
+                const topPosition = event.startTimeInMinutes; // Direct pixel mapping: 1 minute = 1 pixel
                 const height = event.durationInMinutes;
                 const isPast = isPastEvent(event);
+                
+                console.log(`Rendering event: ${event.title}, Position: ${topPosition}px, Column: ${column}/${totalColumns-1}, Width: ${widthPercentage}%`);
                 
                 return (
                   <div
