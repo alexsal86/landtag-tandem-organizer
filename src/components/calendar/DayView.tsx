@@ -158,68 +158,83 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
   // Helper function to get layout for overlapping events
   const getEventLayout = (events: EventWithPosition[]) => {
     const layout: Array<{ event: EventWithPosition; column: number; totalColumns: number }> = [];
-    const groups: EventWithPosition[][] = [];
-
-    // Sort events by start time for consistent layout
+    
+    if (events.length === 0) return layout;
+    
+    // Sort events by start time
     const sortedEvents = [...events].sort((a, b) => a.startTimeInMinutes - b.startTimeInMinutes);
-
-    // Group overlapping events using recursive overlap detection
-    const findOverlappingGroup = (event: EventWithPosition, groups: EventWithPosition[][]): EventWithPosition[] | null => {
-      for (const group of groups) {
-        // Check if this event overlaps with ANY event in the group
-        if (group.some(groupEvent => eventsOverlap(event, groupEvent))) {
-          return group;
-        }
-      }
-      return null;
-    };
-
+    
+    // Find overlap clusters using Union-Find approach
+    const clusters: EventWithPosition[][] = [];
+    
     sortedEvents.forEach(event => {
-      console.log(`Processing event: ${event.title} at ${event.startTimeInMinutes} minutes`);
+      // Find all clusters this event overlaps with
+      const overlappingClusters = clusters.filter(cluster => 
+        cluster.some(clusterEvent => eventsOverlap(event, clusterEvent))
+      );
       
-      const overlappingGroup = findOverlappingGroup(event, groups);
-      
-      if (overlappingGroup) {
-        overlappingGroup.push(event);
-        console.log(`Added to existing group. Group size: ${overlappingGroup.length}`);
+      if (overlappingClusters.length === 0) {
+        // No overlaps, create new cluster
+        clusters.push([event]);
+      } else if (overlappingClusters.length === 1) {
+        // Overlaps with one cluster, add to it
+        overlappingClusters[0].push(event);
+      } else {
+        // Overlaps with multiple clusters, merge them all
+        const mergedCluster = [event, ...overlappingClusters.flat()];
         
-        // Merge groups if this event creates a bridge between them
-        const otherGroups = groups.filter(g => g !== overlappingGroup);
-        for (let i = otherGroups.length - 1; i >= 0; i--) {
-          const otherGroup = otherGroups[i];
-          if (otherGroup.some(otherEvent => eventsOverlap(event, otherEvent))) {
-            // Merge the groups
-            overlappingGroup.push(...otherGroup);
-            groups.splice(groups.indexOf(otherGroup), 1);
-            console.log(`Merged groups. New group size: ${overlappingGroup.length}`);
+        // Remove old clusters
+        overlappingClusters.forEach(cluster => {
+          const index = clusters.indexOf(cluster);
+          if (index > -1) clusters.splice(index, 1);
+        });
+        
+        // Add merged cluster
+        clusters.push(mergedCluster);
+      }
+    });
+    
+    // Assign columns within each cluster using "free column" logic
+    clusters.forEach(cluster => {
+      // Sort events in cluster by start time
+      const sortedCluster = cluster.sort((a, b) => a.startTimeInMinutes - b.startTimeInMinutes);
+      
+      // Track column assignments: column -> list of events in that column
+      const columnAssignments: EventWithPosition[][] = [];
+      
+      sortedCluster.forEach(event => {
+        // Find the first free column for this event
+        let assignedColumn = -1;
+        
+        for (let col = 0; col < columnAssignments.length; col++) {
+          const eventsInColumn = columnAssignments[col];
+          // Check if this event conflicts with any event in this column
+          const hasConflict = eventsInColumn.some(colEvent => eventsOverlap(event, colEvent));
+          
+          if (!hasConflict) {
+            assignedColumn = col;
+            break;
           }
         }
-      } else {
-        groups.push([event]);
-        console.log(`Created new group for event: ${event.title}`);
-      }
-    });
-
-    console.log(`Total groups: ${groups.length}`);
-
-    // Create layout information with proper column assignment
-    groups.forEach((group, groupIndex) => {
-      console.log(`Group ${groupIndex}: ${group.length} events`);
-      const totalColumns = group.length;
-      
-      // Sort group events by start time for consistent column assignment
-      const sortedGroupEvents = group.sort((a, b) => a.startTimeInMinutes - b.startTimeInMinutes);
-      
-      sortedGroupEvents.forEach((event, index) => {
+        
+        // If no free column found, create a new one
+        if (assignedColumn === -1) {
+          assignedColumn = columnAssignments.length;
+          columnAssignments.push([]);
+        }
+        
+        // Assign event to column
+        columnAssignments[assignedColumn].push(event);
+        
+        // Add to layout
         layout.push({
           event,
-          column: index,
-          totalColumns
+          column: assignedColumn,
+          totalColumns: Math.max(columnAssignments.length, cluster.length)
         });
-        console.log(`  Event: ${event.title}, Column: ${index}/${totalColumns-1}`);
       });
     });
-
+    
     return layout;
   };
 
