@@ -11,6 +11,7 @@ import { MonthView } from "./calendar/MonthView";
 import { ReactBigCalendarView } from "./calendar/ReactBigCalendarView";
 import { RealReactBigCalendar } from "./calendar/RealReactBigCalendar";
 import { EnhancedCalendar } from "./calendar/EnhancedCalendar";
+import { ProperReactBigCalendar } from "./calendar/ProperReactBigCalendar";
 import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
 import AppointmentPreparationSidebar from "./AppointmentPreparationSidebar";
 import { PollListView } from "./poll/PollListView";
@@ -22,11 +23,11 @@ import { useToast } from "@/hooks/use-toast";
 export interface CalendarEvent {
   id: string;
   title: string;
-  description?: string; // Add description field
+  description?: string;
   time: string;
   duration: string;
-  date: Date; // Add date field for proper filtering
-  endTime?: Date; // Add actual end time from database
+  date: Date;
+  endTime?: Date;
   location?: string;
   attendees?: number;
   participants?: Array<{
@@ -37,7 +38,11 @@ export interface CalendarEvent {
   type: "meeting" | "appointment" | "deadline" | "session" | "blocked" | "veranstaltung" | "vacation" | "vacation_request" | "birthday";
   priority: "low" | "medium" | "high";
   category_color?: string;
-  is_all_day?: boolean; // Add all-day flag
+  is_all_day?: boolean;
+  allDay?: boolean; // Add allDay for RBC compatibility
+  category?: { // Add category object for RBC
+    color: string;
+  };
 }
 
 export function CalendarView() {
@@ -602,34 +607,18 @@ export function CalendarView() {
                   // Now TypeScript knows view is "day" | "week" | "month"
                   if (flags.useReactBigCalendar) {
                     return (
-                      <EnhancedCalendar
-                        events={appointments.map(event => ({
-                          id: event.id,
-                          title: event.title,
-                          start: event.date,
-                          end: event.endTime || new Date(event.date.getTime() + 60 * 60 * 1000),
-                          allDay: event.is_all_day,
-                          type: event.type,
-                          participants: event.participants?.map(p => p.name),
-                          priority: event.priority,
-                          category: event.type,
-                          resource: event
-                        }))}
-                        date={currentDate}
+                      <ProperReactBigCalendar
+                        events={appointments}
                         view={view}
+                        date={currentDate}
                         onNavigate={setCurrentDate}
-                        onView={(newView) => setView(newView)}
-                        onSelectEvent={(calEvent) => {
-                          const originalEvent = appointments.find(e => e.id === calEvent.id);
-                          if (originalEvent) handleAppointmentClick(originalEvent);
-                        }}
-                        onEventDrop={(calEvent, start, end) => {
-                          const originalEvent = appointments.find(e => e.id === calEvent.id);
-                          if (originalEvent) handleEventDrop(originalEvent, start, end);
-                        }}
-                        onEventResize={(calEvent, start, end) => {
-                          const originalEvent = appointments.find(e => e.id === calEvent.id);
-                          if (originalEvent) handleEventResize(originalEvent, start, end);
+                        onView={(newView) => setView(newView as "day" | "week" | "month" | "polls")}
+                        onEventSelect={handleAppointmentClick}
+                        onEventDrop={handleEventDrop}
+                        onEventResize={handleEventResize}
+                        onSelectSlot={(slotInfo) => {
+                          // Handle slot selection for creating new events
+                          console.log('Slot selected:', slotInfo);
                         }}
                       />
                     );

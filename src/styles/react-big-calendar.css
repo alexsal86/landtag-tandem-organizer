@@ -1,8 +1,9 @@
 /* Custom styles for React Big Calendar integration */
 /* These styles will be applied once react-big-calendar is installed */
 
-/* Import the base RBC styles - commented out until react-big-calendar is installed */
-/* @import 'react-big-calendar/lib/css/react-big-calendar.css'; */
+/* Import the base RBC styles */
+@import 'react-big-calendar/lib/css/react-big-calendar.css';
+@import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 
 /* Custom theme integration with our design system */
 .rbc-calendar {
