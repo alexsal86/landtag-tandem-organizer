@@ -10,13 +10,14 @@ import { WeekView } from "./calendar/WeekView";
 import { MonthView } from "./calendar/MonthView";
 import { ReactBigCalendarView } from "./calendar/ReactBigCalendarView";
 import { RealReactBigCalendar } from "./calendar/RealReactBigCalendar";
+import { EnhancedCalendar } from "./calendar/EnhancedCalendar";
 import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
 import AppointmentPreparationSidebar from "./AppointmentPreparationSidebar";
 import { PollListView } from "./poll/PollListView";
 import { useTenant } from "@/hooks/useTenant";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { useFeatureFlag, FeatureFlagToggle } from "@/hooks/useFeatureFlag";
-import { NewItemIndicator } from "./NewItemIndicator";
+import { useToast } from "@/hooks/use-toast";
 
 export interface CalendarEvent {
   id: string;
@@ -44,6 +45,7 @@ export function CalendarView() {
   const { currentTenant } = useTenant();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('calendar');
   const { flags } = useFeatureFlag();
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"day" | "week" | "month" | "polls">("day");
   const [appointments, setAppointments] = useState<CalendarEvent[]>([]);
@@ -446,6 +448,59 @@ export function CalendarView() {
     }
   };
 
+  const handleEventDrop = async (event: CalendarEvent, start: Date, end: Date) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({
+          start_time: start.toISOString(),
+          end_time: end.toISOString()
+        })
+        .eq('id', event.id);
+
+      if (error) throw error;
+      
+      handleAppointmentUpdate();
+      toast({
+        title: "Termin verschoben",
+        description: "Der Termin wurde erfolgreich verschoben.",
+      });
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      toast({
+        title: "Fehler",
+        description: "Der Termin konnte nicht verschoben werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEventResize = async (event: CalendarEvent, start: Date, end: Date) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({
+          end_time: end.toISOString()
+        })
+        .eq('id', event.id);
+
+      if (error) throw error;
+      
+      handleAppointmentUpdate();
+      toast({
+        title: "Termin angepasst",
+        description: "Die Terminlänge wurde erfolgreich angepasst.",
+      });
+    } catch (error) {
+      console.error('Error resizing appointment:', error);
+      toast({
+        title: "Fehler",
+        description: "Der Termin konnte nicht angepasst werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       {/* Header */}
@@ -547,16 +602,34 @@ export function CalendarView() {
                   // Now TypeScript knows view is "day" | "week" | "month"
                   if (flags.useReactBigCalendar) {
                     return (
-                      <RealReactBigCalendar
-                        events={appointments}
+                      <EnhancedCalendar
+                        events={appointments.map(event => ({
+                          id: event.id,
+                          title: event.title,
+                          start: event.date,
+                          end: event.endTime || new Date(event.date.getTime() + 60 * 60 * 1000),
+                          allDay: event.is_all_day,
+                          type: event.type,
+                          participants: event.participants?.map(p => p.name),
+                          priority: event.priority,
+                          category: event.type,
+                          resource: event
+                        }))}
                         date={currentDate}
                         view={view}
                         onNavigate={setCurrentDate}
                         onView={(newView) => setView(newView)}
-                        onSelectEvent={handleAppointmentClick}
-                        onSelectSlot={(slotInfo) => {
-                          console.log('Time slot selected:', slotInfo);
-                          // Could open a "Create Appointment" dialog here
+                        onSelectEvent={(calEvent) => {
+                          const originalEvent = appointments.find(e => e.id === calEvent.id);
+                          if (originalEvent) handleAppointmentClick(originalEvent);
+                        }}
+                        onEventDrop={(calEvent, start, end) => {
+                          const originalEvent = appointments.find(e => e.id === calEvent.id);
+                          if (originalEvent) handleEventDrop(originalEvent, start, end);
+                        }}
+                        onEventResize={(calEvent, start, end) => {
+                          const originalEvent = appointments.find(e => e.id === calEvent.id);
+                          if (originalEvent) handleEventResize(originalEvent, start, end);
                         }}
                       />
                     );
