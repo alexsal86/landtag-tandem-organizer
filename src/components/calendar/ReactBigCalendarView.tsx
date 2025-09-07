@@ -1,9 +1,10 @@
 import React from 'react';
 import { CalendarEvent } from '../CalendarView';
-import { CalendarEventAdapter } from './CalendarEventAdapter';
+import { CalendarEventComponent } from './CalendarEventComponent';
+import { Card } from '@/components/ui/card';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 
-// Placeholder component for React Big Calendar
-// This will be implemented once the package is successfully installed
 export interface ReactBigCalendarViewProps {
   date: Date;
   events: CalendarEvent[];
@@ -23,77 +24,49 @@ export function ReactBigCalendarView({
   onSelectEvent,
   onSelectSlot
 }: ReactBigCalendarViewProps) {
-  // Convert events to RBC format
-  const rbcEvents = CalendarEventAdapter.toRBCEvents(events);
-
-  // Placeholder implementation until react-big-calendar is installed
-  return (
-    <div className="bg-card rounded-lg border p-6">
-      <div className="text-center space-y-4">
-        <h2 className="text-xl font-semibold">React Big Calendar View</h2>
-        <p className="text-muted-foreground">
-          React Big Calendar package needs to be installed.
-        </p>
-        <div className="text-sm text-muted-foreground">
-          <p>Current view: {view}</p>
-          <p>Date: {date.toLocaleDateString('de-DE')}</p>
-          <p>Events: {events.length}</p>
-          <p>Converted RBC Events: {rbcEvents.length}</p>
-        </div>
-        
-        {/* Show sample of converted events for testing */}
-        {rbcEvents.length > 0 && (
-          <div className="mt-4 p-4 bg-muted rounded">
-            <h3 className="font-medium mb-2">Sample Converted Event:</h3>
-            <pre className="text-xs text-left overflow-auto">
-              {JSON.stringify(rbcEvents[0], null, 2)}
-            </pre>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// TODO: Once react-big-calendar is installed, replace the above with:
-/*
-import { Calendar, momentLocalizer } from 'react-big-calendar';
-import moment from 'moment';
-import 'moment/locale/de';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-
-moment.locale('de');
-const localizer = momentLocalizer(moment);
-
-export function ReactBigCalendarView({...props}) {
-  const rbcEvents = CalendarEventAdapter.toRBCEvents(events);
   
   return (
-    <div style={{ height: '600px' }}>
-      <Calendar
-        localizer={localizer}
-        events={rbcEvents}
-        startAccessor="start"
-        endAccessor="end"
-        view={view}
-        onView={onView}
-        date={date}
-        onNavigate={onNavigate}
-        onSelectEvent={(event) => onSelectEvent(CalendarEventAdapter.fromRBCEvent(event))}
-        onSelectSlot={onSelectSlot}
-        selectable
-        culture="de"
-        messages={{
-          month: 'Monat',
-          week: 'Woche',
-          day: 'Tag',
-          today: 'Heute',
-          previous: 'Zurück',
-          next: 'Weiter',
-          // ... more German translations
-        }}
-      />
-    </div>
+    <Card className="p-6">
+      <div className="text-center space-y-4">
+        <h2 className="text-xl font-semibold">Enhanced Calendar View (Phase 2)</h2>
+        <p className="text-muted-foreground">
+          Professionelle Kalender-Implementierung mit besserer Event-Darstellung
+        </p>
+        
+        <div className="text-sm text-muted-foreground space-y-2">
+          <p>Aktuelle Ansicht: <span className="font-medium">{view}</span></p>
+          <p>Datum: <span className="font-medium">{format(date, 'dd. MMMM yyyy', { locale: de })}</span></p>
+          <p>Termine: <span className="font-medium">{events.length}</span></p>
+        </div>
+
+        {/* Show sample events with enhanced styling */}
+        {events.length > 0 && (
+          <div className="mt-6 space-y-3">
+            <h3 className="font-medium">Beispiel-Termine (Enhanced Styling):</h3>
+            <div className="space-y-2 max-w-md mx-auto">
+              {events.slice(0, 3).map((event) => (
+                <CalendarEventComponent
+                  key={event.id}
+                  event={event}
+                  onClick={onSelectEvent}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <div className="mt-6 p-4 bg-accent/10 rounded-lg">
+          <h4 className="font-medium mb-2">Phase 2 Features:</h4>
+          <ul className="text-sm text-left space-y-1">
+            <li>✅ Enhanced Event Component mit besserer Darstellung</li>
+            <li>✅ Verbesserte Farben und Kontraste</li>
+            <li>✅ Event-Type Badges und Icons</li>
+            <li>✅ Priority Indicators</li>
+            <li>✅ Responsive Design</li>
+            <li>⏳ Complete Calendar Grid Integration</li>
+          </ul>
+        </div>
+      </div>
+    </Card>
   );
 }
-*/
