@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { DayView } from "./calendar/DayView";
 import { WeekView } from "./calendar/WeekView";
 import { MonthView } from "./calendar/MonthView";
+import { ReactBigCalendarView } from "./calendar/ReactBigCalendarView";
 import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
 import AppointmentPreparationSidebar from "./AppointmentPreparationSidebar";
 import { PollListView } from "./poll/PollListView";
 import { useTenant } from "@/hooks/useTenant";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
+import { useFeatureFlag, FeatureFlagToggle } from "@/hooks/useFeatureFlag";
 import { NewItemIndicator } from "./NewItemIndicator";
 
 export interface CalendarEvent {
@@ -40,6 +42,7 @@ export function CalendarView() {
   const navigate = useNavigate();
   const { currentTenant } = useTenant();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('calendar');
+  const { flags } = useFeatureFlag();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"day" | "week" | "month" | "polls">("day");
   const [appointments, setAppointments] = useState<CalendarEvent[]>([]);
@@ -48,6 +51,11 @@ export function CalendarView() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [preparationSidebarOpen, setPreparationSidebarOpen] = useState(false);
   const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<CalendarEvent | null>(null);
+
+  // Type guard to check if view is a calendar view
+  const isCalendarView = (v: string): v is "day" | "week" | "month" => {
+    return v === "day" || v === "week" || v === "month";
+  };
 
   useEffect(() => {
     if (view === 'week') {
@@ -529,9 +537,41 @@ export function CalendarView() {
               </div>
             ) : (
               <>
-                {view === "day" && <DayView date={currentDate} events={appointments} onAppointmentClick={handleAppointmentClick} onPreparationClick={handlePreparationClick} />}
-                {view === "week" && <WeekView weekStart={getWeekStart(currentDate)} events={appointments} onAppointmentClick={handleAppointmentClick} onPreparationClick={handlePreparationClick} />}
-                {view === "month" && <MonthView date={currentDate} events={appointments} onDateSelect={setCurrentDate} />}
+                {(() => {
+                  // Handle polls view separately since it doesn't need calendar rendering
+                  if (!isCalendarView(view)) {
+                    return null; // polls view is handled above
+                  }
+                  
+                  // Now TypeScript knows view is "day" | "week" | "month"
+                  if (flags.useReactBigCalendar) {
+                    return (
+                      <ReactBigCalendarView
+                        date={currentDate}
+                        events={appointments}
+                        view={view}
+                        onNavigate={setCurrentDate}
+                        onView={(newView) => setView(newView)}
+                        onSelectEvent={handleAppointmentClick}
+                        onSelectSlot={(slotInfo) => {
+                          console.log('Selected slot:', slotInfo);
+                        }}
+                      />
+                    );
+                  }
+                  
+                  // Default calendar views
+                  switch (view) {
+                    case "day":
+                      return <DayView date={currentDate} events={appointments} onAppointmentClick={handleAppointmentClick} onPreparationClick={handlePreparationClick} />;
+                    case "week":
+                      return <WeekView weekStart={getWeekStart(currentDate)} events={appointments} onAppointmentClick={handleAppointmentClick} onPreparationClick={handlePreparationClick} />;
+                    case "month":
+                      return <MonthView date={currentDate} events={appointments} onDateSelect={setCurrentDate} />;
+                    default:
+                      return null;
+                  }
+                })()}
               </>
             )}
           </CardContent>
@@ -555,6 +595,9 @@ export function CalendarView() {
         isOpen={preparationSidebarOpen}
         onClose={handlePreparationSidebarClose}
       />
+      
+      {/* Feature Flag Toggle for Development */}
+      <FeatureFlagToggle />
     </div>
   );
 }

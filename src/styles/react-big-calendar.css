@@ -1,0 +1,179 @@
+/* Custom styles for React Big Calendar integration */
+/* These styles will be applied once react-big-calendar is installed */
+
+/* Import the base RBC styles */
+/* @import 'react-big-calendar/lib/css/react-big-calendar.css'; */
+
+/* Custom theme integration with our design system */
+.rbc-calendar {
+  font-family: inherit;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius));
+}
+
+/* Header styling */
+.rbc-header {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.5rem;
+  font-weight: 500;
+}
+
+/* Event styling based on our event types */
+.rbc-event {
+  border-radius: calc(var(--radius) - 2px);
+  border: none;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Event type colors - matching our current system */
+.rbc-event.event-session {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.rbc-event.event-meeting {
+  background: hsl(var(--chart-2));
+  color: white;
+}
+
+.rbc-event.event-appointment {
+  background: hsl(var(--chart-3));
+  color: white;
+}
+
+.rbc-event.event-deadline {
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+.rbc-event.event-blocked {
+  background: hsl(var(--chart-4));
+  color: white;
+}
+
+.rbc-event.event-veranstaltung {
+  background: hsl(var(--chart-5));
+  color: white;
+}
+
+.rbc-event.event-vacation {
+  background: hsl(var(--chart-3));
+  color: white;
+}
+
+.rbc-event.event-vacation_request {
+  background: hsl(var(--chart-4));
+  color: white;
+}
+
+.rbc-event.event-birthday {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+/* Today highlight */
+.rbc-today {
+  background-color: hsl(var(--accent) / 0.1);
+}
+
+/* Selected date */
+.rbc-date-cell.rbc-selected {
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+/* Buttons */
+.rbc-btn-group button {
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.rbc-btn-group button:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.rbc-btn-group button.rbc-active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+
+/* Toolbar */
+.rbc-toolbar {
+  background: hsl(var(--background));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 1rem;
+  margin-bottom: 0;
+}
+
+.rbc-toolbar-label {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+/* Month view specific */
+.rbc-month-view {
+  border: 1px solid hsl(var(--border));
+}
+
+.rbc-date-cell {
+  padding: 0.25rem;
+  border: 1px solid hsl(var(--border));
+}
+
+/* Week/Day view specific */
+.rbc-time-view {
+  border: 1px solid hsl(var(--border));
+}
+
+.rbc-time-header {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-timeslot-group {
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
+}
+
+.rbc-time-slot {
+  border-top: 1px solid hsl(var(--border) / 0.2);
+}
+
+/* Current time indicator */
+.rbc-current-time-indicator {
+  background-color: hsl(var(--destructive));
+  height: 2px;
+  z-index: 10;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .rbc-toolbar {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .rbc-btn-group {
+    align-self: center;
+  }
+  
+  .rbc-toolbar-label {
+    text-align: center;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .rbc-calendar {
+    background: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+  }
+}
