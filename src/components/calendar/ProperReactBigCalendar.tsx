@@ -55,18 +55,35 @@ export function ProperReactBigCalendar({
   return (
     <div className="h-full w-full bg-background">
       <EnhancedCalendar
-        events={events.map(event => ({
-          id: event.id,
-          title: event.title,
-          start: event.date,
-          end: event.endTime || new Date(event.date.getTime() + 60 * 60 * 1000),
-          allDay: event.is_all_day || false,
-          type: event.type,
-          participants: event.participants?.map(p => p.name),
-          priority: event.priority,
-          category: event.type,
-          resource: event
-        }))}
+        events={events.filter(event => {
+          // Filter out events with invalid dates
+          const startDate = event.date instanceof Date && !isNaN(event.date.getTime()) ? event.date : null;
+          const endDate = event.endTime instanceof Date && !isNaN(event.endTime.getTime()) ? event.endTime : null;
+          
+          return startDate !== null; // Only include events with valid start dates
+        }).map(event => {
+          // Ensure we have valid Date objects
+          const startDate = event.date instanceof Date && !isNaN(event.date.getTime()) 
+            ? event.date 
+            : new Date();
+          
+          const endDate = event.endTime instanceof Date && !isNaN(event.endTime.getTime())
+            ? event.endTime 
+            : new Date(startDate.getTime() + 60 * 60 * 1000);
+
+          return {
+            id: event.id,
+            title: event.title,
+            start: startDate,
+            end: endDate,
+            allDay: event.is_all_day || false,
+            type: event.type,
+            participants: event.participants?.map(p => p.name),
+            priority: event.priority,
+            category: event.type,
+            resource: event
+          };
+        })}
         date={date}
         view={view as "month" | "week" | "day"}
         onNavigate={handleNavigate}
