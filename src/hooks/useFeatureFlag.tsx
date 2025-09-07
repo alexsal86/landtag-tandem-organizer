@@ -61,24 +61,27 @@ export function useFeatureFlag() {
 export function FeatureFlagToggle() {
   const { flags, toggleFlag } = useFeatureFlag();
 
-  // Only show in development
-  if (process.env.NODE_ENV === 'production') {
-    return null;
-  }
+  // Show in all environments for now to allow testing
+  // if (process.env.NODE_ENV === 'production') {
+  //   return null;
+  // }
 
   return (
-    <div className="fixed bottom-4 right-4 p-4 bg-card border rounded-lg shadow-lg z-50">
-      <h3 className="font-semibold mb-2">Feature Flags (Dev)</h3>
-      <div className="space-y-2">
-        <label className="flex items-center space-x-2">
+    <div className="fixed bottom-4 right-4 p-4 bg-card border border-border rounded-lg shadow-lg z-50 max-w-xs">
+      <h3 className="font-semibold mb-3 text-sm text-foreground">🚀 Feature Flags</h3>
+      <div className="space-y-3">
+        <label className="flex items-center justify-between space-x-3 cursor-pointer">
+          <span className="text-sm text-foreground">Enhanced Calendar</span>
           <input
             type="checkbox"
             checked={flags.useReactBigCalendar}
             onChange={() => toggleFlag('useReactBigCalendar')}
-            className="rounded"
+            className="rounded border-border focus:ring-primary focus:ring-2"
           />
-          <span className="text-sm">Use React Big Calendar</span>
         </label>
+        <div className="text-xs text-muted-foreground">
+          {flags.useReactBigCalendar ? '✅ Enhanced mode active' : '⚪ Standard mode active'}
+        </div>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import { DayView } from "./calendar/DayView";
 import { WeekView } from "./calendar/WeekView";
 import { MonthView } from "./calendar/MonthView";
 import { ReactBigCalendarView } from "./calendar/ReactBigCalendarView";
+import { RealReactBigCalendar } from "./calendar/RealReactBigCalendar";
 import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
 import AppointmentPreparationSidebar from "./AppointmentPreparationSidebar";
 import { PollListView } from "./poll/PollListView";
@@ -546,15 +547,16 @@ export function CalendarView() {
                   // Now TypeScript knows view is "day" | "week" | "month"
                   if (flags.useReactBigCalendar) {
                     return (
-                      <ReactBigCalendarView
-                        date={currentDate}
+                      <RealReactBigCalendar
                         events={appointments}
+                        date={currentDate}
                         view={view}
                         onNavigate={setCurrentDate}
                         onView={(newView) => setView(newView)}
                         onSelectEvent={handleAppointmentClick}
                         onSelectSlot={(slotInfo) => {
-                          console.log('Selected slot:', slotInfo);
+                          console.log('Time slot selected:', slotInfo);
+                          // Could open a "Create Appointment" dialog here
                         }}
                       />
                     );
