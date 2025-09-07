@@ -394,10 +394,8 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                       height: `${Math.max(height, 20)}px`,
                       top: `${topPosition}px`,
                       backgroundColor: event.category_color || undefined,
-                      zIndex: 10,
-                      
+                      zIndex: 10
                     }}
-             
                     onClick={() => onAppointmentClick?.(event)}
                   >
                     <NewItemIndicator 
