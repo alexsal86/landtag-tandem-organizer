@@ -161,21 +161,21 @@ export function useCollaboration({
         console.log('📝 Content update received:', payload);
         console.log('🔍 Callback reference state:', {
           hasCallback: !!stableOnContentChange.current,
-          payloadUserId: payload.userId,
+          payloadUserId: payload.payload?.userId,
           currentUserId: currentUser.id,
-          payloadContent: payload.content
+          payloadContent: payload.payload?.content
         });
         
-        if (payload.content && payload.userId !== currentUser.id) {
-          lastContentRef.current = payload.content;
+        if (payload.payload?.content && payload.payload?.userId !== currentUser.id) {
+          lastContentRef.current = payload.payload.content;
           
           // Try the stable callback first, fallback to direct callback
           if (stableOnContentChange.current) {
             console.log('📝 Using stable callback reference');
-            stableOnContentChange.current(payload.content);
+            stableOnContentChange.current(payload.payload.content);
           } else if (onContentChange) {
             console.log('📝 Using direct callback fallback');
-            onContentChange(payload.content);
+            onContentChange(payload.payload.content);
           } else {
             console.warn('⚠️ No callback available for content update');
           }
@@ -184,15 +184,15 @@ export function useCollaboration({
 
       // Listen for cursor updates
       channel.on('broadcast', { event: 'cursor-update' }, (payload) => {
-        if (payload.userId !== currentUser.id && stableOnCursorChange.current) {
-          stableOnCursorChange.current(payload.userId, payload.cursor);
+        if (payload.payload?.userId !== currentUser.id && stableOnCursorChange.current) {
+          stableOnCursorChange.current(payload.payload.userId, payload.payload.cursor);
         }
       });
 
       // Listen for selection updates
       channel.on('broadcast', { event: 'selection-update' }, (payload) => {
-        if (payload.userId !== currentUser.id && stableOnSelectionChange.current) {
-          stableOnSelectionChange.current(payload.userId, payload.selection);
+        if (payload.payload?.userId !== currentUser.id && stableOnSelectionChange.current) {
+          stableOnSelectionChange.current(payload.payload.userId, payload.payload.selection);
         }
       });
 
