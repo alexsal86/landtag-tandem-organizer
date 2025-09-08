@@ -70,14 +70,7 @@ serve(async (req) => {
   
   console.log(`[COLLABORATION] ✅ Successfully upgraded to WebSocket for user ${userId}, document ${documentId}`);
   
-  // IMMEDIATE execution after upgrade - socket.onopen is never called in Deno!
-  console.log(`[COLLABORATION] ✅ WebSocket ready, sending connected message for user ${userId}`);
-  
-  // DELAYED connected message to fix race condition - give client time to set up onmessage handler
-  setTimeout(() => {
-    try {
-      console.log(`[COLLABORATION] 🔄 Sending connected message after delay for user ${userId}`);
-  // 2. Send connected message immediately - no delay needed
+  // Send connected message immediately - no delay needed
   try {
     console.log(`[COLLABORATION] 🚀 Sending connected message to user ${userId}...`);
     console.log(`[COLLABORATION] 🔍 Socket readyState: ${socket.readyState}`);
