@@ -315,12 +315,17 @@ export function useCollaboration({
     });
   }, [sendMessage, documentId, currentUser]);
 
-  // Connect only when explicitly enabled and user is available
+  // Connect only when user is available and documentId is not empty
   useEffect(() => {
-    if (currentUser && documentId) {
+    if (currentUser && documentId && documentId !== '') {
       console.log('🚀 Collaboration hook: Starting connection...');
       isDestroyedRef.current = false; // Reset destroyed flag
       connect();
+    } else {
+      console.log('❌ Collaboration hook: Not connecting - missing requirements');
+      console.log('- User:', !!currentUser);
+      console.log('- DocumentId:', documentId);
+      isDestroyedRef.current = true; // Prevent connection attempts
     }
     
     return () => {
