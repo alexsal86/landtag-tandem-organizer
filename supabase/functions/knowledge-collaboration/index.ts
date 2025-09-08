@@ -61,6 +61,22 @@ serve(async (req) => {
 
   socket.onopen = () => {
     console.log(`[COLLABORATION] 🔌 WebSocket connection opened for ${userId}`);
+    console.log(`[COLLABORATION] 🎯 Sending immediate connected response to ${userId}`);
+    
+    // Send connected message immediately on connection
+    const response = {
+      type: 'connected',
+      data: {
+        userId,
+        documentId,
+        message: 'Connection established',
+        serverTime: new Date().toISOString()
+      },
+      timestamp: Date.now()
+    };
+    
+    socket.send(JSON.stringify(response));
+    console.log(`[COLLABORATION] 📤 Immediate connected message sent to ${userId}`);
   };
 
   socket.onmessage = (event) => {
