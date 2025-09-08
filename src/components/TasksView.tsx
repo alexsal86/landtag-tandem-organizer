@@ -25,6 +25,7 @@ import { TaskDecisionStatus } from "./task-decisions/TaskDecisionStatus";
 import { TaskDecisionList } from "./task-decisions/TaskDecisionList";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { NewItemIndicator } from "./NewItemIndicator";
+import { UnicornAnimation } from "./UnicornAnimation";
 
 interface Task {
   id: string;
@@ -147,6 +148,7 @@ export function TasksView() {
   }>>([]);
   const [quickNoteDialog, setQuickNoteDialog] = useState<{ open: boolean; taskId: string | null }>({ open: false, taskId: null });
   const [quickNoteContent, setQuickNoteContent] = useState("");
+  const [showUnicorn, setShowUnicorn] = useState(false);
   
   console.log('TodoCreateOpen state:', todoCreateOpen); // Debug log
   
@@ -982,6 +984,12 @@ export function TasksView() {
       }
 
       loadTasks();
+      
+      // Trigger unicorn animation when task is completed
+      if (newStatus === "completed") {
+        setShowUnicorn(true);
+      }
+      
       toast({
         title: "Status aktualisiert",
         description: newStatus === "completed" 
@@ -1220,6 +1228,11 @@ export function TasksView() {
       loadAssignedSubtasks();
       setCompletingSubtask(null);
       setCompletionResult('');
+      
+      // Trigger unicorn animation when subtask is completed
+      if (isCompleted) {
+        setShowUnicorn(true);
+      }
       
       toast({
         title: isCompleted ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet",
@@ -1794,6 +1807,9 @@ export function TasksView() {
                                 if (error) throw error;
                                 loadTodos();
                                 
+                                // Trigger unicorn animation when todo is completed
+                                setShowUnicorn(true);
+                                
                                 toast({
                                   title: "ToDo erledigt",
                                   description: "Das ToDo wurde als erledigt markiert."
@@ -2099,6 +2115,12 @@ export function TasksView() {
                                        
                                        if (error) throw error;
                                        loadSubtasksForTask(task.id);
+                                       
+                                       // Trigger unicorn animation when subtask is completed
+                                       if (isChecked) {
+                                         setShowUnicorn(true);
+                                       }
+                                       
                                        toast({ 
                                          title: isChecked ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet"
                                        });
@@ -2652,6 +2674,12 @@ export function TasksView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Unicorn Animation */}
+      <UnicornAnimation 
+        isVisible={showUnicorn} 
+        onAnimationComplete={() => setShowUnicorn(false)} 
+      />
      </>
    );
  }
