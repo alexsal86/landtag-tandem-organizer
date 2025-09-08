@@ -119,7 +119,7 @@ export function useCollaboration({
           const presence = presenceArray[0] as any; // Type assertion for presence payload
           return {
             user_id: userId,
-            user_color: getUserColor(userId),
+            user_color: presence?.user_color || getUserColor(userId),
             cursor_position: presence?.cursor,
             selection_state: presence?.selection,
             profiles: {
@@ -172,13 +172,20 @@ export function useCollaboration({
           setConnectionState('connected');
           
           try {
-            // Track user presence
-            const trackResult = await channel.track({
+            // Track user presence with user color for mock users
+            const presenceData: any = {
               user_id: currentUser.id,
               display_name: currentUser.user_metadata?.display_name || 'Anonymous User',
               avatar_url: currentUser.user_metadata?.avatar_url,
               online_at: new Date().toISOString(),
-            });
+            };
+
+            // Add user_color for mock users
+            if ('user_color' in currentUser && currentUser.user_color) {
+              presenceData.user_color = currentUser.user_color;
+            }
+
+            const trackResult = await channel.track(presenceData);
             console.log('👤 User presence tracked:', trackResult);
           } catch (trackError) {
             console.warn('⚠️ Failed to track presence:', trackError);
