@@ -55,14 +55,24 @@ export function useCollaboration({
     stableOnSelectionChange.current = onSelectionChange;
   }, [onContentChange, onCursorChange, onSelectionChange]);
 
-  // Use mock user if no auth user (for testing)
-  const currentUser = authUser || {
-    id: `mock-user-${Math.random().toString(36).substr(2, 9)}`,
-    user_metadata: { 
-      display_name: 'Test User',
-      avatar_url: undefined 
+  // Create stable mock user ID that persists across renders and page reloads
+  const getMockUser = useCallback(() => {
+    let mockUserId = localStorage.getItem('collaboration-mock-user-id');
+    if (!mockUserId) {
+      mockUserId = `mock-user-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('collaboration-mock-user-id', mockUserId);
     }
-  };
+    return {
+      id: mockUserId,
+      user_metadata: { 
+        display_name: 'Test User',
+        avatar_url: undefined 
+      }
+    };
+  }, []);
+
+  // Use mock user if no auth user (for testing) - now stable across renders
+  const currentUser = authUser || getMockUser();
 
   const connect = useCallback(async () => {
     if (!currentUser || !documentId || channelRef.current || isInitialized.current) return;
@@ -239,10 +249,21 @@ export function useCollaboration({
     }
   }, [documentId, currentUser]);
 
+  // Improved debugging for user ID stability
+  useEffect(() => {
+    console.log('👤 Current user changed:', {
+      userId: currentUser?.id,
+      isAuth: !!authUser,
+      isMock: !authUser,
+      displayName: currentUser?.user_metadata?.display_name
+    });
+  }, [currentUser?.id, authUser]);
+
   // Connect when user and documentId are available
   useEffect(() => {
     if (currentUser && documentId && documentId !== '') {
       console.log('🚀 Collaboration hook: Starting connection...', {
+        userId: currentUser.id,
         hasUser: !!currentUser,
         documentId,
         isAuthenticated: !!authUser
@@ -250,13 +271,16 @@ export function useCollaboration({
       connect();
     } else {
       console.log('❌ Collaboration hook: Not connecting - missing requirements', {
+        userId: currentUser?.id || 'none',
         hasUser: !!currentUser,
         documentId: documentId || 'empty'
       });
     }
     
     return () => {
-      console.log('🔄 Collaboration hook: Cleanup on unmount/deps change');
+      console.log('🔄 Collaboration hook: Cleanup on unmount/deps change', {
+        userId: currentUser?.id
+      });
       disconnect();
     };
   }, [currentUser?.id, documentId]); // Only depend on stable values
