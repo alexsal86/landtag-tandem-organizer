@@ -160,6 +160,22 @@ const KnowledgeBaseView = () => {
     [user, anonymousMode, toast]
   );
 
+  // Optimized editor change handler
+  const handleEditorChange = React.useCallback((editorState) => {
+    const jsonState = JSON.stringify(editorState.toJSON());
+    // Only update if content actually changed
+    setSelectedDocument(prev => {
+      if (prev && prev.content !== jsonState) {
+        return { ...prev, content: jsonState };
+      }
+      return prev;
+    });
+    // Save to database with debouncing
+    if (selectedDocument && selectedDocument.id && !anonymousMode) {
+      debouncedSave(selectedDocument.id, jsonState);
+    }
+  }, [selectedDocument, anonymousMode, debouncedSave]);
+
   // Handle URL-based document selection with better error handling
   useEffect(() => {
     console.log('URL change detected - documentId:', documentId, 'documents count:', documents.length);
@@ -798,20 +814,7 @@ const KnowledgeBaseView = () => {
 
               <SimpleLexicalEditor
                 initialContent={ensureValidLexicalJSON(selectedDocument.content)}
-                onChange={React.useCallback((editorState) => {
-                  const jsonState = JSON.stringify(editorState.toJSON());
-                  // Only update if content actually changed
-                  setSelectedDocument(prev => {
-                    if (prev && prev.content !== jsonState) {
-                      return { ...prev, content: jsonState };
-                    }
-                    return prev;
-                  });
-                  // Save to database with debouncing
-                  if (selectedDocument.id && !anonymousMode) {
-                    debouncedSave(selectedDocument.id, jsonState);
-                  }
-                }, [selectedDocument.id, anonymousMode, debouncedSave])}
+                onChange={handleEditorChange}
                 className="w-full"
                 isSaving={isSaving}
                 lastSaved={lastSaved}
