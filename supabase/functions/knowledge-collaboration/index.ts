@@ -83,6 +83,7 @@ serve(async (req) => {
     onOpen: async () => {
       console.log(`WebSocket opened for user ${userId} on document ${documentId}`);
       
+      try {
         // Store connection
         activeConnections.set(connectionId, {
           socket,
