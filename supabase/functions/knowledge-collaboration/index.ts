@@ -157,20 +157,29 @@ serve(async (req) => {
         documentCollaborators.get(documentId)!.add(userId);
 
         // Send immediate connection confirmation
-        socket.send(JSON.stringify({
-          type: 'connected',
-          data: { userColor, userId, documentId },
-          timestamp: Date.now()
-        }));
+        try {
+          socket.send(JSON.stringify({
+            type: 'connected',
+            data: { userColor, userId, documentId },
+            timestamp: Date.now()
+          }));
+          console.log(`[COLLABORATION] Connection confirmation sent to user ${userId}`);
+        } catch (sendError) {
+          console.error(`[COLLABORATION] Error sending connection confirmation: ${sendError.message}`);
+          // Don't close connection just for send error
+        }
 
         console.log(`[COLLABORATION] User ${userId} connected successfully to document ${documentId}`);
 
-        // Queue async operations to prevent onOpen blocking
-        queueAsyncOperations(documentId, userId, userColor, socket);
+        // Queue async operations to prevent onOpen blocking (with minimal delay)
+        setTimeout(() => {
+          queueAsyncOperations(documentId, userId, userColor, socket);
+        }, 100);
         
       } catch (error) {
         console.error(`[COLLABORATION] Error in onOpen: ${error.message}`);
-        socket.close(1011, 'Internal server error');
+        // More specific error codes
+        socket.close(1011, `Server error: ${error.message}`);
       }
     },
     

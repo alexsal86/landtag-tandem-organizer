@@ -40,8 +40,9 @@ export function useCollaboration({
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
+  const maxReconnectAttempts = 3; // Reduced max attempts
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastConnectTime = useRef<number | null>(null);
 
   // Get current user
   useEffect(() => {
@@ -86,6 +87,8 @@ export function useCollaboration({
       wsRef.current.onopen = () => {
         console.log('Collaboration WebSocket connected');
         console.log(`Document ID: ${documentId}, User ID: ${currentUser?.id}`);
+        
+        lastConnectTime.current = Date.now();
         
         // Clear connection timeout
         if (connectionTimeoutRef.current) {
@@ -161,40 +164,48 @@ export function useCollaboration({
       };
 
       wsRef.current.onclose = (event) => {
-        const closeReason = getCloseReason(event.code);
-        console.log(`Collaboration WebSocket disconnected: ${event.code} - ${closeReason}`);
-        
-        setConnectionState('disconnected');
-        setCollaborators([]);
+        console.log('Collaboration WebSocket closed:', event.code, event.reason);
         
         // Clear heartbeat
         if (heartbeatRef.current) {
           clearInterval(heartbeatRef.current);
           heartbeatRef.current = null;
         }
-
+        
         // Clear connection timeout
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
         }
         
-        // Handle different close codes appropriately
-        const shouldReconnect = shouldAttemptReconnect(event.code);
+        setConnectionState('disconnected');
+        setCollaborators([]);
         
-        if (shouldReconnect && reconnectAttempts.current < maxReconnectAttempts) {
-          const baseDelay = 2000;
-          const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempts.current), 30000);
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts}) - Reason: ${closeReason}`);
+        const reason = getCloseReason(event.code);
+        console.log('WebSocket close reason:', reason);
+        
+        // Avoid immediate reconnection if connection was very brief
+        const connectionDuration = Date.now() - (lastConnectTime.current || 0);
+        const wasShortLived = connectionDuration < 5000; // Less than 5 seconds
+        
+        if (wasShortLived) {
+          console.log(`Connection was short-lived (${connectionDuration}ms), increasing backoff`);
+          reconnectAttempts.current = Math.min(reconnectAttempts.current + 2, maxReconnectAttempts);
+        }
+        
+        // Only attempt reconnection for recoverable errors and if not too many failures
+        if (shouldAttemptReconnect(event.code) && reconnectAttempts.current < maxReconnectAttempts) {
+          const delay = Math.min(2000 * Math.pow(2, reconnectAttempts.current), 60000); // Increased base delay
+          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
+          
+          reconnectAttempts.current++;
           
           reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttempts.current++;
             connect();
           }, delay);
-        } else if (!shouldReconnect) {
-          console.log(`Not attempting to reconnect: ${closeReason}`);
         } else {
-          console.log('Max reconnection attempts reached');
+          console.log('Max reconnection attempts reached or non-recoverable error');
+          reconnectAttempts.current = 0;
         }
       };
 
