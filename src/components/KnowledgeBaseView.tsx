@@ -17,7 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { debounce } from '@/utils/debounce';
 
-import LexicalEditor from '@/components/LexicalEditor';
+
 
 /**
  * Helper function to ensure content is valid Lexical JSON format.
@@ -782,31 +782,8 @@ const KnowledgeBaseView = () => {
             <div className="border rounded-lg min-h-[400px] p-4">
              
 
-              {/* Lexical Editor - Supabase Integration */}
-              <div className="p-4 border border-border rounded-lg mt-6">
-                <h3 className="text-sm font-medium mb-2">
-                  Lexical Editor - {selectedDocument.title}
-                </h3>
-                <LexicalEditor 
-                  value={ensureValidLexicalJSON(selectedDocument.content)}
-                  documentId={selectedDocument.id}
-                  tenantId={tenantId || undefined}
-                  onChange={(editorState) => {
-                    // This now receives EditorState correctly
-                    console.log('Editor state changed for document:', selectedDocument.id);
-                  }}
-                  onSave={async (jsonContent: string) => {
-                    // Update the selected document content locally for UI consistency
-                    setSelectedDocument(prev => prev ? { ...prev, content: jsonContent } : null);
-                    
-                    // Use debounced save to Supabase
-                    if (selectedDocument.id) {
-                      debouncedSave(selectedDocument.id, jsonContent);
-                    }
-                  }}
-                  placeholder={`Beginnen Sie zu schreiben in "${selectedDocument.title}"...`}
-                  className="min-h-[400px]"
-                />
+              <div className="text-center text-muted-foreground py-8">
+                <p>Dokumentinhalt: {selectedDocument.content}</p>
               </div>
             </div>
           </div>
