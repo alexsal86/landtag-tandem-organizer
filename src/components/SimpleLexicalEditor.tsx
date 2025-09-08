@@ -127,7 +127,7 @@ export default function SimpleLexicalEditor({
   const collaboration = useCollaboration({
     documentId: enableCollaboration && documentId ? documentId : '',
     onContentChange: (newContent: string) => {
-      if (enableCollaboration && newContent !== localContent) {
+      if (enableCollaboration) {
         console.log('📝 Remote content change received:', newContent);
         setRemoteContent(newContent);
         setLocalContent(newContent);
