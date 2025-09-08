@@ -194,32 +194,32 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   return (
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b">
-        <div className="flex items-center justify-between p-2">
-          <SidebarTrigger />
-        </div>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={() => onSectionChange("dashboard")}
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              {appSettings.app_logo_url ? (
-                <img 
-                  src={appSettings.app_logo_url} 
-                  alt="App Logo" 
-                  className="size-8 object-contain"
-                />
-              ) : (
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <FileText className="size-4" />
+            <div className="flex items-center gap-2 p-2">
+              <SidebarTrigger />
+              <SidebarMenuButton
+                onClick={() => onSectionChange("dashboard")}
+                size="lg"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground flex-1"
+              >
+                {appSettings.app_logo_url ? (
+                  <img 
+                    src={appSettings.app_logo_url} 
+                    alt="App Logo" 
+                    className="size-8 object-contain"
+                  />
+                ) : (
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                    <FileText className="size-4" />
+                  </div>
+                )}
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">{appSettings.app_name}</span>
+                  <span className="truncate text-xs">{appSettings.app_subtitle}</span>
                 </div>
-              )}
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{appSettings.app_name}</span>
-                <span className="truncate text-xs">{appSettings.app_subtitle}</span>
-              </div>
-            </SidebarMenuButton>
+              </SidebarMenuButton>
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
