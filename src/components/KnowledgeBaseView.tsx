@@ -15,76 +15,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { debounce } from '@/utils/debounce';
-import SimpleLexicalEditor from '@/components/SimpleLexicalEditor';
-
-
-/**
- * Helper function to ensure content is valid Lexical JSON format.
- * Converts plain text to Lexical JSON if necessary.
- * 
- * Based on Lexical documentation best practices:
- * https://lexical.dev/docs/concepts/editor-state#editor-state-json
- */
-function ensureValidLexicalJSON(content: string): string {
-  if (!content || content.trim() === '') {
-    // Return empty Lexical JSON structure for empty content
-    return JSON.stringify({
-      root: {
-        children: [],
-        direction: 'ltr',
-        format: '',
-        indent: 0,
-        type: 'root',
-        version: 1
-      }
-    });
-  }
-
-  try {
-    // Try to parse as JSON first
-    const parsed = JSON.parse(content);
-    
-    // Check if it's a valid Lexical JSON structure
-    if (parsed && typeof parsed === 'object' && parsed.root && parsed.root.type === 'root') {
-      return content; // Already valid Lexical JSON
-    }
-    
-    // If it's JSON but not Lexical format, treat as plain text
-    throw new Error('Not Lexical JSON format');
-  } catch (error) {
-    // Not valid JSON or not Lexical format, convert plain text to Lexical JSON
-    return JSON.stringify({
-      root: {
-        children: [
-          {
-            children: [
-              {
-                detail: 0,
-                format: 0,
-                mode: 'normal',
-                style: '',
-                text: content,
-                type: 'text',
-                version: 1
-              }
-            ],
-            direction: 'ltr',
-            format: '',
-            indent: 0,
-            type: 'paragraph',
-            version: 1
-          }
-        ],
-        direction: 'ltr',
-        format: '',
-        indent: 0,
-        type: 'root',
-        version: 1
-      }
-    });
-  }
-}
 
 interface KnowledgeDocument {
   id: string;
@@ -120,8 +50,6 @@ const KnowledgeBaseView = () => {
     localStorage.getItem('knowledge_auth_token')
   );
   const [anonymousMode, setAnonymousMode] = useState(!user && !authToken);
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   
   // Create document form state
   const [newDocument, setNewDocument] = useState({
@@ -130,66 +58,6 @@ const KnowledgeBaseView = () => {
     category: 'general',
     is_published: false
   });
-
-  // Optimized debounced save function
-  const debouncedSave = React.useCallback(
-    debounce(async (documentId: string, content: string) => {
-      if (!user || anonymousMode) return;
-      
-      setIsSaving(true);
-      try {
-        const { error } = await supabase
-          .from('knowledge_documents')
-          .update({ 
-            content, 
-            updated_at: new Date().toISOString() 
-          })
-          .eq('id', documentId);
-          
-        if (error) {
-          console.error('Error saving document:', error);
-          toast({
-            title: "Fehler beim Speichern",
-            description: "Das Dokument konnte nicht gespeichert werden.",
-            variant: "destructive",
-          });
-        } else {
-          setLastSaved(new Date());
-        }
-      } catch (error) {
-        console.error('Error saving document:', error);
-        toast({
-          title: "Fehler beim Speichern",
-          description: "Ein unerwarteter Fehler ist aufgetreten.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsSaving(false);
-      }
-    }, 1500),
-    [user, anonymousMode, toast]
-  );
-
-  // Optimized editor change handler
-  const handleEditorChange = React.useCallback((editorState) => {
-    const jsonState = JSON.stringify(editorState.toJSON());
-    console.log('Editor content changed:', jsonState);
-    
-    // Only update if content actually changed
-    setSelectedDocument(prev => {
-      if (prev && prev.content !== jsonState) {
-        console.log('Updating selected document with new content');
-        return { ...prev, content: jsonState };
-      }
-      return prev;
-    });
-    
-    // Save to database with debouncing
-    if (selectedDocument && selectedDocument.id && !anonymousMode) {
-      console.log('Saving to database:', selectedDocument.id);
-      debouncedSave(selectedDocument.id, jsonState);
-    }
-  }, [selectedDocument, anonymousMode, debouncedSave]);
 
   // Handle URL-based document selection with better error handling
   useEffect(() => {
@@ -817,16 +685,12 @@ const KnowledgeBaseView = () => {
           </div>
           
           <div className="flex-1 p-4">
-            <div className="border rounded-lg min-h-[400px] p-4">
-             
-
-              <SimpleLexicalEditor
-                initialContent={ensureValidLexicalJSON(selectedDocument.content)}
-                onChange={handleEditorChange}
-                className="w-full"
-                isSaving={isSaving}
-                lastSaved={lastSaved}
-              />
+            <div className="border rounded-lg min-h-[400px] p-4 bg-background">
+              <div className="prose prose-stone dark:prose-invert max-w-none">
+                <div className="whitespace-pre-wrap text-foreground">
+                  {selectedDocument.content || 'Kein Inhalt verfügbar...'}
+                </div>
+              </div>
             </div>
           </div>
         </div>
