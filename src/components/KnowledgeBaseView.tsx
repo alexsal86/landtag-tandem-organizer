@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Database, MoreVertical, Users, Eye, Edit, Trash2, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import SimpleLexicalEditor from './SimpleLexicalEditor';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -685,13 +686,14 @@ const KnowledgeBaseView = () => {
           </div>
           
           <div className="flex-1 p-4">
-            <div className="border rounded-lg min-h-[400px] p-4 bg-background">
-              <div className="prose prose-stone dark:prose-invert max-w-none">
-                <div className="whitespace-pre-wrap text-foreground">
-                  {selectedDocument.content || 'Kein Inhalt verfügbar...'}
-                </div>
-              </div>
-            </div>
+            <SimpleLexicalEditor
+              content={selectedDocument.content || ''}
+              onChange={(newContent) => {
+                console.log('Editor content changed:', newContent.length, 'characters');
+                // For now, just log the changes - saving will be implemented later
+              }}
+              placeholder="Beginnen Sie mit der Bearbeitung des Dokuments..."
+            />
           </div>
         </div>
       )}
