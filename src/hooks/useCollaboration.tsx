@@ -48,7 +48,6 @@ export function useCollaboration({
   const [userProfiles, setUserProfiles] = useState<Record<string, any>>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
   const lastContentRef = useRef<string>('');
-  const isInitialized = useRef(false);
   
   // Stabilize callbacks to prevent infinite useEffect loops
   const stableOnContentChange = useRef(onContentChange);
@@ -89,10 +88,10 @@ export function useCollaboration({
     }
   }, []);
 
-  // Create stable current user object
+  // Create stable current user object - only change when auth user ID changes
   const currentUser = useMemo(() => {
     if (authUser) {
-      // Real authenticated user
+      // Real authenticated user - only depend on authUser.id, not full profile
       return {
         id: authUser.id,
         display_name: userProfiles[authUser.id]?.display_name || 'Unknown User',
@@ -123,17 +122,14 @@ export function useCollaboration({
         isAuthenticated: false
       };
     }
-  }, [authUser, userProfiles]);
-
-  // Load current user's profile if authenticated
-  useEffect(() => {
-    if (authUser && !userProfiles[authUser.id]) {
-      loadUserProfiles([authUser.id]);
-    }
-  }, [authUser, userProfiles, loadUserProfiles]);
+  }, [authUser?.id]); // Only depend on user ID, not full profile
 
   const connect = useCallback(async () => {
-    if (!currentUser || !documentId || channelRef.current || isInitialized.current) return;
+    // Prevent duplicate connections
+    if (!currentUser?.id || !documentId || channelRef.current) {
+      console.log('🚫 Skipping connection - missing requirements or already connected');
+      return;
+    }
 
     console.log('🔄 Starting Supabase Realtime collaboration...', {
       userId: currentUser.id,
@@ -258,25 +254,28 @@ export function useCollaboration({
       });
 
       channelRef.current = channel;
-      isInitialized.current = true;
       
     } catch (error) {
       console.error('❌ Error setting up collaboration:', error);
       setConnectionState('disconnected');
+      channelRef.current = null;
     }
-  }, [currentUser, documentId, userProfiles, loadUserProfiles]);
+  }, [currentUser?.id, documentId]); // Only depend on stable values
 
   const disconnect = useCallback(() => {
     console.log('🔌 Disconnecting collaboration...');
     
     if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
+      try {
+        supabase.removeChannel(channelRef.current);
+      } catch (error) {
+        console.warn('⚠️ Error removing channel:', error);
+      }
       channelRef.current = null;
     }
     
     setConnectionState('disconnected');
     setCollaborators([]);
-    isInitialized.current = false;
     
     console.log('✅ Collaboration disconnected and cleaned up');
   }, []);
@@ -327,22 +326,38 @@ export function useCollaboration({
     }
   }, [documentId, currentUser]);
 
-  // Connect when user and documentId are available
+  // Separate effect for connection management - avoid infinite loops
   useEffect(() => {
-    if (currentUser && documentId && documentId !== '') {
+    let connectionTimeout: NodeJS.Timeout;
+    
+    if (currentUser?.id && documentId && documentId !== '') {
       console.log('🚀 Collaboration hook: Starting connection...', {
         userId: currentUser.id,
         displayName: currentUser.display_name,
         documentId,
         isAuthenticated: currentUser.isAuthenticated
       });
-      connect();
+      
+      // Small delay to prevent rapid reconnections
+      connectionTimeout = setTimeout(() => {
+        connect();
+      }, 100);
     }
     
     return () => {
+      if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+      }
       disconnect();
     };
-  }, [currentUser.id, documentId, connect, disconnect]);
+  }, [currentUser?.id, documentId]); // Only depend on stable user ID and documentId
+  
+  // Separate effect for profile updates - don't reconnect when profiles change
+  useEffect(() => {
+    if (authUser && !userProfiles[authUser.id]) {
+      loadUserProfiles([authUser.id]);
+    }
+  }, [authUser?.id, loadUserProfiles]);
 
   return {
     connectionState,
