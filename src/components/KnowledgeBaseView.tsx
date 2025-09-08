@@ -173,15 +173,20 @@ const KnowledgeBaseView = () => {
   // Optimized editor change handler
   const handleEditorChange = React.useCallback((editorState) => {
     const jsonState = JSON.stringify(editorState.toJSON());
+    console.log('Editor content changed:', jsonState);
+    
     // Only update if content actually changed
     setSelectedDocument(prev => {
       if (prev && prev.content !== jsonState) {
+        console.log('Updating selected document with new content');
         return { ...prev, content: jsonState };
       }
       return prev;
     });
+    
     // Save to database with debouncing
     if (selectedDocument && selectedDocument.id && !anonymousMode) {
+      console.log('Saving to database:', selectedDocument.id);
       debouncedSave(selectedDocument.id, jsonState);
     }
   }, [selectedDocument, anonymousMode, debouncedSave]);
@@ -193,9 +198,10 @@ const KnowledgeBaseView = () => {
     if (documentId && documents.length > 0) {
       const doc = documents.find(d => d.id === documentId);
       if (doc) {
-        console.log('Document found for URL:', doc.title);
+        console.log('Document found for URL:', doc.title, 'Content length:', doc.content?.length || 0);
         // Only update if it's actually a different document
         if (!selectedDocument || selectedDocument.id !== doc.id) {
+          console.log('Setting selected document:', doc.title);
           setSelectedDocument(doc);
           setIsEditorOpen(true);
           setIsSidebarCollapsed(true);

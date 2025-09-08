@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useMemo, useState, useRef } from 'react';
-import { $getRoot, EditorState } from 'lexical';
+import { $getRoot, EditorState, $createParagraphNode, $createTextNode } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -23,26 +23,46 @@ function Placeholder() {
   return <div className="text-muted-foreground">Beginnen Sie zu schreiben...</div>;
 }
 
-// Component to set initial content (only once)
-function InitialContentPlugin({ content }: { content: string }) {
+// Component to set initial content and handle updates
+function ContentPlugin({ content }: { content: string }) {
   const [editor] = useLexicalComposerContext();
-  const hasInitialized = useRef(false);
+  const previousContent = useRef<string>('');
 
   useEffect(() => {
-    if (content && !hasInitialized.current) {
-      hasInitialized.current = true;
+    // Only update if content has actually changed
+    if (content && content !== previousContent.current) {
+      previousContent.current = content;
+      
       try {
         const editorState = editor.parseEditorState(content);
         editor.setEditorState(editorState);
       } catch (error) {
-        // If parsing fails, set as plain text
+        console.error('Failed to parse editor content:', error);
+        // If parsing fails, treat as plain text and create proper Lexical structure
         editor.update(() => {
           const root = $getRoot();
           root.clear();
+          
+          if (content.trim()) {
+            // Try to extract plain text from malformed JSON or use as-is
+            let plainText = content;
+            try {
+              const parsed = JSON.parse(content);
+              if (parsed && typeof parsed === 'string') {
+                plainText = parsed;
+              }
+            } catch {
+              // Use content as-is
+            }
+            
+            const paragraph = $createParagraphNode();
+            paragraph.append($createTextNode(plainText));
+            root.append(paragraph);
+          }
         });
       }
     }
-  }, [editor]); // Remove content from deps to prevent re-initialization
+  }, [editor, content]);
 
   return null;
 }
@@ -110,7 +130,7 @@ export default function SimpleLexicalEditor({
           
           <HistoryPlugin />
           <OnChangePlugin onChange={handleEditorChange} />
-          <InitialContentPlugin content={initialContent} />
+          <ContentPlugin content={initialContent} />
         </div>
       </LexicalComposer>
     </div>
