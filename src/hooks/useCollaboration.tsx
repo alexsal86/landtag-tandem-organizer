@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CollaborationMessage {
-  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'collaborators' | 'connected' | 'ping' | 'pong' | 'error';
+  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'collaborators' | 'connected' | 'verified' | 'ping' | 'pong' | 'error';
   documentId?: string;
   userId?: string;
   data?: any;
@@ -138,8 +138,15 @@ export function useCollaboration({
               console.log('📊 Pong data:', message.data);
               break;
               
+            case 'verified':
+              console.log('✅ Background verification completed:', message.data?.message);
+              console.log('📊 Verification details:', message.data);
+              break;
+              
             case 'error':
               console.error('❌ Server error:', message.data?.message);
+              console.error('🔍 Error severity:', message.data?.severity);
+              // Don't disconnect on errors - server keeps connection alive
               break;
               
             case 'join':

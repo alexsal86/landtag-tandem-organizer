@@ -53,8 +53,9 @@ serve(async (req) => {
   // Initialize Supabase client for async operations
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
   
-  if (!supabaseUrl || !supabaseServiceKey) {
+  if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
     console.error('[COLLABORATION] Missing Supabase environment variables');
     return new Response('Server configuration error', { status: 500 });
   }
@@ -210,22 +211,43 @@ async function verifyUserAccessAsync(userId: string, documentId: string, authTok
   console.log(`[COLLABORATION] 🔍 Starting background verification for user ${userId}`);
   
   try {
-    const supabase = createClient(
+    // Create a user client with the auth token for proper authentication
+    const userSupabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        auth: { persistSession: false },
+        global: {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      }
     );
 
-    // Verify user authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser(authToken);
+    // Verify the session is valid by getting current user
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser();
     
     if (authError || !user || user.id !== userId) {
       console.error(`[COLLABORATION] Background auth failed: ${authError?.message || 'User mismatch'}`);
+      console.error(`[COLLABORATION] Expected userId: ${userId}, Got: ${user?.id}`);
+      
+      // FALLBACK: Keep connection alive but mark as unverified
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: 'error',
+          data: {
+            message: 'Authentication verification failed - limited functionality',
+            severity: 'warning'
+          },
+          timestamp: Date.now()
+        }));
+      }
       return;
     }
 
-    // Verify document access
-    const { data: document, error: docError } = await supabase
+    // Verify document access using user client (respects RLS)
+    const { data: document, error: docError } = await userSupabase
       .from('knowledge_documents')
       .select('id, title, created_by, is_published')
       .eq('id', documentId)
@@ -233,12 +255,18 @@ async function verifyUserAccessAsync(userId: string, documentId: string, authTok
 
     if (docError || !document) {
       console.error(`[COLLABORATION] Background document check failed: ${docError?.message || 'Not found'}`);
-      return;
-    }
-
-    const hasAccess = document.created_by === userId || document.is_published;
-    if (!hasAccess) {
-      console.error(`[COLLABORATION] Background access denied for user ${userId}`);
+      
+      // FALLBACK: Keep connection alive but inform user
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: 'error',
+          data: {
+            message: 'Document access verification failed - read-only mode',
+            severity: 'warning'
+          },
+          timestamp: Date.now()
+        }));
+      }
       return;
     }
 
@@ -249,8 +277,10 @@ async function verifyUserAccessAsync(userId: string, documentId: string, authTok
       socket.send(JSON.stringify({
         type: 'verified',
         data: {
-          message: 'Access verified successfully',
-          documentTitle: document.title
+          message: 'Access verified successfully - full functionality enabled',
+          documentTitle: document.title,
+          isOwner: document.created_by === userId,
+          isPublished: document.is_published
         },
         timestamp: Date.now()
       }));
@@ -258,6 +288,22 @@ async function verifyUserAccessAsync(userId: string, documentId: string, authTok
     
   } catch (error) {
     console.error(`[COLLABORATION] Background verification error:`, error);
+    
+    // FINAL FALLBACK: Keep connection alive with basic functionality
+    if (socket.readyState === WebSocket.OPEN) {
+      try {
+        socket.send(JSON.stringify({
+          type: 'error',
+          data: {
+            message: 'Verification failed - basic mode only',
+            severity: 'info'
+          },
+          timestamp: Date.now()
+        }));
+      } catch (sendError) {
+        console.error(`[COLLABORATION] Failed to send fallback message:`, sendError);
+      }
+    }
   }
 }
 
