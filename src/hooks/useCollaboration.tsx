@@ -88,14 +88,15 @@ export function useCollaboration({
     }
   }, []);
 
-  // Create stable current user object - only change when auth user ID changes
+  // Create stable current user object - recalculate when profile loads
   const currentUser = useMemo(() => {
     if (authUser) {
-      // Real authenticated user - only depend on authUser.id, not full profile
+      const userProfile = userProfiles[authUser.id];
+      // Real authenticated user
       return {
         id: authUser.id,
-        display_name: userProfiles[authUser.id]?.display_name || 'Unknown User',
-        avatar_url: userProfiles[authUser.id]?.avatar_url,
+        display_name: userProfile?.display_name || 'Unknown User',
+        avatar_url: userProfile?.avatar_url,
         user_color: getUserColor(authUser.id),
         isAuthenticated: true
       };
@@ -122,7 +123,7 @@ export function useCollaboration({
         isAuthenticated: false
       };
     }
-  }, [authUser?.id]); // Only depend on user ID, not full profile
+  }, [authUser?.id, userProfiles[authUser?.id]]); // Depend on user ID AND their profile data
 
   const connect = useCallback(async () => {
     // Prevent duplicate connections
