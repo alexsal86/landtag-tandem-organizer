@@ -161,6 +161,7 @@ export default function SimpleLexicalEditor({
       {enableCollaboration && documentId && (
         <CollaborationStatus
           isConnected={collaboration.isConnected}
+          isConnecting={collaboration.isConnecting}
           users={collaboration.collaborators}
           currentUser={collaboration.currentUser}
         />

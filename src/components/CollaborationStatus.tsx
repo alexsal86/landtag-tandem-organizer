@@ -15,11 +15,12 @@ interface CollaborationUser {
 
 interface CollaborationStatusProps {
   isConnected: boolean;
+  isConnecting?: boolean;
   users: CollaborationUser[];
   currentUser?: any;
 }
 
-const CollaborationStatus: React.FC<CollaborationStatusProps> = ({ isConnected, users, currentUser }) => {
+const CollaborationStatus: React.FC<CollaborationStatusProps> = ({ isConnected, isConnecting, users, currentUser }) => {
   const otherUsers = users.filter(user => user.user_id !== currentUser?.id);
   
   return (
@@ -29,11 +30,13 @@ const CollaborationStatus: React.FC<CollaborationStatusProps> = ({ isConnected, 
         <div className="flex items-center gap-1">
           {isConnected ? (
             <Wifi className="h-4 w-4 text-success" />
+          ) : isConnecting ? (
+            <Wifi className="h-4 w-4 text-warning animate-pulse" />
           ) : (
             <WifiOff className="h-4 w-4 text-destructive" />
           )}
           <span className="text-xs text-muted-foreground">
-            {isConnected ? 'Verbunden' : 'Getrennt'}
+            {isConnected ? 'Verbunden' : isConnecting ? 'Verbindet...' : 'Getrennt'}
           </span>
         </div>
 

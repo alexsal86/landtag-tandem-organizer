@@ -38,17 +38,14 @@ serve(async (req) => {
     return new Response("Expected WebSocket connection", { status: 400 });
   }
 
-  const { socket, response } = Deno.upgradeWebSocket(req);
-  
-  // Get query parameters
+  // Get query parameters before upgrade
   const url = new URL(req.url);
   const documentId = url.searchParams.get('documentId');
   const userId = url.searchParams.get('userId');
   const authToken = url.searchParams.get('token');
 
   if (!documentId || !userId || !authToken) {
-    socket.close(1008, 'Missing required parameters');
-    return response;
+    return new Response('Missing required parameters', { status: 400 });
   }
 
   // Initialize Supabase client
@@ -57,14 +54,14 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
-  // Verify user authentication
+  // Verify user authentication BEFORE upgrade
   const { data: { user }, error: authError } = await supabase.auth.getUser(authToken);
   if (authError || !user || user.id !== userId) {
-    socket.close(1008, 'Authentication failed');
-    return response;
+    console.error('Authentication failed:', authError?.message);
+    return new Response('Authentication failed', { status: 401 });
   }
 
-  // Verify user has access to document
+  // Verify user has access to document BEFORE upgrade
   const { data: document, error: docError } = await supabase
     .from('knowledge_documents')
     .select('id, title')
@@ -72,155 +69,172 @@ serve(async (req) => {
     .single();
 
   if (docError || !document) {
-    socket.close(1008, 'Document not found or access denied');
-    return response;
+    console.error('Document access failed:', docError?.message);
+    return new Response('Document not found or access denied', { status: 403 });
   }
 
   const connectionId = `${documentId}_${userId}`;
   const userColor = generateUserColor(userId);
 
-  console.log(`User ${userId} joining collaboration for document ${documentId}`);
+  console.log(`User ${userId} attempting to join collaboration for document ${documentId}`);
 
-  socket.onopen = async () => {
-    // Store connection
-    activeConnections.set(connectionId, {
-      socket,
-      documentId,
-      userId,
-      userColor,
-      lastSeen: Date.now()
-    });
-
-    // Add to document collaborators
-    if (!documentCollaborators.has(documentId)) {
-      documentCollaborators.set(documentId, new Set());
-    }
-    documentCollaborators.get(documentId)!.add(userId);
-
-    // Update database
-    await supabase
-      .from('knowledge_document_collaborators')
-      .upsert({
-        document_id: documentId,
-        user_id: userId,
-        user_color: userColor,
-        is_active: true,
-        last_seen_at: new Date().toISOString()
-      }, { onConflict: 'document_id,user_id' });
-
-    // Notify other collaborators of new join
-    broadcastToDocument(documentId, {
-      type: 'join',
-      documentId,
-      userId,
-      data: { userColor },
-      timestamp: Date.now()
-    }, userId);
-
-    // Send current collaborators to new user
-    const collaborators = await getCurrentCollaborators(documentId);
-    socket.send(JSON.stringify({
-      type: 'collaborators',
-      data: collaborators,
-      timestamp: Date.now()
-    }));
-  };
-
-  socket.onmessage = async (event) => {
-    try {
-      const message: CollaborationMessage = JSON.parse(event.data);
+  // Now upgrade to WebSocket with event handlers ready
+  const { socket, response } = Deno.upgradeWebSocket(req, {
+    onOpen: async () => {
+      console.log(`WebSocket opened for user ${userId} on document ${documentId}`);
       
-      // Update last seen
-      const connection = activeConnections.get(connectionId);
-      if (connection) {
-        connection.lastSeen = Date.now();
+        // Store connection
+        activeConnections.set(connectionId, {
+          socket,
+          documentId,
+          userId,
+          userColor,
+          lastSeen: Date.now()
+        });
+
+        // Add to document collaborators
+        if (!documentCollaborators.has(documentId)) {
+          documentCollaborators.set(documentId, new Set());
+        }
+        documentCollaborators.get(documentId)!.add(userId);
+
+        // Update database
+        await supabase
+          .from('knowledge_document_collaborators')
+          .upsert({
+            document_id: documentId,
+            user_id: userId,
+            user_color: userColor,
+            is_active: true,
+            last_seen_at: new Date().toISOString()
+          }, { onConflict: 'document_id,user_id' });
+
+        // Notify other collaborators of new join
+        broadcastToDocument(documentId, {
+          type: 'join',
+          documentId,
+          userId,
+          data: { userColor },
+          timestamp: Date.now()
+        }, userId);
+
+        // Send current collaborators to new user
+        const collaborators = await getCurrentCollaborators(documentId);
+        socket.send(JSON.stringify({
+          type: 'collaborators',
+          data: collaborators,
+          timestamp: Date.now()
+        }));
+        
+        console.log(`User ${userId} successfully joined collaboration for document ${documentId}`);
+      } catch (error) {
+        console.error('Error in onOpen handler:', error);
+        socket.close(1011, 'Internal server error');
       }
-
-      switch (message.type) {
-        case 'cursor':
-        case 'selection':
-          // Broadcast cursor/selection changes to other collaborators
-          broadcastToDocument(documentId, message, userId);
-          
-          // Update database with latest cursor position
-          await supabase
-            .from('knowledge_document_collaborators')
-            .update({
-              cursor_position: message.data?.cursor,
-              selection_state: message.data?.selection,
-              last_seen_at: new Date().toISOString()
-            })
-            .eq('document_id', documentId)
-            .eq('user_id', userId);
-          break;
-
-        case 'content':
-          // Handle content changes - broadcast to other collaborators and save to database
-          broadcastToDocument(documentId, message, userId);
-          
-          // Update document content and increment version
-          await supabase
-            .from('knowledge_documents')
-            .update({
-              content: message.data?.content,
-              last_editor_id: userId,
-              editing_started_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', documentId);
-          break;
-
-        case 'heartbeat':
-          // Keep connection alive
-          socket.send(JSON.stringify({
-            type: 'heartbeat',
-            timestamp: Date.now()
-          }));
-          break;
-      }
-    } catch (error) {
-      console.error('Error processing message:', error);
-    }
-  };
-
-  socket.onclose = async () => {
-    console.log(`User ${userId} left collaboration for document ${documentId}`);
+    },
     
-    // Remove from active connections
-    activeConnections.delete(connectionId);
-    
-    // Remove from document collaborators
-    const docCollaborators = documentCollaborators.get(documentId);
-    if (docCollaborators) {
-      docCollaborators.delete(userId);
-      if (docCollaborators.size === 0) {
-        documentCollaborators.delete(documentId);
+    onMessage: async (event) => {
+
+      try {
+        const message: CollaborationMessage = JSON.parse(event.data);
+        
+        // Update last seen
+        const connection = activeConnections.get(connectionId);
+        if (connection) {
+          connection.lastSeen = Date.now();
+        }
+
+        switch (message.type) {
+          case 'cursor':
+          case 'selection':
+            // Broadcast cursor/selection changes to other collaborators
+            broadcastToDocument(documentId, message, userId);
+            
+            // Update database with latest cursor position
+            await supabase
+              .from('knowledge_document_collaborators')
+              .update({
+                cursor_position: message.data?.cursor,
+                selection_state: message.data?.selection,
+                last_seen_at: new Date().toISOString()
+              })
+              .eq('document_id', documentId)
+              .eq('user_id', userId);
+            break;
+
+          case 'content':
+            // Handle content changes - broadcast to other collaborators and save to database
+            broadcastToDocument(documentId, message, userId);
+            
+            // Update document content and increment version
+            await supabase
+              .from('knowledge_documents')
+              .update({
+                content: message.data?.content,
+                last_editor_id: userId,
+                editing_started_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', documentId);
+            break;
+
+          case 'heartbeat':
+            // Keep connection alive
+            socket.send(JSON.stringify({
+              type: 'heartbeat',
+              timestamp: Date.now()
+            }));
+            break;
+        }
+      } catch (error) {
+        console.error('Error processing message:', error);
       }
+    },
+    
+    onClose: async (event) => {
+
+      console.log(`User ${userId} left collaboration for document ${documentId} (code: ${event.code})`);
+      
+      try {
+        // Remove from active connections
+        activeConnections.delete(connectionId);
+        
+        // Remove from document collaborators
+        const docCollaborators = documentCollaborators.get(documentId);
+        if (docCollaborators) {
+          docCollaborators.delete(userId);
+          if (docCollaborators.size === 0) {
+            documentCollaborators.delete(documentId);
+          }
+        }
+
+        // Update database
+        await supabase
+          .from('knowledge_document_collaborators')
+          .update({
+            is_active: false,
+            last_seen_at: new Date().toISOString()
+          })
+          .eq('document_id', documentId)
+          .eq('user_id', userId);
+
+        // Notify other collaborators of leave
+        broadcastToDocument(documentId, {
+          type: 'leave',
+          documentId,
+          userId,
+          data: {},
+          timestamp: Date.now()
+        }, userId);
+      } catch (error) {
+        console.error('Error in onClose handler:', error);
+      }
+    },
+
+    onError: (error) => {
+      console.error('WebSocket error for user', userId, ':', error);
     }
-
-    // Update database
-    await supabase
-      .from('knowledge_document_collaborators')
-      .update({
-        is_active: false,
-        last_seen_at: new Date().toISOString()
-      })
-      .eq('document_id', documentId)
-      .eq('user_id', userId);
-
-    // Notify other collaborators of leave
-    broadcastToDocument(documentId, {
-      type: 'leave',
-      documentId,
-      userId,
-      data: {},
-      timestamp: Date.now()
-    }, userId);
-  };
-
-  socket.onerror = (error) => {
-    console.error('WebSocket error:', error);
-  };
+  });
 
   return response;
 });

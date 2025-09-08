@@ -33,13 +33,14 @@ export function useCollaboration({
   onCursorChange,
   onSelectionChange
 }: UseCollaborationProps) {
-  const [isConnected, setIsConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 3;
 
   // Get current user
   useEffect(() => {
@@ -51,24 +52,30 @@ export function useCollaboration({
   }, []);
 
   const connect = useCallback(async () => {
-    if (!currentUser || !documentId) return;
+    if (!currentUser || !documentId || wsRef.current?.readyState === WebSocket.CONNECTING) return;
 
+    // Cleanup existing connection
+    disconnect();
+    
     try {
+      setConnectionState('connecting');
+      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         console.error('No access token available');
+        setConnectionState('disconnected');
         return;
       }
 
       const wsUrl = `wss://wawofclbehbkebjivdte.functions.supabase.co/knowledge-collaboration?documentId=${documentId}&userId=${currentUser.id}&token=${session.access_token}`;
       
-      console.log('Connecting to collaboration WebSocket:', wsUrl);
+      console.log('Connecting to collaboration WebSocket...');
       
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
         console.log('Collaboration WebSocket connected');
-        setIsConnected(true);
+        setConnectionState('connected');
         reconnectAttempts.current = 0;
         
         // Start heartbeat
@@ -131,7 +138,7 @@ export function useCollaboration({
 
       wsRef.current.onclose = (event) => {
         console.log('Collaboration WebSocket disconnected:', event.code, event.reason);
-        setIsConnected(false);
+        setConnectionState('disconnected');
         setCollaborators([]);
         
         // Clear heartbeat
@@ -140,13 +147,17 @@ export function useCollaboration({
           heartbeatRef.current = null;
         }
         
-        // Attempt to reconnect with exponential backoff
-        if (reconnectAttempts.current < 5) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+        // Only attempt to reconnect if it wasn't a clean closure and we haven't exceeded max attempts
+        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 10000);
+          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
+          
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttempts.current++;
             connect();
           }, delay);
+        } else if (reconnectAttempts.current >= maxReconnectAttempts) {
+          console.log('Max reconnection attempts reached');
         }
       };
 
@@ -156,12 +167,13 @@ export function useCollaboration({
 
     } catch (error) {
       console.error('Error connecting to collaboration WebSocket:', error);
+      setConnectionState('disconnected');
     }
   }, [currentUser, documentId, onContentChange, onCursorChange, onSelectionChange]);
 
   const disconnect = useCallback(() => {
     if (wsRef.current) {
-      wsRef.current.close();
+      wsRef.current.close(1000, 'User disconnected');
       wsRef.current = null;
     }
     
@@ -175,8 +187,9 @@ export function useCollaboration({
       reconnectTimeoutRef.current = null;
     }
     
-    setIsConnected(false);
+    setConnectionState('disconnected');
     setCollaborators([]);
+    reconnectAttempts.current = 0;
   }, []);
 
   const sendMessage = useCallback((message: Omit<CollaborationMessage, 'timestamp'>) => {
@@ -227,7 +240,9 @@ export function useCollaboration({
   }, [currentUser, documentId, connect, disconnect]);
 
   return {
-    isConnected,
+    connectionState,
+    isConnected: connectionState === 'connected',
+    isConnecting: connectionState === 'connecting',
     collaborators,
     currentUser,
     sendCursorUpdate,
