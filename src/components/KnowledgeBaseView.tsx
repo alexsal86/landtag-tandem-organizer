@@ -122,7 +122,7 @@ const KnowledgeBaseView = () => {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   // Optimized debounced save function
-  const debouncedSave = useCallback(
+  const debouncedSave = React.useCallback(
     debounce(async (documentId: string, content: string) => {
       if (!user || anonymousMode) return;
       
@@ -798,7 +798,7 @@ const KnowledgeBaseView = () => {
 
               <SimpleLexicalEditor
                 initialContent={ensureValidLexicalJSON(selectedDocument.content)}
-                onChange={useCallback((editorState) => {
+                onChange={React.useCallback((editorState) => {
                   const jsonState = JSON.stringify(editorState.toJSON());
                   // Only update if content actually changed
                   setSelectedDocument(prev => {
