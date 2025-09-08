@@ -103,6 +103,8 @@ const KnowledgeBaseView = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { documentId } = useParams<{ documentId: string }>();
+  
+  // All state declarations must be at the top
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,6 +122,14 @@ const KnowledgeBaseView = () => {
   const [anonymousMode, setAnonymousMode] = useState(!user && !authToken);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  
+  // Create document form state
+  const [newDocument, setNewDocument] = useState({
+    title: '',
+    content: '',
+    category: 'general',
+    is_published: false
+  });
 
   // Optimized debounced save function
   const debouncedSave = React.useCallback(
@@ -206,14 +216,6 @@ const KnowledgeBaseView = () => {
       setIsSidebarCollapsed(false);
     }
   }, [documentId, documents, navigate, loading, selectedDocument, isEditorOpen]);
-
-  // Create document form state
-  const [newDocument, setNewDocument] = useState({
-    title: '',
-    content: '',
-    category: 'general',
-    is_published: false
-  });
 
   const categories = [
     { value: 'all', label: 'Alle Kategorien' },
