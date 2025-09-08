@@ -19,25 +19,27 @@ interface SimpleLexicalEditorProps {
   enableCollaboration?: boolean;
 }
 
-// Content Plugin to sync content
+// Content Plugin to sync content (simplified for Supabase Realtime)
 function ContentPlugin({ content }: { content: string }) {
   const [editor] = useLexicalComposerContext();
   
   React.useEffect(() => {
-    editor.update(() => {
-      const root = $getRoot();
-      if (root.isEmpty() && content) {
-        const paragraph = $createParagraphNode();
-        paragraph.append($createTextNode(content));
-        root.append(paragraph);
-      }
-    });
+    if (content) {
+      editor.update(() => {
+        const root = $getRoot();
+        if (root.isEmpty()) {
+          const paragraph = $createParagraphNode();
+          paragraph.append($createTextNode(content));
+          root.append(paragraph);
+        }
+      });
+    }
   }, [editor, content]);
 
   return null;
 }
 
-// Collaboration Plugin for real-time collaboration
+// Collaboration Plugin for Supabase Realtime
 function CollaborationPlugin({ 
   documentId, 
   onContentChange,
@@ -52,23 +54,10 @@ function CollaborationPlugin({
   const isRemoteUpdateRef = useRef<boolean>(false);
 
   // Handle remote content changes
-  const handleRemoteContentChange = useCallback((newContent: string) => {
-    if (newContent !== lastContentRef.current && !isRemoteUpdateRef.current) {
-      isRemoteUpdateRef.current = true;
-      editor.update(() => {
-        const root = $getRoot();
-        root.clear();
-        if (newContent) {
-          const paragraph = $createParagraphNode();
-          paragraph.append($createTextNode(newContent));
-          root.append(paragraph);
-        }
-      });
-      setTimeout(() => {
-        isRemoteUpdateRef.current = false;
-      }, 100);
-    }
-  }, [editor]);
+  React.useEffect(() => {
+    // This will be triggered when onContentChange is called from the hook
+    // No need for separate handling here since we're using the callback approach
+  }, []);
 
   // Handle local content changes
   const handleLocalContentChange = useCallback((editorState: EditorState) => {
@@ -82,12 +71,12 @@ function CollaborationPlugin({
         lastContentRef.current = textContent;
         onContentChange(textContent);
         
-        // Debounce sending to collaboration server
+        // Debounce sending to collaboration
         setTimeout(() => {
           if (lastContentRef.current === textContent) {
             sendContentUpdate(textContent);
           }
-        }, 500);
+        }, 300); // Reduced debounce for better responsiveness
       }
     });
   }, [onContentChange, sendContentUpdate]);
@@ -106,10 +95,12 @@ export default function SimpleLexicalEditor({
   
   // Always call the hook - let it handle conditional logic internally
   const collaboration = useCollaboration({
-    documentId: documentId || '',
+    documentId: enableCollaboration && documentId ? documentId : '',
     onContentChange: (newContent: string) => {
-      setLocalContent(newContent);
-      onChange(newContent);
+      if (enableCollaboration && newContent !== localContent) {
+        setLocalContent(newContent);
+        onChange(newContent);
+      }
     },
     onCursorChange: (userId: string, cursor: any) => {
       // Handle cursor position changes from other users

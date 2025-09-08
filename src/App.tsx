@@ -21,6 +21,7 @@ import GuestResponse from "./pages/GuestResponse";
 import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
 
 import { TaskArchiveView } from "./components/TaskArchiveView";
+import CollaborationTest from "./components/CollaborationTest";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
             <Route path="/guest-response/:token" element={<GuestResponse />} />
             <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
+            <Route path="/collaboration-test" element={<CollaborationTest />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             
             <Route path="*" element={<NotFound />} />
