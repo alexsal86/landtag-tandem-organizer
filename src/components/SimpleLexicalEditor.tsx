@@ -43,11 +43,13 @@ function ContentPlugin({ content }: { content: string }) {
 function CollaborationPlugin({ 
   documentId, 
   onContentChange,
-  sendContentUpdate 
+  sendContentUpdate,
+  remoteContent 
 }: { 
   documentId: string;
   onContentChange: (content: string) => void;
   sendContentUpdate: (content: string) => void;
+  remoteContent: string;
 }) {
   const [editor] = useLexicalComposerContext();
   const lastContentRef = useRef<string>('');
@@ -55,28 +57,55 @@ function CollaborationPlugin({
 
   // Handle remote content changes
   React.useEffect(() => {
-    // This will be triggered when onContentChange is called from the hook
-    // No need for separate handling here since we're using the callback approach
-  }, []);
+    if (remoteContent && remoteContent !== lastContentRef.current) {
+      console.log('📝 Applying remote content to editor:', remoteContent);
+      isRemoteUpdateRef.current = true;
+      
+      editor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        
+        if (remoteContent.trim()) {
+          const paragraph = $createParagraphNode();
+          paragraph.append($createTextNode(remoteContent));
+          root.append(paragraph);
+        }
+        
+        lastContentRef.current = remoteContent;
+      }, {
+        onUpdate: () => {
+          // Reset the flag after the update is complete
+          setTimeout(() => {
+            isRemoteUpdateRef.current = false;
+          }, 0);
+        }
+      });
+    }
+  }, [editor, remoteContent]);
 
   // Handle local content changes
   const handleLocalContentChange = useCallback((editorState: EditorState) => {
-    if (isRemoteUpdateRef.current) return;
+    if (isRemoteUpdateRef.current) {
+      console.log('🚫 Skipping local change handler - remote update in progress');
+      return;
+    }
     
     editorState.read(() => {
       const root = $getRoot();
       const textContent = root.getTextContent();
       
       if (textContent !== lastContentRef.current) {
+        console.log('📝 Local content change detected:', textContent);
         lastContentRef.current = textContent;
         onContentChange(textContent);
         
         // Debounce sending to collaboration
         setTimeout(() => {
           if (lastContentRef.current === textContent) {
+            console.log('📡 Sending content update to collaboration:', textContent);
             sendContentUpdate(textContent);
           }
-        }, 300); // Reduced debounce for better responsiveness
+        }, 300);
       }
     });
   }, [onContentChange, sendContentUpdate]);
@@ -92,12 +121,15 @@ export default function SimpleLexicalEditor({
   enableCollaboration = false
 }: SimpleLexicalEditorProps) {
   const [localContent, setLocalContent] = useState(content);
+  const [remoteContent, setRemoteContent] = useState<string>('');
   
   // Always call the hook - let it handle conditional logic internally
   const collaboration = useCollaboration({
     documentId: enableCollaboration && documentId ? documentId : '',
     onContentChange: (newContent: string) => {
       if (enableCollaboration && newContent !== localContent) {
+        console.log('📝 Remote content change received:', newContent);
+        setRemoteContent(newContent);
         setLocalContent(newContent);
         onChange(newContent);
       }
@@ -185,6 +217,7 @@ export default function SimpleLexicalEditor({
                   onChange(newContent);
                 }}
                 sendContentUpdate={collaboration.sendContentUpdate}
+                remoteContent={remoteContent}
               />
             ) : (
               <OnChangePlugin onChange={handleOnChange} />
