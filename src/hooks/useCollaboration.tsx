@@ -55,19 +55,29 @@ export function useCollaboration({
     stableOnSelectionChange.current = onSelectionChange;
   }, [onContentChange, onCursorChange, onSelectionChange]);
 
-  // Create stable mock user ID that persists across renders and page reloads
+  // Create tab-specific mock user ID using sessionStorage (unique per tab)
   const getMockUser = useCallback(() => {
-    let mockUserId = localStorage.getItem('collaboration-mock-user-id');
+    let mockUserId = sessionStorage.getItem('collaboration-mock-user-id');
     if (!mockUserId) {
-      mockUserId = `mock-user-${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('collaboration-mock-user-id', mockUserId);
+      // Generate unique ID and tab number for better identification
+      const randomId = Math.random().toString(36).substr(2, 9);
+      const tabNumber = Math.floor(Math.random() * 99) + 1;
+      mockUserId = `mock-user-${randomId}`;
+      sessionStorage.setItem('collaboration-mock-user-id', mockUserId);
+      sessionStorage.setItem('collaboration-tab-number', tabNumber.toString());
     }
+    
+    const tabNumber = sessionStorage.getItem('collaboration-tab-number') || '1';
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+    const userColor = colors[parseInt(tabNumber) % colors.length];
+    
     return {
       id: mockUserId,
       user_metadata: { 
-        display_name: 'Test User',
+        display_name: `Test User ${tabNumber}`,
         avatar_url: undefined 
-      }
+      },
+      user_color: userColor
     };
   }, []);
 
