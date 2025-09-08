@@ -75,3 +75,6 @@ verify_jwt = true
 
 [functions.yjs-collaboration]
 verify_jwt = false
+
+[functions.knowledge-collaboration]
+verify_jwt = false

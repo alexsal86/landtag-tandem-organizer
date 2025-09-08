@@ -693,6 +693,8 @@ const KnowledgeBaseView = () => {
                 // For now, just log the changes - saving will be implemented later
               }}
               placeholder="Beginnen Sie mit der Bearbeitung des Dokuments..."
+              documentId={selectedDocument.id}
+              enableCollaboration={true}
             />
           </div>
         </div>

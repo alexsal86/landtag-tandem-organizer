@@ -2134,6 +2134,50 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_document_collaborators: {
+        Row: {
+          cursor_position: Json | null
+          document_id: string
+          id: string
+          is_active: boolean
+          joined_at: string
+          last_seen_at: string
+          selection_state: Json | null
+          user_color: string | null
+          user_id: string
+        }
+        Insert: {
+          cursor_position?: Json | null
+          document_id: string
+          id?: string
+          is_active?: boolean
+          joined_at?: string
+          last_seen_at?: string
+          selection_state?: Json | null
+          user_color?: string | null
+          user_id: string
+        }
+        Update: {
+          cursor_position?: Json | null
+          document_id?: string
+          id?: string
+          is_active?: boolean
+          joined_at?: string
+          last_seen_at?: string
+          selection_state?: Json | null
+          user_color?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_document_collaborators_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_document_permissions: {
         Row: {
           created_at: string
@@ -2210,8 +2254,11 @@ export type Database = {
           created_at: string
           created_by: string
           document_version: number | null
+          editing_started_at: string | null
           id: string
+          is_being_edited: boolean | null
           is_published: boolean | null
+          last_editor_id: string | null
           tenant_id: string
           title: string
           updated_at: string
@@ -2224,8 +2271,11 @@ export type Database = {
           created_at?: string
           created_by: string
           document_version?: number | null
+          editing_started_at?: string | null
           id?: string
+          is_being_edited?: boolean | null
           is_published?: boolean | null
+          last_editor_id?: string | null
           tenant_id: string
           title: string
           updated_at?: string
@@ -2238,8 +2288,11 @@ export type Database = {
           created_at?: string
           created_by?: string
           document_version?: number | null
+          editing_started_at?: string | null
           id?: string
+          is_being_edited?: boolean | null
           is_published?: boolean | null
+          last_editor_id?: string | null
           tenant_id?: string
           title?: string
           updated_at?: string
