@@ -130,26 +130,7 @@ serve(async (req) => {
       }
 
       switch (message.type) {
-        case 'request_connected':
-          console.log(`[COLLABORATION] 🔄 Client requested connection status, resending connected message for user ${userId}`);
-          try {
-            const connectedMessage = {
-              type: 'connected',
-              data: {
-                userId, 
-                documentId, 
-                userColor,
-                message: 'Connection confirmed via fallback mechanism',
-                serverTime: new Date().toISOString()
-              },
-              timestamp: Date.now()
-            };
-            socket.send(JSON.stringify(connectedMessage));
-            console.log(`[COLLABORATION] ✅ Resent connected message for user ${userId}`);
-          } catch (error) {
-            console.error(`[COLLABORATION] ❌ Error resending connected message:`, error);
-          }
-          break;
+        // SIMPLIFIED PHASE 1: Removed request_connected handler to eliminate race conditions
           
         case 'ping':
           console.log(`[COLLABORATION] 🏓 Received ping from user ${userId}, sending pong`);
