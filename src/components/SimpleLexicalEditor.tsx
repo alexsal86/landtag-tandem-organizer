@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { $getRoot, $getSelection, EditorState } from 'lexical';
+import React, { useEffect, useCallback, useMemo, useState, useRef } from 'react';
+import { $getRoot, EditorState } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -7,6 +7,7 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
+import { CheckCircle, Clock } from 'lucide-react';
 
 const theme = {
   // Theme styling goes here
@@ -22,28 +23,26 @@ function Placeholder() {
   return <div className="text-muted-foreground">Beginnen Sie zu schreiben...</div>;
 }
 
-// Component to set initial content
+// Component to set initial content (only once)
 function InitialContentPlugin({ content }: { content: string }) {
   const [editor] = useLexicalComposerContext();
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    if (content) {
+    if (content && !hasInitialized.current) {
+      hasInitialized.current = true;
       try {
         const editorState = editor.parseEditorState(content);
         editor.setEditorState(editorState);
       } catch (error) {
-        // If parsing fails, try to set as plain text
+        // If parsing fails, set as plain text
         editor.update(() => {
           const root = $getRoot();
           root.clear();
-          const paragraph = root.getFirstChild();
-          if (paragraph) {
-            paragraph.selectEnd();
-          }
         });
       }
     }
-  }, [editor, content]);
+  }, [editor]); // Remove content from deps to prevent re-initialization
 
   return null;
 }
@@ -52,37 +51,63 @@ interface SimpleLexicalEditorProps {
   initialContent?: string;
   onChange?: (editorState: EditorState) => void;
   className?: string;
+  isSaving?: boolean;
+  lastSaved?: Date | null;
 }
 
 export default function SimpleLexicalEditor({ 
   initialContent = '', 
   onChange,
-  className = ''
+  className = '',
+  isSaving = false,
+  lastSaved = null
 }: SimpleLexicalEditorProps) {
   
-  const initialConfig = {
+  // Memoize the initial config to prevent re-initialization
+  const initialConfig = useMemo(() => ({
     namespace: 'KnowledgeBaseEditor',
     theme,
     onError: (error: Error) => {
       console.error('Lexical Editor Error:', error);
     }
-  };
+  }), []);
 
-  const handleEditorChange = (editorState: EditorState) => {
+  // Use useCallback to prevent unnecessary re-renders
+  const handleEditorChange = useCallback((editorState: EditorState) => {
     if (onChange) {
       onChange(editorState);
     }
-  };
+  }, [onChange]);
 
   return (
     <div className={`w-full ${className}`}>
       <LexicalComposer initialConfig={initialConfig}>
-        <div className="relative min-h-[400px] border rounded-lg p-4 bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-          <PlainTextPlugin
-            contentEditable={<ContentEditable className="outline-none min-h-[350px] text-foreground" />}
-            placeholder={<Placeholder />}
-            ErrorBoundary={LexicalErrorBoundary}
-          />
+        <div className="relative min-h-[400px] border rounded-lg bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+          {/* Save Status Indicator */}
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-2 px-2 py-1 bg-background border rounded-md shadow-sm">
+            {isSaving ? (
+              <>
+                <Clock className="h-3 w-3 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Speichern...</span>
+              </>
+            ) : lastSaved ? (
+              <>
+                <CheckCircle className="h-3 w-3 text-green-500" />
+                <span className="text-xs text-muted-foreground">
+                  {lastSaved.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </>
+            ) : null}
+          </div>
+          
+          <div className="p-4">
+            <PlainTextPlugin
+              contentEditable={<ContentEditable className="outline-none min-h-[350px] text-foreground resize-none" />}
+              placeholder={<Placeholder />}
+              ErrorBoundary={LexicalErrorBoundary}
+            />
+          </div>
+          
           <HistoryPlugin />
           <OnChangePlugin onChange={handleEditorChange} />
           <InitialContentPlugin content={initialContent} />

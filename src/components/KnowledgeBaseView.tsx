@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Database, MoreVertical, Users, Eye, Edit, Trash2, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -118,33 +118,47 @@ const KnowledgeBaseView = () => {
     localStorage.getItem('knowledge_auth_token')
   );
   const [anonymousMode, setAnonymousMode] = useState(!user && !authToken);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-  // Debounced save function for Supabase
-  const debouncedSave = debounce(async (documentId: string, content: string) => {
-    if (!user || anonymousMode) return;
-    
-    try {
-      console.log('Saving document content to Supabase:', documentId);
-      const { error } = await supabase
-        .from('knowledge_documents')
-        .update({ 
-          content, 
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', documentId);
-        
-      if (error) {
+  // Optimized debounced save function
+  const debouncedSave = useCallback(
+    debounce(async (documentId: string, content: string) => {
+      if (!user || anonymousMode) return;
+      
+      setIsSaving(true);
+      try {
+        const { error } = await supabase
+          .from('knowledge_documents')
+          .update({ 
+            content, 
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', documentId);
+          
+        if (error) {
+          console.error('Error saving document:', error);
+          toast({
+            title: "Fehler beim Speichern",
+            description: "Das Dokument konnte nicht gespeichert werden.",
+            variant: "destructive",
+          });
+        } else {
+          setLastSaved(new Date());
+        }
+      } catch (error) {
         console.error('Error saving document:', error);
         toast({
           title: "Fehler beim Speichern",
-          description: "Das Dokument konnte nicht gespeichert werden.",
+          description: "Ein unerwarteter Fehler ist aufgetreten.",
           variant: "destructive",
         });
+      } finally {
+        setIsSaving(false);
       }
-    } catch (error) {
-      console.error('Error saving document:', error);
-    }
-  }, 1000);
+    }, 1500),
+    [user, anonymousMode, toast]
+  );
 
   // Handle URL-based document selection with better error handling
   useEffect(() => {
@@ -784,16 +798,23 @@ const KnowledgeBaseView = () => {
 
               <SimpleLexicalEditor
                 initialContent={ensureValidLexicalJSON(selectedDocument.content)}
-                onChange={(editorState) => {
+                onChange={useCallback((editorState) => {
                   const jsonState = JSON.stringify(editorState.toJSON());
-                  // Update local state for immediate UI feedback
-                  setSelectedDocument(prev => prev ? { ...prev, content: jsonState } : null);
+                  // Only update if content actually changed
+                  setSelectedDocument(prev => {
+                    if (prev && prev.content !== jsonState) {
+                      return { ...prev, content: jsonState };
+                    }
+                    return prev;
+                  });
                   // Save to database with debouncing
                   if (selectedDocument.id && !anonymousMode) {
                     debouncedSave(selectedDocument.id, jsonState);
                   }
-                }}
+                }, [selectedDocument.id, anonymousMode, debouncedSave])}
                 className="w-full"
+                isSaving={isSaving}
+                lastSaved={lastSaved}
               />
             </div>
           </div>
