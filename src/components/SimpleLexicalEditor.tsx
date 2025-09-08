@@ -9,7 +9,11 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { $createParagraphNode, $createTextNode } from 'lexical';
 import { useCollaboration } from '@/hooks/useCollaboration';
+import { useYjsCollaboration as useYjsCollaborationHook } from '@/hooks/useYjsCollaboration';
 import CollaborationStatus from './CollaborationStatus';
+
+// Feature flag for Yjs collaboration
+const ENABLE_YJS_COLLABORATION = false;
 
 interface SimpleLexicalEditorProps {
   content: string;
@@ -17,6 +21,7 @@ interface SimpleLexicalEditorProps {
   placeholder?: string;
   documentId?: string;
   enableCollaboration?: boolean;
+  useYjsCollaboration?: boolean; // Option to use Yjs instead of Supabase Realtime
 }
 
 // Content Plugin to sync content (simplified for Supabase Realtime)
@@ -118,31 +123,57 @@ export default function SimpleLexicalEditor({
   onChange, 
   placeholder = "Beginnen Sie zu schreiben...",
   documentId,
-  enableCollaboration = false
+  enableCollaboration = false,
+  useYjsCollaboration = ENABLE_YJS_COLLABORATION
 }: SimpleLexicalEditorProps) {
   const [localContent, setLocalContent] = useState(content);
   const [remoteContent, setRemoteContent] = useState<string>('');
   
-  // Always call the hook - let it handle conditional logic internally
-  const collaboration = useCollaboration({
-    documentId: enableCollaboration && documentId ? documentId : '',
+  // Choose collaboration provider based on feature flag
+  const shouldUseYjs = enableCollaboration && useYjsCollaboration;
+  
+  // Initialize Supabase Realtime collaboration hook
+  const realtimeCollaboration = useCollaboration({
+    documentId: enableCollaboration && !shouldUseYjs && documentId ? documentId : '',
     onContentChange: (newContent: string) => {
-      if (enableCollaboration) {
-        console.log('📝 Remote content change received:', newContent);
+      if (enableCollaboration && !shouldUseYjs) {
+        console.log('📝 [Realtime] Remote content change received:', newContent);
         setRemoteContent(newContent);
         setLocalContent(newContent);
         onChange(newContent);
       }
     },
     onCursorChange: (userId: string, cursor: any) => {
-      // Handle cursor position changes from other users
-      console.log('Cursor change from user:', userId, cursor);
+      if (enableCollaboration && !shouldUseYjs) {
+        console.log('[Realtime] Cursor change from user:', userId, cursor);
+      }
     },
     onSelectionChange: (userId: string, selection: any) => {
-      // Handle selection changes from other users
-      console.log('Selection change from user:', userId, selection);
+      if (enableCollaboration && !shouldUseYjs) {
+        console.log('[Realtime] Selection change from user:', userId, selection);
+      }
     }
   });
+
+  // Initialize Yjs collaboration hook (always call, but conditionally enable)
+  const yjsCollaboration = useYjsCollaborationHook({
+    documentId: documentId || 'disabled',
+    onContentChange: shouldUseYjs ? (newContent: string) => {
+      console.log('📝 [Yjs] Remote content change received:', newContent);
+      setRemoteContent(newContent);
+      setLocalContent(newContent);
+      onChange(newContent);
+    } : undefined,
+    onCursorChange: shouldUseYjs ? (cursor: any) => {
+      console.log('[Yjs] Cursor change:', cursor);
+    } : undefined,
+    onSelectionChange: shouldUseYjs ? (selection: any) => {
+      console.log('[Yjs] Selection change:', selection);
+    } : undefined
+  });
+
+  // Select active collaboration provider
+  const collaboration = shouldUseYjs ? yjsCollaboration : realtimeCollaboration;
 
   const initialConfig = {
     namespace: 'KnowledgeEditor',
@@ -182,12 +213,17 @@ export default function SimpleLexicalEditor({
     <div className="editor-container space-y-4">
       {/* Collaboration Status - only show if enabled */}
       {enableCollaboration && documentId && (
-        <CollaborationStatus
-          isConnected={collaboration.isConnected}
-          isConnecting={collaboration.isConnecting}
-          users={collaboration.collaborators}
-          currentUser={collaboration.currentUser}
-        />
+        <div className="mb-2">
+          <CollaborationStatus
+            isConnected={collaboration.isConnected}
+            isConnecting={collaboration.isConnecting}
+            users={collaboration.collaborators}
+            currentUser={collaboration.currentUser}
+          />
+          <div className="text-xs text-muted-foreground mt-1">
+            {shouldUseYjs ? 'Using Yjs CRDT collaboration' : 'Using Supabase Realtime collaboration'}
+          </div>
+        </div>
       )}
 
       {/* Editor */}
