@@ -85,6 +85,7 @@ export function useCollaboration({
 
       wsRef.current.onopen = () => {
         console.log('Collaboration WebSocket connected');
+        console.log(`Document ID: ${documentId}, User ID: ${currentUser?.id}`);
         
         // Clear connection timeout
         if (connectionTimeoutRef.current) {
@@ -98,6 +99,7 @@ export function useCollaboration({
         // Start heartbeat (less frequent)
         heartbeatRef.current = setInterval(() => {
           if (wsRef.current?.readyState === WebSocket.OPEN) {
+            console.log('Sending heartbeat...');
             wsRef.current.send(JSON.stringify({
               type: 'heartbeat',
               timestamp: Date.now()
@@ -109,10 +111,11 @@ export function useCollaboration({
       wsRef.current.onmessage = (event) => {
         try {
           const message: CollaborationMessage = JSON.parse(event.data);
+          console.log('Received collaboration message:', message.type, message);
           
           switch (message.type) {
             case 'connected':
-              console.log('WebSocket connection confirmed by server');
+              console.log('WebSocket connection confirmed by server:', message.data);
               break;
               
             case 'join':
@@ -149,11 +152,11 @@ export function useCollaboration({
               break;
               
             case 'heartbeat':
-              // Heartbeat response - connection is alive
+              console.log('Received heartbeat response');
               break;
           }
         } catch (error) {
-          console.error('Error parsing collaboration message:', error);
+          console.error('Error parsing collaboration message:', error, event.data);
         }
       };
 
@@ -307,7 +310,15 @@ export function useCollaboration({
     // 1003 - Unsupported data (client issue)
     // 1007 - Invalid data (client issue)
     // 1008 - Policy violation (auth/permission issue)
+    // 1011 - Internal server error (but might be temporary)
     const noReconnectCodes = [1000, 1001, 1002, 1003, 1007, 1008];
+    
+    // For 1006 (abnormal closure), we should try to reconnect but with some limits
+    if (code === 1006) {
+      // Only retry if we haven't exhausted attempts
+      return reconnectAttempts.current < maxReconnectAttempts;
+    }
+    
     return !noReconnectCodes.includes(code);
   };
 

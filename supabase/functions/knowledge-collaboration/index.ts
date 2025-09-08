@@ -300,24 +300,53 @@ function broadcastToDocument(documentId: string, message: CollaborationMessage, 
 }
 
 async function getCurrentCollaborators(documentId: string) {
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
-  const { data: collaborators } = await supabase
-    .from('knowledge_document_collaborators')
-    .select(`
-      user_id,
-      user_color,
-      cursor_position,
-      selection_state,
-      profiles:user_id (display_name, avatar_url)
-    `)
-    .eq('document_id', documentId)
-    .eq('is_active', true);
+    // First get the collaborators
+    const { data: collaborators, error: collabError } = await supabase
+      .from('knowledge_document_collaborators')
+      .select('user_id, user_color, cursor_position, selection_state')
+      .eq('document_id', documentId)
+      .eq('is_active', true);
 
-  return collaborators || [];
+    if (collabError) {
+      console.error('Error fetching collaborators:', collabError);
+      return [];
+    }
+
+    if (!collaborators || collaborators.length === 0) {
+      return [];
+    }
+
+    // Then get profile information separately
+    const userIds = collaborators.map(c => c.user_id);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('user_id, display_name, avatar_url')
+      .in('user_id', userIds);
+
+    // Combine the data
+    const collaboratorsWithProfiles = collaborators.map(collab => {
+      const profile = profiles?.find(p => p.user_id === collab.user_id);
+      return {
+        ...collab,
+        profiles: profile ? {
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url
+        } : null
+      };
+    });
+
+    console.log(`Found ${collaboratorsWithProfiles.length} collaborators for document ${documentId}`);
+    return collaboratorsWithProfiles;
+  } catch (error) {
+    console.error('Error in getCurrentCollaborators:', error);
+    return [];
+  }
 }
 
 function generateUserColor(userId: string): string {
@@ -340,15 +369,18 @@ const operationQueue: Array<() => Promise<void>> = [];
 let isProcessingQueue = false;
 
 async function queueAsyncOperations(documentId: string, userId: string, userColor: string, socket: WebSocket) {
+  console.log(`[COLLABORATION] Queuing async operations for user ${userId}, document ${documentId}`);
+  
   // Database operations
   operationQueue.push(async () => {
     try {
+      console.log(`[COLLABORATION] Updating database for user ${userId} joining document ${documentId}`);
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
       );
 
-      await supabase
+      const { error } = await supabase
         .from('knowledge_document_collaborators')
         .upsert({
           document_id: documentId,
@@ -358,31 +390,42 @@ async function queueAsyncOperations(documentId: string, userId: string, userColo
           last_seen_at: new Date().toISOString()
         }, { onConflict: 'document_id,user_id' });
       
-      console.log(`Database updated for user ${userId} joining document ${documentId}`);
+      if (error) {
+        console.error(`[COLLABORATION] Database upsert error:`, error);
+      } else {
+        console.log(`[COLLABORATION] Database updated successfully for user ${userId}`);
+      }
     } catch (error) {
-      console.error('Error updating database for user join:', error);
+      console.error(`[COLLABORATION] Error updating database for user join:`, error);
     }
   });
 
   // Send collaborators list
   operationQueue.push(async () => {
     try {
+      console.log(`[COLLABORATION] Fetching collaborators for document ${documentId}`);
       const collaborators = await getCurrentCollaborators(documentId);
+      console.log(`[COLLABORATION] Got ${collaborators.length} collaborators`);
+      
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type: 'collaborators',
           data: collaborators,
           timestamp: Date.now()
         }));
+        console.log(`[COLLABORATION] Sent collaborators list to user ${userId}`);
+      } else {
+        console.log(`[COLLABORATION] Socket not open when trying to send collaborators to ${userId}`);
       }
     } catch (error) {
-      console.error('Error sending collaborators list:', error);
+      console.error(`[COLLABORATION] Error sending collaborators list:`, error);
     }
   });
 
   // Notify other collaborators
   operationQueue.push(async () => {
     try {
+      console.log(`[COLLABORATION] Broadcasting join event for user ${userId}`);
       broadcastToDocument(documentId, {
         type: 'join',
         documentId,
@@ -390,12 +433,16 @@ async function queueAsyncOperations(documentId: string, userId: string, userColo
         data: { userColor },
         timestamp: Date.now()
       }, userId);
+      console.log(`[COLLABORATION] Join event broadcasted for user ${userId}`);
     } catch (error) {
-      console.error('Error broadcasting user join:', error);
+      console.error(`[COLLABORATION] Error broadcasting user join:`, error);
     }
   });
 
-  processQueue();
+  // Don't await processQueue - let it run in background
+  processQueue().catch(error => {
+    console.error(`[COLLABORATION] Error processing queue:`, error);
+  });
 }
 
 function queueDatabaseUpdate(type: string, data: any) {
@@ -453,14 +500,25 @@ function queueDatabaseUpdate(type: string, data: any) {
 async function processQueue() {
   if (isProcessingQueue || operationQueue.length === 0) return;
   
+  console.log(`[COLLABORATION] Processing queue with ${operationQueue.length} operations`);
   isProcessingQueue = true;
   
-  while (operationQueue.length > 0) {
-    const operation = operationQueue.shift();
-    if (operation) {
-      await operation();
+  try {
+    while (operationQueue.length > 0) {
+      const operation = operationQueue.shift();
+      if (operation) {
+        try {
+          await operation();
+        } catch (error) {
+          console.error(`[COLLABORATION] Error in queue operation:`, error);
+          // Continue with other operations even if one fails
+        }
+      }
     }
+  } catch (error) {
+    console.error(`[COLLABORATION] Critical error in processQueue:`, error);
+  } finally {
+    isProcessingQueue = false;
+    console.log(`[COLLABORATION] Queue processing completed`);
   }
-  
-  isProcessingQueue = false;
 }
