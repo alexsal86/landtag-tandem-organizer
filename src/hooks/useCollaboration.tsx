@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useAuth } from './useAuth';
@@ -21,14 +21,19 @@ interface UseCollaborationProps {
   onSelectionChange?: (userId: string, selection: any) => void;
 }
 
-// Generate a unique color for each user
+// Generate a consistent color for each user based on their user ID
 const getUserColor = (userId: string): string => {
   const colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+    '#ef4444', '#f97316', '#eab308', '#22c55e', 
+    '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899',
+    '#f59e0b', '#10b981', '#6366f1', '#d946ef'
   ];
-  const hash = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return colors[hash % colors.length];
+  
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = ((hash << 5) - hash + userId.charCodeAt(i)) & 0xffffffff;
+  }
+  return colors[Math.abs(hash) % colors.length];
 };
 
 export function useCollaboration({
@@ -40,6 +45,7 @@ export function useCollaboration({
   const { user: authUser } = useAuth();
   const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [userProfiles, setUserProfiles] = useState<Record<string, any>>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
   const lastContentRef = useRef<string>('');
   const isInitialized = useRef(false);
@@ -49,57 +55,91 @@ export function useCollaboration({
   const stableOnCursorChange = useRef(onCursorChange);
   const stableOnSelectionChange = useRef(onSelectionChange);
   
-  // Immediately update callback references
-  stableOnContentChange.current = onContentChange;
-  stableOnCursorChange.current = onCursorChange;
-  stableOnSelectionChange.current = onSelectionChange;
-  
+  // Update callback references
   useEffect(() => {
     stableOnContentChange.current = onContentChange;
     stableOnCursorChange.current = onCursorChange;
     stableOnSelectionChange.current = onSelectionChange;
   }, [onContentChange, onCursorChange, onSelectionChange]);
 
-  // Create tab-specific mock user ID using sessionStorage (unique per tab)
-  const getMockUser = useCallback(() => {
-    let mockUserId = sessionStorage.getItem('collaboration-mock-user-id');
-    if (!mockUserId) {
-      // Generate unique ID and tab number for better identification
-      const randomId = Math.random().toString(36).substr(2, 9);
-      const tabNumber = Math.floor(Math.random() * 99) + 1;
-      mockUserId = `mock-user-${randomId}`;
-      sessionStorage.setItem('collaboration-mock-user-id', mockUserId);
-      sessionStorage.setItem('collaboration-tab-number', tabNumber.toString());
-      console.log('🆕 Generated new mock user:', { mockUserId, tabNumber });
+  // Load user profiles from Supabase
+  const loadUserProfiles = useCallback(async (userIds: string[]) => {
+    if (userIds.length === 0) return;
+    
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', userIds);
+      
+      if (error) {
+        console.error('❌ Error loading user profiles:', error);
+        return;
+      }
+      
+      const profilesMap = profiles?.reduce((acc, profile) => {
+        acc[profile.user_id] = profile;
+        return acc;
+      }, {} as Record<string, any>) || {};
+      
+      setUserProfiles(prev => ({ ...prev, ...profilesMap }));
+      console.log('👤 Loaded user profiles:', profilesMap);
+    } catch (error) {
+      console.error('❌ Error loading user profiles:', error);
     }
-    
-    const tabNumber = sessionStorage.getItem('collaboration-tab-number') || '1';
-    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
-    const userColor = colors[parseInt(tabNumber) % colors.length];
-    
-    const mockUser = {
-      id: mockUserId,
-      user_metadata: { 
-        display_name: `Test User ${tabNumber}`,
-        avatar_url: undefined 
-      },
-      user_color: userColor
-    };
-    
-    console.log('👤 Mock user for this tab:', mockUser);
-    return mockUser;
   }, []);
 
-  // Use mock user if no auth user (for testing) - now stable across renders
-  const currentUser = authUser || getMockUser();
+  // Create stable current user object
+  const currentUser = useMemo(() => {
+    if (authUser) {
+      // Real authenticated user
+      return {
+        id: authUser.id,
+        display_name: userProfiles[authUser.id]?.display_name || 'Unknown User',
+        avatar_url: userProfiles[authUser.id]?.avatar_url,
+        user_color: getUserColor(authUser.id),
+        isAuthenticated: true
+      };
+    } else {
+      // Fallback for testing - create consistent mock user per tab
+      let mockUserId = sessionStorage.getItem('collaboration-mock-user-id');
+      if (!mockUserId) {
+        const randomId = Math.random().toString(36).substr(2, 9);
+        mockUserId = `mock-user-${randomId}`;
+        sessionStorage.setItem('collaboration-mock-user-id', mockUserId);
+      }
+      
+      const tabNumber = sessionStorage.getItem('collaboration-tab-number') || 
+                       Math.floor(Math.random() * 99) + 1;
+      if (!sessionStorage.getItem('collaboration-tab-number')) {
+        sessionStorage.setItem('collaboration-tab-number', tabNumber.toString());
+      }
+      
+      return {
+        id: mockUserId,
+        display_name: `Test User ${tabNumber}`,
+        avatar_url: undefined,
+        user_color: getUserColor(mockUserId),
+        isAuthenticated: false
+      };
+    }
+  }, [authUser, userProfiles]);
+
+  // Load current user's profile if authenticated
+  useEffect(() => {
+    if (authUser && !userProfiles[authUser.id]) {
+      loadUserProfiles([authUser.id]);
+    }
+  }, [authUser, userProfiles, loadUserProfiles]);
 
   const connect = useCallback(async () => {
     if (!currentUser || !documentId || channelRef.current || isInitialized.current) return;
 
     console.log('🔄 Starting Supabase Realtime collaboration...', {
       userId: currentUser.id,
+      displayName: currentUser.display_name,
       documentId,
-      isAuthenticated: !!authUser
+      isAuthenticated: currentUser.isAuthenticated
     });
     setConnectionState('connecting');
     
@@ -113,39 +153,42 @@ export function useCollaboration({
         },
       });
 
-      // Add subscription timeout
-      const subscriptionTimeout = setTimeout(() => {
-        console.error('⏰ Channel subscription timeout');
-        setConnectionState('disconnected');
-      }, 10000); // 10 second timeout
-
-      // Track user presence
+      // Handle presence updates
       channel.on('presence', { event: 'sync' }, () => {
-        console.log('👥 Presence sync');
-        const state = channel.presenceState();
-        console.log('📊 Full presence state:', state);
-        console.log('🔑 Presence state keys:', Object.keys(state));
+        console.log('🔄 Presence sync');
+        const presenceState = channel.presenceState();
         
-        const users = Object.keys(state).map(userId => {
-          const presenceArray = state[userId];
-          const presence = presenceArray[0] as any; // Type assertion for presence payload
-          console.log(`👤 Processing user ${userId}:`, presence);
-          
-          return {
-            user_id: userId,
-            user_color: presence?.user_color || getUserColor(userId),
-            cursor_position: presence?.cursor,
-            selection_state: presence?.selection,
-            profiles: {
-              display_name: presence?.display_name || 'Anonymous',
-              avatar_url: presence?.avatar_url
-            }
-          };
-        }).filter(user => user.user_id !== currentUser.id);
+        const newCollaborators: Collaborator[] = [];
+        const collaboratorUserIds: string[] = [];
         
-        console.log('👥 Filtered collaborators (excluding current user):', users);
-        console.log('🔍 Current user ID for filtering:', currentUser.id);
-        setCollaborators(users);
+        for (const [userId, presences] of Object.entries(presenceState)) {
+          if (userId !== currentUser.id && presences && presences.length > 0) {
+            const presence = presences[0] as any;
+            collaboratorUserIds.push(userId);
+            
+            newCollaborators.push({
+              user_id: userId,
+              user_color: getUserColor(userId),
+              cursor_position: presence.cursor_position,
+              selection_state: presence.selection_state,
+              profiles: {
+                display_name: userProfiles[userId]?.display_name || presence.display_name || `User ${userId.slice(-4)}`,
+                avatar_url: userProfiles[userId]?.avatar_url || presence.avatar_url
+              }
+            });
+          }
+        }
+        
+        // Load profiles for new authenticated collaborators
+        const unknownAuthUsers = collaboratorUserIds.filter(id => 
+          !id.startsWith('mock-user-') && !userProfiles[id]
+        );
+        if (unknownAuthUsers.length > 0) {
+          loadUserProfiles(unknownAuthUsers);
+        }
+        
+        setCollaborators(newCollaborators);
+        console.log('👥 Updated collaborators:', newCollaborators);
       });
 
       channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
@@ -159,25 +202,13 @@ export function useCollaboration({
       // Listen for content updates
       channel.on('broadcast', { event: 'content-update' }, (payload) => {
         console.log('📝 Content update received:', payload);
-        console.log('🔍 Callback reference state:', {
-          hasCallback: !!stableOnContentChange.current,
-          payloadUserId: payload.payload?.userId,
-          currentUserId: currentUser.id,
-          payloadContent: payload.payload?.content
-        });
         
         if (payload.payload?.content && payload.payload?.userId !== currentUser.id) {
           lastContentRef.current = payload.payload.content;
           
-          // Try the stable callback first, fallback to direct callback
           if (stableOnContentChange.current) {
-            console.log('📝 Using stable callback reference');
+            console.log('📝 Applying content update');
             stableOnContentChange.current(payload.payload.content);
-          } else if (onContentChange) {
-            console.log('📝 Using direct callback fallback');
-            onContentChange(payload.payload.content);
-          } else {
-            console.warn('⚠️ No callback available for content update');
           }
         }
       });
@@ -197,7 +228,6 @@ export function useCollaboration({
       });
 
       await channel.subscribe(async (status) => {
-        clearTimeout(subscriptionTimeout);
         console.log('📡 Channel subscription status:', status);
         
         if (status === 'SUBSCRIBED') {
@@ -205,22 +235,19 @@ export function useCollaboration({
           setConnectionState('connected');
           
           try {
-            // Track user presence with user color for mock users
-            const presenceData: any = {
+            // Track user presence
+            const presenceData = {
               user_id: currentUser.id,
-              display_name: currentUser.user_metadata?.display_name || 'Anonymous User',
-              avatar_url: currentUser.user_metadata?.avatar_url,
+              display_name: currentUser.display_name,
+              avatar_url: currentUser.avatar_url || null,
+              user_color: currentUser.user_color,
               online_at: new Date().toISOString(),
+              cursor_position: null,
+              selection_state: null
             };
-
-            // Add user_color for mock users
-            if ('user_color' in currentUser && currentUser.user_color) {
-              presenceData.user_color = currentUser.user_color;
-            }
 
             const trackResult = await channel.track(presenceData);
             console.log('👤 User presence tracked:', trackResult);
-            console.log('📡 Presence data sent:', presenceData);
           } catch (trackError) {
             console.warn('⚠️ Failed to track presence:', trackError);
           }
@@ -237,7 +264,7 @@ export function useCollaboration({
       console.error('❌ Error setting up collaboration:', error);
       setConnectionState('disconnected');
     }
-  }, [currentUser, documentId]); // Removed callback dependencies to prevent loops
+  }, [currentUser, documentId, userProfiles, loadUserProfiles]);
 
   const disconnect = useCallback(() => {
     console.log('🔌 Disconnecting collaboration...');
@@ -300,41 +327,22 @@ export function useCollaboration({
     }
   }, [documentId, currentUser]);
 
-  // Improved debugging for user ID stability
-  useEffect(() => {
-    console.log('👤 Current user changed:', {
-      userId: currentUser?.id,
-      isAuth: !!authUser,
-      isMock: !authUser,
-      displayName: currentUser?.user_metadata?.display_name
-    });
-  }, [currentUser?.id, authUser]);
-
   // Connect when user and documentId are available
   useEffect(() => {
     if (currentUser && documentId && documentId !== '') {
       console.log('🚀 Collaboration hook: Starting connection...', {
         userId: currentUser.id,
-        hasUser: !!currentUser,
+        displayName: currentUser.display_name,
         documentId,
-        isAuthenticated: !!authUser
+        isAuthenticated: currentUser.isAuthenticated
       });
       connect();
-    } else {
-      console.log('❌ Collaboration hook: Not connecting - missing requirements', {
-        userId: currentUser?.id || 'none',
-        hasUser: !!currentUser,
-        documentId: documentId || 'empty'
-      });
     }
     
     return () => {
-      console.log('🔄 Collaboration hook: Cleanup on unmount/deps change', {
-        userId: currentUser?.id
-      });
       disconnect();
     };
-  }, [currentUser?.id, documentId]); // Only depend on stable values
+  }, [currentUser.id, documentId, connect, disconnect]);
 
   return {
     connectionState,
