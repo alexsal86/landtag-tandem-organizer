@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface CollaborationMessage {
-  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat';
+  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'ping' | 'pong' | 'error';
   documentId: string;
   userId: string;
   data?: any;
@@ -141,7 +141,7 @@ serve(async (req) => {
       console.log(`[COLLABORATION] WebSocket opened for user ${userId} on document ${documentId}`);
       
       try {
-        // Store connection immediately (synchronous)
+        // Store connection in memory only (no DB operations)
         activeConnections.set(connectionId, {
           socket,
           documentId,
@@ -150,35 +150,32 @@ serve(async (req) => {
           lastSeen: Date.now()
         });
 
-        // Add to document collaborators (synchronous)
+        // Add to document collaborators in memory
         if (!documentCollaborators.has(documentId)) {
           documentCollaborators.set(documentId, new Set());
         }
         documentCollaborators.get(documentId)!.add(userId);
 
-        // Send immediate connection confirmation
-        try {
-          socket.send(JSON.stringify({
-            type: 'connected',
-            data: { userColor, userId, documentId },
-            timestamp: Date.now()
-          }));
-          console.log(`[COLLABORATION] Connection confirmation sent to user ${userId}`);
-        } catch (sendError) {
-          console.error(`[COLLABORATION] Error sending connection confirmation: ${sendError.message}`);
-          // Don't close connection just for send error
-        }
-
-        console.log(`[COLLABORATION] User ${userId} connected successfully to document ${documentId}`);
-
-        // Queue async operations to prevent onOpen blocking (with minimal delay)
-        setTimeout(() => {
-          queueAsyncOperations(documentId, userId, userColor, socket);
-        }, 100);
+        // Send immediate connection confirmation - this is the only message we send
+        socket.send(JSON.stringify({
+          type: 'connected',
+          data: { userColor, userId, documentId, status: 'ready' },
+          timestamp: Date.now()
+        }));
+        
+        console.log(`[COLLABORATION] User ${userId} connected successfully (SIMPLIFIED MODE)`);
         
       } catch (error) {
-        console.error(`[COLLABORATION] Error in onOpen: ${error.message}`);
-        // More specific error codes
+        console.error(`[COLLABORATION] Error in onOpen: ${error.message}, ${error.stack}`);
+        try {
+          socket.send(JSON.stringify({
+            type: 'error',
+            data: { message: error.message },
+            timestamp: Date.now()
+          }));
+        } catch (sendError) {
+          console.error(`[COLLABORATION] Could not send error message: ${sendError.message}`);
+        }
         socket.close(1011, `Server error: ${error.message}`);
       }
     },
@@ -186,65 +183,58 @@ serve(async (req) => {
     onMessage: (event) => {
       try {
         const message: CollaborationMessage = JSON.parse(event.data);
+        console.log(`[COLLABORATION] Received message: ${message.type} from user ${userId}`);
         
-        // Update last seen (synchronous)
+        // Update last seen in memory only
         const connection = activeConnections.get(connectionId);
         if (connection) {
           connection.lastSeen = Date.now();
         }
 
         switch (message.type) {
-          case 'cursor':
-          case 'selection':
-            // Broadcast immediately for real-time feel
-            broadcastToDocument(documentId, message, userId);
-            
-            // Queue database update (non-blocking)
-            queueDatabaseUpdate('collaborator', {
-              document_id: documentId,
-              user_id: userId,
-              cursor_position: message.data?.cursor,
-              selection_state: message.data?.selection,
-              last_seen_at: new Date().toISOString()
-            });
-            break;
-
-          case 'content':
-            // Broadcast immediately for real-time feel
-            broadcastToDocument(documentId, message, userId);
-            
-            // Queue database update (non-blocking)
-            queueDatabaseUpdate('document', {
-              id: documentId,
-              content: message.data?.content,
-              last_editor_id: userId,
-              editing_started_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
-            break;
-
-          case 'heartbeat':
-            // Keep connection alive
+          case 'ping':
+            // Simple ping/pong for testing
             if (socket.readyState === WebSocket.OPEN) {
               socket.send(JSON.stringify({
-                type: 'heartbeat',
+                type: 'pong',
                 timestamp: Date.now()
               }));
             }
             break;
+
+          case 'heartbeat':
+            // Respond to heartbeat
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
+                type: 'heartbeat_response',
+                timestamp: Date.now()
+              }));
+            }
+            break;
+
+          default:
+            console.log(`[COLLABORATION] Unhandled message type: ${message.type}`);
         }
       } catch (error) {
-        console.error('Error processing message:', error);
+        console.error(`[COLLABORATION] Error processing message: ${error.message}, ${error.stack}`);
+        try {
+          socket.send(JSON.stringify({
+            type: 'error',
+            data: { message: `Message processing error: ${error.message}` },
+            timestamp: Date.now()
+          }));
+        } catch (sendError) {
+          console.error(`[COLLABORATION] Could not send error response: ${sendError.message}`);
+        }
       }
     },
     
     onClose: (event) => {
-      console.log(`User ${userId} left collaboration for document ${documentId} (code: ${event.code})`);
+      console.log(`[COLLABORATION] User ${userId} left collaboration for document ${documentId} (code: ${event.code}, reason: ${event.reason})`);
       
-      // Remove from active connections (synchronous)
+      // Clean up memory only (no DB operations in simplified mode)
       activeConnections.delete(connectionId);
       
-      // Remove from document collaborators (synchronous)
       const docCollaborators = documentCollaborators.get(documentId);
       if (docCollaborators) {
         docCollaborators.delete(userId);
@@ -253,32 +243,18 @@ serve(async (req) => {
         }
       }
 
-      // Notify other collaborators immediately
-      broadcastToDocument(documentId, {
-        type: 'leave',
-        documentId,
-        userId,
-        data: {},
-        timestamp: Date.now()
-      }, userId);
-
-      // Queue database cleanup (non-blocking)
-      queueDatabaseUpdate('collaborator_leave', {
-        document_id: documentId,
-        user_id: userId,
-        is_active: false,
-        last_seen_at: new Date().toISOString()
-      });
+      console.log(`[COLLABORATION] Cleanup completed for user ${userId}`);
     },
 
     onError: (error) => {
       console.error(`[COLLABORATION] WebSocket error for user ${userId}:`, error);
-      // Clean up connection on error
+      // Clean up memory on error
       activeConnections.delete(connectionId);
       const docCollaborators = documentCollaborators.get(documentId);
       if (docCollaborators) {
-        docCollaborators.delete(userId);
+        docCollaborators.delete(documentId);
       }
+      console.log(`[COLLABORATION] Error cleanup completed for user ${userId}`);
     }
   });
 

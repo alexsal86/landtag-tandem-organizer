@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CollaborationMessage {
-  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'collaborators' | 'connected';
+  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'collaborators' | 'connected' | 'ping' | 'pong' | 'error';
   documentId?: string;
   userId?: string;
   data?: any;
@@ -99,16 +99,8 @@ export function useCollaboration({
         setConnectionState('connected');
         reconnectAttempts.current = 0;
         
-        // Start heartbeat (less frequent)
-        heartbeatRef.current = setInterval(() => {
-          if (wsRef.current?.readyState === WebSocket.OPEN) {
-            console.log('Sending heartbeat...');
-            wsRef.current.send(JSON.stringify({
-              type: 'heartbeat',
-              timestamp: Date.now()
-            }));
-          }
-        }, 60000); // Every 60 seconds (reduced frequency)
+        // NO HEARTBEAT in simplified mode - let the connection be stable first
+        console.log('Connected - heartbeat disabled for stability testing');
       };
 
       wsRef.current.onmessage = (event) => {
@@ -118,7 +110,25 @@ export function useCollaboration({
           
           switch (message.type) {
             case 'connected':
-              console.log('WebSocket connection confirmed by server:', message.data);
+              console.log('✅ WebSocket connection confirmed by server:', message.data);
+              // Test basic ping functionality
+              setTimeout(() => {
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                  console.log('Sending test ping...');
+                  wsRef.current.send(JSON.stringify({
+                    type: 'ping',
+                    timestamp: Date.now()
+                  }));
+                }
+              }, 1000);
+              break;
+              
+            case 'pong':
+              console.log('✅ Received pong response - connection is working!');
+              break;
+              
+            case 'error':
+              console.error('❌ Server error:', message.data?.message);
               break;
               
             case 'join':
