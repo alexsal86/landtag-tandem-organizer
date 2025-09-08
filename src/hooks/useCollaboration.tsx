@@ -49,6 +49,11 @@ export function useCollaboration({
   const stableOnCursorChange = useRef(onCursorChange);
   const stableOnSelectionChange = useRef(onSelectionChange);
   
+  // Immediately update callback references
+  stableOnContentChange.current = onContentChange;
+  stableOnCursorChange.current = onCursorChange;
+  stableOnSelectionChange.current = onSelectionChange;
+  
   useEffect(() => {
     stableOnContentChange.current = onContentChange;
     stableOnCursorChange.current = onCursorChange;
@@ -154,9 +159,26 @@ export function useCollaboration({
       // Listen for content updates
       channel.on('broadcast', { event: 'content-update' }, (payload) => {
         console.log('📝 Content update received:', payload);
-        if (payload.content && payload.userId !== currentUser.id && stableOnContentChange.current) {
+        console.log('🔍 Callback reference state:', {
+          hasCallback: !!stableOnContentChange.current,
+          payloadUserId: payload.userId,
+          currentUserId: currentUser.id,
+          payloadContent: payload.content
+        });
+        
+        if (payload.content && payload.userId !== currentUser.id) {
           lastContentRef.current = payload.content;
-          stableOnContentChange.current(payload.content);
+          
+          // Try the stable callback first, fallback to direct callback
+          if (stableOnContentChange.current) {
+            console.log('📝 Using stable callback reference');
+            stableOnContentChange.current(payload.content);
+          } else if (onContentChange) {
+            console.log('📝 Using direct callback fallback');
+            onContentChange(payload.content);
+          } else {
+            console.warn('⚠️ No callback available for content update');
+          }
         }
       });
 
