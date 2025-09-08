@@ -113,7 +113,7 @@ serve(async (req) => {
   } catch (error) {
     console.error(`[COLLABORATION] ❌ Critical error sending connected message:`, error);
   }
-  }, 150); // 150ms delay to fix race condition
+  }, 1000); // 1000ms delay to ensure client onmessage handler is ready
     
   socket.onmessage = (event) => {
     console.log(`[COLLABORATION] 📨 Received message from user ${userId}:`, event.data);

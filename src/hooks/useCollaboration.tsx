@@ -108,14 +108,15 @@ export function useCollaboration({
       };
 
       wsRef.current.onmessage = (event) => {
+        console.log('🎯 [CLIENT] onmessage handler triggered!');
         try {
           const message: CollaborationMessage = JSON.parse(event.data);
-          console.log('Received collaboration message:', message.type, message);
+          console.log('📨 [CLIENT] Received collaboration message:', message.type, message);
           
           switch (message.type) {
             case 'connected':
-              console.log('✅ WebSocket connection confirmed by server!');
-              console.log('📊 Server data:', message.data);
+              console.log('✅ [CLIENT] Connection established successfully!');
+              console.log('📊 [CLIENT] Server data:', message.data);
               
               // NOW set connected state
               setConnectionState('connected');
