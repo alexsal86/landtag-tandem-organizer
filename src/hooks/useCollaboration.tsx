@@ -103,6 +103,17 @@ export function useCollaboration({
         console.log('⏳ WebSocket opened, waiting for server confirmation...');
         reconnectAttempts.current = 0;
         
+        // Fallback mechanism: If no connected message received in 5 seconds, request it
+        setTimeout(() => {
+          if (connectionState !== 'connected' && wsRef.current?.readyState === WebSocket.OPEN && !isDestroyedRef.current) {
+            console.log('⚠️  No connected message received after 5s, requesting status...');
+            wsRef.current.send(JSON.stringify({
+              type: 'request_connected',
+              data: { clientTime: new Date().toISOString() }
+            }));
+          }
+        }, 5000);
+        
         // NO HEARTBEAT - Phase 1 stability
         console.log('❌ Heartbeat disabled for Phase 1 stability testing');
       };

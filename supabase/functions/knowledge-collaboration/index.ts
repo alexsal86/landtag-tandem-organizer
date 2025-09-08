@@ -73,11 +73,13 @@ serve(async (req) => {
   socket.onopen = () => {
     console.log(`[COLLABORATION] ✅ WebSocket opened successfully for user ${userId}`);
     
-    // IMMEDIATE connected message - this is critical for stable connection
-    try {
-      const connectedMessage = {
-        type: 'connected',
-        data: { 
+    // DELAYED connected message to fix race condition - give client time to set up onmessage handler
+    setTimeout(() => {
+      try {
+        console.log(`[COLLABORATION] 🔄 Sending connected message after delay for user ${userId}`);
+        const connectedMessage = {
+          type: 'connected',
+          data: {
           userId, 
           documentId, 
           userColor,
@@ -96,6 +98,7 @@ serve(async (req) => {
         documentId,
         userId,
         userColor,
+        connectedAt: Date.now(),
         lastSeen: Date.now()
       });
       
@@ -110,6 +113,7 @@ serve(async (req) => {
     } catch (error) {
       console.error(`[COLLABORATION] ❌ Critical error sending connected message:`, error);
     }
+    }, 150); // 150ms delay to fix race condition
   };
     
   socket.onmessage = (event) => {
@@ -126,6 +130,27 @@ serve(async (req) => {
       }
 
       switch (message.type) {
+        case 'request_connected':
+          console.log(`[COLLABORATION] 🔄 Client requested connection status, resending connected message for user ${userId}`);
+          try {
+            const connectedMessage = {
+              type: 'connected',
+              data: {
+                userId, 
+                documentId, 
+                userColor,
+                message: 'Connection confirmed via fallback mechanism',
+                serverTime: new Date().toISOString()
+              },
+              timestamp: Date.now()
+            };
+            socket.send(JSON.stringify(connectedMessage));
+            console.log(`[COLLABORATION] ✅ Resent connected message for user ${userId}`);
+          } catch (error) {
+            console.error(`[COLLABORATION] ❌ Error resending connected message:`, error);
+          }
+          break;
+          
         case 'ping':
           console.log(`[COLLABORATION] 🏓 Received ping from user ${userId}, sending pong`);
           try {
