@@ -70,51 +70,50 @@ serve(async (req) => {
   
   console.log(`[COLLABORATION] ✅ Successfully upgraded to WebSocket for user ${userId}, document ${documentId}`);
   
-  socket.onopen = () => {
-    console.log(`[COLLABORATION] ✅ WebSocket opened successfully for user ${userId}`);
-    
-    // DELAYED connected message to fix race condition - give client time to set up onmessage handler
-    setTimeout(() => {
-      try {
-        console.log(`[COLLABORATION] 🔄 Sending connected message after delay for user ${userId}`);
-        const connectedMessage = {
-          type: 'connected',
-          data: {
-          userId, 
-          documentId, 
-          userColor,
-          message: 'Stable connection established - verification running in background',
-          serverTime: new Date().toISOString()
-        },
-        timestamp: Date.now()
-      };
-      
-      socket.send(JSON.stringify(connectedMessage));
-      console.log(`[COLLABORATION] ✅ Successfully sent 'connected' confirmation to user ${userId}`);
-      
-      // Store connection in memory AFTER successful message send
-      activeConnections.set(connectionId, {
-        socket,
-        documentId,
-        userId,
+  // IMMEDIATE execution after upgrade - socket.onopen is never called in Deno!
+  console.log(`[COLLABORATION] ✅ WebSocket ready, sending connected message for user ${userId}`);
+  
+  // DELAYED connected message to fix race condition - give client time to set up onmessage handler
+  setTimeout(() => {
+    try {
+      console.log(`[COLLABORATION] 🔄 Sending connected message after delay for user ${userId}`);
+      const connectedMessage = {
+        type: 'connected',
+        data: {
+        userId, 
+        documentId, 
         userColor,
-        connectedAt: Date.now(),
-        lastSeen: Date.now()
-      });
-      
-      console.log(`[COLLABORATION] ✅ Connection stored in memory for user ${userId}`);
-      
-      // NOW do verification asynchronously in background
-      verifyUserAccessAsync(userId, documentId, authToken, socket).catch(error => {
-        console.error(`[COLLABORATION] Background verification failed:`, error);
-        // Don't close connection for verification failures - just log
-      });
-      
-    } catch (error) {
-      console.error(`[COLLABORATION] ❌ Critical error sending connected message:`, error);
-    }
-    }, 150); // 150ms delay to fix race condition
-  };
+        message: 'Connection established immediately after upgrade',
+        serverTime: new Date().toISOString()
+      },
+      timestamp: Date.now()
+    };
+    
+    socket.send(JSON.stringify(connectedMessage));
+    console.log(`[COLLABORATION] ✅ Successfully sent 'connected' confirmation to user ${userId}`);
+    
+    // Store connection in memory AFTER successful message send
+    activeConnections.set(connectionId, {
+      socket,
+      documentId,
+      userId,
+      userColor,
+      connectedAt: Date.now(),
+      lastSeen: Date.now()
+    });
+    
+    console.log(`[COLLABORATION] ✅ Connection stored in memory for user ${userId}`);
+    
+    // NOW do verification asynchronously in background
+    verifyUserAccessAsync(userId, documentId, authToken, socket).catch(error => {
+      console.error(`[COLLABORATION] Background verification failed:`, error);
+      // Don't close connection for verification failures - just log
+    });
+    
+  } catch (error) {
+    console.error(`[COLLABORATION] ❌ Critical error sending connected message:`, error);
+  }
+  }, 150); // 150ms delay to fix race condition
     
   socket.onmessage = (event) => {
     console.log(`[COLLABORATION] 📨 Received message from user ${userId}:`, event.data);
