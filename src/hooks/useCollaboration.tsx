@@ -37,17 +37,41 @@ export function useCollaboration({
   onCursorChange,
   onSelectionChange
 }: UseCollaborationProps) {
-  const { user: currentUser } = useAuth();
+  const { user: authUser } = useAuth();
   const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const lastContentRef = useRef<string>('');
   const isInitialized = useRef(false);
+  
+  // Stabilize callbacks to prevent infinite useEffect loops
+  const stableOnContentChange = useRef(onContentChange);
+  const stableOnCursorChange = useRef(onCursorChange);
+  const stableOnSelectionChange = useRef(onSelectionChange);
+  
+  useEffect(() => {
+    stableOnContentChange.current = onContentChange;
+    stableOnCursorChange.current = onCursorChange;
+    stableOnSelectionChange.current = onSelectionChange;
+  }, [onContentChange, onCursorChange, onSelectionChange]);
+
+  // Use mock user if no auth user (for testing)
+  const currentUser = authUser || {
+    id: `mock-user-${Math.random().toString(36).substr(2, 9)}`,
+    user_metadata: { 
+      display_name: 'Test User',
+      avatar_url: undefined 
+    }
+  };
 
   const connect = useCallback(async () => {
     if (!currentUser || !documentId || channelRef.current || isInitialized.current) return;
 
-    console.log('🔄 Starting Supabase Realtime collaboration...');
+    console.log('🔄 Starting Supabase Realtime collaboration...', {
+      userId: currentUser.id,
+      documentId,
+      isAuthenticated: !!authUser
+    });
     setConnectionState('connecting');
     
     try {
@@ -59,6 +83,12 @@ export function useCollaboration({
           },
         },
       });
+
+      // Add subscription timeout
+      const subscriptionTimeout = setTimeout(() => {
+        console.error('⏰ Channel subscription timeout');
+        setConnectionState('disconnected');
+      }, 10000); // 10 second timeout
 
       // Track user presence
       channel.on('presence', { event: 'sync' }, () => {
@@ -93,40 +123,48 @@ export function useCollaboration({
       // Listen for content updates
       channel.on('broadcast', { event: 'content-update' }, (payload) => {
         console.log('📝 Content update received:', payload);
-        if (payload.content && payload.userId !== currentUser.id && onContentChange) {
+        if (payload.content && payload.userId !== currentUser.id && stableOnContentChange.current) {
           lastContentRef.current = payload.content;
-          onContentChange(payload.content);
+          stableOnContentChange.current(payload.content);
         }
       });
 
       // Listen for cursor updates
       channel.on('broadcast', { event: 'cursor-update' }, (payload) => {
-        if (payload.userId !== currentUser.id && onCursorChange) {
-          onCursorChange(payload.userId, payload.cursor);
+        if (payload.userId !== currentUser.id && stableOnCursorChange.current) {
+          stableOnCursorChange.current(payload.userId, payload.cursor);
         }
       });
 
       // Listen for selection updates
       channel.on('broadcast', { event: 'selection-update' }, (payload) => {
-        if (payload.userId !== currentUser.id && onSelectionChange) {
-          onSelectionChange(payload.userId, payload.selection);
+        if (payload.userId !== currentUser.id && stableOnSelectionChange.current) {
+          stableOnSelectionChange.current(payload.userId, payload.selection);
         }
       });
 
       await channel.subscribe(async (status) => {
+        clearTimeout(subscriptionTimeout);
+        console.log('📡 Channel subscription status:', status);
+        
         if (status === 'SUBSCRIBED') {
           console.log('✅ Connected to collaboration channel');
           setConnectionState('connected');
           
-          // Track user presence
-          await channel.track({
-            user_id: currentUser.id,
-            display_name: currentUser.user_metadata?.display_name || 'Anonymous',
-            avatar_url: currentUser.user_metadata?.avatar_url,
-            online_at: new Date().toISOString(),
-          });
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Failed to connect to collaboration channel');
+          try {
+            // Track user presence
+            const trackResult = await channel.track({
+              user_id: currentUser.id,
+              display_name: currentUser.user_metadata?.display_name || 'Anonymous User',
+              avatar_url: currentUser.user_metadata?.avatar_url,
+              online_at: new Date().toISOString(),
+            });
+            console.log('👤 User presence tracked:', trackResult);
+          } catch (trackError) {
+            console.warn('⚠️ Failed to track presence:', trackError);
+          }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.error('❌ Channel subscription failed:', status);
           setConnectionState('disconnected');
         }
       });
@@ -135,10 +173,10 @@ export function useCollaboration({
       isInitialized.current = true;
       
     } catch (error) {
-      console.error('Error setting up collaboration:', error);
+      console.error('❌ Error setting up collaboration:', error);
       setConnectionState('disconnected');
     }
-  }, [currentUser, documentId, onContentChange, onCursorChange, onSelectionChange]);
+  }, [currentUser, documentId]); // Removed callback dependencies to prevent loops
 
   const disconnect = useCallback(() => {
     console.log('🔌 Disconnecting collaboration...');
@@ -204,19 +242,24 @@ export function useCollaboration({
   // Connect when user and documentId are available
   useEffect(() => {
     if (currentUser && documentId && documentId !== '') {
-      console.log('🚀 Collaboration hook: Starting connection...');
+      console.log('🚀 Collaboration hook: Starting connection...', {
+        hasUser: !!currentUser,
+        documentId,
+        isAuthenticated: !!authUser
+      });
       connect();
     } else {
-      console.log('❌ Collaboration hook: Not connecting - missing requirements');
-      console.log('- User:', !!currentUser);
-      console.log('- DocumentId:', documentId);
+      console.log('❌ Collaboration hook: Not connecting - missing requirements', {
+        hasUser: !!currentUser,
+        documentId: documentId || 'empty'
+      });
     }
     
     return () => {
       console.log('🔄 Collaboration hook: Cleanup on unmount/deps change');
       disconnect();
     };
-  }, [currentUser, documentId, connect, disconnect]);
+  }, [currentUser?.id, documentId]); // Only depend on stable values
 
   return {
     connectionState,

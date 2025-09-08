@@ -63,6 +63,7 @@ export default function CollaborationTest() {
               <li>Use the same Document ID in all tabs</li>
               <li>Start typing - changes should sync in real-time across all tabs</li>
               <li>Check the browser console for collaboration logs</li>
+              <li><strong>Note:</strong> Uses mock user for testing (no auth required)</li>
             </ul>
           </div>
 
