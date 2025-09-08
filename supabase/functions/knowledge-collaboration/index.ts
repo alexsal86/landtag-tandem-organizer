@@ -135,128 +135,151 @@ serve(async (req) => {
 
   console.log(`[COLLABORATION] Upgrading to WebSocket for user ${userId}, document ${documentId}`);
 
-  // Now upgrade to WebSocket with comprehensive error handling
-  const { socket, response } = Deno.upgradeWebSocket(req, {
-    onOpen: () => {
-      console.log(`[COLLABORATION] WebSocket opened for user ${userId} on document ${documentId}`);
-      
-      try {
-        // Store connection in memory only (no DB operations)
-        activeConnections.set(connectionId, {
-          socket,
-          documentId,
-          userId,
+  // PHASE 1: Upgrade to WebSocket with MINIMAL operations for stability
+  const { socket, response } = Deno.upgradeWebSocket(req);
+  
+  console.log(`[COLLABORATION] ✅ Successfully upgraded to WebSocket for user ${userId}, document ${documentId}`);
+  
+  socket.onopen = () => {
+    console.log(`[COLLABORATION] ✅ WebSocket opened successfully for user ${userId}`);
+    
+    // IMMEDIATE connected message - this is critical for stable connection
+    try {
+      const connectedMessage = {
+        type: 'connected',
+        data: { 
+          userId, 
+          documentId, 
           userColor,
-          lastSeen: Date.now()
-        });
-
-        // Add to document collaborators in memory
-        if (!documentCollaborators.has(documentId)) {
-          documentCollaborators.set(documentId, new Set());
-        }
-        documentCollaborators.get(documentId)!.add(userId);
-
-        // Send immediate connection confirmation - this is the only message we send
-        socket.send(JSON.stringify({
-          type: 'connected',
-          data: { userColor, userId, documentId, status: 'ready' },
-          timestamp: Date.now()
-        }));
-        
-        console.log(`[COLLABORATION] User ${userId} connected successfully (SIMPLIFIED MODE)`);
-        
-      } catch (error) {
-        console.error(`[COLLABORATION] Error in onOpen: ${error.message}, ${error.stack}`);
-        try {
-          socket.send(JSON.stringify({
-            type: 'error',
-            data: { message: error.message },
-            timestamp: Date.now()
-          }));
-        } catch (sendError) {
-          console.error(`[COLLABORATION] Could not send error message: ${sendError.message}`);
-        }
-        socket.close(1011, `Server error: ${error.message}`);
-      }
-    },
-    
-    onMessage: (event) => {
-      try {
-        const message: CollaborationMessage = JSON.parse(event.data);
-        console.log(`[COLLABORATION] Received message: ${message.type} from user ${userId}`);
-        
-        // Update last seen in memory only
-        const connection = activeConnections.get(connectionId);
-        if (connection) {
-          connection.lastSeen = Date.now();
-        }
-
-        switch (message.type) {
-          case 'ping':
-            // Simple ping/pong for testing
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({
-                type: 'pong',
-                timestamp: Date.now()
-              }));
-            }
-            break;
-
-          case 'heartbeat':
-            // Respond to heartbeat
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({
-                type: 'heartbeat_response',
-                timestamp: Date.now()
-              }));
-            }
-            break;
-
-          default:
-            console.log(`[COLLABORATION] Unhandled message type: ${message.type}`);
-        }
-      } catch (error) {
-        console.error(`[COLLABORATION] Error processing message: ${error.message}, ${error.stack}`);
-        try {
-          socket.send(JSON.stringify({
-            type: 'error',
-            data: { message: `Message processing error: ${error.message}` },
-            timestamp: Date.now()
-          }));
-        } catch (sendError) {
-          console.error(`[COLLABORATION] Could not send error response: ${sendError.message}`);
-        }
-      }
-    },
-    
-    onClose: (event) => {
-      console.log(`[COLLABORATION] User ${userId} left collaboration for document ${documentId} (code: ${event.code}, reason: ${event.reason})`);
+          message: 'Minimal stable connection established',
+          serverTime: new Date().toISOString()
+        },
+        timestamp: Date.now()
+      };
       
-      // Clean up memory only (no DB operations in simplified mode)
-      activeConnections.delete(connectionId);
+      socket.send(JSON.stringify(connectedMessage));
+      console.log(`[COLLABORATION] ✅ Successfully sent 'connected' confirmation to user ${userId}`);
       
-      const docCollaborators = documentCollaborators.get(documentId);
-      if (docCollaborators) {
-        docCollaborators.delete(userId);
-        if (docCollaborators.size === 0) {
-          documentCollaborators.delete(documentId);
-        }
-      }
-
-      console.log(`[COLLABORATION] Cleanup completed for user ${userId}`);
-    },
-
-    onError: (error) => {
-      console.error(`[COLLABORATION] WebSocket error for user ${userId}:`, error);
-      // Clean up memory on error
-      activeConnections.delete(connectionId);
-      const docCollaborators = documentCollaborators.get(documentId);
-      if (docCollaborators) {
-        docCollaborators.delete(documentId);
-      }
-      console.log(`[COLLABORATION] Error cleanup completed for user ${userId}`);
+      // Log socket state after sending
+      console.log(`[COLLABORATION] Socket readyState after connected message: ${socket.readyState}`);
+      
+      // Store connection in memory AFTER successful message send
+      activeConnections.set(connectionId, {
+        socket,
+        documentId,
+        userId,
+        userColor,
+        lastSeen: Date.now()
+      });
+      
+      console.log(`[COLLABORATION] ✅ Connection stored in memory for user ${userId}`);
+      
+    } catch (error) {
+      console.error(`[COLLABORATION] ❌ Critical error sending connected message:`, error);
+      console.error(`[COLLABORATION] Error details:`, error.name, error.message);
+      // Don't close socket here, let it stay open for debugging
     }
-  });
+  };
+    
+  socket.onmessage = (event) => {
+    console.log(`[COLLABORATION] 📨 Received message from user ${userId}:`, event.data);
+    
+    try {
+      const message = JSON.parse(event.data);
+      console.log(`[COLLABORATION] 📨 Parsed message type: ${message.type}`);
+      
+      // Update last seen in memory only
+      const connection = activeConnections.get(connectionId);
+      if (connection) {
+        connection.lastSeen = Date.now();
+      }
+
+      switch (message.type) {
+        case 'ping':
+          console.log(`[COLLABORATION] 🏓 Received ping from user ${userId}, sending pong`);
+          try {
+            socket.send(JSON.stringify({
+              type: 'pong',
+              data: { serverTime: new Date().toISOString() },
+              timestamp: Date.now()
+            }));
+            console.log(`[COLLABORATION] ✅ Pong sent successfully to user ${userId}`);
+          } catch (pongError) {
+            console.error(`[COLLABORATION] ❌ Error sending pong:`, pongError);
+          }
+          break;
+          
+        case 'heartbeat':
+          console.log(`[COLLABORATION] 💗 Heartbeat from user ${userId}`);
+          try {
+            socket.send(JSON.stringify({
+              type: 'heartbeat_response',
+              timestamp: Date.now()
+            }));
+          } catch (heartbeatError) {
+            console.error(`[COLLABORATION] ❌ Error sending heartbeat response:`, heartbeatError);
+          }
+          break;
+          
+        default:
+          console.log(`[COLLABORATION] ❓ Unknown message type: ${message.type}`);
+          break;
+      }
+    } catch (error) {
+      console.error(`[COLLABORATION] ❌ Error processing message:`, error);
+      console.error(`[COLLABORATION] Raw message data:`, event.data);
+    }
+  };
+    
+  socket.onclose = (event) => {
+    console.log(`[COLLABORATION] 🔌 WebSocket closed for user ${userId}`);
+    console.log(`[COLLABORATION] Close code: ${event.code}, Reason: "${event.reason || 'No reason provided'}"`);
+    console.log(`[COLLABORATION] Was clean close: ${event.wasClean}`);
+    
+    // Log close reasons for debugging
+    const closeReasons: Record<number, string> = {
+      1000: 'Normal closure',
+      1001: 'Going away',
+      1002: 'Protocol error', 
+      1003: 'Unsupported data',
+      1006: 'Abnormal closure',
+      1011: 'Server error',
+      1012: 'Service restart'
+    };
+    
+    const reasonDescription = closeReasons[event.code] || 'Unknown reason';
+    console.log(`[COLLABORATION] Close reason description: ${reasonDescription}`);
+    
+    // Clean up memory only (no DB operations in Phase 1)
+    activeConnections.delete(connectionId);
+    
+    const docCollaborators = documentCollaborators.get(documentId);
+    if (docCollaborators) {
+      docCollaborators.delete(userId);
+      if (docCollaborators.size === 0) {
+        documentCollaborators.delete(documentId);
+      }
+    }
+
+    console.log(`[COLLABORATION] ✅ Memory cleanup completed for user ${userId}`);
+  };
+
+  socket.onerror = (event) => {
+    console.error(`[COLLABORATION] ❌ WebSocket error for user ${userId}:`, event);
+    console.error(`[COLLABORATION] Error type: ${event.type}`);
+    // Log additional error details if available
+    if ('error' in event) {
+      console.error(`[COLLABORATION] Error details:`, event.error);
+    }
+    
+    // Clean up memory on error
+    activeConnections.delete(connectionId);
+    const docCollaborators = documentCollaborators.get(documentId);
+    if (docCollaborators) {
+      docCollaborators.delete(userId);
+    }
+    console.log(`[COLLABORATION] ✅ Error cleanup completed for user ${userId}`);
+  };
 
   return response;
 });

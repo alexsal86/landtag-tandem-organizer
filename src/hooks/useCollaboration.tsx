@@ -40,7 +40,7 @@ export function useCollaboration({
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 3; // Reduced max attempts
+  const maxReconnectAttempts = 5; // Increased max attempts
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastConnectTime = useRef<number | null>(null);
 
@@ -75,18 +75,18 @@ export function useCollaboration({
       
       wsRef.current = new WebSocket(wsUrl);
 
-      // Set connection timeout
+      // Set connection timeout - increased for stability
       connectionTimeoutRef.current = setTimeout(() => {
         if (connectionState === 'connecting') {
-          console.log('Connection timeout');
+          console.log('⏰ Connection timeout after 30 seconds');
           wsRef.current?.close();
           setConnectionState('disconnected');
         }
-      }, 10000); // 10 second timeout
+      }, 30000); // 30 second timeout for stable connections
 
       wsRef.current.onopen = () => {
-        console.log('Collaboration WebSocket connected');
-        console.log(`Document ID: ${documentId}, User ID: ${currentUser?.id}`);
+        console.log('🔗 Collaboration WebSocket opened');
+        console.log(`📄 Document ID: ${documentId}, 👤 User ID: ${currentUser?.id}`);
         
         lastConnectTime.current = Date.now();
         
@@ -96,11 +96,12 @@ export function useCollaboration({
           connectionTimeoutRef.current = null;
         }
         
-        setConnectionState('connected');
+        // Don't set connected state yet - wait for server confirmation
+        console.log('⏳ WebSocket opened, waiting for server confirmation...');
         reconnectAttempts.current = 0;
         
-        // NO HEARTBEAT in simplified mode - let the connection be stable first
-        console.log('Connected - heartbeat disabled for stability testing');
+        // NO HEARTBEAT in Phase 1 - stability first
+        console.log('❌ Heartbeat disabled for Phase 1 stability testing');
       };
 
       wsRef.current.onmessage = (event) => {
@@ -110,21 +111,28 @@ export function useCollaboration({
           
           switch (message.type) {
             case 'connected':
-              console.log('✅ WebSocket connection confirmed by server:', message.data);
-              // Test basic ping functionality
+              console.log('✅ WebSocket connection confirmed by server!');
+              console.log('📊 Server data:', message.data);
+              
+              // NOW set connected state
+              setConnectionState('connected');
+              
+              // Test basic ping functionality after 2 seconds for stability
               setTimeout(() => {
                 if (wsRef.current?.readyState === WebSocket.OPEN) {
-                  console.log('Sending test ping...');
+                  console.log('🏓 Sending test ping to verify connection...');
                   wsRef.current.send(JSON.stringify({
                     type: 'ping',
+                    data: { clientTime: new Date().toISOString() },
                     timestamp: Date.now()
                   }));
                 }
-              }, 1000);
+              }, 2000);
               break;
               
             case 'pong':
-              console.log('✅ Received pong response - connection is working!');
+              console.log('✅ Received pong response - connection is stable and working!');
+              console.log('📊 Pong data:', message.data);
               break;
               
             case 'error':
