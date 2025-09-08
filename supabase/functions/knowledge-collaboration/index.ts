@@ -7,11 +7,12 @@ const corsHeaders = {
 };
 
 interface CollaborationMessage {
-  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'ping' | 'pong' | 'error';
+  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'ping' | 'pong' | 'error' | 'ready' | 'connected' | 'ack';
   documentId: string;
   userId: string;
   data?: any;
   timestamp: number;
+  messageId?: string;
 }
 
 interface CollaboratorSession {
@@ -20,6 +21,9 @@ interface CollaboratorSession {
   userId: string;
   userColor: string;
   lastSeen: number;
+  connectedAt: number;
+  isReadyReceived: boolean;
+  pendingMessages: Array<{ messageId: string; message: any; attempts: number; lastAttempt: number }>;
 }
 
 // Store active connections
@@ -70,49 +74,27 @@ serve(async (req) => {
   
   console.log(`[COLLABORATION] ✅ Successfully upgraded to WebSocket for user ${userId}, document ${documentId}`);
   
-  // Send connected message immediately - no delay needed
-  try {
-    console.log(`[COLLABORATION] 🚀 Sending connected message to user ${userId}...`);
-    console.log(`[COLLABORATION] 🔍 Socket readyState: ${socket.readyState}`);
-    
-    const connectedMessage = {
-      type: 'connected',
-      data: {
-        userId, 
-        documentId, 
-        userColor,
-        message: 'Connection established immediately after upgrade',
-        serverTime: new Date().toISOString()
-      },
-      timestamp: Date.now()
-    };
-    
-    console.log(`[COLLABORATION] 📤 Attempting to send message:`, connectedMessage);
-    socket.send(JSON.stringify(connectedMessage));
-    console.log(`[COLLABORATION] ✅ Successfully sent 'connected' confirmation to user ${userId}`);
-    
-    // Store connection in memory AFTER successful message send
-    activeConnections.set(connectionId, {
-      socket,
-      documentId,
-      userId,
-      userColor,
-      connectedAt: Date.now(),
-      lastSeen: Date.now()
-    });
-    
-    console.log(`[COLLABORATION] ✅ Connection stored in memory for user ${userId}`);
-    
-    // NOW do verification asynchronously in background
-    verifyUserAccessAsync(userId, documentId, authToken, socket).catch(error => {
-      console.error(`[COLLABORATION] Background verification failed:`, error);
-      // Don't close connection for verification failures - just log
-    });
-    
-  } catch (error) {
-    console.error(`[COLLABORATION] ❌ Critical error sending connected message:`, error);
-    console.error(`[COLLABORATION] 🔍 Error details:`, error.message, error.stack);
-  }
+  // HANDSHAKE PHASE 1: Store connection and wait for client "ready" signal
+  console.log(`[COLLABORATION] 🤝 WebSocket upgraded, waiting for client handshake...`);
+  
+  // Store connection immediately but mark as not ready
+  activeConnections.set(connectionId, {
+    socket,
+    documentId,
+    userId,
+    userColor,
+    connectedAt: Date.now(),
+    lastSeen: Date.now(),
+    isReadyReceived: false,
+    pendingMessages: []
+  });
+  
+  console.log(`[COLLABORATION] 📝 Connection stored, waiting for 'ready' from client ${userId}`);
+  
+  // Start background verification immediately (don't wait for handshake)
+  verifyUserAccessAsync(userId, documentId, authToken, socket).catch(error => {
+    console.error(`[COLLABORATION] Background verification failed:`, error);
+  });
     
   socket.onmessage = (event) => {
     console.log(`[COLLABORATION] 📨 Received message from user ${userId}:`, event.data);
@@ -128,7 +110,37 @@ serve(async (req) => {
       }
 
       switch (message.type) {
-        // SIMPLIFIED PHASE 1: Removed request_connected handler to eliminate race conditions
+        case 'ready':
+          console.log(`[COLLABORATION] 🤝 Received 'ready' handshake from client ${userId}`);
+          const connection = activeConnections.get(connectionId);
+          if (connection && !connection.isReadyReceived) {
+            connection.isReadyReceived = true;
+            console.log(`[COLLABORATION] ✅ Client ${userId} is ready, sending 'connected' message`);
+            
+            const messageId = `connected_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const connectedMessage = {
+              type: 'connected',
+              messageId,
+              data: {
+                userId, 
+                documentId, 
+                userColor,
+                message: 'Handshake completed - connection established',
+                serverTime: new Date().toISOString()
+              },
+              timestamp: Date.now()
+            };
+            
+            sendMessageWithRetry(socket, connectedMessage, connectionId);
+          } else {
+            console.log(`[COLLABORATION] ⚠️ 'ready' already received or connection not found for ${userId}`);
+          }
+          break;
+          
+        case 'ack':
+          console.log(`[COLLABORATION] ✅ Received acknowledgment for message ${message.data?.messageId} from ${userId}`);
+          handleMessageAck(connectionId, message.data?.messageId);
+          break;
           
         case 'ping':
           console.log(`[COLLABORATION] 🏓 Received ping from user ${userId}, sending pong`);
@@ -209,6 +221,89 @@ serve(async (req) => {
 
   return response;
 });
+
+// Message delivery system with retry mechanism
+function sendMessageWithRetry(socket: WebSocket, message: any, connectionId: string, maxAttempts = 3) {
+  const connection = activeConnections.get(connectionId);
+  if (!connection) {
+    console.error(`[COLLABORATION] ❌ Connection not found for retry: ${connectionId}`);
+    return;
+  }
+  
+  const messageId = message.messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  message.messageId = messageId;
+  
+  console.log(`[COLLABORATION] 📤 Sending message ${messageId} to ${connection.userId} (attempt 1/${maxAttempts})`);
+  
+  try {
+    socket.send(JSON.stringify(message));
+    
+    // Add to pending messages for retry tracking
+    connection.pendingMessages.push({
+      messageId,
+      message,
+      attempts: 1,
+      lastAttempt: Date.now()
+    });
+    
+    // Set up retry mechanism
+    const retryDelay = 1000; // 1 second
+    setTimeout(() => {
+      retryMessage(connectionId, messageId, maxAttempts);
+    }, retryDelay);
+    
+  } catch (error) {
+    console.error(`[COLLABORATION] ❌ Error sending message ${messageId}:`, error);
+  }
+}
+
+function retryMessage(connectionId: string, messageId: string, maxAttempts: number) {
+  const connection = activeConnections.get(connectionId);
+  if (!connection) return;
+  
+  const pendingMessage = connection.pendingMessages.find(pm => pm.messageId === messageId);
+  if (!pendingMessage) {
+    console.log(`[COLLABORATION] ✅ Message ${messageId} already acknowledged`);
+    return;
+  }
+  
+  if (pendingMessage.attempts >= maxAttempts) {
+    console.error(`[COLLABORATION] ❌ Max retry attempts reached for message ${messageId}`);
+    connection.pendingMessages = connection.pendingMessages.filter(pm => pm.messageId !== messageId);
+    return;
+  }
+  
+  if (connection.socket.readyState !== WebSocket.OPEN) {
+    console.log(`[COLLABORATION] 📡 Socket closed, stopping retries for message ${messageId}`);
+    return;
+  }
+  
+  pendingMessage.attempts++;
+  pendingMessage.lastAttempt = Date.now();
+  
+  console.log(`[COLLABORATION] 🔄 Retrying message ${messageId} (attempt ${pendingMessage.attempts}/${maxAttempts})`);
+  
+  try {
+    connection.socket.send(JSON.stringify(pendingMessage.message));
+    
+    // Schedule next retry
+    const retryDelay = 1000 * pendingMessage.attempts; // Exponential backoff
+    setTimeout(() => {
+      retryMessage(connectionId, messageId, maxAttempts);
+    }, retryDelay);
+    
+  } catch (error) {
+    console.error(`[COLLABORATION] ❌ Error retrying message ${messageId}:`, error);
+  }
+}
+
+function handleMessageAck(connectionId: string, messageId: string) {
+  const connection = activeConnections.get(connectionId);
+  if (!connection) return;
+  
+  connection.pendingMessages = connection.pendingMessages.filter(pm => pm.messageId !== messageId);
+  console.log(`[COLLABORATION] ✅ Message ${messageId} acknowledged and removed from pending`);
+}
 
 // Async verification function that runs in background after connection
 async function verifyUserAccessAsync(userId: string, documentId: string, authToken: string, socket: WebSocket) {

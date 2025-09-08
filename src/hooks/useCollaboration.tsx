@@ -2,11 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CollaborationMessage {
-  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'collaborators' | 'connected' | 'verified' | 'ping' | 'pong' | 'error';
+  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'collaborators' | 'connected' | 'verified' | 'ping' | 'pong' | 'error' | 'ready' | 'ack';
   documentId?: string;
   userId?: string;
   data?: any;
   timestamp: number;
+  messageId?: string;
 }
 
 interface Collaborator {
@@ -102,18 +103,35 @@ export function useCollaboration({
           connectionTimeoutRef.current = null;
         }
         
-        // Don't set connected state yet - wait for server confirmation
-        console.log('⏳ [CLIENT] WebSocket opened, waiting for server confirmation...');
         reconnectAttempts.current = 0;
         
-        // Send a test message to verify bidirectional communication
+        // HANDSHAKE PHASE 1: Send 'ready' signal to server immediately
+        console.log('🤝 [CLIENT] Starting handshake - sending ready signal...');
         try {
-          const testMessage = { type: 'test', data: { clientTime: new Date().toISOString() } };
-          wsRef.current?.send(JSON.stringify(testMessage));
-          console.log('📤 [CLIENT] Test message sent:', testMessage);
+          const readyMessage = { 
+            type: 'ready', 
+            data: { 
+              clientTime: new Date().toISOString(),
+              message: 'Client onmessage handler ready'
+            },
+            timestamp: Date.now()
+          };
+          wsRef.current?.send(JSON.stringify(readyMessage));
+          console.log('📤 [CLIENT] Ready message sent successfully:', readyMessage);
         } catch (error) {
-          console.error('❌ [CLIENT] Failed to send test message:', error);
+          console.error('❌ [CLIENT] Failed to send ready message:', error);
         }
+        
+        // Set handshake timeout (15 seconds)
+        const handshakeTimeout = setTimeout(() => {
+          if (connectionState === 'connecting' && !isDestroyedRef.current) {
+            console.error('⏰ [CLIENT] Handshake timeout - no connected message received');
+            wsRef.current?.close(1008, 'Handshake timeout');
+          }
+        }, 15000);
+        
+        // Store timeout reference for cleanup
+        connectionTimeoutRef.current = handshakeTimeout;
       };
 
       wsRef.current.onmessage = (event) => {
@@ -124,23 +142,44 @@ export function useCollaboration({
           
           switch (message.type) {
             case 'connected':
-              console.log('✅ [CLIENT] Connection established successfully!');
+              console.log('✅ [CLIENT] Handshake completed - connection established!');
               console.log('📊 [CLIENT] Server data:', message.data);
               
-              // NOW set connected state
+              // Send acknowledgment for connected message
+              if (message.messageId) {
+                try {
+                  const ackMessage = {
+                    type: 'ack',
+                    data: { messageId: message.messageId },
+                    timestamp: Date.now()
+                  };
+                  wsRef.current?.send(JSON.stringify(ackMessage));
+                  console.log('📤 [CLIENT] Acknowledgment sent for message:', message.messageId);
+                } catch (error) {
+                  console.error('❌ [CLIENT] Failed to send acknowledgment:', error);
+                }
+              }
+              
+              // Clear handshake timeout
+              if (connectionTimeoutRef.current) {
+                clearTimeout(connectionTimeoutRef.current);
+                connectionTimeoutRef.current = null;
+              }
+              
+              // Set connected state
               setConnectionState('connected');
               
-              // Test basic ping after longer delay for extra stability
+              // Test ping after connection established
               setTimeout(() => {
                 if (wsRef.current?.readyState === WebSocket.OPEN && !isDestroyedRef.current) {
-                  console.log('🏓 Sending test ping to verify connection...');
+                  console.log('🏓 Sending test ping to verify bidirectional communication...');
                   wsRef.current.send(JSON.stringify({
                     type: 'ping',
                     data: { clientTime: new Date().toISOString() },
                     timestamp: Date.now()
                   }));
                 }
-              }, 5000); // Increased to 5 seconds for extra stability
+              }, 2000);
               break;
               
             case 'pong':
