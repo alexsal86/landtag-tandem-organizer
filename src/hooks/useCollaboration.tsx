@@ -78,14 +78,14 @@ export function useCollaboration({
       
       wsRef.current = new WebSocket(wsUrl);
 
-      // Connection timeout - longer for stability
+      // Connection timeout - much longer for stability
       connectionTimeoutRef.current = setTimeout(() => {
         if (connectionState === 'connecting' && !isDestroyedRef.current) {
-          console.log('⏰ Connection timeout after 15 seconds');
+          console.log('⏰ Connection timeout after 30 seconds');
           wsRef.current?.close();
           setConnectionState('disconnected');
         }
-      }, 15000); // Reduced to 15 seconds
+      }, 30000); // Increased to 30 seconds for stability
 
       wsRef.current.onopen = () => {
         console.log('🔗 Collaboration WebSocket opened');

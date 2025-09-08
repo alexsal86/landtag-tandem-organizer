@@ -48,86 +48,15 @@ serve(async (req) => {
     return new Response('Missing required parameters', { status: 400 });
   }
 
-  console.log(`[COLLABORATION] Starting connection for user ${userId}, document ${documentId}`);
+  console.log(`[COLLABORATION] Starting IMMEDIATE connection for user ${userId}, document ${documentId}`);
 
-  // Initialize Supabase client with service role
+  // Initialize Supabase client for async operations
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   
   if (!supabaseUrl || !supabaseServiceKey) {
     console.error('[COLLABORATION] Missing Supabase environment variables');
     return new Response('Server configuration error', { status: 500 });
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { persistSession: false }
-  });
-
-  try {
-    // Verify user authentication BEFORE upgrade
-    console.log(`[COLLABORATION] Verifying auth token for user ${userId}`);
-    const { data: { user }, error: authError } = await supabase.auth.getUser(authToken);
-    
-    if (authError) {
-      console.error(`[COLLABORATION] Auth error: ${authError.message}`);
-      return new Response(JSON.stringify({ error: 'Authentication failed', details: authError.message }), { 
-        status: 401, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    if (!user || user.id !== userId) {
-      console.error(`[COLLABORATION] User mismatch: expected ${userId}, got ${user?.id}`);
-      return new Response(JSON.stringify({ error: 'User ID mismatch' }), { 
-        status: 401, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    console.log(`[COLLABORATION] User authenticated: ${user.id}`);
-
-    // Verify user has access to document using service role (bypasses RLS)
-    console.log(`[COLLABORATION] Checking document access for ${documentId}`);
-    const { data: document, error: docError } = await supabase
-      .from('knowledge_documents')
-      .select('id, title, created_by, is_published')
-      .eq('id', documentId)
-      .single();
-
-    if (docError) {
-      console.error(`[COLLABORATION] Document query error: ${docError.message}`);
-      return new Response(JSON.stringify({ error: 'Document access failed', details: docError.message }), { 
-        status: 403, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    if (!document) {
-      console.error(`[COLLABORATION] Document not found: ${documentId}`);
-      return new Response(JSON.stringify({ error: 'Document not found' }), { 
-        status: 404, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Check if user can access the document (owner or published)
-    const hasAccess = document.created_by === userId || document.is_published;
-    if (!hasAccess) {
-      console.error(`[COLLABORATION] Access denied for user ${userId} to document ${documentId}`);
-      return new Response(JSON.stringify({ error: 'Access denied to document' }), { 
-        status: 403, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    console.log(`[COLLABORATION] Document access verified: ${document.title}`);
-
-  } catch (error) {
-    console.error(`[COLLABORATION] Pre-upgrade error: ${error.message}`);
-    return new Response(JSON.stringify({ error: 'Server error', details: error.message }), { 
-      status: 500, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
   }
 
   const connectionId = `${documentId}_${userId}`;
@@ -151,7 +80,7 @@ serve(async (req) => {
           userId, 
           documentId, 
           userColor,
-          message: 'Phase 1: Minimal stable connection established',
+          message: 'Stable connection established - verification running in background',
           serverTime: new Date().toISOString()
         },
         timestamp: Date.now()
@@ -170,6 +99,12 @@ serve(async (req) => {
       });
       
       console.log(`[COLLABORATION] ✅ Connection stored in memory for user ${userId}`);
+      
+      // NOW do verification asynchronously in background
+      verifyUserAccessAsync(userId, documentId, authToken, socket).catch(error => {
+        console.error(`[COLLABORATION] Background verification failed:`, error);
+        // Don't close connection for verification failures - just log
+      });
       
     } catch (error) {
       console.error(`[COLLABORATION] ❌ Critical error sending connected message:`, error);
@@ -269,6 +204,62 @@ serve(async (req) => {
 
   return response;
 });
+
+// Async verification function that runs in background after connection
+async function verifyUserAccessAsync(userId: string, documentId: string, authToken: string, socket: WebSocket) {
+  console.log(`[COLLABORATION] 🔍 Starting background verification for user ${userId}`);
+  
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
+    );
+
+    // Verify user authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authToken);
+    
+    if (authError || !user || user.id !== userId) {
+      console.error(`[COLLABORATION] Background auth failed: ${authError?.message || 'User mismatch'}`);
+      return;
+    }
+
+    // Verify document access
+    const { data: document, error: docError } = await supabase
+      .from('knowledge_documents')
+      .select('id, title, created_by, is_published')
+      .eq('id', documentId)
+      .single();
+
+    if (docError || !document) {
+      console.error(`[COLLABORATION] Background document check failed: ${docError?.message || 'Not found'}`);
+      return;
+    }
+
+    const hasAccess = document.created_by === userId || document.is_published;
+    if (!hasAccess) {
+      console.error(`[COLLABORATION] Background access denied for user ${userId}`);
+      return;
+    }
+
+    console.log(`[COLLABORATION] ✅ Background verification successful for user ${userId}`);
+    
+    // Send verification success message
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'verified',
+        data: {
+          message: 'Access verified successfully',
+          documentTitle: document.title
+        },
+        timestamp: Date.now()
+      }));
+    }
+    
+  } catch (error) {
+    console.error(`[COLLABORATION] Background verification error:`, error);
+  }
+}
 
 function broadcastToDocument(documentId: string, message: CollaborationMessage, excludeUserId?: string) {
   const collaborators = documentCollaborators.get(documentId);
