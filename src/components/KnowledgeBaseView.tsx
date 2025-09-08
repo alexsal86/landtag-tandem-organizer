@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { debounce } from '@/utils/debounce';
-
+import SimpleLexicalEditor from '@/components/SimpleLexicalEditor';
 
 
 /**
@@ -782,9 +782,19 @@ const KnowledgeBaseView = () => {
             <div className="border rounded-lg min-h-[400px] p-4">
              
 
-              <div className="text-center text-muted-foreground py-8">
-                <p>Dokumentinhalt: {selectedDocument.content}</p>
-              </div>
+              <SimpleLexicalEditor
+                initialContent={ensureValidLexicalJSON(selectedDocument.content)}
+                onChange={(editorState) => {
+                  const jsonState = JSON.stringify(editorState.toJSON());
+                  // Update local state for immediate UI feedback
+                  setSelectedDocument(prev => prev ? { ...prev, content: jsonState } : null);
+                  // Save to database with debouncing
+                  if (selectedDocument.id && !anonymousMode) {
+                    debouncedSave(selectedDocument.id, jsonState);
+                  }
+                }}
+                className="w-full"
+              />
             </div>
           </div>
         </div>
