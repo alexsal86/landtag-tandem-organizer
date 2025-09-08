@@ -5019,6 +5019,15 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      log_collaboration_event: {
+        Args: {
+          details?: Json
+          document_id: string
+          event_type: string
+          user_id: string
+        }
+        Returns: undefined
+      }
       mark_message_read: {
         Args: {
           is_for_all_param: boolean

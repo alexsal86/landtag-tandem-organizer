@@ -158,7 +158,9 @@ export function useCollaboration({
       };
 
       wsRef.current.onclose = (event) => {
-        console.log('Collaboration WebSocket disconnected:', event.code, event.reason);
+        const closeReason = getCloseReason(event.code);
+        console.log(`Collaboration WebSocket disconnected: ${event.code} - ${closeReason}`);
+        
         setConnectionState('disconnected');
         setCollaborators([]);
         
@@ -174,23 +176,30 @@ export function useCollaboration({
           connectionTimeoutRef.current = null;
         }
         
-        // Only attempt to reconnect for abnormal closures with exponential backoff
-        if (event.code !== 1000 && event.code !== 1001 && reconnectAttempts.current < maxReconnectAttempts) {
-          const baseDelay = 2000; // Start with 2 seconds
-          const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempts.current), 30000); // Max 30 seconds
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
+        // Handle different close codes appropriately
+        const shouldReconnect = shouldAttemptReconnect(event.code);
+        
+        if (shouldReconnect && reconnectAttempts.current < maxReconnectAttempts) {
+          const baseDelay = 2000;
+          const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempts.current), 30000);
+          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts}) - Reason: ${closeReason}`);
           
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttempts.current++;
             connect();
           }, delay);
-        } else if (reconnectAttempts.current >= maxReconnectAttempts) {
+        } else if (!shouldReconnect) {
+          console.log(`Not attempting to reconnect: ${closeReason}`);
+        } else {
           console.log('Max reconnection attempts reached');
         }
       };
 
       wsRef.current.onerror = (error) => {
         console.error('Collaboration WebSocket error:', error);
+        console.error('Connection URL:', wsUrl);
+        console.error('Document ID:', documentId);
+        console.error('User ID:', currentUser?.id);
       };
 
     } catch (error) {
@@ -272,6 +281,36 @@ export function useCollaboration({
     };
   }, [currentUser, documentId, connect, disconnect]);
 
+  // Helper functions for better error handling
+  const getCloseReason = (code: number) => {
+    const reasons: { [key: number]: string } = {
+      1000: 'Normal closure',
+      1001: 'Going away',
+      1002: 'Protocol error',
+      1003: 'Unsupported data',
+      1006: 'Abnormal closure (connection failed)',
+      1007: 'Invalid frame payload data',
+      1008: 'Policy violation',
+      1009: 'Message too big',
+      1010: 'Mandatory extension',
+      1011: 'Internal server error',
+      1015: 'TLS handshake error'
+    };
+    return reasons[code] || `Unknown close code: ${code}`;
+  };
+
+  const shouldAttemptReconnect = (code: number) => {
+    // Don't reconnect for these codes:
+    // 1000 - Normal closure (user initiated)
+    // 1001 - Going away (page unload)
+    // 1002 - Protocol error (client issue)
+    // 1003 - Unsupported data (client issue)
+    // 1007 - Invalid data (client issue)
+    // 1008 - Policy violation (auth/permission issue)
+    const noReconnectCodes = [1000, 1001, 1002, 1003, 1007, 1008];
+    return !noReconnectCodes.includes(code);
+  };
+
   return {
     connectionState,
     isConnected: connectionState === 'connected',
@@ -282,6 +321,8 @@ export function useCollaboration({
     sendSelectionUpdate,
     sendContentUpdate,
     connect,
-    disconnect
+    disconnect,
+    // Expose helper for debugging
+    getLastCloseReason: () => getCloseReason
   };
 }

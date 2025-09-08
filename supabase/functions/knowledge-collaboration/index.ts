@@ -48,67 +48,130 @@ serve(async (req) => {
     return new Response('Missing required parameters', { status: 400 });
   }
 
-  // Initialize Supabase client
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
+  console.log(`[COLLABORATION] Starting connection for user ${userId}, document ${documentId}`);
 
-  // Verify user authentication BEFORE upgrade
-  const { data: { user }, error: authError } = await supabase.auth.getUser(authToken);
-  if (authError || !user || user.id !== userId) {
-    console.error('Authentication failed:', authError?.message);
-    return new Response('Authentication failed', { status: 401 });
+  // Initialize Supabase client with service role
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('[COLLABORATION] Missing Supabase environment variables');
+    return new Response('Server configuration error', { status: 500 });
   }
 
-  // Verify user has access to document BEFORE upgrade
-  const { data: document, error: docError } = await supabase
-    .from('knowledge_documents')
-    .select('id, title')
-    .eq('id', documentId)
-    .single();
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { persistSession: false }
+  });
 
-  if (docError || !document) {
-    console.error('Document access failed:', docError?.message);
-    return new Response('Document not found or access denied', { status: 403 });
+  try {
+    // Verify user authentication BEFORE upgrade
+    console.log(`[COLLABORATION] Verifying auth token for user ${userId}`);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authToken);
+    
+    if (authError) {
+      console.error(`[COLLABORATION] Auth error: ${authError.message}`);
+      return new Response(JSON.stringify({ error: 'Authentication failed', details: authError.message }), { 
+        status: 401, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    if (!user || user.id !== userId) {
+      console.error(`[COLLABORATION] User mismatch: expected ${userId}, got ${user?.id}`);
+      return new Response(JSON.stringify({ error: 'User ID mismatch' }), { 
+        status: 401, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log(`[COLLABORATION] User authenticated: ${user.id}`);
+
+    // Verify user has access to document using service role (bypasses RLS)
+    console.log(`[COLLABORATION] Checking document access for ${documentId}`);
+    const { data: document, error: docError } = await supabase
+      .from('knowledge_documents')
+      .select('id, title, created_by, is_published')
+      .eq('id', documentId)
+      .single();
+
+    if (docError) {
+      console.error(`[COLLABORATION] Document query error: ${docError.message}`);
+      return new Response(JSON.stringify({ error: 'Document access failed', details: docError.message }), { 
+        status: 403, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!document) {
+      console.error(`[COLLABORATION] Document not found: ${documentId}`);
+      return new Response(JSON.stringify({ error: 'Document not found' }), { 
+        status: 404, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Check if user can access the document (owner or published)
+    const hasAccess = document.created_by === userId || document.is_published;
+    if (!hasAccess) {
+      console.error(`[COLLABORATION] Access denied for user ${userId} to document ${documentId}`);
+      return new Response(JSON.stringify({ error: 'Access denied to document' }), { 
+        status: 403, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log(`[COLLABORATION] Document access verified: ${document.title}`);
+
+  } catch (error) {
+    console.error(`[COLLABORATION] Pre-upgrade error: ${error.message}`);
+    return new Response(JSON.stringify({ error: 'Server error', details: error.message }), { 
+      status: 500, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 
   const connectionId = `${documentId}_${userId}`;
   const userColor = generateUserColor(userId);
 
-  console.log(`User ${userId} attempting to join collaboration for document ${documentId}`);
+  console.log(`[COLLABORATION] Upgrading to WebSocket for user ${userId}, document ${documentId}`);
 
-  // Now upgrade to WebSocket with event handlers ready
+  // Now upgrade to WebSocket with comprehensive error handling
   const { socket, response } = Deno.upgradeWebSocket(req, {
     onOpen: () => {
-      console.log(`WebSocket opened for user ${userId} on document ${documentId}`);
+      console.log(`[COLLABORATION] WebSocket opened for user ${userId} on document ${documentId}`);
       
-      // Store connection immediately (synchronous)
-      activeConnections.set(connectionId, {
-        socket,
-        documentId,
-        userId,
-        userColor,
-        lastSeen: Date.now()
-      });
+      try {
+        // Store connection immediately (synchronous)
+        activeConnections.set(connectionId, {
+          socket,
+          documentId,
+          userId,
+          userColor,
+          lastSeen: Date.now()
+        });
 
-      // Add to document collaborators (synchronous)
-      if (!documentCollaborators.has(documentId)) {
-        documentCollaborators.set(documentId, new Set());
+        // Add to document collaborators (synchronous)
+        if (!documentCollaborators.has(documentId)) {
+          documentCollaborators.set(documentId, new Set());
+        }
+        documentCollaborators.get(documentId)!.add(userId);
+
+        // Send immediate connection confirmation
+        socket.send(JSON.stringify({
+          type: 'connected',
+          data: { userColor, userId, documentId },
+          timestamp: Date.now()
+        }));
+
+        console.log(`[COLLABORATION] User ${userId} connected successfully to document ${documentId}`);
+
+        // Queue async operations to prevent onOpen blocking
+        queueAsyncOperations(documentId, userId, userColor, socket);
+        
+      } catch (error) {
+        console.error(`[COLLABORATION] Error in onOpen: ${error.message}`);
+        socket.close(1011, 'Internal server error');
       }
-      documentCollaborators.get(documentId)!.add(userId);
-
-      // Send immediate response to client
-      socket.send(JSON.stringify({
-        type: 'connected',
-        data: { userColor, userId },
-        timestamp: Date.now()
-      }));
-
-      // Queue async operations to prevent onOpen blocking
-      queueAsyncOperations(documentId, userId, userColor, socket);
-      
-      console.log(`User ${userId} connected to collaboration for document ${documentId}`);
     },
     
     onMessage: (event) => {
@@ -200,7 +263,13 @@ serve(async (req) => {
     },
 
     onError: (error) => {
-      console.error('WebSocket error for user', userId, ':', error);
+      console.error(`[COLLABORATION] WebSocket error for user ${userId}:`, error);
+      // Clean up connection on error
+      activeConnections.delete(connectionId);
+      const docCollaborators = documentCollaborators.get(documentId);
+      if (docCollaborators) {
+        docCollaborators.delete(userId);
+      }
     }
   });
 
