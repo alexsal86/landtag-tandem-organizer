@@ -65,13 +65,14 @@ export function useCollaboration({
       mockUserId = `mock-user-${randomId}`;
       sessionStorage.setItem('collaboration-mock-user-id', mockUserId);
       sessionStorage.setItem('collaboration-tab-number', tabNumber.toString());
+      console.log('🆕 Generated new mock user:', { mockUserId, tabNumber });
     }
     
     const tabNumber = sessionStorage.getItem('collaboration-tab-number') || '1';
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
     const userColor = colors[parseInt(tabNumber) % colors.length];
     
-    return {
+    const mockUser = {
       id: mockUserId,
       user_metadata: { 
         display_name: `Test User ${tabNumber}`,
@@ -79,6 +80,9 @@ export function useCollaboration({
       },
       user_color: userColor
     };
+    
+    console.log('👤 Mock user for this tab:', mockUser);
+    return mockUser;
   }, []);
 
   // Use mock user if no auth user (for testing) - now stable across renders
@@ -114,9 +118,14 @@ export function useCollaboration({
       channel.on('presence', { event: 'sync' }, () => {
         console.log('👥 Presence sync');
         const state = channel.presenceState();
+        console.log('📊 Full presence state:', state);
+        console.log('🔑 Presence state keys:', Object.keys(state));
+        
         const users = Object.keys(state).map(userId => {
           const presenceArray = state[userId];
           const presence = presenceArray[0] as any; // Type assertion for presence payload
+          console.log(`👤 Processing user ${userId}:`, presence);
+          
           return {
             user_id: userId,
             user_color: presence?.user_color || getUserColor(userId),
@@ -129,15 +138,17 @@ export function useCollaboration({
           };
         }).filter(user => user.user_id !== currentUser.id);
         
+        console.log('👥 Filtered collaborators (excluding current user):', users);
+        console.log('🔍 Current user ID for filtering:', currentUser.id);
         setCollaborators(users);
       });
 
       channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('👋 User joined:', key);
+        console.log('👋 User joined:', key, newPresences);
       });
 
       channel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('👋 User left:', key);
+        console.log('👋 User left:', key, leftPresences);
       });
 
       // Listen for content updates
@@ -187,6 +198,7 @@ export function useCollaboration({
 
             const trackResult = await channel.track(presenceData);
             console.log('👤 User presence tracked:', trackResult);
+            console.log('📡 Presence data sent:', presenceData);
           } catch (trackError) {
             console.warn('⚠️ Failed to track presence:', trackError);
           }

@@ -21,7 +21,9 @@ interface CollaborationStatusProps {
 }
 
 const CollaborationStatus: React.FC<CollaborationStatusProps> = ({ isConnected, isConnecting, users, currentUser }) => {
+  console.log('🎨 CollaborationStatus props:', { isConnected, isConnecting, users, currentUser });
   const otherUsers = users.filter(user => user.user_id !== currentUser?.id);
+  console.log('🎨 Filtered other users:', otherUsers);
   
   return (
     <TooltipProvider>
