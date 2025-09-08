@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CollaborationMessage {
-  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'collaborators';
+  type: 'join' | 'leave' | 'cursor' | 'selection' | 'content' | 'heartbeat' | 'collaborators' | 'connected';
   documentId?: string;
   userId?: string;
   data?: any;
@@ -40,7 +40,8 @@ export function useCollaboration({
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 3;
+  const maxReconnectAttempts = 5;
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get current user
   useEffect(() => {
@@ -52,7 +53,7 @@ export function useCollaboration({
   }, []);
 
   const connect = useCallback(async () => {
-    if (!currentUser || !documentId || wsRef.current?.readyState === WebSocket.CONNECTING) return;
+    if (!currentUser || !documentId || wsRef.current?.readyState === WebSocket.CONNECTING || wsRef.current?.readyState === WebSocket.OPEN) return;
 
     // Cleanup existing connection
     disconnect();
@@ -73,12 +74,28 @@ export function useCollaboration({
       
       wsRef.current = new WebSocket(wsUrl);
 
+      // Set connection timeout
+      connectionTimeoutRef.current = setTimeout(() => {
+        if (connectionState === 'connecting') {
+          console.log('Connection timeout');
+          wsRef.current?.close();
+          setConnectionState('disconnected');
+        }
+      }, 10000); // 10 second timeout
+
       wsRef.current.onopen = () => {
         console.log('Collaboration WebSocket connected');
+        
+        // Clear connection timeout
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
+        }
+        
         setConnectionState('connected');
         reconnectAttempts.current = 0;
         
-        // Start heartbeat
+        // Start heartbeat (less frequent)
         heartbeatRef.current = setInterval(() => {
           if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({
@@ -86,7 +103,7 @@ export function useCollaboration({
               timestamp: Date.now()
             }));
           }
-        }, 30000); // Every 30 seconds
+        }, 60000); // Every 60 seconds (reduced frequency)
       };
 
       wsRef.current.onmessage = (event) => {
@@ -94,6 +111,10 @@ export function useCollaboration({
           const message: CollaborationMessage = JSON.parse(event.data);
           
           switch (message.type) {
+            case 'connected':
+              console.log('WebSocket connection confirmed by server');
+              break;
+              
             case 'join':
               console.log('User joined:', message.userId);
               // Refresh collaborators list
@@ -146,10 +167,17 @@ export function useCollaboration({
           clearInterval(heartbeatRef.current);
           heartbeatRef.current = null;
         }
+
+        // Clear connection timeout
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
+        }
         
-        // Only attempt to reconnect if it wasn't a clean closure and we haven't exceeded max attempts
-        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 10000);
+        // Only attempt to reconnect for abnormal closures with exponential backoff
+        if (event.code !== 1000 && event.code !== 1001 && reconnectAttempts.current < maxReconnectAttempts) {
+          const baseDelay = 2000; // Start with 2 seconds
+          const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempts.current), 30000); // Max 30 seconds
           console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
           
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -185,6 +213,11 @@ export function useCollaboration({
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
+    }
+
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
     }
     
     setConnectionState('disconnected');
