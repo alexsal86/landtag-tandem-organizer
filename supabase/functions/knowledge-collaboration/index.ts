@@ -77,9 +77,14 @@ serve(async (req) => {
   setTimeout(() => {
     try {
       console.log(`[COLLABORATION] 🔄 Sending connected message after delay for user ${userId}`);
-      const connectedMessage = {
-        type: 'connected',
-        data: {
+  // 2. Send connected message immediately - no delay needed
+  try {
+    console.log(`[COLLABORATION] 🚀 Sending connected message to user ${userId}...`);
+    console.log(`[COLLABORATION] 🔍 Socket readyState: ${socket.readyState}`);
+    
+    const connectedMessage = {
+      type: 'connected',
+      data: {
         userId, 
         documentId, 
         userColor,
@@ -89,6 +94,7 @@ serve(async (req) => {
       timestamp: Date.now()
     };
     
+    console.log(`[COLLABORATION] 📤 Attempting to send message:`, connectedMessage);
     socket.send(JSON.stringify(connectedMessage));
     console.log(`[COLLABORATION] ✅ Successfully sent 'connected' confirmation to user ${userId}`);
     
@@ -112,8 +118,8 @@ serve(async (req) => {
     
   } catch (error) {
     console.error(`[COLLABORATION] ❌ Critical error sending connected message:`, error);
+    console.error(`[COLLABORATION] 🔍 Error details:`, error.message, error.stack);
   }
-  }, 1000); // 1000ms delay to ensure client onmessage handler is ready
     
   socket.onmessage = (event) => {
     console.log(`[COLLABORATION] 📨 Received message from user ${userId}:`, event.data);

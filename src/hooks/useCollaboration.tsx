@@ -88,7 +88,10 @@ export function useCollaboration({
       }, 30000); // Increased to 30 seconds for stability
 
       wsRef.current.onopen = () => {
-        console.log('🔗 Collaboration WebSocket opened');
+        console.log('🔌 [CLIENT] WebSocket connection opened');
+        console.log('🔍 [CLIENT] WebSocket readyState:', wsRef.current?.readyState);
+        console.log('🔍 [CLIENT] WebSocket protocol:', wsRef.current?.protocol);
+        console.log('🔍 [CLIENT] WebSocket URL:', wsRef.current?.url);
         console.log(`📄 Document ID: ${documentId}, 👤 User ID: ${currentUser?.id}`);
         
         lastConnectTime.current = Date.now();
@@ -100,11 +103,17 @@ export function useCollaboration({
         }
         
         // Don't set connected state yet - wait for server confirmation
-        console.log('⏳ WebSocket opened, waiting for server confirmation...');
-        console.log('🔌 WebSocket readyState:', wsRef.current?.readyState);
+        console.log('⏳ [CLIENT] WebSocket opened, waiting for server confirmation...');
         reconnectAttempts.current = 0;
         
-        // SIMPLIFIED PHASE 1: No fallback mechanisms, no heartbeat, just basic connection
+        // Send a test message to verify bidirectional communication
+        try {
+          const testMessage = { type: 'test', data: { clientTime: new Date().toISOString() } };
+          wsRef.current?.send(JSON.stringify(testMessage));
+          console.log('📤 [CLIENT] Test message sent:', testMessage);
+        } catch (error) {
+          console.error('❌ [CLIENT] Failed to send test message:', error);
+        }
       };
 
       wsRef.current.onmessage = (event) => {
