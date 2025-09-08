@@ -60,6 +60,9 @@ const KnowledgeBaseView = () => {
     is_published: false
   });
 
+  // Collaboration control - OFF by default to prevent memory issues
+  const [collaborationEnabled, setCollaborationEnabled] = useState(false);
+
   // Handle URL-based document selection with better error handling
   useEffect(() => {
     console.log('URL change detected - documentId:', documentId, 'documents count:', documents.length);
@@ -670,18 +673,32 @@ const KnowledgeBaseView = () => {
                   {getCategoryLabel(selectedDocument.category)} • {formatDate(selectedDocument.updated_at)}
                 </p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIsEditorOpen(false);
-                  setSelectedDocument(null);
-                  setIsSidebarCollapsed(false);
-                  navigate('/knowledge', { replace: true });
-                }}
-              >
-                Schließen
-              </Button>
+              <div className="flex items-center gap-3">
+                {/* Collaboration Toggle */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="collaboration-mode"
+                    checked={collaborationEnabled}
+                    onCheckedChange={setCollaborationEnabled}
+                  />
+                  <Label htmlFor="collaboration-mode" className="text-sm">
+                    Kollaboration {collaborationEnabled ? '(Aktiv)' : '(Deaktiviert)'}
+                  </Label>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsEditorOpen(false);
+                    setSelectedDocument(null);
+                    setIsSidebarCollapsed(false);
+                    setCollaborationEnabled(false); // Reset collaboration when closing
+                    navigate('/knowledge', { replace: true });
+                  }}
+                >
+                  Schließen
+                </Button>
+              </div>
             </div>
           </div>
           
@@ -694,7 +711,7 @@ const KnowledgeBaseView = () => {
               }}
               placeholder="Beginnen Sie mit der Bearbeitung des Dokuments..."
               documentId={selectedDocument.id}
-              enableCollaboration={true}
+              enableCollaboration={collaborationEnabled}
             />
           </div>
         </div>

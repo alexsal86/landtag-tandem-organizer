@@ -151,7 +151,7 @@ serve(async (req) => {
           userId, 
           documentId, 
           userColor,
-          message: 'Minimal stable connection established',
+          message: 'Phase 1: Minimal stable connection established',
           serverTime: new Date().toISOString()
         },
         timestamp: Date.now()
@@ -159,9 +159,6 @@ serve(async (req) => {
       
       socket.send(JSON.stringify(connectedMessage));
       console.log(`[COLLABORATION] ✅ Successfully sent 'connected' confirmation to user ${userId}`);
-      
-      // Log socket state after sending
-      console.log(`[COLLABORATION] Socket readyState after connected message: ${socket.readyState}`);
       
       // Store connection in memory AFTER successful message send
       activeConnections.set(connectionId, {
@@ -176,8 +173,6 @@ serve(async (req) => {
       
     } catch (error) {
       console.error(`[COLLABORATION] ❌ Critical error sending connected message:`, error);
-      console.error(`[COLLABORATION] Error details:`, error.name, error.message);
-      // Don't close socket here, let it stay open for debugging
     }
   };
     
@@ -200,7 +195,10 @@ serve(async (req) => {
           try {
             socket.send(JSON.stringify({
               type: 'pong',
-              data: { serverTime: new Date().toISOString() },
+              data: { 
+                serverTime: new Date().toISOString(),
+                message: 'Phase 1: Connection stable'  
+              },
               timestamp: Date.now()
             }));
             console.log(`[COLLABORATION] ✅ Pong sent successfully to user ${userId}`);
@@ -209,20 +207,8 @@ serve(async (req) => {
           }
           break;
           
-        case 'heartbeat':
-          console.log(`[COLLABORATION] 💗 Heartbeat from user ${userId}`);
-          try {
-            socket.send(JSON.stringify({
-              type: 'heartbeat_response',
-              timestamp: Date.now()
-            }));
-          } catch (heartbeatError) {
-            console.error(`[COLLABORATION] ❌ Error sending heartbeat response:`, heartbeatError);
-          }
-          break;
-          
         default:
-          console.log(`[COLLABORATION] ❓ Unknown message type: ${message.type}`);
+          console.log(`[COLLABORATION] 📝 Message type '${message.type}' acknowledged but not processed in Phase 1`);
           break;
       }
     } catch (error) {

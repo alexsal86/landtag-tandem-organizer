@@ -104,9 +104,9 @@ export default function SimpleLexicalEditor({
 }: SimpleLexicalEditorProps) {
   const [localContent, setLocalContent] = useState(content);
   
-  // Initialize collaboration if enabled
-  const collaboration = useCollaboration({
-    documentId: documentId || '',
+  // Only initialize collaboration if explicitly enabled and documentId exists
+  const collaboration = enableCollaboration && documentId ? useCollaboration({
+    documentId: documentId,
     onContentChange: (newContent: string) => {
       setLocalContent(newContent);
       onChange(newContent);
@@ -119,7 +119,7 @@ export default function SimpleLexicalEditor({
       // Handle selection changes from other users
       console.log('Selection change from user:', userId, selection);
     }
-  });
+  }) : null;
 
   const initialConfig = {
     namespace: 'KnowledgeEditor',
@@ -157,8 +157,8 @@ export default function SimpleLexicalEditor({
 
   return (
     <div className="editor-container space-y-4">
-      {/* Collaboration Status */}
-      {enableCollaboration && documentId && (
+      {/* Collaboration Status - only show if enabled */}
+      {enableCollaboration && documentId && collaboration && (
         <CollaborationStatus
           isConnected={collaboration.isConnected}
           isConnecting={collaboration.isConnecting}
@@ -186,7 +186,7 @@ export default function SimpleLexicalEditor({
             />
             
             {/* Plugins */}
-            {enableCollaboration && documentId ? (
+            {enableCollaboration && documentId && collaboration ? (
               <CollaborationPlugin
                 documentId={documentId}
                 onContentChange={(newContent) => {

@@ -40,9 +40,10 @@ export function useCollaboration({
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5; // Increased max attempts
+  const maxReconnectAttempts = 2; // REDUCED: Max 2 attempts for stability
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastConnectTime = useRef<number | null>(null);
+  const isDestroyedRef = useRef(false); // Track if hook is being destroyed
 
   // Get current user
   useEffect(() => {
@@ -54,8 +55,10 @@ export function useCollaboration({
   }, []);
 
   const connect = useCallback(async () => {
-    if (!currentUser || !documentId || wsRef.current?.readyState === WebSocket.CONNECTING || wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (!currentUser || !documentId || wsRef.current?.readyState === WebSocket.CONNECTING || wsRef.current?.readyState === WebSocket.OPEN || isDestroyedRef.current) return;
 
+    console.log('🔄 Starting connection process...');
+    
     // Cleanup existing connection
     disconnect();
     
@@ -71,18 +74,18 @@ export function useCollaboration({
 
       const wsUrl = `wss://wawofclbehbkebjivdte.functions.supabase.co/knowledge-collaboration?documentId=${documentId}&userId=${currentUser.id}&token=${session.access_token}`;
       
-      console.log('Connecting to collaboration WebSocket...');
+      console.log('🔗 Connecting to collaboration WebSocket...');
       
       wsRef.current = new WebSocket(wsUrl);
 
-      // Set connection timeout - increased for stability
+      // Connection timeout - longer for stability
       connectionTimeoutRef.current = setTimeout(() => {
-        if (connectionState === 'connecting') {
-          console.log('⏰ Connection timeout after 30 seconds');
+        if (connectionState === 'connecting' && !isDestroyedRef.current) {
+          console.log('⏰ Connection timeout after 15 seconds');
           wsRef.current?.close();
           setConnectionState('disconnected');
         }
-      }, 30000); // 30 second timeout for stable connections
+      }, 15000); // Reduced to 15 seconds
 
       wsRef.current.onopen = () => {
         console.log('🔗 Collaboration WebSocket opened');
@@ -100,7 +103,7 @@ export function useCollaboration({
         console.log('⏳ WebSocket opened, waiting for server confirmation...');
         reconnectAttempts.current = 0;
         
-        // NO HEARTBEAT in Phase 1 - stability first
+        // NO HEARTBEAT - Phase 1 stability
         console.log('❌ Heartbeat disabled for Phase 1 stability testing');
       };
 
@@ -117,9 +120,9 @@ export function useCollaboration({
               // NOW set connected state
               setConnectionState('connected');
               
-              // Test basic ping functionality after 2 seconds for stability
+              // Test basic ping after longer delay for extra stability
               setTimeout(() => {
-                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                if (wsRef.current?.readyState === WebSocket.OPEN && !isDestroyedRef.current) {
                   console.log('🏓 Sending test ping to verify connection...');
                   wsRef.current.send(JSON.stringify({
                     type: 'ping',
@@ -127,7 +130,7 @@ export function useCollaboration({
                     timestamp: Date.now()
                   }));
                 }
-              }, 2000);
+              }, 5000); // Increased to 5 seconds for extra stability
               break;
               
             case 'pong':
@@ -182,15 +185,16 @@ export function useCollaboration({
       };
 
       wsRef.current.onclose = (event) => {
+        if (isDestroyedRef.current) return; // Don't handle close if component is destroyed
+        
         console.log('Collaboration WebSocket closed:', event.code, event.reason);
         
-        // Clear heartbeat
+        // Clear all timeouts and intervals
         if (heartbeatRef.current) {
           clearInterval(heartbeatRef.current);
           heartbeatRef.current = null;
         }
         
-        // Clear connection timeout
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
@@ -202,24 +206,27 @@ export function useCollaboration({
         const reason = getCloseReason(event.code);
         console.log('WebSocket close reason:', reason);
         
-        // Avoid immediate reconnection if connection was very brief
+        // Much more conservative reconnection logic
         const connectionDuration = Date.now() - (lastConnectTime.current || 0);
-        const wasShortLived = connectionDuration < 5000; // Less than 5 seconds
+        const wasShortLived = connectionDuration < 10000; // Less than 10 seconds
         
         if (wasShortLived) {
-          console.log(`Connection was short-lived (${connectionDuration}ms), increasing backoff`);
-          reconnectAttempts.current = Math.min(reconnectAttempts.current + 2, maxReconnectAttempts);
+          console.log(`Connection was short-lived (${connectionDuration}ms), increasing backoff dramatically`);
+          reconnectAttempts.current = Math.min(reconnectAttempts.current + 1, maxReconnectAttempts);
         }
         
         // Only attempt reconnection for recoverable errors and if not too many failures
         if (shouldAttemptReconnect(event.code) && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(2000 * Math.pow(2, reconnectAttempts.current), 60000); // Increased base delay
+          const baseDelay = 10000; // 10 seconds minimum
+          const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempts.current), 60000); // Max 60 seconds
           console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
           
           reconnectAttempts.current++;
           
           reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
+            if (!isDestroyedRef.current) {
+              connect();
+            }
           }, delay);
         } else {
           console.log('Max reconnection attempts reached or non-recoverable error');
@@ -241,11 +248,15 @@ export function useCollaboration({
   }, [currentUser, documentId, onContentChange, onCursorChange, onSelectionChange]);
 
   const disconnect = useCallback(() => {
+    console.log('🔌 Disconnecting collaboration...');
+    isDestroyedRef.current = true;
+    
     if (wsRef.current) {
       wsRef.current.close(1000, 'User disconnected');
       wsRef.current = null;
     }
     
+    // Clear all timeouts and intervals
     if (heartbeatRef.current) {
       clearInterval(heartbeatRef.current);
       heartbeatRef.current = null;
@@ -264,6 +275,8 @@ export function useCollaboration({
     setConnectionState('disconnected');
     setCollaborators([]);
     reconnectAttempts.current = 0;
+    
+    console.log('✅ Collaboration disconnected and cleaned up');
   }, []);
 
   const sendMessage = useCallback((message: Omit<CollaborationMessage, 'timestamp'>) => {
@@ -302,13 +315,16 @@ export function useCollaboration({
     });
   }, [sendMessage, documentId, currentUser]);
 
-  // Connect when component mounts and user is available
+  // Connect only when explicitly enabled and user is available
   useEffect(() => {
     if (currentUser && documentId) {
+      console.log('🚀 Collaboration hook: Starting connection...');
+      isDestroyedRef.current = false; // Reset destroyed flag
       connect();
     }
     
     return () => {
+      console.log('🔄 Collaboration hook: Cleanup on unmount/deps change');
       disconnect();
     };
   }, [currentUser, documentId, connect, disconnect]);
@@ -342,13 +358,12 @@ export function useCollaboration({
     // 1011 - Internal server error (but might be temporary)
     const noReconnectCodes = [1000, 1001, 1002, 1003, 1007, 1008];
     
-    // For 1006 (abnormal closure), we should try to reconnect but with some limits
+    // For 1006 (abnormal closure), only retry with very strict limits
     if (code === 1006) {
-      // Only retry if we haven't exhausted attempts
-      return reconnectAttempts.current < maxReconnectAttempts;
+      return reconnectAttempts.current < 1; // Only 1 retry for abnormal closure
     }
     
-    return !noReconnectCodes.includes(code);
+    return !noReconnectCodes.includes(code) && reconnectAttempts.current < maxReconnectAttempts;
   };
 
   return {
