@@ -85,7 +85,7 @@ export function CreateContact() {
     tags: [],
   });
 
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<{ id: string; name: string; }[]>([]);
   const [existingContacts, setExistingContacts] = useState<Contact[]>([]);
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
@@ -254,8 +254,8 @@ export function CreateContact() {
           facebook: formData.facebook || null,
           instagram: formData.instagram || null,
           xing: formData.xing || null,
-          category: formData.category as any,
-          priority: formData.priority as any,
+          category: formData.category as Contact["category"],
+          priority: formData.priority as Contact["priority"],
           notes: formData.notes || null,
           additional_info: formData.additional_info || null,
           legal_form: formData.legal_form || null,
