@@ -206,6 +206,7 @@ export function UnicornAnimation({ isVisible, onAnimationComplete }: UnicornAnim
             </linearGradient>
           </defs>
         </svg>
+        </div>
       </div>
     </>
   );
