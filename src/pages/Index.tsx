@@ -16,6 +16,7 @@ import { EventPlanningView } from "@/components/EventPlanningView";
 import { EmployeesView } from "@/components/EmployeesView";
 import TimeTrackingView from "@/components/TimeTrackingView";
 import Administration from "@/pages/Administration";
+import { DecisionOverview } from "@/components/task-decisions/DecisionOverview";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -101,6 +102,9 @@ const Index = () => {
       case "tasks":
         console.log('Rendering TasksView');
         return <TasksView />;
+      case "decisions":
+        console.log('Rendering DecisionOverview');
+        return <DecisionOverview />;
       case "time":
         console.log('Rendering TimeTrackingView');
         return <TimeTrackingView />;
