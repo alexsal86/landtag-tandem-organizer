@@ -19,6 +19,7 @@ import PollGuest from "./pages/PollGuest";
 import DecisionResponse from "./pages/DecisionResponse";
 import GuestResponse from "./pages/GuestResponse";
 import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
+import Decisions from "./pages/Decisions";
 
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import CollaborationTest from "./components/CollaborationTest";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/calendar" element={<Index />} />
             <Route path="/contacts" element={<Index />} />
             <Route path="/tasks" element={<Index />} />
+            <Route path="/decisions" element={<Decisions />} />
             <Route path="/meetings" element={<Index />} />
             <Route path="/eventplanning" element={<Index />} />
             <Route path="/documents" element={<Index />} />
