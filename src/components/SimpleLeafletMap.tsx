@@ -62,6 +62,29 @@ const getEnhancedDistrictBoundary = (district: ElectionDistrict): [number, numbe
   return points;
 };
 
+// Helper types and functions for GeoJSON handling
+// Minimal FeatureCollection type to avoid over-typing
+type GeoJsonData = { type: 'FeatureCollection'; features: any[] };
+
+const getDistrictNumberFromProps = (props: Record<string, any>): number | undefined => {
+  const candidates = [
+    'WKR_NR', 'WKRNR', 'WK_NR', 'NR', 'WKR', 'WKR_NR_2021', 'WKR_NR21', 'WKRNR21', 'Wahlkreis_Nr'
+  ];
+  for (const key of candidates) {
+    if (props[key] !== undefined && props[key] !== null) {
+      const n = typeof props[key] === 'string' ? parseInt(props[key], 10) : Number(props[key]);
+      if (!Number.isNaN(n)) return n;
+    }
+  }
+  for (const [k, v] of Object.entries(props)) {
+    if (/wkr.?nr/i.test(k) || /wahlkreis.?nr/i.test(k)) {
+      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+      if (!Number.isNaN(n)) return n;
+    }
+  }
+  return undefined;
+};
+
 const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({ 
   districts, 
   onDistrictClick, 
@@ -69,7 +92,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 }) => {
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const [geoJsonData, setGeoJsonData] = useState<{ [key: number]: [number, number][] } | null>(null);
+  const [geoJsonData, setGeoJsonData] = useState<GeoJsonData | null>(null);
   const [isLoadingBoundaries, setIsLoadingBoundaries] = useState(true);
   const districtLayerRef = useRef<L.LayerGroup | null>(null);
   const markerLayerRef = useRef<L.LayerGroup | null>(null);
@@ -80,20 +103,12 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         setIsLoadingBoundaries(true);
         console.log('Loading official electoral district boundaries...');
         
-        // Load the actual GeoJSON data from the ZIP file
-        const officialBoundaries = await loadElectoralDistrictsGeoJson();
-        setGeoJsonData(officialBoundaries);
-        console.log('Successfully loaded official boundaries for', Object.keys(officialBoundaries).length, 'districts');
-        
+        const fc = await loadElectoralDistrictsGeoJson();
+        setGeoJsonData(fc);
+        console.log('Successfully loaded official boundaries:', fc.features.length, 'Features');
       } catch (error) {
-        console.error('Failed to load official boundaries, using fallback:', error);
-        
-        // Fallback to enhanced generated boundaries
-        const fallbackData: { [key: number]: [number, number][] } = {};
-        districts.forEach(district => {
-          fallbackData[district.district_number] = getEnhancedDistrictBoundary(district);
-        });
-        setGeoJsonData(fallbackData);
+        console.error('Failed to load official boundaries, will use fallback polygons:', error);
+        setGeoJsonData(null);
       } finally {
         setIsLoadingBoundaries(false);
       }
@@ -149,24 +164,74 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     districtLayerRef.current.clearLayers();
     markerLayerRef.current.clearLayers();
 
-    const allBounds: [number, number][] = [];
-    let officialCount = 0;
-    let fallbackCount = 0;
+    let renderedBounds: L.LatLngBounds | null = null;
 
-    districts.forEach((district) => {
-      const partyColor = getPartyColorHex(district.representative_party);
-      const isSelected = selectedDistrict?.id === district.id;
+    if (geoJsonData) {
+      // Render official GeoJSON directly with Leaflet (handles Polygon & MultiPolygon correctly)
+      let officialCount = 0;
+      const geoLayer = L.geoJSON(geoJsonData as any, {
+        style: (feature) => {
+          const districtNumber = feature ? getDistrictNumberFromProps((feature as any).properties || {}) : undefined;
+          const district = districts.find(d => d.district_number === districtNumber);
+          const isSelected = district && selectedDistrict?.id === district.id;
+          const partyColor = getPartyColorHex(district?.representative_party);
+          if (district) officialCount++;
+          return {
+            color: partyColor,
+            weight: isSelected ? 4 : 2,
+            opacity: 1,
+            fillColor: partyColor,
+            fillOpacity: isSelected ? 0.7 : 0.25,
+          } as L.PathOptions;
+        },
+        onEachFeature: (feature, layer) => {
+          const districtNumber = getDistrictNumberFromProps((feature as any).properties || {});
+          const district = districts.find(d => d.district_number === districtNumber);
+          if (!district) return;
+          const isSelected = selectedDistrict?.id === district.id;
+          const partyColor = getPartyColorHex(district.representative_party);
 
-      // Prefer official boundaries if available
-      const official = geoJsonData?.[district.district_number];
-      const boundaries = (official && official.length > 0)
-        ? (official as [number, number][])
-        : getEnhancedDistrictBoundary(district);
+          layer.on('mouseover', () => {
+            (layer as L.Path).setStyle({ weight: 3, fillOpacity: 0.5 });
+          });
+          layer.on('mouseout', () => {
+            (layer as L.Path).setStyle({ weight: isSelected ? 4 : 2, fillOpacity: isSelected ? 0.7 : 0.25 });
+          });
+          layer.on('click', () => onDistrictClick(district));
 
-      if (official && official.length > 0) officialCount++; else fallbackCount++;
+          (layer as L.Layer).bindPopup(`
+            <div class="p-2 min-w-[200px]">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="px-2 py-1 rounded text-white text-xs font-medium" style="background-color: ${partyColor}">${district.district_number}</span>
+                <h3 class="font-semibold">${district.district_name}</h3>
+              </div>
+              <div class="space-y-1 text-sm text-gray-600">
+                <div class="flex items-center gap-2"><span>📍</span><span>${district.representative_name || 'Nicht bekannt'}</span></div>
+                <div class="flex items-center gap-2"><span class="px-2 py-0.5 border rounded text-xs">${district.representative_party || 'Partei unbekannt'}</span></div>
+                ${district.population ? `<div class="flex items-center gap-2"><span>👥</span><span>${district.population.toLocaleString()} Einwohner</span></div>` : ''}
+                ${district.area_km2 ? `<div class="flex items-center gap-2"><span>📐</span><span>ca. ${district.area_km2} km²</span></div>` : ''}
+              </div>
+            </div>
+          `);
+        },
+      });
 
-      if (boundaries.length > 0) {
-        allBounds.push(...boundaries);
+      geoLayer.addTo(districtLayerRef.current);
+      renderedBounds = geoLayer.getBounds();
+      console.log(`Rendered official GeoJSON layer with ${officialCount} matched districts`);
+    } else {
+      // Fallback: render generated polygons
+      let fallbackCount = 0;
+      const allFallbackBounds: [number, number][] = [];
+
+      districts.forEach((district) => {
+        const partyColor = getPartyColorHex(district.representative_party);
+        const isSelected = selectedDistrict?.id === district.id;
+        const boundaries = getEnhancedDistrictBoundary(district);
+        if (!boundaries.length) return;
+        fallbackCount++;
+        allFallbackBounds.push(...boundaries);
+
         const polygon = L.polygon(boundaries as any, {
           color: partyColor,
           weight: isSelected ? 4 : 2,
@@ -175,84 +240,44 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           fillOpacity: isSelected ? 0.7 : 0.25,
         });
 
-        // Hover effects
         polygon.on('mouseover', function () {
-          this.setStyle({
-            weight: 3,
-            fillOpacity: 0.5,
-          });
+          this.setStyle({ weight: 3, fillOpacity: 0.5 });
         });
         polygon.on('mouseout', function () {
-          this.setStyle({
-            weight: isSelected ? 4 : 2,
-            fillOpacity: isSelected ? 0.7 : 0.25,
-          });
+          this.setStyle({ weight: isSelected ? 4 : 2, fillOpacity: isSelected ? 0.7 : 0.25 });
         });
-
         polygon.on('click', () => onDistrictClick(district));
-
-        polygon.bindPopup(`
-          <div class="p-2 min-w-[200px]">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="px-2 py-1 rounded text-white text-xs font-medium" style="background-color: ${partyColor}">
-                ${district.district_number}
-              </span>
-              <h3 class="font-semibold">${district.district_name}</h3>
-            </div>
-            <div class="space-y-1 text-sm text-gray-600">
-              <div class="flex items-center gap-2">
-                <span>📍</span>
-                <span>${district.representative_name || 'Nicht bekannt'}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="px-2 py-0.5 border rounded text-xs">
-                  ${district.representative_party || 'Partei unbekannt'}
-                </span>
-              </div>
-              ${district.population ? `
-                <div class="flex items-center gap-2">
-                  <span>👥</span>
-                  <span>${district.population.toLocaleString()} Einwohner</span>
-                </div>
-              ` : ''}
-              ${district.area_km2 ? `
-                <div class="flex items-center gap-2">
-                  <span>📐</span>
-                  <span>ca. ${district.area_km2} km²</span>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        `);
-
         polygon.addTo(districtLayerRef.current);
-      }
+      });
 
-      if (district.center_coordinates) {
-        const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
-        const marker = L.marker([lat, lng], { icon });
-        marker.on('click', () => onDistrictClick(district));
-        marker.bindPopup(`
-          <div class="text-center">
-            <span class="px-2 py-1 rounded text-white text-xs font-medium" style="background-color: ${partyColor}">
-              Wahlkreis ${district.district_number}
-            </span>
-            <div class="mt-1 font-semibold">${district.district_name}</div>
-          </div>
-        `);
-        marker.addTo(markerLayerRef.current);
+      if (allFallbackBounds.length) {
+        renderedBounds = L.latLngBounds(allFallbackBounds);
       }
+      console.log(`Rendered ${fallbackCount} fallback district boundaries`);
+    }
+
+    // Markers from center coordinates
+    districts.forEach((district) => {
+      if (!district.center_coordinates) return;
+      const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
+      const partyColor = getPartyColorHex(district.representative_party);
+      const marker = L.marker([lat, lng], { icon });
+      marker.on('click', () => onDistrictClick(district));
+      marker.bindPopup(`
+        <div class="text-center">
+          <span class="px-2 py-1 rounded text-white text-xs font-medium" style="background-color: ${partyColor}">Wahlkreis ${district.district_number}</span>
+          <div class="mt-1 font-semibold">${district.district_name}</div>
+        </div>
+      `);
+      marker.addTo(markerLayerRef.current!);
     });
 
-    console.log(`Rendered ${officialCount} official and ${fallbackCount} fallback district boundaries`);
-
-    // Fit bounds after polygons have been added
-    if (allBounds.length > 0) {
-      const bounds = L.latLngBounds(allBounds);
-      const paddingValue = window.innerWidth < 768 ? 10 : 20; // Responsive padding
-      map.fitBounds(bounds, {
+    // Fit bounds
+    if (renderedBounds && renderedBounds.isValid()) {
+      const paddingValue = window.innerWidth < 768 ? 10 : 20;
+      map.fitBounds(renderedBounds, {
         padding: [paddingValue, paddingValue] as [number, number],
-        maxZoom: window.innerWidth < 768 ? 9 : 10, // Responsive max zoom
+        maxZoom: window.innerWidth < 768 ? 9 : 10,
       });
     }
   }, [districts, selectedDistrict, geoJsonData, onDistrictClick]);
