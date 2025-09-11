@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Info, Layers, ZoomIn, ZoomOut, StickyNote } from "lucide-react";
-import { KarlsruheMap } from "./KarlsruheMap";
+import LeafletKarlsruheMap from "./LeafletKarlsruheMap";
 import { DistrictDetailDialog } from "./DistrictDetailDialog";
 import { useElectionDistricts, ElectionDistrict } from "@/hooks/useElectionDistricts";
 
@@ -82,8 +82,8 @@ export function ElectionDistrictsView() {
               </div>
             </CardHeader>
             <CardContent className="p-0 h-[500px]">
-              <KarlsruheMap 
-                districts={districts} 
+              <LeafletKarlsruheMap 
+                districts={districts}
                 onDistrictClick={handleDistrictClick}
                 selectedDistrict={selectedDistrict}
               />
