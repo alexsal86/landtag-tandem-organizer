@@ -1,33 +1,36 @@
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer } from 'react-leaflet';
+import React, { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
+import * as L from 'leaflet';
 
 const SimpleLeafletMap: React.FC = () => {
-  const [isClient, setIsClient] = useState(false);
+  const mapRef = useRef<L.Map | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setIsClient(true);
-    console.info('SimpleLeafletMap mounted');
+    if (!containerRef.current) return;
+    if (mapRef.current) return;
+
+    // Initialize plain Leaflet map (no react-leaflet)
+    const map = L.map(containerRef.current, {
+      center: [49.012, 8.4037],
+      zoom: 10,
+    });
+    mapRef.current = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      detectRetina: true,
+    }).addTo(map);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
   }, []);
 
   return (
     <div className="relative w-full h-[400px] bg-card rounded-lg overflow-hidden border border-border">
-      {isClient ? (
-        <MapContainer
-          center={[49.012, 8.4037]}
-          zoom={10}
-          className="w-full h-full"
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-        </MapContainer>
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-          Karte wird initialisiert...
-        </div>
-      )}
+      <div ref={containerRef} className="w-full h-full" />
     </div>
   );
 };
