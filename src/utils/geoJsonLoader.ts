@@ -55,29 +55,41 @@ function reprojectGeometry(geometry: GeoJsonFeature['geometry'], sourceDef: stri
   if (geometry.type === 'Polygon') {
     const rings = geometry.coordinates as number[][][];
     const newRings = rings.map(ring => ring.map((coord) => {
-      const [x, y] = coord as [number, number];
-      const [lon, lat] = proj4(sourceDef, wgs84, [x, y]);
-      return [lon, lat];
+      // Only take X,Y coordinates (ignore Z if present)
+      const [x, y] = coord.slice(0, 2) as [number, number];
+      try {
+        const [lon, lat] = proj4(sourceDef, wgs84, [x, y]);
+        return [lon, lat];
+      } catch (e) {
+        console.warn('Failed to transform coordinate:', [x, y], e);
+        return [0, 0]; // fallback
+      }
     })) as AnyCoords;
     return { type: 'Polygon', coordinates: newRings } as any;
   }
   if (geometry.type === 'MultiPolygon') {
     const polys = geometry.coordinates as number[][][][];
     const newPolys = polys.map(rings => rings.map(ring => ring.map((coord) => {
-      const [x, y] = coord as [number, number];
-      const [lon, lat] = proj4(sourceDef, wgs84, [x, y]);
-      return [lon, lat];
+      // Only take X,Y coordinates (ignore Z if present)
+      const [x, y] = coord.slice(0, 2) as [number, number];
+      try {
+        const [lon, lat] = proj4(sourceDef, wgs84, [x, y]);
+        return [lon, lat];
+      } catch (e) {
+        console.warn('Failed to transform coordinate:', [x, y], e);
+        return [0, 0]; // fallback
+      }
     }))) as AnyCoords;
     return { type: 'MultiPolygon', coordinates: newPolys } as any;
   }
   return geometry;
 }
 
-// Known German CRS definitions (proj4 strings)
+// Improved German CRS definitions
 const projDefs: Record<string, string> = {
-  // ETRS89 / UTM zone 32N
-  'EPSG:25832': '+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs',
-  // DHDN / Gauss-Krüger
+  // ETRS89 / UTM zone 32N  
+  'EPSG:25832': '+proj=utm +zone=32 +ellps=GRS80 +datum=WGS84 +units=m +no_defs',
+  // DHDN / Gauss-Krüger (correct Bessel parameters for Germany)
   'EPSG:31466': '+proj=tmerc +lat_0=0 +lon_0=6 +k=1 +x_0=2500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs',
   'EPSG:31467': '+proj=tmerc +lat_0=0 +lon_0=9 +k=1 +x_0=3500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs',
   'EPSG:31468': '+proj=tmerc +lat_0=0 +lon_0=12 +k=1 +x_0=4500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs',
@@ -97,37 +109,59 @@ function getProjDefForEpsg(epsg: string | null): string | null {
 }
 
 function guessGaussKruegerFromX(x: number): string | null {
-  // Rough heuristic: x around 2.5M→GK2, 3.5M→GK3, 4.5M→GK4, 5.5M→GK5
-  const zone = Math.round(x / 1_000_000);
-  const epsg = zone === 2 ? 'EPSG:31466' : zone === 3 ? 'EPSG:31467' : zone === 4 ? 'EPSG:31468' : zone === 5 ? 'EPSG:31469' : null;
-  return epsg ? projDefs[epsg] : null;
+  // Heuristic for Gauss-Krüger zones based on false easting
+  if (x >= 2000000 && x < 3000000) return projDefs['EPSG:31466']; // GK Zone 2
+  if (x >= 3000000 && x < 4000000) return projDefs['EPSG:31467']; // GK Zone 3  
+  if (x >= 4000000 && x < 5000000) return projDefs['EPSG:31468']; // GK Zone 4
+  if (x >= 5000000 && x < 6000000) return projDefs['EPSG:31469']; // GK Zone 5
+  return null;
 }
 
 function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
-  // 1) Try to respect embedded CRS
+  // 1) Try to get CRS from metadata
   const epsg = getCrsEpsg(fc as any);
   let sourceDef = getProjDefForEpsg(epsg);
 
-  // 2) If no CRS info: detect by coordinate magnitude
+  // 2) Sample first coordinate to detect projection
   const first = fc.features.find(f => !!f.geometry);
   const sample = first ? sampleFirstCoord(first.geometry) : null;
   const projected = isProjectedCoord(sample);
 
   if (!sourceDef && projected && sample) {
-    // Try to guess GK zone by x value
-    sourceDef = guessGaussKruegerFromX(sample[0]) || projDefs['EPSG:25832'];
+    // Try to guess projection from coordinate values
+    sourceDef = guessGaussKruegerFromX(sample[0]);
+    console.log(`Guessed projection for x=${sample[0]}: ${sourceDef ? 'GK Zone detected' : 'unknown'}`);
   }
 
   if (!projected || !sourceDef) {
-    // Already WGS84 or unknown projection
+    console.log('No reprojection needed or no projection detected');
     return fc;
   }
 
-  console.log(`GeoJSON appears projected (${epsg || 'unknown'}). Reprojecting to WGS84...`);
+  console.log(`Reprojecting from ${epsg || 'detected projection'} to WGS84...`);
+  
+  // Test transformation with sample coordinate
+  if (sample) {
+    try {
+      const [testLon, testLat] = proj4(sourceDef, wgs84, [sample[0], sample[1]]);
+      console.log(`Sample coordinate transformation: [${sample[0]}, ${sample[1]}] -> [${testLon}, ${testLat}]`);
+      
+      // Sanity check: longitude should be around 8-10 for Baden-Württemberg
+      if (testLon < 7 || testLon > 11 || testLat < 47 || testLat > 50) {
+        console.warn('Transformation result seems incorrect, using fallback');
+        return fc; // Don't transform if result looks wrong
+      }
+    } catch (e) {
+      console.error('Test transformation failed:', e);
+      return fc;
+    }
+  }
+
   const newFeatures = fc.features.map(f => ({
     ...f,
     geometry: reprojectGeometry(f.geometry, sourceDef as string)
   }));
+  
   return { ...(fc as any), features: newFeatures } as GeoJsonData;
 }
 
