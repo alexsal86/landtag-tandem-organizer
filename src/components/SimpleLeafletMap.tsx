@@ -103,6 +103,32 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     }
   }, [districts]);
 
+  // Optimize map view with bounds fitting
+  useEffect(() => {
+    if (!mapRef.current || !geoJsonData || isLoadingBoundaries) return;
+    
+    console.log('Optimizing map view with loaded boundaries...');
+    
+    // Calculate bounds from all loaded districts
+    const allBounds: [number, number][] = [];
+    Object.values(geoJsonData).forEach(coordinates => {
+      allBounds.push(...coordinates);
+    });
+    
+    if (allBounds.length > 0) {
+      console.log('Fitting map to', allBounds.length, 'boundary points');
+      
+      // Create bounds and fit map
+      const bounds = L.latLngBounds(allBounds);
+      const paddingValue = window.innerWidth < 768 ? 10 : 20; // Responsive padding
+      
+      mapRef.current.fitBounds(bounds, {
+        padding: [paddingValue, paddingValue] as [number, number],
+        maxZoom: window.innerWidth < 768 ? 9 : 10 // Responsive max zoom
+      });
+    }
+  }, [geoJsonData, isLoadingBoundaries]);
+
   // Render districts with real boundaries if available
   useEffect(() => {
     if (!mapEl.current || !districts.length) return;
@@ -110,9 +136,15 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     console.log('Initializing map with districts:', districts.length);
 
+    // Responsive initial zoom based on screen size
+    const initialZoom = window.innerWidth < 768 ? 7 : 8;
+    
     const map = L.map(mapEl.current, {
       center: [48.7758, 9.1829], // Center of Baden-Württemberg (Stuttgart area)
-      zoom: 8,
+      zoom: initialZoom,
+      zoomControl: true,
+      attributionControl: true,
+      preferCanvas: true // Better performance for many polygons
     });
     mapRef.current = map;
 
@@ -214,32 +246,47 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
   if (!districts.length) {
     return (
-      <div className="relative w-full h-[400px] bg-card rounded-lg overflow-hidden border border-border flex items-center justify-center">
+      <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border flex items-center justify-center">
         <p className="text-muted-foreground">Keine Wahlkreisdaten verfügbar</p>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-[400px] bg-card rounded-lg overflow-hidden border border-border">
+    <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border">
       <div ref={mapEl} className="w-full h-full" />
       
       {isLoadingBoundaries && (
-        <div className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm border border-border rounded-md p-3 z-[1000] max-w-xs">
-          <p className="text-sm text-muted-foreground">
-            Lade offizielle Wahlkreisgrenzen aus GeoJSON...
-          </p>
+        <div className="absolute top-4 left-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-4 z-[1000] max-w-xs shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Lade Wahlkreisgrenzen
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Offizielle GeoJSON-Daten werden verarbeitet...
+              </p>
+            </div>
+          </div>
         </div>
       )}
       
       <div className="absolute top-4 right-4 z-[1000] space-y-2">
-        <div className="bg-card/90 backdrop-blur-sm border border-border rounded-md p-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1 mb-1">
-            <MapPin className="h-3 w-3" />
-            <span>Wahlkreise Baden-Württemberg</span>
+        <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 text-xs text-muted-foreground shadow-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            <span className="font-medium text-foreground">Baden-Württemberg Wahlkreise</span>
           </div>
-          <div className="text-[10px]">
-            {districts.length} Wahlkreise - Klicken für Details
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <Square className="h-3 w-3" />
+              <span>{districts.length} Wahlkreise</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              <span>Klicken für Details</span>
+            </div>
           </div>
         </div>
       </div>
