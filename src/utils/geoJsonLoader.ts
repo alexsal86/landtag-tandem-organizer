@@ -51,19 +51,21 @@ function isProjectedCoord([x, y]: [number, number] | null): boolean {
   return Math.abs(x as number) > 180 || Math.abs(y as number) > 90;
 }
 
-function reprojectGeometry(geometry: GeoJsonFeature['geometry']): GeoJsonFeature['geometry'] {
+function reprojectGeometry(geometry: GeoJsonFeature['geometry'], sourceDef: string): GeoJsonFeature['geometry'] {
   if (geometry.type === 'Polygon') {
     const rings = geometry.coordinates as number[][][];
-    const newRings = rings.map(ring => ring.map(([x, y]) => {
-      const [lon, lat] = proj4(etrs89Utm32, wgs84, [x, y]);
+    const newRings = rings.map(ring => ring.map((coord) => {
+      const [x, y] = coord as [number, number];
+      const [lon, lat] = proj4(sourceDef, wgs84, [x, y]);
       return [lon, lat];
     })) as AnyCoords;
     return { type: 'Polygon', coordinates: newRings } as any;
   }
   if (geometry.type === 'MultiPolygon') {
     const polys = geometry.coordinates as number[][][][];
-    const newPolys = polys.map(rings => rings.map(ring => ring.map(([x, y]) => {
-      const [lon, lat] = proj4(etrs89Utm32, wgs84, [x, y]);
+    const newPolys = polys.map(rings => rings.map(ring => ring.map((coord) => {
+      const [x, y] = coord as [number, number];
+      const [lon, lat] = proj4(sourceDef, wgs84, [x, y]);
       return [lon, lat];
     }))) as AnyCoords;
     return { type: 'MultiPolygon', coordinates: newPolys } as any;
@@ -71,18 +73,62 @@ function reprojectGeometry(geometry: GeoJsonFeature['geometry']): GeoJsonFeature
   return geometry;
 }
 
+// Known German CRS definitions (proj4 strings)
+const projDefs: Record<string, string> = {
+  // ETRS89 / UTM zone 32N
+  'EPSG:25832': '+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs',
+  // DHDN / Gauss-Krüger
+  'EPSG:31466': '+proj=tmerc +lat_0=0 +lon_0=6 +k=1 +x_0=2500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs',
+  'EPSG:31467': '+proj=tmerc +lat_0=0 +lon_0=9 +k=1 +x_0=3500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs',
+  'EPSG:31468': '+proj=tmerc +lat_0=0 +lon_0=12 +k=1 +x_0=4500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs',
+  'EPSG:31469': '+proj=tmerc +lat_0=0 +lon_0=15 +k=1 +x_0=5500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs',
+};
+
+function getCrsEpsg(fc: any): string | null {
+  const name: string | undefined = fc?.crs?.properties?.name;
+  if (!name) return null;
+  const m = name.match(/EPSG::(\d+)/i) || name.match(/EPSG:(\d+)/i);
+  return m ? `EPSG:${m[1]}` : null;
+}
+
+function getProjDefForEpsg(epsg: string | null): string | null {
+  if (!epsg) return null;
+  return projDefs[epsg] || null;
+}
+
+function guessGaussKruegerFromX(x: number): string | null {
+  // Rough heuristic: x around 2.5M→GK2, 3.5M→GK3, 4.5M→GK4, 5.5M→GK5
+  const zone = Math.round(x / 1_000_000);
+  const epsg = zone === 2 ? 'EPSG:31466' : zone === 3 ? 'EPSG:31467' : zone === 4 ? 'EPSG:31468' : zone === 5 ? 'EPSG:31469' : null;
+  return epsg ? projDefs[epsg] : null;
+}
+
 function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
+  // 1) Try to respect embedded CRS
+  const epsg = getCrsEpsg(fc as any);
+  let sourceDef = getProjDefForEpsg(epsg);
+
+  // 2) If no CRS info: detect by coordinate magnitude
   const first = fc.features.find(f => !!f.geometry);
   const sample = first ? sampleFirstCoord(first.geometry) : null;
   const projected = isProjectedCoord(sample);
-  if (!projected) return fc; // already WGS84
 
-  console.log('GeoJSON appears projected (UTM). Reprojecting to WGS84...');
+  if (!sourceDef && projected && sample) {
+    // Try to guess GK zone by x value
+    sourceDef = guessGaussKruegerFromX(sample[0]) || projDefs['EPSG:25832'];
+  }
+
+  if (!projected || !sourceDef) {
+    // Already WGS84 or unknown projection
+    return fc;
+  }
+
+  console.log(`GeoJSON appears projected (${epsg || 'unknown'}). Reprojecting to WGS84...`);
   const newFeatures = fc.features.map(f => ({
     ...f,
-    geometry: reprojectGeometry(f.geometry)
+    geometry: reprojectGeometry(f.geometry, sourceDef as string)
   }));
-  return { ...fc, features: newFeatures };
+  return { ...(fc as any), features: newFeatures } as GeoJsonData;
 }
 
 // Try multiple property keys to find the district number

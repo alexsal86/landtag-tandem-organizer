@@ -68,7 +68,7 @@ type GeoJsonData = { type: 'FeatureCollection'; features: any[] };
 
 const getDistrictNumberFromProps = (props: Record<string, any>): number | undefined => {
   const candidates = [
-    'WKR_NR', 'WKRNR', 'WK_NR', 'NR', 'WKR', 'WKR_NR_2021', 'WKR_NR21', 'WKRNR21', 'Wahlkreis_Nr'
+    'WKR_NR', 'WKRNR', 'WK_NR', 'NR', 'WKR', 'WKR_NR_2021', 'WKR_NR21', 'WKRNR21', 'Wahlkreis_Nr', 'Nummer'
   ];
   for (const key of candidates) {
     if (props[key] !== undefined && props[key] !== null) {
@@ -77,7 +77,7 @@ const getDistrictNumberFromProps = (props: Record<string, any>): number | undefi
     }
   }
   for (const [k, v] of Object.entries(props)) {
-    if (/wkr.?nr/i.test(k) || /wahlkreis.?nr/i.test(k)) {
+    if (/wkr.?nr/i.test(k) || /wahlkreis.?nr/i.test(k) || /nummer/i.test(k)) {
       const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
       if (!Number.isNaN(n)) return n;
     }
