@@ -4,6 +4,7 @@ import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Users, Square } from 'lucide-react';
+import { loadElectoralDistrictsGeoJson } from '@/utils/geoJsonLoader';
 
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
@@ -76,21 +77,15 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     const loadOfficialBoundaries = async () => {
       try {
         setIsLoadingBoundaries(true);
-        
-        // TODO: Extract and parse the actual GeoJSON from the ZIP file
-        // For now, use enhanced generated boundaries as a placeholder
         console.log('Loading official electoral district boundaries...');
         
-        const boundariesData: { [key: number]: [number, number][] } = {};
+        // Load the actual GeoJSON data from the ZIP file
+        const officialBoundaries = await loadElectoralDistrictsGeoJson();
+        setGeoJsonData(officialBoundaries);
+        console.log('Successfully loaded official boundaries for', Object.keys(officialBoundaries).length, 'districts');
         
-        districts.forEach(district => {
-          boundariesData[district.district_number] = getEnhancedDistrictBoundary(district);
-        });
-        
-        setGeoJsonData(boundariesData);
-        console.log('Loaded boundary data for', Object.keys(boundariesData).length, 'districts');
       } catch (error) {
-        console.error('Failed to load official boundaries:', error);
+        console.error('Failed to load official boundaries, using fallback:', error);
         
         // Fallback to enhanced generated boundaries
         const fallbackData: { [key: number]: [number, number][] } = {};
@@ -216,7 +211,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       {isLoadingBoundaries && (
         <div className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm border border-border rounded-md p-3 z-[1000] max-w-xs">
           <p className="text-sm text-muted-foreground">
-            Lade offizielle Wahlkreisgrenzen...
+            Lade offizielle Wahlkreisgrenzen aus GeoJSON...
           </p>
         </div>
       )}
