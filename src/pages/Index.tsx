@@ -13,6 +13,7 @@ import { TasksView } from "@/components/TasksView";
 import { SettingsView } from "@/components/SettingsView";
 import { MeetingsView } from "@/components/MeetingsView";
 import { EventPlanningView } from "@/components/EventPlanningView";
+import { ElectionDistrictsView } from "@/components/ElectionDistrictsView";
 import { EmployeesView } from "@/components/EmployeesView";
 import TimeTrackingView from "@/components/TimeTrackingView";
 import Administration from "@/pages/Administration";
@@ -114,6 +115,9 @@ const Index = () => {
       case "eventplanning":
         console.log('Rendering EventPlanningView');
         return <EventPlanningView />;
+      case "wahlkreise":
+        console.log('Rendering ElectionDistrictsView');
+        return <ElectionDistrictsView />;
       case "documents":
         console.log('Rendering DocumentsView');
         return <DocumentsView />;
