@@ -104,7 +104,9 @@ export const ElectionDistrictsView = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <SimpleLeafletMap />
+              <ErrorBoundary onError={handleMapError}>
+                <SimpleLeafletMap />
+              </ErrorBoundary>
             </CardContent>
           </Card>
         </div>
