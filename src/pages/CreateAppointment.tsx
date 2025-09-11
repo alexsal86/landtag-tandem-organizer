@@ -87,7 +87,9 @@ const appointmentSchema = z.object({
   path: ["end_time"],
 });
 
-type AppointmentFormValues = z.infer<typeof appointmentSchema>;
+type AppointmentFormValues = z.infer<typeof appointmentSchema> & {
+  is_all_day: boolean;
+};
 
 const CreateAppointment = () => {
   const navigate = useNavigate();
@@ -105,9 +107,9 @@ const CreateAppointment = () => {
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [appointmentGuests, setAppointmentGuests] = useState<Array<{name: string, email: string}>>([]);
 
-  const form = useForm<AppointmentFormValues>({
-    resolver: zodResolver(appointmentSchema),
-    mode: "onSubmit", // Only validate on submit, not on change
+  const form = useForm({
+    resolver: zodResolver(appointmentSchema) as any,
+    mode: "onSubmit" as const,
     defaultValues: {
       title: "",
       description: "",
@@ -116,7 +118,7 @@ const CreateAppointment = () => {
       end_date: formatDateForInput(getDefaultStartTime()),
       end_time: formatTimeForInput(getDefaultEndTime(getDefaultStartTime())),
       location: "",
-      priority: "medium",
+      priority: "medium" as const,
       category: "meeting",
       status: "planned",
       reminder_minutes: 15,
