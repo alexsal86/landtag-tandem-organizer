@@ -104,17 +104,7 @@ export const ElectionDistrictsView = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {useMapFallback ? (
-                <LeafletMapFallback 
-                  districts={districts}
-                  onDistrictClick={handleDistrictClick}
-                  selectedDistrict={selectedDistrict}
-                />
-              ) : (
-                <ErrorBoundary onError={handleMapError}>
-                  <SimpleLeafletMap />
-                </ErrorBoundary>
-              )}
+              <SimpleLeafletMap />
             </CardContent>
           </Card>
         </div>
