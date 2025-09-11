@@ -22,11 +22,15 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<{ [key: number]: 
   try {
     console.log('Loading GeoJSON data from ZIP file...');
     
-    // Load the ZIP file
-    const response = await fetch('/data/LTWahlkreise2021-BW_GEOJSON.zip');
+    // Load the ZIP file from public directory
+    const zipPath = '/data/LTWahlkreise2021-BW_GEOJSON.zip';
+    console.log('Fetching ZIP file from:', zipPath);
+    const response = await fetch(zipPath);
     if (!response.ok) {
-      throw new Error('Failed to load ZIP file');
+      console.error('Failed to fetch ZIP file. Status:', response.status, response.statusText);
+      throw new Error(`Failed to load ZIP file: ${response.status} ${response.statusText}`);
     }
+    console.log('ZIP file loaded successfully, size:', response.headers.get('content-length'), 'bytes');
     
     const arrayBuffer = await response.arrayBuffer();
     const zip = new JSZip();
@@ -55,12 +59,24 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<{ [key: number]: 
     
     geoJsonData.features.forEach((feature) => {
       const districtNumber = feature.properties.WKR_NR;
-      if (!districtNumber) return;
+      console.log('Processing feature:', {
+        districtNumber,
+        districtName: feature.properties.WKR_NAME,
+        geometryType: feature.geometry.type
+      });
+      
+      if (!districtNumber) {
+        console.warn('Feature missing WKR_NR:', feature.properties);
+        return;
+      }
       
       // Convert GeoJSON coordinates to Leaflet format [lat, lng]
       const coordinates = extractCoordinates(feature.geometry);
       if (coordinates.length > 0) {
         boundaries[districtNumber] = coordinates;
+        console.log(`District ${districtNumber}: ${coordinates.length} boundary points`);
+      } else {
+        console.warn(`No coordinates extracted for district ${districtNumber}`);
       }
     });
     

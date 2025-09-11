@@ -111,8 +111,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     console.log('Initializing map with districts:', districts.length);
 
     const map = L.map(mapEl.current, {
-      center: [48.5, 8.5], // Center of Baden-Württemberg
-      zoom: 7,
+      center: [48.7758, 9.1829], // Center of Baden-Württemberg (Stuttgart area)
+      zoom: 8,
     });
     mapRef.current = map;
 
@@ -132,13 +132,29 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
       // Add district polygon
       if (boundaries.length > 0) {
+        console.log(`Rendering district ${district.district_number} with ${boundaries.length} boundary points`);
         const polygon = L.polygon(boundaries as any, {
           color: partyColor,
-          weight: isSelected ? 3 : 2,
-          opacity: 0.9,
+          weight: isSelected ? 4 : 2,
+          opacity: 1,
           fillColor: partyColor,
-          fillOpacity: isSelected ? 0.6 : 0.35,
+          fillOpacity: isSelected ? 0.7 : 0.25,
         }).addTo(map);
+        
+        // Add hover effects
+        polygon.on('mouseover', function(e) {
+          this.setStyle({
+            weight: 3,
+            fillOpacity: 0.5
+          });
+        });
+        
+        polygon.on('mouseout', function(e) {
+          this.setStyle({
+            weight: isSelected ? 4 : 2,
+            fillOpacity: isSelected ? 0.7 : 0.25
+          });
+        });
 
         polygon.on('click', () => onDistrictClick(district));
 
