@@ -1,14 +1,12 @@
-import React, { useState, Suspense } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Users, BarChart3, Loader2 } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictDetailDialog } from "./DistrictDetailDialog";
-
-// Lazy load the Leaflet map to prevent SSR issues
-const LazyLeafletKarlsruheMap = React.lazy(() => import("./LeafletKarlsruheMap"));
-const LeafletMapFallback = React.lazy(() => import("./LeafletMapFallback"));
+import LeafletKarlsruheMap from "./LeafletKarlsruheMap";
+import LeafletMapFallback from "./LeafletMapFallback";
 
 const getPartyColor = (party?: string): string => {
   switch (party?.toLowerCase()) {
@@ -106,32 +104,21 @@ export const ElectionDistrictsView = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Suspense 
-                fallback={
-                  <div className="flex items-center justify-center h-[400px] bg-muted rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      <span>Karte wird geladen...</span>
-                    </div>
-                  </div>
-                }
-              >
-                {useMapFallback ? (
-                  <LeafletMapFallback 
+              {useMapFallback ? (
+                <LeafletMapFallback 
+                  districts={districts}
+                  onDistrictClick={handleDistrictClick}
+                  selectedDistrict={selectedDistrict}
+                />
+              ) : (
+                <ErrorBoundary onError={handleMapError}>
+                  <LeafletKarlsruheMap 
                     districts={districts}
                     onDistrictClick={handleDistrictClick}
                     selectedDistrict={selectedDistrict}
                   />
-                ) : (
-                  <ErrorBoundary onError={handleMapError}>
-                    <LazyLeafletKarlsruheMap 
-                      districts={districts}
-                      onDistrictClick={handleDistrictClick}
-                      selectedDistrict={selectedDistrict}
-                    />
-                  </ErrorBoundary>
-                )}
-              </Suspense>
+                </ErrorBoundary>
+              )}
             </CardContent>
           </Card>
         </div>
