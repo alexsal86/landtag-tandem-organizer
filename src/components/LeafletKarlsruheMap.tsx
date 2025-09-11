@@ -6,12 +6,15 @@ import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Users, Square } from 'lucide-react';
 
-// Fix for default markers
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+// Fix for default markers - simpler approach
+const icon = L.icon({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
 });
 
 interface LeafletKarlsruheMapProps {
@@ -108,6 +111,17 @@ const LeafletKarlsruheMap: React.FC<LeafletKarlsruheMapProps> = ({
 }) => {
   const mapRef = useRef<L.Map>(null);
 
+  // Add error handling
+  if (!districts || districts.length === 0) {
+    return (
+      <div className="relative w-full h-[400px] bg-card rounded-lg overflow-hidden border border-border flex items-center justify-center">
+        <p className="text-muted-foreground">Keine Wahlkreisdaten verfügbar</p>
+      </div>
+    );
+  }
+
+  console.log('LeafletKarlsruheMap rendering with districts:', districts.length);
+
   return (
     <div className="relative w-full h-[400px] bg-card rounded-lg overflow-hidden border border-border">
       <MapContainer
@@ -197,41 +211,30 @@ const LeafletKarlsruheMap: React.FC<LeafletKarlsruheMapProps> = ({
                 </Popup>
               </Polygon>
               
-              {/* District center marker */}
+              {/* District center marker with simple marker */}
               {district.center_coordinates && (
                 <Marker
                   position={[
                     (district.center_coordinates as { lat: number; lng: number }).lat,
                     (district.center_coordinates as { lat: number; lng: number }).lng
                   ]}
+                  icon={icon}
                   eventHandlers={{
                     click: () => onDistrictClick(district),
                   }}
-                  icon={L.divIcon({
-                    html: `
-                      <div style="
-                        background-color: ${partyColor};
-                        color: white;
-                        border: 2px solid white;
-                        border-radius: 50%;
-                        width: 30px;
-                        height: 30px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-weight: bold;
-                        font-size: 12px;
-                        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-                        ${isSelected ? 'transform: scale(1.2);' : ''}
-                      ">
-                        ${district.district_number}
-                      </div>
-                    `,
-                    className: 'custom-district-marker',
-                    iconSize: [30, 30],
-                    iconAnchor: [15, 15],
-                  })}
-                />
+                >
+                  <Popup>
+                    <div className="text-center">
+                      <Badge 
+                        variant="secondary" 
+                        style={{ backgroundColor: partyColor, color: '#fff' }}
+                      >
+                        Wahlkreis {district.district_number}
+                      </Badge>
+                      <div className="mt-1 font-semibold">{district.district_name}</div>
+                    </div>
+                  </Popup>
+                </Marker>
               )}
             </React.Fragment>
           );
