@@ -1,4 +1,5 @@
 import proj4 from 'proj4';
+import JSZip from 'jszip';
 
 export interface GeoJsonFeature {
   type: 'Feature';
@@ -105,30 +106,72 @@ const getDistrictNumberFromProps = (props: Record<string, any>): number | undefi
   return undefined;
 };
 export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
-  try {
-    console.log('Loading GeoJSON data from uploaded file...');
+  const candidates = [
+    '/data/LTWahlkreise2021-BW.geojson',
+    '/data/LTWahlkreise2021-BW_GEOJSON.geojson',
+    '/data/LTWahlkreise2021-BW_GEOJSON.zip',
+    '/data/sample-wahlkreise.geojson',
+  ];
 
-    const geoJsonPath = '/data/LTWahlkreise2021-BW.geojson';
-    console.log('Fetching GeoJSON file from:', geoJsonPath);
+  let lastError: any = null;
 
-    const response = await fetch(geoJsonPath);
-    if (!response.ok) {
-      console.error('Failed to fetch GeoJSON file. Status:', response.status, response.statusText);
-      throw new Error(`Failed to load GeoJSON file: ${response.status} ${response.statusText}`);
+  for (const path of candidates) {
+    try {
+      console.log('Attempting to load GeoJSON from', path);
+      const res = await fetch(path);
+      if (!res.ok) {
+        console.warn('Fetch failed for', path, res.status, res.statusText);
+        continue;
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+
+      let fc: GeoJsonData | null = null;
+
+      if (path.endsWith('.zip') || contentType.includes('zip')) {
+        const buf = await res.arrayBuffer();
+        try {
+          const zip = await JSZip.loadAsync(buf);
+          const entry = Object.values(zip.files).find(f => f.name.endsWith('.geojson') || f.name.endsWith('.json'));
+          if (!entry) throw new Error('No .geojson in ZIP');
+          const text = await entry.async('text');
+          fc = JSON.parse(text);
+        } catch (e) {
+          console.warn('ZIP parsing failed for', path, e);
+          continue;
+        }
+      } else if (contentType.includes('application/json') || path.endsWith('.geojson') || path.endsWith('.json')) {
+        fc = await res.json();
+      } else if (contentType.includes('text/html')) {
+        console.warn('Received HTML for', path, 'skipping');
+        continue;
+      } else {
+        // Try as text then JSON
+        try {
+          const txt = await res.text();
+          fc = JSON.parse(txt);
+        } catch {
+          console.warn('Unknown content-type for', path, 'skipping');
+          continue;
+        }
+      }
+
+      if (!fc || fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
+        console.warn('Invalid GeoJSON structure from', path);
+        continue;
+      }
+
+      console.log('Loaded FeatureCollection from', path, 'features:', fc.features.length);
+      const data = reprojectIfNeeded(fc as GeoJsonData);
+      return data;
+    } catch (e) {
+      lastError = e;
+      console.warn('Failed to load from', path, e);
+      continue;
     }
-
-    const raw = await response.json();
-
-    if (!raw || raw.type !== 'FeatureCollection' || !Array.isArray(raw.features)) {
-      throw new Error('Invalid GeoJSON structure: expected FeatureCollection with features array');
-    }
-
-    console.log('Parsed GeoJSON with', raw.features.length, 'features');
-
-    const data = reprojectIfNeeded(raw as GeoJsonData);
-    return data;
-  } catch (error) {
-    console.error('Error loading GeoJSON data:', error);
-    throw error;
   }
+
+  console.error('All GeoJSON sources failed');
+  if (lastError) throw lastError;
+  throw new Error('Unable to load any GeoJSON source');
 };
