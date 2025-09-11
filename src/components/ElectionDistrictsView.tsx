@@ -82,15 +82,6 @@ export const ElectionDistrictsView = () => {
     );
   }
 
-  // Temporary: isolate to a minimal map-only view to troubleshoot runtime error
-  return (
-    <div className="container mx-auto p-6">
-      <SimpleLeafletMap />
-    </div>
-  );
-
-  // Original view (kept below for reference)
-  // eslint-disable-next-line no-unreachable
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-2 mb-6">
@@ -114,7 +105,11 @@ export const ElectionDistrictsView = () => {
             </CardHeader>
             <CardContent>
               <ErrorBoundary onError={handleMapError}>
-                <SimpleLeafletMap />
+                <SimpleLeafletMap 
+                  districts={districts}
+                  onDistrictClick={handleDistrictClick}
+                  selectedDistrict={selectedDistrict}
+                />
               </ErrorBoundary>
             </CardContent>
           </Card>
