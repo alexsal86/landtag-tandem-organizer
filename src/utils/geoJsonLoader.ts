@@ -13,6 +13,11 @@ export interface GeoJsonFeature {
   };
 }
 
+type Coordinate = [number, number];
+type LinearRing = Coordinate[];
+type Polygon = LinearRing[];
+type MultiPolygon = Polygon[];
+
 export interface GeoJsonData {
   type: 'FeatureCollection';
   features: GeoJsonFeature[];
@@ -89,19 +94,77 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<{ [key: number]: 
   }
 };
 
+// Simplified polygon function for better performance
+const simplifyPolygon = (coordinates: [number, number][], tolerance = 0.001): [number, number][] => {
+  if (coordinates.length <= 3) return coordinates;
+  
+  // Douglas-Peucker algorithm simplified version
+  const simplified: [number, number][] = [coordinates[0]];
+  
+  for (let i = 1; i < coordinates.length - 1; i += 2) { // Skip every other point for basic simplification
+    simplified.push(coordinates[i]);
+  }
+  
+  simplified.push(coordinates[coordinates.length - 1]);
+  return simplified;
+};
+
 const extractCoordinates = (geometry: GeoJsonFeature['geometry']): [number, number][] => {
+  console.log('Extracting coordinates for geometry type:', geometry.type);
+  
   if (geometry.type === 'Polygon') {
     // For Polygon, take the outer ring (first array)
-    const outerRing = geometry.coordinates[0];
-    return outerRing.map(coord => [coord[1], coord[0]] as [number, number]); // Convert [lng, lat] to [lat, lng]
+    const outerRing = geometry.coordinates[0] as number[][];
+    console.log('Polygon outer ring has', outerRing.length, 'points');
+    
+    // Convert [lng, lat] to [lat, lng] and validate coordinates
+    const leafletCoords = outerRing
+      .filter(coord => Array.isArray(coord) && coord.length >= 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number')
+      .map(coord => [coord[1], coord[0]] as [number, number]);
+    
+    console.log('Converted to', leafletCoords.length, 'valid coordinates');
+    
+    // Simplify polygon for better performance
+    const simplified = simplifyPolygon(leafletCoords);
+    console.log('Simplified to', simplified.length, 'points');
+    
+    return simplified;
+    
   } else if (geometry.type === 'MultiPolygon') {
-    // For MultiPolygon, take the largest polygon (first one usually)
-    const firstPolygon = geometry.coordinates[0];
-    if (firstPolygon && firstPolygon[0]) {
-      const outerRing = firstPolygon[0];
-      return outerRing.map(coord => [coord[1], coord[0]] as [number, number]); // Convert [lng, lat] to [lat, lng]
+    console.log('MultiPolygon with', geometry.coordinates.length, 'polygons');
+    
+    // Find the largest polygon by coordinate count
+    const multiPolygonCoords = geometry.coordinates as number[][][][];
+    let largestPolygon = multiPolygonCoords[0];
+    let maxPoints = 0;
+    
+    multiPolygonCoords.forEach((polygon, index) => {
+      if (polygon[0] && polygon[0].length > maxPoints) {
+        maxPoints = polygon[0].length;
+        largestPolygon = polygon;
+        console.log(`Polygon ${index} has ${polygon[0].length} points (new largest)`);
+      }
+    });
+    
+    if (largestPolygon && largestPolygon[0]) {
+      const outerRing = largestPolygon[0] as number[][];
+      console.log('Using largest polygon outer ring with', outerRing.length, 'points');
+      
+      // Convert [lng, lat] to [lat, lng] and validate coordinates
+      const leafletCoords = outerRing
+        .filter(coord => Array.isArray(coord) && coord.length >= 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number')
+        .map(coord => [coord[1], coord[0]] as [number, number]);
+      
+      console.log('Converted to', leafletCoords.length, 'valid coordinates');
+      
+      // Simplify polygon for better performance
+      const simplified = simplifyPolygon(leafletCoords);
+      console.log('Simplified to', simplified.length, 'points');
+      
+      return simplified;
     }
   }
   
+  console.warn('Could not extract coordinates from geometry type:', geometry.type);
   return [];
 };
