@@ -23,6 +23,26 @@ export interface GeoJsonData {
   features: GeoJsonFeature[];
 }
 
+// Try multiple property keys to find the district number
+const getDistrictNumberFromProps = (props: Record<string, any>): number | undefined => {
+  const candidates = [
+    'WKR_NR', 'WKRNR', 'WK_NR', 'NR', 'WKR', 'WKR_NR_2021', 'WKR_NR21', 'WKRNR21', 'Wahlkreis_Nr'
+  ];
+  for (const key of candidates) {
+    if (props[key] !== undefined && props[key] !== null) {
+      const n = typeof props[key] === 'string' ? parseInt(props[key], 10) : Number(props[key]);
+      if (!Number.isNaN(n)) return n;
+    }
+  }
+  // Also scan any numeric-looking property
+  for (const [k, v] of Object.entries(props)) {
+    if (/wkr.?nr/i.test(k) || /wahlkreis.?nr/i.test(k)) {
+      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+      if (!Number.isNaN(n)) return n;
+    }
+  }
+  return undefined;
+};
 export const loadElectoralDistrictsGeoJson = async (): Promise<{ [key: number]: [number, number][] }> => {
   try {
     console.log('Loading GeoJSON data from ZIP file...');
@@ -63,15 +83,16 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<{ [key: number]: 
     const boundaries: { [key: number]: [number, number][] } = {};
     
     geoJsonData.features.forEach((feature) => {
-      const districtNumber = feature.properties.WKR_NR;
+      const districtNumber = getDistrictNumberFromProps(feature.properties);
       console.log('Processing feature:', {
         districtNumber,
-        districtName: feature.properties.WKR_NAME,
+        availableKeys: Object.keys(feature.properties),
+        districtName: feature.properties.WKR_NAME || feature.properties.Wahlkreis_Name || feature.properties.NAME || feature.properties.name,
         geometryType: feature.geometry.type
       });
       
       if (!districtNumber) {
-        console.warn('Feature missing WKR_NR:', feature.properties);
+        console.warn('Feature missing district number property. Properties:', feature.properties);
         return;
       }
       
