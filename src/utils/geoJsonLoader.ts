@@ -45,35 +45,19 @@ const getDistrictNumberFromProps = (props: Record<string, any>): number | undefi
 };
 export const loadElectoralDistrictsGeoJson = async (): Promise<{ [key: number]: [number, number][] }> => {
   try {
-    console.log('Loading GeoJSON data from ZIP file...');
+    console.log('Loading GeoJSON data from sample file...');
     
-    // Load the ZIP file from public directory
-    const zipPath = '/data/LTWahlkreise2021-BW_GEOJSON.zip';
-    console.log('Fetching ZIP file from:', zipPath);
-    const response = await fetch(zipPath);
+    // Load the sample GeoJSON data directly
+    const geoJsonPath = '/data/sample-wahlkreise.geojson';
+    console.log('Fetching GeoJSON file from:', geoJsonPath);
+    const response = await fetch(geoJsonPath);
     if (!response.ok) {
-      console.error('Failed to fetch ZIP file. Status:', response.status, response.statusText);
-      throw new Error(`Failed to load ZIP file: ${response.status} ${response.statusText}`);
+      console.error('Failed to fetch GeoJSON file. Status:', response.status, response.statusText);
+      throw new Error(`Failed to load GeoJSON file: ${response.status} ${response.statusText}`);
     }
-    console.log('ZIP file loaded successfully, size:', response.headers.get('content-length'), 'bytes');
+    console.log('GeoJSON file loaded successfully');
     
-    const arrayBuffer = await response.arrayBuffer();
-    const zip = new JSZip();
-    const zipContents = await zip.loadAsync(arrayBuffer);
-    
-    // Find the GeoJSON file in the ZIP
-    let geoJsonContent: string | null = null;
-    for (const [filename, file] of Object.entries(zipContents.files)) {
-      if (filename.toLowerCase().endsWith('.geojson') || filename.toLowerCase().endsWith('.json')) {
-        console.log('Found GeoJSON file:', filename);
-        geoJsonContent = await file.async('string');
-        break;
-      }
-    }
-    
-    if (!geoJsonContent) {
-      throw new Error('No GeoJSON file found in ZIP');
-    }
+    const geoJsonContent = await response.text();
     
     // Parse the GeoJSON
     const geoJsonData: GeoJsonData = JSON.parse(geoJsonContent);
