@@ -1409,6 +1409,113 @@ export type Database = {
           },
         ]
       }
+      election_district_notes: {
+        Row: {
+          category: string | null
+          content: string | null
+          created_at: string
+          district_id: string
+          due_date: string | null
+          id: string
+          is_completed: boolean
+          priority: string
+          tags: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          district_id: string
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string
+          tags?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          district_id?: string
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string
+          tags?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_district_notes_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "election_districts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      election_districts: {
+        Row: {
+          area_km2: number | null
+          boundaries: Json | null
+          center_coordinates: Json | null
+          contact_info: Json | null
+          created_at: string
+          district_name: string
+          district_number: number
+          id: string
+          population: number | null
+          region: string
+          representative_name: string | null
+          representative_party: string | null
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          area_km2?: number | null
+          boundaries?: Json | null
+          center_coordinates?: Json | null
+          contact_info?: Json | null
+          created_at?: string
+          district_name: string
+          district_number: number
+          id?: string
+          population?: number | null
+          region?: string
+          representative_name?: string | null
+          representative_party?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          area_km2?: number | null
+          boundaries?: Json | null
+          center_coordinates?: Json | null
+          contact_info?: Json | null
+          created_at?: string
+          district_name?: string
+          district_number?: number
+          id?: string
+          population?: number | null
+          region?: string
+          representative_name?: string | null
+          representative_party?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       employee_settings: {
         Row: {
           admin_id: string | null

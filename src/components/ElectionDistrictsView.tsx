@@ -1,10 +1,43 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Info, Layers, ZoomIn, ZoomOut } from "lucide-react";
+import { MapPin, Info, Layers, ZoomIn, ZoomOut, StickyNote } from "lucide-react";
 import { KarlsruheMap } from "./KarlsruheMap";
+import { DistrictDetailDialog } from "./DistrictDetailDialog";
+import { useElectionDistricts, ElectionDistrict } from "@/hooks/useElectionDistricts";
 
 export function ElectionDistrictsView() {
+  const { districts, loading } = useElectionDistricts();
+  const [selectedDistrict, setSelectedDistrict] = useState<ElectionDistrict | null>(null);
+  const [showDistrictDialog, setShowDistrictDialog] = useState(false);
+
+  const handleDistrictClick = (district: ElectionDistrict) => {
+    setSelectedDistrict(district);
+    setShowDistrictDialog(true);
+  };
+
+  const getPartyColor = (party?: string) => {
+    switch (party?.toLowerCase()) {
+      case "fdp": return "bg-yellow-500";
+      case "grüne": return "bg-green-500";
+      case "cdu": return "bg-blue-500";
+      case "spd": return "bg-red-500";
+      default: return "bg-gray-500";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Wahlkreisdaten werden geladen...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -32,7 +65,7 @@ export function ElectionDistrictsView() {
                     Interaktive Karte
                   </CardTitle>
                   <CardDescription>
-                    Wahlkreisgrenzen und Stadtteile von Karlsruhe
+                    Wahlkreisgrenzen und Stadtteile von Karlsruhe - Klicken Sie auf einen Wahlkreis für Details
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -49,7 +82,11 @@ export function ElectionDistrictsView() {
               </div>
             </CardHeader>
             <CardContent className="p-0 h-[500px]">
-              <KarlsruheMap />
+              <KarlsruheMap 
+                districts={districts} 
+                onDistrictClick={handleDistrictClick}
+                selectedDistrict={selectedDistrict}
+              />
             </CardContent>
           </Card>
         </div>
@@ -60,16 +97,46 @@ export function ElectionDistrictsView() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-5 w-5" />
-                Wahlkreis-Info
+                {selectedDistrict ? "Wahlkreis-Info" : "Wahlkreis wählen"}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Aktiver Wahlkreis</h4>
-                  <p className="font-semibold">Klicken Sie auf einen Wahlkreis</p>
+              {selectedDistrict ? (
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium">Wahlkreis {selectedDistrict.district_number}</h4>
+                    <p className="text-sm font-semibold">{selectedDistrict.district_name}</p>
+                  </div>
+                  {selectedDistrict.representative_name && (
+                    <div>
+                      <h4 className="font-medium text-sm text-muted-foreground">Abgeordnete/r</h4>
+                      <p className="font-semibold">{selectedDistrict.representative_name}</p>
+                      {selectedDistrict.representative_party && (
+                        <Badge variant="outline" className="mt-1">
+                          {selectedDistrict.representative_party}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  {selectedDistrict.population && (
+                    <div>
+                      <h4 className="font-medium text-sm text-muted-foreground">Einwohner</h4>
+                      <p className="font-semibold">{selectedDistrict.population.toLocaleString()}</p>
+                    </div>
+                  )}
+                  <Button 
+                    onClick={() => setShowDistrictDialog(true)}
+                    className="w-full flex items-center gap-2"
+                  >
+                    <StickyNote className="h-4 w-4" />
+                    Details & Notizen
+                  </Button>
                 </div>
-              </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Klicken Sie auf einen Wahlkreis auf der Karte, um Details anzuzeigen.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -81,15 +148,19 @@ export function ElectionDistrictsView() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Wahlkreise</span>
-                  <span className="font-medium">4</span>
+                  <span className="font-medium">{districts.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Stadtbezirke</span>
-                  <span className="font-medium">27</span>
+                  <span className="text-sm text-muted-foreground">Einwohner gesamt</span>
+                  <span className="font-medium">
+                    {districts.reduce((sum, d) => sum + (d.population || 0), 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Einwohner</span>
-                  <span className="font-medium">~310.000</span>
+                  <span className="text-sm text-muted-foreground">Fläche gesamt</span>
+                  <span className="font-medium">
+                    {districts.reduce((sum, d) => sum + (d.area_km2 || 0), 0).toFixed(1)} km²
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -101,27 +172,25 @@ export function ElectionDistrictsView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-primary/20 border-2 border-primary rounded"></div>
-                  <span className="text-sm">Wahlkreis 49</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-secondary/20 border-2 border-secondary rounded"></div>
-                  <span className="text-sm">Wahlkreis 50</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-accent/20 border-2 border-accent rounded"></div>
-                  <span className="text-sm">Wahlkreis 51</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-muted/20 border-2 border-muted-foreground rounded"></div>
-                  <span className="text-sm">Wahlkreis 52</span>
-                </div>
+                {districts.map((district) => (
+                  <div key={district.id} className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded border-2 ${getPartyColor(district.representative_party)}`}></div>
+                    <span className="text-sm">
+                      WK {district.district_number}: {district.district_name}
+                    </span>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <DistrictDetailDialog
+        district={selectedDistrict}
+        open={showDistrictDialog}
+        onOpenChange={setShowDistrictDialog}
+      />
     </div>
   );
 }
