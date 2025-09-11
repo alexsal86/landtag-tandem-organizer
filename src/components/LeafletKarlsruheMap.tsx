@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { Badge } from '@/components/ui/badge';
@@ -141,101 +141,20 @@ const LeafletKarlsruheMap: React.FC<LeafletKarlsruheMapProps> = ({
           const boundaries = getDistrictBoundaries(district.district_number);
           const isSelected = selectedDistrict?.id === district.id;
           const partyColor = getPartyColorHex(district.representative_party);
-          
+
           return (
             <React.Fragment key={district.id}>
-              {/* District polygon */}
+              {/* District polygon - simplified without event handlers/popups for stability */}
               <Polygon
                 positions={boundaries}
                 pathOptions={{
                   fillColor: partyColor,
-                  fillOpacity: isSelected ? 0.7 : 0.4,
+                  fillOpacity: isSelected ? 0.6 : 0.35,
                   color: partyColor,
                   weight: isSelected ? 3 : 2,
-                  opacity: 0.8,
+                  opacity: 0.9,
                 }}
-                eventHandlers={{
-                  click: () => onDistrictClick(district),
-                  mouseover: (e) => {
-                    e.target.setStyle({
-                      fillOpacity: 0.6,
-                      weight: 3,
-                    });
-                  },
-                  mouseout: (e) => {
-                    e.target.setStyle({
-                      fillOpacity: isSelected ? 0.7 : 0.4,
-                      weight: isSelected ? 3 : 2,
-                    });
-                  },
-                }}
-              >
-                <Popup>
-                  <div className="p-2 min-w-[200px]">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge 
-                        variant="secondary" 
-                        style={{ backgroundColor: partyColor, color: '#fff' }}
-                      >
-                        {district.district_number}
-                      </Badge>
-                      <h3 className="font-semibold text-card-foreground">
-                        {district.district_name}
-                      </h3>
-                    </div>
-                    
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-3 w-3" />
-                        <span>{district.representative_name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {district.representative_party}
-                        </Badge>
-                      </div>
-                      {district.population && (
-                        <div className="flex items-center gap-2">
-                          <Users className="h-3 w-3" />
-                          <span>{district.population.toLocaleString()} Einwohner</span>
-                        </div>
-                      )}
-                      {district.area_km2 && (
-                        <div className="flex items-center gap-2">
-                          <Square className="h-3 w-3" />
-                          <span>ca. {district.area_km2} km²</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Popup>
-              </Polygon>
-              
-              {/* District center marker with simple marker */}
-              {district.center_coordinates && (
-                <Marker
-                  position={[
-                    (district.center_coordinates as { lat: number; lng: number }).lat,
-                    (district.center_coordinates as { lat: number; lng: number }).lng
-                  ]}
-                  icon={icon}
-                  eventHandlers={{
-                    click: () => onDistrictClick(district),
-                  }}
-                >
-                  <Popup>
-                    <div className="text-center">
-                      <Badge 
-                        variant="secondary" 
-                        style={{ backgroundColor: partyColor, color: '#fff' }}
-                      >
-                        Wahlkreis {district.district_number}
-                      </Badge>
-                      <div className="mt-1 font-semibold">{district.district_name}</div>
-                    </div>
-                  </Popup>
-                </Marker>
-              )}
+              />
             </React.Fragment>
           );
         })}

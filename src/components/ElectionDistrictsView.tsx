@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Users, BarChart3, Loader2 } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictDetailDialog } from "./DistrictDetailDialog";
-import LeafletKarlsruheMap from "./LeafletKarlsruheMap";
+import LeafletBasicKarlsruheMap from "./LeafletBasicKarlsruheMap";
 import LeafletMapFallback from "./LeafletMapFallback";
 
 const getPartyColor = (party?: string): string => {
@@ -112,7 +112,7 @@ export const ElectionDistrictsView = () => {
                 />
               ) : (
                 <ErrorBoundary onError={handleMapError}>
-                  <LeafletKarlsruheMap 
+                  <LeafletBasicKarlsruheMap 
                     districts={districts}
                     onDistrictClick={handleDistrictClick}
                     selectedDistrict={selectedDistrict}
