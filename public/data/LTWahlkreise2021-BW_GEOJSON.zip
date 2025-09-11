@@ -1,0 +1,237 @@
+<!DOCTYPE html><html lang="de">
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="robots" content="index,follow,noarchive,noodp">
+<meta name="revisit-after" content="30 Days">
+<meta name="generator" content="GENESIS-Online">
+<meta name="DC.type" content="Text">
+<meta name="DC.format" content="text/html">
+<meta name="DC.audience" content="general public">
+<meta name="language" content="de">
+<meta name="DC.language" content="de">
+<meta name="date" content="2025-09-12T00:31:05+1:00">
+<meta name="DC.date" content="2025-09-12T00:31:05+1:00">
+<meta name="DC.identifier" content="https://daten.statistik-bw.de:443/genesisonline//online/1757629865415">
+<meta name="DC.rights" content="https://daten.statistik-bw.de:443/genesisonline//online?Menu=Impressum">
+<meta name="description" content="GENESIS-Online ist eine Datenbank, die tief gegliederte Ergebnisse der amtlichen Statistik enth&auml;lt. Sie wird kontinuierlich ausgebaut. Der Tabellenabruf erfolgt unentgeltlich und kann variabel auf den individuellen Bedarf angepasst werden. Die Abspeicherung der Ergebnisse ist in verschiedenen Formaten m&ouml;glich. ">
+<meta name="DC.description" content="GENESIS-Online ist eine Datenbank, die tief gegliederte Ergebnisse der amtlichen Statistik enth&auml;lt. Sie wird kontinuierlich ausgebaut. Der Tabellenabruf erfolgt unentgeltlich und kann variabel auf den individuellen Bedarf angepasst werden. Die Abspeicherung der Ergebnisse ist in verschiedenen Formaten m&ouml;glich. ">
+<meta name="publisher" content="">
+<meta name="DC.publisher" content="">
+<meta name="copyright" content="">
+<meta name="author" content="">
+<meta name="DC.creator" content="">
+<meta name="DC.title" content="Statistisches Landesamt Baden-W&uuml;rttemberg - GENESIS-Online">
+<meta name="DC.subject" content="Statistiken">
+<title>Statistisches Landesamt Baden-W&uuml;rttemberg - GENESIS-Online: Statistiken</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://daten.statistik-bw.de:443/genesisonline/css/normalize.css" type="text/css" media="screen,print">
+<link rel="stylesheet" href="https://daten.statistik-bw.de:443/genesisonline/css/genesis-online.css" type="text/css" media="screen,print">
+<link rel="stylesheet" href="https://daten.statistik-bw.de:443/genesisonline/css/genesis-online-colors.css" type="text/css" media="screen,print">
+<style id="antiClickjack">body{display:none !important;}</style>
+<script type="text/javascript">
+           if (self === top) {
+               var antiClickjack = document.getElementById("antiClickjack");
+               antiClickjack.parentNode.removeChild(antiClickjack);
+           } else {
+               top.location = self.location;
+           }
+        </script><script src="https://daten.statistik-bw.de:443/genesisonline/js/fokus.js" type="text/javascript"> </script><script src="https://daten.statistik-bw.de:443/genesisonline/js/recherchehilfe.js" type="text/javascript"> </script>
+<link rel="search" href="https://daten.statistik-bw.de:443/genesisonline/misc/OpenSearch_de.xml" type="application/opensearchdescription+xml" title="Statistisches Landesamt Baden-W&uuml;rttemberg - GENESIS-Online">
+<link rel="shortcut icon" href="https://daten.statistik-bw.de:443/genesisonline/images/favicon.ico" type="image/x-icon">
+</head>
+<body id="main-menu-overflow-visible">
+<header>
+<div class="logos-and-nav">
+<div class="container">
+<div class="flex-grid flex-grid-s-row">
+<div class="logos logos-container column-l-3 column-s-8">
+<a class="logo-destatis-container" href="https://daten.statistik-bw.de" id="anfang" title="statistik-bw.de"><img class="logo-destatis" src="https://daten.statistik-bw.de:443/genesisonline/images/AmtsLogo.svg" alt="statistik-bw.de" title="statistik-bw.de"></a>
+<div class="logo-genesisonline">
+<a href="https://daten.statistik-bw.de:443/genesisonline/online" id="startseite" title="Startseite">
+<p class="genesisonline"><abbr title="Gemeinsames neues statistisches Informationssystem">GENESIS</abbr>-<span lang="EN-GB">ONLINE</span></p>
+</a>
+</div>
+</div>
+<nav class="column-l-9 column-s-4">
+<nav class="main-nav-container">
+<ul class="main-nav-items-container">
+<li class="main-nav-item main-dropdown-menu-container">
+<button class="main-dropdown-menu-btn">Men&uuml;</button>
+<ul class="main-dropdown-menu">
+<li class="">
+<a class=">main-dropdown-menu-item-primary" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;code=$" id="DropdownTop_1">Themen</a>
+</li>
+<li class="">
+<a class=">main-dropdown-menu-item-primary" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=tables" id="DropdownTop_2">Tabellen</a>
+</li>
+<li class="">
+<a class=">main-dropdown-menu-item-primary" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=variables" id="DropdownTop_6">Merkmale</a>
+</li>
+<li class="hide-l show-s">
+<br>
+</li>
+<li class="hide-l show-s ">
+<a class="main-dropdown-menu-item-secondary" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=signUp&amp;levelindex=0&amp;levelid=1757629865415" id="DropdownTop_9">Anmeldung</a>
+</li>
+<li class="hide-l show-s ">
+<a class="main-dropdown-menu-item-secondary" href="https://daten.statistik-bw.de:443/genesisonline/online?Menu=Hilfe" id="DropdownTop_10">Hilfe</a>
+</li>
+</ul>
+</li>
+<li class="main-nav-item show-l hide-s">
+<form action="https://daten.statistik-bw.de:443/genesisonline/online?operation=signUp&amp;levelindex=0&amp;levelid=1757629865415" method="post">
+<button class="login button" id="anmeldenButton" name="anmelden" value="Anmeldung" title="Anmeldung">Anmeldung</button>
+</form>
+</li>
+<li class="main-nav-item show-l hide-s">
+<a href="https://daten.statistik-bw.de:443/genesisonline/online?Menu=Hilfe">Hilfe</a>
+</li>
+<li class="main-nav-item show-l hide-s">
+<a>&nbsp;</a>
+</li>
+</ul>
+</nav>
+</nav>
+</div>
+</div>
+</div>
+<section class="stage">
+<div class="container">
+<div class="stage-headlines-container">
+<h1>Statistiken</h1>
+</div>
+<div>
+<form action="https://daten.statistik-bw.de:443/genesisonline/online" method="get" name="sucheingabe" enctype="application/x-www-form-urlencoded">
+<input name="operation" value="find" type="hidden"><input type="hidden" name="suchanweisung_language" id="suchanweisung_language" value="de"><label><input class="search-box" type="search" name="query" id="query" placeholder="Datenbank durchsuchen"></label>
+</form>
+</div>
+</div>
+</section>
+<nav class="breadcrumb container" id="abreadcrumb">
+<ul>
+<li>
+<a href="https://daten.statistik-bw.de:443/genesisonline/online">Startseite</a>
+</li>
+<li>
+<strong>Themen / Statistiken</strong>
+</li>
+</ul>
+</nav>
+</header>
+<main>
+  
+  
+    
+<div class="themes accordion">
+<div class="container">
+<div class="flex-grid">
+      
+<div class="column-l-12 cloumn-s-12">
+<ul class="first-accordion">
+<li>
+<a id="a1" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=" title="anzeigen: Statistiken zu Statistik 'Gebiet, Bev&ouml;lkerung, Arbeitsmarkt, Wahlen'"><span class="accordion-level-1
+                                 close">1<span class="no5">&nbsp;</span>Gebiet, Bev&ouml;lkerung, Arbeitsmarkt, Wahlen</span></a>
+</li>
+<li>
+<a href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=11" title="anzeigen: Statistiken zu Statistik 'Gebiet'"><span class="accordion-level-2
+                               open">11<span class="no5">&nbsp;</span>Gebiet</span></a>
+</li>
+<li>
+<a href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=12" title="anzeigen: Statistiken zu Statistik 'Bev&ouml;lkerung'"><span class="accordion-level-2
+                               open">12<span class="no5">&nbsp;</span>Bev&ouml;lkerung</span></a>
+</li>
+<li>
+<a href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=13" title="anzeigen: Statistiken zu Statistik 'Arbeitsmarkt'"><span class="accordion-level-2
+                               open">13<span class="no5">&nbsp;</span>Arbeitsmarkt</span></a>
+</li>
+<li>
+<a href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=1" title="anzeigen: Statistiken zu Statistik 'Wahlen'"><span class="accordion-level-2
+                                close">14<span class="no5">&nbsp;</span>Wahlen</span></a>
+</li>
+<li>
+<a href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=19" title="anzeigen: Statistiken zu Statistik 'Andere (f&uuml;r L&auml;nder- oder Bundeszwecke) - Gebiet, Bev&ouml;lkerung, Erwerbst&auml;tigkeit, Wahlen'"><span class="accordion-level-2
+                               open">19<span class="no5">&nbsp;</span>Andere (f&uuml;r L&auml;nder- oder Bundeszwecke) - Gebiet, Bev&ouml;lkerung, Erwerbst&auml;tigkeit, Wahlen</span></a>
+</li>
+<li>
+<a id="a2" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=2" title="anzeigen: Statistiken zu Statistik 'Bildung, Sozialleistungen, Gesundheit, Rechtspflege'"><span class="accordion-level-1
+                                open">2<span class="no5">&nbsp;</span>Bildung, Sozialleistungen, Gesundheit, Rechtspflege</span></a>
+</li>
+<li>
+<a id="a3" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=3" title="anzeigen: Statistiken zu Statistik 'Wohnen, Umwelt'"><span class="accordion-level-1
+                                open">3<span class="no5">&nbsp;</span>Wohnen, Umwelt</span></a>
+</li>
+<li>
+<a id="a4" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=4" title="anzeigen: Statistiken zu Statistik 'Wirtschaftsbereiche'"><span class="accordion-level-1
+                                open">4<span class="no5">&nbsp;</span>Wirtschaftsbereiche</span></a>
+</li>
+<li>
+<a id="a5" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=5" title="anzeigen: Statistiken zu Statistik 'Au&szlig;enhandel, Unternehmen, Handwerk'"><span class="accordion-level-1
+                                open">5<span class="no5">&nbsp;</span>Au&szlig;enhandel, Unternehmen, Handwerk</span></a>
+</li>
+<li>
+<a id="a6" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=6" title="anzeigen: Statistiken zu Statistik 'Preise, Verdienste, Einkommen und Verbrauch'"><span class="accordion-level-1
+                                open">6<span class="no5">&nbsp;</span>Preise, Verdienste, Einkommen und Verbrauch</span></a>
+</li>
+<li>
+<a id="a7" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=7" title="anzeigen: Statistiken zu Statistik '&Ouml;ffentliche Finanzen, Steuern und Personal im &ouml;ffentlichen Dienst'"><span class="accordion-level-1
+                                open">7<span class="no5">&nbsp;</span>&Ouml;ffentliche Finanzen, Steuern und Personal im &ouml;ffentlichen Dienst</span></a>
+</li>
+<li>
+<a id="a8" href="https://daten.statistik-bw.de:443/genesisonline/online?operation=themes&amp;levelindex=0&amp;levelid=1757629865415&amp;code=8" title="anzeigen: Statistiken zu Statistik 'Gesamtrechnungen'"><span class="accordion-level-1
+                                open">8<span class="no5">&nbsp;</span>Gesamtrechnungen</span></a>
+</li>
+</ul>
+<p class="mb-2-25"></p>
+</div>
+      
+      
+    
+</div>
+</div>
+</div>
+    
+  
+  
+  
+  
+  
+
+</main>
+<footer>
+<div class="footer-section-links">
+<div class="container">
+<ul>
+<li class="mb-1">
+<a class="textlink-white" href="https://daten.statistik-bw.de:443/genesisonline/online?Menu=Kontakt">Kontakt</a>
+</li>
+<li class="mb-1">
+<a class="textlink-white" href="https://daten.statistik-bw.de:443/genesisonline/online?Menu=BITV">Barrierefreiheit</a>
+</li>
+<li>
+<a class="textlink-white" href="https://daten.statistik-bw.de:443/genesisonline/online?Menu=Links">Links</a>
+</li>
+<li class="mb-1" style="margin-top:7.5rem">
+<a class="textlink-white" href="https://daten.statistik-bw.de:443/genesisonline/online?Menu=Impressum">Impressum</a>
+</li>
+<li class="mb-1">
+<a class="textlink-white" href="https://daten.statistik-bw.de:443/genesisonline/online?Menu=Datenschutz">Datenschutz</a>
+</li>
+</ul>
+</div>
+</div>
+<div class="footer-section-legalnotice">
+<div class="container">
+<div class="flex-grid">
+<div class="genesis-version column-l-6 column-s-12">
+<p>GENESIS V5.0.4 - 2025</p>
+</div>
+<div class="navcopyright column-l-6 column-s-12 column-s-12">
+<p>
+                             &copy; 2025</p>
+</div>
+</div>
+</div>
+</div>
+</footer>
+</body>
+</html>
