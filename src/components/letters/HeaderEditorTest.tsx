@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FabricHeaderEditor } from './FabricHeaderEditor';
+
 import { Badge } from "@/components/ui/badge";
 import { Play, CheckCircle, XCircle } from 'lucide-react';
 
@@ -117,11 +117,8 @@ export const HeaderEditorTest: React.FC = () => {
           <Badge className="bg-blue-100 text-blue-800 mb-2">TEST MODUS</Badge>
           <h1 className="text-2xl font-bold">Header Editor Test</h1>
         </div>
-        <FabricHeaderEditor
-          template={mockTemplate}
-          onSave={handleSave}
-          onCancel={() => setShowEditor(false)}
-        />
+        {/* FabricHeaderEditor removed */}
+        <div className="p-4 text-muted-foreground">Header editor currently unavailable</div>
       </div>
     );
   }

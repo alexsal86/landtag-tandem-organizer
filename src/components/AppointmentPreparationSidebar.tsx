@@ -16,7 +16,7 @@ import { FileText, Download, Save, Archive, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import jsPDF from 'jspdf';
-// import html2canvas from 'html2canvas'; // Commented out to avoid canvas dependency
+
 
 interface AppointmentPreparationSidebarProps {
   appointmentId: string | null;
@@ -250,7 +250,7 @@ export default function AppointmentPreparationSidebar({
     if (!preparation) return;
 
     try {
-      // Simple text-based PDF export without html2canvas
+      // Simple text-based PDF export
       const pdf = new jsPDF('p', 'mm', 'a4');
       const template = templates.find(t => t.id === preparation.template_id);
       

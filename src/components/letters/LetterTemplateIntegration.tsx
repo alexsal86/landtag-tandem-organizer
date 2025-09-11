@@ -11,8 +11,6 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
-import { FabricHeaderEditor } from './FabricHeaderEditor';
-import { FabricFooterEditor } from './FabricFooterEditor';
 
 interface LetterTemplate {
   id: string;
@@ -516,11 +514,8 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       {showHeaderEditor && editingTemplate && (
         <Dialog open={showHeaderEditor} onOpenChange={setShowHeaderEditor}>
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
-            <FabricHeaderEditor
-              template={editingTemplate}
-              onSave={handleSaveHeader}
-              onCancel={() => setShowHeaderEditor(false)}
-            />
+            {/* FabricHeaderEditor removed */}
+            <div className="p-4 text-muted-foreground">Header editor currently unavailable</div>
           </DialogContent>
         </Dialog>
       )}
@@ -529,11 +524,8 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       {showFooterEditor && editingTemplate && (
         <Dialog open={showFooterEditor} onOpenChange={setShowFooterEditor}>
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
-            <FabricFooterEditor
-              template={editingTemplate}
-              onSave={handleSaveFooter}
-              onCancel={() => setShowFooterEditor(false)}
-            />
+            {/* FabricFooterEditor removed */}
+            <div className="p-4 text-muted-foreground">Footer editor currently unavailable</div>
           </DialogContent>
         </Dialog>
       )}
