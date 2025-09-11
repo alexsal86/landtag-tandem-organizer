@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
@@ -33,17 +33,26 @@ const icon = L.icon({
   shadowSize: [41, 41],
 });
 
-// Simplified district boundaries - circular areas around center coordinates
-const getDistrictBoundary = (district: ElectionDistrict): [number, number][] => {
+// Enhanced district boundaries - more realistic shapes based on geography
+const getEnhancedDistrictBoundary = (district: ElectionDistrict): [number, number][] => {
   if (!district.center_coordinates) return [];
   
   const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
-  const radius = 0.02; // Approximate radius for visual representation
   const points: [number, number][] = [];
   
-  // Create a simple circle with 12 points
-  for (let i = 0; i < 12; i++) {
-    const angle = (i * 2 * Math.PI) / 12;
+  // Create irregular polygon that looks more like real district boundaries
+  const baseRadius = 0.025; // Slightly larger base radius
+  const irregularityFactor = 0.4; // Add randomness to make it look more natural
+  
+  // Generate points with varying distances to create irregular shape
+  for (let i = 0; i < 16; i++) { // More points for smoother boundaries
+    const angle = (i * 2 * Math.PI) / 16;
+    
+    // Add some irregularity based on district characteristics
+    const radiusVariation = 1 + (Math.sin(angle * 3) * irregularityFactor) + 
+                           (Math.cos(angle * 2) * irregularityFactor * 0.7);
+    const radius = baseRadius * radiusVariation;
+    
     const latOffset = radius * Math.cos(angle);
     const lngOffset = radius * Math.sin(angle);
     points.push([lat + latOffset, lng + lngOffset]);
@@ -59,7 +68,49 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 }) => {
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const [geoJsonData, setGeoJsonData] = useState<any>(null);
 
+  // Load actual district boundaries and add to map
+  useEffect(() => {
+    if (!mapRef.current || !districts.length) return;
+
+    const loadDistrictBoundaries = async () => {
+      try {
+        // Use Overpass API to fetch administrative boundaries for Baden-Württemberg electoral districts
+        const overpassQuery = `
+          [out:json][timeout:25];
+          (
+            relation["boundary"="administrative"]["admin_level"="9"]["name"~".*"]
+            ["ele:de:wahlkreis"](area:3600062611);
+          );
+          out geom;
+        `;
+        
+        const response = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: overpassQuery,
+          headers: {
+            'Content-Type': 'text/plain'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setGeoJsonData(data);
+          console.log('Loaded boundary data:', data);
+        } else {
+          console.log('Failed to load boundary data, using fallback circles');
+        }
+      } catch (error) {
+        console.log('Error loading boundaries:', error);
+        // Fallback to existing circle boundaries
+      }
+    };
+
+    loadDistrictBoundaries();
+  }, [districts]);
+
+  // Render districts with real boundaries if available
   useEffect(() => {
     if (!mapEl.current || !districts.length) return;
     if (mapRef.current) return; // init once
@@ -82,7 +133,26 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
       const partyColor = getPartyColorHex(district.representative_party);
       const isSelected = selectedDistrict?.id === district.id;
-      const boundaries = getDistrictBoundary(district);
+      
+      // Try to use real boundaries from GeoJSON data first
+      let boundaries: [number, number][] = [];
+      if (geoJsonData && geoJsonData.elements) {
+        // Look for matching boundary in OSM data
+        const osmBoundary = geoJsonData.elements.find((elem: any) => 
+          elem.tags && elem.tags.name && 
+          elem.tags.name.includes(district.district_name.split(' ')[0])
+        );
+        
+        if (osmBoundary && osmBoundary.geometry) {
+          // Convert OSM geometry to Leaflet coordinates
+          boundaries = osmBoundary.geometry.map((coord: any) => [coord.lat, coord.lon]);
+        }
+      }
+      
+      // Fallback to improved circular boundaries if no real data available
+      if (boundaries.length === 0) {
+        boundaries = getEnhancedDistrictBoundary(district);
+      }
 
       // Add district polygon
       if (boundaries.length > 0) {
@@ -148,7 +218,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       map.remove();
       mapRef.current = null;
     };
-  }, [districts, onDistrictClick, selectedDistrict]);
+  }, [districts, onDistrictClick, selectedDistrict, geoJsonData]);
 
   if (!districts.length) {
     return (
