@@ -45,10 +45,10 @@ const getDistrictNumberFromProps = (props: Record<string, any>): number | undefi
 };
 export const loadElectoralDistrictsGeoJson = async (): Promise<{ [key: number]: [number, number][] }> => {
   try {
-    console.log('Loading GeoJSON data from sample file...');
+    console.log('Loading GeoJSON data from uploaded file...');
     
-    // Load the sample GeoJSON data directly
-    const geoJsonPath = '/data/sample-wahlkreise.geojson';
+    // Load the uploaded GeoJSON data directly
+    const geoJsonPath = '/data/LTWahlkreise2021-BW.geojson';
     console.log('Fetching GeoJSON file from:', geoJsonPath);
     const response = await fetch(geoJsonPath);
     if (!response.ok) {
