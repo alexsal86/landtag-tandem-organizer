@@ -6,7 +6,7 @@ import { MapPin, Users, BarChart3, Loader2, Crown, Award } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictDetailDialog } from "./DistrictDetailDialog";
 import SimpleLeafletMap from "./SimpleLeafletMap";
-import LeafletMapFallback from "./LeafletMapFallback";
+import { supabase } from "@/integrations/supabase/client";
 
 
 const getPartyColor = (party?: string): string => {
@@ -62,8 +62,28 @@ export const ElectionDistrictsView = () => {
   const [showDistrictDialog, setShowDistrictDialog] = useState(false);
   const [useMapFallback, setUseMapFallback] = useState(false);
 
-  // Note: Election districts are now managed via one-time database import
-  // The sync-bw-districts function can be called manually when needed
+  // One-time sync of all election districts - trigger manually
+  useEffect(() => {
+    const syncData = async () => {
+      try {
+        console.log('Starting sync of all Baden-Württemberg election districts...');
+        const { data, error } = await supabase.functions.invoke('sync-bw-districts');
+        if (error) throw error;
+        console.log('Sync completed successfully:', data);
+        // Refresh districts data after sync
+        setTimeout(() => window.location.reload(), 2000);
+      } catch (e) {
+        console.error('Sync failed:', e);
+      }
+    };
+
+    // Trigger sync automatically on component mount (only once)
+    const key = 'districts_synced_v2';
+    if (typeof window !== 'undefined' && !sessionStorage.getItem(key)) {
+      syncData();
+      sessionStorage.setItem(key, '1');
+    }
+  }, []);
 
   const handleDistrictClick = (district: any) => {
     setSelectedDistrict(district);
