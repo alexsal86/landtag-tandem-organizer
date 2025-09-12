@@ -193,6 +193,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       const paddingValue = window.innerWidth < 768 ? 10 : 20;
       map.fitBounds(renderedBounds, {
         padding: [paddingValue, paddingValue] as [number, number],
+        maxZoom: 12,
       });
     }
   }, [districts, selectedDistrict, onDistrictClick]);

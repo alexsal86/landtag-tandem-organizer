@@ -22,40 +22,56 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    console.log('Loading GeoJSON file...')
-    
-    // Read the GeoJSON file from public directory
-    let geoJsonData
-    try {
-      // Try to read from local file in the Edge Function environment
-      const localPath = '/var/task/public/data/LTWahlkreise2021-BW.geojson'
-      geoJsonData = await Deno.readTextFile(localPath)
-      console.log('Successfully read local GeoJSON file')
-    } catch (localError) {
-      console.log('Local file not found, trying alternative paths...', localError.message)
-      
-      // Alternative paths to try
-      const paths = [
-        './public/data/LTWahlkreise2021-BW.geojson',
-        '../../../public/data/LTWahlkreise2021-BW.geojson',
-        'public/data/LTWahlkreise2021-BW.geojson',
-      ]
-      
-      let fileRead = false
-      for (const path of paths) {
-        try {
-          geoJsonData = await Deno.readTextFile(path)
-          console.log(`Successfully read from path: ${path}`)
-          fileRead = true
-          break
-        } catch (error) {
-          console.log(`Failed to read from ${path}:`, error.message)
+    console.log('Starting election districts import...')
+
+    // Prefer GeoJSON content from request body
+    let geoJsonData: string | null = null
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json()
+        if (body && body.geojson) {
+          if (typeof body.geojson === 'string') {
+            geoJsonData = body.geojson
+          } else {
+            geoJsonData = JSON.stringify(body.geojson)
+          }
+          console.log('Using GeoJSON provided in request body')
+        }
+      } catch (e) {
+        console.log('No JSON body or invalid JSON, falling back to file lookup')
+      }
+    }
+
+    // Fallback: attempt to read from local file paths (may not exist in deployed env)
+    if (!geoJsonData) {
+      console.log('Loading GeoJSON from local files as fallback...')
+      try {
+        const localPath = './LTWahlkreise2021-BW.geojson'
+        geoJsonData = await Deno.readTextFile(localPath)
+        console.log('Successfully read local GeoJSON file')
+      } catch (localError) {
+        console.log('Local file not found, trying alternative paths...', (localError as Error).message)
+        const paths = [
+          '/var/task/public/data/LTWahlkreise2021-BW.geojson',
+          './public/data/LTWahlkreise2021-BW.geojson',
+          '../../../public/data/LTWahlkreise2021-BW.geojson',
+          'public/data/LTWahlkreise2021-BW.geojson',
+        ]
+        
+        for (const path of paths) {
+          try {
+            geoJsonData = await Deno.readTextFile(path)
+            console.log(`Successfully read from path: ${path}`)
+            break
+          } catch (error) {
+            console.log(`Failed to read from ${path}:`, (error as Error).message)
+          }
         }
       }
-      
-      if (!fileRead) {
-        throw new Error('Could not find GeoJSON file in any expected location. Please ensure LTWahlkreise2021-BW.geojson is available.')
-      }
+    }
+
+    if (!geoJsonData) {
+      throw new Error('No GeoJSON provided and no local file found. Please POST the GeoJSON in the request body under "geojson".')
     }
 
     const geoJson = JSON.parse(geoJsonData)

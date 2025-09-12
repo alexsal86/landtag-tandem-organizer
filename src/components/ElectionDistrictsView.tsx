@@ -7,6 +7,8 @@ import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictDetailDialog } from "./DistrictDetailDialog";
 import SimpleLeafletMap from "./SimpleLeafletMap";
 import LeafletMapFallback from "./LeafletMapFallback";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 const getPartyColor = (party?: string): string => {
   switch (party?.toLowerCase()) {
@@ -56,7 +58,9 @@ class ErrorBoundary extends React.Component<
 }
 
 export const ElectionDistrictsView = () => {
-  const { districts, loading } = useElectionDistricts();
+  const { districts, loading, refetch } = useElectionDistricts();
+  const { toast } = useToast();
+  const [importing, setImporting] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState<any>(null);
   const [showDistrictDialog, setShowDistrictDialog] = useState(false);
   const [useMapFallback, setUseMapFallback] = useState(false);
@@ -104,6 +108,35 @@ export const ElectionDistrictsView = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {districts.length === 0 && (
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">Keine Wahlkreisgrenzen vorhanden. Einmaliger Import erforderlich.</p>
+                  <Button
+                    size="sm"
+                    disabled={importing}
+                    onClick={async () => {
+                      try {
+                        setImporting(true);
+                        const res = await fetch('/data/LTWahlkreise2021-BW.geojson');
+                        const text = await res.text();
+                        const { data, error } = await supabase.functions.invoke('import-election-districts', {
+                          body: { geojson: text }
+                        });
+                        if (error) throw error;
+                        toast({ title: 'Import erfolgreich', description: `${data?.imported ?? 0} Wahlkreise importiert.` });
+                        await refetch();
+                      } catch (e: any) {
+                        console.error(e);
+                        toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
+                      } finally {
+                        setImporting(false);
+                      }
+                    }}
+                  >
+                    {importing ? (<span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Importiere…</span>) : 'GeoJSON importieren'}
+                  </Button>
+                </div>
+              )}
               <ErrorBoundary onError={handleMapError}>
                 <SimpleLeafletMap 
                   districts={districts}

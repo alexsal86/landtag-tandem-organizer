@@ -1409,6 +1409,44 @@ export type Database = {
           },
         ]
       }
+      election_district_municipalities: {
+        Row: {
+          county: string | null
+          created_at: string
+          district_id: string
+          id: string
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          county?: string | null
+          created_at?: string
+          district_id: string
+          id?: string
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          county?: string | null
+          created_at?: string
+          district_id?: string
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_district_municipalities_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "election_districts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       election_district_notes: {
         Row: {
           category: string | null
