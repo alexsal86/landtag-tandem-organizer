@@ -33,14 +33,8 @@ class SupabaseYjsProvider {
   }
 
   private initializePersistence(documentId: string) {
-    try {
-      this.persistence = new IndexeddbPersistence(`yjs_${documentId}`, this.doc);
-      this.persistence.on('synced', () => {
-        console.log('[SupabaseYjsProvider] IndexedDB persistence synced');
-      });
-    } catch (e) {
-      console.warn('[SupabaseYjsProvider] Failed to initialize IndexedDB persistence:', e);
-    }
+    // IndexedDB persistence is now handled by YjsProvider
+    console.log('[SupabaseYjsProvider] IndexedDB persistence handled externally');
   }
 
   private initializeSupabaseTransport(documentId: string) {
@@ -54,7 +48,7 @@ class SupabaseYjsProvider {
           console.log('[SupabaseYjsProvider] Received remote Yjs update from user:', payload.userId);
           try {
             const update = new Uint8Array(payload.update);
-            Y.applyUpdate(this.doc, update);
+            Y.applyUpdate(this.doc, update, 'remote');
           } catch (e) {
             console.warn('[SupabaseYjsProvider] Failed to apply remote update:', e);
           }
@@ -173,12 +167,14 @@ export interface YjsProviderContextValue {
   doc: Y.Doc | null;
   provider: SupabaseYjsProvider | null;
   isConnected: boolean;
+  isSynced: boolean;
 }
 
 export const YjsProviderContext = React.createContext<YjsProviderContextValue>({
   doc: null,
   provider: null,
   isConnected: false,
+  isSynced: false,
 });
 
 export function YjsProvider({ 
@@ -191,7 +187,9 @@ export function YjsProvider({
   const { user } = useAuth();
   const docRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<SupabaseYjsProvider | null>(null);
+  const persistenceRef = useRef<any>(null);
   const [isConnected, setIsConnected] = React.useState(false);
+  const [isSynced, setIsSynced] = React.useState(false);
   
   const onConnectedRef = useRef(onConnected);
   const onDisconnectedRef = useRef(onDisconnected);
@@ -212,6 +210,15 @@ export function YjsProvider({
     // Create Yjs document
     const doc = new Y.Doc();
     docRef.current = doc;
+
+    // Create IndexedDB persistence
+    const persistence = new IndexeddbPersistence(`yjs_${documentId}`, doc);
+    persistenceRef.current = persistence;
+    
+    persistence.on('synced', () => {
+      console.log('[YjsProvider] IndexedDB synced');
+      setIsSynced(true);
+    });
 
     // Create custom provider
     const provider = new SupabaseYjsProvider(doc, documentId, user?.id || 'anonymous');
@@ -236,11 +243,14 @@ export function YjsProvider({
       console.log('[YjsProvider] Cleaning up Yjs provider for document:', documentId);
       
       provider.destroy();
+      persistence.destroy();
       doc.destroy();
       
       docRef.current = null;
       providerRef.current = null;
+      persistenceRef.current = null;
       setIsConnected(false);
+      setIsSynced(false);
     };
   }, [documentId, user?.id]);
 
@@ -248,6 +258,7 @@ export function YjsProvider({
     doc: docRef.current,
     provider: providerRef.current,
     isConnected,
+    isSynced,
   };
 
   return (

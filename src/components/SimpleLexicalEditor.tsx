@@ -12,6 +12,7 @@ import { useCollaboration } from '@/hooks/useCollaboration';
 import CollaborationStatus from './CollaborationStatus';
 import { YjsProvider } from './collaboration/YjsProvider';
 import { LexicalYjsCollaborationPlugin } from './collaboration/LexicalYjsCollaborationPlugin';
+import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
 
 // Feature flag for Yjs collaboration
 const ENABLE_YJS_COLLABORATION = true;
@@ -218,36 +219,38 @@ export default function SimpleLexicalEditor({
           </div>
 
           {/* Editor with Yjs collaboration */}
-          <div className="border rounded-lg">
-            <LexicalComposer 
-              initialConfig={initialConfig}
-              key={`yjs-editor-${documentId}`}
-            >
-              <div className="editor-inner relative">
-                <PlainTextPlugin
-                  contentEditable={
-                    <ContentEditable 
-                      className="editor-input min-h-[300px] p-4 focus:outline-none resize-none" 
-                    />
-                  }
-                  placeholder={
-                    <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
-                      {placeholder}
-                    </div>
-                  }
-                  ErrorBoundary={LexicalErrorBoundary}
-                />
-                
-                {/* Official Yjs Collaboration Plugin */}
-                <LexicalYjsCollaborationPlugin
-                  id={documentId}
-                  shouldBootstrap={true}
-                />
-                
-                <HistoryPlugin />
-              </div>
-            </LexicalComposer>
-          </div>
+          <YjsSyncStatus>
+            <div className="border rounded-lg">
+              <LexicalComposer 
+                initialConfig={initialConfig}
+                key={`yjs-editor-${documentId}`}
+              >
+                <div className="editor-inner relative">
+                  <PlainTextPlugin
+                    contentEditable={
+                      <ContentEditable 
+                        className="editor-input min-h-[300px] p-4 focus:outline-none resize-none" 
+                      />
+                    }
+                    placeholder={
+                      <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
+                        {placeholder}
+                      </div>
+                    }
+                    ErrorBoundary={LexicalErrorBoundary}
+                  />
+                  
+                  {/* Official Yjs Collaboration Plugin */}
+                  <LexicalYjsCollaborationPlugin
+                    id={documentId}
+                    shouldBootstrap={true}
+                  />
+                  
+                  <HistoryPlugin />
+                </div>
+              </LexicalComposer>
+            </div>
+          </YjsSyncStatus>
         </div>
       </YjsProvider>
     );
