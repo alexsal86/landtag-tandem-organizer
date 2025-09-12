@@ -12,7 +12,6 @@ import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
-// Remove official CollaborationPlugin import - use our enhanced manual approach
 
 // Lexical nodes
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
@@ -40,6 +39,7 @@ import { TRANSFORMERS } from '@lexical/markdown';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import CollaborationStatus from './CollaborationStatus';
 import { YjsProvider, useYjsProvider } from './collaboration/YjsProvider';
+import { ManualYjsCollaborationPlugin } from './collaboration/ManualYjsCollaborationPlugin';
 import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
 import { Button } from './ui/button';
@@ -395,115 +395,7 @@ function YjsContentSyncPlugin({
   return null;
 }
 
-// Enhanced Yjs Collaboration Plugin for Rich Text
-function EnhancedYjsCollaborationPlugin({ documentId }: { documentId: string }) {
-  const [editor] = useLexicalComposerContext();
-  const yjsProvider = useYjsProvider();
-  const lastContentRef = useRef<string>('');
-  const isApplyingRef = useRef<boolean>(false);
-  const hasBootstrapped = useRef<boolean>(false);
-
-  useEffect(() => {
-    if (!yjsProvider?.doc || !editor || !yjsProvider?.isSynced) {
-      return;
-    }
-
-    console.log('[EnhancedYjsCollaboration] Setting up rich text Yjs binding for:', documentId);
-
-    const sharedText = yjsProvider.doc.getText('content');
-
-    // Serialize Lexical state to JSON for Yjs (including rich text)
-    const lexicalToYjs = () => {
-      if (isApplyingRef.current) return;
-      
-      editor.getEditorState().read(() => {
-        const json = editor.getEditorState().toJSON();
-        const jsonString = JSON.stringify(json);
-        
-        if (jsonString !== lastContentRef.current) {
-          console.log('[EnhancedYjsCollaboration] Pushing rich Lexical state to Yjs');
-          lastContentRef.current = jsonString;
-          
-          yjsProvider.doc.transact(() => {
-            const prevLen = sharedText.toString().length;
-            if (prevLen > 0) sharedText.delete(0, prevLen);
-            if (jsonString) sharedText.insert(0, jsonString);
-          }, 'lexical');
-        }
-      });
-    };
-
-    // Deserialize Yjs content to Lexical state (including rich text)
-    const yjsToLexical = (origin?: any) => {
-      if (origin === 'lexical') return;
-      
-      const content = sharedText.toString();
-      if (content === lastContentRef.current) return;
-
-      console.log('[EnhancedYjsCollaboration] Applying rich Yjs content to Lexical');
-      isApplyingRef.current = true;
-      
-      try {
-        if (content.trim()) {
-          const parsedState = JSON.parse(content);
-          const editorState = editor.parseEditorState(parsedState);
-          editor.setEditorState(editorState);
-        } else {
-          editor.update(() => {
-            const root = $getRoot();
-            root.clear();
-          });
-        }
-        lastContentRef.current = content;
-      } catch (e) {
-        console.warn('[EnhancedYjsCollaboration] Failed to parse Yjs content as JSON:', e);
-        // Fallback to plain text
-        editor.update(() => {
-          const root = $getRoot();
-          root.clear();
-          if (content.trim()) {
-            const p = $createParagraphNode();
-            p.append($createTextNode(content));
-            root.append(p);
-          }
-        });
-        lastContentRef.current = content;
-      }
-      
-      setTimeout(() => {
-        isApplyingRef.current = false;
-      }, 0);
-    };
-
-    // Observe Yjs changes
-    const yObserver = (event: any, transaction: any) => {
-      yjsToLexical(transaction.origin);
-    };
-    sharedText.observeDeep(yObserver);
-
-    // Bootstrap initial content
-    if (!hasBootstrapped.current) {
-      console.log('[EnhancedYjsCollaboration] Bootstrapping from Yjs');
-      yjsToLexical();
-      hasBootstrapped.current = true;
-    }
-
-    // Listen to local Lexical changes
-    const unregister = editor.registerUpdateListener(({ editorState, dirtyElements, dirtyLeaves }) => {
-      lexicalToYjs();
-    });
-
-    return () => {
-      console.log('[EnhancedYjsCollaboration] Cleaning up rich text Yjs binding');
-      sharedText.unobserveDeep(yObserver);
-      unregister();
-    };
-  }, [yjsProvider?.doc, editor, documentId, yjsProvider?.isSynced]);
-
-  return null;
-}
-
-// Yjs Collaboration Editor component (with official integration)
+// Clean Yjs Collaboration Editor component  
 function YjsCollaborationEditor(props: any) {
   const yjsProvider = useYjsProvider();
   
@@ -542,7 +434,10 @@ function YjsCollaborationEditor(props: any) {
               <FloatingTextFormatToolbar />
             </div>
             
-            <EnhancedYjsCollaborationPlugin documentId={props.documentId} />
+            <ManualYjsCollaborationPlugin
+              documentId={props.documentId}
+              shouldBootstrap={true}
+            />
             
             <YjsContentSyncPlugin
               initialContent={props.initialContent}
@@ -599,42 +494,24 @@ export default function EnhancedLexicalEditor({
     }
   });
 
-  const collaboration = realtimeCollaboration;
-
-  // Enhanced initial config with rich text nodes
   const initialConfig = useMemo(() => ({
-    namespace: 'EnhancedKnowledgeEditor',
+    namespace: 'EnhancedLexicalEditor',
     theme: {
-      paragraph: 'editor-paragraph',
+      root: 'p-4 border border-gray-300 rounded-md min-h-[200px] focus-within:border-blue-500',
       text: {
-        bold: 'editor-text-bold font-bold',
-        italic: 'editor-text-italic italic',
-        underline: 'editor-text-underline underline',
-        strikethrough: 'editor-text-strikethrough line-through',
-        code: 'editor-text-code bg-muted px-1 py-0.5 rounded text-sm font-mono',
+        bold: 'font-bold',
+        italic: 'italic',
+        underline: 'underline',
+        strikethrough: 'line-through',
+        code: 'bg-gray-100 rounded px-1 py-0.5 font-mono text-sm'
       },
       heading: {
-        h1: 'text-4xl font-bold mb-4',
-        h2: 'text-3xl font-bold mb-3',
-        h3: 'text-2xl font-bold mb-2',
-        h4: 'text-xl font-bold mb-2',
-        h5: 'text-lg font-bold mb-1',
-        h6: 'text-base font-bold mb-1',
+        h1: 'text-2xl font-bold',
+        h2: 'text-xl font-bold',
+        h3: 'text-lg font-bold'
       },
-      list: {
-        nested: {
-          listitem: 'editor-nested-listitem',
-        },
-        ol: 'editor-list-ol list-decimal list-inside',
-        ul: 'editor-list-ul list-disc list-inside',
-        listitem: 'editor-listitem',
-      },
-      quote: 'editor-quote border-l-4 border-muted-foreground pl-4 italic text-muted-foreground',
-      code: 'editor-code bg-muted p-2 rounded font-mono text-sm',
-      link: 'editor-link text-primary underline hover:text-primary/80',
-    },
-    onError: (error: Error) => {
-      console.error('Enhanced Lexical Error:', error);
+      quote: 'border-l-4 border-gray-300 pl-4 italic',
+      code: 'bg-gray-100 p-3 rounded font-mono text-sm'
     },
     nodes: [
       HeadingNode,
@@ -644,126 +521,66 @@ export default function EnhancedLexicalEditor({
       CodeNode,
       CodeHighlightNode,
       LinkNode,
-      AutoLinkNode,
-    ]
+      AutoLinkNode
+    ],
+    onError: (error: Error) => {
+      console.error('Lexical error:', error);
+    },
   }), []);
 
-  const handleOnChange = useCallback((editorState: EditorState) => {
-    if (!enableCollaboration) {
-      editorState.read(() => {
-        const root = $getRoot();
-        const textContent = root.getTextContent();
-        setLocalContent(textContent);
-        onChange(textContent);
-      });
-    }
-  }, [onChange, enableCollaboration]);
+  const handleContentChange = useCallback((newContent: string) => {
+    setLocalContent(newContent);
+    onChange(newContent);
+  }, [onChange]);
 
-  useEffect(() => {
-    if (!enableCollaboration && content !== localContent) {
-      setLocalContent(content);
+  const sendContentUpdate = useCallback((content: string) => {
+    if (realtimeCollaboration?.sendContentUpdate) {
+      realtimeCollaboration.sendContentUpdate(content);
     }
-  }, [content, localContent, enableCollaboration]);
+  }, [realtimeCollaboration]);
 
-  const handleYjsContentSync = useCallback((yjsContent: string) => {
-    if (yjsContent !== localContent) {
-      console.log('🔄 [Hybrid] Syncing content from Yjs to Supabase:', yjsContent);
-      setLocalContent(yjsContent);
-      onChange(yjsContent);
-    }
-  }, [localContent, onChange]);
+  const handleYjsContentSync = useCallback((content: string) => {
+    setLocalContent(content);
+    onChange(content);
+  }, [onChange]);
 
   // Render Yjs collaboration editor
-  if (shouldUseYjs && enableCollaboration && documentId) {
+  if (shouldUseYjs && documentId) {
     return (
-      <YjsProvider
+      <YjsProvider 
         documentId={documentId}
-        onConnected={() => console.log('[Yjs] Connected to collaboration')}
-        onDisconnected={() => console.log('[Yjs] Disconnected from collaboration')}
-        onCollaboratorsChange={(collaborators) => console.log('[Yjs] Collaborators:', collaborators)}
+        onConnected={() => console.log('[YjsEditor] Connected to collaboration')}
+        onDisconnected={() => console.log('[YjsEditor] Disconnected from collaboration')}
       >
-        <div className="editor-container space-y-4">
-          <div className="mb-2 p-3 bg-muted/50 rounded-lg border">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium">Enhanced Collaboration (Yjs)</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Rich text with auto-sync active
-              </div>
-            </div>
-            <YjsCollaborationStatus />
-          </div>
-
-          <YjsCollaborationEditor
-            initialConfig={initialConfig}
-            documentId={documentId}
-            placeholder={placeholder}
-            initialContent={content}
-            onContentSync={handleYjsContentSync}
-            showToolbar={showToolbar}
-          />
-        </div>
+        <YjsCollaborationEditor
+          initialConfig={initialConfig}
+          placeholder={placeholder}
+          documentId={documentId}
+          showToolbar={showToolbar}
+          initialContent={content}
+          onContentSync={handleYjsContentSync}
+        />
       </YjsProvider>
     );
   }
 
-  // Component to show Yjs collaboration status using provider context
-  function YjsCollaborationStatus() {
-    const yjsProvider = useYjsProvider();
-    
-    return (
-      <CollaborationStatus
-        isConnected={yjsProvider.isConnected}
-        isConnecting={!yjsProvider.isConnected && !yjsProvider.isSynced}
-        users={yjsProvider.collaborators}
-        currentUser={yjsProvider.currentUser}
-      />
-    );
-  }
-
-  // Render standard editor (with optional Supabase Realtime collaboration)
+  // Render standard or Supabase Realtime collaboration editor
   return (
-    <div className="editor-container space-y-4">
-      {enableCollaboration && documentId ? (
-        <div className="mb-2 p-3 bg-muted/50 rounded-lg border">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-sm font-medium">Enhanced Collaboration (Supabase)</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Rich text with instant sync active
-            </div>
-          </div>
-          <CollaborationStatus
-            isConnected={collaboration.isConnected}
-            isConnecting={collaboration.isConnecting}
-            users={collaboration.collaborators}
-            currentUser={collaboration.currentUser}
-          />
-        </div>
-      ) : (
-        <div className="mb-2 p-3 bg-muted/50 rounded-lg border">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-            <span className="text-sm font-medium">Enhanced Single User Mode</span>
-            <div className="text-xs text-muted-foreground ml-auto">
-              Rich text editing active
-            </div>
-          </div>
-        </div>
+    <div className="relative min-h-[200px] border rounded-md overflow-hidden">
+      {enableCollaboration && realtimeCollaboration && (
+        <CollaborationStatus 
+          isConnected={realtimeCollaboration.isConnected}
+          isConnecting={realtimeCollaboration.isConnecting}
+          users={realtimeCollaboration.collaborators}
+          currentUser={realtimeCollaboration.currentUser}
+        />
       )}
-
-      <div className="border rounded-lg overflow-hidden">
-        <LexicalComposer 
-          initialConfig={initialConfig}
-          key={`enhanced-editor-${documentId ?? 'new'}`}
-        >
-          <div className="editor-inner relative">
-            {showToolbar && <ToolbarPlugin />}
-            
+      
+      <LexicalComposer initialConfig={initialConfig}>
+        <div className="editor-inner relative">
+          {showToolbar && <ToolbarPlugin />}
+          
+          <div className="relative">
             <RichTextPlugin
               contentEditable={
                 <ContentEditable 
@@ -777,34 +594,30 @@ export default function EnhancedLexicalEditor({
               }
               ErrorBoundary={LexicalErrorBoundary}
             />
-            
-            {enableCollaboration && documentId ? (
-              <CollaborationPlugin
-                documentId={documentId}
-                onContentChange={(newContent) => {
-                  setLocalContent(newContent);
-                  onChange(newContent);
-                }}
-                sendContentUpdate={collaboration.sendContentUpdate}
-                remoteContent={remoteContent}
-              />
-            ) : (
-              <OnChangePlugin onChange={handleOnChange} />
-            )}
-            
-            <HistoryPlugin />
-            <ListPlugin />
-            <LinkPlugin />
-            <KeyboardShortcutsPlugin />
-            <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-            <TabIndentationPlugin />
-            
-            {!enableCollaboration && (
-              <ContentPlugin content={localContent} />
-            )}
+            <FloatingTextFormatToolbar />
           </div>
-        </LexicalComposer>
-      </div>
+          
+          <ContentPlugin content={content} />
+          
+          {enableCollaboration && !shouldUseYjs && realtimeCollaboration && (
+            <CollaborationPlugin
+              documentId={documentId!}
+              onContentChange={handleContentChange}
+              sendContentUpdate={sendContentUpdate}
+              remoteContent={remoteContent}
+            />
+          )}
+          
+          {!enableCollaboration && <OnChangePlugin onChange={() => {}} />}
+          
+          <HistoryPlugin />
+          <ListPlugin />
+          <LinkPlugin />
+          <KeyboardShortcutsPlugin />
+          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+          <TabIndentationPlugin />
+        </div>
+      </LexicalComposer>
     </div>
   );
 }
