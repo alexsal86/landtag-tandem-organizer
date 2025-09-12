@@ -120,6 +120,68 @@ function CollaborationPlugin({
   return <OnChangePlugin onChange={handleLocalContentChange} />;
 }
 
+// Content Sync Plugin to handle Yjs to Supabase synchronization
+function YjsContentSyncPlugin({ 
+  initialContent, 
+  onContentSync,
+  documentId 
+}: { 
+  initialContent: string;
+  onContentSync: (content: string) => void;
+  documentId: string;
+}) {
+  const [editor] = useLexicalComposerContext();
+  const yjsProvider = useYjsProvider();
+  const lastSyncedContentRef = useRef<string>('');
+  const syncIntervalRef = useRef<NodeJS.Timeout>();
+
+  // Initial sync: Load Supabase content into Yjs when connected
+  useEffect(() => {
+    if (yjsProvider?.isSynced && initialContent && initialContent !== lastSyncedContentRef.current) {
+      console.log('🔄 [Hybrid] Syncing initial Supabase content to Yjs:', initialContent);
+      
+      editor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        
+        if (initialContent.trim()) {
+          const paragraph = $createParagraphNode();
+          paragraph.append($createTextNode(initialContent));
+          root.append(paragraph);
+        }
+        
+        lastSyncedContentRef.current = initialContent;
+      });
+    }
+  }, [yjsProvider?.isSynced, initialContent, editor]);
+
+  // Periodic sync: Save Yjs content back to Supabase
+  useEffect(() => {
+    if (yjsProvider?.isSynced) {
+      syncIntervalRef.current = setInterval(() => {
+        editor.getEditorState().read(() => {
+          const root = $getRoot();
+          const currentContent = root.getTextContent();
+          
+          if (currentContent !== lastSyncedContentRef.current) {
+            console.log('💾 [Hybrid] Syncing Yjs content back to Supabase:', currentContent);
+            lastSyncedContentRef.current = currentContent;
+            onContentSync(currentContent);
+          }
+        });
+      }, 2000); // Sync every 2 seconds
+    }
+
+    return () => {
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+      }
+    };
+  }, [yjsProvider?.isSynced, editor, onContentSync]);
+
+  return null;
+}
+
 // Yjs Collaboration Editor component
 function YjsCollaborationEditor(props: any) {
   const yjsProvider = useYjsProvider();
@@ -158,6 +220,13 @@ function YjsCollaborationEditor(props: any) {
             <LexicalYjsCollaborationPlugin
               id={props.documentId}
               shouldBootstrap={true}
+            />
+            
+            {/* Content Synchronization Plugin */}
+            <YjsContentSyncPlugin
+              initialContent={props.initialContent}
+              onContentSync={props.onContentSync}
+              documentId={props.documentId}
             />
             
             <HistoryPlugin />
@@ -243,34 +312,54 @@ export default function SimpleLexicalEditor({
     }
   }, [content, localContent, enableCollaboration]);
 
+  // Handle final sync when switching away from Yjs
+  const handleYjsContentSync = useCallback((yjsContent: string) => {
+    if (yjsContent !== localContent) {
+      console.log('🔄 [Hybrid] Syncing content from Yjs to Supabase:', yjsContent);
+      setLocalContent(yjsContent);
+      onChange(yjsContent);
+    }
+  }, [localContent, onChange]);
+
   // Render Yjs collaboration editor
   if (shouldUseYjs && enableCollaboration && documentId) {
     return (
       <YjsProvider
         documentId={documentId}
         onConnected={() => console.log('[Yjs] Connected to collaboration')}
-        onDisconnected={() => console.log('[Yjs] Disconnected from collaboration')}
+        onDisconnected={() => {
+          console.log('[Yjs] Disconnected from collaboration');
+          // Perform final sync when disconnecting
+        }}
         onCollaboratorsChange={(collaborators) => console.log('[Yjs] Collaborators:', collaborators)}
       >
         <div className="editor-container space-y-4">
-          {/* Collaboration Status */}
-          <div className="mb-2">
+          {/* Enhanced Status Indicators */}
+          <div className="mb-2 p-3 bg-muted/50 rounded-lg border">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium">Real-time Collaboration (Yjs)</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Auto-sync to database active
+              </div>
+            </div>
             <CollaborationStatus
               isConnected={true} // Will be updated via YjsProvider context
               isConnecting={false}
               users={[]} // Will be updated via YjsProvider context
               currentUser={null}
             />
-            <div className="text-xs text-muted-foreground mt-1">
-              Using Yjs CRDT collaboration
-            </div>
           </div>
 
-          {/* Editor with Yjs collaboration */}
+          {/* Editor with Yjs collaboration and content sync */}
           <YjsCollaborationEditor
             initialConfig={initialConfig}
             documentId={documentId}
             placeholder={placeholder}
+            initialContent={content}
+            onContentSync={handleYjsContentSync}
           />
         </div>
       </YjsProvider>
@@ -280,17 +369,33 @@ export default function SimpleLexicalEditor({
   // Render standard editor (with optional Supabase Realtime collaboration)
   return (
     <div className="editor-container space-y-4">
-      {/* Collaboration Status - only show if enabled */}
-      {enableCollaboration && documentId && (
-        <div className="mb-2">
+      {/* Enhanced Status Indicators */}
+      {enableCollaboration && documentId ? (
+        <div className="mb-2 p-3 bg-muted/50 rounded-lg border">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="text-sm font-medium">Real-time Collaboration (Supabase)</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Instant sync active
+            </div>
+          </div>
           <CollaborationStatus
             isConnected={collaboration.isConnected}
             isConnecting={collaboration.isConnecting}
             users={collaboration.collaborators}
             currentUser={collaboration.currentUser}
           />
-          <div className="text-xs text-muted-foreground mt-1">
-            Using Supabase Realtime collaboration
+        </div>
+      ) : (
+        <div className="mb-2 p-3 bg-muted/50 rounded-lg border">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+            <span className="text-sm font-medium">Single User Mode</span>
+            <div className="text-xs text-muted-foreground ml-auto">
+              No real-time collaboration
+            </div>
           </div>
         </div>
       )}
