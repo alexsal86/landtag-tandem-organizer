@@ -175,6 +175,8 @@ export interface YjsProviderContextValue {
   provider: SupabaseYjsProvider | null;
   isConnected: boolean;
   isSynced: boolean;
+  collaborators: any[];
+  currentUser: any;
 }
 
 export const YjsProviderContext = React.createContext<YjsProviderContextValue>({
@@ -182,6 +184,8 @@ export const YjsProviderContext = React.createContext<YjsProviderContextValue>({
   provider: null,
   isConnected: false,
   isSynced: false,
+  collaborators: [],
+  currentUser: null,
 });
 
 export function YjsProvider({ 
@@ -197,6 +201,7 @@ export function YjsProvider({
   const persistenceRef = useRef<any>(null);
   const [isConnected, setIsConnected] = React.useState(false);
   const [isSynced, setIsSynced] = React.useState(false);
+  const [collaborators, setCollaborators] = React.useState<any[]>([]);
   
   const onConnectedRef = useRef(onConnected);
   const onDisconnectedRef = useRef(onDisconnected);
@@ -242,6 +247,31 @@ export function YjsProvider({
       onDisconnectedRef.current?.();
     });
 
+    // Track awareness changes for collaborators
+    const updateCollaborators = () => {
+      const awarenessStates = Array.from(provider.awareness.getStates().entries());
+      const collaboratorsList = awarenessStates
+        .filter(([clientId]) => clientId !== provider.awareness.clientID)
+        .map(([clientId, state]: [number, any]) => ({
+          user_id: state.userId || `client-${clientId}`,
+          user_color: `hsl(${(clientId * 137.508) % 360}, 70%, 50%)`,
+          profiles: {
+            display_name: state.displayName || state.name || 'Unknown User',
+            avatar_url: state.avatarUrl
+          }
+        }));
+      
+      setCollaborators(collaboratorsList);
+      onCollaboratorsChangeRef.current?.(collaboratorsList);
+    };
+
+    provider.awareness.on('update', updateCollaborators);
+
+    // Set own user info in awareness
+    provider.awareness.setLocalStateField('userId', user?.id);
+    provider.awareness.setLocalStateField('displayName', user?.user_metadata?.display_name || user?.email?.split('@')[0]);
+    provider.awareness.setLocalStateField('avatarUrl', user?.user_metadata?.avatar_url);
+
     // Connect the provider
     provider.connect();
 
@@ -266,6 +296,8 @@ export function YjsProvider({
     provider: providerRef.current,
     isConnected,
     isSynced,
+    collaborators,
+    currentUser: user,
   };
 
   return (

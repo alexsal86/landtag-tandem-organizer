@@ -345,12 +345,7 @@ export default function SimpleLexicalEditor({
                 Auto-sync to database active
               </div>
             </div>
-            <CollaborationStatus
-              isConnected={true} // Will be updated via YjsProvider context
-              isConnecting={false}
-              users={[]} // Will be updated via YjsProvider context
-              currentUser={null}
-            />
+            <YjsCollaborationStatus />
           </div>
 
           {/* Editor with Yjs collaboration and content sync */}
@@ -363,6 +358,20 @@ export default function SimpleLexicalEditor({
           />
         </div>
       </YjsProvider>
+    );
+  }
+
+  // Component to show Yjs collaboration status using provider context
+  function YjsCollaborationStatus() {
+    const yjsProvider = useYjsProvider();
+    
+    return (
+      <CollaborationStatus
+        isConnected={yjsProvider.isConnected}
+        isConnecting={!yjsProvider.isConnected && !yjsProvider.isSynced}
+        users={yjsProvider.collaborators}
+        currentUser={yjsProvider.currentUser}
+      />
     );
   }
 
