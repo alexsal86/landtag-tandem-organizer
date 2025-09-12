@@ -94,7 +94,7 @@ const LeafletBasicKarlsruheMap: React.FC<BasicMapProps> = ({ districts, onDistri
 
     // Draw polygons and markers
     districts.forEach((district) => {
-      const partyColor = getPartyColorHex(district.representative_party);
+      const partyColor = getPartyColorHex(district.representatives?.find(rep => rep.mandate_type === 'direct')?.party);
       const boundaries = getDistrictBoundaries(district.district_number);
 
       const polygon = L.polygon(boundaries as any, {

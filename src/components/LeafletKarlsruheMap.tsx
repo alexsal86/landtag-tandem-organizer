@@ -140,7 +140,7 @@ const LeafletKarlsruheMap: React.FC<LeafletKarlsruheMapProps> = ({
         {districts.map((district) => {
           const boundaries = getDistrictBoundaries(district.district_number);
           const isSelected = selectedDistrict?.id === district.id;
-          const partyColor = getPartyColorHex(district.representative_party);
+          const partyColor = getPartyColorHex(district.representatives?.find(rep => rep.mandate_type === 'direct')?.party);
 
           return (
             <React.Fragment key={district.id}>

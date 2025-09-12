@@ -38,7 +38,7 @@ const LeafletMapFallback: React.FC<LeafletMapFallbackProps> = ({
         </CardHeader>
         <CardContent className="space-y-3 max-h-[300px] overflow-y-auto">
           {districts.map((district) => {
-            const partyColor = getPartyColor(district.representative_party);
+            const partyColor = getPartyColor(district.representatives?.find(rep => rep.mandate_type === 'direct')?.party);
             const isSelected = selectedDistrict?.id === district.id;
             
             return (
@@ -63,11 +63,11 @@ const LeafletMapFallback: React.FC<LeafletMapFallbackProps> = ({
                 <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    <span>{district.representative_name}</span>
+                    <span>{district.representatives?.find(rep => rep.mandate_type === 'direct')?.name || 'Kein Direktmandat'}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Badge variant="outline" className="text-xs px-1 py-0">
-                      {district.representative_party}
+                      {district.representatives?.find(rep => rep.mandate_type === 'direct')?.party || 'N/A'}
                     </Badge>
                   </div>
                   {district.population && (
