@@ -6,35 +6,58 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Helper function to calculate polygon centroid
-function calculateCentroid(coordinates: number[][][]): [number, number] {
-  let totalLat = 0;
-  let totalLng = 0;
-  let totalPoints = 0;
-
-  // Handle MultiPolygon by processing first polygon
-  const polygon = coordinates[0];
-  
-  for (const point of polygon) {
-    totalLng += point[0];
-    totalLat += point[1];
-    totalPoints++;
+// Helper function to flatten first exterior ring from Polygon/MultiPolygon
+function flattenExteriorRing(coordinates: any): number[][] {
+  try {
+    // MultiPolygon: [polygons][rings][points][xy(z)]
+    if (Array.isArray(coordinates[0][0][0])) {
+      const firstRing = coordinates[0][0] as number[][];
+      return firstRing.map((c) => [c[0], c[1]]);
+    }
+    // Polygon: [rings][points][xy(z)]
+    const ring = coordinates[0] as number[][];
+    return ring.map((c) => [c[0], c[1]]);
+  } catch {
+    return [];
   }
+}
 
-  return [totalLat / totalPoints, totalLng / totalPoints];
+// Centroid of polygon ring (returns [lat, lng])
+function calculateCentroid(coordinates: any): [number, number] {
+  const ring = flattenExteriorRing(coordinates);
+  if (!ring.length) return [49.0, 8.4];
+
+  let area = 0;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < ring.length - 1; i++) {
+    const [x0, y0] = ring[i];
+    const [x1, y1] = ring[i + 1];
+    const a = x0 * y1 - x1 * y0;
+    area += a;
+    cx += (x0 + x1) * a;
+    cy += (y0 + y1) * a;
+  }
+  area *= 0.5;
+  if (!area) {
+    const n = ring.length;
+    const sx = ring.reduce((s, p) => s + p[0], 0);
+    const sy = ring.reduce((s, p) => s + p[1], 0);
+    return [sy / n, sx / n];
+  }
+  return [cy / (6 * area), cx / (6 * area)];
 }
 
 // Helper function to calculate polygon area (rough approximation)
-function calculateArea(coordinates: number[][][]): number {
-  const polygon = coordinates[0];
+function calculateArea(coordinates: any): number {
+  const ring = flattenExteriorRing(coordinates);
+  if (!ring.length) return 0;
   let area = 0;
-  
-  for (let i = 0; i < polygon.length - 1; i++) {
-    const [x1, y1] = polygon[i];
-    const [x2, y2] = polygon[i + 1];
+  for (let i = 0; i < ring.length - 1; i++) {
+    const [x1, y1] = ring[i];
+    const [x2, y2] = ring[i + 1];
     area += (x1 * y2 - x2 * y1);
   }
-  
   return Math.abs(area) / 2;
 }
 
@@ -55,8 +78,15 @@ serve(async (req) => {
     // 1. Load official GeoJSON data from public folder
     console.log('Fetching official LTW 2021 GeoJSON data...');
     
-    // Load the actual LTW 2021 GeoJSON file from public data folder
-    const geoJsonResponse = await fetch('https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/data/LTWahlkreise2021-BW.geojson');
+    // Try fetching from 'data' bucket first, then fallback to 'documents'
+    const primaryUrl = 'https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/data/LTWahlkreise2021-BW.geojson';
+    const fallbackUrl = 'https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/documents/LTWahlkreise2021-BW.geojson';
+
+    let geoJsonResponse = await fetch(primaryUrl);
+    if (!geoJsonResponse.ok) {
+      console.warn('Primary GeoJSON fetch failed, trying fallback...', geoJsonResponse.status, geoJsonResponse.statusText);
+      geoJsonResponse = await fetch(fallbackUrl);
+    }
     
     if (!geoJsonResponse.ok) {
       console.error('Failed to fetch GeoJSON:', geoJsonResponse.status, geoJsonResponse.statusText);
@@ -76,14 +106,27 @@ serve(async (req) => {
       const properties = feature.properties || {};
       const geometry = feature.geometry;
       
-      // Extract district number and name from official LTW 2021 GeoJSON properties
-      const districtNumber = properties.Nummer;
-      const districtName = properties['WK Name'];
-      
+      // Extract district number and name from official LTW 2021 GeoJSON properties (robust)
+      const props = properties as Record<string, any>;
+      const keys = Object.keys(props);
+      const norm = (k: string) => k.replace(/\s+/g, '').toLowerCase();
+      const numKey = keys.find(k => norm(k) === 'nummer');
+      const nameKey = keys.find(k => norm(k) === 'wkname');
+      const rawNumber = numKey ? props[numKey] : (props['WK_NR'] ?? props['WKR_NR'] ?? props['WKNR']);
+      const rawName = nameKey ? props[nameKey] : (props['WK_NAME'] ?? props['WKR_NAME']);
+
+      const districtNumber = rawNumber ? parseInt(String(rawNumber), 10) : undefined;
+      let districtName = rawName ?? props['WK Name'];
+
       if (!districtNumber || !districtName) {
         console.warn('Skipping feature with missing district number or name:', properties);
         continue;
       }
+
+      // Fix potential mojibake (e.g., GÃ¶ppingen -> Göppingen)
+      try {
+        districtName = decodeURIComponent(escape(String(districtName)));
+      } catch {}
 
       console.log(`Processing Wahlkreis ${districtNumber}: ${districtName}`);
 

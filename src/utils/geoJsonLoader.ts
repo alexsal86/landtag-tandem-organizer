@@ -188,9 +188,6 @@ const getDistrictNumberFromProps = (props: Record<string, any>): number | undefi
 export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
   const candidates = [
     '/data/LTWahlkreise2021-BW.geojson',
-    '/data/LTWahlkreise2021-BW_GEOJSON.geojson',
-    '/data/LTWahlkreise2021-BW_GEOJSON.zip',
-    '/data/sample-wahlkreise.geojson',
   ];
 
   let lastError: any = null;

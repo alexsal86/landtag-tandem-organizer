@@ -73,17 +73,19 @@ const getEnhancedDistrictBoundary = (district: ElectionDistrict): [number, numbe
 type GeoJsonData = { type: 'FeatureCollection'; features: any[] };
 
 const getDistrictNumberFromProps = (props: Record<string, any>): number | undefined => {
-  const possibleKeys = ['Nummer', 'WKR_NR', 'DISTRICT_NUMBER', 'number', 'nr', 'id', 'WKR', 'wahlkreis'];
-  for (const key of possibleKeys) {
-    const value = props[key];
-    if (value !== undefined && value !== null) {
-      const num = parseInt(String(value), 10);
-      if (!isNaN(num) && num > 0 && num <= 70) {
-        return num;
-      }
-    }
+  // Prefer the official LTW 2021 key "Nummer" (case/space insensitive)
+  const keys = Object.keys(props || {});
+  const normalized = (k: string) => k.replace(/\s+/g, '').toLowerCase();
+  const numKey = keys.find(k => normalized(k) === 'nummer');
+  let raw: any = numKey ? props[numKey] : undefined;
+
+  if (raw === undefined || raw === null) {
+    // Conservative fallbacks seen in official exports
+    raw = props['WK_NR'] ?? props['WKR_NR'] ?? props['WKNR'] ?? props['Wahlkreis_Nr'];
   }
-  return undefined;
+
+  const n = raw !== undefined ? parseInt(String(raw), 10) : NaN;
+  return Number.isNaN(n) ? undefined : n;
 };
 
 // Function to calculate true centroid of a polygon
