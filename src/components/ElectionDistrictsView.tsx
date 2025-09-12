@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,7 @@ import { MapPin, Users, BarChart3, Loader2, Crown, Award } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictDetailDialog } from "./DistrictDetailDialog";
 import SimpleLeafletMap from "./SimpleLeafletMap";
-import { supabase } from "@/integrations/supabase/client";
-
+import LeafletMapFallback from "./LeafletMapFallback";
 
 const getPartyColor = (party?: string): string => {
   switch (party?.toLowerCase()) {
@@ -61,29 +60,6 @@ export const ElectionDistrictsView = () => {
   const [selectedDistrict, setSelectedDistrict] = useState<any>(null);
   const [showDistrictDialog, setShowDistrictDialog] = useState(false);
   const [useMapFallback, setUseMapFallback] = useState(false);
-
-  // One-time sync of all election districts - trigger manually
-  useEffect(() => {
-    const syncData = async () => {
-      try {
-        console.log('Starting sync of all Baden-Württemberg election districts...');
-        const { data, error } = await supabase.functions.invoke('sync-bw-districts');
-        if (error) throw error;
-        console.log('Sync completed successfully:', data);
-        // Refresh districts data after sync
-        setTimeout(() => window.location.reload(), 2000);
-      } catch (e) {
-        console.error('Sync failed:', e);
-      }
-    };
-
-    // Trigger sync automatically on component mount (only once)
-    const key = 'districts_synced_v4';
-    if (typeof window !== 'undefined' && !sessionStorage.getItem(key)) {
-      syncData();
-      sessionStorage.setItem(key, '1');
-    }
-  }, []);
 
   const handleDistrictClick = (district: any) => {
     setSelectedDistrict(district);

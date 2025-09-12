@@ -1,92 +1,114 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
+import { Badge } from '@/components/ui/badge';
 import { MapPin, Users, Square } from 'lucide-react';
+import { loadElectoralDistrictsGeoJson } from '@/utils/geoJsonLoader';
 
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
   onDistrictClick: (district: ElectionDistrict) => void;
-  selectedDistrict?: ElectionDistrict | null;
+  selectedDistrict?: ElectionDistrict;
 }
 
-// Get party color for styling
-function getPartyColorHex(district: ElectionDistrict): string {
-  const directMandate = district.representatives?.find(r => r.mandate_type === 'direct');
-  const party = directMandate?.party?.toLowerCase() || '';
+// Helper function to get party color based on direct mandate
+const getPartyColorHex = (district: ElectionDistrict): string => {
+  // Find the direct mandate representative
+  const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
+  const party = directMandate?.party;
   
-  const colors: { [key: string]: string } = {
-    'cdu': '#000000',
-    'spd': '#e3000f',
-    'grüne': '#46962b',
-    'fdp': '#ffed00',
-    'afd': '#009ee0',
-    'linke': '#be3075'
-  };
-  
-  return colors[party] || '#666666';
-}
+  switch (party?.toUpperCase()) {
+    case 'CDU': return '#000000';
+    case 'SPD': return '#dc2626';
+    case 'GRÜNE': return '#16a34a';
+    case 'FDP': return '#facc15';
+    case 'AFD': return '#1e40af';
+    case 'LINKE': return '#9333ea';
+    default: return '#6b7280';
+  }
+};
 
-// Define Leaflet icon
-const customIcon = L.icon({
+const icon = L.icon({
   iconUrl: '/leaflet/marker-icon.png',
+  iconRetinaUrl: '/leaflet/marker-icon-2x.png',
   shadowUrl: '/leaflet/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+  shadowSize: [41, 41],
 });
 
-// Generate enhanced fallback boundary polygon for districts without database boundaries
-function getEnhancedDistrictBoundary(district: ElectionDistrict): [number, number][] {
-  const center = district.center_coordinates 
-    ? [district.center_coordinates.lat, district.center_coordinates.lng] as [number, number]
-    : [49.0, 8.4] as [number, number];
-
-  const baseSize = 0.08 + (district.district_number % 5) * 0.02;
-  const irregularity = 0.015;
-  const numPoints = 8;
+// Enhanced district boundaries - more realistic shapes based on geography
+const getEnhancedDistrictBoundary = (district: ElectionDistrict): [number, number][] => {
+  if (!district.center_coordinates) return [];
   
+  const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
   const points: [number, number][] = [];
-  for (let i = 0; i < numPoints; i++) {
-    const angle = (i / numPoints) * 2 * Math.PI;
-    const distanceVariation = 1 + (Math.sin(angle * 3) * 0.3) + (Math.random() - 0.5) * irregularity;
-    const radius = baseSize * distanceVariation;
+  
+  // Create irregular polygon that looks more like real district boundaries
+  const baseRadius = 0.025; // Slightly larger base radius
+  const irregularityFactor = 0.4; // Add randomness to make it look more natural
+  
+  // Generate points with varying distances to create irregular shape
+  for (let i = 0; i < 16; i++) { // More points for smoother boundaries
+    const angle = (i * 2 * Math.PI) / 16;
     
-    const lat = center[0] + radius * Math.cos(angle);
-    const lng = center[1] + radius * Math.sin(angle);
-    points.push([lat, lng]);
+    // Add some irregularity based on district characteristics
+    const radiusVariation = 1 + (Math.sin(angle * 3) * irregularityFactor) + 
+                           (Math.cos(angle * 2) * irregularityFactor * 0.7);
+    const radius = baseRadius * radiusVariation;
+    
+    const latOffset = radius * Math.cos(angle);
+    const lngOffset = radius * Math.sin(angle);
+    points.push([lat + latOffset, lng + lngOffset]);
   }
   
-  points.push(points[0]); // Close the polygon
   return points;
-}
+};
 
-// Calculate polygon centroid
-function calculatePolygonCentroid(coordinates: number[][]): [number, number] {
-  let area = 0;
-  let cx = 0;
-  let cy = 0;
+// Helper types and functions for GeoJSON handling
+// Minimal FeatureCollection type to avoid over-typing
+type GeoJsonData = { type: 'FeatureCollection'; features: any[] };
+
+const getDistrictNumberFromProps = (props: Record<string, any>): number | undefined => {
+  const possibleKeys = ['Nummer', 'WKR_NR', 'DISTRICT_NUMBER', 'number', 'nr', 'id', 'WKR', 'wahlkreis'];
+  for (const key of possibleKeys) {
+    const value = props[key];
+    if (value !== undefined && value !== null) {
+      const num = parseInt(String(value), 10);
+      if (!isNaN(num) && num > 0 && num <= 70) {
+        return num;
+      }
+    }
+  }
+  return undefined;
+};
+
+// Function to calculate true centroid of a polygon
+const calculatePolygonCentroid = (coordinates: number[][]): [number, number] => {
+  let totalArea = 0;
+  let centroidX = 0;
+  let centroidY = 0;
   
   for (let i = 0; i < coordinates.length - 1; i++) {
-    const [lat0, lng0] = coordinates[i];
-    const [lat1, lng1] = coordinates[i + 1];
-    const a = lat0 * lng1 - lat1 * lng0;
-    area += a;
-    cx += (lat0 + lat1) * a;
-    cy += (lng0 + lng1) * a;
+    const x0 = coordinates[i][0];
+    const y0 = coordinates[i][1];
+    const x1 = coordinates[i + 1][0];
+    const y1 = coordinates[i + 1][1];
+    
+    const a = x0 * y1 - x1 * y0;
+    totalArea += a;
+    centroidX += (x0 + x1) * a;
+    centroidY += (y0 + y1) * a;
   }
   
-  area *= 0.5;
-  if (area === 0) {
-    const n = coordinates.length;
-    const avgLat = coordinates.reduce((sum, coord) => sum + coord[0], 0) / n;
-    const avgLng = coordinates.reduce((sum, coord) => sum + coord[1], 0) / n;
-    return [avgLat, avgLng];
-  }
+  totalArea *= 0.5;
+  centroidX /= (6 * totalArea);
+  centroidY /= (6 * totalArea);
   
-  return [cx / (6 * area), cy / (6 * area)];
-}
+  return [centroidY, centroidX]; // Return as [lat, lng] for Leaflet
+};
 
 const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({ 
   districts, 
@@ -95,18 +117,40 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 }) => {
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const [isLoadingBoundaries, setIsLoadingBoundaries] = useState(false);
+  const [geoJsonData, setGeoJsonData] = useState<GeoJsonData | null>(null);
+  const [isLoadingBoundaries, setIsLoadingBoundaries] = useState(true);
   const districtLayerRef = useRef<L.LayerGroup | null>(null);
   const markerLayerRef = useRef<L.LayerGroup | null>(null);
+  // Load official GeoJSON boundaries from downloaded data
+  useEffect(() => {
+    const loadOfficialBoundaries = async () => {
+      try {
+        setIsLoadingBoundaries(true);
+        console.log('Loading official electoral district boundaries...');
+        
+        const fc = await loadElectoralDistrictsGeoJson();
+        setGeoJsonData(fc);
+        console.log('Successfully loaded official boundaries:', fc.features.length, 'Features');
+      } catch (error) {
+        console.error('Failed to load official boundaries, will use fallback polygons:', error);
+        setGeoJsonData(null);
+      } finally {
+        setIsLoadingBoundaries(false);
+      }
+    };
+
+    if (districts.length > 0) {
+      loadOfficialBoundaries();
+    }
+  }, [districts]);
 
   // Initialize map once
   useEffect(() => {
-    if (!mapEl.current) return;
+    if (!mapEl.current || !districts.length) return;
     if (mapRef.current) return; // init once
 
     console.log('Initializing map with districts:', districts.length);
 
-    // Initialize map even if no districts yet - they will be added later
     // Responsive initial zoom based on screen size
     const initialZoom = window.innerWidth < 768 ? 7 : 8;
     
@@ -115,7 +159,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       zoom: initialZoom,
       zoomControl: true,
       attributionControl: true,
-      renderer: L.svg() // Use SVG renderer for better geometry precision
+      preferCanvas: true // Better performance for many polygons
     });
     mapRef.current = map;
 
@@ -133,93 +177,159 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       districtLayerRef.current = null;
       markerLayerRef.current = null;
     };
-  }, []); // Remove districts dependency to always initialize map
+  }, [districts]);
 
-  // Add district polygons and markers directly from database
+  // Render districts and markers whenever data changes
   useEffect(() => {
-    if (!mapRef.current || !districtLayerRef.current || !markerLayerRef.current) return;
+    const map = mapRef.current;
+    if (!map || !districtLayerRef.current || !markerLayerRef.current) return;
+    if (!districts.length) return;
 
     // Clear existing layers
     districtLayerRef.current.clearLayers();
     markerLayerRef.current.clearLayers();
 
-    if (!districts || districts.length === 0) return;
+    let renderedBounds: L.LatLngBounds | null = null;
 
-    console.log('Rendering districts via L.geoJSON ...');
+    if (geoJsonData) {
+      // Render official GeoJSON directly with Leaflet (handles Polygon & MultiPolygon correctly)
+      let officialCount = 0;
+      const geoLayer = L.geoJSON(geoJsonData as any, {
+        style: (feature) => {
+          const districtNumber = feature ? getDistrictNumberFromProps((feature as any).properties || {}) : undefined;
+          const district = districts.find(d => d.district_number === districtNumber);
+          const isSelected = district && selectedDistrict?.id === district.id;
+          const partyColor = getPartyColorHex(district);
+          if (district) officialCount++;
+          return {
+            color: partyColor,
+            weight: isSelected ? 4 : 2,
+            opacity: 1,
+            fillColor: partyColor,
+            fillOpacity: isSelected ? 0.7 : 0.25,
+          } as L.PathOptions;
+        },
+        onEachFeature: (feature, layer) => {
+          const districtNumber = getDistrictNumberFromProps((feature as any).properties || {});
+          const district = districts.find(d => d.district_number === districtNumber);
+          if (!district) return;
+          const isSelected = selectedDistrict?.id === district.id;
+          const partyColor = getPartyColorHex(district);
+          const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
 
-    // Build a FeatureCollection from DB geometries (they are [lng, lat])
-    const featureCollection: any = {
-      type: 'FeatureCollection',
-      features: districts
-        .filter(d => d.boundaries && (d.boundaries.type === 'Polygon' || d.boundaries.type === 'MultiPolygon'))
-        .map(d => ({
-          type: 'Feature',
-          geometry: d.boundaries,
-          properties: { districtNumber: d.district_number }
-        }))
-    };
+          layer.on('mouseover', () => {
+            (layer as L.Path).setStyle({ weight: 3, fillOpacity: 0.5 });
+          });
+          layer.on('mouseout', () => {
+            (layer as L.Path).setStyle({ weight: isSelected ? 4 : 2, fillOpacity: isSelected ? 0.7 : 0.25 });
+          });
+          layer.on('click', () => onDistrictClick(district));
 
-    const geoLayer = L.geoJSON(featureCollection, {
-      style: (feature) => {
-        const num = (feature?.properties as any)?.districtNumber as number;
-        const d = districts.find(x => x.district_number === num);
-        return {
-          color: d ? getPartyColorHex(d) : '#666666',
-          weight: 2,
-          opacity: 0.8,
-          fillOpacity: 0.3,
-          smoothFactor: 0, // Disable geometry simplification for precise boundaries
-        } as L.PathOptions;
-      },
-      onEachFeature: (feature, layer) => {
-        const num = (feature?.properties as any)?.districtNumber as number;
-        const d = districts.find(x => x.district_number === num);
-        if (!d) return;
-        layer.on('click', () => onDistrictClick(d));
-        layer.on('mouseover', (e: any) => e.target.setStyle({ weight: 3, opacity: 1.0, fillOpacity: 0.5 }));
-        layer.on('mouseout', (e: any) => e.target.setStyle({ weight: 2, opacity: 0.8, fillOpacity: 0.3 }));
+          (layer as L.Layer).bindPopup(`
+            <div class="p-2 min-w-[200px]">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="px-2 py-1 rounded text-white text-xs font-medium" style="background-color: ${partyColor}">${district.district_number}</span>
+                <h3 class="font-semibold">${district.district_name}</h3>
+              </div>
+              <div class="space-y-1 text-sm text-gray-600">
+                ${directMandate ? `<div class="flex items-center gap-2"><span>🏆</span><span><strong>${directMandate.name}</strong> (${directMandate.party})</span></div>` : '<div class="text-gray-500">Kein Direktmandat</div>'}
+                ${district.representatives && district.representatives.length > 1 ? `<div class="text-xs text-gray-500">${district.representatives.length - 1} weitere Abgeordnete</div>` : ''}
+                ${district.population ? `<div class="flex items-center gap-2"><span>👥</span><span>${district.population.toLocaleString()} Einwohner</span></div>` : ''}
+                ${district.area_km2 ? `<div class="flex items-center gap-2"><span>📐</span><span>ca. ${district.area_km2} km²</span></div>` : ''}
+              </div>
+            </div>
+          `);
+        },
+      });
+
+      geoLayer.addTo(districtLayerRef.current);
+      renderedBounds = geoLayer.getBounds();
+      console.log(`Rendered official GeoJSON layer with ${officialCount} matched districts`);
+    } else {
+      // Fallback: render generated polygons
+      let fallbackCount = 0;
+      const allFallbackBounds: [number, number][] = [];
+
+      districts.forEach((district) => {
+        const partyColor = getPartyColorHex(district);
+        const isSelected = selectedDistrict?.id === district.id;
+        const boundaries = getEnhancedDistrictBoundary(district);
+        if (!boundaries.length) return;
+        fallbackCount++;
+        allFallbackBounds.push(...boundaries);
+
+        const polygon = L.polygon(boundaries as any, {
+          color: partyColor,
+          weight: isSelected ? 4 : 2,
+          opacity: 1,
+          fillColor: partyColor,
+          fillOpacity: isSelected ? 0.7 : 0.25,
+        });
+
+        polygon.on('mouseover', function () {
+          this.setStyle({ weight: 3, fillOpacity: 0.5 });
+        });
+        polygon.on('mouseout', function () {
+          this.setStyle({ weight: isSelected ? 4 : 2, fillOpacity: isSelected ? 0.7 : 0.25 });
+        });
+        polygon.on('click', () => onDistrictClick(district));
+        polygon.addTo(districtLayerRef.current);
+      });
+
+      if (allFallbackBounds.length) {
+        renderedBounds = L.latLngBounds(allFallbackBounds);
       }
-    });
-
-    districtLayerRef.current.addLayer(geoLayer);
-
-    // Markers overlay
-    districts.forEach((district) => {
-      const center = district.center_coordinates 
-        ? [district.center_coordinates.lat, district.center_coordinates.lng] as [number, number]
-        : [48.7758, 9.1829] as [number, number];
-      const isSelected = selectedDistrict?.district_number === district.district_number;
-      const markerHtml = `
-        <div class="district-marker ${isSelected ? 'selected' : ''}" style="
-          background: ${getPartyColorHex(district)};
-          border: 2px solid white; border-radius: 50%; width: 32px; height: 32px;
-          display: flex; align-items: center; justify-content: center;
-          font-weight: bold; font-size: 14px; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer; transition: all 0.2s ease;
-          ${isSelected ? 'transform: scale(1.2); box-shadow: 0 4px 12px rgba(0,0,0,0.4);' : ''}
-        ">${district.district_number}</div>`;
-
-      const marker = L.marker(center, { icon: L.divIcon({ html: markerHtml, className: 'custom-district-marker', iconSize: [32, 32], iconAnchor: [16, 16] }) })
-        .on('click', () => onDistrictClick(district));
-      markerLayerRef.current!.addLayer(marker);
-    });
-
-    // Fit map to features without zoom limitation
-    const bounds = (geoLayer as any).getBounds?.();
-    if (bounds && bounds.isValid()) {
-      mapRef.current.fitBounds(bounds.pad(0.1), { padding: [20, 20] });
+      console.log(`Rendered ${fallbackCount} fallback district boundaries`);
     }
 
-    console.log('Districts rendered.');
-  }, [districts, selectedDistrict, onDistrictClick]);
+    // Add markers with representative info
+    districts.forEach((district) => {
+      if (!district.center_coordinates) return;
+      const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
+      const partyColor = getPartyColorHex(district);
+      const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
+      
+      const marker = L.marker([lat, lng], { 
+        icon: L.divIcon({
+          html: `<div style="background: white; border: 2px solid ${partyColor}; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${district.district_number}</div>`,
+          className: 'custom-district-marker',
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        })
+      });
+      
+      marker.on('click', () => onDistrictClick(district));
+      
+      // Enhanced tooltip with representative info
+      if (directMandate) {
+        marker.bindTooltip(
+          `<strong>WK ${district.district_number}: ${district.district_name}</strong><br/>
+           <strong>${directMandate.name}</strong> (${directMandate.party})<br/>
+           Direktmandat`, 
+          {
+            permanent: false,
+            direction: 'top',
+            offset: [0, -20]
+          }
+        );
+      }
+      
+      marker.addTo(markerLayerRef.current!);
+    });
 
+    // Fit bounds
+    if (renderedBounds && renderedBounds.isValid()) {
+      const paddingValue = window.innerWidth < 768 ? 10 : 20;
+      map.fitBounds(renderedBounds, {
+        padding: [paddingValue, paddingValue] as [number, number],
+        maxZoom: window.innerWidth < 768 ? 9 : 10,
+      });
+    }
+  }, [districts, selectedDistrict, geoJsonData, onDistrictClick]);
   if (!districts.length) {
     return (
       <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">Wahlkreisdaten werden geladen...</p>
-          <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mt-2"></div>
-        </div>
+        <p className="text-muted-foreground">Keine Wahlkreisdaten verfügbar</p>
       </div>
     );
   }
@@ -229,31 +339,36 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       <div ref={mapEl} className="w-full h-full" />
       
       {isLoadingBoundaries && (
-        <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-lg border border-border">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full"></div>
-            Wahlkreisgrenzen werden geladen...
+        <div className="absolute top-4 left-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-4 z-[1000] max-w-xs shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Lade Wahlkreisgrenzen
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Offizielle GeoJSON-Daten werden verarbeitet...
+              </p>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Map legend */}
-      <div className="absolute bottom-4 left-4 bg-background/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-border max-w-xs">
-        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-          <Square className="w-4 h-4" />
-          Wahlkreise Baden-Württemberg
-        </h4>
-        <div className="space-y-1 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-3 h-3" />
-            <span>Wahlkreis-Nummer</span>
+      
+      <div className="absolute top-4 right-4 z-[1000] space-y-2">
+        <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 text-xs text-muted-foreground shadow-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            <span className="font-medium text-foreground">Baden-Württemberg Wahlkreise</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Users className="w-3 h-3" />
-            <span>Farben zeigen Direktmandat-Partei</span>
-          </div>
-          <div className="text-xs mt-1 opacity-75">
-            Klicken Sie auf einen Wahlkreis für Details
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <Square className="h-3 w-3" />
+              <span>{districts.length} Wahlkreise</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              <span>Klicken für Details</span>
+            </div>
           </div>
         </div>
       </div>

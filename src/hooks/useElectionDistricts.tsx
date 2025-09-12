@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useTenant } from "./useTenant";
 import { useToast } from "@/components/ui/use-toast";
-import { loadElectoralDistrictsGeoJson } from "@/utils/geoJsonLoader";
 
 interface ElectionRepresentative {
   id: string;
@@ -59,63 +58,8 @@ export function useElectionDistricts() {
   const { toast } = useToast();
 
   const fetchDistricts = async () => {
-    const buildCentroid = (geometry: any): { lat: number; lng: number } => {
-      try {
-        let pts: number[][] = [];
-        if (geometry?.type === 'Polygon') {
-          pts = geometry.coordinates?.[0] || [];
-        } else if (geometry?.type === 'MultiPolygon') {
-          pts = geometry.coordinates?.[0]?.[0] || [];
-        }
-        if (!pts.length) return { lat: 48.7758, lng: 9.1829 };
-        const n = pts.length;
-        const avgLon = pts.reduce((s, [lon]) => s + lon, 0) / n;
-        const avgLat = pts.reduce((s, [, lat]) => s + lat, 0) / n;
-        return { lat: avgLat, lng: avgLon };
-      } catch {
-        return { lat: 48.7758, lng: 9.1829 };
-      }
-    };
-
-    const loadFromGeoJsonFallback = async () => {
-      try {
-        console.log('Falling back to public GeoJSON...');
-        const fc = await loadElectoralDistrictsGeoJson();
-        const now = new Date().toISOString();
-        const mapped = (fc.features || []).map((f: any, idx: number) => {
-          const num = parseInt(
-            String(
-              f.properties?.Nummer ?? f.properties?.NR ?? f.properties?.WKR_NR ?? f.properties?.WK_NR ?? f.properties?.WKR ?? idx + 1
-            ),
-            10
-          );
-          const name = (f.properties?.['WK Name'] || f.properties?.name || `Wahlkreis ${num}`) as string;
-          const centroid = buildCentroid(f.geometry);
-          return {
-            id: `${num}`,
-            district_number: num,
-            district_name: name,
-            region: 'Baden-Württemberg',
-            district_type: 'wahlkreis',
-            boundaries: f.geometry, // Already reprojected to WGS84 by loader
-            center_coordinates: centroid,
-            created_at: now,
-            updated_at: now,
-          } as ElectionDistrict;
-        }).sort((a: any, b: any) => a.district_number - b.district_number);
-
-        console.log('Loaded districts from GeoJSON:', mapped.length);
-        setDistricts(mapped as any);
-      } catch (e) {
-        console.error('GeoJSON fallback failed:', e);
-        setDistricts([]);
-      }
-    };
-
     try {
       setLoading(true);
-      console.log('Fetching election districts from Supabase...');
-      
       const { data, error } = await supabase
         .from("election_districts")
         .select(`
@@ -134,21 +78,10 @@ export function useElectionDistricts() {
         `)
         .order("district_number");
 
-      if (error) {
-        console.warn('Supabase error, using fallback:', error);
-        await loadFromGeoJsonFallback();
-        return;
-      }
-      
-      console.log('Fetched districts from DB:', data?.length || 0);
-      
-      if (!data || data.length === 0) {
-        await loadFromGeoJsonFallback();
-        return;
-      }
+      if (error) throw error;
       
       // Sort representatives within each district and fix types
-      const processedData = data.map(district => ({
+      const processedData = data?.map(district => ({
         ...district,
         representatives: district.representatives?.sort((a: any, b: any) => {
           // Direct mandates first, then by order_index
@@ -158,19 +91,24 @@ export function useElectionDistricts() {
         })
       })) as ElectionDistrict[];
 
-      console.log('Processed districts:', processedData.length);
-      setDistricts(processedData);
+      setDistricts(processedData || []);
     } catch (error) {
-      console.error("Error fetching election districts, using fallback:", error);
-      await loadFromGeoJsonFallback();
+      console.error("Error fetching election districts:", error);
+      toast({
+        title: "Fehler beim Laden der Wahlkreise",
+        description: "Die Wahlkreisdaten konnten nicht geladen werden.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDistricts();
-  }, []);
+    if (user) {
+      fetchDistricts();
+    }
+  }, [user]);
 
   return {
     districts,
