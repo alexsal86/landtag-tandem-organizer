@@ -1,10 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
-import { Badge } from '@/components/ui/badge';
 import { MapPin, Users, Square } from 'lucide-react';
-import { loadElectoralDistrictsGeoJson } from '@/utils/geoJsonLoader';
 
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
@@ -13,7 +11,8 @@ interface LeafletKarlsruheMapProps {
 }
 
 // Helper function to get party color based on direct mandate
-const getPartyColorHex = (district: ElectionDistrict): string => {
+const getPartyColorHex = (district?: ElectionDistrict): string => {
+  if (!district) return '#6b7280';
   // Find the direct mandate representative
   const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
   const party = directMandate?.party;
@@ -29,87 +28,6 @@ const getPartyColorHex = (district: ElectionDistrict): string => {
   }
 };
 
-const icon = L.icon({
-  iconUrl: '/leaflet/marker-icon.png',
-  iconRetinaUrl: '/leaflet/marker-icon-2x.png',
-  shadowUrl: '/leaflet/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-// Enhanced district boundaries - more realistic shapes based on geography
-const getEnhancedDistrictBoundary = (district: ElectionDistrict): [number, number][] => {
-  if (!district.center_coordinates) return [];
-  
-  const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
-  const points: [number, number][] = [];
-  
-  // Create irregular polygon that looks more like real district boundaries
-  const baseRadius = 0.025; // Slightly larger base radius
-  const irregularityFactor = 0.4; // Add randomness to make it look more natural
-  
-  // Generate points with varying distances to create irregular shape
-  for (let i = 0; i < 16; i++) { // More points for smoother boundaries
-    const angle = (i * 2 * Math.PI) / 16;
-    
-    // Add some irregularity based on district characteristics
-    const radiusVariation = 1 + (Math.sin(angle * 3) * irregularityFactor) + 
-                           (Math.cos(angle * 2) * irregularityFactor * 0.7);
-    const radius = baseRadius * radiusVariation;
-    
-    const latOffset = radius * Math.cos(angle);
-    const lngOffset = radius * Math.sin(angle);
-    points.push([lat + latOffset, lng + lngOffset]);
-  }
-  
-  return points;
-};
-
-// Helper types and functions for GeoJSON handling
-// Minimal FeatureCollection type to avoid over-typing
-type GeoJsonData = { type: 'FeatureCollection'; features: any[] };
-
-const getDistrictNumberFromProps = (props: Record<string, any>): number | undefined => {
-  const possibleKeys = ['Nummer', 'WKR_NR', 'DISTRICT_NUMBER', 'number', 'nr', 'id', 'WKR', 'wahlkreis'];
-  for (const key of possibleKeys) {
-    const value = props[key];
-    if (value !== undefined && value !== null) {
-      const num = parseInt(String(value), 10);
-      if (!isNaN(num) && num > 0 && num <= 70) {
-        return num;
-      }
-    }
-  }
-  return undefined;
-};
-
-// Function to calculate true centroid of a polygon
-const calculatePolygonCentroid = (coordinates: number[][]): [number, number] => {
-  let totalArea = 0;
-  let centroidX = 0;
-  let centroidY = 0;
-  
-  for (let i = 0; i < coordinates.length - 1; i++) {
-    const x0 = coordinates[i][0];
-    const y0 = coordinates[i][1];
-    const x1 = coordinates[i + 1][0];
-    const y1 = coordinates[i + 1][1];
-    
-    const a = x0 * y1 - x1 * y0;
-    totalArea += a;
-    centroidX += (x0 + x1) * a;
-    centroidY += (y0 + y1) * a;
-  }
-  
-  totalArea *= 0.5;
-  centroidX /= (6 * totalArea);
-  centroidY /= (6 * totalArea);
-  
-  return [centroidY, centroidX]; // Return as [lat, lng] for Leaflet
-};
-
 const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({ 
   districts, 
   onDistrictClick, 
@@ -117,39 +35,15 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 }) => {
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const [geoJsonData, setGeoJsonData] = useState<GeoJsonData | null>(null);
-  const [isLoadingBoundaries, setIsLoadingBoundaries] = useState(true);
   const districtLayerRef = useRef<L.LayerGroup | null>(null);
   const markerLayerRef = useRef<L.LayerGroup | null>(null);
-  // Load official GeoJSON boundaries from downloaded data
-  useEffect(() => {
-    const loadOfficialBoundaries = async () => {
-      try {
-        setIsLoadingBoundaries(true);
-        console.log('Loading official electoral district boundaries...');
-        
-        const fc = await loadElectoralDistrictsGeoJson();
-        setGeoJsonData(fc);
-        console.log('Successfully loaded official boundaries:', fc.features.length, 'Features');
-      } catch (error) {
-        console.error('Failed to load official boundaries, will use fallback polygons:', error);
-        setGeoJsonData(null);
-      } finally {
-        setIsLoadingBoundaries(false);
-      }
-    };
-
-    if (districts.length > 0) {
-      loadOfficialBoundaries();
-    }
-  }, [districts]);
 
   // Initialize map once
   useEffect(() => {
-    if (!mapEl.current || !districts.length) return;
+    if (!mapEl.current) return;
     if (mapRef.current) return; // init once
 
-    console.log('Initializing map with districts:', districts.length);
+    console.log('Initializing map...');
 
     // Responsive initial zoom based on screen size
     const initialZoom = window.innerWidth < 768 ? 7 : 8;
@@ -159,7 +53,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       zoom: initialZoom,
       zoomControl: true,
       attributionControl: true,
-      preferCanvas: true // Better performance for many polygons
+      preferCanvas: false, // Use SVG for better precision
     });
     mapRef.current = map;
 
@@ -177,7 +71,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       districtLayerRef.current = null;
       markerLayerRef.current = null;
     };
-  }, [districts]);
+  }, []);
 
   // Render districts and markers whenever data changes
   useEffect(() => {
@@ -191,28 +85,40 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     let renderedBounds: L.LatLngBounds | null = null;
 
-    if (geoJsonData) {
-      // Render official GeoJSON directly with Leaflet (handles Polygon & MultiPolygon correctly)
-      let officialCount = 0;
-      const geoLayer = L.geoJSON(geoJsonData as any, {
+    // Render districts using boundaries from database
+    const geoJsonFeatures = districts
+      .filter(district => district.boundaries)
+      .map(district => ({
+        type: 'Feature' as const,
+        properties: { 
+          district_number: district.district_number,
+          district_name: district.district_name
+        },
+        geometry: district.boundaries
+      }));
+
+    if (geoJsonFeatures.length > 0) {
+      const geoLayer = L.geoJSON(geoJsonFeatures as any, {
         style: (feature) => {
-          const districtNumber = feature ? getDistrictNumberFromProps((feature as any).properties || {}) : undefined;
+          const districtNumber = feature?.properties?.district_number;
           const district = districts.find(d => d.district_number === districtNumber);
           const isSelected = district && selectedDistrict?.id === district.id;
           const partyColor = getPartyColorHex(district);
-          if (district) officialCount++;
+          
           return {
             color: partyColor,
             weight: isSelected ? 4 : 2,
             opacity: 1,
             fillColor: partyColor,
             fillOpacity: isSelected ? 0.7 : 0.25,
+            smoothFactor: 0, // No simplification for maximum precision
           } as L.PathOptions;
         },
         onEachFeature: (feature, layer) => {
-          const districtNumber = getDistrictNumberFromProps((feature as any).properties || {});
+          const districtNumber = feature?.properties?.district_number;
           const district = districts.find(d => d.district_number === districtNumber);
           if (!district) return;
+          
           const isSelected = selectedDistrict?.id === district.id;
           const partyColor = getPartyColorHex(district);
           const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
@@ -244,45 +150,10 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
       geoLayer.addTo(districtLayerRef.current);
       renderedBounds = geoLayer.getBounds();
-      console.log(`Rendered official GeoJSON layer with ${officialCount} matched districts`);
-    } else {
-      // Fallback: render generated polygons
-      let fallbackCount = 0;
-      const allFallbackBounds: [number, number][] = [];
-
-      districts.forEach((district) => {
-        const partyColor = getPartyColorHex(district);
-        const isSelected = selectedDistrict?.id === district.id;
-        const boundaries = getEnhancedDistrictBoundary(district);
-        if (!boundaries.length) return;
-        fallbackCount++;
-        allFallbackBounds.push(...boundaries);
-
-        const polygon = L.polygon(boundaries as any, {
-          color: partyColor,
-          weight: isSelected ? 4 : 2,
-          opacity: 1,
-          fillColor: partyColor,
-          fillOpacity: isSelected ? 0.7 : 0.25,
-        });
-
-        polygon.on('mouseover', function () {
-          this.setStyle({ weight: 3, fillOpacity: 0.5 });
-        });
-        polygon.on('mouseout', function () {
-          this.setStyle({ weight: isSelected ? 4 : 2, fillOpacity: isSelected ? 0.7 : 0.25 });
-        });
-        polygon.on('click', () => onDistrictClick(district));
-        polygon.addTo(districtLayerRef.current);
-      });
-
-      if (allFallbackBounds.length) {
-        renderedBounds = L.latLngBounds(allFallbackBounds);
-      }
-      console.log(`Rendered ${fallbackCount} fallback district boundaries`);
+      console.log(`Rendered ${districts.length} districts from database`);
     }
 
-    // Add markers with representative info
+    // Add markers with district numbers
     districts.forEach((district) => {
       if (!district.center_coordinates) return;
       const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
@@ -317,15 +188,14 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       marker.addTo(markerLayerRef.current!);
     });
 
-    // Fit bounds
+    // Fit bounds without maxZoom constraint for best fit
     if (renderedBounds && renderedBounds.isValid()) {
       const paddingValue = window.innerWidth < 768 ? 10 : 20;
       map.fitBounds(renderedBounds, {
         padding: [paddingValue, paddingValue] as [number, number],
-        maxZoom: window.innerWidth < 768 ? 9 : 10,
       });
     }
-  }, [districts, selectedDistrict, geoJsonData, onDistrictClick]);
+  }, [districts, selectedDistrict, onDistrictClick]);
   if (!districts.length) {
     return (
       <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border flex items-center justify-center">
@@ -338,21 +208,6 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border">
       <div ref={mapEl} className="w-full h-full" />
       
-      {isLoadingBoundaries && (
-        <div className="absolute top-4 left-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-4 z-[1000] max-w-xs shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                Lade Wahlkreisgrenzen
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Offizielle GeoJSON-Daten werden verarbeitet...
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
       
       <div className="absolute top-4 right-4 z-[1000] space-y-2">
         <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 text-xs text-muted-foreground shadow-lg">

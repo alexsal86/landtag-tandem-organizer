@@ -62,36 +62,11 @@ export function useElectionDistricts() {
       setLoading(true);
       const { data, error } = await supabase
         .from("election_districts")
-        .select(`
-          *,
-          representatives:election_representatives(
-            id,
-            name,
-            party,
-            mandate_type,
-            order_index,
-            email,
-            phone,
-            office_address,
-            bio
-          )
-        `)
+        .select("*")
         .order("district_number");
 
       if (error) throw error;
-      
-      // Sort representatives within each district and fix types
-      const processedData = data?.map(district => ({
-        ...district,
-        representatives: district.representatives?.sort((a: any, b: any) => {
-          // Direct mandates first, then by order_index
-          if (a.mandate_type === 'direct' && b.mandate_type !== 'direct') return -1;
-          if (a.mandate_type !== 'direct' && b.mandate_type === 'direct') return 1;
-          return a.order_index - b.order_index;
-        })
-      })) as ElectionDistrict[];
-
-      setDistricts(processedData || []);
+      setDistricts(data || []);
     } catch (error) {
       console.error("Error fetching election districts:", error);
       toast({
