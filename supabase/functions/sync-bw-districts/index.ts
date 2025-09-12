@@ -70,9 +70,14 @@ serve(async (req) => {
   }
 
   try {
+    const SUPABASE_URL = 'https://wawofclbehbkebjivdte.supabase.co';
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing SUPABASE_SERVICE_ROLE_KEY for edge function writes');
+    }
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY
     )
 
     console.log('Starting Baden-Württemberg districts sync...');
@@ -115,14 +120,14 @@ serve(async (req) => {
             { type: "Feature", properties: { "WK Name": "Bodensee", "Nummer": "19" }, geometry: { type: "MultiPolygon", coordinates: [[[[3531000.0, 5389000.0], [3531500.0, 5388500.0], [3532000.0, 5388000.0], [3531500.0, 5387500.0], [3531000.0, 5388000.0], [3531000.0, 5389000.0]]]] }},
             { type: "Feature", properties: { "WK Name": "Biberach", "Nummer": "20" }, geometry: { type: "MultiPolygon", coordinates: [[[[3533000.0, 5387000.0], [3533500.0, 5386500.0], [3534000.0, 5386000.0], [3533500.0, 5385500.0], [3533000.0, 5386000.0], [3533000.0, 5387000.0]]]] }},
             { type: "Feature", properties: { "WK Name": "Ulm", "Nummer": "21" }, geometry: { type: "MultiPolygon", coordinates: [[[[3535000.0, 5385000.0], [3535500.0, 5384500.0], [3536000.0, 5384000.0], [3535500.0, 5383500.0], [3535000.0, 5384000.0], [3535000.0, 5385000.0]]]] }},
-            { type: "Feature", properties: { "WK Name": "Ehingen", "Nummer": "22" }, geometry: { type: "MultiPolygel", coordinates: [[[[3537000.0, 5383000.0], [3537500.0, 5382500.0], [3538000.0, 5382000.0], [3537500.0, 5381500.0], [3537000.0, 5382000.0], [3537000.0, 5383000.0]]]] }},
+            { type: "Feature", properties: { "WK Name": "Ehingen", "Nummer": "22" }, geometry: { type: "MultiPolygon", coordinates: [[[[3537000.0, 5383000.0], [3537500.0, 5382500.0], [3538000.0, 5382000.0], [3537500.0, 5381500.0], [3537000.0, 5382000.0], [3537000.0, 5383000.0]]]] }},,
             { type: "Feature", properties: { "WK Name": "Aalen", "Nummer": "23" }, geometry: { type: "MultiPolygon", coordinates: [[[[3539000.0, 5381000.0], [3539500.0, 5380500.0], [3540000.0, 5380000.0], [3539500.0, 5379500.0], [3539000.0, 5380000.0], [3539000.0, 5381000.0]]]] }},
             { type: "Feature", properties: { "WK Name": "Heidenheim", "Nummer": "24" }, geometry: { type: "MultiPolygon", coordinates: [[[[3541000.0, 5379000.0], [3541500.0, 5378500.0], [3542000.0, 5378000.0], [3541500.0, 5377500.0], [3541000.0, 5378000.0], [3541000.0, 5379000.0]]]] }},
             { type: "Feature", properties: { "WK Name": "Schwäbisch Gmünd", "Nummer": "25" }, geometry: { type: "MultiPolygon", coordinates: [[[[3543000.0, 5377000.0], [3543500.0, 5376500.0], [3544000.0, 5376000.0], [3543500.0, 5375500.0], [3543000.0, 5376000.0], [3543000.0, 5377000.0]]]] }},
             { type: "Feature", properties: { "WK Name": "Backnang-Schwäbisch Hall", "Nummer": "26" }, geometry: { type: "MultiPolygon", coordinates: [[[[3520000.0, 5420000.0], [3520500.0, 5419500.0], [3521000.0, 5419000.0], [3520500.0, 5418500.0], [3520000.0, 5419000.0], [3520000.0, 5420000.0]]]] }},
             { type: "Feature", properties: { "WK Name": "Heilbronn", "Nummer": "27" }, geometry: { type: "MultiPolygon", coordinates: [[[[3522000.0, 5418000.0], [3522500.0, 5417500.0], [3523000.0, 5417000.0], [3522500.0, 5416500.0], [3522000.0, 5417000.0], [3522000.0, 5418000.0]]]] }},
             { type: "Feature", properties: { "WK Name": "Neckarsulm-Gundelsheim", "Nummer": "28" }, geometry: { type: "MultiPolygon", coordinates: [[[[3524000.0, 5416000.0], [3524500.0, 5415500.0], [3525000.0, 5415000.0], [3524500.0, 5414500.0], [3524000.0, 5415000.0], [3524000.0, 5416000.0]]]] }},
-            { type: "Feature", properties: { "WK Name": "Eppingen", "Nummer": "29" }, geometry: { type: "MultiPolygol", coordinates: [[[[3526000.0, 5414000.0], [3526500.0, 5413500.0], [3527000.0, 5413000.0], [3526500.0, 5412500.0], [3526000.0, 5413000.0], [3526000.0, 5414000.0]]]] }},
+            { type: "Feature", properties: { "WK Name": "Eppingen", "Nummer": "29" }, geometry: { type: "MultiPolygon", coordinates: [[[[3526000.0, 5414000.0], [3526500.0, 5413500.0], [3527000.0, 5413000.0], [3526500.0, 5412500.0], [3526000.0, 5413000.0], [3526000.0, 5414000.0]]]] }},
             { type: "Feature", properties: { "WK Name": "Bruchsal", "Nummer": "30" }, geometry: { type: "MultiPolygon", coordinates: [[[[3528000.0, 5412000.0], [3528500.0, 5411500.0], [3529000.0, 5411000.0], [3528500.0, 5410500.0], [3528000.0, 5411000.0], [3528000.0, 5412000.0]]]] }},
             { type: "Feature", properties: { "WK Name": "Ettlingen", "Nummer": "31" }, geometry: { type: "MultiPolygon", coordinates: [[[[3530000.0, 5410000.0], [3530500.0, 5409500.0], [3531000.0, 5409000.0], [3530500.0, 5408500.0], [3530000.0, 5409000.0], [3530000.0, 5410000.0]]]] }},
             { type: "Feature", properties: { "WK Name": "Karlsruhe I", "Nummer": "32" }, geometry: { type: "MultiPolygon", coordinates: [[[[3532000.0, 5408000.0], [3532500.0, 5407500.0], [3533000.0, 5407000.0], [3532500.0, 5406500.0], [3532000.0, 5407000.0], [3532000.0, 5408000.0]]]] }},

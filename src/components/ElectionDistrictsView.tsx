@@ -78,7 +78,7 @@ export const ElectionDistrictsView = () => {
     };
 
     // Trigger sync automatically on component mount (only once)
-    const key = 'districts_synced_v2';
+    const key = 'districts_synced_v3';
     if (typeof window !== 'undefined' && !sessionStorage.getItem(key)) {
       syncData();
       sessionStorage.setItem(key, '1');
