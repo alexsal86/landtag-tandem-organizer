@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import proj4 from 'https://esm.sh/proj4@2.9.2'
+import JSZip from 'https://esm.sh/jszip@3.10.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -75,31 +77,44 @@ serve(async (req) => {
 
     console.log('Starting Baden-Württemberg districts sync...');
 
-    // 1. Load official GeoJSON data from public folder
-    console.log('Fetching official LTW 2021 GeoJSON data...');
-    
-    // Try fetching from 'data' bucket first, then fallback to 'documents'
-    const primaryUrl = 'https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/data/LTWahlkreise2021-BW.geojson';
-    const fallbackUrl = 'https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/documents/LTWahlkreise2021-BW.geojson';
+    // 1. Load official GeoJSON data (ZIP) directly from StatLA BW
+    console.log('Fetching official LTW 2021 GeoJSON data (ZIP)...');
 
-    let geoJsonResponse = await fetch(primaryUrl);
-    if (!geoJsonResponse.ok) {
-      console.warn('Primary GeoJSON fetch failed, trying fallback...', geoJsonResponse.status, geoJsonResponse.statusText);
-      geoJsonResponse = await fetch(fallbackUrl);
-    }
-    
-    if (!geoJsonResponse.ok) {
-      console.error('Failed to fetch GeoJSON:', geoJsonResponse.status, geoJsonResponse.statusText);
-      throw new Error(`Failed to fetch GeoJSON data: ${geoJsonResponse.status}`);
+    const officialZipUrl = 'https://www.statistik-bw.de/Wahlen/Landtag/Download/LTWahlkreise2021-BW_GEOJSON.zip';
+    let geoJsonData: any = null;
+
+    try {
+      const zipRes = await fetch(officialZipUrl);
+      if (!zipRes.ok) {
+        throw new Error(`ZIP fetch failed: ${zipRes.status} ${zipRes.statusText}`);
+      }
+      const buf = await zipRes.arrayBuffer();
+      const zip = await JSZip.loadAsync(buf);
+      const entry = Object.values(zip.files).find((f: any) => f.name.toLowerCase().endsWith('.geojson') || f.name.toLowerCase().endsWith('.json')) as any;
+      if (!entry) throw new Error('No .geojson found inside ZIP');
+      const text = await entry.async('text');
+      geoJsonData = JSON.parse(text);
+      console.log(`Loaded official ZIP GeoJSON with ${geoJsonData.features?.length || 0} features`);
+    } catch (e) {
+      console.error('Failed to load official ZIP GeoJSON:', e);
+      throw e;
     }
 
-    const geoJsonData = await geoJsonResponse.json();
-    console.log(`Loaded GeoJSON with ${geoJsonData.features?.length || 0} features`);
+    // Reprojection: File uses Gauss-Krüger (EPSG:31467) per metadata; convert to WGS84
+    const crsName: string | undefined = geoJsonData?.crs?.properties?.name;
+    const m = crsName ? (crsName.match(/EPSG::(\d+)/i) || crsName.match(/EPSG:(\d+)/i)) : null;
+    const epsg = m ? `EPSG:${m[1]}` : 'EPSG:31467';
 
-    // Validate we have 70 districts
-    if (!geoJsonData.features || geoJsonData.features.length !== 70) {
-      console.warn(`Expected 70 districts, got ${geoJsonData.features?.length || 0}`);
-    }
+    // Define German Gauss-Krüger proj definitions
+    proj4.defs('EPSG:31466', '+proj=tmerc +lat_0=0 +lon_0=6 +k=1 +x_0=2500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs');
+    proj4.defs('EPSG:31467', '+proj=tmerc +lat_0=0 +lon_0=9 +k=1 +x_0=3500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs');
+    proj4.defs('EPSG:31468', '+proj=tmerc +lat_0=0 +lon_0=12 +k=1 +x_0=4500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs');
+    proj4.defs('EPSG:31469', '+proj=tmerc +lat_0=0 +lon_0=15 +k=1 +x_0=5500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs');
+
+    const sourceDef = proj4.defs(epsg) ? epsg : 'EPSG:31467';
+
+    console.log(`Using projection ${sourceDef} -> WGS84`);
+
 
     // 2. Process each district
     for (const feature of geoJsonData.features || []) {
@@ -130,17 +145,39 @@ serve(async (req) => {
 
       console.log(`Processing Wahlkreis ${districtNumber}: ${districtName}`);
 
-      // Calculate centroid
-      let centerCoordinates: [number, number] = [49.0, 8.4]; // Default to center of BW
-      let areaKm2: number | null = null;
-
-      if (geometry && geometry.coordinates) {
-        try {
-          centerCoordinates = calculateCentroid(geometry.coordinates);
-          areaKm2 = calculateArea(geometry.coordinates);
-        } catch (error) {
-          console.warn(`Failed to calculate centroid for district ${districtNumber}:`, error);
+      // Reproject geometry to WGS84
+      let reprojectedGeometry: any = geometry;
+      try {
+        if (geometry?.type === 'Polygon') {
+          const rings = geometry.coordinates as any[];
+          const newRings = rings.map((ring: any[]) => ring.map((coord: any[]) => {
+            const [x, y] = coord;
+            const [lon, lat] = proj4(sourceDef, 'WGS84', [x, y]);
+            return [lon, lat];
+          }));
+          reprojectedGeometry = { type: 'Polygon', coordinates: newRings };
+        } else if (geometry?.type === 'MultiPolygon') {
+          const polys = geometry.coordinates as any[];
+          const newPolys = polys.map((rings: any[]) => rings.map((ring: any[]) => ring.map((coord: any[]) => {
+            const [x, y] = coord;
+            const [lon, lat] = proj4(sourceDef, 'WGS84', [x, y]);
+            return [lon, lat];
+          })));
+          reprojectedGeometry = { type: 'MultiPolygon', coordinates: newPolys };
         }
+      } catch (e) {
+        console.warn('Reprojection failed, keeping original geometry for district', districtNumber, e);
+      }
+
+      // Calculate centroid on reprojected geometry
+      let centerCoordinates: [number, number] = [49.0, 8.4];
+      let areaKm2: number | null = null;
+      try {
+        if (reprojectedGeometry?.coordinates) {
+          centerCoordinates = calculateCentroid(reprojectedGeometry.coordinates);
+        }
+      } catch (error) {
+        console.warn(`Failed to calculate centroid for district ${districtNumber}:`, error);
       }
 
       // Upsert district
@@ -150,7 +187,7 @@ serve(async (req) => {
           district_number: parseInt(districtNumber.toString()),
           district_name: districtName,
           region: 'Baden-Württemberg',
-          boundaries: geometry,
+          boundaries: reprojectedGeometry,
           center_coordinates: {
             lat: centerCoordinates[0],
             lng: centerCoordinates[1]
