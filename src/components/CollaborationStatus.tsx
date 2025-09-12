@@ -52,56 +52,91 @@ const CollaborationStatus: React.FC<CollaborationStatusProps> = ({ isConnected, 
           </>
         )}
 
-        {/* User Avatars */}
-        {otherUsers.length > 0 && (
-          <div className="flex -space-x-2">
-            {otherUsers.slice(0, 3).map((user) => (
-              <Tooltip key={user.user_id}>
+        {/* Current User Avatar - Always shown when connected */}
+        {isConnected && currentUser && (
+          <>
+            <div className="w-px h-4 bg-border" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Sie:</span>
+              <Tooltip>
                 <TooltipTrigger asChild>
-                  <Avatar 
-                    className="h-6 w-6 border-2 border-background" 
-                    style={{ borderColor: user.user_color }}
-                  >
+                  <Avatar className="h-6 w-6 border-2 border-primary">
                     <AvatarImage 
-                      src={user.profiles?.avatar_url} 
-                      alt={user.profiles?.display_name || 'Nutzer'} 
+                      src={currentUser.user_metadata?.avatar_url} 
+                      alt={currentUser.user_metadata?.display_name || currentUser.email?.split('@')[0] || 'Sie'} 
                     />
-                    <AvatarFallback 
-                      className="text-xs"
-                      style={{ 
-                        backgroundColor: user.user_color + '20', 
-                        color: user.user_color 
-                      }}
-                    >
-                      {user.profiles?.display_name 
-                        ? user.profiles.display_name.charAt(0).toUpperCase()
-                        : <User className="h-3 w-3" />
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                      {currentUser.user_metadata?.display_name 
+                        ? currentUser.user_metadata.display_name.charAt(0).toUpperCase()
+                        : currentUser.email?.charAt(0).toUpperCase() || <User className="h-3 w-3" />
                       }
                     </AvatarFallback>
                   </Avatar>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{user.profiles?.display_name || 'Unbekannter Nutzer'}</p>
+                  <p>{currentUser.user_metadata?.display_name || currentUser.email?.split('@')[0] || 'Sie'}</p>
                 </TooltipContent>
               </Tooltip>
-            ))}
-            
-            {/* Show +N indicator if more than 3 users */}
-            {otherUsers.length > 3 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground">
-                      +{otherUsers.length - 3}
-                    </span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{otherUsers.length - 3} weitere Nutzer</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+            </div>
+          </>
+        )}
+
+        {/* Other Users Avatars */}
+        {otherUsers.length > 0 && (
+          <>
+            <div className="w-px h-4 bg-border" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Andere:</span>
+              <div className="flex -space-x-2">
+                {otherUsers.slice(0, 3).map((user) => (
+                  <Tooltip key={user.user_id}>
+                    <TooltipTrigger asChild>
+                      <Avatar 
+                        className="h-6 w-6 border-2 border-background" 
+                        style={{ borderColor: user.user_color }}
+                      >
+                        <AvatarImage 
+                          src={user.profiles?.avatar_url} 
+                          alt={user.profiles?.display_name || 'Nutzer'} 
+                        />
+                        <AvatarFallback 
+                          className="text-xs"
+                          style={{ 
+                            backgroundColor: user.user_color + '20', 
+                            color: user.user_color 
+                          }}
+                        >
+                          {user.profiles?.display_name 
+                            ? user.profiles.display_name.charAt(0).toUpperCase()
+                            : <User className="h-3 w-3" />
+                          }
+                        </AvatarFallback>
+                      </Avatar>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{user.profiles?.display_name || 'Unbekannter Nutzer'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+                
+                {/* Show +N indicator if more than 3 users */}
+                {otherUsers.length > 3 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground">
+                          +{otherUsers.length - 3}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{otherUsers.length - 3} weitere Nutzer</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </TooltipProvider>
