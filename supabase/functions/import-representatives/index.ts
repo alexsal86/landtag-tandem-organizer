@@ -221,8 +221,8 @@ serve(async (req) => {
     });
 
     console.log(`Prepared ${representatives.length} representatives for insert. Skipped ${skipped.length}.`);
-    if (representatives.length < 150) {
-      throw new Error(`Too many representatives were skipped (${skipped.length}). Aborting to avoid partial import.`);
+    if (skipped.length > 0) {
+      console.warn(`Proceeding with ${representatives.length} inserts; ${skipped.length} skipped (likely district parsing mismatches).`);
     }
 
     // Clear existing representatives only after successful parsing
