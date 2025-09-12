@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictDetailDialog } from "./DistrictDetailDialog";
 import SimpleLeafletMap from "./SimpleLeafletMap";
 import LeafletMapFallback from "./LeafletMapFallback";
+import { supabase } from "@/integrations/supabase/client";
 
 const getPartyColor = (party?: string): string => {
   switch (party?.toLowerCase()) {
@@ -60,6 +61,22 @@ export const ElectionDistrictsView = () => {
   const [selectedDistrict, setSelectedDistrict] = useState<any>(null);
   const [showDistrictDialog, setShowDistrictDialog] = useState(false);
   const [useMapFallback, setUseMapFallback] = useState(false);
+
+  // One-time sync of official LTW 2021 GeoJSON into election_districts
+  useEffect(() => {
+    const key = 'ltw2021_sync_done';
+    if (typeof window !== 'undefined' && !sessionStorage.getItem(key)) {
+      (async () => {
+        try {
+          await supabase.functions.invoke('sync-bw-districts');
+        } catch (e) {
+          console.error('Einmaliger Wahlkreis-Sync fehlgeschlagen:', e);
+        } finally {
+          sessionStorage.setItem(key, '1');
+        }
+      })();
+    }
+  }, []);
 
   const handleDistrictClick = (district: any) => {
     setSelectedDistrict(district);
