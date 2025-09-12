@@ -21,6 +21,7 @@ import GuestResponse from "./pages/GuestResponse";
 import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
 import Decisions from "./pages/Decisions";
 import YjsCollaborationTestPage from "./pages/YjsCollaborationTestPage";
+import EditorTest from "./pages/EditorTest";
 
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import CollaborationTest from "./components/CollaborationTest";
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
             <Route path="/collaboration-test" element={<CollaborationTest />} />
             <Route path="/yjs-collaboration-test" element={<YjsCollaborationTestPage />} />
+            <Route path="/editor-test" element={<EditorTest />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             
             <Route path="*" element={<NotFound />} />
