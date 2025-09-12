@@ -54,39 +54,41 @@ export default function LexicalToolbar({ showFloatingToolbar = false }: LexicalT
 
   // Update toolbar state based on selection
   const updateToolbar = useCallback(() => {
-    const selection = $getSelection();
-    
-    if ($isRangeSelection(selection)) {
-      const formats = new Set<string>();
+    editor.getEditorState().read(() => {
+      const selection = $getSelection();
       
-      // Check text formats
-      if (selection.hasFormat('bold')) formats.add('bold');
-      if (selection.hasFormat('italic')) formats.add('italic');
-      if (selection.hasFormat('underline')) formats.add('underline');
-      if (selection.hasFormat('strikethrough')) formats.add('strikethrough');
-      if (selection.hasFormat('code')) formats.add('code');
-      
-      setActiveFormats(formats);
-
-      // Check block type
-      const anchorNode = selection.anchor.getNode();
-      const element = anchorNode.getKey() === 'root' 
-        ? anchorNode 
-        : anchorNode.getTopLevelElementOrThrow();
-
-      if ($isHeadingNode(element)) {
-        setBlockType(`heading-${element.getTag()}`);
-      } else if ($isListNode(element)) {
-        setBlockType(`list-${element.getListType()}`);
-      } else if ($isQuoteNode(element)) {
-        setBlockType('quote');
-      } else if ($isCodeNode(element)) {
-        setBlockType('code');
-      } else {
-        setBlockType('paragraph');
+      if ($isRangeSelection(selection)) {
+        const formats = new Set<string>();
+        
+        // Check text formats
+        if (selection.hasFormat('bold')) formats.add('bold');
+        if (selection.hasFormat('italic')) formats.add('italic');
+        if (selection.hasFormat('underline')) formats.add('underline');
+        if (selection.hasFormat('strikethrough')) formats.add('strikethrough');
+        if (selection.hasFormat('code')) formats.add('code');
+        
+        setActiveFormats(formats);
+  
+        // Check block type
+        const anchorNode = selection.anchor.getNode();
+        const element = anchorNode.getKey() === 'root' 
+          ? anchorNode 
+          : anchorNode.getTopLevelElementOrThrow();
+  
+        if ($isHeadingNode(element)) {
+          setBlockType(`heading-${element.getTag()}`);
+        } else if ($isListNode(element)) {
+          setBlockType(`list-${element.getListType()}`);
+        } else if ($isQuoteNode(element)) {
+          setBlockType('quote');
+        } else if ($isCodeNode(element)) {
+          setBlockType('code');
+        } else {
+          setBlockType('paragraph');
+        }
       }
-    }
-  }, []);
+    });
+  }, [editor]);
 
   useEffect(() => {
     return editor.registerCommand(

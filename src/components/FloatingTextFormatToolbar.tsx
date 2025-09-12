@@ -30,54 +30,56 @@ function FloatingTextFormatToolbar({
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
 
   const updateToolbar = useCallback(() => {
-    const selection = $getSelection();
-    
-    if (!$isRangeSelection(selection)) {
-      setIsVisible(false);
-      return;
-    }
-
-    const anchorNode = selection.anchor.getNode();
-    const focusNode = selection.focus.getNode();
-    
-    if (anchorNode.getKey() === focusNode.getKey() && 
-        selection.anchor.offset === selection.focus.offset) {
-      setIsVisible(false);
-      return;
-    }
-
-    // Get active formats
-    const formats = new Set<string>();
-    if (selection.hasFormat('bold')) formats.add('bold');
-    if (selection.hasFormat('italic')) formats.add('italic');
-    if (selection.hasFormat('underline')) formats.add('underline');
-    if (selection.hasFormat('strikethrough')) formats.add('strikethrough');
-    if (selection.hasFormat('code')) formats.add('code');
-    
-    setActiveFormats(formats);
-
-    // Calculate position
-    const nativeSelection = window.getSelection();
-    if (nativeSelection && nativeSelection.rangeCount > 0) {
-      const range = nativeSelection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+    editor.getEditorState().read(() => {
+      const selection = $getSelection();
       
-      if (rect.width > 0 && rect.height > 0) {
-        const anchorRect = anchorElem.getBoundingClientRect();
+      if (!$isRangeSelection(selection)) {
+        setIsVisible(false);
+        return;
+      }
+  
+      const anchorNode = selection.anchor.getNode();
+      const focusNode = selection.focus.getNode();
+      
+      if (anchorNode.getKey() === focusNode.getKey() && 
+          selection.anchor.offset === selection.focus.offset) {
+        setIsVisible(false);
+        return;
+      }
+  
+      // Get active formats
+      const formats = new Set<string>();
+      if (selection.hasFormat('bold')) formats.add('bold');
+      if (selection.hasFormat('italic')) formats.add('italic');
+      if (selection.hasFormat('underline')) formats.add('underline');
+      if (selection.hasFormat('strikethrough')) formats.add('strikethrough');
+      if (selection.hasFormat('code')) formats.add('code');
+      
+      setActiveFormats(formats);
+  
+      // Calculate position
+      const nativeSelection = window.getSelection();
+      if (nativeSelection && nativeSelection.rangeCount > 0) {
+        const range = nativeSelection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
         
-        setPosition({
-          x: rect.left + rect.width / 2 - anchorRect.left - 120, // Center toolbar (240px width / 2)
-          y: rect.top - anchorRect.top - 50 // Position above selection
-        });
-        
-        setIsVisible(true);
+        if (rect.width > 0 && rect.height > 0) {
+          const anchorRect = anchorElem.getBoundingClientRect();
+          
+          setPosition({
+            x: rect.left + rect.width / 2 - anchorRect.left - 120, // Center toolbar (240px width / 2)
+            y: rect.top - anchorRect.top - 50 // Position above selection
+          });
+          
+          setIsVisible(true);
+        } else {
+          setIsVisible(false);
+        }
       } else {
         setIsVisible(false);
       }
-    } else {
-      setIsVisible(false);
-    }
-  }, [anchorElem]);
+    });
+  }, [anchorElem, editor]);
 
   useEffect(() => {
     const unregisterSelectionListener = editor.registerCommand(

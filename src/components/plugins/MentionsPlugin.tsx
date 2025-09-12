@@ -184,56 +184,63 @@ export function MentionsPlugin() {
   }, [editor, showSuggestions, filteredUsers, selectedIndex, insertMention]);
 
   useEffect(() => {
-    const removeListener = editor.registerTextContentListener((textContent) => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
+    const unregister = editor.registerTextContentListener(() => {
+      editor.getEditorState().read(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) {
+          setShowSuggestions(false);
+          return;
+        }
 
-      const anchor = selection.anchor;
-      const anchorNode = anchor.getNode();
-      
-      if (anchorNode instanceof TextNode) {
-        const text = anchorNode.getTextContent();
-        const cursorOffset = anchor.offset;
+        const anchor = selection.anchor;
+        const anchorNode = anchor.getNode();
         
-        // Find the last @ before cursor
-        const atIndex = text.lastIndexOf('@', cursorOffset - 1);
-        
-        if (atIndex !== -1 && atIndex < cursorOffset) {
-          const mentionText = text.substring(atIndex + 1, cursorOffset);
+        if (anchorNode instanceof TextNode) {
+          const text = anchorNode.getTextContent();
+          const cursorOffset = anchor.offset;
           
-          // Check if there's a space after @, if so, hide suggestions
-          if (mentionText.includes(' ') || mentionText.includes('\n')) {
-            setShowSuggestions(false);
-            return;
-          }
+          // Find the last @ before cursor
+          const atIndex = text.lastIndexOf('@', cursorOffset - 1);
           
-          setCurrentMentionText(mentionText);
-          
-          // Filter users based on mention text
-          const filtered = users.filter(user =>
-            user.display_name.toLowerCase().includes(mentionText.toLowerCase())
-          );
-          
-          setFilteredUsers(filtered);
-          setSelectedIndex(0);
-          
-          if (filtered.length > 0) {
-            // Calculate position for suggestions
-            const editorElement = editor.getRootElement();
-            if (editorElement) {
-              const nativeSelection = window.getSelection();
-              const range = nativeSelection?.getRangeAt(0);
-              const rect = range?.getBoundingClientRect();
-              if (rect) {
-                const editorRect = editorElement.getBoundingClientRect();
+          if (atIndex !== -1 && atIndex < cursorOffset) {
+            const mentionText = text.substring(atIndex + 1, cursorOffset);
+            
+            // Check if there's a space after @, if so, hide suggestions
+            if (mentionText.includes(' ') || mentionText.includes('\n')) {
+              setShowSuggestions(false);
+              return;
+            }
+            
+            setCurrentMentionText(mentionText);
+            
+            // Filter users based on mention text
+            const filtered = users.filter(user =>
+              user.display_name.toLowerCase().includes(mentionText.toLowerCase())
+            );
+            
+            setFilteredUsers(filtered);
+            setSelectedIndex(0);
+            
+            if (filtered.length > 0) {
+              // Calculate position for suggestions
+              const editorElement = editor.getRootElement();
+              if (editorElement) {
+                const nativeSelection = window.getSelection();
+                const range = nativeSelection?.rangeCount ? nativeSelection.getRangeAt(0) : null;
+                const rect = range?.getBoundingClientRect();
+                if (rect) {
+                  const editorRect = editorElement.getBoundingClientRect();
+                  
+                  setMentionPosition({
+                    x: rect.left - editorRect.left,
+                    y: rect.bottom - editorRect.top + 5
+                  });
+                }
                 
-                setMentionPosition({
-                  x: rect.left - editorRect.left,
-                  y: rect.bottom - editorRect.top + 5
-                });
+                setShowSuggestions(true);
               }
-              
-              setShowSuggestions(true);
+            } else {
+              setShowSuggestions(false);
             }
           } else {
             setShowSuggestions(false);
@@ -241,10 +248,10 @@ export function MentionsPlugin() {
         } else {
           setShowSuggestions(false);
         }
-      }
+      });
     });
 
-    return removeListener;
+    return unregister;
   }, [editor, users]);
 
   return (
