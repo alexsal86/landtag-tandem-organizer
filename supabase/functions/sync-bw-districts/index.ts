@@ -52,19 +52,18 @@ serve(async (req) => {
 
     console.log('Starting Baden-Württemberg districts sync...');
 
-    // 1. Load official GeoJSON data from StatLA BW
-    console.log('Fetching official GeoJSON data...');
-    const geoJsonUrl = 'https://www.statistik-bw.de/GeoDienste/Landtagswahlkreise_2021/data/LTWahlkreise2021-BW_GEOJSON.zip';
+    // 1. Load official GeoJSON data from public folder
+    console.log('Fetching official LTW 2021 GeoJSON data...');
     
-    // For demo purposes, we'll work with the sample data that should already be in public/data/
-    // In production, you'd want to download and extract the zip file
-    const sampleGeoJsonResponse = await fetch('https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/documents/sample-wahlkreise.geojson');
+    // Load the actual LTW 2021 GeoJSON file from public data folder
+    const geoJsonResponse = await fetch('https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/data/LTWahlkreise2021-BW.geojson');
     
-    if (!sampleGeoJsonResponse.ok) {
-      throw new Error('Failed to fetch GeoJSON data');
+    if (!geoJsonResponse.ok) {
+      console.error('Failed to fetch GeoJSON:', geoJsonResponse.status, geoJsonResponse.statusText);
+      throw new Error(`Failed to fetch GeoJSON data: ${geoJsonResponse.status}`);
     }
 
-    const geoJsonData = await sampleGeoJsonResponse.json();
+    const geoJsonData = await geoJsonResponse.json();
     console.log(`Loaded GeoJSON with ${geoJsonData.features?.length || 0} features`);
 
     // Validate we have 70 districts
@@ -77,14 +76,16 @@ serve(async (req) => {
       const properties = feature.properties || {};
       const geometry = feature.geometry;
       
-      // Extract district number and name from properties
-      const districtNumber = properties.WK_NR || properties.wahlkreis_nr || properties.district_number;
-      const districtName = properties.WK_NAME || properties.wahlkreis_name || properties.name;
+      // Extract district number and name from official LTW 2021 GeoJSON properties
+      const districtNumber = properties.Nummer;
+      const districtName = properties['WK Name'];
       
       if (!districtNumber || !districtName) {
         console.warn('Skipping feature with missing district number or name:', properties);
         continue;
       }
+
+      console.log(`Processing Wahlkreis ${districtNumber}: ${districtName}`);
 
       // Calculate centroid
       let centerCoordinates: [number, number] = [49.0, 8.4]; // Default to center of BW
@@ -126,48 +127,8 @@ serve(async (req) => {
       }
     }
 
-    // 3. Load municipality data (simplified for now - in production would load from CSV)
-    console.log('Loading municipality sample data...');
-    
-    // Sample municipalities for a few districts
-    const sampleMunicipalities = [
-      { district_number: 1, name: 'Konstanz', type: 'city', county: 'Konstanz' },
-      { district_number: 1, name: 'Reichenau', type: 'municipality', county: 'Konstanz' },
-      { district_number: 2, name: 'Stockach', type: 'city', county: 'Konstanz' },
-      { district_number: 17, name: 'Tübingen', type: 'city', county: 'Tübingen' },
-      { district_number: 17, name: 'Rottenburg am Neckar', type: 'city', county: 'Tübingen' },
-      { district_number: 46, name: 'Ulm', type: 'city', county: 'Alb-Donau-Kreis' },
-      { district_number: 62, name: 'Wangen im Allgäu', type: 'city', county: 'Ravensburg' },
-      { district_number: 63, name: 'Biberach an der Riß', type: 'city', county: 'Biberach' },
-      { district_number: 64, name: 'Ehingen (Donau)', type: 'city', county: 'Alb-Donau-Kreis' },
-    ];
-
-    for (const municipality of sampleMunicipalities) {
-      // Get district ID
-      const { data: district } = await supabase
-        .from('election_districts')
-        .select('id')
-        .eq('district_number', municipality.district_number)
-        .single();
-
-      if (district) {
-        const { error } = await supabase
-          .from('election_district_municipalities')
-          .upsert({
-            district_id: district.id,
-            name: municipality.name,
-            type: municipality.type,
-            county: municipality.county
-          }, {
-            onConflict: 'district_id,name',
-            ignoreDuplicates: false
-          });
-
-        if (error) {
-          console.error(`Error upserting municipality ${municipality.name}:`, error);
-        }
-      }
-    }
+    // 3. Municipality data will be loaded separately via CSV processing
+    console.log('District sync completed. Use separate function for municipality data.');
 
     console.log('Baden-Württemberg districts sync completed successfully');
 
