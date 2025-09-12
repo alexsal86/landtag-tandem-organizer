@@ -125,7 +125,7 @@ export function YjsLexicalPlugin({
     // Listen for Yjs updates via Supabase
     channelRef.current
       .on('broadcast', { event: 'yjs-update' }, (payload: any) => {
-        if (payload.userId !== stableUserId && ydocRef.current) {
+        if (payload.userId !== userIdRef.current && ydocRef.current) {
           console.log('[Yjs] Received remote Yjs update');
           const update = new Uint8Array(payload.update);
           Y.applyUpdate(ydocRef.current, update);
@@ -149,7 +149,7 @@ export function YjsLexicalPlugin({
         type: 'broadcast',
         event: 'yjs-update',
         payload: {
-          userId: stableUserId,
+          userId: userIdRef.current,
           update: Array.from(update) // Convert to array for JSON serialization
         }
       });
@@ -190,7 +190,7 @@ export function YjsLexicalPlugin({
       }
       ydocRef.current?.destroy();
     };
-  }, [documentId, editor, stableUserId]);
+  }, [documentId, editor, userIdRef.current]);
 
   return null;
 }
