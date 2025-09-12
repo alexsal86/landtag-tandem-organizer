@@ -202,7 +202,8 @@ serve(async (req) => {
     console.log(`Using projection ${sourceDef} -> WGS84`);
 
 
-    // 2. Process each district
+    // 2. Prepare district rows for direct insert
+    const rows: any[] = [];
     for (const feature of geoJsonData.features || []) {
       const properties = feature.properties || {};
       const geometry = feature.geometry;
@@ -249,7 +250,6 @@ serve(async (req) => {
 
       // Calculate centroid on reprojected geometry
       let centerCoordinates: [number, number] = [49.0, 8.4];
-      let areaKm2: number | null = null;
       try {
         if (reprojectedGeometry?.coordinates) {
           centerCoordinates = calculateCentroid(reprojectedGeometry.coordinates);
@@ -258,32 +258,48 @@ serve(async (req) => {
         console.warn(`Failed to calculate centroid for district ${districtNumber}:`, error);
       }
 
-      // Upsert district
-      const { error: districtError } = await supabase
-        .from('election_districts')
-        .upsert({
-          district_number: parseInt(districtNumber.toString()),
-          district_name: districtName,
-          region: 'Baden-Württemberg',
-          boundaries: reprojectedGeometry,
-          center_coordinates: {
-            lat: centerCoordinates[0],
-            lng: centerCoordinates[1]
-          },
-          
-          major_cities: properties.major_cities || [],
-          website_url: `https://www.landtag-bw.de/de/der-landtag/wahlkreiskarte/wahlkreis-${districtNumber}`
-        }, {
-          onConflict: 'district_number',
-          ignoreDuplicates: false
-        });
+      // Collect row
+      rows.push({
+        district_number: parseInt(districtNumber.toString()),
+        district_name: districtName,
+        region: 'Baden-Württemberg',
+        boundaries: reprojectedGeometry,
+        center_coordinates: {
+          lat: centerCoordinates[0],
+          lng: centerCoordinates[1]
+        },
+        major_cities: properties.major_cities || [],
+        website_url: `https://www.landtag-bw.de/de/der-landtag/wahlkreiskarte/wahlkreis-${districtNumber}`,
+      });
+    }
 
-      if (districtError) {
-        console.error(`Error upserting district ${districtNumber}:`, districtError);
-      } else {
-        console.log(`Successfully upserted district ${districtNumber}: ${districtName}`);
+    // 3. Replace table contents: delete-all then bulk-insert (no ON CONFLICT)
+    console.log(`Prepared ${rows.length} districts. Replacing table contents...`);
+
+    const { error: deleteError } = await supabase
+      .from('election_districts')
+      .delete()
+      .neq('district_number', -1); // delete all rows safely (integer predicate)
+
+    if (deleteError) {
+      console.error('Failed to clear election_districts (continuing):', deleteError);
+    }
+
+    // Insert in chunks to avoid payload limits
+    const chunkSize = 25;
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const chunk = rows.slice(i, i + chunkSize);
+      const { error: insertError } = await supabase
+        .from('election_districts')
+        .insert(chunk);
+      if (insertError) {
+        console.error('Insert chunk failed:', insertError);
+        throw insertError;
       }
     }
+
+    console.log('District insert completed successfully.');
+
 
     // 3. Municipality data will be loaded separately via CSV processing
     console.log('District sync completed. Use separate function for municipality data.');
