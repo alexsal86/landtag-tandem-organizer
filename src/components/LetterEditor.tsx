@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, PanelLeft, PanelLeftClose, Mail, Settings } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, PanelLeft, PanelLeftClose, Mail, Settings, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import EnhancedLexicalEditor from './EnhancedLexicalEditor';
-import FixedTextToolbar from './FixedTextToolbar';
-import FloatingTextToolbar from './FloatingTextToolbar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -128,9 +126,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [activeUsers, setActiveUsers] = useState<string[]>([]);
-  const [selectedText, setSelectedText] = useState('');
-  const [showToolbar, setShowToolbar] = useState(false);
-  const [activeFormats, setActiveFormats] = useState<string[]>([]);
+  const [collaborationStatus, setCollaborationStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
   const [isProofreadingMode, setIsProofreadingMode] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [showCommentDialog, setShowCommentDialog] = useState(false);
@@ -969,22 +965,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }, 1000); // Increased from 500ms to 1000ms for better performance
   };
 
-  const handleSelectionChange = (formats: string[] = []) => {
-    const selection = window.getSelection();
-    const selectedText = selection?.toString() || "";
-    
-    setSelectedText(selectedText);
-    setActiveFormats(formats);
-    setShowToolbar(selectedText.length > 0);
-  };
-
-  const handleFormatText = (format: string, requireSelection: boolean = false) => {
-    // Lexical handles formatting internally through commands
-    if (requireSelection) {
-      setShowToolbar(false);
-      setSelectedText('');
-    }
-  };
+  // Removed old toolbar handlers - EnhancedLexicalEditor handles formatting internally
 
   const handleAutoSave = async () => {
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
@@ -1133,6 +1114,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 <Badge variant="secondary" className="text-xs">
                   <Users className="h-3 w-3 mr-1" />
                   {activeUsers.length}
+                </Badge>
+              )}
+              {letter?.id && (
+                <Badge 
+                  variant={collaborationStatus === 'connected' ? 'default' : 'outline'} 
+                  className="text-xs"
+                >
+                  {collaborationStatus === 'connected' ? (
+                    <><Wifi className="h-3 w-3 mr-1" />Online</>
+                  ) : (
+                    <><WifiOff className="h-3 w-3 mr-1" />Offline</>
+                  )}
                 </Badge>
               )}
             </div>
@@ -1297,7 +1290,27 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       )}
                     </div>
 
-                    {/* Accordion Groups */}
+                     {/* Collaboration Status */}
+                     {letter?.id && (
+                       <div className="mb-4 p-3 border rounded-lg bg-muted/30">
+                         <div className="flex items-center justify-between text-sm">
+                           <span className="font-medium">Kollaboration</span>
+                           <Badge 
+                             variant={collaborationStatus === 'connected' ? 'default' : 'outline'} 
+                             className="text-xs"
+                           >
+                             {collaborationStatus === 'connected' ? 'Online' : 'Offline'}
+                           </Badge>
+                         </div>
+                         {activeUsers.length > 0 && (
+                           <div className="mt-2 text-xs text-muted-foreground">
+                             {activeUsers.length} andere Benutzer online
+                           </div>
+                         )}
+                       </div>
+                     )}
+
+                     {/* Accordion Groups */}
                     <Accordion type="multiple" defaultValue={["adressat"]} className="w-full">
                       {/* 1. Adressat */}
                       <AccordionItem value="adressat">
@@ -1733,13 +1746,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           ) : (
             /* Regular Editor */
             <div className="max-w-full space-y-6">
-              {/* Fixed Text Toolbar */}
-              <FixedTextToolbar
-                onFormatText={(format) => handleFormatText(format, false)}
-                activeFormats={activeFormats}
-                disabled={!canEdit}
-              />
-
               {/* Title */}
               <div>
                 <Input
@@ -1756,27 +1762,26 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 />
               </div>
 
-              {/* Enhanced Lexical Editor */}
+              {/* Enhanced Lexical Editor with Collaboration */}
               <div className="relative">
                 <EnhancedLexicalEditor
                   content={editedLetter.content || ''}
                   onChange={(content) => {
-                    setEditedLetter(prev => ({ 
-                      ...prev, 
-                      content,
-                      content_html: content // Lexical handles HTML internally
+                    if (isUpdatingFromRemoteRef.current || !canEdit) return;
+                    
+                    setEditedLetter(prev => ({
+                      ...prev,
+                      content: content,
+                      content_html: content
                     }));
+                    
                     broadcastContentChange('content', content, content);
                   }}
                   placeholder="Hier können Sie Ihren Brief verfassen..."
-                />
-                
-                {/* Floating Text Toolbar */}
-                <FloatingTextToolbar
-                  onFormatText={(format) => handleFormatText(format, true)}
-                  isVisible={showToolbar}
-                  selectedText={selectedText}
-                  activeFormats={activeFormats}
+                  documentId={letter?.id}
+                  enableCollaboration={!!letter?.id}
+                  useYjsCollaboration={true}
+                  showToolbar={true}
                 />
               </div>
 
