@@ -138,258 +138,78 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   // Add district polygons and markers directly from database
   useEffect(() => {
     if (!mapRef.current || !districtLayerRef.current || !markerLayerRef.current) return;
-    if (districts.length === 0) return;
-
-    console.log('Adding district polygons and markers from database...');
-    console.log('Districts available:', districts.length);
 
     // Clear existing layers
     districtLayerRef.current.clearLayers();
     markerLayerRef.current.clearLayers();
 
-    // Add district polygons
-    const allBounds: L.LatLng[] = [];
+    if (!districts || districts.length === 0) return;
 
-    districts.forEach((district) => {
-      const districtNumber = district.district_number;
-      let polygon: L.Polygon | null = null;
+    console.log('Rendering districts via L.geoJSON ...');
 
-      // Use boundaries directly from database
-      if (district.boundaries) {
-        console.log(`Using database boundaries for district ${districtNumber}`);
-        
-        try {
-          const geometry = district.boundaries as any;
-          
-          if (geometry.type === 'Polygon') {
-            // Handle single polygon - convert [lon, lat] to [lat, lon] for Leaflet
-            const coords = geometry.coordinates[0].map((coord: any) => {
-              // Handle both 2D and 3D coordinates
-              const [lon, lat] = coord.length >= 2 ? coord : [0, 0];
-              return [lat, lon] as [number, number];
-            });
-            
-            polygon = L.polygon(coords, {
-              color: getPartyColorHex(district),
-              weight: 2,
-              opacity: 0.8,
-              fillOpacity: 0.3,
-            });
-            
-          } else if (geometry.type === 'MultiPolygon') {
-            // Handle MultiPolygon - use outer rings of each polygon
-            const allCoords: [number, number][][] = geometry.coordinates.map((poly: any) =>
-              poly[0].map((coord: any) => {
-                const [lon, lat] = coord.length >= 2 ? coord : [0, 0];
-                return [lat, lon] as [number, number];
-              })
-            );
-            
-            polygon = L.polygon(allCoords, {
-              color: getPartyColorHex(district),
-              weight: 2,
-              opacity: 0.8,
-              fillOpacity: 0.3,
-            });
-          }
-        } catch (error) {
-          console.warn(`Failed to create polygon for district ${districtNumber}:`, error);
-          console.warn('Geometry data:', JSON.stringify(district.boundaries, null, 2));
-        }
-      }
+    // Build a FeatureCollection from DB geometries (they are [lng, lat])
+    const featureCollection: any = {
+      type: 'FeatureCollection',
+      features: districts
+        .filter(d => d.boundaries && (d.boundaries.type === 'Polygon' || d.boundaries.type === 'MultiPolygon'))
+        .map(d => ({
+          type: 'Feature',
+          geometry: d.boundaries,
+          properties: { districtNumber: d.district_number }
+        }))
+    };
 
-      // Fallback: generate enhanced boundary if no database boundaries
-      if (!polygon) {
-        console.log(`Using fallback boundary for district ${districtNumber}`);
-        const boundaryCoords = getEnhancedDistrictBoundary(district);
-        polygon = L.polygon(boundaryCoords, {
-          color: getPartyColorHex(district),
+    const geoLayer = L.geoJSON(featureCollection, {
+      style: (feature) => {
+        const num = (feature?.properties as any)?.districtNumber as number;
+        const d = districts.find(x => x.district_number === num);
+        return {
+          color: d ? getPartyColorHex(d) : '#666666',
           weight: 2,
           opacity: 0.8,
           fillOpacity: 0.3,
-        });
+        } as L.PathOptions;
+      },
+      onEachFeature: (feature, layer) => {
+        const num = (feature?.properties as any)?.districtNumber as number;
+        const d = districts.find(x => x.district_number === num);
+        if (!d) return;
+        layer.on('click', () => onDistrictClick(d));
+        layer.on('mouseover', (e: any) => e.target.setStyle({ weight: 3, opacity: 1.0, fillOpacity: 0.5 }));
+        layer.on('mouseout', (e: any) => e.target.setStyle({ weight: 2, opacity: 0.8, fillOpacity: 0.3 }));
       }
+    });
 
-      if (polygon) {
-        // Add click handler
-        polygon.on('click', () => {
-          onDistrictClick(district);
-        });
+    districtLayerRef.current.addLayer(geoLayer);
 
-        // Style on hover
-        polygon.on('mouseover', (e) => {
-          const layer = e.target;
-          layer.setStyle({
-            weight: 3,
-            opacity: 1.0,
-            fillOpacity: 0.5,
-          });
-        });
-
-        polygon.on('mouseout', (e) => {
-          const layer = e.target;
-          layer.setStyle({
-            weight: 2,
-            opacity: 0.8,
-            fillOpacity: 0.3,
-          });
-        });
-
-        districtLayerRef.current!.addLayer(polygon);
-
-        // Collect bounds for later fitting
-        polygon.getLatLngs().flat().forEach((latlng: any) => {
-          if (latlng.lat && latlng.lng) {
-            allBounds.push(latlng);
-          }
-        });
-      }
-
-      // Add district marker
+    // Markers overlay
+    districts.forEach((district) => {
       const center = district.center_coordinates 
         ? [district.center_coordinates.lat, district.center_coordinates.lng] as [number, number]
-        : calculatePolygonCentroid(getEnhancedDistrictBoundary(district));
-
-      const directMandate = district.representatives?.find(r => r.mandate_type === 'direct');
+        : [48.7758, 9.1829] as [number, number];
       const isSelected = selectedDistrict?.district_number === district.district_number;
-
       const markerHtml = `
         <div class="district-marker ${isSelected ? 'selected' : ''}" style="
           background: ${getPartyColorHex(district)};
-          border: 2px solid white;
-          border-radius: 50%;
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          font-size: 14px;
-          color: white;
-          text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          cursor: pointer;
-          transition: all 0.2s ease;
+          border: 2px solid white; border-radius: 50%; width: 32px; height: 32px;
+          display: flex; align-items: center; justify-content: center;
+          font-weight: bold; font-size: 14px; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer; transition: all 0.2s ease;
           ${isSelected ? 'transform: scale(1.2); box-shadow: 0 4px 12px rgba(0,0,0,0.4);' : ''}
-        ">
-          ${district.district_number}
-        </div>
-      `;
+        ">${district.district_number}</div>`;
 
-      const marker = L.marker(center, {
-        icon: L.divIcon({
-          html: markerHtml,
-          className: 'custom-district-marker',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
-        }),
-      });
-
-      // Enhanced popup content
-      const popupContent = `
-        <div class="district-popup" style="min-width: 250px;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <div style="
-              width: 24px; 
-              height: 24px; 
-              border-radius: 50%; 
-              background: ${getPartyColorHex(district)};
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-weight: bold;
-              font-size: 12px;
-            ">
-              ${district.district_number}
-            </div>
-            <h3 style="margin: 0; font-size: 16px; font-weight: 600;">
-              ${district.district_name}
-            </h3>
-          </div>
-          
-          ${directMandate ? `
-            <div style="
-              background: linear-gradient(135deg, ${getPartyColorHex(district)}20, ${getPartyColorHex(district)}10);
-              border-left: 3px solid ${getPartyColorHex(district)};
-              padding: 8px 12px;
-              border-radius: 4px;
-              margin-bottom: 8px;
-            ">
-              <div style="font-weight: 600; color: #1f2937; margin-bottom: 2px;">
-                Direktmandat
-              </div>
-              <div style="font-size: 14px; color: #374151;">
-                ${directMandate.name}
-              </div>
-              <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
-                ${directMandate.party}
-              </div>
-            </div>
-          ` : `
-            <div style="
-              background: #f3f4f6;
-              border-left: 3px solid #d1d5db;
-              padding: 8px 12px;
-              border-radius: 4px;
-              margin-bottom: 8px;
-            ">
-              <div style="font-size: 14px; color: #6b7280;">
-                Kein Direktmandat verfügbar
-              </div>
-            </div>
-          `}
-          
-          <div style="
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: #6b7280;
-            margin-top: 8px;
-          ">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-            </svg>
-            Klicken Sie für weitere Details
-          </div>
-        </div>
-      `;
-
-      marker.bindPopup(popupContent, {
-        maxWidth: 300,
-        className: 'custom-popup'
-      });
-
-      marker.bindTooltip(`WK ${district.district_number}: ${district.district_name}`, {
-        permanent: false,
-        direction: 'top',
-        offset: [0, -20],
-        className: 'custom-tooltip'
-      });
-
-      marker.on('click', () => {
-        onDistrictClick(district);
-      });
-
+      const marker = L.marker(center, { icon: L.divIcon({ html: markerHtml, className: 'custom-district-marker', iconSize: [32, 32], iconAnchor: [16, 16] }) })
+        .on('click', () => onDistrictClick(district));
       markerLayerRef.current!.addLayer(marker);
     });
 
-    // Fit map to show all districts
-    if (allBounds.length > 0) {
-      const group = new L.FeatureGroup(allBounds.map(coord => L.marker(coord)));
-      const bounds = group.getBounds();
-      
-      // Add some padding and ensure reasonable zoom levels
-      const paddedBounds = bounds.pad(0.1);
-      mapRef.current.fitBounds(paddedBounds, {
-        padding: [20, 20],
-        maxZoom: 10
-      });
+    // Fit map to features
+    const bounds = (geoLayer as any).getBounds?.();
+    if (bounds && bounds.isValid()) {
+      mapRef.current.fitBounds(bounds.pad(0.1), { padding: [20, 20], maxZoom: 10 });
     }
 
-    console.log('District polygons and markers added successfully');
-
+    console.log('Districts rendered.');
   }, [districts, selectedDistrict, onDistrictClick]);
 
   if (!districts.length) {
