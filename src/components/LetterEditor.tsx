@@ -3,7 +3,7 @@ import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Down
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import RichTextEditor, { type RichTextEditorRef } from './RichTextEditor';
+import EnhancedLexicalEditor from './EnhancedLexicalEditor';
 import FixedTextToolbar from './FixedTextToolbar';
 import FloatingTextToolbar from './FloatingTextToolbar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -148,7 +148,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [showPagination, setShowPagination] = useState(true);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
-  const richTextEditorRef = useRef<RichTextEditorRef>(null);
   const channelRef = useRef<any>(null);
   const broadcastTimeoutRef = useRef<NodeJS.Timeout>();
   const isUpdatingFromRemoteRef = useRef(false);
@@ -980,10 +979,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   };
 
   const handleFormatText = (format: string, requireSelection: boolean = false) => {
-    if (requireSelection && !selectedText) return;
-    if (!richTextEditorRef.current) return;
-    
-    richTextEditorRef.current.formatSelection(format);
+    // Lexical handles formatting internally through commands
     if (requireSelection) {
       setShowToolbar(false);
       setSelectedText('');
@@ -1760,22 +1756,19 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 />
               </div>
 
-              {/* Rich Text Editor */}
+              {/* Enhanced Lexical Editor */}
               <div className="relative">
-                <RichTextEditor
-                  ref={richTextEditorRef}
-                  value={editedLetter.content || ''}
-                  onChange={(content, contentHtml) => {
+                <EnhancedLexicalEditor
+                  content={editedLetter.content || ''}
+                  onChange={(content) => {
                     setEditedLetter(prev => ({ 
                       ...prev, 
-                      content, 
-                      content_html: contentHtml || '' 
+                      content,
+                      content_html: content // Lexical handles HTML internally
                     }));
-                    broadcastContentChange('content', content, contentHtml);
+                    broadcastContentChange('content', content, content);
                   }}
-                  onSelectionChange={handleSelectionChange}
                   placeholder="Hier können Sie Ihren Brief verfassen..."
-                  disabled={!canEdit}
                 />
                 
                 {/* Floating Text Toolbar */}

@@ -18,6 +18,8 @@ import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { LinkNode, AutoLinkNode } from '@lexical/link';
+import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
+import { HashtagNode } from '@lexical/hashtag';
 import { 
   $createParagraphNode, 
   $createTextNode,
@@ -44,6 +46,15 @@ import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
 import { Button } from './ui/button';
 import { Bold, Italic, List, ListOrdered, Quote, Code, Heading1, Heading2, Heading3 } from 'lucide-react';
+
+// Import new plugins
+import { TablePlugin } from './plugins/TablePlugin';
+import { LinkPlugin as CustomLinkPlugin } from './plugins/LinkPlugin';
+import { DraggableBlocksPlugin } from './plugins/DraggableBlocksPlugin';
+import { MentionsPlugin } from './plugins/MentionsPlugin';
+import { CheckListPlugin } from './plugins/CheckListPlugin';
+import { ImagePlugin } from './plugins/ImagePlugin';
+import { EnhancedLexicalToolbar } from './EnhancedLexicalToolbar';
 
 // Feature flag for Yjs collaboration
 const ENABLE_YJS_COLLABORATION = true;
@@ -415,7 +426,7 @@ function YjsCollaborationEditor(props: any) {
           key={`yjs-editor-${props.documentId}`}
         >
           <div className="editor-inner relative">
-            {props.showToolbar && <ToolbarPlugin />}
+            {props.showToolbar && <EnhancedLexicalToolbar />}
             
             <div className="relative">
               <RichTextPlugin
@@ -444,6 +455,14 @@ function YjsCollaborationEditor(props: any) {
               onContentSync={props.onContentSync}
               documentId={props.documentId}
             />
+            
+            {/* Enhanced Plugins */}
+            <TablePlugin />
+            <CustomLinkPlugin />
+            <DraggableBlocksPlugin />
+            <MentionsPlugin />
+            <CheckListPlugin />
+            <ImagePlugin />
             
             <HistoryPlugin />
             <ListPlugin />
@@ -495,23 +514,30 @@ export default function EnhancedLexicalEditor({
   });
 
   const initialConfig = useMemo(() => ({
-    namespace: 'EnhancedLexicalEditor',
+    namespace: 'EnhancedEditor',
     theme: {
-      root: 'p-4 border border-gray-300 rounded-md min-h-[200px] focus-within:border-blue-500',
       text: {
         bold: 'font-bold',
         italic: 'italic',
         underline: 'underline',
         strikethrough: 'line-through',
-        code: 'bg-gray-100 rounded px-1 py-0.5 font-mono text-sm'
+        code: 'bg-muted px-1 rounded text-sm font-mono'
       },
       heading: {
-        h1: 'text-2xl font-bold',
-        h2: 'text-xl font-bold',
-        h3: 'text-lg font-bold'
+        h1: 'text-2xl font-bold mt-4 mb-2',
+        h2: 'text-xl font-bold mt-3 mb-2',
+        h3: 'text-lg font-bold mt-3 mb-1'
       },
-      quote: 'border-l-4 border-gray-300 pl-4 italic',
-      code: 'bg-gray-100 p-3 rounded font-mono text-sm'
+      quote: 'border-l-4 border-primary pl-4 italic my-2',
+      code: 'bg-muted p-2 rounded font-mono text-sm block my-2',
+      list: {
+        ul: 'list-disc list-outside ml-4',
+        ol: 'list-decimal list-outside ml-4'
+      },
+      table: 'border-collapse border border-border',
+      tableCell: 'border border-border p-2',
+      tableRow: 'border-b border-border',
+      hashtag: 'text-primary font-medium'
     },
     nodes: [
       HeadingNode,
@@ -521,11 +547,15 @@ export default function EnhancedLexicalEditor({
       CodeNode,
       CodeHighlightNode,
       LinkNode,
-      AutoLinkNode
+      AutoLinkNode,
+      TableNode,
+      TableCellNode,
+      TableRowNode,
+      HashtagNode
     ],
     onError: (error: Error) => {
       console.error('Lexical error:', error);
-    },
+    }
   }), []);
 
   const handleContentChange = useCallback((newContent: string) => {
@@ -564,21 +594,12 @@ export default function EnhancedLexicalEditor({
     );
   }
 
-  // Render standard or Supabase Realtime collaboration editor
+  // Render regular Lexical editor
   return (
     <div className="relative min-h-[200px] border rounded-md overflow-hidden">
-      {enableCollaboration && realtimeCollaboration && (
-        <CollaborationStatus 
-          isConnected={realtimeCollaboration.isConnected}
-          isConnecting={realtimeCollaboration.isConnecting}
-          users={realtimeCollaboration.collaborators}
-          currentUser={realtimeCollaboration.currentUser}
-        />
-      )}
-      
       <LexicalComposer initialConfig={initialConfig}>
         <div className="editor-inner relative">
-          {showToolbar && <ToolbarPlugin />}
+          {showToolbar && <EnhancedLexicalToolbar />}
           
           <div className="relative">
             <RichTextPlugin
@@ -597,18 +618,20 @@ export default function EnhancedLexicalEditor({
             <FloatingTextFormatToolbar />
           </div>
           
-          <ContentPlugin content={content} />
+          <CollaborationPlugin
+            documentId={documentId || 'default'}
+            onContentChange={setLocalContent}
+            sendContentUpdate={realtimeCollaboration.sendContentUpdate}
+            remoteContent={remoteContent}
+          />
           
-          {enableCollaboration && !shouldUseYjs && realtimeCollaboration && (
-            <CollaborationPlugin
-              documentId={documentId!}
-              onContentChange={handleContentChange}
-              sendContentUpdate={sendContentUpdate}
-              remoteContent={remoteContent}
-            />
-          )}
-          
-          {!enableCollaboration && <OnChangePlugin onChange={() => {}} />}
+          {/* Enhanced Plugins */}
+          <TablePlugin />
+          <CustomLinkPlugin />
+          <DraggableBlocksPlugin />
+          <MentionsPlugin />
+          <CheckListPlugin />
+          <ImagePlugin />
           
           <HistoryPlugin />
           <ListPlugin />
@@ -616,6 +639,7 @@ export default function EnhancedLexicalEditor({
           <KeyboardShortcutsPlugin />
           <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
           <TabIndentationPlugin />
+          {enableCollaboration && <CollaborationStatus isConnected={realtimeCollaboration.isConnected} users={realtimeCollaboration.collaborators} />}
         </div>
       </LexicalComposer>
     </div>
