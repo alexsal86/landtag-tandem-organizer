@@ -177,30 +177,20 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             });
             
           } else if (geometry.type === 'MultiPolygon') {
-            // Handle MultiPolygon - render ALL polygons and ALL rings
-            const allPolygons: [number, number][][] = [];
+            // Handle MultiPolygon - use outer rings of each polygon
+            const allCoords: [number, number][][] = geometry.coordinates.map((poly: any) =>
+              poly[0].map((coord: any) => {
+                const [lon, lat] = coord.length >= 2 ? coord : [0, 0];
+                return [lat, lon] as [number, number];
+              })
+            );
             
-            for (const polygonCoords of geometry.coordinates) {
-              // Process each polygon (outer ring + holes)
-              for (let ringIndex = 0; ringIndex < polygonCoords.length; ringIndex++) {
-                const ring = polygonCoords[ringIndex];
-                const leafletCoords = ring.map((coord: any) => {
-                  // Handle both 2D and 3D coordinates
-                  const [lon, lat] = coord.length >= 2 ? coord : [0, 0];
-                  return [lat, lon] as [number, number];
-                });
-                allPolygons.push(leafletCoords);
-              }
-            }
-            
-            if (allPolygons.length > 0) {
-              polygon = L.polygon(allPolygons, {
-                color: getPartyColorHex(district),
-                weight: 2,
-                opacity: 0.8,
-                fillOpacity: 0.3,
-              });
-            }
+            polygon = L.polygon(allCoords, {
+              color: getPartyColorHex(district),
+              weight: 2,
+              opacity: 0.8,
+              fillOpacity: 0.3,
+            });
           }
         } catch (error) {
           console.warn(`Failed to create polygon for district ${districtNumber}:`, error);
