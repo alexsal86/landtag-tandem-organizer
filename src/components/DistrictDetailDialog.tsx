@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Calendar as CalendarIcon, Phone, Mail, Globe, Users, MapPin, Plus, Edit, Trash2, Crown, Award } from "lucide-react";
+import { Calendar as CalendarIcon, Phone, Mail, Globe, Users, MapPin, Plus, Edit, Trash2, Crown, Award, Building } from "lucide-react";
 import { ElectionDistrict, ElectionDistrictNote, useElectionDistrictNotes } from "@/hooks/useElectionDistricts";
+import { useElectionDistrictMunicipalities } from '@/hooks/useElectionDistrictMunicipalities';
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -29,6 +30,7 @@ interface NoteFormData {
 
 export function DistrictDetailDialog({ district, open, onOpenChange }: DistrictDetailDialogProps) {
   const { notes, createNote, updateNote, deleteNote } = useElectionDistrictNotes(district?.id);
+  const { municipalities, loading: municipalitiesLoading } = useElectionDistrictMunicipalities(district?.id);
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [editingNote, setEditingNote] = useState<ElectionDistrictNote | null>(null);
   const [noteForm, setNoteForm] = useState<NoteFormData>({
@@ -180,6 +182,44 @@ export function DistrictDetailDialog({ district, open, onOpenChange }: DistrictD
                 </CardContent>
               </Card>
             </div>
+
+            {/* Municipalities */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-4 w-4" />
+                  Gemeinden und Stadtbezirke
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {municipalitiesLoading ? (
+                  <div className="text-sm text-muted-foreground">Lade Gemeinden...</div>
+                ) : municipalities.length > 0 ? (
+                  <div className="space-y-2">
+                    {municipalities.map((municipality, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm">
+                        <span>{municipality.name}</span>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">
+                            {municipality.type === 'city' ? 'Stadt' : 
+                             municipality.type === 'municipality' ? 'Gemeinde' : 
+                             municipality.type === 'city_district' ? 'Stadtbezirk' : 
+                             municipality.type}
+                          </Badge>
+                          {municipality.county && (
+                            <span className="text-xs text-muted-foreground">
+                              {municipality.county}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Keine Gemeindedaten verfügbar</div>
+                )}
+              </CardContent>
+            </Card>
 
             {district.contact_info && (
               <Card>

@@ -5,6 +5,7 @@ import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Users, Square } from 'lucide-react';
 import { loadElectoralDistrictsGeoJson } from '@/utils/geoJsonLoader';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
@@ -121,6 +122,22 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   const [isLoadingBoundaries, setIsLoadingBoundaries] = useState(true);
   const districtLayerRef = useRef<L.LayerGroup | null>(null);
   const markerLayerRef = useRef<L.LayerGroup | null>(null);
+  // Sync data from official sources
+  const syncOfficialData = async () => {
+    try {
+      console.log('Syncing districts from official sources...');
+      await supabase.functions.invoke('sync-bw-districts');
+      
+      console.log('Syncing representatives from official sources...');
+      await supabase.functions.invoke('sync-bw-representatives');
+      
+      // Refresh the page to load new data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error syncing data:', error);
+    }
+  };
+
   // Load official GeoJSON boundaries from downloaded data
   useEffect(() => {
     const loadOfficialBoundaries = async () => {
@@ -371,6 +388,13 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             </div>
           </div>
         </div>
+        
+        <button
+          onClick={syncOfficialData}
+          className="bg-primary/95 backdrop-blur-sm text-primary-foreground px-3 py-2 rounded-lg text-sm hover:bg-primary shadow-lg"
+        >
+          Daten aktualisieren
+        </button>
       </div>
     </div>
   );
