@@ -51,16 +51,23 @@ function normalizeParty(party: string): string {
 }
 function mandateToType(m: string): 'direct' | 'list' {
   const t = cleanText(m).toUpperCase();
-  if (t === 'E' || t.includes('ERST') || t.includes('DIREKT')) return 'direct';
-  // Some tables use Z or Zweitmandat/Liste
+  if (t.includes('ERST') || t.includes('DIREKT')) return 'direct';
+  if (t.includes('ZWEIT') || t.includes('LISTE')) return 'list';
+  if (t.includes('NACHRÜCK') && t.includes('ERST')) return 'direct';
+  if (t.includes('NACHRÜCK') && t.includes('ZWEIT')) return 'list';
+  // Default to list for any unclear cases
   return 'list';
 }
 function extractDistrictNumber(wk: string): string | null {
   const txt = cleanText(wk);
-  const m = txt.match(/^(\d{1,3})/);
+  // Handle format like "34 Heidelberg", "02 Stuttgart II", etc.
+  const m = txt.match(/^(\d{1,2})\s/);
   if (m) return m[1];
+  // Fallback patterns
   const m2 = txt.match(/WK\s*(\d{1,3})/i);
   if (m2) return m2[1];
+  const m3 = txt.match(/(\d{1,3})/);
+  if (m3) return m3[1];
   return null;
 }
 
@@ -163,7 +170,7 @@ serve(async (req) => {
       throw new Error(`Expected columns not found. Got headers: ${JSON.stringify(headers)}`);
     }
 
-    type ParsedRep = { name: string; party: string; districtNumber: string | null; mandate: 'E' | 'Z' };
+    type ParsedRep = { name: string; party: string; districtNumber: string | null; mandate: 'direct' | 'list' };
     const parsed: ParsedRep[] = [];
 
     for (const cells of rows) {
@@ -172,10 +179,9 @@ serve(async (req) => {
       const name = cleanText(cells[nameIdx]);
       const party = normalizeParty(cells[partyIdx]);
       const districtNumber = extractDistrictNumber(cells[wkIdx]);
-      const mandCell = cleanText(cells[mandIdx]);
-      const mandate: 'E' | 'Z' = /(^|\b)E(\b|$)|ERST|DIREKT/i.test(mandCell) ? 'E' : 'Z';
+      const mandateType = mandateToType(cells[mandIdx]);
       if (!name) continue;
-      parsed.push({ name, party, districtNumber, mandate });
+      parsed.push({ name, party, districtNumber, mandate: mandateType });
     }
 
     console.log(`Parsed ${parsed.length} rows from Wikipedia.`);
@@ -199,7 +205,7 @@ serve(async (req) => {
       representatives.push({
         name: rep.name,
         party: rep.party,
-        mandate_type: rep.mandate === 'E' ? 'direct' : 'list',
+        mandate_type: rep.mandate,
         district_id: district.id,
         order_index: idx,
       });
