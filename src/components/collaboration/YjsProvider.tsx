@@ -20,14 +20,17 @@ class SupabaseYjsProvider {
   private channel: any = null;
   private persistence: any = null;
   private userId: string;
+  private clientId: string;
   private isConnectedState: boolean = false;
   private eventListeners: Map<string, Set<Function>> = new Map();
 
   constructor(doc: Y.Doc, documentId: string, userId: string) {
     this.doc = doc;
     this.userId = userId;
+    this.clientId = `${userId}-${doc.clientID}-${crypto.randomUUID().slice(0, 8)}`;
     this.awareness = new Awareness(doc);
     
+    console.log(`[SupabaseYjsProvider] Created with clientId: ${this.clientId}`);
     this.initializePersistence(documentId);
     this.initializeSupabaseTransport(documentId);
   }
@@ -39,13 +42,14 @@ class SupabaseYjsProvider {
 
   private initializeSupabaseTransport(documentId: string) {
     const channelName = `yjs_document_${documentId}`;
+    console.log(`[SupabaseYjsProvider] Initializing transport for channel: ${channelName}, clientId: ${this.clientId}`);
     this.channel = supabase.channel(channelName);
 
     // Listen for Yjs updates via Supabase
     this.channel
-      .on('broadcast', { event: 'yjs-update' }, (payload: any) => {
-        if (payload.userId !== this.userId && payload.update) {
-          console.log('[SupabaseYjsProvider] Received remote Yjs update from user:', payload.userId);
+      .on('broadcast', { event: 'yjs-update' }, ({ payload }: any) => {
+        if (payload && payload.clientId !== this.clientId && payload.update) {
+          console.log(`[SupabaseYjsProvider] Received remote Yjs update from client: ${payload.clientId}`);
           try {
             const update = new Uint8Array(payload.update);
             Y.applyUpdate(this.doc, update, 'remote');
@@ -54,9 +58,9 @@ class SupabaseYjsProvider {
           }
         }
       })
-      .on('broadcast', { event: 'awareness-update' }, (payload: any) => {
-        if (payload.userId !== this.userId && payload.awarenessUpdate) {
-          console.log('[SupabaseYjsProvider] Received awareness update from user:', payload.userId);
+      .on('broadcast', { event: 'awareness-update' }, ({ payload }: any) => {
+        if (payload && payload.clientId !== this.clientId && payload.awarenessUpdate) {
+          console.log(`[SupabaseYjsProvider] Received awareness update from client: ${payload.clientId}`);
           try {
             const awarenessUpdate = new Uint8Array(payload.awarenessUpdate);
             applyAwarenessUpdate(this.awareness, awarenessUpdate, 'remote');
@@ -69,11 +73,12 @@ class SupabaseYjsProvider {
     // Listen to local Yjs updates to broadcast via Supabase
     this.doc.on('update', (update: Uint8Array, origin: any) => {
       if (origin !== 'remote' && this.channel) {
-        console.log('[SupabaseYjsProvider] Broadcasting local Yjs update');
+        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update from client: ${this.clientId}`);
         this.channel.send({
           type: 'broadcast',
           event: 'yjs-update',
           payload: {
+            clientId: this.clientId,
             userId: this.userId,
             update: Array.from(update)
           }
@@ -86,10 +91,12 @@ class SupabaseYjsProvider {
       if (origin !== 'remote' && this.channel) {
         const changedClients = added.concat(updated).concat(removed);
         const awarenessUpdate = encodeAwarenessUpdate(this.awareness, changedClients);
+        console.log(`[SupabaseYjsProvider] Broadcasting awareness update from client: ${this.clientId}`);
         this.channel.send({
           type: 'broadcast',
           event: 'awareness-update',
           payload: {
+            clientId: this.clientId,
             userId: this.userId,
             awarenessUpdate: Array.from(awarenessUpdate)
           }
