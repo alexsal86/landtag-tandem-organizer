@@ -60,6 +60,8 @@ export function useElectionDistricts() {
   const fetchDistricts = async () => {
     try {
       setLoading(true);
+      console.log('Fetching election districts...');
+      
       const { data, error } = await supabase
         .from("election_districts")
         .select(`
@@ -78,7 +80,12 @@ export function useElectionDistricts() {
         `)
         .order("district_number");
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched districts from DB:', data?.length || 0);
       
       // Sort representatives within each district and fix types
       const processedData = data?.map(district => ({
@@ -91,6 +98,7 @@ export function useElectionDistricts() {
         })
       })) as ElectionDistrict[];
 
+      console.log('Processed districts:', processedData?.length || 0);
       setDistricts(processedData || []);
     } catch (error) {
       console.error("Error fetching election districts:", error);

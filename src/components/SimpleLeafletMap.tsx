@@ -101,11 +101,12 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
   // Initialize map once
   useEffect(() => {
-    if (!mapEl.current || !districts.length) return;
+    if (!mapEl.current) return;
     if (mapRef.current) return; // init once
 
     console.log('Initializing map with districts:', districts.length);
 
+    // Initialize map even if no districts yet - they will be added later
     // Responsive initial zoom based on screen size
     const initialZoom = window.innerWidth < 768 ? 7 : 8;
     
@@ -132,7 +133,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       districtLayerRef.current = null;
       markerLayerRef.current = null;
     };
-  }, [districts]);
+  }, []); // Remove districts dependency to always initialize map
 
   // Add district polygons and markers directly from database
   useEffect(() => {
@@ -404,7 +405,10 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   if (!districts.length) {
     return (
       <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border flex items-center justify-center">
-        <p className="text-muted-foreground">Keine Wahlkreisdaten verfügbar</p>
+        <div className="text-center">
+          <p className="text-muted-foreground">Wahlkreisdaten werden geladen...</p>
+          <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mt-2"></div>
+        </div>
       </div>
     );
   }
