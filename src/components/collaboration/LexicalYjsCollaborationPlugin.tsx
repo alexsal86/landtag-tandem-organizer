@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { createBinding } from '@lexical/yjs';
+import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
 import { useYjsProvider } from './YjsProvider';
 
 interface LexicalYjsCollaborationPluginProps {
@@ -13,41 +13,64 @@ export function LexicalYjsCollaborationPlugin({
   shouldBootstrap = true 
 }: LexicalYjsCollaborationPluginProps) {
   const [editor] = useLexicalComposerContext();
-  const { doc, provider } = useYjsProvider();
+  const { doc } = useYjsProvider();
+  const lastContentRef = useRef<string>('');
+  const isApplyingRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!doc || !editor) return;
-    
-    console.log('[LexicalYjsCollaboration] Creating simple Yjs text binding for:', id);
-    
-    // Get the shared text from the Yjs document
-    const sharedText = doc.getText('lexical');
-    
-    console.log('[LexicalYjsCollaboration] Text content:', sharedText.toString());
-    
-    // Simple manual sync - this avoids the complex Provider interface
-    const syncToEditor = () => {
+
+    console.log('[LexicalYjsCollaboration] Setting up Yjs text binding for:', id);
+
+    // Use a consistent Yjs key name that doesn't conflict
+    const sharedText = doc.getText('content');
+
+    const applyYjsToLexical = () => {
       const content = sharedText.toString();
-      if (content) {
-        editor.update(() => {
-          const root = editor.getEditorState()._nodeMap.get('root');
-          if (root) {
-            // Simple text sync
-            console.log('[LexicalYjsCollaboration] Syncing Yjs content to editor:', content);
-          }
-        });
-      }
+      if (content === lastContentRef.current) return;
+
+      isApplyingRef.current = true;
+      editor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        if (content.trim()) {
+          const p = $createParagraphNode();
+          p.append($createTextNode(content));
+          root.append(p);
+        }
+        lastContentRef.current = content;
+      });
+      // allow lexical update listeners to run before clearing flag
+      setTimeout(() => {
+        isApplyingRef.current = false;
+      }, 0);
     };
-    
-    // Listen to Yjs text changes
-    sharedText.observe(syncToEditor);
-    
-    // Initial sync
-    syncToEditor();
+
+    // Observe remote Yjs changes
+    const yObserver = () => applyYjsToLexical();
+    sharedText.observe(yObserver);
+
+    // Initial bootstrap from Yjs
+    applyYjsToLexical();
+
+    // Push local Lexical changes to Yjs
+    const unregister = editor.registerUpdateListener(({ editorState }) => {
+      if (isApplyingRef.current) return;
+      editorState.read(() => {
+        const text = $getRoot().getTextContent();
+        if (text !== lastContentRef.current) {
+          lastContentRef.current = text;
+          const prevLen = sharedText.toString().length;
+          if (prevLen > 0) sharedText.delete(0, prevLen);
+          if (text) sharedText.insert(0, text);
+        }
+      });
+    });
 
     return () => {
-      console.log('[LexicalYjsCollaboration] Cleaning up text binding');
-      sharedText.unobserve(syncToEditor);
+      console.log('[LexicalYjsCollaboration] Cleaning up Yjs text binding');
+      sharedText.unobserve(yObserver);
+      unregister();
     };
   }, [doc, editor, id]);
 
