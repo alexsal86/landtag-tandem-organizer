@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { $getRoot, $getSelection, EditorState } from 'lexical';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
@@ -9,9 +9,9 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { $createParagraphNode, $createTextNode } from 'lexical';
 import { useCollaboration } from '@/hooks/useCollaboration';
-import { useYjsCollaboration as useYjsCollaborationHook } from '@/hooks/useYjsCollaboration';
 import CollaborationStatus from './CollaborationStatus';
-import { YjsLexicalPlugin } from './YjsLexicalPlugin';
+import { YjsProvider } from './collaboration/YjsProvider';
+import { LexicalYjsCollaborationPlugin } from './collaboration/LexicalYjsCollaborationPlugin';
 
 // Feature flag for Yjs collaboration
 const ENABLE_YJS_COLLABORATION = true;
@@ -133,7 +133,7 @@ export default function SimpleLexicalEditor({
   // Choose collaboration provider based on feature flag
   const shouldUseYjs = enableCollaboration && useYjsCollaboration;
   
-  // Initialize Supabase Realtime collaboration hook
+  // Initialize Supabase Realtime collaboration hook (only when not using Yjs)
   const realtimeCollaboration = useCollaboration({
     documentId: enableCollaboration && !shouldUseYjs && documentId ? documentId : '',
     onContentChange: (newContent: string) => {
@@ -156,27 +156,11 @@ export default function SimpleLexicalEditor({
     }
   });
 
-  // Initialize Yjs collaboration hook (always call, but conditionally enable)
-  const yjsCollaboration = useYjsCollaborationHook({
-    documentId: documentId || 'disabled',
-    onContentChange: shouldUseYjs ? (newContent: string) => {
-      console.log('📝 [Yjs] Remote content change received:', newContent);
-      setRemoteContent(newContent);
-      setLocalContent(newContent);
-      onChange(newContent);
-    } : undefined,
-    onCursorChange: shouldUseYjs ? (cursor: any) => {
-      console.log('[Yjs] Cursor change:', cursor);
-    } : undefined,
-    onSelectionChange: shouldUseYjs ? (selection: any) => {
-      console.log('[Yjs] Selection change:', selection);
-    } : undefined
-  });
-
   // Select active collaboration provider
-  const collaboration = shouldUseYjs ? yjsCollaboration : realtimeCollaboration;
+  const collaboration = realtimeCollaboration;
 
-  const initialConfig = {
+  // Memoize initial config to prevent re-initialization
+  const initialConfig = useMemo(() => ({
     namespace: 'KnowledgeEditor',
     theme: {
       paragraph: 'editor-paragraph',
@@ -190,7 +174,7 @@ export default function SimpleLexicalEditor({
       console.error('Lexical Error:', error);
     },
     nodes: []
-  };
+  }), []);
 
   const handleOnChange = useCallback((editorState: EditorState) => {
     if (!enableCollaboration) {
@@ -210,6 +194,66 @@ export default function SimpleLexicalEditor({
     }
   }, [content, localContent, enableCollaboration]);
 
+  // Render Yjs collaboration editor
+  if (shouldUseYjs && enableCollaboration && documentId) {
+    return (
+      <YjsProvider
+        documentId={documentId}
+        onConnected={() => console.log('[Yjs] Connected to collaboration')}
+        onDisconnected={() => console.log('[Yjs] Disconnected from collaboration')}
+        onCollaboratorsChange={(collaborators) => console.log('[Yjs] Collaborators:', collaborators)}
+      >
+        <div className="editor-container space-y-4">
+          {/* Collaboration Status */}
+          <div className="mb-2">
+            <CollaborationStatus
+              isConnected={true} // Will be updated via YjsProvider context
+              isConnecting={false}
+              users={[]} // Will be updated via YjsProvider context
+              currentUser={null}
+            />
+            <div className="text-xs text-muted-foreground mt-1">
+              Using Yjs CRDT collaboration
+            </div>
+          </div>
+
+          {/* Editor with Yjs collaboration */}
+          <div className="border rounded-lg">
+            <LexicalComposer 
+              initialConfig={initialConfig}
+              key={`yjs-editor-${documentId}`}
+            >
+              <div className="editor-inner relative">
+                <PlainTextPlugin
+                  contentEditable={
+                    <ContentEditable 
+                      className="editor-input min-h-[300px] p-4 focus:outline-none resize-none" 
+                    />
+                  }
+                  placeholder={
+                    <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
+                      {placeholder}
+                    </div>
+                  }
+                  ErrorBoundary={LexicalErrorBoundary}
+                />
+                
+                {/* Official Yjs Collaboration Plugin */}
+                <LexicalYjsCollaborationPlugin
+                  id={documentId}
+                  shouldBootstrap={true}
+                />
+                
+                <HistoryPlugin />
+              </div>
+            </LexicalComposer>
+          </div>
+        </div>
+      </YjsProvider>
+    );
+  }
+
+  // Render standard editor (with optional Supabase Realtime collaboration)
   return (
     <div className="editor-container space-y-4">
       {/* Collaboration Status - only show if enabled */}
@@ -222,14 +266,17 @@ export default function SimpleLexicalEditor({
             currentUser={collaboration.currentUser}
           />
           <div className="text-xs text-muted-foreground mt-1">
-            {shouldUseYjs ? 'Using Yjs CRDT collaboration' : 'Using Supabase Realtime collaboration'}
+            Using Supabase Realtime collaboration
           </div>
         </div>
       )}
 
       {/* Editor */}
       <div className="border rounded-lg">
-        <LexicalComposer initialConfig={initialConfig}>
+        <LexicalComposer 
+          initialConfig={initialConfig}
+          key={`standard-editor-${documentId ?? 'new'}`}
+        >
           <div className="editor-inner relative">
             <PlainTextPlugin
               contentEditable={
@@ -246,14 +293,7 @@ export default function SimpleLexicalEditor({
             />
             
             {/* Plugins */}
-            {enableCollaboration && documentId && shouldUseYjs ? (
-              <YjsLexicalPlugin
-                documentId={documentId}
-                onConnected={() => console.log('[Yjs] Connected to collaboration')}
-                onDisconnected={() => console.log('[Yjs] Disconnected from collaboration')}
-                onCollaboratorsChange={(collaborators) => console.log('[Yjs] Collaborators:', collaborators)}
-              />
-            ) : enableCollaboration && documentId ? (
+            {enableCollaboration && documentId ? (
               <CollaborationPlugin
                 documentId={documentId}
                 onContentChange={(newContent) => {
