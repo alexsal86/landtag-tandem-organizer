@@ -20,6 +20,7 @@ import DecisionResponse from "./pages/DecisionResponse";
 import GuestResponse from "./pages/GuestResponse";
 import AppointmentPreparationDetail from "./pages/AppointmentPreparationDetail";
 import Decisions from "./pages/Decisions";
+import YjsCollaborationTestPage from "./pages/YjsCollaborationTestPage";
 
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import CollaborationTest from "./components/CollaborationTest";
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/guest-response/:token" element={<GuestResponse />} />
             <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
             <Route path="/collaboration-test" element={<CollaborationTest />} />
+            <Route path="/yjs-collaboration-test" element={<YjsCollaborationTestPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             
             <Route path="*" element={<NotFound />} />

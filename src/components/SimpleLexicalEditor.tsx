@@ -11,9 +11,10 @@ import { $createParagraphNode, $createTextNode } from 'lexical';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import { useYjsCollaboration as useYjsCollaborationHook } from '@/hooks/useYjsCollaboration';
 import CollaborationStatus from './CollaborationStatus';
+import { YjsLexicalPlugin } from './YjsLexicalPlugin';
 
 // Feature flag for Yjs collaboration
-const ENABLE_YJS_COLLABORATION = false;
+const ENABLE_YJS_COLLABORATION = true;
 
 interface SimpleLexicalEditorProps {
   content: string;
@@ -245,7 +246,14 @@ export default function SimpleLexicalEditor({
             />
             
             {/* Plugins */}
-            {enableCollaboration && documentId ? (
+            {enableCollaboration && documentId && shouldUseYjs ? (
+              <YjsLexicalPlugin
+                documentId={documentId}
+                onConnected={() => console.log('[Yjs] Connected to collaboration')}
+                onDisconnected={() => console.log('[Yjs] Disconnected from collaboration')}
+                onCollaboratorsChange={(collaborators) => console.log('[Yjs] Collaborators:', collaborators)}
+              />
+            ) : enableCollaboration && documentId ? (
               <CollaborationPlugin
                 documentId={documentId}
                 onContentChange={(newContent) => {
