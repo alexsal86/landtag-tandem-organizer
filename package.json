@@ -92,6 +92,7 @@
     "vcf": "^2.1.2",
     "xlsx": "^0.18.5",
     "y-websocket": "^3.0.0",
+    "yjs": "^13.6.27",
     "zod": "^4.1.8"
   },
   "devDependencies": {

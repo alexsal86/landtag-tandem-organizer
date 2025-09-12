@@ -1,24 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
-// import * as Y from 'yjs';
+import * as Y from 'yjs';
 // import { WebsocketProvider } from 'y-websocket';
-
-// Temporary Y types stub until packages are installed
-declare namespace Y {
-  class Doc {
-    getText(name: string): Text;
-    on(event: string, callback: (update: Uint8Array) => void): void;
-    destroy(): void;
-  }
-  
-  class Text {
-    toString(): string;
-    observe(callback: () => void): void;
-  }
-  
-  function applyUpdate(doc: Doc, update: Uint8Array): void;
-}
 
 interface YjsCollaborator {
   user_id: string;
