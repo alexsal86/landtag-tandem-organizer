@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
 import * as Y from 'yjs';
-import { WebsocketProvider } from 'y-websocket';
+import { IndexeddbPersistence } from 'y-indexeddb';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -26,7 +26,19 @@ export function YjsLexicalPlugin({
   const channelRef = useRef<any>();
   const lastContentRef = useRef<string>('');
   const isRemoteUpdateRef = useRef<boolean>(false);
+  const persistenceRef = useRef<any>(null);
+  const onConnectedRef = useRef(onConnected);
+  const onDisconnectedRef = useRef(onDisconnected);
+  const onCollaboratorsChangeRef = useRef(onCollaboratorsChange);
+  const userIdRef = useRef<string>(user?.id || 'anonymous');
   
+  // Keep callback refs stable to avoid re-initializing collaboration
+  useEffect(() => {
+    onConnectedRef.current = onConnected;
+    onDisconnectedRef.current = onDisconnected;
+    onCollaboratorsChangeRef.current = onCollaboratorsChange;
+  }, [onConnected, onDisconnected, onCollaboratorsChange]);
+
   useEffect(() => {
     if (!documentId || !editor) return;
 
@@ -35,6 +47,50 @@ export function YjsLexicalPlugin({
     // Create Yjs document and text
     ydocRef.current = new Y.Doc();
     ytextRef.current = ydocRef.current.getText('content');
+
+    // Persist Yjs doc locally to avoid data loss on reconnects
+    try {
+      const persistence = new IndexeddbPersistence(`yjs_${documentId}`, ydocRef.current);
+      persistenceRef.current = persistence;
+      persistence.on('synced', () => {
+        console.log('[Yjs] IndexedDB sync complete');
+      });
+    } catch (e) {
+      console.warn('[Yjs] Failed to initialize IndexedDB persistence', e);
+    }
+
+    // Bootstrap initial state: prefer existing Yjs content, otherwise seed from current Lexical content
+    try {
+      const yInitialText = ytextRef.current.toString();
+      let lexicalInitialText = '';
+      editor.getEditorState().read(() => {
+        lexicalInitialText = $getRoot().getTextContent();
+      });
+
+      if (yInitialText && yInitialText !== lastContentRef.current) {
+        console.log('[Yjs] Bootstrapping Lexical from existing Yjs content');
+        isRemoteUpdateRef.current = true;
+        editor.update(() => {
+          const root = $getRoot();
+          root.clear();
+          if (yInitialText.trim()) {
+            const paragraph = $createParagraphNode();
+            paragraph.append($createTextNode(yInitialText));
+            root.append(paragraph);
+          }
+          lastContentRef.current = yInitialText;
+        });
+        setTimeout(() => {
+          isRemoteUpdateRef.current = false;
+        }, 0);
+      } else if (!yInitialText && lexicalInitialText) {
+        console.log('[Yjs] Bootstrapping Yjs from Lexical initial content');
+        ytextRef.current.insert(0, lexicalInitialText);
+        lastContentRef.current = lexicalInitialText;
+      }
+    } catch (e) {
+      console.warn('[Yjs] Failed during bootstrap sync', e);
+    }
     
     // Listen to Yjs text changes and sync to Lexical
     ytextRef.current.observe(() => {
@@ -55,13 +111,10 @@ export function YjsLexicalPlugin({
           }
           
           lastContentRef.current = content;
-        }, {
-          onUpdate: () => {
-            setTimeout(() => {
-              isRemoteUpdateRef.current = false;
-            }, 0);
-          }
         });
+        setTimeout(() => {
+          isRemoteUpdateRef.current = false;
+        }, 0);
       }
     });
 
@@ -72,7 +125,7 @@ export function YjsLexicalPlugin({
     // Listen for Yjs updates via Supabase
     channelRef.current
       .on('broadcast', { event: 'yjs-update' }, (payload: any) => {
-        if (payload.userId !== (user?.id || 'anonymous') && ydocRef.current) {
+        if (payload.userId !== stableUserId && ydocRef.current) {
           console.log('[Yjs] Received remote Yjs update');
           const update = new Uint8Array(payload.update);
           Y.applyUpdate(ydocRef.current, update);
@@ -81,21 +134,22 @@ export function YjsLexicalPlugin({
       .subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Yjs] Connected to Supabase Realtime transport');
-          onConnected?.();
+          onConnectedRef.current?.();
         } else {
           console.log('[Yjs] Disconnected from Supabase Realtime transport');
-          onDisconnected?.();
+          onDisconnectedRef.current?.();
         }
       });
 
     // Listen to local Yjs updates to broadcast via Supabase
     ydocRef.current.on('update', (update: Uint8Array) => {
+      if (!channelRef.current) return;
       console.log('[Yjs] Broadcasting Yjs update via Supabase');
       channelRef.current?.send({
         type: 'broadcast',
         event: 'yjs-update',
         payload: {
-          userId: user?.id || 'anonymous',
+          userId: stableUserId,
           update: Array.from(update) // Convert to array for JSON serialization
         }
       });
@@ -129,9 +183,14 @@ export function YjsLexicalPlugin({
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
+      try {
+        persistenceRef.current?.destroy?.();
+      } catch (e) {
+        console.warn('[Yjs] Error destroying IndexedDB persistence', e);
+      }
       ydocRef.current?.destroy();
     };
-  }, [documentId, editor, user, onConnected, onDisconnected, onCollaboratorsChange]);
+  }, [documentId, editor, stableUserId]);
 
   return null;
 }
