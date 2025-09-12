@@ -32,7 +32,9 @@ import {
   Hash,
   Undo,
   Redo,
-  Type
+  Type,
+  MessageCircle,
+  History
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -40,13 +42,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { FileAttachmentPlugin } from './plugins/FileAttachmentPlugin';
+import { CommentPlugin } from './plugins/CommentPlugin';
+import { VersionHistoryPlugin } from './plugins/VersionHistoryPlugin';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
+  documentId?: string;
 }
 
 export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
-  showFloatingToolbar = false
+  showFloatingToolbar = false,
+  documentId
 }) => {
   const [editor] = useLexicalComposerContext();
   const [activeFormats, setActiveFormats] = useState<string[]>([]);
@@ -250,6 +257,21 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           command: insertHashtag
         }
       ]
+    },
+    {
+      name: 'collaboration',
+      buttons: [
+        {
+          icon: MessageCircle,
+          label: 'Kommentar',
+          component: documentId ? () => <CommentPlugin documentId={documentId} /> : undefined
+        },
+        {
+          icon: History,
+          label: 'Versionen',
+          component: documentId ? () => <VersionHistoryPlugin documentId={documentId} /> : undefined
+        }
+      ]
     }
   ];
 
@@ -308,6 +330,8 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                ) : button.component ? (
+                  <button.component />
                 ) : (
                   <Button
                     variant={button.isActive ? "default" : "ghost"}

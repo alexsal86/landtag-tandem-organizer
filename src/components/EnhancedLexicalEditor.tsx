@@ -54,7 +54,10 @@ import { DraggableBlocksPlugin } from './plugins/DraggableBlocksPlugin';
 import { MentionsPlugin } from './plugins/MentionsPlugin';
 import { CheckListPlugin } from './plugins/CheckListPlugin';
 import { ImagePlugin } from './plugins/ImagePlugin';
+import { FileAttachmentPlugin } from './plugins/FileAttachmentPlugin';
+import { AdvancedCursorPlugin } from './plugins/AdvancedCursorPlugin';
 import { EnhancedLexicalToolbar } from './EnhancedLexicalToolbar';
+import { CollaborationDashboard } from './collaboration/CollaborationDashboard';
 
 // Feature flag for Yjs collaboration
 const ENABLE_YJS_COLLABORATION = true;
@@ -67,6 +70,7 @@ interface EnhancedLexicalEditorProps {
   enableCollaboration?: boolean;
   useYjsCollaboration?: boolean;
   showToolbar?: boolean;
+  onConnectionChange?: (connected: boolean) => void;
 }
 
 // Toolbar Plugin with formatting commands
@@ -409,6 +413,7 @@ function YjsContentSyncPlugin({
 // Clean Yjs Collaboration Editor component  
 function YjsCollaborationEditor(props: any) {
   const yjsProvider = useYjsProvider();
+  const [showCollabDashboard, setShowCollabDashboard] = React.useState(true);
   
   return (
     <div className="relative min-h-[200px] border rounded-md overflow-hidden">
@@ -420,13 +425,21 @@ function YjsCollaborationEditor(props: any) {
           </div>
         </div>
       )}
+      
+      {/* Collaboration Dashboard */}
+      <CollaborationDashboard
+        documentId={props.documentId}
+        isVisible={showCollabDashboard}
+        onToggle={() => setShowCollabDashboard(!showCollabDashboard)}
+      />
+      
       <YjsSyncStatus>
         <LexicalComposer 
           initialConfig={props.initialConfig}
           key={`yjs-editor-${props.documentId}`}
         >
           <div className="editor-inner relative">
-            {props.showToolbar && <EnhancedLexicalToolbar />}
+            {props.showToolbar && <EnhancedLexicalToolbar documentId={props.documentId} />}
             
             <div className="relative">
               <RichTextPlugin
@@ -443,6 +456,9 @@ function YjsCollaborationEditor(props: any) {
                 ErrorBoundary={LexicalErrorBoundary}
               />
               <FloatingTextFormatToolbar />
+              
+              {/* Advanced Collaboration Features */}
+              <AdvancedCursorPlugin />
             </div>
             
             <ManualYjsCollaborationPlugin
@@ -463,6 +479,7 @@ function YjsCollaborationEditor(props: any) {
             <MentionsPlugin />
             <CheckListPlugin />
             <ImagePlugin />
+            <FileAttachmentPlugin />
             
             <HistoryPlugin />
             <ListPlugin />
@@ -484,7 +501,8 @@ export default function EnhancedLexicalEditor({
   documentId,
   enableCollaboration = false,
   useYjsCollaboration = ENABLE_YJS_COLLABORATION,
-  showToolbar = true
+  showToolbar = true,
+  onConnectionChange
 }: EnhancedLexicalEditorProps) {
   const [localContent, setLocalContent] = useState(content);
   const [remoteContent, setRemoteContent] = useState<string>('');
