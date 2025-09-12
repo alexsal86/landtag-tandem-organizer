@@ -12,16 +12,21 @@ interface LeafletKarlsruheMapProps {
   selectedDistrict?: ElectionDistrict;
 }
 
-const getPartyColorHex = (party?: string): string => {
-  const colorMap: Record<string, string> = {
-    fdp: '#FFD700',
-    'grüne': '#4CAF50',
-    cdu: '#0066CC',
-    spd: '#E3000F',
-    afd: '#00A0E6',
-    'die linke': '#BE3075',
-  };
-  return colorMap[party?.toLowerCase() || ''] || '#9E9E9E';
+// Helper function to get party color based on direct mandate
+const getPartyColorHex = (district: ElectionDistrict): string => {
+  // Find the direct mandate representative
+  const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
+  const party = directMandate?.party;
+  
+  switch (party?.toUpperCase()) {
+    case 'CDU': return '#000000';
+    case 'SPD': return '#dc2626';
+    case 'GRÜNE': return '#16a34a';
+    case 'FDP': return '#facc15';
+    case 'AFD': return '#1e40af';
+    case 'LINKE': return '#9333ea';
+    default: return '#6b7280';
+  }
 };
 
 const icon = L.icon({
@@ -67,22 +72,42 @@ const getEnhancedDistrictBoundary = (district: ElectionDistrict): [number, numbe
 type GeoJsonData = { type: 'FeatureCollection'; features: any[] };
 
 const getDistrictNumberFromProps = (props: Record<string, any>): number | undefined => {
-  const candidates = [
-    'WKR_NR', 'WKRNR', 'WK_NR', 'NR', 'WKR', 'WKR_NR_2021', 'WKR_NR21', 'WKRNR21', 'Wahlkreis_Nr', 'Nummer'
-  ];
-  for (const key of candidates) {
-    if (props[key] !== undefined && props[key] !== null) {
-      const n = typeof props[key] === 'string' ? parseInt(props[key], 10) : Number(props[key]);
-      if (!Number.isNaN(n)) return n;
-    }
-  }
-  for (const [k, v] of Object.entries(props)) {
-    if (/wkr.?nr/i.test(k) || /wahlkreis.?nr/i.test(k) || /nummer/i.test(k)) {
-      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
-      if (!Number.isNaN(n)) return n;
+  const possibleKeys = ['Nummer', 'WKR_NR', 'DISTRICT_NUMBER', 'number', 'nr', 'id', 'WKR', 'wahlkreis'];
+  for (const key of possibleKeys) {
+    const value = props[key];
+    if (value !== undefined && value !== null) {
+      const num = parseInt(String(value), 10);
+      if (!isNaN(num) && num > 0 && num <= 70) {
+        return num;
+      }
     }
   }
   return undefined;
+};
+
+// Function to calculate true centroid of a polygon
+const calculatePolygonCentroid = (coordinates: number[][]): [number, number] => {
+  let totalArea = 0;
+  let centroidX = 0;
+  let centroidY = 0;
+  
+  for (let i = 0; i < coordinates.length - 1; i++) {
+    const x0 = coordinates[i][0];
+    const y0 = coordinates[i][1];
+    const x1 = coordinates[i + 1][0];
+    const y1 = coordinates[i + 1][1];
+    
+    const a = x0 * y1 - x1 * y0;
+    totalArea += a;
+    centroidX += (x0 + x1) * a;
+    centroidY += (y0 + y1) * a;
+  }
+  
+  totalArea *= 0.5;
+  centroidX /= (6 * totalArea);
+  centroidY /= (6 * totalArea);
+  
+  return [centroidY, centroidX]; // Return as [lat, lng] for Leaflet
 };
 
 const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({ 
@@ -174,7 +199,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           const districtNumber = feature ? getDistrictNumberFromProps((feature as any).properties || {}) : undefined;
           const district = districts.find(d => d.district_number === districtNumber);
           const isSelected = district && selectedDistrict?.id === district.id;
-          const partyColor = getPartyColorHex(district?.representative_party);
+          const partyColor = getPartyColorHex(district);
           if (district) officialCount++;
           return {
             color: partyColor,
@@ -189,7 +214,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           const district = districts.find(d => d.district_number === districtNumber);
           if (!district) return;
           const isSelected = selectedDistrict?.id === district.id;
-          const partyColor = getPartyColorHex(district.representative_party);
+          const partyColor = getPartyColorHex(district);
+          const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
 
           layer.on('mouseover', () => {
             (layer as L.Path).setStyle({ weight: 3, fillOpacity: 0.5 });
@@ -206,8 +232,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
                 <h3 class="font-semibold">${district.district_name}</h3>
               </div>
               <div class="space-y-1 text-sm text-gray-600">
-                <div class="flex items-center gap-2"><span>📍</span><span>${district.representative_name || 'Nicht bekannt'}</span></div>
-                <div class="flex items-center gap-2"><span class="px-2 py-0.5 border rounded text-xs">${district.representative_party || 'Partei unbekannt'}</span></div>
+                ${directMandate ? `<div class="flex items-center gap-2"><span>🏆</span><span><strong>${directMandate.name}</strong> (${directMandate.party})</span></div>` : '<div class="text-gray-500">Kein Direktmandat</div>'}
+                ${district.representatives && district.representatives.length > 1 ? `<div class="text-xs text-gray-500">${district.representatives.length - 1} weitere Abgeordnete</div>` : ''}
                 ${district.population ? `<div class="flex items-center gap-2"><span>👥</span><span>${district.population.toLocaleString()} Einwohner</span></div>` : ''}
                 ${district.area_km2 ? `<div class="flex items-center gap-2"><span>📐</span><span>ca. ${district.area_km2} km²</span></div>` : ''}
               </div>
@@ -225,7 +251,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       const allFallbackBounds: [number, number][] = [];
 
       districts.forEach((district) => {
-        const partyColor = getPartyColorHex(district.representative_party);
+        const partyColor = getPartyColorHex(district);
         const isSelected = selectedDistrict?.id === district.id;
         const boundaries = getEnhancedDistrictBoundary(district);
         if (!boundaries.length) return;
@@ -256,19 +282,38 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       console.log(`Rendered ${fallbackCount} fallback district boundaries`);
     }
 
-    // Markers from center coordinates
+    // Add markers with representative info
     districts.forEach((district) => {
       if (!district.center_coordinates) return;
       const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
-      const partyColor = getPartyColorHex(district.representative_party);
-      const marker = L.marker([lat, lng], { icon });
+      const partyColor = getPartyColorHex(district);
+      const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
+      
+      const marker = L.marker([lat, lng], { 
+        icon: L.divIcon({
+          html: `<div style="background: white; border: 2px solid ${partyColor}; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${district.district_number}</div>`,
+          className: 'custom-district-marker',
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        })
+      });
+      
       marker.on('click', () => onDistrictClick(district));
-      marker.bindPopup(`
-        <div class="text-center">
-          <span class="px-2 py-1 rounded text-white text-xs font-medium" style="background-color: ${partyColor}">Wahlkreis ${district.district_number}</span>
-          <div class="mt-1 font-semibold">${district.district_name}</div>
-        </div>
-      `);
+      
+      // Enhanced tooltip with representative info
+      if (directMandate) {
+        marker.bindTooltip(
+          `<strong>WK ${district.district_number}: ${district.district_name}</strong><br/>
+           <strong>${directMandate.name}</strong> (${directMandate.party})<br/>
+           Direktmandat`, 
+          {
+            permanent: false,
+            direction: 'top',
+            offset: [0, -20]
+          }
+        );
+      }
+      
       marker.addTo(markerLayerRef.current!);
     });
 

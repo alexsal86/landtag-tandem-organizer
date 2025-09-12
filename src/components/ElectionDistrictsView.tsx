@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Users, BarChart3, Loader2 } from "lucide-react";
+import { MapPin, Users, BarChart3, Loader2, Crown, Award } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictDetailDialog } from "./DistrictDetailDialog";
 import SimpleLeafletMap from "./SimpleLeafletMap";
@@ -126,32 +126,47 @@ export const ElectionDistrictsView = () => {
               {selectedDistrict ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Badge 
-                      variant="secondary" 
-                      style={{ backgroundColor: getPartyColor(selectedDistrict.representative_party), color: '#fff' }}
-                    >
+                    <Badge variant="secondary">
                       {selectedDistrict.district_number}
                     </Badge>
                     <span className="font-semibold">{selectedDistrict.district_name}</span>
                   </div>
                   
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedDistrict.representative_name}</span>
+                  {selectedDistrict.representatives && selectedDistrict.representatives.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm flex items-center gap-1">
+                        <Crown className="h-4 w-4" />
+                        Abgeordnete
+                      </h4>
+                      {selectedDistrict.representatives.map((rep, index) => (
+                        <div key={rep.id} className="flex items-center gap-2 text-sm">
+                          {rep.mandate_type === 'direct' && <Award className="h-3 w-3 text-yellow-600" />}
+                          <span className="font-medium">{rep.name}</span>
+                          <Badge 
+                            variant="outline" 
+                            className="text-xs"
+                            style={{ 
+                              backgroundColor: getPartyColor(rep.party), 
+                              color: '#fff',
+                              border: 'none'
+                            }}
+                          >
+                            {rep.party}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            ({rep.mandate_type === 'direct' ? 'Direkt' : 'Liste'})
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {selectedDistrict.representative_party}
-                      </Badge>
+                  )}
+                  
+                  {selectedDistrict.population && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span>{selectedDistrict.population.toLocaleString()} Einwohner</span>
                     </div>
-                    {selectedDistrict.population && (
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>{selectedDistrict.population.toLocaleString()} Einwohner</span>
-                      </div>
-                    )}
-                  </div>
+                  )}
                   
                   <Button 
                     variant="outline" 
@@ -205,17 +220,41 @@ export const ElectionDistrictsView = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {districts.map((district) => (
-                  <div key={district.id} className="flex items-center gap-2">
-                    <div 
-                      className="w-4 h-4 rounded-sm"
-                      style={{ backgroundColor: getPartyColor(district.representative_party) }}
-                    />
-                    <span className="text-sm">
-                      {district.district_name} ({district.representative_party})
-                    </span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-black rounded"></div>
+                    <span>CDU</span>
                   </div>
-                ))}
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-red-600 rounded"></div>
+                    <span>SPD</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-green-600 rounded"></div>
+                    <span>GRÜNE</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-yellow-400 rounded"></div>
+                    <span>FDP</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-blue-800 rounded"></div>
+                    <span>AfD</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-purple-600 rounded"></div>
+                    <span>LINKE</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Award className="h-3 w-3 text-yellow-600" />
+                    <span className="text-xs">Direktmandat</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Farben zeigen die Partei des Direktmandats
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

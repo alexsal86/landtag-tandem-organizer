@@ -78,9 +78,9 @@ export function KarlsruheMap({ districts, onDistrictClick, selectedDistrict }: K
               className={`w-16 h-16 rounded-full border-4 opacity-60 group-hover:opacity-90 transition-all flex items-center justify-center text-white font-bold text-sm shadow-lg ${
                 isSelected ? "opacity-100 ring-4 ring-primary/50" : ""
               }`}
-              style={{ 
-                backgroundColor: getPartyColor(district.representative_party),
-                borderColor: getPartyColor(district.representative_party)
+      style={{ 
+        backgroundColor: getPartyColor(district.representatives?.[0]?.party), 
+        borderColor: getPartyColor(district.representatives?.[0]?.party)
               }}
             >
               {district.district_number}
@@ -96,9 +96,9 @@ export function KarlsruheMap({ districts, onDistrictClick, selectedDistrict }: K
                   <span className="text-xs text-muted-foreground block">
                     {district.district_name}
                   </span>
-                  {district.representative_name && (
+                   {district.representatives?.[0]?.name && (
                     <span className="text-xs text-muted-foreground block">
-                      {district.representative_name}
+                      {district.representatives?.[0]?.name}
                     </span>
                   )}
                   {district.population && (

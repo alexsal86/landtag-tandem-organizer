@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Calendar as CalendarIcon, Phone, Mail, Globe, Users, MapPin, Plus, Edit, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Phone, Mail, Globe, Users, MapPin, Plus, Edit, Trash2, Crown, Award } from "lucide-react";
 import { ElectionDistrict, ElectionDistrictNote, useElectionDistrictNotes } from "@/hooks/useElectionDistricts";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -130,15 +130,35 @@ export function DistrictDetailDialog({ district, open, onOpenChange }: DistrictD
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Abgeordnete/r
+                    <Crown className="h-4 w-4" />
+                    Abgeordnete
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-medium">{district.representative_name || "Unbekannt"}</p>
-                    <Badge variant="outline">{district.representative_party || "Partei unbekannt"}</Badge>
-                  </div>
+                  {district.representatives && district.representatives.length > 0 ? (
+                    <div className="space-y-3">
+                      {district.representatives.map((rep) => (
+                        <div key={rep.id} className="p-3 bg-gray-50 rounded-md">
+                          <div className="flex items-center gap-2 mb-1">
+                            {rep.mandate_type === 'direct' && <Award className="h-4 w-4 text-yellow-600" />}
+                            <span className="font-medium">{rep.name}</span>
+                            <Badge variant="outline">{rep.party}</Badge>
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            {rep.mandate_type === 'direct' ? 'Direktmandat' : 'Listenmandat'}
+                          </p>
+                          {rep.email && (
+                            <p className="text-xs text-gray-600 mt-1">📧 {rep.email}</p>
+                          )}
+                          {rep.phone && (
+                            <p className="text-xs text-gray-600">📞 {rep.phone}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">Keine Abgeordneten-Daten verfügbar</p>
+                  )}
                 </CardContent>
               </Card>
 

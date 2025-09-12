@@ -1474,11 +1474,12 @@ export type Database = {
           created_at: string
           district_name: string
           district_number: number
+          district_type: string | null
           id: string
+          major_cities: string[] | null
           population: number | null
           region: string
-          representative_name: string | null
-          representative_party: string | null
+          rural_percentage: number | null
           updated_at: string
           website_url: string | null
         }
@@ -1490,11 +1491,12 @@ export type Database = {
           created_at?: string
           district_name: string
           district_number: number
+          district_type?: string | null
           id?: string
+          major_cities?: string[] | null
           population?: number | null
           region?: string
-          representative_name?: string | null
-          representative_party?: string | null
+          rural_percentage?: number | null
           updated_at?: string
           website_url?: string | null
         }
@@ -1506,15 +1508,69 @@ export type Database = {
           created_at?: string
           district_name?: string
           district_number?: number
+          district_type?: string | null
           id?: string
+          major_cities?: string[] | null
           population?: number | null
           region?: string
-          representative_name?: string | null
-          representative_party?: string | null
+          rural_percentage?: number | null
           updated_at?: string
           website_url?: string | null
         }
         Relationships: []
+      }
+      election_representatives: {
+        Row: {
+          bio: string | null
+          created_at: string
+          district_id: string | null
+          email: string | null
+          id: string
+          mandate_type: string
+          name: string
+          office_address: string | null
+          order_index: number
+          party: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          district_id?: string | null
+          email?: string | null
+          id?: string
+          mandate_type: string
+          name: string
+          office_address?: string | null
+          order_index?: number
+          party: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          district_id?: string | null
+          email?: string | null
+          id?: string
+          mandate_type?: string
+          name?: string
+          office_address?: string | null
+          order_index?: number
+          party?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_representatives_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "election_districts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employee_settings: {
         Row: {

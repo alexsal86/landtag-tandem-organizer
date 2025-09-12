@@ -4,6 +4,18 @@ import { useAuth } from "./useAuth";
 import { useTenant } from "./useTenant";
 import { useToast } from "@/components/ui/use-toast";
 
+interface ElectionRepresentative {
+  id: string;
+  name: string;
+  party: string;
+  mandate_type: 'direct' | 'list';
+  order_index: number;
+  email?: string;
+  phone?: string;
+  office_address?: string;
+  bio?: string;
+}
+
 export interface ElectionDistrict {
   id: string;
   district_number: number;
@@ -13,10 +25,12 @@ export interface ElectionDistrict {
   center_coordinates?: any;
   population?: number;
   area_km2?: number;
-  representative_name?: string;
-  representative_party?: string;
   contact_info?: any;
   website_url?: string;
+  district_type?: string;
+  major_cities?: string[];
+  rural_percentage?: number;
+  representatives?: ElectionRepresentative[];
   created_at: string;
   updated_at: string;
 }
@@ -48,11 +62,36 @@ export function useElectionDistricts() {
       setLoading(true);
       const { data, error } = await supabase
         .from("election_districts")
-        .select("*")
+        .select(`
+          *,
+          representatives:election_representatives(
+            id,
+            name,
+            party,
+            mandate_type,
+            order_index,
+            email,
+            phone,
+            office_address,
+            bio
+          )
+        `)
         .order("district_number");
 
       if (error) throw error;
-      setDistricts(data || []);
+      
+      // Sort representatives within each district and fix types
+      const processedData = data?.map(district => ({
+        ...district,
+        representatives: district.representatives?.sort((a: any, b: any) => {
+          // Direct mandates first, then by order_index
+          if (a.mandate_type === 'direct' && b.mandate_type !== 'direct') return -1;
+          if (a.mandate_type !== 'direct' && b.mandate_type === 'direct') return 1;
+          return a.order_index - b.order_index;
+        })
+      })) as ElectionDistrict[];
+
+      setDistricts(processedData || []);
     } catch (error) {
       console.error("Error fetching election districts:", error);
       toast({
