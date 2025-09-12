@@ -60,8 +60,156 @@ interface EnhancedLexicalEditorProps {
 
 // Toolbar Plugin with formatting commands
 function ToolbarPlugin() {
-  // This plugin is simplified since we use FloatingTextFormatToolbar for formatting
-  return null;
+  const [editor] = useLexicalComposerContext();
+  const [activeFormats, setActiveFormats] = useState<string[]>([]);
+
+  // Track selection and active formats
+  useEffect(() => {
+    return editor.registerUpdateListener(({ editorState }) => {
+      editorState.read(() => {
+        const selection = $getSelection();
+        const formats: string[] = [];
+        
+        if ($isRangeSelection(selection)) {
+          // Check active text formats
+          if (selection.hasFormat('bold')) formats.push('bold');
+          if (selection.hasFormat('italic')) formats.push('italic');
+          if (selection.hasFormat('underline')) formats.push('underline');
+          if (selection.hasFormat('strikethrough')) formats.push('strikethrough');
+          if (selection.hasFormat('code')) formats.push('code');
+        }
+        
+        setActiveFormats(formats);
+      });
+    });
+  }, [editor]);
+
+  const handleFormatText = useCallback((format: string) => {
+    editor.dispatchCommand(FORMAT_TEXT_COMMAND, format as TextFormatType);
+  }, [editor]);
+
+  const handleFormatElement = useCallback((format: string) => {
+    if (format === 'heading1') {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          const headingNode = $createHeadingNode('h1');
+          selection.insertNodes([headingNode]);
+        }
+      });
+    } else if (format === 'heading2') {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          const headingNode = $createHeadingNode('h2');
+          selection.insertNodes([headingNode]);
+        }
+      });
+    } else if (format === 'heading3') {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          const headingNode = $createHeadingNode('h3');
+          selection.insertNodes([headingNode]);
+        }
+      });
+    } else if (format === 'quote') {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          const quoteNode = $createQuoteNode();
+          selection.insertNodes([quoteNode]);
+        }
+      });
+    } else if (format === 'codeblock') {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          const codeNode = $createCodeNode();
+          selection.insertNodes([codeNode]);
+        }
+      });
+    } else if (format === 'bulletlist') {
+      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+    } else if (format === 'numberlist') {
+      editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+    }
+  }, [editor]);
+
+  const onFormatText = useCallback((format: string) => {
+    if (['bold', 'italic', 'underline', 'strikethrough', 'code'].includes(format)) {
+      handleFormatText(format);
+    } else {
+      handleFormatElement(format);
+    }
+  }, [handleFormatText, handleFormatElement]);
+
+  return (
+    <div className="border-b border-border bg-background">
+      <div className="flex flex-wrap gap-1 p-3">
+        {/* Text Formatierung */}
+        <div className="flex gap-1 mr-4">
+          {[
+            { format: 'bold', label: 'Fett', icon: '𝐁' },
+            { format: 'italic', label: 'Kursiv', icon: '𝑰' },
+            { format: 'underline', label: 'Unterstrichen', icon: 'U̲' },
+            { format: 'strikethrough', label: 'Durchgestrichen', icon: 'S̶' },
+            { format: 'code', label: 'Code', icon: '</>' }
+          ].map(({ format, label, icon }) => (
+            <button
+              key={format}
+              onClick={() => onFormatText(format)}
+              className={`px-2 py-1 rounded text-sm font-medium transition-colors ${
+                activeFormats.includes(format) 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
+              }`}
+              title={label}
+            >
+              {icon}
+            </button>
+          ))}
+        </div>
+
+        {/* Block Formatierung */}
+        <div className="flex gap-1 mr-4">
+          {[
+            { format: 'heading1', label: 'Überschrift 1', icon: 'H1' },
+            { format: 'heading2', label: 'Überschrift 2', icon: 'H2' },
+            { format: 'heading3', label: 'Überschrift 3', icon: 'H3' },
+            { format: 'quote', label: 'Zitat', icon: '❝' },
+            { format: 'codeblock', label: 'Code Block', icon: '{ }' }
+          ].map(({ format, label, icon }) => (
+            <button
+              key={format}
+              onClick={() => onFormatText(format)}
+              className="px-2 py-1 rounded text-sm font-medium bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+              title={label}
+            >
+              {icon}
+            </button>
+          ))}
+        </div>
+
+        {/* Listen */}
+        <div className="flex gap-1">
+          {[
+            { format: 'bulletlist', label: 'Aufzählung', icon: '•' },
+            { format: 'numberlist', label: 'Nummerierte Liste', icon: '1.' }
+          ].map(({ format, label, icon }) => (
+            <button
+              key={format}
+              onClick={() => onFormatText(format)}
+              className="px-2 py-1 rounded text-sm font-medium bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+              title={label}
+            >
+              {icon}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Keyboard shortcuts plugin
