@@ -9,7 +9,7 @@ const corsHeaders = {
 interface Representative {
   name: string;
   party: string;
-  mandate_type: 'erstmandat' | 'zweitmandat';
+  mandate_type: 'direct' | 'list';
   district_id: string;
   order_index: number;
 }
@@ -385,7 +385,7 @@ serve(async (req) => {
       representatives.push({
         name: rep.name,
         party: rep.party,
-        mandate_type: rep.mandate === 'E' ? 'erstmandat' : 'zweitmandat',
+        mandate_type: rep.mandate === 'E' ? 'direct' : 'list',
         district_id: districtId || districts[0]?.id || '', // Use first district as fallback
         order_index: rep.mandate === 'E' ? 0 : index
       });
