@@ -75,6 +75,35 @@ export const ElectionDistrictsView = () => {
     setUseMapFallback(true);
   };
 
+  const handleImportRepresentatives = async () => {
+    try {
+      setImporting(true);
+      
+      const { data, error } = await supabase.functions.invoke('import-representatives');
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({ 
+        title: 'Import erfolgreich', 
+        description: `${data?.message || 'Abgeordnete erfolgreich importiert'}` 
+      });
+      
+      await refetch();
+      
+    } catch (error: any) {
+      console.error('Error importing representatives:', error);
+      toast({ 
+        title: 'Import fehlgeschlagen', 
+        description: error.message || 'Bitte erneut versuchen.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -242,6 +271,26 @@ export const ElectionDistrictsView = () => {
                 <Badge variant="secondary">
                   ca. {districts.reduce((sum, d) => sum + (d.area_km2 || 0), 0)} km²
                 </Badge>
+              </div>
+              
+              {/* Representatives Import Button */}
+              <div className="pt-3 border-t">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={importing}
+                  onClick={handleImportRepresentatives}
+                  className="w-full"
+                >
+                  {importing ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Importiere...
+                    </span>
+                  ) : (
+                    'Abgeordnete importieren'
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>

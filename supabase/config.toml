@@ -81,3 +81,6 @@ verify_jwt = false
 
 [functions.import-election-districts]
 verify_jwt = true
+
+[functions.import-representatives]
+verify_jwt = true
