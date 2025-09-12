@@ -159,27 +159,51 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         
         try {
           const geometry = district.boundaries as any;
+          
           if (geometry.type === 'Polygon') {
-            const coords = geometry.coordinates[0].map((coord: any) => [coord[1], coord[0]] as [number, number]);
+            // Handle single polygon - convert [lon, lat] to [lat, lon] for Leaflet
+            const coords = geometry.coordinates[0].map((coord: any) => {
+              // Handle both 2D and 3D coordinates
+              const [lon, lat] = coord.length >= 2 ? coord : [0, 0];
+              return [lat, lon] as [number, number];
+            });
+            
             polygon = L.polygon(coords, {
               color: getPartyColorHex(district),
               weight: 2,
               opacity: 0.8,
               fillOpacity: 0.3,
             });
+            
           } else if (geometry.type === 'MultiPolygon') {
-            const allCoords = geometry.coordinates.map((poly: any) => 
-              poly[0].map((coord: any) => [coord[1], coord[0]] as [number, number])
-            );
-            polygon = L.polygon(allCoords, {
-              color: getPartyColorHex(district),
-              weight: 2,
-              opacity: 0.8,
-              fillOpacity: 0.3,
-            });
+            // Handle MultiPolygon - render ALL polygons and ALL rings
+            const allPolygons: [number, number][][] = [];
+            
+            for (const polygonCoords of geometry.coordinates) {
+              // Process each polygon (outer ring + holes)
+              for (let ringIndex = 0; ringIndex < polygonCoords.length; ringIndex++) {
+                const ring = polygonCoords[ringIndex];
+                const leafletCoords = ring.map((coord: any) => {
+                  // Handle both 2D and 3D coordinates
+                  const [lon, lat] = coord.length >= 2 ? coord : [0, 0];
+                  return [lat, lon] as [number, number];
+                });
+                allPolygons.push(leafletCoords);
+              }
+            }
+            
+            if (allPolygons.length > 0) {
+              polygon = L.polygon(allPolygons, {
+                color: getPartyColorHex(district),
+                weight: 2,
+                opacity: 0.8,
+                fillOpacity: 0.3,
+              });
+            }
           }
         } catch (error) {
           console.warn(`Failed to create polygon for district ${districtNumber}:`, error);
+          console.warn('Geometry data:', JSON.stringify(district.boundaries, null, 2));
         }
       }
 
