@@ -115,7 +115,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       zoom: initialZoom,
       zoomControl: true,
       attributionControl: true,
-      preferCanvas: true // Better performance for many polygons
+      renderer: L.svg() // Use SVG renderer for better geometry precision
     });
     mapRef.current = map;
 
@@ -168,6 +168,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           weight: 2,
           opacity: 0.8,
           fillOpacity: 0.3,
+          smoothFactor: 0, // Disable geometry simplification for precise boundaries
         } as L.PathOptions;
       },
       onEachFeature: (feature, layer) => {
@@ -203,10 +204,10 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       markerLayerRef.current!.addLayer(marker);
     });
 
-    // Fit map to features
+    // Fit map to features without zoom limitation
     const bounds = (geoLayer as any).getBounds?.();
     if (bounds && bounds.isValid()) {
-      mapRef.current.fitBounds(bounds.pad(0.1), { padding: [20, 20], maxZoom: 10 });
+      mapRef.current.fitBounds(bounds.pad(0.1), { padding: [20, 20] });
     }
 
     console.log('Districts rendered.');

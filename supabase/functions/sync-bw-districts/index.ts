@@ -215,9 +215,43 @@ serve(async (req) => {
       console.warn(`Expected 70 districts, but found ${geoJsonData.features.length}`);
     }
 
-    // Determine source projection
-    const sourceProj = geoJsonData.crs?.properties?.name?.includes('31467') ? epsg31467 : etrs89Utm32;
-    console.log('Using source projection:', sourceProj === epsg31467 ? 'EPSG:31467' : 'ETRS89/UTM32');
+    // Detect source projection from CRS or coordinate ranges
+    let sourceProj = wgs84; // Default to WGS84
+    let needsReprojection = false;
+    
+    // Check CRS information
+    const crsName = geoJsonData.crs?.properties?.name;
+    if (crsName?.includes('31467') || crsName?.includes('EPSG:31467')) {
+      sourceProj = epsg31467;
+      needsReprojection = true;
+    } else if (crsName?.includes('25832') || crsName?.includes('ETRS89')) {
+      sourceProj = etrs89Utm32;
+      needsReprojection = true;
+    } else {
+      // Detect by coordinate ranges (sample first feature)
+      const sampleCoords = geoJsonData.features[0]?.geometry?.coordinates;
+      if (sampleCoords && Array.isArray(sampleCoords)) {
+        const firstPoint = sampleCoords[0]?.[0]?.[0];
+        if (Array.isArray(firstPoint) && firstPoint.length >= 2) {
+          const [x, y] = firstPoint;
+          // EPSG:31467 typical ranges: x: 3,200,000-3,600,000, y: 5,200,000-5,600,000
+          // ETRS89/UTM32 typical ranges: x: 450,000-650,000, y: 5,200,000-5,600,000
+          if (x > 2000000 && x < 4000000) {
+            sourceProj = epsg31467;
+            needsReprojection = true;
+          } else if (x > 400000 && x < 700000 && y > 5000000) {
+            sourceProj = etrs89Utm32;
+            needsReprojection = true;
+          }
+          // If coordinates are in WGS84 ranges (lat/lng), no reprojection needed
+        }
+      }
+    }
+    
+    console.log('Detected source projection:', 
+      sourceProj === epsg31467 ? 'EPSG:31467' : 
+      sourceProj === etrs89Utm32 ? 'ETRS89/UTM32' : 'WGS84');
+    console.log('Needs reprojection:', needsReprojection);
 
     const processedDistricts: any[] = [];
     const processedNumbers = new Set<number>();
@@ -253,18 +287,28 @@ serve(async (req) => {
         districtName = officialName;
       }
 
-      // Reproject geometry from source projection to WGS84
+      // Reproject geometry to WGS84 only if needed
       let reprojectectedGeometry: any = null;
       
       try {
         if (feature.geometry) {
-          reprojectectedGeometry = {
-            type: feature.geometry.type,
-            coordinates: reprojectCoordinates(feature.geometry.coordinates, sourceProj, wgs84)
-          };
+          if (needsReprojection) {
+            reprojectectedGeometry = {
+              type: feature.geometry.type,
+              coordinates: reprojectCoordinates(feature.geometry.coordinates, sourceProj, wgs84)
+            };
+            console.log(`Reprojected district ${districtNumber} from ${sourceProj === epsg31467 ? 'EPSG:31467' : 'ETRS89/UTM32'} to WGS84`);
+          } else {
+            // Already in WGS84, use as-is for maximum precision
+            reprojectectedGeometry = {
+              type: feature.geometry.type,
+              coordinates: feature.geometry.coordinates
+            };
+            console.log(`District ${districtNumber} already in WGS84, using original geometry`);
+          }
         }
       } catch (error) {
-        console.error(`Failed to reproject geometry for district ${districtNumber}:`, error);
+        console.error(`Failed to process geometry for district ${districtNumber}:`, error);
         continue;
       }
 
