@@ -30,6 +30,13 @@ class SupabaseYjsProvider {
     this.clientId = `${userId}-${doc.clientID}-${crypto.randomUUID().slice(0, 8)}`;
     this.awareness = new Awareness(doc);
     
+    // Set up initial awareness state to match Lexical-Yjs requirements
+    this.awareness.setLocalStateField('user', {
+      name: userId,
+      color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
+      colorLight: `#${Math.floor(Math.random()*16777215).toString(16)}`
+    });
+    
     console.log(`[SupabaseYjsProvider] Created with clientId: ${this.clientId}`);
     this.initializePersistence(documentId);
     this.initializeSupabaseTransport(documentId);

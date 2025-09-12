@@ -12,6 +12,7 @@ import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
+// Remove official CollaborationPlugin import - use our enhanced manual approach
 
 // Lexical nodes
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
@@ -39,7 +40,6 @@ import { TRANSFORMERS } from '@lexical/markdown';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import CollaborationStatus from './CollaborationStatus';
 import { YjsProvider, useYjsProvider } from './collaboration/YjsProvider';
-import { LexicalYjsCollaborationPlugin } from './collaboration/LexicalYjsCollaborationPlugin';
 import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
 import { Button } from './ui/button';
@@ -395,7 +395,115 @@ function YjsContentSyncPlugin({
   return null;
 }
 
-// Yjs Collaboration Editor component (enhanced for rich text)
+// Enhanced Yjs Collaboration Plugin for Rich Text
+function EnhancedYjsCollaborationPlugin({ documentId }: { documentId: string }) {
+  const [editor] = useLexicalComposerContext();
+  const yjsProvider = useYjsProvider();
+  const lastContentRef = useRef<string>('');
+  const isApplyingRef = useRef<boolean>(false);
+  const hasBootstrapped = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!yjsProvider?.doc || !editor || !yjsProvider?.isSynced) {
+      return;
+    }
+
+    console.log('[EnhancedYjsCollaboration] Setting up rich text Yjs binding for:', documentId);
+
+    const sharedText = yjsProvider.doc.getText('content');
+
+    // Serialize Lexical state to JSON for Yjs (including rich text)
+    const lexicalToYjs = () => {
+      if (isApplyingRef.current) return;
+      
+      editor.getEditorState().read(() => {
+        const json = editor.getEditorState().toJSON();
+        const jsonString = JSON.stringify(json);
+        
+        if (jsonString !== lastContentRef.current) {
+          console.log('[EnhancedYjsCollaboration] Pushing rich Lexical state to Yjs');
+          lastContentRef.current = jsonString;
+          
+          yjsProvider.doc.transact(() => {
+            const prevLen = sharedText.toString().length;
+            if (prevLen > 0) sharedText.delete(0, prevLen);
+            if (jsonString) sharedText.insert(0, jsonString);
+          }, 'lexical');
+        }
+      });
+    };
+
+    // Deserialize Yjs content to Lexical state (including rich text)
+    const yjsToLexical = (origin?: any) => {
+      if (origin === 'lexical') return;
+      
+      const content = sharedText.toString();
+      if (content === lastContentRef.current) return;
+
+      console.log('[EnhancedYjsCollaboration] Applying rich Yjs content to Lexical');
+      isApplyingRef.current = true;
+      
+      try {
+        if (content.trim()) {
+          const parsedState = JSON.parse(content);
+          const editorState = editor.parseEditorState(parsedState);
+          editor.setEditorState(editorState);
+        } else {
+          editor.update(() => {
+            const root = $getRoot();
+            root.clear();
+          });
+        }
+        lastContentRef.current = content;
+      } catch (e) {
+        console.warn('[EnhancedYjsCollaboration] Failed to parse Yjs content as JSON:', e);
+        // Fallback to plain text
+        editor.update(() => {
+          const root = $getRoot();
+          root.clear();
+          if (content.trim()) {
+            const p = $createParagraphNode();
+            p.append($createTextNode(content));
+            root.append(p);
+          }
+        });
+        lastContentRef.current = content;
+      }
+      
+      setTimeout(() => {
+        isApplyingRef.current = false;
+      }, 0);
+    };
+
+    // Observe Yjs changes
+    const yObserver = (event: any, transaction: any) => {
+      yjsToLexical(transaction.origin);
+    };
+    sharedText.observeDeep(yObserver);
+
+    // Bootstrap initial content
+    if (!hasBootstrapped.current) {
+      console.log('[EnhancedYjsCollaboration] Bootstrapping from Yjs');
+      yjsToLexical();
+      hasBootstrapped.current = true;
+    }
+
+    // Listen to local Lexical changes
+    const unregister = editor.registerUpdateListener(({ editorState, dirtyElements, dirtyLeaves }) => {
+      lexicalToYjs();
+    });
+
+    return () => {
+      console.log('[EnhancedYjsCollaboration] Cleaning up rich text Yjs binding');
+      sharedText.unobserveDeep(yObserver);
+      unregister();
+    };
+  }, [yjsProvider?.doc, editor, documentId, yjsProvider?.isSynced]);
+
+  return null;
+}
+
+// Yjs Collaboration Editor component (with official integration)
 function YjsCollaborationEditor(props: any) {
   const yjsProvider = useYjsProvider();
   
@@ -434,10 +542,7 @@ function YjsCollaborationEditor(props: any) {
               <FloatingTextFormatToolbar />
             </div>
             
-            <LexicalYjsCollaborationPlugin
-              id={props.documentId}
-              shouldBootstrap={true}
-            />
+            <EnhancedYjsCollaborationPlugin documentId={props.documentId} />
             
             <YjsContentSyncPlugin
               initialContent={props.initialContent}
