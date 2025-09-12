@@ -121,6 +121,13 @@ export function EnhancedYjsCollaborationPlugin({
       if (node instanceof TextNode) {
         result.text = node.getTextContent();
         result.format = node.getFormat();
+        result.style = node.getStyle();
+        result.mode = node.getMode();
+        console.log('🔄 [Enhanced Yjs] Serializing TextNode:', {
+          text: result.text,
+          format: result.format,
+          style: result.style
+        });
       } else if ($isHeadingNode(node)) {
         result.tag = node.getTag();
         result.children = node.getChildren().map(serializeLexicalToYjs);
@@ -156,9 +163,20 @@ export function EnhancedYjsCollaborationPlugin({
       switch (data.type) {
         case 'text':
           node = $createTextNode(data.text || '');
-          if (data.format) {
+          if (data.format !== undefined) {
             node.setFormat(data.format);
           }
+          if (data.style) {
+            node.setStyle(data.style);
+          }
+          if (data.mode !== undefined) {
+            node.setMode(data.mode);
+          }
+          console.log('🔄 [Enhanced Yjs] Deserializing TextNode:', {
+            text: data.text,
+            format: data.format,
+            style: data.style
+          });
           break;
 
         case 'paragraph':

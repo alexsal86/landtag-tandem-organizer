@@ -41,7 +41,7 @@ import CollaborationStatus from './CollaborationStatus';
 import { YjsProvider, useYjsProvider } from './collaboration/YjsProvider';
 import { LexicalYjsCollaborationPlugin } from './collaboration/LexicalYjsCollaborationPlugin';
 import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
-import FloatingTextToolbar from './FloatingTextToolbar';
+import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
 import { Button } from './ui/button';
 import { Bold, Italic, List, ListOrdered, Quote, Code, Heading1, Heading2, Heading3 } from 'lucide-react';
 
@@ -150,25 +150,12 @@ function ToolbarPlugin() {
 
   return (
     <>
-      {/* Fixed Toolbar */}
+      {/* Fixed Toolbar for Block Formatting */}
       <div className="border-b border-border bg-background">
-        <FloatingTextToolbar
-          onFormatText={onFormatText}
-          activeFormats={activeFormats}
-          isVisible={true}
-        />
-      </div>
-      
-      {/* Floating Toolbar (appears on text selection) */}
-      {showFloatingToolbar && (
-        <div className="absolute z-50 bg-background border border-border rounded-lg shadow-lg">
-          <FloatingTextToolbar
-            onFormatText={onFormatText}
-            activeFormats={activeFormats}
-            isVisible={showFloatingToolbar}
-          />
+        <div className="flex flex-wrap gap-1 p-3">
+          <span className="text-sm text-muted-foreground">Rich Text Editor - Select text for formatting</span>
         </div>
-      )}
+      </div>
     </>
   );
 }
@@ -378,19 +365,22 @@ function YjsCollaborationEditor(props: any) {
           <div className="editor-inner relative">
             {props.showToolbar && <ToolbarPlugin />}
             
-            <RichTextPlugin
-              contentEditable={
-                <ContentEditable 
-                  className="editor-input min-h-[300px] p-4 focus:outline-none resize-none prose prose-sm max-w-none" 
-                />
-              }
-              placeholder={
-                <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
-                  {props.placeholder}
-                </div>
-              }
-              ErrorBoundary={LexicalErrorBoundary}
-            />
+            <div className="relative">
+              <RichTextPlugin
+                contentEditable={
+                  <ContentEditable 
+                    className="editor-input min-h-[300px] p-4 focus:outline-none resize-none prose prose-sm max-w-none" 
+                  />
+                }
+                placeholder={
+                  <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
+                    {props.placeholder}
+                  </div>
+                }
+                ErrorBoundary={LexicalErrorBoundary}
+              />
+              <FloatingTextFormatToolbar />
+            </div>
             
             <LexicalYjsCollaborationPlugin
               id={props.documentId}
