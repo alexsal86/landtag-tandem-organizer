@@ -62,19 +62,19 @@ const CollaborationStatus: React.FC<CollaborationStatusProps> = ({ isConnected, 
                 <TooltipTrigger asChild>
                   <Avatar className="h-6 w-6 border-2 border-primary">
                     <AvatarImage 
-                      src={currentUser.user_metadata?.avatar_url} 
-                      alt={currentUser.user_metadata?.display_name || currentUser.email?.split('@')[0] || 'Sie'} 
+                      src={currentUser.profile?.avatar_url || currentUser.user_metadata?.avatar_url} 
+                      alt={currentUser.profile?.display_name || currentUser.user_metadata?.display_name || currentUser.email?.split('@')[0] || 'Sie'} 
                     />
                     <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                      {currentUser.user_metadata?.display_name 
-                        ? currentUser.user_metadata.display_name.charAt(0).toUpperCase()
+                      {(currentUser.profile?.display_name || currentUser.user_metadata?.display_name)
+                        ? (currentUser.profile?.display_name || currentUser.user_metadata?.display_name).charAt(0).toUpperCase()
                         : currentUser.email?.charAt(0).toUpperCase() || <User className="h-3 w-3" />
                       }
                     </AvatarFallback>
                   </Avatar>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{currentUser.user_metadata?.display_name || currentUser.email?.split('@')[0] || 'Sie'}</p>
+                  <p>{currentUser.profile?.display_name || currentUser.user_metadata?.display_name || currentUser.email?.split('@')[0] || 'Sie'}</p>
                 </TooltipContent>
               </Tooltip>
             </div>

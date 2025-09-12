@@ -202,6 +202,7 @@ export function YjsProvider({
   const [isConnected, setIsConnected] = React.useState(false);
   const [isSynced, setIsSynced] = React.useState(false);
   const [collaborators, setCollaborators] = React.useState<any[]>([]);
+  const [currentUserProfile, setCurrentUserProfile] = React.useState<any>(null);
   
   const onConnectedRef = useRef(onConnected);
   const onDisconnectedRef = useRef(onDisconnected);
@@ -213,6 +214,32 @@ export function YjsProvider({
     onDisconnectedRef.current = onDisconnected;
     onCollaboratorsChangeRef.current = onCollaboratorsChange;
   }, [onConnected, onDisconnected, onCollaboratorsChange]);
+
+  // Load user profile separately
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, avatar_url')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        setCurrentUserProfile(profile);
+      }
+    };
+    
+    loadUserProfile();
+  }, [user?.id]);
+
+  // Update awareness when profile loads
+  useEffect(() => {
+    if (providerRef.current && user) {
+      providerRef.current.awareness.setLocalStateField('userId', user.id);
+      providerRef.current.awareness.setLocalStateField('displayName', currentUserProfile?.display_name || user?.user_metadata?.display_name || user?.email?.split('@')[0]);
+      providerRef.current.awareness.setLocalStateField('avatarUrl', currentUserProfile?.avatar_url || user?.user_metadata?.avatar_url);
+    }
+  }, [currentUserProfile, user]);
 
   useEffect(() => {
     if (!documentId) return;
@@ -267,11 +294,6 @@ export function YjsProvider({
 
     provider.awareness.on('update', updateCollaborators);
 
-    // Set own user info in awareness
-    provider.awareness.setLocalStateField('userId', user?.id);
-    provider.awareness.setLocalStateField('displayName', user?.user_metadata?.display_name || user?.email?.split('@')[0]);
-    provider.awareness.setLocalStateField('avatarUrl', user?.user_metadata?.avatar_url);
-
     // Connect the provider
     provider.connect();
 
@@ -297,7 +319,7 @@ export function YjsProvider({
     isConnected,
     isSynced,
     collaborators,
-    currentUser: user,
+    currentUser: { ...user, profile: currentUserProfile },
   };
 
   return (
