@@ -453,15 +453,20 @@ export function CalendarView() {
             const startTime = new Date(externalEvent.start_time);
             let endTime = new Date(externalEvent.end_time);
             
-            // Detect and normalize all-day external events
+            // Detect all-day events (including multi-day)
             const isExternalAllDay = externalEvent.all_day || isExternalAllDayEvent(startTime, endTime);
             
-            if (isExternalAllDay) {
-              // For external all-day events, normalize the end time to 23:59:59 of the start day
+            // Only normalize single-day all-day events, not multi-day events
+            const isSingleDayAllDay = isExternalAllDayEvent(startTime, endTime);
+            
+            if (isSingleDayAllDay) {
+              // For single-day external all-day events, normalize the end time to 23:59:59 of the start day
               // This fixes the issue where external calendars set end time to midnight of next day
               endTime = new Date(startTime);
               endTime.setHours(23, 59, 59, 999);
-              console.log('🔧 Normalized external all-day event:', externalEvent.title, 'from', externalEvent.end_time, 'to', endTime.toISOString());
+              console.log('🔧 Normalized single-day external all-day event:', externalEvent.title, 'from', externalEvent.end_time, 'to', endTime.toISOString());
+            } else if (isExternalAllDay) {
+              console.log('✅ Keeping multi-day all-day event unchanged:', externalEvent.title, 'from', startTime.toISOString(), 'to', endTime.toISOString());
             }
             
             const durationMs = endTime.getTime() - startTime.getTime();
