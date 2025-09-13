@@ -70,12 +70,29 @@ class CommentMarkNode extends MarkNode {
     const element = document.createElement('mark');
     element.className = `comment-highlight comment-${this.__commentId}`;
     element.setAttribute('data-comment-id', this.__commentId);
-    element.addEventListener('click', () => {
+    element.style.backgroundColor = 'hsl(45 95% 70% / 0.4)';
+    element.style.borderRadius = '2px';
+    element.style.padding = '1px 2px';
+    element.style.cursor = 'pointer';
+    element.style.transition = 'all 0.2s ease';
+    
+    element.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       // Dispatch custom event to highlight comment in sidebar
       window.dispatchEvent(new CustomEvent('comment-highlight-click', {
         detail: { commentId: this.__commentId }
       }));
     });
+    
+    element.addEventListener('mouseenter', () => {
+      element.style.backgroundColor = 'hsl(45 95% 60% / 0.6)';
+    });
+    
+    element.addEventListener('mouseleave', () => {
+      element.style.backgroundColor = 'hsl(45 95% 70% / 0.4)';
+    });
+    
     return element;
   }
 
@@ -308,7 +325,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
     if (!documentId) return;
     
     try {
-      // First get comments
+      // Get all comments (main comments and replies)
       const { data: commentsData, error: commentsError } = await supabase
         .from('letter_comments')
         .select('*')
@@ -317,7 +334,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
 
       if (commentsError) throw commentsError;
 
-      // Then get user profiles for the comment authors
+      // Get user profiles for the comment authors
       const userIds = [...new Set(commentsData?.map(comment => comment.user_id) || [])];
       
       let profilesData = [];
@@ -334,9 +351,31 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         }
       }
 
-      // Combine comments with profile data
-      const commentsWithProfiles = commentsData?.map((comment: any) => {
+      // Separate main comments from replies
+      const mainComments = commentsData?.filter(comment => !comment.parent_comment_id) || [];
+      const replies = commentsData?.filter(comment => comment.parent_comment_id) || [];
+
+      // Combine comments with profile data and replies
+      const commentsWithProfiles = mainComments.map((comment: any) => {
         const profile = profilesData.find(p => p.user_id === comment.user_id);
+        const commentReplies = replies
+          .filter(reply => reply.parent_comment_id === comment.id)
+          .map((reply: any) => {
+            const replyProfile = profilesData.find(p => p.user_id === reply.user_id);
+            return {
+              id: reply.id,
+              text: reply.content,
+              author: reply.user_id,
+              authorName: replyProfile?.display_name || 'Unknown User',
+              avatarUrl: replyProfile?.avatar_url,
+              timestamp: reply.created_at,
+              position: 0,
+              length: 0,
+              resolved: false,
+              replies: []
+            };
+          });
+
         return {
           id: comment.id,
           text: comment.content,
@@ -347,9 +386,9 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
           position: comment.text_position || 0,
           length: comment.text_length || 0,
           resolved: comment.resolved || false,
-          replies: [] // Load replies separately if needed
+          replies: commentReplies
         };
-      }) || [];
+      });
 
       setComments(commentsWithProfiles);
       
@@ -366,30 +405,35 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   };
 
   const highlightExistingComments = (commentsList: Comment[]) => {
-    editor.update(() => {
-      commentsList.forEach((comment) => {
-        if (!comment.resolved && comment.position !== undefined && comment.length !== undefined) {
-          // Create a CommentMarkNode for each existing comment
-          const markNode = $createCommentMarkNode(comment.id);
-          
-          // For now, we'll add the mark to indicate the comment exists
-          // In a real implementation, you'd need to reconstruct the exact text selection
-          // based on stored position and length data
-          console.log(`Creating highlight for comment ${comment.id} at position ${comment.position} with length ${comment.length}`);
-          
-          // Store the mark node key for later reference
-          const writable = { ...comment, markNodeKey: markNode.getKey() };
-          
-          // Note: This is a simplified approach. A full implementation would need
-          // to map stored positions back to the current editor state and apply
-          // the CommentMarkNode to the exact text range.
-        }
-      });
-    });
+    // For now, we'll skip automatic highlighting of existing comments
+    // since position mapping is complex. Comments will be highlighted
+    // when they're created in the current session.
+    console.log(`Loaded ${commentsList.length} existing comments`);
   };
 
   useEffect(() => {
     loadComments();
+    
+    // Add event listener for comment highlighting clicks
+    const handleCommentHighlightClick = (event: CustomEvent) => {
+      const { commentId } = event.detail;
+      setHighlightedComment(commentId);
+      setShowSidebar(true);
+      
+      // Scroll to comment in sidebar
+      setTimeout(() => {
+        const commentElement = document.querySelector(`[data-comment-id="${commentId}"]`);
+        if (commentElement) {
+          commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    };
+    
+    window.addEventListener('comment-highlight-click', handleCommentHighlightClick as EventListener);
+    
+    return () => {
+      window.removeEventListener('comment-highlight-click', handleCommentHighlightClick as EventListener);
+    };
   }, [documentId]);
 
   const handleAddComment = () => {
@@ -428,13 +472,15 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
 
       if (error) throw error;
 
-      // Create highlight in editor
+      // Create highlight in editor using correct Lexical API
       editor.update(() => {
         const selection = $getSelection();
         if ($isRangeSelection(selection) && !selection.isCollapsed()) {
-          // Apply the mark to the selected text
+          // Create the comment mark node
           const markNode = $createCommentMarkNode(data.id);
           const selectedNodes = selection.extract();
+          
+          // Apply the mark to the selection
           markNode.append(...selectedNodes);
           selection.insertNodes([markNode]);
         }
@@ -506,8 +552,38 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   };
 
   const replyToComment = async (commentId: string, text: string) => {
-    // Placeholder for reply functionality
-    console.log('Reply to comment:', commentId, text);
+    if (!documentId || !text.trim()) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('letter_comments')
+        .insert({
+          letter_id: documentId,
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          content: text,
+          parent_comment_id: commentId,
+          comment_type: 'reply'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Reload comments to show the new reply
+      loadComments();
+
+      toast({
+        title: "Antwort hinzugefügt",
+        description: "Ihre Antwort wurde gespeichert.",
+      });
+    } catch (error) {
+      console.error('Error saving reply:', error);
+      toast({
+        title: "Fehler",
+        description: "Antwort konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const deleteComment = async (commentId: string) => {

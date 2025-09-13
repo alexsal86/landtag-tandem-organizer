@@ -101,15 +101,16 @@ export function CollaborationDashboard({
         variant="outline"
         size="sm"
         onClick={onToggle}
-        className="fixed top-4 left-4 z-30"
+        className="fixed top-16 right-20 z-30"
+        title="Aktivitäts-Stream öffnen"
       >
-        <Eye className="h-4 w-4" />
+        <Activity className="h-4 w-4" />
       </Button>
     );
   }
 
   return (
-    <div className="fixed top-4 left-4 w-80 z-30">
+    <div className="fixed top-16 right-4 w-80 z-30">
       <Card className="shadow-lg">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">

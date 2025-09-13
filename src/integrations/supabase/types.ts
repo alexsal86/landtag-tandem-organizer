@@ -2662,6 +2662,7 @@ export type Database = {
           created_at: string
           id: string
           letter_id: string
+          parent_comment_id: string | null
           resolved: boolean | null
           text_length: number | null
           text_position: number | null
@@ -2674,6 +2675,7 @@ export type Database = {
           created_at?: string
           id?: string
           letter_id: string
+          parent_comment_id?: string | null
           resolved?: boolean | null
           text_length?: number | null
           text_position?: number | null
@@ -2686,6 +2688,7 @@ export type Database = {
           created_at?: string
           id?: string
           letter_id?: string
+          parent_comment_id?: string | null
           resolved?: boolean | null
           text_length?: number | null
           text_position?: number | null
@@ -2698,6 +2701,13 @@ export type Database = {
             columns: ["letter_id"]
             isOneToOne: false
             referencedRelation: "letters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "letter_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "letter_comments"
             referencedColumns: ["id"]
           },
         ]

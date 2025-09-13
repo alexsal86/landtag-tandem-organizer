@@ -417,7 +417,7 @@ function YjsContentSyncPlugin({
 // Clean Yjs Collaboration Editor component  
 function YjsCollaborationEditor(props: any) {
   const yjsProvider = useYjsProvider();
-  const [showCollabDashboard, setShowCollabDashboard] = React.useState(true);
+  const [showCollabDashboard, setShowCollabDashboard] = React.useState(false);
   
   return (
     <div className="relative min-h-[200px] border rounded-md overflow-hidden">
@@ -430,7 +430,7 @@ function YjsCollaborationEditor(props: any) {
         </div>
       )}
       
-      {/* Collaboration Dashboard */}
+      {/* Collaboration Dashboard - positioned near toolbar */}
       <CollaborationDashboard
         documentId={props.documentId}
         isVisible={showCollabDashboard}
