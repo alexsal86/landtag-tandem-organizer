@@ -2111,10 +2111,16 @@ export type Database = {
           ics_url: string
           id: string
           is_active: boolean
+          last_successful_sync: string | null
           last_sync: string | null
+          last_sync_error: string | null
+          max_events: number | null
           name: string
           sync_enabled: boolean
+          sync_end_date: string | null
+          sync_errors_count: number | null
           sync_interval: number
+          sync_start_date: string | null
           tenant_id: string
           updated_at: string
           user_id: string
@@ -2126,10 +2132,16 @@ export type Database = {
           ics_url: string
           id?: string
           is_active?: boolean
+          last_successful_sync?: string | null
           last_sync?: string | null
+          last_sync_error?: string | null
+          max_events?: number | null
           name: string
           sync_enabled?: boolean
+          sync_end_date?: string | null
+          sync_errors_count?: number | null
           sync_interval?: number
+          sync_start_date?: string | null
           tenant_id: string
           updated_at?: string
           user_id: string
@@ -2141,10 +2153,16 @@ export type Database = {
           ics_url?: string
           id?: string
           is_active?: boolean
+          last_successful_sync?: string | null
           last_sync?: string | null
+          last_sync_error?: string | null
+          max_events?: number | null
           name?: string
           sync_enabled?: boolean
+          sync_end_date?: string | null
+          sync_errors_count?: number | null
           sync_interval?: number
+          sync_start_date?: string | null
           tenant_id?: string
           updated_at?: string
           user_id?: string
