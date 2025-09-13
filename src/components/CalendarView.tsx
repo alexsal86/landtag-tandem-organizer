@@ -330,6 +330,7 @@ export function CalendarView() {
               time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
               duration: "2.0h",
               date: startTime,
+              endTime: endTime, // Add the missing endTime property
               type: eventType as CalendarEvent["type"],
               priority: "medium",
               participants,

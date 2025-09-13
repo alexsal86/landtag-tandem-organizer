@@ -503,7 +503,7 @@ export function AppointmentDetailsSidebar({
                 ) : (
                   <>
                     <div className="font-medium">
-                      {appointment.date.toLocaleDateString('de-DE', {
+                      {appointment.date?.toLocaleDateString('de-DE', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
@@ -511,7 +511,7 @@ export function AppointmentDetailsSidebar({
                       })}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {appointment.date.toDateString()}
+                      {appointment.date?.toDateString()}
                     </div>
                   </>
                 )}
@@ -564,9 +564,9 @@ export function AppointmentDetailsSidebar({
                   <div className="text-sm text-muted-foreground">
                     {appointment.is_all_day ? (
                       appointment.endTime ? (
-                        `${appointment.date.toLocaleDateString('de-DE')} - ${appointment.endTime.toLocaleDateString('de-DE')}`
+                        `${appointment.date?.toLocaleDateString('de-DE')} - ${appointment.endTime?.toLocaleDateString('de-DE')}`
                       ) : (
-                        appointment.date.toLocaleDateString('de-DE')
+                        appointment.date?.toLocaleDateString('de-DE')
                       )
                     ) : (
                       formatEventDisplay(appointment)
