@@ -366,17 +366,25 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   };
 
   const highlightExistingComments = (commentsList: Comment[]) => {
-    // This is a simplified implementation
-    // In a real app, you'd need to store text positions and recreate highlights
-    commentsList.forEach((comment) => {
-      if (!comment.resolved) {
-        // Find existing highlights in the DOM
-        const existingHighlights = document.querySelectorAll(`[data-comment-id="${comment.id}"]`);
-        if (existingHighlights.length === 0) {
-          // Would need more sophisticated text matching here
-          console.log('Comment highlight missing for:', comment.id);
+    editor.update(() => {
+      commentsList.forEach((comment) => {
+        if (!comment.resolved && comment.position !== undefined && comment.length !== undefined) {
+          // Create a CommentMarkNode for each existing comment
+          const markNode = $createCommentMarkNode(comment.id);
+          
+          // For now, we'll add the mark to indicate the comment exists
+          // In a real implementation, you'd need to reconstruct the exact text selection
+          // based on stored position and length data
+          console.log(`Creating highlight for comment ${comment.id} at position ${comment.position} with length ${comment.length}`);
+          
+          // Store the mark node key for later reference
+          const writable = { ...comment, markNodeKey: markNode.getKey() };
+          
+          // Note: This is a simplified approach. A full implementation would need
+          // to map stored positions back to the current editor state and apply
+          // the CommentMarkNode to the exact text range.
         }
-      }
+      });
     });
   };
 
