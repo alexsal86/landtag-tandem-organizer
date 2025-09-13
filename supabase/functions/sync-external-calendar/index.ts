@@ -70,9 +70,16 @@ function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents:
       currentEvent = {};
     } else if (line === 'END:VEVENT' && currentEvent) {
       if (currentEvent.uid && currentEvent.summary && currentEvent.dtstart) {
-        // Filter by configurable date range
-        const eventDate = parseICSDate(currentEvent.dtstart);
-        if (eventDate >= startDate && eventDate <= endDate) {
+        // Improved filtering: check if event overlaps with our date range
+        const eventStart = parseICSDate(currentEvent.dtstart);
+        const eventEnd = currentEvent.dtend ? parseICSDate(currentEvent.dtend) : 
+          // For all-day events or events without end time, assume 1 day duration
+          new Date(eventStart.getTime() + 24 * 60 * 60 * 1000);
+        
+        // Event overlaps if: event_start <= range_end AND event_end >= range_start
+        const overlapsWithRange = eventStart <= endDate && eventEnd >= startDate;
+        
+        if (overlapsWithRange) {
           events.push(currentEvent as ICSEvent);
         }
       }
@@ -317,7 +324,7 @@ serve(async (req) => {
     // Use configurable date range
     const startDate = new Date(calendar.sync_start_date);
     const endDate = new Date(calendar.sync_end_date);
-    const maxEvents = calendar.max_events || 2000;
+    const maxEvents = calendar.max_events || 5000;
 
     // Fetch the ICS content
     console.log('📥 Fetching ICS content...');
