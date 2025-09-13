@@ -16,6 +16,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { useFeatureFlag, FeatureFlagToggle } from "@/hooks/useFeatureFlag";
 import { useToast } from "@/hooks/use-toast";
+import { rrulestr } from "rrule";
 
 export interface CalendarEvent {
   id: string;
@@ -230,6 +231,47 @@ export function CalendarView() {
     }
   };
 
+  // Function to expand recurring events using RRULE
+  const expandRecurringEvent = (event: any, startDate: Date, endDate: Date) => {
+    if (!event.recurrence_rule) return [event];
+    
+    try {
+      console.log('🔄 Expanding recurring event:', event.title, 'with rule:', event.recurrence_rule);
+      
+      // Parse the RRULE string
+      const rule = rrulestr(event.recurrence_rule, {
+        dtstart: new Date(event.start_time)
+      });
+      
+      // Generate occurrences within the date range
+      const occurrences = rule.between(startDate, endDate, true);
+      console.log('📊 Generated', occurrences.length, 'occurrences for', event.title);
+      
+      return occurrences.map((occurrence, index) => {
+        const originalStart = new Date(event.start_time);
+        const originalEnd = new Date(event.end_time);
+        const duration = originalEnd.getTime() - originalStart.getTime();
+        
+        // Create new event with adjusted dates
+        const newStart = new Date(occurrence);
+        const newEnd = new Date(newStart.getTime() + duration);
+        
+        return {
+          ...event,
+          id: `${event.id}-recurrence-${index}`,
+          start_time: newStart.toISOString(),
+          end_time: newEnd.toISOString(),
+          // Mark as recurring instance
+          _isRecurring: true,
+          _originalId: event.id
+        };
+      });
+    } catch (error) {
+      console.error('❌ Error parsing RRULE for event', event.title, ':', error);
+      return [event]; // Return original event if RRULE parsing fails
+    }
+  };
+
   const processAppointments = async (appointmentsData: any[], startDate: Date, endDate: Date) => {
     try {
       console.log('🔍 Processing appointments for date range:', startDate.toISOString(), 'to', endDate.toISOString());
@@ -334,21 +376,31 @@ export function CalendarView() {
           console.error('❌ External events query error:', externalError);
         }
 
-        // Process external events
+        // Process external events with RRULE expansion
         if (externalEvents && externalEvents.length > 0) {
           console.log('📅 Processing', externalEvents.length, 'external events from', externalEvents[0]?.external_calendars?.name);
           
-          // Log sample of external events for debugging
-          const sampleEvents = externalEvents.slice(0, 3);
-          console.log('📊 Sample external events:', sampleEvents.map(e => ({
+          // Expand recurring events
+          const expandedExternalEvents: any[] = [];
+          for (const externalEvent of externalEvents) {
+            const expandedEvents = expandRecurringEvent(externalEvent, startDate, endDate);
+            expandedExternalEvents.push(...expandedEvents);
+          }
+          
+          console.log('📊 Expanded', externalEvents.length, 'external events to', expandedExternalEvents.length, 'occurrences');
+          
+          // Log sample of expanded events for debugging
+          const sampleEvents = expandedExternalEvents.slice(0, 3);
+          console.log('📊 Sample expanded external events:', sampleEvents.map(e => ({
             title: e.title,
             startTime: e.start_time,
             endTime: e.end_time,
             calendar: e.external_calendars?.name,
-            isMultiDay: new Date(e.end_time).getDate() !== new Date(e.start_time).getDate()
+            isRecurring: e._isRecurring || false,
+            originalId: e._originalId
           })));
 
-          for (const externalEvent of externalEvents) {
+          for (const externalEvent of expandedExternalEvents) {
             const startTime = new Date(externalEvent.start_time);
             const endTime = new Date(externalEvent.end_time);
             const durationMs = endTime.getTime() - startTime.getTime();
