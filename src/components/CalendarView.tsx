@@ -656,7 +656,7 @@ export function CalendarView() {
           </div>
 
           <div className="flex gap-2">
-            {["day", "week", "month"].map((viewType) => (
+            {["day", "week", "month", "agenda"].map((viewType) => (
               <Button
                 key={viewType}
                 variant={view === viewType ? "default" : "outline"}
@@ -666,6 +666,7 @@ export function CalendarView() {
                 {viewType === "day" && "Tag"}
                 {viewType === "week" && "Woche"}
                 {viewType === "month" && "Monat"}
+                {viewType === "agenda" && "Agenda"}
               </Button>
             ))}
           </div>

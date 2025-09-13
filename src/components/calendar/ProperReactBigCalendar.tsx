@@ -227,6 +227,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
           selectRangeFormat: ({ start, end }) =>
             `${moment(start).format('DD. MMM')} – ${moment(end).format('DD. MMM')}`
         }}
+        toolbar={false}
         selectable
         resizable
         popup
