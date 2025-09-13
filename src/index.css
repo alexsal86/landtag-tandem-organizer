@@ -434,6 +434,23 @@ All colors MUST be HSL.
   .p-1 {
     padding: 0.25rem 0 0.25rem 0.25rem !important;
   }
+
+  /* Leaflet popup z-index fix for Wahlkreise */
+  .leaflet-popup-pane {
+    z-index: 700 !important;
+  }
+
+  .leaflet-popup {
+    z-index: 700 !important;
+  }
+
+  .leaflet-popup-tip-container {
+    z-index: 700 !important;
+  }
+
+  .leaflet-popup-content-wrapper {
+    z-index: 700 !important;
+  }
 }
 
 /* Lexical Editor Styles */
