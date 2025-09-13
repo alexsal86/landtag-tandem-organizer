@@ -233,6 +233,7 @@ export function CalendarView() {
   const processAppointments = async (appointmentsData: any[], startDate: Date, endDate: Date) => {
     try {
       console.log('🔍 Processing appointments for date range:', startDate.toISOString(), 'to', endDate.toISOString());
+      console.log('📊 Raw appointments data:', appointmentsData);
       
       // Fetch appointment categories to get colors
       const { data: categoriesData } = await supabase
@@ -465,6 +466,15 @@ export function CalendarView() {
         dateRange: `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`,
         view: view
       });
+      
+      console.log('📊 Sample formatted events:', formattedEvents.slice(0, 2).map(event => ({
+        id: event.id,
+        title: event.title,
+        date: event.date,
+        endTime: event.endTime,
+        type: event.type,
+        is_all_day: event.is_all_day
+      })));
 
       setAppointments(formattedEvents);
     } catch (error) {

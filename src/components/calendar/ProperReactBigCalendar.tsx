@@ -128,7 +128,17 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
   // Convert events to RBC format using the adapter
   const rbcEvents = useMemo(() => {
-    return CalendarEventAdapter.toRBCEvents(events);
+    console.log('🔄 Converting events to RBC format, input events:', events.length);
+    const converted = CalendarEventAdapter.toRBCEvents(events);
+    console.log('✅ RBC events created:', converted.length, 'events');
+    console.log('📊 Sample RBC events:', converted.slice(0, 2).map(e => ({
+      id: e.id,
+      title: e.title,
+      start: e.start,
+      end: e.end,
+      allDay: e.allDay
+    })));
+    return converted;
   }, [events]);
 
   // Event prop getter for custom styling

@@ -22,25 +22,28 @@ export class CalendarEventAdapter {
     let startTime: Date;
     let endTime: Date;
 
-    // Handle different date formats
+    // Use the date property directly (it should already be a Date object from processAppointments)
     if (event.date instanceof Date) {
-      startTime = new Date(event.date);
+      startTime = new Date(event.date.getTime());
     } else {
       startTime = new Date(event.date);
     }
 
-    // If time is provided as string, parse it
-    if (event.time && typeof event.time === 'string') {
-      const [hours, minutes] = event.time.split(':').map(Number);
-      startTime.setHours(hours, minutes, 0, 0);
-    }
-
+    // Handle endTime - priority: endTime > duration > default 1h
     if (event.endTime) {
-      endTime = new Date(event.endTime);
-    } else if (event.duration) {
+      if (event.endTime instanceof Date) {
+        endTime = new Date(event.endTime.getTime());
+      } else {
+        endTime = new Date(event.endTime);
+      }
+    } else if (event.duration && event.duration !== "Ganztägig") {
       // Parse duration string (e.g., "2h", "30min", "1h 30min")
       const durationMs = this.parseDurationToMs(event.duration);
       endTime = new Date(startTime.getTime() + durationMs);
+    } else if (event.is_all_day) {
+      // For all-day events, end at end of day
+      endTime = new Date(startTime);
+      endTime.setHours(23, 59, 59, 999);
     } else {
       // Default to 1 hour if no end time or duration
       endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
