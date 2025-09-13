@@ -431,8 +431,11 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       // Create highlight in editor
       editor.update(() => {
         const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
+        if ($isRangeSelection(selection) && !selection.isCollapsed()) {
+          // Apply the mark to the selected text
           const markNode = $createCommentMarkNode(data.id);
+          const selectedNodes = selection.extract();
+          markNode.append(...selectedNodes);
           selection.insertNodes([markNode]);
         }
       });
