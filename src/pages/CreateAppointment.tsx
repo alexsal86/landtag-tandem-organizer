@@ -23,6 +23,7 @@ import { AppointmentPollCreator } from "@/components/poll/AppointmentPollCreator
 import { AppointmentFileUpload } from "@/components/appointments/AppointmentFileUpload";
 import { ContactSelector } from "@/components/ContactSelector";
 import { GuestManager } from "@/components/GuestManager";
+import { RecurrenceSelector } from "@/components/ui/recurrence-selector";
 
 // Helper functions for intelligent date/time defaults
 const getDefaultStartTime = () => {
@@ -106,6 +107,14 @@ const CreateAppointment = () => {
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [appointmentGuests, setAppointmentGuests] = useState<Array<{name: string, email: string}>>([]);
+  const [hasRecurrence, setHasRecurrence] = useState(false);
+  const [recurrenceData, setRecurrenceData] = useState({
+    enabled: false,
+    frequency: "weekly" as "daily" | "weekly" | "monthly" | "yearly",
+    interval: 1,
+    weekdays: [] as number[],
+    endDate: undefined as string | undefined,
+  });
 
   const form = useForm({
     resolver: zodResolver(appointmentSchema) as any,
@@ -159,7 +168,33 @@ const CreateAppointment = () => {
     fetchData();
   }, [user, form]);
 
-  const onSubmit = async (values: AppointmentFormValues) => {
+  // Helper function to generate RRULE string
+  const generateRRULE = (recurrence: typeof recurrenceData) => {
+    if (!recurrence.enabled) return null;
+    
+    const frequency = recurrence.frequency.toUpperCase();
+    let rrule = `FREQ=${frequency}`;
+    
+    if (recurrence.interval && recurrence.interval > 1) {
+      rrule += `;INTERVAL=${recurrence.interval}`;
+    }
+    
+    if (recurrence.frequency === "weekly" && recurrence.weekdays && recurrence.weekdays.length > 0) {
+      const weekdays = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+      const selectedDays = recurrence.weekdays.map(day => weekdays[day]).join(",");
+      rrule += `;BYDAY=${selectedDays}`;
+    }
+    
+    if (recurrence.endDate) {
+      const endDate = new Date(recurrence.endDate);
+      const formattedEndDate = endDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      rrule += `;UNTIL=${formattedEndDate}`;
+    }
+    
+    return rrule;
+  };
+
+  const onSubmit = async (values: any) => {
     if (!user) return;
 
     if (!currentTenant) {
@@ -769,10 +804,10 @@ const CreateAppointment = () => {
                      <Users className="h-5 w-5" />
                      <h3 className="text-lg font-semibold">Externe Gäste</h3>
                    </div>
-                   <GuestManager
-                     guests={appointmentGuests}
-                     onGuestsChange={setAppointmentGuests}
-                   />
+                    <GuestManager
+                      guests={appointmentGuests}
+                      onGuestsChange={setAppointmentGuests}
+                    />
                  </div>
 
                  <div className="space-y-4">
