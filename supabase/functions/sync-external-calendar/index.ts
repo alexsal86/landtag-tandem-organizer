@@ -69,19 +69,31 @@ function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents:
     if (line === 'BEGIN:VEVENT') {
       currentEvent = {};
     } else if (line === 'END:VEVENT' && currentEvent) {
+      // Enhanced validation with better error handling
       if (currentEvent.uid && currentEvent.summary && currentEvent.dtstart) {
-        // Improved filtering: check if event overlaps with our date range
-        const eventStart = parseICSDate(currentEvent.dtstart);
-        const eventEnd = currentEvent.dtend ? parseICSDate(currentEvent.dtend) : 
-          // For all-day events or events without end time, assume 1 day duration
-          new Date(eventStart.getTime() + 24 * 60 * 60 * 1000);
-        
-        // Event overlaps if: event_start <= range_end AND event_end >= range_start
-        const overlapsWithRange = eventStart <= endDate && eventEnd >= startDate;
-        
-        if (overlapsWithRange) {
-          events.push(currentEvent as ICSEvent);
+        try {
+          // Improved filtering: check if event overlaps with our date range
+          const eventStart = parseICSDate(currentEvent.dtstart);
+          const eventEnd = currentEvent.dtend ? parseICSDate(currentEvent.dtend) : 
+            // For all-day events or events without end time, assume 1 day duration
+            new Date(eventStart.getTime() + 24 * 60 * 60 * 1000);
+          
+          // Event overlaps if: event_start <= range_end AND event_end >= range_start
+          const overlapsWithRange = eventStart <= endDate && eventEnd >= startDate;
+          
+          if (overlapsWithRange) {
+            events.push(currentEvent as ICSEvent);
+          }
+        } catch (parseError) {
+          console.warn(`⚠️ Failed to parse event ${currentEvent.uid}: ${parseError.message}`);
         }
+      } else {
+        // Log incomplete events for debugging
+        const missingFields = [];
+        if (!currentEvent.uid) missingFields.push('uid');
+        if (!currentEvent.summary) missingFields.push('summary');
+        if (!currentEvent.dtstart) missingFields.push('dtstart');
+        console.warn(`⚠️ Skipping incomplete event - missing: ${missingFields.join(', ')}`);
       }
       currentEvent = null;
       
@@ -207,45 +219,83 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
 
   console.log(`🔄 Processing ${eventsToProcess.length} events (${stats.skippedEvents} skipped as unchanged)`);
 
+  // Remove duplicate UIDs within the batch to prevent database conflicts
+  const uniqueEventsMap = new Map();
+  eventsToProcess.forEach(event => {
+    const existingEvent = uniqueEventsMap.get(event.external_uid);
+    if (!existingEvent || (event.last_modified && (!existingEvent.last_modified || event.last_modified > existingEvent.last_modified))) {
+      uniqueEventsMap.set(event.external_uid, event);
+    }
+  });
+  
+  const dedupedEvents = Array.from(uniqueEventsMap.values());
+  const duplicatesRemoved = eventsToProcess.length - dedupedEvents.length;
+  
+  if (duplicatesRemoved > 0) {
+    console.log(`🔄 Removed ${duplicatesRemoved} duplicate UIDs from processing batch`);
+  }
+
   // Process events in batches using UPSERT
-  for (let i = 0; i < eventsToProcess.length; i += batchSize) {
-    const batch = eventsToProcess.slice(i, i + batchSize);
+  for (let i = 0; i < dedupedEvents.length; i += batchSize) {
+    const batch = dedupedEvents.slice(i, i + batchSize);
     const batchNumber = Math.floor(i / batchSize) + 1;
-    const totalBatches = Math.ceil(eventsToProcess.length / batchSize);
+    const totalBatches = Math.ceil(dedupedEvents.length / batchSize);
     
     try {
       console.log(`📦 Processing batch ${batchNumber}/${totalBatches} (${batch.length} events)`);
       
-      // UPSERT using ON CONFLICT
-      const { error: upsertError } = await supabase
-        .from('external_events')
-        .upsert(
-          batch.map(({ action, ...eventData }) => eventData),
-          { 
-            onConflict: 'external_calendar_id,external_uid',
-            ignoreDuplicates: false 
-          }
-        );
+      // UPSERT using ON CONFLICT - process each event individually to avoid batch conflicts
+      let batchNewCount = 0;
+      let batchUpdateCount = 0;
+      let batchErrorCount = 0;
+      
+      for (const eventItem of batch) {
+        try {
+          const { action, ...eventData } = eventItem;
+          
+          const { error: upsertError } = await supabase
+            .from('external_events')
+            .upsert(
+              [eventData],
+              { 
+                onConflict: 'external_calendar_id,external_uid',
+                ignoreDuplicates: false 
+              }
+            );
 
-      if (upsertError) {
-        console.error(`❌ Error in batch ${batchNumber}:`, upsertError);
-        stats.errorEvents += batch.length;
-        continue;
+          if (upsertError) {
+            console.error(`❌ Error upserting event ${eventData.external_uid}:`, {
+              error: upsertError,
+              uid: eventData.external_uid,
+              title: eventData.title
+            });
+            batchErrorCount++;
+          } else {
+            if (action === 'new') {
+              batchNewCount++;
+            } else {
+              batchUpdateCount++;
+            }
+          }
+        } catch (eventError) {
+          console.error(`❌ Failed to process individual event:`, {
+            error: eventError,
+            uid: eventItem.external_uid,
+            title: eventItem.title
+          });
+          batchErrorCount++;
+        }
       }
 
-      // Count new vs updated events
-      batch.forEach(event => {
-        if (event.action === 'new') {
-          stats.newEvents++;
-        } else {
-          stats.updatedEvents++;
-        }
-      });
+      // Update stats
+      stats.newEvents += batchNewCount;
+      stats.updatedEvents += batchUpdateCount;
+      stats.errorEvents += batchErrorCount;
 
-      console.log(`✅ Batch ${batchNumber} completed successfully`);
+      console.log(`✅ Batch ${batchNumber} completed: ${batchNewCount} new, ${batchUpdateCount} updated, ${batchErrorCount} errors`);
       
     } catch (error) {
-      console.error(`❌ Batch ${batchNumber} failed:`, error);
+      console.error(`❌ Batch ${batchNumber} failed completely:`, error);
       stats.errorEvents += batch.length;
     }
   }
@@ -321,10 +371,10 @@ serve(async (req) => {
     console.log(`🔗 ICS URL: ${calendar.ics_url}`);
     console.log(`📊 Config - Start: ${calendar.sync_start_date}, End: ${calendar.sync_end_date}, Max Events: ${calendar.max_events}`);
 
-    // Use configurable date range
+    // Use configurable date range with increased default limit
     const startDate = new Date(calendar.sync_start_date);
     const endDate = new Date(calendar.sync_end_date);
-    const maxEvents = calendar.max_events || 5000;
+    const maxEvents = calendar.max_events || 20000;
 
     // Fetch the ICS content
     console.log('📥 Fetching ICS content...');
