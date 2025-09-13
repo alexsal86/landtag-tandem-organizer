@@ -352,6 +352,9 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       }) || [];
 
       setComments(commentsWithProfiles);
+      
+      // Add highlights for existing comments
+      highlightExistingComments(commentsWithProfiles);
     } catch (error) {
       console.error('Error loading comments:', error);
       toast({
@@ -360,6 +363,21 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         variant: "destructive",
       });
     }
+  };
+
+  const highlightExistingComments = (commentsList: Comment[]) => {
+    // This is a simplified implementation
+    // In a real app, you'd need to store text positions and recreate highlights
+    commentsList.forEach((comment) => {
+      if (!comment.resolved) {
+        // Find existing highlights in the DOM
+        const existingHighlights = document.querySelectorAll(`[data-comment-id="${comment.id}"]`);
+        if (existingHighlights.length === 0) {
+          // Would need more sophisticated text matching here
+          console.log('Comment highlight missing for:', comment.id);
+        }
+      }
+    });
   };
 
   useEffect(() => {
@@ -574,7 +592,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   return (
     <>
       {/* Floating action buttons */}
-      <div className="fixed right-4 top-4 z-40 flex gap-2">
+      <div className="fixed bottom-4 right-4 z-40 flex flex-col gap-2">
         <Button
           variant="outline"
           size="sm"

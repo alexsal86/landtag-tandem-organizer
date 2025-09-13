@@ -249,7 +249,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
   return (
     <>
       {/* Connection Status Indicator */}
-      <div className="fixed top-6 right-6 z-50">
+      <div className="fixed top-6 right-20 z-50">
         <Card className="bg-background/95 backdrop-blur border-primary/20">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
@@ -296,7 +296,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
 
       {/* Connected Users List */}
       {showUserList && connectedUsers.length > 1 && (
-        <Card className="fixed top-20 right-6 w-64 z-50 bg-background/95 backdrop-blur border-primary/20">
+        <Card className="fixed top-20 right-20 w-64 z-50 bg-background/95 backdrop-blur border-primary/20">
           <CardContent className="p-3">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium">Online Users</h4>

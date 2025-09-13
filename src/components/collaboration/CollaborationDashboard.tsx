@@ -32,7 +32,7 @@ interface CollaborationDashboardProps {
 
 export function CollaborationDashboard({ 
   documentId, 
-  isVisible = true, 
+  isVisible = false, 
   onToggle 
 }: CollaborationDashboardProps) {
   const { collaborators, currentUser, isConnected, isSynced } = useYjsProvider();
@@ -101,7 +101,7 @@ export function CollaborationDashboard({
         variant="outline"
         size="sm"
         onClick={onToggle}
-        className="fixed top-4 right-4 z-30"
+        className="fixed top-4 left-4 z-30"
       >
         <Eye className="h-4 w-4" />
       </Button>
@@ -109,7 +109,7 @@ export function CollaborationDashboard({
   }
 
   return (
-    <div className="fixed top-4 right-4 w-80 z-30">
+    <div className="fixed top-4 left-4 w-80 z-30">
       <Card className="shadow-lg">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
