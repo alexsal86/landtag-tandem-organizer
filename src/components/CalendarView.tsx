@@ -65,10 +65,52 @@ export function CalendarView() {
   useEffect(() => {
     if (view === 'week') {
       fetchWeekAppointments();
+    } else if (view === 'month') {
+      fetchMonthAppointments();
     } else {
       fetchTodaysAppointments();
     }
   }, [currentDate, view]);
+
+  const fetchMonthAppointments = async () => {
+    try {
+      setLoading(true);
+      
+      // For month view, expand the range to include events that might span across month boundaries
+      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      monthStart.setDate(monthStart.getDate() - 7); // Start 7 days before month
+      monthStart.setHours(0, 0, 0, 0);
+      
+      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      monthEnd.setDate(monthEnd.getDate() + 7); // End 7 days after month
+      monthEnd.setHours(23, 59, 59, 999);
+      
+      console.log('🔍 Fetching appointments for month (extended range):', monthStart.toISOString(), 'to', monthEnd.toISOString());
+      
+      // Fetch appointments that overlap with the extended month range
+      const { data: appointmentsData, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .or(`and(start_time.lte.${monthEnd.toISOString()},end_time.gte.${monthStart.toISOString()}),and(start_time.gte.${monthStart.toISOString()},start_time.lte.${monthEnd.toISOString()})`)
+        .order('start_time', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching appointments:', error);
+        return;
+      }
+
+      console.log('📊 Found appointments for month:', appointmentsData?.length || 0);
+      appointmentsData?.forEach(apt => {
+        console.log('  -', apt.title, 'from', apt.start_time, 'to', apt.end_time, 'all_day:', apt.is_all_day);
+      });
+
+      await processAppointments(appointmentsData || [], monthStart, monthEnd);
+    } catch (error) {
+      console.error('Error fetching month appointments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchWeekAppointments = async () => {
     try {
@@ -211,7 +253,13 @@ export function CalendarView() {
 
       // Process external calendar events (from all tenant calendars)
       if (currentTenant) {
-        console.log('🔍 Fetching external events for date range...');
+        console.log('🔍 Fetching external events for date range:', {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          tenantId: currentTenant.id
+        });
+        
+        // Use overlap logic like regular appointments to catch multi-day events
         const { data: externalEvents, error: externalError } = await supabase
           .from('external_events')
           .select(`
@@ -224,20 +272,36 @@ export function CalendarView() {
               tenant_id
             )
           `)
-          .gte('start_time', startDate.toISOString())
-          .lte('start_time', endDate.toISOString())
+          .or(`and(start_time.lte.${endDate.toISOString()},end_time.gte.${startDate.toISOString()}),and(start_time.gte.${startDate.toISOString()},start_time.lte.${endDate.toISOString()})`)
           .eq('external_calendars.tenant_id', currentTenant.id)
           .order('start_time', { ascending: true });
 
         console.log('📊 External events query result:', {
-          data: externalEvents,
+          query: 'overlap-based query for multi-day events',
+          found: externalEvents?.length || 0,
           error: externalError,
-          count: externalEvents?.length || 0
+          dateRange: `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`,
+          tenantId: currentTenant.id
         });
+
+        if (externalError) {
+          console.error('❌ External events query error:', externalError);
+        }
 
         // Process external events
         if (externalEvents && externalEvents.length > 0) {
-          console.log('📅 Processing', externalEvents.length, 'external events');
+          console.log('📅 Processing', externalEvents.length, 'external events from', externalEvents[0]?.external_calendars?.name);
+          
+          // Log sample of external events for debugging
+          const sampleEvents = externalEvents.slice(0, 3);
+          console.log('📊 Sample external events:', sampleEvents.map(e => ({
+            title: e.title,
+            startTime: e.start_time,
+            endTime: e.end_time,
+            calendar: e.external_calendars?.name,
+            isMultiDay: new Date(e.end_time).getDate() !== new Date(e.start_time).getDate()
+          })));
+
           for (const externalEvent of externalEvents) {
             const startTime = new Date(externalEvent.start_time);
             const endTime = new Date(externalEvent.end_time);
@@ -341,6 +405,21 @@ export function CalendarView() {
           }
         }
       }
+
+      // Summary logging
+      const eventTypeCounts = formattedEvents.reduce((acc, event) => {
+        const eventType = event.id.startsWith('external-') ? 'external' : 
+                         event.id.startsWith('blocked-') ? 'blocked_planning' : 'regular';
+        acc[eventType] = (acc[eventType] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      console.log('📈 Event processing summary:', {
+        totalEvents: formattedEvents.length,
+        breakdown: eventTypeCounts,
+        dateRange: `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`,
+        view: view
+      });
 
       setAppointments(formattedEvents);
     } catch (error) {
