@@ -522,6 +522,8 @@ export type Database = {
           meeting_link: string | null
           poll_id: string | null
           priority: string | null
+          recurrence_end_date: string | null
+          recurrence_rule: string | null
           reminder_minutes: number | null
           start_time: string
           status: string | null
@@ -548,6 +550,8 @@ export type Database = {
           meeting_link?: string | null
           poll_id?: string | null
           priority?: string | null
+          recurrence_end_date?: string | null
+          recurrence_rule?: string | null
           reminder_minutes?: number | null
           start_time: string
           status?: string | null
@@ -574,6 +578,8 @@ export type Database = {
           meeting_link?: string | null
           poll_id?: string | null
           priority?: string | null
+          recurrence_end_date?: string | null
+          recurrence_rule?: string | null
           reminder_minutes?: number | null
           start_time?: string
           status?: string | null

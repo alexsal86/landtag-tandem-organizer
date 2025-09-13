@@ -292,9 +292,19 @@ export function CalendarView() {
 
       const formattedEvents: CalendarEvent[] = [];
 
-      // Process regular appointments
+      // Process regular appointments with RRULE expansion
       console.log('📅 Processing', appointmentsData.length, 'regular appointments');
+      
+      // Expand recurring appointments
+      const expandedAppointments: any[] = [];
       for (const appointment of appointmentsData) {
+        const expandedEvents = expandRecurringEvent(appointment, startDate, endDate);
+        expandedAppointments.push(...expandedEvents);
+      }
+      
+      console.log('📊 Expanded', appointmentsData.length, 'appointments to', expandedAppointments.length, 'occurrences');
+      
+      for (const appointment of expandedAppointments) {
         const startTime = new Date(appointment.start_time);
         const endTime = new Date(appointment.end_time);
         const durationMs = endTime.getTime() - startTime.getTime();
