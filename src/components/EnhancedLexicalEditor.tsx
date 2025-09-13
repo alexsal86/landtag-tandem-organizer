@@ -56,6 +56,8 @@ import { CheckListPlugin } from './plugins/CheckListPlugin';
 import { ImagePlugin } from './plugins/ImagePlugin';
 import { FileAttachmentPlugin } from './plugins/FileAttachmentPlugin';
 import { AdvancedCursorPlugin } from './plugins/AdvancedCursorPlugin';
+import { CommentPlugin } from './plugins/CommentPlugin';
+import { VersionHistoryPlugin } from './plugins/VersionHistoryPlugin';
 import { EnhancedLexicalToolbar } from './EnhancedLexicalToolbar';
 import { CollaborationDashboard } from './collaboration/CollaborationDashboard';
 
@@ -480,6 +482,8 @@ function YjsCollaborationEditor(props: any) {
             <CheckListPlugin />
             <ImagePlugin />
             <FileAttachmentPlugin />
+            <CommentPlugin documentId={props.documentId} />
+            <VersionHistoryPlugin documentId={props.documentId} />
             
             <HistoryPlugin />
             <ListPlugin />
@@ -650,6 +654,9 @@ export default function EnhancedLexicalEditor({
           <MentionsPlugin />
           <CheckListPlugin />
           <ImagePlugin />
+          <FileAttachmentPlugin />
+          <CommentPlugin documentId={documentId} />
+          <VersionHistoryPlugin documentId={documentId} />
           
           <HistoryPlugin />
           <ListPlugin />

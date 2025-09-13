@@ -22,7 +22,7 @@ interface DocumentVersion {
 }
 
 interface VersionHistoryPluginProps {
-  documentId: string;
+  documentId?: string;
   onVersionRestore?: (content: string) => void;
 }
 
@@ -160,6 +160,11 @@ export function VersionHistoryPlugin({
   const [lastAutoSave, setLastAutoSave] = useState<Date>(new Date());
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Don't render if no documentId
+  if (!documentId) {
+    return null;
+  }
 
   // Auto-save mechanism
   useEffect(() => {

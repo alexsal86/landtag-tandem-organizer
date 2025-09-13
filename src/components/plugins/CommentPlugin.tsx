@@ -4,7 +4,7 @@ import { $getSelection, $isRangeSelection, $createTextNode } from 'lexical';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { MessageCircle, X, Check, Reply } from 'lucide-react';
+import { MessageCircle, X, Check, Reply, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -186,21 +186,47 @@ const CommentThread: React.FC<{
   );
 };
 
-export function CommentPlugin({ documentId }: { documentId: string }) {
+export function CommentPlugin({ documentId }: { documentId?: string }) {
   const [editor] = useLexicalComposerContext();
   const [showCommentDialog, setShowCommentDialog] = useState(false);
+  const [showCommentsSidebar, setShowCommentsSidebar] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [selectionPosition, setSelectionPosition] = useState({ position: 0, length: 0 });
   const [comments, setComments] = useState<Comment[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Load comments for document
+  // Load comments for document and setup real-time updates
   useEffect(() => {
+    if (!documentId) return;
+    
     loadComments();
+    
+    // Subscribe to real-time updates for comments
+    const channel = supabase
+      .channel(`letter-comments-${documentId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'letter_comments',
+          filter: `letter_id=eq.${documentId}`
+        },
+        () => {
+          loadComments(); // Reload comments when changes occur
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [documentId]);
 
   const loadComments = async () => {
+    if (!documentId) return;
+    
     try {
       const { data, error } = await supabase
         .from('letter_comments')
@@ -229,10 +255,24 @@ export function CommentPlugin({ documentId }: { documentId: string }) {
       setComments(commentsData);
     } catch (error) {
       console.error('Error loading comments:', error);
+      toast({
+        title: "Fehler",
+        description: "Kommentare konnten nicht geladen werden",
+        variant: "destructive",
+      });
     }
   };
 
   const handleAddComment = () => {
+    if (!documentId) {
+      toast({
+        title: "Hinweis", 
+        description: "Bitte speichern Sie das Dokument erst, bevor Sie Kommentare hinzufügen können.",
+        variant: "default",
+      });
+      return;
+    }
+
     editor.getEditorState().read(() => {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
@@ -244,6 +284,12 @@ export function CommentPlugin({ documentId }: { documentId: string }) {
             length: text.length
           });
           setShowCommentDialog(true);
+        } else {
+          toast({
+            title: "Hinweis",
+            description: "Bitte markieren Sie zuerst einen Text für Ihren Kommentar.",
+            variant: "default",
+          });
         }
       }
     });
@@ -318,18 +364,44 @@ export function CommentPlugin({ documentId }: { documentId: string }) {
     }
   };
 
+  // Don't render anything if no documentId
+  if (!documentId) {
+    return null;
+  }
+
   return (
     <>
-      {/* Comment Button in Toolbar */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleAddComment}
-        className="h-8"
-        title="Kommentar hinzufügen"
-      >
-        <MessageCircle className="h-4 w-4" />
-      </Button>
+      {/* Comment Toggle Button */}
+      <div className="fixed right-4 top-4 z-40">
+        <Button
+          variant={showCommentsSidebar ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowCommentsSidebar(!showCommentsSidebar)}
+          className="bg-background shadow-lg"
+          title={showCommentsSidebar ? "Kommentare ausblenden" : "Kommentare anzeigen"}
+        >
+          {showCommentsSidebar ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+          Kommentare
+          {comments.length > 0 && (
+            <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-0.5 ml-2">
+              {comments.length}
+            </span>
+          )}
+        </Button>
+      </div>
+
+      {/* Add Comment Button */}
+      <div className="fixed right-20 top-4 z-40">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleAddComment}
+          className="bg-background shadow-lg"
+          title="Kommentar hinzufügen"
+        >
+          <MessageCircle className="h-4 w-4" />
+        </Button>
+      </div>
 
       {/* Comment Dialog */}
       {showCommentDialog && (
@@ -344,9 +416,20 @@ export function CommentPlugin({ documentId }: { documentId: string }) {
         </div>
       )}
 
-      {/* Comments Sidebar */}
-      <div className="absolute right-0 top-0 w-80 h-full bg-background border-l p-4 overflow-y-auto z-10">
-        <h3 className="text-lg font-semibold mb-4">Kommentare ({comments.length})</h3>
+      {/* Comments Sidebar - Only show when toggled */}
+      {showCommentsSidebar && (
+        <div className="fixed right-4 top-20 w-80 max-h-[calc(100vh-120px)] bg-background border rounded-lg shadow-lg p-4 overflow-y-auto z-50">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Kommentare ({comments.length})</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCommentsSidebar(false)}
+              title="Kommentare ausblenden"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         
         {comments.map((comment) => (
           <CommentThread
@@ -358,12 +441,13 @@ export function CommentPlugin({ documentId }: { documentId: string }) {
           />
         ))}
         
-        {comments.length === 0 && (
-          <p className="text-muted-foreground text-sm">
-            Keine Kommentare vorhanden. Markieren Sie Text und klicken Sie auf das Kommentar-Symbol.
-          </p>
-        )}
-      </div>
+          {comments.length === 0 && (
+            <p className="text-muted-foreground text-sm">
+              Keine Kommentare vorhanden. Markieren Sie Text und klicken Sie auf das Kommentar-Symbol.
+            </p>
+          )}
+        </div>
+      )}
     </>
   );
 }
