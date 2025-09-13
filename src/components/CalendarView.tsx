@@ -8,9 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { DayView } from "./calendar/DayView";
 import { WeekView } from "./calendar/WeekView";
 import { MonthView } from "./calendar/MonthView";
-import { ReactBigCalendarView } from "./calendar/ReactBigCalendarView";
-import { RealReactBigCalendar } from "./calendar/RealReactBigCalendar";
-import { EnhancedCalendar } from "./calendar/EnhancedCalendar";
 import { ProperReactBigCalendar } from "./calendar/ProperReactBigCalendar";
 import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
 import AppointmentPreparationSidebar from "./AppointmentPreparationSidebar";
@@ -52,7 +49,7 @@ export function CalendarView() {
   const { flags } = useFeatureFlag();
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<"day" | "week" | "month" | "polls">("day");
+  const [view, setView] = useState<"day" | "week" | "month" | "agenda" | "polls">("day");
   const [appointments, setAppointments] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<CalendarEvent | null>(null);
@@ -61,8 +58,8 @@ export function CalendarView() {
   const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<CalendarEvent | null>(null);
 
   // Type guard to check if view is a calendar view
-  const isCalendarView = (v: string): v is "day" | "week" | "month" => {
-    return v === "day" || v === "week" || v === "month";
+  const isCalendarView = (v: string): v is "day" | "week" | "month" | "agenda" => {
+    return v === "day" || v === "week" || v === "month" || v === "agenda";
   };
 
   useEffect(() => {
@@ -586,6 +583,7 @@ export function CalendarView() {
               {view === "day" && "Tagesansicht"}
               {view === "week" && "Wochenansicht"}
               {view === "month" && "Monatsansicht"}
+              {view === "agenda" && "Agenda"}
               {view === "polls" && "Terminabstimmungen"}
             </CardTitle>
           </CardHeader>
@@ -604,21 +602,24 @@ export function CalendarView() {
                     return null; // polls view is handled above
                   }
                   
-                  // Now TypeScript knows view is "day" | "week" | "month"
+                  // Now TypeScript knows view is a calendar view type
                   if (flags.useReactBigCalendar) {
+                    const rbcView = view;
                     return (
                       <ProperReactBigCalendar
                         events={appointments}
-                        view={view}
+                        view={rbcView}
                         date={currentDate}
                         onNavigate={setCurrentDate}
-                        onView={(newView) => setView(newView as "day" | "week" | "month" | "polls")}
+                        onView={(newView) => setView(newView as typeof view)}
                         onEventSelect={handleAppointmentClick}
                         onEventDrop={handleEventDrop}
                         onEventResize={handleEventResize}
                         onSelectSlot={(slotInfo) => {
-                          // Handle slot selection for creating new events
-                          console.log('Slot selected:', slotInfo);
+                          // Navigate to appointment creation with pre-filled date/time
+                          const startDate = slotInfo.start.toISOString();
+                          const endDate = slotInfo.end.toISOString();
+                          navigate(`/appointments/new?start=${startDate}&end=${endDate}`);
                         }}
                       />
                     );
@@ -659,9 +660,6 @@ export function CalendarView() {
         isOpen={preparationSidebarOpen}
         onClose={handlePreparationSidebarClose}
       />
-      
-      {/* Feature Flag Toggle for Development */}
-      <FeatureFlagToggle />
     </div>
   );
 }
