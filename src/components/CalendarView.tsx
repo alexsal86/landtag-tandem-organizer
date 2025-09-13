@@ -473,10 +473,15 @@ export function CalendarView() {
         date: event.date,
         endTime: event.endTime,
         type: event.type,
-        is_all_day: event.is_all_day
+        is_all_day: event.is_all_day,
+        dateType: typeof event.date,
+        endTimeType: typeof event.endTime,
+        dateIsDate: event.date instanceof Date,
+        endTimeIsDate: event.endTime instanceof Date
       })));
 
       setAppointments(formattedEvents);
+      console.log('✅ Calendar appointments state updated with', formattedEvents.length, 'events');
     } catch (error) {
       console.error('Error processing appointments:', error);
       setAppointments([]);

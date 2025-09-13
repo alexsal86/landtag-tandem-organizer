@@ -22,20 +22,16 @@ export class CalendarEventAdapter {
     let startTime: Date;
     let endTime: Date;
 
-    // Use the date property directly (it should already be a Date object from processAppointments)
-    if (event.date instanceof Date) {
-      startTime = new Date(event.date.getTime());
-    } else {
-      startTime = new Date(event.date);
-    }
+    console.log('🔄 Converting event to RBC:', event.id, event.title);
+    console.log('📅 Original date object:', event.date);
+    console.log('⏰ Original endTime object:', event.endTime);
 
+    // Handle nested date objects from Supabase
+    startTime = this.extractDateFromObject(event.date);
+    
     // Handle endTime - priority: endTime > duration > default 1h
     if (event.endTime) {
-      if (event.endTime instanceof Date) {
-        endTime = new Date(event.endTime.getTime());
-      } else {
-        endTime = new Date(event.endTime);
-      }
+      endTime = this.extractDateFromObject(event.endTime);
     } else if (event.duration && event.duration !== "Ganztägig") {
       // Parse duration string (e.g., "2h", "30min", "1h 30min")
       const durationMs = this.parseDurationToMs(event.duration);
@@ -48,6 +44,19 @@ export class CalendarEventAdapter {
       // Default to 1 hour if no end time or duration
       endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
     }
+
+    // Validate the extracted dates
+    if (!this.isValidDate(startTime)) {
+      console.error('❌ Invalid start date for event:', event.id, startTime);
+      startTime = new Date(); // Fallback to current time
+    }
+    
+    if (!this.isValidDate(endTime)) {
+      console.error('❌ Invalid end date for event:', event.id, endTime);
+      endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Fallback to 1h later
+    }
+
+    console.log('✅ Converted dates - start:', startTime, 'end:', endTime);
 
     return {
       id: event.id,
@@ -138,5 +147,49 @@ export class CalendarEventAdapter {
     } else {
       return `${minutes}min`;
     }
+  }
+
+  /**
+   * Extract Date object from various formats (including nested Supabase objects)
+   */
+  private static extractDateFromObject(dateObj: any): Date {
+    if (!dateObj) {
+      return new Date();
+    }
+
+    // If it's already a Date object
+    if (dateObj instanceof Date) {
+      return new Date(dateObj.getTime());
+    }
+
+    // Handle nested Supabase date objects: {_type: "Date", value: {iso: "...", ...}}
+    if (dateObj._type === "Date" && dateObj.value) {
+      if (dateObj.value.iso) {
+        return new Date(dateObj.value.iso);
+      }
+      if (dateObj.value.value) {
+        return new Date(dateObj.value.value);
+      }
+    }
+
+    // Handle simple string dates
+    if (typeof dateObj === 'string') {
+      return new Date(dateObj);
+    }
+
+    // Handle timestamp numbers
+    if (typeof dateObj === 'number') {
+      return new Date(dateObj);
+    }
+
+    console.warn('⚠️ Unknown date format:', dateObj);
+    return new Date();
+  }
+
+  /**
+   * Validate if a date object is valid
+   */
+  private static isValidDate(date: Date): boolean {
+    return date instanceof Date && !isNaN(date.getTime());
   }
 }
