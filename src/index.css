@@ -98,6 +98,24 @@ All colors MUST be HSL.
     @apply underline;
   }
 
+/* Comment highlighting styles */
+.comment-highlight {
+  background-color: var(--comment-highlight);
+  border-radius: 2px;
+  padding: 1px 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.comment-highlight:hover {
+  background-color: var(--comment-highlight-hover);
+}
+
+.comment-highlight-active {
+  background-color: var(--comment-highlight-active) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3);
+}
+
   /* Strikethrough styling */
   .editor-input [style*="text-decoration: line-through"] {
     @apply line-through;

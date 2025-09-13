@@ -20,6 +20,8 @@ import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { LinkNode, AutoLinkNode } from '@lexical/link';
 import { TableNode, TableCellNode, TableRowNode } from '@lexical/table';
 import { HashtagNode } from '@lexical/hashtag';
+import { MarkNode } from '@lexical/mark';
+import { CommentMarkNode } from './plugins/CommentPlugin';
 import { 
   $createParagraphNode, 
   $createTextNode,
@@ -573,7 +575,9 @@ export default function EnhancedLexicalEditor({
       TableNode,
       TableCellNode,
       TableRowNode,
-      HashtagNode
+      HashtagNode,
+      MarkNode,
+      CommentMarkNode
     ],
     onError: (error: Error) => {
       console.error('Lexical error:', error);
