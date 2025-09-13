@@ -44,9 +44,26 @@ class CommentMarkNode extends MarkNode {
     return new CommentMarkNode(node.__commentId, node.__key);
   }
 
-  constructor(commentId: string, key?: NodeKey) {
+  // Make commentId have a default value to satisfy Lexical's requirements
+  constructor(commentId: string = '', key?: NodeKey) {
     super([`comment-${commentId}`], key);
     this.__commentId = commentId;
+  }
+
+  // Required for serialization
+  static importJSON(serializedNode: any): CommentMarkNode {
+    const { commentId } = serializedNode;
+    return new CommentMarkNode(commentId);
+  }
+
+  // Required for serialization
+  exportJSON(): any {
+    return {
+      ...super.exportJSON(),
+      commentId: this.__commentId,
+      type: 'comment-mark',
+      version: 1,
+    };
   }
 
   createDOM(): HTMLElement {
