@@ -454,7 +454,7 @@ export function CalendarView() {
             let endTime = new Date(externalEvent.end_time);
             
             // Detect and normalize all-day external events
-            const isExternalAllDay = externalEvent.all_day || this.isExternalAllDayEvent(startTime, endTime);
+            const isExternalAllDay = externalEvent.all_day || isExternalAllDayEvent(startTime, endTime);
             
             if (isExternalAllDay) {
               // For external all-day events, normalize the end time to 23:59:59 of the start day
