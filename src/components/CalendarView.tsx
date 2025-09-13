@@ -41,6 +41,10 @@ export interface CalendarEvent {
   category?: { // Add category object for RBC
     color: string;
   };
+  // Optional metadata properties
+  _isExternal?: boolean;
+  _isRecurring?: boolean;
+  _originalId?: string;
 }
 
 export function CalendarView() {
@@ -272,6 +276,41 @@ export function CalendarView() {
     }
   };
 
+  // Helper function to detect external all-day events
+  const isExternalAllDayEvent = (startTime: Date, endTime: Date): boolean => {
+    // Check if it's a typical all-day event pattern from external calendars
+    // Start time is at 00:00:00 and end time is at 00:00:00 of next day
+    const startHours = startTime.getHours();
+    const startMinutes = startTime.getMinutes();
+    const startSeconds = startTime.getSeconds();
+    
+    const endHours = endTime.getHours();
+    const endMinutes = endTime.getMinutes();
+    const endSeconds = endTime.getSeconds();
+    
+    const isStartMidnight = startHours === 0 && startMinutes === 0 && startSeconds === 0;
+    const isEndMidnight = endHours === 0 && endMinutes === 0 && endSeconds === 0;
+    
+    // Check if end date is exactly one day after start date
+    const dayDifference = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60 * 24);
+    const isNextDay = dayDifference === 1;
+    
+    const isAllDay = isStartMidnight && isEndMidnight && isNextDay;
+    
+    if (isAllDay) {
+      console.log('🎯 Detected external all-day event pattern:', {
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        isStartMidnight,
+        isEndMidnight,
+        isNextDay,
+        dayDifference
+      });
+    }
+    
+    return isAllDay;
+  };
+
   const processAppointments = async (appointmentsData: any[], startDate: Date, endDate: Date) => {
     try {
       console.log('🔍 Processing appointments for date range:', startDate.toISOString(), 'to', endDate.toISOString());
@@ -412,7 +451,19 @@ export function CalendarView() {
 
           for (const externalEvent of expandedExternalEvents) {
             const startTime = new Date(externalEvent.start_time);
-            const endTime = new Date(externalEvent.end_time);
+            let endTime = new Date(externalEvent.end_time);
+            
+            // Detect and normalize all-day external events
+            const isExternalAllDay = externalEvent.all_day || this.isExternalAllDayEvent(startTime, endTime);
+            
+            if (isExternalAllDay) {
+              // For external all-day events, normalize the end time to 23:59:59 of the start day
+              // This fixes the issue where external calendars set end time to midnight of next day
+              endTime = new Date(startTime);
+              endTime.setHours(23, 59, 59, 999);
+              console.log('🔧 Normalized external all-day event:', externalEvent.title, 'from', externalEvent.end_time, 'to', endTime.toISOString());
+            }
+            
             const durationMs = endTime.getTime() - startTime.getTime();
             const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(1);
 
@@ -420,8 +471,8 @@ export function CalendarView() {
               id: `external-${externalEvent.id}`,
               title: `📅 ${externalEvent.title}`,
               description: externalEvent.description || undefined,
-              time: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-              duration: externalEvent.all_day ? 'Ganztägig' : `${durationHours}h`,
+              time: isExternalAllDay ? "Ganztägig" : startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+              duration: isExternalAllDay ? 'Ganztägig' : `${durationHours}h`,
               date: startTime,
               endTime: endTime,
               location: externalEvent.location || undefined,
@@ -430,7 +481,9 @@ export function CalendarView() {
               participants: [],
               attendees: 0,
               category_color: externalEvent.external_calendars?.color || '#6b7280',
-              is_all_day: externalEvent.all_day || false
+              is_all_day: isExternalAllDay,
+              // Mark as external for adapter
+              _isExternal: true
             });
           }
         } else {

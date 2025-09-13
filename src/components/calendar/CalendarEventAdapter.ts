@@ -32,6 +32,11 @@ export class CalendarEventAdapter {
     // Handle endTime - priority: endTime > duration > default 1h
     if (event.endTime) {
       endTime = this.extractDateFromObject(event.endTime);
+      
+      // Special handling for external all-day events
+      if (event.is_all_day && (event as any)._isExternal) {
+        endTime = this.normalizeExternalAllDayEnd(startTime, endTime);
+      }
     } else if (event.duration && event.duration !== "Ganztägig") {
       // Parse duration string (e.g., "2h", "30min", "1h 30min")
       const durationMs = this.parseDurationToMs(event.duration);
@@ -191,5 +196,53 @@ export class CalendarEventAdapter {
    */
   private static isValidDate(date: Date): boolean {
     return date instanceof Date && !isNaN(date.getTime());
+  }
+
+  /**
+   * Normalize end time for external all-day events
+   * External calendars often set all-day events to end at midnight of the next day,
+   * but React Big Calendar displays this as spanning two days
+   */
+  private static normalizeExternalAllDayEnd(startTime: Date, endTime: Date): Date {
+    // Check if this follows the external all-day pattern
+    const isExternalAllDayPattern = this.isExternalAllDayPattern(startTime, endTime);
+    
+    if (isExternalAllDayPattern) {
+      // Set end time to 23:59:59 of the start day
+      const normalizedEnd = new Date(startTime);
+      normalizedEnd.setHours(23, 59, 59, 999);
+      
+      console.log('🔧 CalendarEventAdapter: Normalized external all-day end time:', {
+        original: endTime.toISOString(),
+        normalized: normalizedEnd.toISOString(),
+        startDay: startTime.toDateString(),
+        endDay: endTime.toDateString()
+      });
+      
+      return normalizedEnd;
+    }
+    
+    return endTime;
+  }
+
+  /**
+   * Check if dates follow external all-day event pattern
+   */
+  private static isExternalAllDayPattern(startTime: Date, endTime: Date): boolean {
+    // Start at midnight
+    const isStartMidnight = startTime.getHours() === 0 && 
+                           startTime.getMinutes() === 0 && 
+                           startTime.getSeconds() === 0;
+    
+    // End at midnight of next day
+    const isEndMidnight = endTime.getHours() === 0 && 
+                         endTime.getMinutes() === 0 && 
+                         endTime.getSeconds() === 0;
+    
+    // Exactly 24 hours apart
+    const timeDiff = endTime.getTime() - startTime.getTime();
+    const is24Hours = timeDiff === 24 * 60 * 60 * 1000;
+    
+    return isStartMidnight && isEndMidnight && is24Hours;
   }
 }
