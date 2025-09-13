@@ -6,7 +6,7 @@ export type FeatureFlags = {
 };
 
 const DEFAULT_FLAGS: FeatureFlags = {
-  useReactBigCalendar: false,
+  useReactBigCalendar: true,
 };
 
 /**
@@ -71,7 +71,7 @@ export function FeatureFlagToggle() {
       <h3 className="font-semibold mb-3 text-sm text-foreground">🚀 Feature Flags</h3>
       <div className="space-y-3">
         <label className="flex items-center justify-between space-x-3 cursor-pointer">
-          <span className="text-sm text-foreground">Enhanced Calendar</span>
+          <span className="text-sm text-foreground">React Big Calendar</span>
           <input
             type="checkbox"
             checked={flags.useReactBigCalendar}
@@ -80,7 +80,7 @@ export function FeatureFlagToggle() {
           />
         </label>
         <div className="text-xs text-muted-foreground">
-          {flags.useReactBigCalendar ? '✅ Enhanced mode active' : '⚪ Standard mode active'}
+          {flags.useReactBigCalendar ? '✅ React Big Calendar aktiv' : '⚪ Fallback Kalender aktiv'}
         </div>
       </div>
     </div>

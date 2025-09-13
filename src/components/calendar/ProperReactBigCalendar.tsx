@@ -1,7 +1,11 @@
-// Fallback implementation until react-big-calendar dependencies are installed
-// This will be replaced with the real implementation once dependencies are available
-import React from 'react';
-import { EnhancedCalendar } from './EnhancedCalendar';
+import React, { useMemo, useCallback } from 'react';
+import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
+import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
+import moment from 'moment';
+import 'moment/locale/de';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
+import { CalendarEventAdapter, type RBCEvent } from './CalendarEventAdapter';
 import type { CalendarEvent } from '../CalendarView';
 
 interface ProperReactBigCalendarProps {
@@ -16,7 +20,44 @@ interface ProperReactBigCalendarProps {
   onView?: (view: string) => void;
 }
 
-// Temporary fallback using EnhancedCalendar until real RBC is available
+// Set up German localizer
+moment.locale('de');
+const localizer = momentLocalizer(moment);
+
+// Create DnD Calendar with drag and drop support
+const DnDCalendar = withDragAndDrop(Calendar);
+
+// German messages for React Big Calendar
+const messages = {
+  allDay: 'Ganztägig',
+  previous: 'Zurück',
+  next: 'Weiter',
+  today: 'Heute',
+  month: 'Monat',
+  week: 'Woche',
+  day: 'Tag',
+  agenda: 'Agenda',
+  date: 'Datum',
+  time: 'Zeit',
+  event: 'Termin',
+  noEventsInRange: 'Keine Termine in diesem Zeitraum.',
+  showMore: (total: number) => `+ ${total} weitere`
+};
+
+// German date formats
+const formats = {
+  monthHeaderFormat: 'MMMM YYYY',
+  dayHeaderFormat: 'dddd, DD. MMMM YYYY',
+  dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${moment(start).format('DD. MMM')} – ${moment(end).format('DD. MMM YYYY')}`,
+  timeGutterFormat: 'HH:mm',
+  eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
+  dayFormat: 'DD',
+  dateFormat: 'DD',
+  weekdayFormat: 'ddd'
+};
+
 export function ProperReactBigCalendar({
   events = [],
   onEventSelect,
@@ -29,101 +70,101 @@ export function ProperReactBigCalendar({
   onView
 }: ProperReactBigCalendarProps) {
 
-  const handleNavigate = (newDate: Date) => {
-    if (onNavigate) {
-      onNavigate(newDate);
-    }
-  };
+  // Convert events to RBC format using the adapter
+  const rbcEvents = useMemo(() => {
+    return CalendarEventAdapter.toRBCEvents(events);
+  }, [events]);
 
-  const handleViewChange = (newView: string) => {
-    if (onView) {
-      onView(newView);
-    }
-  };
+  // Event prop getter for custom styling
+  const eventPropGetter = useCallback((event: RBCEvent) => {
+    const originalEvent = event.resource as CalendarEvent;
+    let className = '';
+    let style: React.CSSProperties = {};
 
-  const handleDateSelect = (date: Date) => {
+    if (originalEvent?.type) {
+      className = `event-${originalEvent.type}`;
+    }
+
+    if (originalEvent?.priority === 'high') {
+      style.fontWeight = 'bold';
+    }
+
+    return { className, style };
+  }, []);
+
+  // Day prop getter for today highlighting
+  const dayPropGetter = useCallback((date: Date) => {
+    const isToday = moment(date).isSame(moment(), 'day');
+    return {
+      className: isToday ? 'rbc-today' : '',
+      style: {}
+    };
+  }, []);
+
+  // Handle event selection
+  const handleSelectEvent = useCallback((rbcEvent: RBCEvent) => {
+    const originalEvent = rbcEvent.resource as CalendarEvent;
+    if (originalEvent && onEventSelect) {
+      onEventSelect(originalEvent);
+    }
+  }, [onEventSelect]);
+
+  // Handle slot selection for creating new events
+  const handleSelectSlot = useCallback((slotInfo: { start: Date; end: Date; slots: Date[] }) => {
     if (onSelectSlot) {
-      const endDate = new Date(date.getTime() + 60 * 60 * 1000); // 1 hour later
-      onSelectSlot({
-        start: date,
-        end: endDate,
-        slots: [date]
-      });
+      onSelectSlot(slotInfo);
     }
-  };
+  }, [onSelectSlot]);
+
+  // Handle event drop (drag and drop)
+  const handleEventDrop = useCallback(({ event, start, end }: { event: RBCEvent; start: Date; end: Date }) => {
+    const originalEvent = event.resource as CalendarEvent;
+    if (originalEvent && onEventDrop) {
+      onEventDrop(originalEvent, start, end);
+    }
+  }, [onEventDrop]);
+
+  // Handle event resize
+  const handleEventResize = useCallback(({ event, start, end }: { event: RBCEvent; start: Date; end: Date }) => {
+    const originalEvent = event.resource as CalendarEvent;
+    if (originalEvent && onEventResize) {
+      onEventResize(originalEvent, start, end);
+    }
+  }, [onEventResize]);
 
   return (
     <div className="h-full w-full bg-background">
-      <EnhancedCalendar
-        events={events.filter(event => {
-          // Filter out events with invalid dates
-          const startDate = event.date instanceof Date && !isNaN(event.date.getTime()) ? event.date : null;
-          const endDate = event.endTime instanceof Date && !isNaN(event.endTime.getTime()) ? event.endTime : null;
-          
-          return startDate !== null; // Only include events with valid start dates
-        }).map(event => {
-          // Ensure we have valid Date objects
-          const startDate = event.date instanceof Date && !isNaN(event.date.getTime()) 
-            ? event.date 
-            : new Date();
-          
-          const endDate = event.endTime instanceof Date && !isNaN(event.endTime.getTime())
-            ? event.endTime 
-            : new Date(startDate.getTime() + 60 * 60 * 1000);
-
-          return {
-            id: event.id,
-            title: event.title,
-            start: startDate,
-            end: endDate,
-            allDay: event.is_all_day || false,
-            type: event.type,
-            participants: event.participants?.map(p => p.name),
-            priority: event.priority,
-            category: event.type,
-            resource: event
-          };
-        })}
+      <DnDCalendar
+        localizer={localizer}
+        events={rbcEvents}
+        startAccessor={(event: RBCEvent) => event.start}
+        endAccessor={(event: RBCEvent) => event.end}
+        titleAccessor={(event: RBCEvent) => event.title}
+        allDayAccessor={(event: RBCEvent) => event.allDay || false}
+        resourceAccessor={(event: RBCEvent) => event.resource}
+        view={view as any}
         date={date}
-        view={view as "month" | "week" | "day"}
-        onNavigate={handleNavigate}
-        onView={handleViewChange as (view: 'month' | 'week' | 'day') => void}
-        onSelectEvent={(calEvent) => {
-          // Get the original event from the resource
-          const originalEvent = calEvent.resource as CalendarEvent;
-          if (originalEvent && onEventSelect) {
-            onEventSelect(originalEvent);
-          }
-        }}
-        onEventDrop={(calEvent, start, end) => {
-          const originalEvent = calEvent.resource as CalendarEvent;
-          if (originalEvent && onEventDrop) {
-            onEventDrop(originalEvent, start, end);
-          }
-        }}
-        onEventResize={(calEvent, start, end) => {
-          const originalEvent = calEvent.resource as CalendarEvent;
-          if (originalEvent && onEventResize) {
-            onEventResize(originalEvent, start, end);
-          }
-        }}
+        onNavigate={onNavigate}
+        onView={onView}
+        onSelectEvent={handleSelectEvent}
+        onSelectSlot={handleSelectSlot}
+        onEventDrop={handleEventDrop}
+        onEventResize={handleEventResize}
+        eventPropGetter={eventPropGetter}
+        dayPropGetter={dayPropGetter}
+        messages={messages}
+        formats={formats}
+        selectable
+        resizable
+        popup
+        showMultiDayTimes
+        step={30}
+        timeslots={2}
+        views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
+        defaultView={Views.MONTH}
+        className="rbc-calendar"
+        style={{ height: '100%' }}
       />
     </div>
   );
 }
-
-/* 
-When react-big-calendar is properly installed, replace this file with:
-
-import React, { useMemo } from 'react';
-import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
-import moment from 'moment';
-import 'moment/locale/de';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
-
-// [Rest of the real implementation]
-*/
