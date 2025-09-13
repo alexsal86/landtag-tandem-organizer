@@ -104,9 +104,7 @@ export function CalendarView() {
           meeting_id,
           contact_id,
           poll_id,
-          reminder_minutes,
-          appointments_categories:appointment_categories(color),
-          contacts:contact_id(name)
+          reminder_minutes
         `)
         .or(`and(start_time.lte.${monthEnd.toISOString()},end_time.gte.${monthStart.toISOString()}),and(start_time.gte.${monthStart.toISOString()},start_time.lte.${monthEnd.toISOString()})`)
         .order('start_time', { ascending: true });
@@ -143,7 +141,22 @@ export function CalendarView() {
       // This ensures multi-day events like vacations are included
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
-        .select('*')
+        .select(`
+          id,
+          title,
+          description,
+          start_time,
+          end_time,
+          category,
+          priority,
+          location,
+          status,
+          is_all_day,
+          meeting_id,
+          contact_id,
+          poll_id,
+          reminder_minutes
+        `)
         .or(`and(start_time.lte.${weekEnd.toISOString()},end_time.gte.${weekStart.toISOString()}),and(start_time.gte.${weekStart.toISOString()},start_time.lte.${weekEnd.toISOString()})`)
         .order('start_time', { ascending: true });
 
@@ -180,7 +193,22 @@ export function CalendarView() {
       // This ensures multi-day events like vacations are included
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
-        .select('*')
+        .select(`
+          id,
+          title,
+          description,
+          start_time,
+          end_time,
+          category,
+          priority,
+          location,
+          status,
+          is_all_day,
+          meeting_id,
+          contact_id,
+          poll_id,
+          reminder_minutes
+        `)
         .or(`and(start_time.lte.${endOfDay.toISOString()},end_time.gte.${startOfDay.toISOString()}),and(start_time.gte.${startOfDay.toISOString()},start_time.lte.${endOfDay.toISOString()})`)
         .order('start_time', { ascending: true });
 
