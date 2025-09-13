@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useEffect } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import moment from 'moment';
@@ -55,7 +55,15 @@ const formats = {
     `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
   dayFormat: 'DD',
   dateFormat: 'DD',
-  weekdayFormat: 'ddd'
+  weekdayFormat: 'dddd',
+  agendaHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${moment(start).format('DD. MMMM')} – ${moment(end).format('DD. MMMM YYYY')}`,
+  agendaDateFormat: 'dddd, DD. MMMM',
+  agendaTimeFormat: 'HH:mm',
+  agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
+  selectRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${moment(start).format('DD. MMM')} – ${moment(end).format('DD. MMM')}`
 };
 
 const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
@@ -70,13 +78,51 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
   onEventResize
 }) => {
   // Set up German locale with Monday as first day of week
-  moment.locale('de');
-  moment.updateLocale('de', {
-    week: {
-      dow: 1, // Monday is the first day of the week
-      doy: 4  // The week that contains Jan 4th is the first week of the year
-    }
-  });
+  useEffect(() => {
+    moment.locale('de', {
+      months: 'Januar_Februar_März_April_Mai_Juni_Juli_August_September_Oktober_November_Dezember'.split('_'),
+      monthsShort: 'Jan_Feb_Mär_Apr_Mai_Jun_Jul_Aug_Sep_Okt_Nov_Dez'.split('_'),
+      weekdays: 'Sonntag_Montag_Dienstag_Mittwoch_Donnerstag_Freitag_Samstag'.split('_'),
+      weekdaysShort: 'So_Mo_Di_Mi_Do_Fr_Sa'.split('_'),
+      weekdaysMin: 'So_Mo_Di_Mi_Do_Fr_Sa'.split('_'),
+      longDateFormat: {
+        LT: 'HH:mm',
+        LTS: 'HH:mm:ss',
+        L: 'DD.MM.YYYY',
+        LL: 'D. MMMM YYYY',
+        LLL: 'D. MMMM YYYY HH:mm',
+        LLLL: 'dddd, D. MMMM YYYY HH:mm'
+      },
+      calendar: {
+        sameDay: '[heute um] LT [Uhr]',
+        nextDay: '[morgen um] LT [Uhr]',
+        nextWeek: 'dddd [um] LT [Uhr]',
+        lastDay: '[gestern um] LT [Uhr]',
+        lastWeek: '[letzten] dddd [um] LT [Uhr]',
+        sameElse: 'L'
+      },
+      relativeTime: {
+        future: 'in %s',
+        past: 'vor %s',
+        s: 'ein paar Sekunden',
+        ss: '%d Sekunden',
+        m: 'einer Minute',
+        mm: '%d Minuten',
+        h: 'einer Stunde',
+        hh: '%d Stunden',
+        d: 'einem Tag',
+        dd: '%d Tagen',
+        M: 'einem Monat',
+        MM: '%d Monaten',
+        y: 'einem Jahr',
+        yy: '%d Jahren'
+      },
+      week: {
+        dow: 1, // Monday is the first day of the week
+        doy: 4  // The week that contains Jan 4th is the first week of the year
+      }
+    });
+  }, []);
   
   const localizer = momentLocalizer(moment);
 
@@ -164,18 +210,22 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         dayPropGetter={dayPropGetter}
         messages={messages}
         formats={{
-          dayFormat: 'dddd DD.MM',
+          dayFormat: 'DD',
           weekdayFormat: 'dddd',
           monthHeaderFormat: 'MMMM YYYY',
-          dayHeaderFormat: 'dddd DD.MM.YYYY',
+          dayHeaderFormat: 'dddd, DD. MMMM YYYY',
           dayRangeHeaderFormat: ({ start, end }) => 
-            `${moment(start).format('DD.MM')} - ${moment(end).format('DD.MM.YYYY')}`,
-          agendaDateFormat: 'DD.MM.YYYY',
+            `${moment(start).format('DD. MMMM')} – ${moment(end).format('DD. MMMM YYYY')}`,
+          agendaDateFormat: 'dddd, DD. MMMM',
           agendaTimeFormat: 'HH:mm',
           agendaTimeRangeFormat: ({ start, end }) => 
-            `${moment(start).format('HH:mm')} - ${moment(end).format('HH:mm')}`,
+            `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
+          timeGutterFormat: 'HH:mm',
+          eventTimeRangeFormat: ({ start, end }) => 
+            `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
           dateFormat: 'DD',
-          timeGutterFormat: 'HH:mm'
+          selectRangeFormat: ({ start, end }) =>
+            `${moment(start).format('DD. MMM')} – ${moment(end).format('DD. MMM')}`
         }}
         selectable
         resizable
