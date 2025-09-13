@@ -69,13 +69,13 @@ export function AppointmentDetailsSidebar({
   }, []);
 
   useEffect(() => {
-    if (appointment && !appointment.id.startsWith('blocked-')) {
+    if (appointment && appointment.id && !appointment.id.startsWith('blocked-')) {
       fetchGuests();
     }
   }, [appointment]);
 
   const fetchGuests = async () => {
-    if (!appointment || appointment.id.startsWith('blocked-')) return;
+    if (!appointment || !appointment.id || appointment.id.startsWith('blocked-')) return;
     
     setIsLoadingGuests(true);
     try {
@@ -95,11 +95,12 @@ export function AppointmentDetailsSidebar({
   };
 
   const sendInvitations = async () => {
-    if (!appointment || !guests.length || appointment.id.startsWith('blocked-')) {
+    if (!appointment || !appointment.id || !guests.length || appointment.id.startsWith('blocked-')) {
       console.log('Cannot send invitations:', { 
         hasAppointment: !!appointment, 
+        hasId: !!appointment?.id,
         guestsCount: guests.length, 
-        isBlocked: appointment?.id.startsWith('blocked-') 
+        isBlocked: appointment?.id?.startsWith('blocked-') 
       });
       return;
     }
@@ -173,7 +174,7 @@ export function AppointmentDetailsSidebar({
   };
 
   const handleSave = async () => {
-    if (!appointment || appointment.id.startsWith('blocked-')) return;
+    if (!appointment || !appointment.id || appointment.id.startsWith('blocked-')) return;
     
     try {
       // Calculate new start and end times
@@ -288,7 +289,7 @@ export function AppointmentDetailsSidebar({
     setIsDeleting(true);
     try {
       // Don't delete blocked appointments (they come from event planning)
-      if (appointment.id.startsWith('blocked-')) {
+      if (!appointment.id || appointment.id.startsWith('blocked-')) {
         toast({
           title: "Warnung",
           description: "Geplante Termine können nicht direkt gelöscht werden.",
@@ -592,7 +593,7 @@ export function AppointmentDetailsSidebar({
               ) : (
                 <div className="text-sm text-muted-foreground">
                   {appointment.location ? (
-                    appointment.location.startsWith("Digital") ? (
+                    appointment.location.startsWith?.("Digital") ? (
                       <div className="space-y-1">
                         <div className="font-medium text-blue-600">🔗 Online-Meeting</div>
                         <div className="text-xs">{appointment.location.replace("Digital - ", "")}</div>
@@ -631,7 +632,7 @@ export function AppointmentDetailsSidebar({
           </div>
 
           {/* Category */}
-          {!appointment.id.startsWith('blocked-') && (
+          {appointment.id && !appointment.id.startsWith('blocked-') && (
             <div className="flex items-start gap-3">
               <div className="w-5 h-5 flex items-center justify-center mt-0.5">
                 <div className="w-3 h-3 bg-primary rounded"></div>
@@ -686,7 +687,7 @@ export function AppointmentDetailsSidebar({
           )}
 
           {/* Guests Section */}
-          {!appointment.id.startsWith('blocked-') && (
+          {appointment.id && !appointment.id.startsWith('blocked-') && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium flex items-center gap-2">
@@ -799,7 +800,7 @@ export function AppointmentDetailsSidebar({
                   className="flex-1 gap-2"
                   variant="outline"
                   onClick={handleEdit}
-                  disabled={appointment.id.startsWith('blocked-')}
+                  disabled={!appointment.id || appointment.id.startsWith('blocked-')}
                 >
                   <Edit className="h-4 w-4" />
                   Bearbeiten
@@ -808,7 +809,7 @@ export function AppointmentDetailsSidebar({
                   className="flex-1 gap-2"
                   variant="destructive"
                   onClick={handleDelete}
-                  disabled={isDeleting || appointment.id.startsWith('blocked-')}
+                  disabled={isDeleting || !appointment.id || appointment.id.startsWith('blocked-')}
                 >
                   <Trash2 className="h-4 w-4" />
                   {isDeleting ? "Lösche..." : "Löschen"}
@@ -817,7 +818,7 @@ export function AppointmentDetailsSidebar({
             )}
           </div>
 
-          {appointment.id.startsWith('blocked-') && (
+          {appointment.id && appointment.id.startsWith('blocked-') && (
             <div className="text-xs text-muted-foreground text-center p-3 bg-muted/30 rounded-md">
               Dies ist ein geplanter Termin aus der Terminplanung. 
               Bearbeitung und Löschung sind nur über die Terminplanung möglich.
