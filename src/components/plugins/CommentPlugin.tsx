@@ -200,9 +200,27 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   useEffect(() => {
     if (!documentId) return;
     
-    loadComments();
+    let retryCount = 0;
+    const maxRetries = 3;
     
-    // Subscribe to real-time updates for comments
+    const loadCommentsWithRetry = async () => {
+      try {
+        await loadComments();
+        retryCount = 0; // Reset on success
+      } catch (error) {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          console.log(`Retrying loadComments, attempt ${retryCount}/${maxRetries}`);
+          setTimeout(loadCommentsWithRetry, 1000 * retryCount); // Exponential backoff
+        } else {
+          console.error('Max retries reached for loading comments');
+        }
+      }
+    };
+    
+    loadCommentsWithRetry();
+    
+    // Subscribe to real-time updates for comments (but don't retry on error)
     const channel = supabase
       .channel(`letter-comments-${documentId}`)
       .on(
@@ -214,7 +232,10 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
           filter: `letter_id=eq.${documentId}`
         },
         () => {
-          loadComments(); // Reload comments when changes occur
+          // Only reload if initial load was successful
+          if (retryCount === 0) {
+            loadComments();
+          }
         }
       )
       .subscribe();
@@ -232,7 +253,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         .from('letter_comments')
         .select(`
           *,
-          profiles!letter_comments_user_id_fkey (display_name, avatar_url)
+          profiles (display_name, avatar_url)
         `)
         .eq('letter_id', documentId)
         .order('created_at', { ascending: true });
