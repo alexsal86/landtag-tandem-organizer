@@ -249,31 +249,50 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
     if (!documentId) return;
     
     try {
-      const { data, error } = await supabase
+      // First get comments
+      const { data: commentsData, error: commentsError } = await supabase
         .from('letter_comments')
-        .select(`
-          *,
-          profiles (display_name, avatar_url)
-        `)
+        .select('*')
         .eq('letter_id', documentId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (commentsError) throw commentsError;
 
-      const commentsData = data?.map((comment: any) => ({
-        id: comment.id,
-        text: comment.content,
-        author: comment.user_id,
-        authorName: comment.profiles?.display_name || 'Unknown User',
-        avatarUrl: comment.profiles?.avatar_url,
-        timestamp: comment.created_at,
-        position: comment.text_position || 0,
-        length: comment.text_length || 0,
-        resolved: comment.resolved || false,
-        replies: [] // Load replies separately if needed
-      })) || [];
+      // Then get user profiles for the comment authors
+      const userIds = [...new Set(commentsData?.map(comment => comment.user_id) || [])];
+      
+      let profilesData = [];
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', userIds);
 
-      setComments(commentsData);
+        if (profilesError) {
+          console.warn('Could not load user profiles:', profilesError);
+        } else {
+          profilesData = profiles || [];
+        }
+      }
+
+      // Combine comments with profile data
+      const commentsWithProfiles = commentsData?.map((comment: any) => {
+        const profile = profilesData.find(p => p.user_id === comment.user_id);
+        return {
+          id: comment.id,
+          text: comment.content,
+          author: comment.user_id,
+          authorName: profile?.display_name || 'Unknown User',
+          avatarUrl: profile?.avatar_url,
+          timestamp: comment.created_at,
+          position: comment.text_position || 0,
+          length: comment.text_length || 0,
+          resolved: comment.resolved || false,
+          replies: [] // Load replies separately if needed
+        };
+      }) || [];
+
+      setComments(commentsWithProfiles);
     } catch (error) {
       console.error('Error loading comments:', error);
       toast({
