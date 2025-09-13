@@ -90,7 +90,24 @@ export function CalendarView() {
       // Fetch appointments that overlap with the extended month range
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
-        .select('*')
+        .select(`
+          id,
+          title,
+          description,
+          start_time,
+          end_time,
+          category,
+          priority,
+          location,
+          status,
+          is_all_day,
+          meeting_id,
+          contact_id,
+          poll_id,
+          reminder_minutes,
+          appointments_categories:appointment_categories(color),
+          contacts:contact_id(name)
+        `)
         .or(`and(start_time.lte.${monthEnd.toISOString()},end_time.gte.${monthStart.toISOString()}),and(start_time.gte.${monthStart.toISOString()},start_time.lte.${monthEnd.toISOString()})`)
         .order('start_time', { ascending: true });
 
@@ -531,6 +548,8 @@ export function CalendarView() {
   };
 
   const handleEventDrop = async (event: CalendarEvent, start: Date, end: Date) => {
+    if (!event.id || event.id.startsWith('blocked-')) return;
+    
     try {
       const { error } = await supabase
         .from('appointments')
@@ -545,7 +564,7 @@ export function CalendarView() {
       handleAppointmentUpdate();
       toast({
         title: "Termin verschoben",
-        description: "Der Termin wurde erfolgreich verschoben.",
+        description: `${event.title} wurde erfolgreich verschoben.`,
       });
     } catch (error) {
       console.error('Error updating appointment:', error);
@@ -682,40 +701,26 @@ export function CalendarView() {
                     return null; // polls view is handled above
                   }
                   
-                  // Now TypeScript knows view is a calendar view type
-                  if (flags.useReactBigCalendar) {
-                    const rbcView = view;
-                    return (
-                      <ProperReactBigCalendar
-                        events={appointments}
-                        view={rbcView}
-                        date={currentDate}
-                        onNavigate={setCurrentDate}
-                        onView={(newView) => setView(newView as typeof view)}
-                        onEventSelect={handleAppointmentClick}
-                        onEventDrop={handleEventDrop}
-                        onEventResize={handleEventResize}
-                        onSelectSlot={(slotInfo) => {
-                          // Navigate to appointment creation with pre-filled date/time
-                          const startDate = slotInfo.start.toISOString();
-                          const endDate = slotInfo.end.toISOString();
-                          navigate(`/appointments/new?start=${startDate}&end=${endDate}`);
-                        }}
-                      />
-                    );
-                  }
-                  
-                  // Default calendar views
-                  switch (view) {
-                    case "day":
-                      return <DayView date={currentDate} events={appointments} onAppointmentClick={handleAppointmentClick} onPreparationClick={handlePreparationClick} />;
-                    case "week":
-                      return <WeekView weekStart={getWeekStart(currentDate)} events={appointments} onAppointmentClick={handleAppointmentClick} onPreparationClick={handlePreparationClick} />;
-                    case "month":
-                      return <MonthView date={currentDate} events={appointments} onDateSelect={setCurrentDate} />;
-                    default:
-                      return null;
-                  }
+                   // Now TypeScript knows view is a calendar view type
+                   const rbcView = view;
+                   return (
+                     <ProperReactBigCalendar
+                       events={appointments}
+                       view={rbcView}
+                       date={currentDate}
+                       onNavigate={setCurrentDate}
+                       onView={(newView) => setView(newView as typeof view)}
+                       onEventSelect={handleAppointmentClick}
+                       onEventDrop={handleEventDrop}
+                       onEventResize={handleEventResize}
+                       onSelectSlot={(slotInfo) => {
+                         // Navigate to appointment creation with pre-filled date/time
+                         const startDate = slotInfo.start.toISOString();
+                         const endDate = slotInfo.end.toISOString();
+                         navigate(`/appointments/new?start=${startDate}&end=${endDate}`);
+                       }}
+                     />
+                   );
                 })()}
               </>
             )}

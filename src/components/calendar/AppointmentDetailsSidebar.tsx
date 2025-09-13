@@ -162,7 +162,7 @@ export function AppointmentDetailsSidebar({
     
     setEditData({
       title: appointment.title,
-      description: "", // Add description field
+      description: appointment.description || "", // Use appointment description
       location: appointment.location || "",
       priority: appointment.priority,
       category: appointment.type, // Map type to category

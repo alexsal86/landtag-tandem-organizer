@@ -19,8 +19,21 @@ export class CalendarEventAdapter {
    * Convert our CalendarEvent to RBC Event format
    */
   static toRBCEvent(event: CalendarEvent): RBCEvent {
-    const startTime = new Date(event.date);
+    let startTime: Date;
     let endTime: Date;
+
+    // Handle different date formats
+    if (event.date instanceof Date) {
+      startTime = new Date(event.date);
+    } else {
+      startTime = new Date(event.date);
+    }
+
+    // If time is provided as string, parse it
+    if (event.time && typeof event.time === 'string') {
+      const [hours, minutes] = event.time.split(':').map(Number);
+      startTime.setHours(hours, minutes, 0, 0);
+    }
 
     if (event.endTime) {
       endTime = new Date(event.endTime);
@@ -40,15 +53,7 @@ export class CalendarEventAdapter {
       end: endTime,
       allDay: event.is_all_day || false,
       desc: event.description,
-      resource: {
-        originalEvent: event,
-        type: event.type,
-        priority: event.priority,
-        categoryColor: event.category_color,
-        location: event.location,
-        attendees: event.attendees,
-        participants: event.participants
-      }
+      resource: event // Store the entire CalendarEvent as resource for easy access
     };
   }
 
@@ -56,17 +61,16 @@ export class CalendarEventAdapter {
    * Convert RBC Event back to our CalendarEvent format
    */
   static fromRBCEvent(rbcEvent: RBCEvent): CalendarEvent {
-    const originalEvent = rbcEvent.resource?.originalEvent;
-    
-    if (originalEvent) {
-      // Update the original event with any changes from RBC
+    // If resource is the full CalendarEvent, use it directly with updates
+    if (rbcEvent.resource && typeof rbcEvent.resource === 'object' && 'id' in rbcEvent.resource) {
       return {
-        ...originalEvent,
+        ...rbcEvent.resource,
         date: rbcEvent.start,
         endTime: rbcEvent.end,
         title: rbcEvent.title,
-        description: rbcEvent.desc,
-        is_all_day: rbcEvent.allDay
+        description: rbcEvent.desc || rbcEvent.resource.description,
+        is_all_day: rbcEvent.allDay,
+        time: rbcEvent.start.toTimeString().slice(0, 5) // Extract HH:MM format
       };
     }
 
@@ -74,18 +78,17 @@ export class CalendarEventAdapter {
     return {
       id: rbcEvent.id,
       title: rbcEvent.title,
-      description: rbcEvent.desc,
-      time: rbcEvent.start.toTimeString(),
+      description: rbcEvent.desc || "",
+      time: rbcEvent.start.toTimeString().slice(0, 5),
       duration: this.calculateDuration(rbcEvent.start, rbcEvent.end),
       date: rbcEvent.start,
       endTime: rbcEvent.end,
-      type: rbcEvent.resource?.type || "appointment",
-      priority: rbcEvent.resource?.priority || "medium",
+      type: "appointment",
+      priority: "medium",
       is_all_day: rbcEvent.allDay,
-      category_color: rbcEvent.resource?.categoryColor,
-      location: rbcEvent.resource?.location,
-      attendees: rbcEvent.resource?.attendees,
-      participants: rbcEvent.resource?.participants
+      location: "",
+      attendees: 0,
+      participants: []
     };
   }
 

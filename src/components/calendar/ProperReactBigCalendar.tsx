@@ -58,17 +58,27 @@ const formats = {
   weekdayFormat: 'ddd'
 };
 
-export function ProperReactBigCalendar({
-  events = [],
-  onEventSelect,
-  onEventDrop,
-  onEventResize,
-  onSelectSlot,
-  view = 'month',
-  date = new Date(),
+const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
+  events,
+  date,
+  view,
   onNavigate,
-  onView
-}: ProperReactBigCalendarProps) {
+  onView,
+  onEventSelect,
+  onSelectSlot,
+  onEventDrop,
+  onEventResize
+}) => {
+  // Set up German locale with Monday as first day of week
+  moment.locale('de');
+  moment.updateLocale('de', {
+    week: {
+      dow: 1, // Monday is the first day of the week
+      doy: 4  // The week that contains Jan 4th is the first week of the year
+    }
+  });
+  
+  const localizer = momentLocalizer(moment);
 
   // Convert events to RBC format using the adapter
   const rbcEvents = useMemo(() => {
@@ -153,7 +163,20 @@ export function ProperReactBigCalendar({
         eventPropGetter={eventPropGetter}
         dayPropGetter={dayPropGetter}
         messages={messages}
-        formats={formats}
+        formats={{
+          dayFormat: 'dddd DD.MM',
+          weekdayFormat: 'dddd',
+          monthHeaderFormat: 'MMMM YYYY',
+          dayHeaderFormat: 'dddd DD.MM.YYYY',
+          dayRangeHeaderFormat: ({ start, end }) => 
+            `${moment(start).format('DD.MM')} - ${moment(end).format('DD.MM.YYYY')}`,
+          agendaDateFormat: 'DD.MM.YYYY',
+          agendaTimeFormat: 'HH:mm',
+          agendaTimeRangeFormat: ({ start, end }) => 
+            `${moment(start).format('HH:mm')} - ${moment(end).format('HH:mm')}`,
+          dateFormat: 'DD',
+          timeGutterFormat: 'HH:mm'
+        }}
         selectable
         resizable
         popup
@@ -168,3 +191,5 @@ export function ProperReactBigCalendar({
     </div>
   );
 }
+
+export { ProperReactBigCalendar };
