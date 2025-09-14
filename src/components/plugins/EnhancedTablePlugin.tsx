@@ -366,6 +366,12 @@ export function EnhancedTablePlugin() {
         }
         
         if ($isTableCellNode(cellNode)) {
+          const rowNode = cellNode.getParent();
+          if (!$isTableRowNode(rowNode)) return;
+          
+          const tableNode = rowNode.getParent();
+          if (!$isTableNode(tableNode)) return;
+          
           if (direction === 'next') {
             // Move to next cell or create new row
             const nextCell = cellNode.getNextSibling();
@@ -373,22 +379,39 @@ export function EnhancedTablePlugin() {
               nextCell.selectStart();
             } else {
               // End of row, go to next row or create new one
-              const rowNode = cellNode.getParent();
-              if ($isTableRowNode(rowNode)) {
-                const nextRow = rowNode.getNextSibling();
-                if (nextRow && $isTableRowNode(nextRow)) {
-                  const firstCell = nextRow.getFirstChild();
-                  if ($isTableCellNode(firstCell)) {
-                    firstCell.selectStart();
+              const nextRow = rowNode.getNextSibling();
+              if (nextRow && $isTableRowNode(nextRow)) {
+                const firstCell = nextRow.getFirstChild();
+                if ($isTableCellNode(firstCell)) {
+                  firstCell.selectStart();
+                }
+              } else {
+                // Create new row
+                addTableRow(tableNode, 'below');
+                // Navigate to first cell of new row
+                setTimeout(() => {
+                  const newNextRow = rowNode.getNextSibling();
+                  if (newNextRow && $isTableRowNode(newNextRow)) {
+                    const firstCell = newNextRow.getFirstChild();
+                    if ($isTableCellNode(firstCell)) {
+                      firstCell.selectStart();
+                    }
                   }
-                } else {
-                  // Create new row
-                  try {
-                    const tableNode = $getTableNodeFromLexicalNodeOrThrow(cellNode);
-                    addTableRow(tableNode, 'below');
-                  } catch (e) {
-                    console.warn('Could not navigate table:', e);
-                  }
+                }, 0);
+              }
+            }
+          } else {
+            // Move to previous cell
+            const prevCell = cellNode.getPreviousSibling();
+            if (prevCell && $isTableCellNode(prevCell)) {
+              prevCell.selectStart();
+            } else {
+              // Beginning of row, go to previous row
+              const prevRow = rowNode.getPreviousSibling();
+              if (prevRow && $isTableRowNode(prevRow)) {
+                const lastCell = prevRow.getLastChild();
+                if ($isTableCellNode(lastCell)) {
+                  lastCell.selectStart();
                 }
               }
             }
@@ -403,12 +426,18 @@ export function EnhancedTablePlugin() {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
         const node = selection.anchor.getNode();
-        const cellNode = $getTableCellNodeFromLexicalNode(node);
+        let cellNode = $getTableCellNodeFromLexicalNode(node);
+        
+        if (!cellNode) {
+          cellNode = $getTableCellNodeFromLexicalNode(node.getParent());
+        }
+        
         if ($isTableCellNode(cellNode)) {
           const rowNode = cellNode.getParent();
           if ($isTableRowNode(rowNode)) {
             const newRow = $createTableRowNode();
-            const cellsCount = rowNode.getChildrenSize();
+            const cells = rowNode.getChildren();
+            const cellsCount = cells.length;
             
             for (let i = 0; i < cellsCount; i++) {
               const newCell = $createTableCellNode();

@@ -52,6 +52,7 @@ import { Bold, Italic, List, ListOrdered, Quote, Code, Heading1, Heading2, Headi
 // Import new plugins
 import { EnhancedTablePlugin } from './plugins/EnhancedTablePlugin';
 import { FixedTablePlugin } from './plugins/FixedTablePlugin';
+import { ImprovedTablePlugin } from './plugins/ImprovedTablePlugin';
 import { EnhancedLinkPlugin } from './plugins/EnhancedLinkPlugin';
 import { DraggableBlocksPlugin } from './plugins/DraggableBlocksPlugin';
 import { MentionsPlugin } from './plugins/MentionsPlugin';

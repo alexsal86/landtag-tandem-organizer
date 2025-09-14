@@ -10,6 +10,7 @@ import {
   $getSelection, 
   $isRangeSelection, 
   $createTextNode,
+  $createRangeSelection,
   COMMAND_PRIORITY_NORMAL,
   CLICK_COMMAND,
   KEY_ESCAPE_COMMAND,
@@ -315,6 +316,48 @@ export function EnhancedLinkPlugin() {
   const [linkPosition, setLinkPosition] = useState({ x: 0, y: 0 });
   const [activeLinkNode, setActiveLinkNode] = useState<LinkNode | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Auto-link detection effect
+  useEffect(() => {
+    return editor.registerUpdateListener(({ editorState }) => {
+      editorState.read(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection) && selection.isCollapsed()) {
+          const anchorNode = selection.anchor.getNode();
+          const textContent = anchorNode.getTextContent();
+          
+          // Simple URL pattern detection
+          const urlPattern = /https?:\/\/[^\s]+/g;
+          const matches = textContent.match(urlPattern);
+          
+          if (matches) {
+            matches.forEach(url => {
+              // Only auto-convert if not already a link
+              if (!$isLinkNode(anchorNode.getParent())) {
+                editor.update(() => {
+                  const newSelection = $getSelection();
+                  if ($isRangeSelection(newSelection)) {
+                    const urlStart = textContent.indexOf(url);
+                    const urlEnd = urlStart + url.length;
+                    
+                    // Create a range selection for the URL
+                    const urlSelection = $createRangeSelection();
+                    urlSelection.anchor.set(anchorNode.getKey(), urlStart, 'text');
+                    urlSelection.focus.set(anchorNode.getKey(), urlEnd, 'text');
+                    
+                    // Create link node
+                    const linkNode = $createLinkNode(url);
+                    linkNode.append($createTextNode(url));
+                    urlSelection.insertNodes([linkNode]);
+                  }
+                });
+              }
+            });
+          }
+        }
+      });
+    });
+  }, [editor]);
 
   useEffect(() => {
     return mergeRegister(
