@@ -198,7 +198,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       <SidebarHeader className="border-b">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center gap-2 p-2">
+            <div className="flex items-center gap-2 p-1">
               <SidebarTrigger />
               <SidebarMenuButton
                 onClick={() => onSectionChange("dashboard")}
@@ -255,7 +255,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         tooltip={item.label}
                         className="flex items-center justify-between w-full"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
                           <item.icon />
                           <span>{item.label}</span>
                         </div>
@@ -309,7 +309,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         tooltip="Administration"
                         className="flex items-center justify-between w-full"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
                           <Shield />
                           <span>Administration</span>
                         </div>
