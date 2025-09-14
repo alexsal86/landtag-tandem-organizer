@@ -34,7 +34,9 @@ import {
   Redo,
   Type,
   MessageCircle,
-  History
+  History,
+  Palette,
+  HighlighterIcon
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -45,6 +47,8 @@ import {
 import { FileAttachmentPlugin } from './plugins/FileAttachmentPlugin';
 import { CommentPlugin } from './plugins/CommentPlugin';
 import { VersionHistoryPlugin } from './plugins/VersionHistoryPlugin';
+import FontSizePlugin from './plugins/FontSizePlugin';
+import FontFamilyPlugin from './plugins/FontFamilyPlugin';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
@@ -166,6 +170,19 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           icon: Redo,
           label: 'Wiederholen',
           command: () => editor.dispatchCommand(REDO_COMMAND, undefined)
+        }
+      ]
+    },
+    {
+      name: 'font',
+      components: [
+        {
+          component: FontFamilyPlugin,
+          label: 'Schriftart'
+        },
+        {
+          component: FontSizePlugin,
+          label: 'Schriftgröße'
         }
       ]
     },
@@ -304,8 +321,11 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     <div className="flex flex-wrap gap-1 p-2 border-b bg-background">
       {toolbarGroups.map((group, groupIndex) => (
         <React.Fragment key={group.name}>
-          <div className="flex gap-1">
-            {group.buttons.map((button, index) => (
+          <div className="flex gap-1 items-center">
+            {group.components && group.components.map((comp, index) => (
+              <comp.component key={index} />
+            ))}
+            {group.buttons && group.buttons.map((button, index) => (
               <React.Fragment key={index}>
                 {button.dropdown ? (
                   <DropdownMenu>

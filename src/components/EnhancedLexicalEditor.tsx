@@ -50,8 +50,8 @@ import { Button } from './ui/button';
 import { Bold, Italic, List, ListOrdered, Quote, Code, Heading1, Heading2, Heading3 } from 'lucide-react';
 
 // Import new plugins
-import { TablePlugin } from './plugins/TablePlugin';
-import { LinkPlugin as CustomLinkPlugin } from './plugins/LinkPlugin';
+import { EnhancedTablePlugin } from './plugins/EnhancedTablePlugin';
+import { EnhancedLinkPlugin } from './plugins/EnhancedLinkPlugin';
 import { DraggableBlocksPlugin } from './plugins/DraggableBlocksPlugin';
 import { MentionsPlugin } from './plugins/MentionsPlugin';
 import { CheckListPlugin } from './plugins/CheckListPlugin';
@@ -477,8 +477,8 @@ function YjsCollaborationEditor(props: any) {
             />
             
             {/* Enhanced Plugins */}
-            <TablePlugin />
-            <CustomLinkPlugin />
+            <EnhancedTablePlugin />
+            <EnhancedLinkPlugin />
             <DraggableBlocksPlugin />
             <MentionsPlugin />
             <CheckListPlugin />
@@ -652,8 +652,8 @@ export default function EnhancedLexicalEditor({
           />
           
           {/* Enhanced Plugins */}
-          <TablePlugin />
-          <CustomLinkPlugin />
+            <EnhancedTablePlugin />
+            <EnhancedLinkPlugin />
           <DraggableBlocksPlugin />
           <MentionsPlugin />
           <CheckListPlugin />
