@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ArrowUpWideNarrow, ArrowDownWideNarrow, Star, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,14 +103,18 @@ export function ContactsView() {
     sortDirection,
   });
 
-  // Debounced search
+  // Create stable debounced function
+  const debouncedUpdate = useMemo(
+    () => debounce((term: string) => {
+      setDebouncedSearchTerm(term);
+    }, 300),
+    []
+  );
+
+  // Update debounced search term when searchTerm changes
   useEffect(() => {
-    const debouncedUpdate = debounce(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 300);
-    
-    debouncedUpdate();
-  }, [searchTerm]);
+    debouncedUpdate(searchTerm);
+  }, [searchTerm, debouncedUpdate]);
 
   // Fetch distribution lists
   useEffect(() => {
