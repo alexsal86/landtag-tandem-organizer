@@ -49,8 +49,37 @@ export function ContactsView() {
   
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currentTenant } = useTenant();
+  const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
+
+  // Show loading until auth and tenant are resolved
+  if (!user || tenantLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">System wird geladen...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if no tenant access
+  if (!currentTenant) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <h2 className="text-2xl font-bold text-foreground mb-4">Kein Zugriff</h2>
+          <p className="text-muted-foreground mb-6">
+            Sie haben keinen Zugriff auf einen Mandanten. Bitte wenden Sie sich an Ihren Administrator.
+          </p>
+          <Button onClick={() => navigate("/auth")} variant="outline">
+            Zurück zur Anmeldung
+          </Button>
+        </div>
+      </div>
+    );
+  }
   
   // Get accurate counts for tab badges
   const { contactsCount, archiveCount, distributionListsCount } = useCounts();
@@ -251,7 +280,7 @@ export function ContactsView() {
     </TableHead>
   );
 
-  if (loading) {
+  if (loading && contacts.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
         <div className="text-center">
