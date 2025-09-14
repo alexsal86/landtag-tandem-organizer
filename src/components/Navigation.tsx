@@ -255,7 +255,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         tooltip={item.label}
                         className="flex items-center justify-between w-full"
                       >
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-3">
                           <item.icon />
                           <span>{item.label}</span>
                         </div>
@@ -309,7 +309,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         tooltip="Administration"
                         className="flex items-center justify-between w-full"
                       >
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-3">
                           <Shield />
                           <span>Administration</span>
                         </div>
