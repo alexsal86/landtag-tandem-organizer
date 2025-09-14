@@ -11,9 +11,7 @@ import {
   TableCellNode,
   TableRowNode,
   $getTableNodeFromLexicalNodeOrThrow,
-  $getTableCellNodeFromLexicalNode,
-  $createTableSelection,
-  $isTableSelection
+  $getTableCellNodeFromLexicalNode
 } from '@lexical/table';
 import { 
   $insertNodes, 
@@ -360,13 +358,14 @@ export function EnhancedTablePlugin() {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
         const node = selection.anchor.getNode();
-        const cellNode = $getTableCellNodeFromLexicalNode(node);
+        let cellNode = $getTableCellNodeFromLexicalNode(node);
+        
+        if (!cellNode) {
+          // Try parent if direct lookup fails
+          cellNode = $getTableCellNodeFromLexicalNode(node.getParent());
+        }
+        
         if ($isTableCellNode(cellNode)) {
-          const tableNode = $getTableNodeFromLexicalNodeOrThrow(cellNode);
-          // Get cell position for navigation
-          const cellsInRow = cellNode.getParent()?.getChildren() || [];
-          
-          // Simple navigation logic - can be enhanced
           if (direction === 'next') {
             // Move to next cell or create new row
             const nextCell = cellNode.getNextSibling();
@@ -384,7 +383,12 @@ export function EnhancedTablePlugin() {
                   }
                 } else {
                   // Create new row
-                  addTableRow(tableNode, 'below');
+                  try {
+                    const tableNode = $getTableNodeFromLexicalNodeOrThrow(cellNode);
+                    addTableRow(tableNode, 'below');
+                  } catch (e) {
+                    console.warn('Could not navigate table:', e);
+                  }
                 }
               }
             }

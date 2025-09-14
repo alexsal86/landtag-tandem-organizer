@@ -422,25 +422,27 @@ export function EnhancedLinkPlugin() {
   }, [editor, showLinkPreview, showLinkEditor, activeLinkNode, linkText]);
 
   const createLink = useCallback(() => {
-    const selection = $getSelection();
-    if ($isRangeSelection(selection)) {
-      const selectedText = selection.getTextContent();
-      setLinkText(selectedText || '');
-      setLinkUrl('');
-      
-      // Position near selection
-      const nativeSelection = window.getSelection();
-      if (nativeSelection && nativeSelection.rangeCount > 0) {
-        const range = nativeSelection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        setLinkPosition({ x: rect.left, y: rect.bottom });
+    editor.update(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        const selectedText = selection.getTextContent();
+        setLinkText(selectedText || '');
+        setLinkUrl('');
+        
+        // Position near selection
+        const nativeSelection = window.getSelection();
+        if (nativeSelection && nativeSelection.rangeCount > 0) {
+          const range = nativeSelection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          setLinkPosition({ x: rect.left, y: rect.bottom });
+        }
+        
+        setShowLinkEditor(true);
+        setShowLinkPreview(false);
+        setActiveLinkNode(null);
       }
-      
-      setShowLinkEditor(true);
-      setShowLinkPreview(false);
-      setActiveLinkNode(null);
-    }
-  }, []);
+    });
+  }, [editor]);
 
   const handleEditLink = useCallback(() => {
     setShowLinkEditor(true);
@@ -474,7 +476,16 @@ export function EnhancedLinkPlugin() {
           } else {
             // Create new link
             const linkNode = $createLinkNode(url);
-            linkNode.append($createTextNode(linkText || url));
+            if (linkText) {
+              linkNode.append($createTextNode(linkText));
+            } else {
+              linkNode.append($createTextNode(url));
+            }
+            
+            // If text is selected, replace it with the link
+            if (!selection.isCollapsed()) {
+              selection.removeText();
+            }
             selection.insertNodes([linkNode]);
           }
         }
@@ -482,6 +493,8 @@ export function EnhancedLinkPlugin() {
       
       setShowLinkEditor(false);
       setActiveLinkNode(null);
+      setLinkUrl('');
+      setLinkText('');
     }
   }, [editor, linkUrl, linkText, activeLinkNode]);
 

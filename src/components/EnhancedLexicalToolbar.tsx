@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getSelection, $isRangeSelection, $createParagraphNode } from 'lexical';
+import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode } from 'lexical';
 import { 
   $createHeadingNode, 
   $createQuoteNode, 
@@ -70,8 +70,24 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     editor.update(() => {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
+        const selectedText = selection.getTextContent();
         const headingNode = $createHeadingNode(headingSize);
-        selection.insertNodes([headingNode]);
+        
+        if (selectedText) {
+          // If text is selected, create heading with that text
+          headingNode.append($createParagraphNode().append($createTextNode(selectedText)));
+          selection.insertNodes([headingNode]);
+        } else {
+          // If no text selected, convert current block to heading
+          const anchorNode = selection.anchor.getNode();
+          const element = anchorNode.getParent() || anchorNode;
+          
+          if (element) {
+            const textContent = element.getTextContent();
+            headingNode.append($createTextNode(textContent));
+            element.replace(headingNode);
+          }
+        }
       }
     });
   }, [editor]);
@@ -80,8 +96,22 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     editor.update(() => {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
+        const selectedText = selection.getTextContent();
         const quoteNode = $createQuoteNode();
-        selection.insertNodes([quoteNode]);
+        
+        if (selectedText) {
+          quoteNode.append($createParagraphNode().append($createTextNode(selectedText)));
+          selection.insertNodes([quoteNode]);
+        } else {
+          const anchorNode = selection.anchor.getNode();
+          const element = anchorNode.getParent() || anchorNode;
+          
+          if (element) {
+            const textContent = element.getTextContent();
+            quoteNode.append($createParagraphNode().append($createTextNode(textContent)));
+            element.replace(quoteNode);
+          }
+        }
       }
     });
   }, [editor]);
@@ -90,8 +120,22 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     editor.update(() => {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
+        const selectedText = selection.getTextContent();
         const codeNode = $createCodeNode();
-        selection.insertNodes([codeNode]);
+        
+        if (selectedText) {
+          codeNode.append($createTextNode(selectedText));
+          selection.insertNodes([codeNode]);
+        } else {
+          const anchorNode = selection.anchor.getNode();
+          const element = anchorNode.getParent() || anchorNode;
+          
+          if (element) {
+            const textContent = element.getTextContent();
+            codeNode.append($createTextNode(textContent));
+            element.replace(codeNode);
+          }
+        }
       }
     });
   }, [editor]);

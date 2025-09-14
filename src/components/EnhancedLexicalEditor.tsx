@@ -51,6 +51,7 @@ import { Bold, Italic, List, ListOrdered, Quote, Code, Heading1, Heading2, Headi
 
 // Import new plugins
 import { EnhancedTablePlugin } from './plugins/EnhancedTablePlugin';
+import { FixedTablePlugin } from './plugins/FixedTablePlugin';
 import { EnhancedLinkPlugin } from './plugins/EnhancedLinkPlugin';
 import { DraggableBlocksPlugin } from './plugins/DraggableBlocksPlugin';
 import { MentionsPlugin } from './plugins/MentionsPlugin';
@@ -112,40 +113,105 @@ function ToolbarPlugin() {
       editor.update(() => {
         const selection = $getSelection();
         if ($isRangeSelection(selection)) {
+          const selectedText = selection.getTextContent();
           const headingNode = $createHeadingNode('h1');
-          selection.insertNodes([headingNode]);
+          
+          if (selectedText) {
+            headingNode.append($createTextNode(selectedText));
+            selection.insertNodes([headingNode]);
+          } else {
+            const anchorNode = selection.anchor.getNode();
+            const element = anchorNode.getParent() || anchorNode;
+            if (element) {
+              const textContent = element.getTextContent();
+              headingNode.append($createTextNode(textContent));
+              element.replace(headingNode);
+            }
+          }
         }
       });
     } else if (format === 'heading2') {
       editor.update(() => {
         const selection = $getSelection();
         if ($isRangeSelection(selection)) {
+          const selectedText = selection.getTextContent();
           const headingNode = $createHeadingNode('h2');
-          selection.insertNodes([headingNode]);
+          
+          if (selectedText) {
+            headingNode.append($createTextNode(selectedText));
+            selection.insertNodes([headingNode]);
+          } else {
+            const anchorNode = selection.anchor.getNode();
+            const element = anchorNode.getParent() || anchorNode;
+            if (element) {
+              const textContent = element.getTextContent();
+              headingNode.append($createTextNode(textContent));
+              element.replace(headingNode);
+            }
+          }
         }
       });
     } else if (format === 'heading3') {
       editor.update(() => {
         const selection = $getSelection();
         if ($isRangeSelection(selection)) {
+          const selectedText = selection.getTextContent();
           const headingNode = $createHeadingNode('h3');
-          selection.insertNodes([headingNode]);
+          
+          if (selectedText) {
+            headingNode.append($createTextNode(selectedText));
+            selection.insertNodes([headingNode]);
+          } else {
+            const anchorNode = selection.anchor.getNode();
+            const element = anchorNode.getParent() || anchorNode;
+            if (element) {
+              const textContent = element.getTextContent();
+              headingNode.append($createTextNode(textContent));
+              element.replace(headingNode);
+            }
+          }
         }
       });
     } else if (format === 'quote') {
       editor.update(() => {
         const selection = $getSelection();
         if ($isRangeSelection(selection)) {
+          const selectedText = selection.getTextContent();
           const quoteNode = $createQuoteNode();
-          selection.insertNodes([quoteNode]);
+          
+          if (selectedText) {
+            quoteNode.append($createParagraphNode().append($createTextNode(selectedText)));
+            selection.insertNodes([quoteNode]);
+          } else {
+            const anchorNode = selection.anchor.getNode();
+            const element = anchorNode.getParent() || anchorNode;
+            if (element) {
+              const textContent = element.getTextContent();
+              quoteNode.append($createParagraphNode().append($createTextNode(textContent)));
+              element.replace(quoteNode);
+            }
+          }
         }
       });
     } else if (format === 'codeblock') {
       editor.update(() => {
         const selection = $getSelection();
         if ($isRangeSelection(selection)) {
+          const selectedText = selection.getTextContent();
           const codeNode = $createCodeNode();
-          selection.insertNodes([codeNode]);
+          
+          if (selectedText) {
+            codeNode.append($createTextNode(selectedText));
+            selection.insertNodes([codeNode]);
+          } else {
+            const anchorNode = selection.anchor.getNode();
+            const element = anchorNode.getParent() || anchorNode;
+            if (element) {
+              const textContent = element.getTextContent();
+              codeNode.append($createTextNode(textContent));
+              element.replace(codeNode);
+            }
+          }
         }
       });
     } else if (format === 'bulletlist') {
@@ -477,6 +543,7 @@ function YjsCollaborationEditor(props: any) {
             />
             
             {/* Enhanced Plugins */}
+            <FixedTablePlugin />
             <EnhancedTablePlugin />
             <EnhancedLinkPlugin />
             <DraggableBlocksPlugin />
