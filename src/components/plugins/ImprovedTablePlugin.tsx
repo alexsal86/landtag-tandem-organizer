@@ -160,6 +160,8 @@ export function ImprovedTablePlugin() {
   }, [editor]);
 
   const handleArrowNavigation = useCallback((direction: 'up' | 'down' | 'left' | 'right'): boolean => {
+    let handled = false;
+    
     editor.update(() => {
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
@@ -172,10 +174,10 @@ export function ImprovedTablePlugin() {
         
         if ($isTableCellNode(cellNode)) {
           const rowNode = cellNode.getParent();
-          if (!$isTableRowNode(rowNode)) return false;
+          if (!$isTableRowNode(rowNode)) return;
           
           const tableNode = rowNode.getParent();
-          if (!$isTableNode(tableNode)) return false;
+          if (!$isTableNode(tableNode)) return;
           
           let targetCell: TableCellNode | null = null;
           
@@ -208,12 +210,13 @@ export function ImprovedTablePlugin() {
           
           if (targetCell && $isTableCellNode(targetCell)) {
             focusCell(targetCell);
-            return true;
+            handled = true;
           }
         }
       }
-      return false;
     });
+    
+    return handled;
   }, [editor]);
 
   const focusCell = useCallback((cell: TableCellNode) => {
