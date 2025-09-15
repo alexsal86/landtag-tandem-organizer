@@ -1511,6 +1511,7 @@ export type Database = {
       }
       election_districts: {
         Row: {
+          administrative_level: string | null
           area_km2: number | null
           boundaries: Json | null
           center_coordinates: Json | null
@@ -1528,6 +1529,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          administrative_level?: string | null
           area_km2?: number | null
           boundaries?: Json | null
           center_coordinates?: Json | null
@@ -1545,6 +1547,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          administrative_level?: string | null
           area_km2?: number | null
           boundaries?: Json | null
           center_coordinates?: Json | null

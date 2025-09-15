@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Users, BarChart3, Loader2, Crown, Award } from "lucide-react";
+import { MapPin, Users, BarChart3, Loader2, Crown, Award, FileText, Map } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictDetailDialog } from "./DistrictDetailDialog";
 import SimpleLeafletMap from "./SimpleLeafletMap";
@@ -61,9 +61,12 @@ export const ElectionDistrictsView = () => {
   const { districts, loading, refetch } = useElectionDistricts();
   const { toast } = useToast();
   const [importing, setImporting] = useState(false);
+  const [importingBoundaries, setImportingBoundaries] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState<any>(null);
   const [showDistrictDialog, setShowDistrictDialog] = useState(false);
   const [useMapFallback, setUseMapFallback] = useState(false);
+  const [showElectionDistricts, setShowElectionDistricts] = useState(true);
+  const [showAdministrativeBoundaries, setShowAdministrativeBoundaries] = useState(false);
 
   const handleDistrictClick = (district: any) => {
     setSelectedDistrict(district);
@@ -104,6 +107,47 @@ export const ElectionDistrictsView = () => {
     }
   };
 
+  const handleImportAdministrativeBoundaries = async () => {
+    try {
+      setImportingBoundaries(true);
+      
+      const { data, error } = await supabase.functions.invoke('import-administrative-boundaries');
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({ 
+        title: 'Import erfolgreich', 
+        description: `${data?.data?.length || 0} Verwaltungsgrenzen wurden erfolgreich importiert.` 
+      });
+      
+      await refetch();
+      
+    } catch (error: any) {
+      console.error('Error importing administrative boundaries:', error);
+      toast({ 
+        title: 'Import fehlgeschlagen', 
+        description: error.message || 'Bitte erneut versuchen.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setImportingBoundaries(false);
+    }
+  };
+
+  // Filter districts based on data
+  const electionDistricts = districts.filter(d => !d.district_type || d.district_type === 'wahlkreis');
+  const administrativeBoundaries = districts.filter(d => d.district_type === 'verwaltungsgrenze');
+  const hasElectionData = electionDistricts.length > 0;
+  const hasAdministrativeData = administrativeBoundaries.length > 0;
+
+  // Create filtered districts based on layer visibility
+  const visibleDistricts = [
+    ...(showElectionDistricts ? electionDistricts : []),
+    ...(showAdministrativeBoundaries ? administrativeBoundaries : [])
+  ];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -137,38 +181,15 @@ export const ElectionDistrictsView = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {districts.length === 0 && (
-                <div className="mb-4 flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Keine Wahlkreisgrenzen vorhanden. Einmaliger Import erforderlich.</p>
-                  <Button
-                    size="sm"
-                    disabled={importing}
-                    onClick={async () => {
-                      try {
-                        setImporting(true);
-                        const res = await fetch('/data/LTWahlkreise2021-BW.geojson');
-                        const text = await res.text();
-                        const { data, error } = await supabase.functions.invoke('import-election-districts', {
-                          body: { geojson: text }
-                        });
-                        if (error) throw error;
-                        toast({ title: 'Import erfolgreich', description: `${data?.imported ?? 0} Wahlkreise importiert.` });
-                        await refetch();
-                      } catch (e: any) {
-                        console.error(e);
-                        toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
-                      } finally {
-                        setImporting(false);
-                      }
-                    }}
-                  >
-                    {importing ? (<span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Importiere…</span>) : 'GeoJSON importieren'}
-                  </Button>
+              {visibleDistricts.length === 0 && (
+                <div className="mb-4 p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-2">Keine Daten auf der Karte sichtbar.</p>
+                  <p className="text-xs text-muted-foreground">Aktivieren Sie Layer oder importieren Sie Daten über die Seitenleiste.</p>
                 </div>
               )}
               <ErrorBoundary onError={handleMapError}>
                 <SimpleLeafletMap 
-                  districts={districts}
+                  districts={visibleDistricts}
                   onDistrictClick={handleDistrictClick}
                   selectedDistrict={selectedDistrict}
                 />
@@ -179,10 +200,128 @@ export const ElectionDistrictsView = () => {
 
         {/* Sidebar */}
         <div className="lg:col-span-1 space-y-4">
+          {/* Layer Controls */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Karten-Layer</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="election-districts"
+                  checked={showElectionDistricts}
+                  onChange={(e) => setShowElectionDistricts(e.target.checked)}
+                  className="rounded"
+                />
+                <label htmlFor="election-districts" className="text-sm font-medium">
+                  Wahlkreise ({electionDistricts.length})
+                </label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="administrative-boundaries"
+                  checked={showAdministrativeBoundaries}
+                  onChange={(e) => setShowAdministrativeBoundaries(e.target.checked)}
+                  className="rounded"
+                />
+                <label htmlFor="administrative-boundaries" className="text-sm font-medium">
+                  Verwaltungsgrenzen ({administrativeBoundaries.length})
+                </label>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Data Import */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Datenimport</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={importing}
+                onClick={async () => {
+                  try {
+                    setImporting(true);
+                    const res = await fetch('/data/LTWahlkreise2021-BW.geojson');
+                    const text = await res.text();
+                    const { data, error } = await supabase.functions.invoke('import-election-districts', {
+                      body: { geojson: text }
+                    });
+                    if (error) throw error;
+                    toast({ title: 'Import erfolgreich', description: `${data?.imported ?? 0} Wahlkreise importiert.` });
+                    await refetch();
+                  } catch (e: any) {
+                    console.error(e);
+                    toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
+                  } finally {
+                    setImporting(false);
+                  }
+                }}
+                className="w-full"
+              >
+                {importing ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Importiere Wahlkreise...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Wahlkreise importieren
+                  </span>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={importingBoundaries}
+                onClick={handleImportAdministrativeBoundaries}
+                className="w-full"
+              >
+                {importingBoundaries ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Importiere Grenzen...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Map className="h-4 w-4" />
+                    Verwaltungsgrenzen importieren
+                  </span>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={importing}
+                onClick={handleImportRepresentatives}
+                className="w-full"
+              >
+                {importing ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Importiere...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Abgeordnete importieren
+                  </span>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* District Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Wahlkreis-Informationen</CardTitle>
+              <CardTitle className="text-lg">
+                {selectedDistrict?.district_type === 'verwaltungsgrenze' ? 'Verwaltungsgrenze' : 'Wahlkreis-Informationen'}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {selectedDistrict ? (
@@ -256,42 +395,32 @@ export const ElectionDistrictsView = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Wahlkreise gesamt:</span>
-                <Badge variant="secondary">{districts.length}</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Gesamtbevölkerung:</span>
-                <Badge variant="secondary">
-                  {districts.reduce((sum, d) => sum + (d.population || 0), 0).toLocaleString()}
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Gesamtfläche:</span>
-                <Badge variant="secondary">
-                  ca. {districts.reduce((sum, d) => sum + (d.area_km2 || 0), 0)} km²
-                </Badge>
-              </div>
-              
-              {/* Representatives Import Button */}
-              <div className="pt-3 border-t">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={importing}
-                  onClick={handleImportRepresentatives}
-                  className="w-full"
-                >
-                  {importing ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Importiere...
-                    </span>
-                  ) : (
-                    'Abgeordnete importieren'
-                  )}
-                </Button>
-              </div>
+              {hasElectionData && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Wahlkreise gesamt:</span>
+                    <Badge variant="secondary">{electionDistricts.length}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Gesamtbevölkerung:</span>
+                    <Badge variant="secondary">
+                      {electionDistricts.reduce((sum, d) => sum + (d.population || 0), 0).toLocaleString()}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Gesamtfläche:</span>
+                    <Badge variant="secondary">
+                      ca. {electionDistricts.reduce((sum, d) => sum + (d.area_km2 || 0), 0)} km²
+                    </Badge>
+                  </div>
+                </>
+              )}
+              {hasAdministrativeData && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Verwaltungsgrenzen:</span>
+                  <Badge variant="outline">{administrativeBoundaries.length}</Badge>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -301,42 +430,56 @@ export const ElectionDistrictsView = () => {
               <CardTitle className="text-lg">Legende</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-black rounded"></div>
-                    <span>CDU</span>
+              <div className="space-y-3">
+                {hasElectionData && (
+                  <>
+                    <div className="text-sm text-muted-foreground">Parteifarben (Direktmandate):</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-black rounded"></div>
+                        <span>CDU</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-red-600 rounded"></div>
+                        <span>SPD</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-green-600 rounded"></div>
+                        <span>GRÜNE</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-yellow-400 rounded"></div>
+                        <span>FDP</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-blue-800 rounded"></div>
+                        <span>AfD</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-purple-600 rounded"></div>
+                        <span>LINKE</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Award className="h-3 w-3 text-yellow-600" />
+                        <span className="text-xs">Direktmandat</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Farben zeigen die Partei des Direktmandats
+                      </p>
+                    </div>
+                  </>
+                )}
+                {hasAdministrativeData && (
+                  <div className={hasElectionData ? "pt-2 border-t" : ""}>
+                    <div className="text-sm text-muted-foreground mb-2">Verwaltungsgrenzen:</div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-purple-600 rounded-sm opacity-60"></div>
+                      <span className="text-xs">Landkreise (gestrichelt)</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-red-600 rounded"></div>
-                    <span>SPD</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-green-600 rounded"></div>
-                    <span>GRÜNE</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-yellow-400 rounded"></div>
-                    <span>FDP</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-blue-800 rounded"></div>
-                    <span>AfD</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-purple-600 rounded"></div>
-                    <span>LINKE</span>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Award className="h-3 w-3 text-yellow-600" />
-                    <span className="text-xs">Direktmandat</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Farben zeigen die Partei des Direktmandats
-                  </p>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -10,10 +10,16 @@ interface LeafletKarlsruheMapProps {
   selectedDistrict?: ElectionDistrict;
 }
 
-// Helper function to get party color based on direct mandate
+// Helper function to get party color for election districts and admin boundaries
 const getPartyColorHex = (district?: ElectionDistrict): string => {
   if (!district) return '#6b7280';
-  // Find the direct mandate representative
+  
+  // Different styling for administrative boundaries
+  if (district.district_type === 'verwaltungsgrenze') {
+    return '#8B5CF6'; // Purple for administrative boundaries
+  }
+  
+  // Find the direct mandate representative for election districts
   const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
   const party = directMandate?.party;
   
@@ -103,14 +109,16 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           const districtNumber = feature?.properties?.district_number;
           const district = districts.find(d => d.district_number === districtNumber);
           const isSelected = district && selectedDistrict?.id === district.id;
+          const isAdministrative = district?.district_type === 'verwaltungsgrenze';
           const partyColor = getPartyColorHex(district);
           
           return {
-            color: partyColor,
-            weight: isSelected ? 4 : 2,
+            color: isSelected ? '#ffffff' : (isAdministrative ? '#6B46C1' : partyColor),
+            weight: isSelected ? 4 : (isAdministrative ? 2 : 2),
             opacity: 1,
             fillColor: partyColor,
-            fillOpacity: isSelected ? 0.7 : 0.25,
+            fillOpacity: isSelected ? 0.7 : (isAdministrative ? 0.3 : 0.25),
+            dashArray: isAdministrative ? '5, 5' : '',
             smoothFactor: 0, // No simplification for maximum precision
           } as L.PathOptions;
         },
@@ -123,28 +131,53 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           const partyColor = getPartyColorHex(district);
           const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
 
+          const isAdministrative = district.district_type === 'verwaltungsgrenze';
+          
           layer.on('mouseover', () => {
-            (layer as L.Path).setStyle({ weight: 3, fillOpacity: 0.5 });
+            (layer as L.Path).setStyle({ 
+              weight: 3, 
+              fillOpacity: isAdministrative ? 0.5 : 0.5 
+            });
           });
           layer.on('mouseout', () => {
-            (layer as L.Path).setStyle({ weight: isSelected ? 4 : 2, fillOpacity: isSelected ? 0.7 : 0.25 });
+            (layer as L.Path).setStyle({ 
+              weight: isSelected ? 4 : (isAdministrative ? 2 : 2), 
+              fillOpacity: isSelected ? 0.7 : (isAdministrative ? 0.3 : 0.25) 
+            });
           });
           layer.on('click', () => onDistrictClick(district));
 
-          (layer as L.Layer).bindPopup(`
+          let popupContent = `
             <div class="p-2 min-w-[200px]">
               <div class="flex items-center gap-2 mb-2">
                 <span class="px-2 py-1 rounded text-white text-xs font-medium" style="background-color: ${partyColor}">${district.district_number}</span>
-                <h3 class="font-semibold">${district.district_name}</h3>
+                <h3 class="font-semibold">${district.district_name || (isAdministrative ? `Kreis ${district.district_number}` : `Wahlkreis ${district.district_number}`)}</h3>
               </div>
               <div class="space-y-1 text-sm text-gray-600">
+          `;
+
+          if (isAdministrative) {
+            popupContent += `
+                <div class="mb-2">
+                  <strong>Typ:</strong> Verwaltungsgrenze<br>
+                  <strong>Region:</strong> ${district.region || 'Baden-Württemberg'}
+                </div>
+            `;
+          } else {
+            popupContent += `
                 ${directMandate ? `<div class="flex items-center gap-2"><span>🏆</span><span><strong>${directMandate.name}</strong> (${directMandate.party})</span></div>` : '<div class="text-gray-500">Kein Direktmandat</div>'}
                 ${district.representatives && district.representatives.length > 1 ? `<div class="text-xs text-gray-500">${district.representatives.length - 1} weitere Abgeordnete</div>` : ''}
+            `;
+          }
+
+          popupContent += `
                 ${district.population ? `<div class="flex items-center gap-2"><span>👥</span><span>${district.population.toLocaleString()} Einwohner</span></div>` : ''}
                 ${district.area_km2 ? `<div class="flex items-center gap-2"><span>📐</span><span>ca. ${district.area_km2} km²</span></div>` : ''}
               </div>
             </div>
-          `);
+          `;
+
+          (layer as L.Layer).bindPopup(popupContent);
         },
       });
 
@@ -153,8 +186,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       console.log(`Rendered ${districts.length} districts from database`);
     }
 
-    // Add markers with district numbers
-    districts.forEach((district) => {
+    // Add markers with district numbers (only for election districts, not administrative boundaries)
+    districts.filter(d => d.district_type !== 'verwaltungsgrenze').forEach((district) => {
       if (!district.center_coordinates) return;
       const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
       const partyColor = getPartyColorHex(district);
