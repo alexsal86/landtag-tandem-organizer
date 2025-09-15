@@ -31,36 +31,14 @@ serve(async (req) => {
       console.log('No valid JSON in request body, trying local file');
     }
 
-    // If no data in request, try to load from remote file
     if (!geoJsonData) {
-      try {
-        // Get the origin from the request or use a fallback
-        const origin = req.headers.get('origin') || 'https://7d09a65d-5cbe-421b-a580-38a4fe244277.lovableproject.com';
-        const fileUrl = `${origin}/data/kreise_bw.json`;
-        
-        console.log(`Attempting to fetch GeoJSON from: ${fileUrl}`);
-        
-        const response = await fetch(fileUrl);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+      return new Response(
+        JSON.stringify({ error: 'No GeoJSON data provided in request body' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-        const geoJsonText = await response.text();
-        geoJsonData = JSON.parse(geoJsonText);
-        console.log('Loaded GeoJSON data from remote file, features count:', geoJsonData?.features?.length || 0);
-      } catch (error) {
-        console.error('Error loading remote GeoJSON file:', error);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Could not load GeoJSON data', 
-            details: error.message,
-            suggestion: 'Make sure the kreise_bw.json file is accessible in the /public/data/ folder'
-          }),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
+      );
     }
 
     if (!geoJsonData || !geoJsonData.features) {

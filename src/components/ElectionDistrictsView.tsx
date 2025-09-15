@@ -111,7 +111,17 @@ export const ElectionDistrictsView = () => {
     try {
       setImportingBoundaries(true);
       
-      const { data, error } = await supabase.functions.invoke('import-administrative-boundaries');
+      // Load the file client-side first
+      const response = await fetch('/data/kreise_bw.json');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const geoJsonData = await response.json();
+      
+      // Send the data to the edge function
+      const { data, error } = await supabase.functions.invoke('import-administrative-boundaries', {
+        body: { geoJsonData }
+      });
       
       if (error) {
         throw error;
