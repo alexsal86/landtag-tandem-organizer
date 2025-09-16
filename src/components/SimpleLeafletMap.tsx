@@ -403,6 +403,21 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border">
       <div ref={mapEl} className="w-full h-full" />
       
+      {/* Custom CSS for popup z-index */}
+      <style>{`
+        .leaflet-popup-pane {
+          z-index: 1000 !important;
+        }
+        .leaflet-popup {
+          z-index: 1000 !important;
+        }
+        .leaflet-popup-content-wrapper {
+          z-index: 1000 !important;
+        }
+        .leaflet-popup-tip {
+          z-index: 999 !important;
+        }
+      `}</style>
       
       <div className="absolute top-4 right-4 z-[1000] space-y-2">
         <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 text-xs text-muted-foreground shadow-lg">
