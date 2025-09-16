@@ -96,7 +96,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !districtLayerRef.current || !markerLayerRef.current) return;
-    if (!districts.length) return;
+    if (!districts.length && !showPartyAssociations) return;
 
     // Clear existing layers
     districtLayerRef.current.clearLayers();
@@ -336,10 +336,13 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         padding: [paddingValue, paddingValue] as [number, number],
         maxZoom: 12,
       });
+    } else if (showPartyAssociations && associations.length > 0 && !districts.length) {
+      // If only party associations are shown, center on Baden-Württemberg
+      map.setView([48.7758, 9.1829], 8);
     }
   }, [districts, selectedDistrict, onDistrictClick, showPartyAssociations, associations]);
   
-  if (!districts.length) {
+  if (!districts.length && !showPartyAssociations) {
     return (
       <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border flex items-center justify-center">
         <p className="text-muted-foreground">Keine Wahlkreisdaten verfügbar</p>

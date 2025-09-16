@@ -272,7 +272,7 @@ Zollernalb,74339021500,https://www.gruene-zollernalb.de,,,Postfach,4016,72322 Ba
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {visibleDistricts.length === 0 && (
+              {visibleDistricts.length === 0 && !showPartyAssociations && (
                 <div className="mb-4 p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground mb-2">Keine Daten auf der Karte sichtbar.</p>
                   <p className="text-xs text-muted-foreground">Aktivieren Sie Layer oder importieren Sie Daten über die Seitenleiste.</p>
