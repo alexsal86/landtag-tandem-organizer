@@ -283,103 +283,73 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       marker.addTo(markerLayerRef.current!);
     });
 
-    // Add markers for party associations if enabled
+    // Add party association markers if enabled (independent of districts)
     if (showPartyAssociations && associations.length > 0) {
-      console.log(`Adding ${associations.length} party association markers...`);
-      console.log('Available district types:', [...new Set(districts.map(d => d.district_type))]);
-      console.log('Sample district names:', districts.slice(0, 5).map(d => `${d.district_name} (${d.district_type})`));
-      
-      associations.forEach(association => {
-        // Try to find matching district for positioning - look at all district types
-        const matchingDistrict = districts.find(district => {
-          const associationName = association.name.toLowerCase().trim();
-          const districtName = district.district_name?.toLowerCase().trim() || '';
+      associations.forEach((association) => {
+        // Use boundary_districts directly from associations, independent of the districts array
+        association.boundary_districts?.forEach((boundaryDistrict) => {
+          if (!boundaryDistrict.center_coordinates) return;
+          const { lat, lng } = boundaryDistrict.center_coordinates as { lat: number; lng: number };
           
-          // Enhanced matching logic
-          const cleanAssociation = associationName.replace(/[\/\-\s]+/g, '');
-          const cleanDistrict = districtName.replace(/[\/\-\s]+/g, '');
-          
-          // Direct name matching
-          if (districtName.includes(associationName) || associationName.includes(districtName)) {
-            return true;
-          }
-          
-          // Clean name matching (remove spaces, dashes, slashes)
-          if (cleanDistrict.includes(cleanAssociation) || cleanAssociation.includes(cleanDistrict)) {
-            return true;
-          }
-          
-          // Special cases for compound names
-          if (associationName.includes('/')) {
-            const parts = associationName.split('/').map(p => p.trim());
-            return parts.some(part => districtName.includes(part) || cleanDistrict.includes(part.replace(/[\/\-\s]+/g, '')));
-          }
-          
-          return false;
-        });
-
-        if (matchingDistrict && matchingDistrict.center_coordinates) {
-          try {
-            const coords = matchingDistrict.center_coordinates as { lat: number; lng: number };
-            if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
-              const marker = L.marker([coords.lat, coords.lng], {
-                icon: L.divIcon({
-                  html: `<div style="background: #16a34a; border: 2px solid #15803d; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L19 8V7L17 8V7C15 7 13.5 8.5 13.5 10.5S15 14 17 14V13L19 14V13L21 14V12C21 10.34 19.66 9 18 9H16C14.34 9 13 10.34 13 12V14C13 15.66 14.34 17 16 17H18C19.66 17 21 15.66 21 14V12C21 10.34 19.66 9 18 9ZM12 7C13.66 7 15 8.34 15 10V14C15 15.66 13.66 17 12 17S9 15.66 9 14V10C9 8.34 10.34 7 12 7ZM3 9V7L5 8V7L7 8V7C9 7 10.5 8.5 10.5 10.5S9 14 7 14V13L5 14V13L3 14V12C3 10.34 4.34 9 6 9H8C9.66 9 11 10.34 11 12V14C11 15.66 9.66 17 8 17H6C4.34 17 3 15.66 3 14V12C3 10.34 4.34 9 6 9Z"/></svg></div>`,
-                  className: 'green-party-marker',
-                  iconSize: [24, 24],
-                  iconAnchor: [12, 12]
-                })
-              });
-
-              const popupContent = `
-                <div style="min-width: 220px;">
-                  <strong style="color: #1aa037; font-size: 16px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display: inline; margin-right: 4px;"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L19 8V7L17 8V7C15 7 13.5 8.5 13.5 10.5S15 14 17 14V13L19 14V13L21 14V12C21 10.34 19.66 9 18 9H16C14.34 9 13 10.34 13 12V14C13 15.66 14.34 17 16 17H18C19.66 17 21 15.66 21 14V12C21 10.34 19.66 9 18 9ZM12 7C13.66 7 15 8.34 15 10V14C15 15.66 13.66 17 12 17S9 15.66 9 14V10C9 8.34 10.34 7 12 7ZM3 9V7L5 8V7L7 8V7C9 7 10.5 8.5 10.5 10.5S9 14 7 14V13L5 14V13L3 14V12C3 10.34 4.34 9 6 9H8C9.66 9 11 10.34 11 12V14C11 15.66 9.66 17 8 17H6C4.34 17 3 15.66 3 14V12C3 10.34 4.34 9 6 9Z"/></svg>${association.name}</strong><br>
-                  <small style="color: #1aa037; font-weight: bold;">GRÜNE Kreisverband</small><br>
-                  ${association.full_address ? `
-                    <div style="margin: 6px 0;">
-                      <strong>📍 Adresse:</strong><br>
-                      <span style="color: #666;">${association.full_address}</span>
-                    </div>
-                  ` : ''}
-                  ${association.phone ? `
-                    <div style="margin: 4px 0;">
-                      <strong>📞 Telefon:</strong> <a href="tel:${association.phone}" style="color: #1aa037;">${association.phone}</a>
-                    </div>
-                  ` : ''}
-                  ${association.email ? `
-                    <div style="margin: 4px 0;">
-                      <strong>📧 E-Mail:</strong> <a href="mailto:${association.email}" style="color: #1aa037;">${association.email}</a>
-                    </div>
-                  ` : ''}
-                  ${association.website ? `
-                    <div style="margin: 4px 0;">
-                      <strong>🌐 Website:</strong> <a href="${association.website}" target="_blank" style="color: #1aa037;">Website besuchen</a>
-                    </div>
-                  ` : ''}
-                  ${association.coverage_areas && Array.isArray(JSON.parse(association.coverage_areas || '[]')) && JSON.parse(association.coverage_areas).length > 0 ? `
-                    <div style="margin: 6px 0;">
-                      <strong>🗺️ Zuständigkeitsgebiet:</strong><br>
-                      <small style="color: #666;">${JSON.parse(association.coverage_areas).join(', ')}</small>
-                    </div>
-                  ` : ''}
+          const marker = L.marker([lat, lng], {
+            icon: L.divIcon({
+              html: `
+                <div style="
+                  width: 32px; 
+                  height: 32px; 
+                  background: rgba(34, 197, 94, 0.9); 
+                  border: 2px solid white; 
+                  border-radius: 50%; 
+                  display: flex; 
+                  align-items: center; 
+                  justify-content: center;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                  font-size: 18px;
+                ">
+                  <svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M32 8 L36 20 L48 16 L40 28 L52 32 L40 36 L48 48 L36 44 L32 56 L28 44 L16 48 L24 36 L12 32 L24 28 L16 16 L28 20 Z" fill="#FFD700" stroke="#FF8C00" stroke-width="1"/>
+                    <circle cx="32" cy="32" r="12" fill="#8B4513" stroke="#654321" stroke-width="2"/>
+                    <circle cx="29" cy="29" r="1.5" fill="#5D4E37"/>
+                    <circle cx="35" cy="29" r="1.5" fill="#5D4E37"/>
+                    <circle cx="32" cy="32" r="1.5" fill="#5D4E37"/>
+                    <circle cx="29" cy="35" r="1.5" fill="#5D4E37"/>
+                    <circle cx="35" cy="35" r="1.5" fill="#5D4E37"/>
+                  </svg>
                 </div>
-              `;
+              `,
+              className: 'party-association-marker',
+              iconSize: [32, 32],
+              iconAnchor: [16, 16]
+            })
+          });
 
-              marker.bindPopup(popupContent);
-              marker.addTo(markerLayerRef.current!);
-              console.log(`Added marker for ${association.name}`);
-            }
-          } catch (error) {
-            console.error('Error adding party association marker:', association.name, error);
-          }
-        } else {
-          console.log(`No matching district found for association: ${association.name}`);
-        }
+          const popupContent = `
+            <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 250px;">
+              <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;">
+                  <path d="M32 8 L36 20 L48 16 L40 28 L52 32 L40 36 L48 48 L36 44 L32 56 L28 44 L16 48 L24 36 L12 32 L24 28 L16 16 L28 20 Z" fill="#FFD700" stroke="#FF8C00" stroke-width="1"/>
+                  <circle cx="32" cy="32" r="12" fill="#8B4513" stroke="#654321" stroke-width="2"/>
+                  <circle cx="29" cy="29" r="1.5" fill="#5D4E37"/>
+                  <circle cx="35" cy="29" r="1.5" fill="#5D4E37"/>
+                  <circle cx="32" cy="32" r="1.5" fill="#5D4E37"/>
+                  <circle cx="29" cy="35" r="1.5" fill="#5D4E37"/>
+                  <circle cx="35" cy="35" r="1.5" fill="#5D4E37"/>
+                </svg>
+                <strong style="color: #22c55e; font-size: 16px;">Kreisverband</strong>
+              </div>
+              <p><strong>Wahlkreis:</strong> ${boundaryDistrict.district_name} (${boundaryDistrict.district_number})</p>
+              <p><strong>Kreisverband:</strong> ${association.name}</p>
+              ${association.email ? `<p><strong>E-Mail:</strong> <a href="mailto:${association.email}" style="color: #22c55e;">${association.email}</a></p>` : ''}
+              ${association.phone ? `<p><strong>Telefon:</strong> ${association.phone}</p>` : ''}
+              ${association.website ? `<p><strong>Website:</strong> <a href="${association.website}" target="_blank" style="color: #22c55e;">${association.website}</a></p>` : ''}
+              ${association.full_address ? `<p><strong>Adresse:</strong> ${association.full_address}</p>` : ''}
+            </div>
+          `;
+
+          marker.bindPopup(popupContent);
+          markerLayerRef.current!.addLayer(marker);
+        }); 
       });
-
-      // Note: Party associations don't have direct lat/lng coordinates,
-      // so they are only displayed when they have boundary_districts with center coordinates
-      // (which is already handled in the main marker loop above)
     }
 
     // Fit bounds without maxZoom constraint for best fit

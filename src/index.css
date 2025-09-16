@@ -441,23 +441,37 @@ All colors MUST be HSL.
   }
   
   .leaflet-popup-pane {
-    z-index: 10000 !important;
+    z-index: 99999 !important;
   }
   
   .leaflet-popup {
-    z-index: 10000 !important;
+    z-index: 99999 !important;
   }
   
   .leaflet-popup-content-wrapper {
-    z-index: 10000 !important;
+    z-index: 99999 !important;
   }
   
   .leaflet-popup-tip {
-    z-index: 9999 !important;
+    z-index: 99998 !important;
   }
   
   .leaflet-tooltip-pane {
-    z-index: 10001 !important;
+    z-index: 99997 !important;
+  }
+  
+  .leaflet-control-container {
+    z-index: 99996 !important;
+  }
+  
+  /* Additional popup visibility fixes */
+  .leaflet-popup-content {
+    margin: 0 !important;
+    line-height: 1.4 !important;
+  }
+  
+  .leaflet-container {
+    z-index: auto !important;
   }
 }
 
