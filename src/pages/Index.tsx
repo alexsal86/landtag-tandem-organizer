@@ -14,6 +14,7 @@ import { SettingsView } from "@/components/SettingsView";
 import { MeetingsView } from "@/components/MeetingsView";
 import { EventPlanningView } from "@/components/EventPlanningView";
 import { ElectionDistrictsView } from "@/components/ElectionDistrictsView";
+import { PartyAssociationsMapView } from "@/components/PartyAssociationsMapView";
 import { EmployeesView } from "@/components/EmployeesView";
 import TimeTrackingView from "@/components/TimeTrackingView";
 import Administration from "@/pages/Administration";
@@ -118,6 +119,9 @@ const Index = () => {
       case "wahlkreise":
         console.log('Rendering ElectionDistrictsView');
         return <ElectionDistrictsView />;
+      case "kreisverbände":
+        console.log('Rendering PartyAssociationsMapView');
+        return <PartyAssociationsMapView />;
       case "documents":
         console.log('Rendering DocumentsView');
         return <DocumentsView />;

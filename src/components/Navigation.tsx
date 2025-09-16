@@ -89,6 +89,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "meetings", label: "Jour fixe", icon: MessageSquare },
     { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
     { id: "wahlkreise", label: "Wahlkreise", icon: MapPin },
+    { id: "kreisverbände", label: "Kreisverbände", icon: MapPin },
     { id: "documents", label: "Dokumente", icon: FileText },
     { id: "knowledge", label: "Wissen", icon: Database },
     { id: "settings", label: "Einstellungen", icon: Settings },
