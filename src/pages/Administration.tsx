@@ -26,6 +26,7 @@ import AppointmentPreparationTemplateAdmin from "@/components/AppointmentPrepara
 import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
 import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
 import { CalendarSyncDebug } from "@/components/CalendarSyncDebug";
+import { PartyAssociationsAdmin } from "@/components/PartyAssociationsAdmin";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -506,7 +507,7 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-13">
+        <TabsList className="grid w-full grid-cols-14">
           <TabsTrigger value="general">Allgemein</TabsTrigger>
           <TabsTrigger value="status">Status</TabsTrigger>
           <TabsTrigger value="expenses">Kosten</TabsTrigger>
@@ -519,6 +520,7 @@ export default function Administration() {
           <TabsTrigger value="plannings">Planungen</TabsTrigger>
           <TabsTrigger value="decisions">Entscheidungen</TabsTrigger>
           <TabsTrigger value="letters">Briefvorlagen</TabsTrigger>
+          <TabsTrigger value="party-associations">Kreisverbände</TabsTrigger>
           <TabsTrigger value="calendar-sync">Kalender Sync</TabsTrigger>
           <TabsTrigger value="collaboration">Kollaboration</TabsTrigger>
           {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
@@ -1449,6 +1451,10 @@ export default function Administration() {
 
         <TabsContent value="calendar-sync" className="space-y-6">
           <CalendarSyncDebug />
+        </TabsContent>
+
+        <TabsContent value="party-associations" className="space-y-6">
+          <PartyAssociationsAdmin />
         </TabsContent>
 
         {isSuperAdmin && (
