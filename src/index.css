@@ -434,6 +434,27 @@ All colors MUST be HSL.
   .p-1 {
     padding: 0.25rem 0 0.25rem 0.25rem !important;
   }
+
+  /* Leaflet popup z-index fixes */
+  .leaflet-popup-pane {
+    z-index: 1000 !important;
+  }
+  
+  .leaflet-popup {
+    z-index: 1000 !important;
+  }
+  
+  .leaflet-popup-content-wrapper {
+    z-index: 1000 !important;
+  }
+  
+  .leaflet-popup-tip {
+    z-index: 999 !important;
+  }
+  
+  .leaflet-tooltip-pane {
+    z-index: 1001 !important;
+  }
 }
 
 /* Lexical Editor Styles */
