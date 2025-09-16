@@ -436,24 +436,28 @@ All colors MUST be HSL.
   }
 
   /* Leaflet popup z-index fixes */
+  .leaflet-map-pane {
+    z-index: 1 !important;
+  }
+  
   .leaflet-popup-pane {
-    z-index: 1000 !important;
+    z-index: 10000 !important;
   }
   
   .leaflet-popup {
-    z-index: 1000 !important;
+    z-index: 10000 !important;
   }
   
   .leaflet-popup-content-wrapper {
-    z-index: 1000 !important;
+    z-index: 10000 !important;
   }
   
   .leaflet-popup-tip {
-    z-index: 999 !important;
+    z-index: 9999 !important;
   }
   
   .leaflet-tooltip-pane {
-    z-index: 1001 !important;
+    z-index: 10001 !important;
   }
 }
 

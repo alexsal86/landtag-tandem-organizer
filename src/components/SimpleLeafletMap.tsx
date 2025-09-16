@@ -208,7 +208,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             popupContent += `
                 <div class="mb-2 p-2 border-l-4 border-green-500 bg-green-50">
                   <div class="flex items-center gap-2 text-green-700">
-                    <span>🌱</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-green-600" style="display: inline;"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L19 8V7L17 8V7C15 7 13.5 8.5 13.5 10.5S15 14 17 14V13L19 14V13L21 14V12C21 10.34 19.66 9 18 9H16C14.34 9 13 10.34 13 12V14C13 15.66 14.34 17 16 17H18C19.66 17 21 15.66 21 14V12C21 10.34 19.66 9 18 9ZM12 7C13.66 7 15 8.34 15 10V14C15 15.66 13.66 17 12 17S9 15.66 9 14V10C9 8.34 10.34 7 12 7ZM3 9V7L5 8V7L7 8V7C9 7 10.5 8.5 10.5 10.5S9 14 7 14V13L5 14V13L3 14V12C3 10.34 4.34 9 6 9H8C9.66 9 11 10.34 11 12V14C11 15.66 9.66 17 8 17H6C4.34 17 3 15.66 3 14V12C3 10.34 4.34 9 6 9Z"/></svg>
                     <strong>Grüner Kreisverband: ${associationName}</strong>
                   </div>
                   <div class="text-xs text-green-600 mt-1">Verwaltungsgrenze als Zuständigkeitsgebiet</div>
@@ -324,7 +324,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
               const marker = L.marker([coords.lat, coords.lng], {
                 icon: L.divIcon({
-                  html: `<div style="background: #16a34a; border: 2px solid #15803d; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">🌱</div>`,
+                  html: `<div style="background: #16a34a; border: 2px solid #15803d; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L19 8V7L17 8V7C15 7 13.5 8.5 13.5 10.5S15 14 17 14V13L19 14V13L21 14V12C21 10.34 19.66 9 18 9H16C14.34 9 13 10.34 13 12V14C13 15.66 14.34 17 16 17H18C19.66 17 21 15.66 21 14V12C21 10.34 19.66 9 18 9ZM12 7C13.66 7 15 8.34 15 10V14C15 15.66 13.66 17 12 17S9 15.66 9 14V10C9 8.34 10.34 7 12 7ZM3 9V7L5 8V7L7 8V7C9 7 10.5 8.5 10.5 10.5S9 14 7 14V13L5 14V13L3 14V12C3 10.34 4.34 9 6 9H8C9.66 9 11 10.34 11 12V14C11 15.66 9.66 17 8 17H6C4.34 17 3 15.66 3 14V12C3 10.34 4.34 9 6 9Z"/></svg></div>`,
                   className: 'green-party-marker',
                   iconSize: [24, 24],
                   iconAnchor: [12, 12]
@@ -333,7 +333,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
               const popupContent = `
                 <div style="min-width: 220px;">
-                  <strong style="color: #1aa037; font-size: 16px;">🌱 ${association.name}</strong><br>
+                  <strong style="color: #1aa037; font-size: 16px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display: inline; margin-right: 4px;"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L19 8V7L17 8V7C15 7 13.5 8.5 13.5 10.5S15 14 17 14V13L19 14V13L21 14V12C21 10.34 19.66 9 18 9H16C14.34 9 13 10.34 13 12V14C13 15.66 14.34 17 16 17H18C19.66 17 21 15.66 21 14V12C21 10.34 19.66 9 18 9ZM12 7C13.66 7 15 8.34 15 10V14C15 15.66 13.66 17 12 17S9 15.66 9 14V10C9 8.34 10.34 7 12 7ZM3 9V7L5 8V7L7 8V7C9 7 10.5 8.5 10.5 10.5S9 14 7 14V13L5 14V13L3 14V12C3 10.34 4.34 9 6 9H8C9.66 9 11 10.34 11 12V14C11 15.66 9.66 17 8 17H6C4.34 17 3 15.66 3 14V12C3 10.34 4.34 9 6 9Z"/></svg>${association.name}</strong><br>
                   <small style="color: #1aa037; font-weight: bold;">GRÜNE Kreisverband</small><br>
                   ${association.full_address ? `
                     <div style="margin: 6px 0;">
@@ -376,6 +376,10 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           console.log(`No matching district found for association: ${association.name}`);
         }
       });
+
+      // Note: Party associations don't have direct lat/lng coordinates,
+      // so they are only displayed when they have boundary_districts with center coordinates
+      // (which is already handled in the main marker loop above)
     }
 
     // Fit bounds without maxZoom constraint for best fit
