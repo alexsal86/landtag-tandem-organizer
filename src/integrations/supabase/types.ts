@@ -509,8 +509,10 @@ export type Database = {
           call_log_id: string | null
           category: string | null
           contact_id: string | null
+          coordinates: Json | null
           created_at: string
           description: string | null
+          district_id: string | null
           end_time: string
           has_external_guests: boolean | null
           id: string
@@ -520,6 +522,7 @@ export type Database = {
           meeting_details: string | null
           meeting_id: string | null
           meeting_link: string | null
+          party_association_id: string | null
           poll_id: string | null
           priority: string | null
           recurrence_end_date: string | null
@@ -537,8 +540,10 @@ export type Database = {
           call_log_id?: string | null
           category?: string | null
           contact_id?: string | null
+          coordinates?: Json | null
           created_at?: string
           description?: string | null
+          district_id?: string | null
           end_time: string
           has_external_guests?: boolean | null
           id?: string
@@ -548,6 +553,7 @@ export type Database = {
           meeting_details?: string | null
           meeting_id?: string | null
           meeting_link?: string | null
+          party_association_id?: string | null
           poll_id?: string | null
           priority?: string | null
           recurrence_end_date?: string | null
@@ -565,8 +571,10 @@ export type Database = {
           call_log_id?: string | null
           category?: string | null
           contact_id?: string | null
+          coordinates?: Json | null
           created_at?: string
           description?: string | null
+          district_id?: string | null
           end_time?: string
           has_external_guests?: boolean | null
           id?: string
@@ -576,6 +584,7 @@ export type Database = {
           meeting_details?: string | null
           meeting_id?: string | null
           meeting_link?: string | null
+          party_association_id?: string | null
           poll_id?: string | null
           priority?: string | null
           recurrence_end_date?: string | null
@@ -604,10 +613,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "appointments_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "election_districts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "appointments_meeting_fk"
             columns: ["meeting_id"]
             isOneToOne: true
             referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_party_association_id_fkey"
+            columns: ["party_association_id"]
+            isOneToOne: false
+            referencedRelation: "party_associations"
             referencedColumns: ["id"]
           },
           {

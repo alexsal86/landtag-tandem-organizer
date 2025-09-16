@@ -24,6 +24,8 @@ import { AppointmentFileUpload } from "@/components/appointments/AppointmentFile
 import { ContactSelector } from "@/components/ContactSelector";
 import { GuestManager } from "@/components/GuestManager";
 import { RecurrenceSelector } from "@/components/ui/recurrence-selector";
+import { useDistrictDetection } from "@/hooks/useDistrictDetection";
+import sunflowerIcon from "@/assets/sunflower.svg";
 
 // Helper functions for intelligent date/time defaults
 const getDefaultStartTime = () => {
@@ -116,6 +118,9 @@ const CreateAppointment = () => {
     endDate: undefined as string | undefined,
   });
 
+  // District detection
+  const { detectDistrict, loading: districtLoading, result: districtResult, error: districtError, clearResult } = useDistrictDetection();
+
   const form = useForm({
     resolver: zodResolver(appointmentSchema) as any,
     mode: "onSubmit" as const,
@@ -192,6 +197,17 @@ const CreateAppointment = () => {
     }
     
     return rrule;
+  };
+
+  // Function to handle location detection
+  const handleLocationDetection = async (location: string) => {
+    if (!location || location === "Digital" || location.trim() === "") {
+      clearResult();
+      return;
+    }
+
+    console.log('Triggering district detection for:', location);
+    await detectDistrict(location);
   };
 
   const onSubmit = async (values: any) => {
@@ -633,19 +649,124 @@ const CreateAppointment = () => {
                                 </div>
                               )}
                               
-                              {field.value !== "Digital" && !appointmentLocations.find(loc => field.value?.includes(loc.name)) && (
+                               {field.value !== "Digital" && !appointmentLocations.find(loc => field.value?.includes(loc.name)) && (
                                 <Input 
                                   placeholder="Genaue Adresse oder Raum"
                                   value={field.value || ""}
-                                  onChange={field.onChange}
+                                  onChange={(e) => {
+                                    field.onChange(e.target.value);
+                                    // Trigger district detection after user stops typing
+                                    const timeoutId = setTimeout(() => {
+                                      handleLocationDetection(e.target.value);
+                                    }, 1000);
+                                    return () => clearTimeout(timeoutId);
+                                  }}
+                                  onBlur={() => {
+                                    if (field.value) {
+                                      handleLocationDetection(field.value);
+                                    }
+                                  }}
                                 />
                               )}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                             </div>
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
+
+                     {/* District Detection Results */}
+                     {(districtLoading || districtResult || districtError) && (
+                       <div className="space-y-3">
+                         {districtLoading && (
+                           <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
+                             <div className="animate-pulse h-4 w-4 bg-primary/20 rounded-full"></div>
+                             <span className="text-sm text-muted-foreground">Wahlkreis wird ermittelt...</span>
+                           </div>
+                         )}
+
+                         {districtError && (
+                           <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                             <p className="text-sm text-destructive">
+                               Wahlkreis konnte nicht ermittelt werden: {districtError}
+                             </p>
+                           </div>
+                         )}
+
+                         {districtResult && (
+                           <div className="space-y-3">
+                             {districtResult.district && (
+                               <div className="p-4 bg-primary/5 border border-primary/20 rounded-md">
+                                 <div className="flex items-start gap-3">
+                                   <div className="flex-shrink-0 w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
+                                     <MapPin className="h-3 w-3 text-primary" />
+                                   </div>
+                                   <div className="flex-1">
+                                     <h4 className="font-medium text-primary">Wahlkreis ermittelt</h4>
+                                     <p className="text-sm text-primary/80 mt-1">
+                                       <strong>{districtResult.district.district_name}</strong> (Wahlkreis {districtResult.district.district_number})
+                                     </p>
+                                   </div>
+                                 </div>
+                               </div>
+                             )}
+
+                             {districtResult.partyAssociation && (
+                               <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                                 <div className="flex items-start gap-3">
+                                   <div className="flex-shrink-0">
+                                     <img src={sunflowerIcon} alt="Kreisverband" className="w-6 h-6" />
+                                   </div>
+                                   <div className="flex-1">
+                                     <h4 className="font-medium text-green-800">Zuständiger Kreisverband</h4>
+                                     <div className="mt-2 space-y-1 text-sm text-green-700">
+                                       <p><strong>{districtResult.partyAssociation.name}</strong></p>
+                                       {districtResult.partyAssociation.contact_person && (
+                                         <p>Ansprechpartner: {districtResult.partyAssociation.contact_person}</p>
+                                       )}
+                                       {districtResult.partyAssociation.phone && (
+                                         <p>Telefon: {districtResult.partyAssociation.phone}</p>
+                                       )}
+                                       {districtResult.partyAssociation.email && (
+                                         <p>E-Mail: {districtResult.partyAssociation.email}</p>
+                                       )}
+                                       {districtResult.partyAssociation.website && (
+                                         <p>
+                                           Website: <a 
+                                             href={districtResult.partyAssociation.website} 
+                                             target="_blank" 
+                                             rel="noopener noreferrer"
+                                             className="text-green-600 hover:text-green-500 underline"
+                                           >
+                                             {districtResult.partyAssociation.website}
+                                           </a>
+                                         </p>
+                                       )}
+                                     </div>
+                                   </div>
+                                 </div>
+                               </div>
+                             )}
+
+                             {districtResult.district && !districtResult.partyAssociation && (
+                               <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                                 <p className="text-sm text-amber-800">
+                                   Für diesen Wahlkreis ist noch kein Grüner Kreisverband in der Datenbank hinterlegt.
+                                 </p>
+                               </div>
+                             )}
+
+                             {!districtResult.district && (
+                               <div className="p-3 bg-muted border border-border rounded-md">
+                                 <p className="text-sm text-muted-foreground">
+                                   Der Ort konnte keinem Wahlkreis zugeordnet werden.
+                                 </p>
+                               </div>
+                             )}
+                           </div>
+                         )}
+                       </div>
+                     )}
 
                   {/* Participants Section - moved here between location and category */}
                   <div className="md:col-span-2">
