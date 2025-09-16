@@ -2,12 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
+import { PartyAssociation, usePartyAssociations } from '@/hooks/usePartyAssociations';
 import { MapPin, Users, Square } from 'lucide-react';
 
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
   onDistrictClick: (district: ElectionDistrict) => void;
   selectedDistrict?: ElectionDistrict;
+  showPartyAssociations?: boolean;
 }
 
 // Helper function to get party color for election districts and admin boundaries
@@ -37,8 +39,10 @@ const getPartyColorHex = (district?: ElectionDistrict): string => {
 const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({ 
   districts, 
   onDistrictClick, 
-  selectedDistrict 
+  selectedDistrict,
+  showPartyAssociations = false
 }) => {
+  const { associations } = usePartyAssociations();
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const districtLayerRef = useRef<L.LayerGroup | null>(null);
@@ -221,6 +225,79 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       marker.addTo(markerLayerRef.current!);
     });
 
+    // Add markers for party associations if enabled
+    if (showPartyAssociations && associations.length > 0) {
+      associations.forEach(association => {
+        // Try to find matching administrative boundary for positioning
+        const matchingDistrict = districts.find(district => {
+          if (district.district_type !== 'kreis') return false;
+          
+          const associationName = association.name.toLowerCase();
+          const districtName = district.district_name.toLowerCase();
+          
+          // Simple name matching
+          return districtName.includes(associationName) || 
+                 associationName.includes(districtName) ||
+                 associationName.replace(/[\/\-\s]+/g, '').includes(districtName.replace(/[\/\-\s]+/g, ''));
+        });
+
+        if (matchingDistrict && matchingDistrict.center_coordinates) {
+          try {
+            const coords = matchingDistrict.center_coordinates as { lat: number; lng: number };
+            if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
+              const marker = L.marker([coords.lat, coords.lng], {
+                icon: L.divIcon({
+                  html: `<div style="background: #16a34a; border: 2px solid #15803d; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">🌱</div>`,
+                  className: 'green-party-marker',
+                  iconSize: [24, 24],
+                  iconAnchor: [12, 12]
+                })
+              });
+
+              const popupContent = `
+                <div style="min-width: 220px;">
+                  <strong style="color: #1aa037; font-size: 16px;">🌱 ${association.name}</strong><br>
+                  <small style="color: #1aa037; font-weight: bold;">GRÜNE Kreisverband</small><br>
+                  ${association.full_address ? `
+                    <div style="margin: 6px 0;">
+                      <strong>📍 Adresse:</strong><br>
+                      <span style="color: #666;">${association.full_address}</span>
+                    </div>
+                  ` : ''}
+                  ${association.phone ? `
+                    <div style="margin: 4px 0;">
+                      <strong>📞 Telefon:</strong> <a href="tel:${association.phone}" style="color: #1aa037;">${association.phone}</a>
+                    </div>
+                  ` : ''}
+                  ${association.email ? `
+                    <div style="margin: 4px 0;">
+                      <strong>📧 E-Mail:</strong> <a href="mailto:${association.email}" style="color: #1aa037;">${association.email}</a>
+                    </div>
+                  ` : ''}
+                  ${association.website ? `
+                    <div style="margin: 4px 0;">
+                      <strong>🌐 Website:</strong> <a href="${association.website}" target="_blank" style="color: #1aa037;">Website besuchen</a>
+                    </div>
+                  ` : ''}
+                  ${association.coverage_areas && Array.isArray(JSON.parse(association.coverage_areas || '[]')) && JSON.parse(association.coverage_areas).length > 0 ? `
+                    <div style="margin: 6px 0;">
+                      <strong>🗺️ Zuständigkeitsgebiet:</strong><br>
+                      <small style="color: #666;">${JSON.parse(association.coverage_areas).join(', ')}</small>
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+
+              marker.bindPopup(popupContent);
+              marker.addTo(markerLayerRef.current!);
+            }
+          } catch (error) {
+            console.error('Error adding party association marker:', association.name, error);
+          }
+        }
+      });
+    }
+
     // Fit bounds without maxZoom constraint for best fit
     if (renderedBounds && renderedBounds.isValid()) {
       const paddingValue = window.innerWidth < 768 ? 10 : 20;
@@ -229,7 +306,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         maxZoom: 12,
       });
     }
-  }, [districts, selectedDistrict, onDistrictClick]);
+  }, [districts, selectedDistrict, onDistrictClick, showPartyAssociations, associations]);
   if (!districts.length) {
     return (
       <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border flex items-center justify-center">

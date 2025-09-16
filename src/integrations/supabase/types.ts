@@ -3482,6 +3482,72 @@ export type Database = {
           },
         ]
       }
+      party_associations: {
+        Row: {
+          address_city: string | null
+          address_number: string | null
+          address_postal_code: string | null
+          address_street: string | null
+          administrative_boundaries: Json | null
+          contact_info: Json | null
+          coverage_areas: Json | null
+          created_at: string
+          email: string | null
+          full_address: string | null
+          id: string
+          name: string
+          party_name: string
+          party_type: string
+          phone: string | null
+          social_media: Json | null
+          tenant_id: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address_city?: string | null
+          address_number?: string | null
+          address_postal_code?: string | null
+          address_street?: string | null
+          administrative_boundaries?: Json | null
+          contact_info?: Json | null
+          coverage_areas?: Json | null
+          created_at?: string
+          email?: string | null
+          full_address?: string | null
+          id?: string
+          name: string
+          party_name?: string
+          party_type?: string
+          phone?: string | null
+          social_media?: Json | null
+          tenant_id: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address_city?: string | null
+          address_number?: string | null
+          address_postal_code?: string | null
+          address_street?: string | null
+          administrative_boundaries?: Json | null
+          contact_info?: Json | null
+          coverage_areas?: Json | null
+          created_at?: string
+          email?: string | null
+          full_address?: string | null
+          id?: string
+          name?: string
+          party_name?: string
+          party_type?: string
+          phone?: string | null
+          social_media?: Json | null
+          tenant_id?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       planning_item_comments: {
         Row: {
           content: string

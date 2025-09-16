@@ -67,6 +67,8 @@ export const ElectionDistrictsView = () => {
   const [useMapFallback, setUseMapFallback] = useState(false);
   const [showElectionDistricts, setShowElectionDistricts] = useState(true);
   const [showAdministrativeBoundaries, setShowAdministrativeBoundaries] = useState(false);
+  const [showPartyAssociations, setShowPartyAssociations] = useState(false);
+  const [importingPartyAssociations, setImportingPartyAssociations] = useState(false);
 
   const handleDistrictClick = (district: any) => {
     setSelectedDistrict(district);
@@ -146,6 +148,85 @@ export const ElectionDistrictsView = () => {
     }
   };
 
+  const handleImportPartyAssociations = async () => {
+    try {
+      setImportingPartyAssociations(true);
+      
+      // Load the CSV file - using the uploaded file content
+      const csvContent = `Kreisverband,Telefon,Webseite,E-Mail,Social,StraÃe,Hausnummer,Ort,Vorwahl,Rufnummer
+Aalen / Ellwangen,,https://www.gruene-aalen-ellwangen.de,,,,,,,
+Alb-Donau,,https://www.gruene-alb-donau.de,,,Bockgasse,2,89073 Ulm,,
+Biberach,15150637863,https://www.gruene-kreis-biberach.de,,,,,,1515063786,3
+BÃ¶blingen,7031224677,https://www.gruene-boeblingen.de,,,Marktplatz,29,71032 BÃ¶blingen,703122467,7
+Bodenseekreis,7543500423,https://www.gruene-bodenseekreis.de,kreisgeschaeftsstelle@gruene-bodenseekreis.de,,Bahnhofplatz,3,88045 Friedrichshafen,754350042,3
+Breisgau-Hochschwarzwald,7614535613,https://www.gruene-breisgau-hochschwarzwald.de,,,RehlingstraÃe,16a,79100 Freiburg,761453561,3
+Calw,,https://www.gruene-kreis-calw.de,,,,,,,
+Emmendingen,7641932757,https://www.gruene-em.de,,,Theodor-Ludwig-Str.,24,"-26, 79312 Emmendingen",764193275,7
+Esslingen,702235851,https://www.gruene-es.de,,,Plochinger Strasse,14,72622 NÃ¼rtingen,70223585,1
+Ettlingen,15566393709,https://www.gruene-ettlingen.de,,,,,,1556639370,9
+Freiburg,761701214,https://www.gruene-freiburg.de,,,RehlingstraÃe,16a,79100 Freiburg,76170121,4
+Freudenstadt,1758272704,https://www.gruene-freudenstadt.de,,,,,,175827270,4
+GÃ¶ppingen,71614077913,http://gruene-gp.de,,,,,,7161407791,3
+Heidelberg,62219146610,https://www.gruene-heidelberg.de,,,Bergheimerstr.,147,69115 Heidelberg,6221914661,0
+Heidenheim,73213530925,https://www.gruene-heidenheim.de,,,Schnaitheimer StraÃe,40,89520 Heidenheim,7321353092,5
+Heilbronn,7131162416,https://www.gruene-heilbronn.de,,,KaiserstraÃe,17,74072 Heilbronn,713116241,6
+Hohenlohe,79409692500,https://www.gruene-hohenlohe.de,,,Untere TorstraÃe,12,74613 Ãhringen,7940969250,0
+Karlsruhe,7212031232,https://www.gruenekarlsruhe.de,,,RedtenbacherstraÃe,9,76133 Karlsruhe,721203123,2
+Karlsruhe-Land,1734364909,https://www.gruene-karlsruhe-land.de,,,KÃ¼belmarkt,6,76646 Bruchsal,173436490,9
+Konstanz,7531457581,https://www.gruene-konstanz.de,,,Rheinsteig,15,78462 Konstanz,753145758,1
+Kurpfalz-Hardt,62024094403,https://www.gruene-kurpfalz-hardt.de,,,Mannheimer StraÃe,7,68723 Schwetzingen,6202409440,3
+LÃ¶rrach,7621165268,https://www.gruene-loerrach.de,,,SpitalstraÃe,56,79539 LÃ¶rrach,762116526,8
+Ludwigsburg,7141927926,https://www.gruene-ludwigsburg.de,,,LindenstraÃe,16,71634 Ludwigsburg,714192792,6
+Main-Tauber,934221462,https://www.gruene-main-tauber.de,,,,,,93422146,2
+Mannheim,62122920,https://www.gruene-mannheim.de,,,Kaiserring,38,68161 Mannheim,6212292,0
+Neckar-BergstraÃe,,https://www.gruene-neckar-bergstrasse.de,,,HauptstraÃe,23,69469 Weinheim,,
+Neckar-Odenwald,,https://www.gruene-nok.de,,,,,,,
+Odenwald-Kraichgau,6223866423,https://www.gruene-odenwald-kraichgau.de,,,HauptstraÃe,20,69151 NeckargemÃ¼nd,622386642,3
+Ortenau,7819197820,https://www.gruene-ortenau.de,,,GlaserstraÃe,4a,77652 Offenburg,781919782,0
+Pforzheim-Enzkreis,723117928,https://www.gruene-pforzheim-enz.de,,,Westliche Karl-Friedrich-StraÃe,28,75172 Pforzheim,72311792,8
+Rastatt/Baden-Baden,,https://www.gruene-ra-bad.de,,,Schwarzwaldstr.,139,76532 Baden-Baden,,
+Ravensburg,7513593970,https://www.gruene-ravensburg.de,david.rosenkranz@gruene-rv.de,,RosenstraÃe,39,88212 Ravensburg,751359397,0
+Rems-Murr,71511693412,https://www.gruene-rems-murr.de,,,Mittlere Sackgasse,19,"-21, 71332 Waiblingen",7151169341,2
+Reutlingen,7121372677,https://www.gruene-reutlingen.de,,,GartenstraÃe,18,72764 Reutlingen,712137267,7
+Rottweil,7711763035,https://www.gruene-rottweil.de,,,,,,771176303,5
+SchwÃ¤bisch GmÃ¼nd,1778634706,https://www.gruene-schwaebisch-gmuend.de,,,MÃ¼nsterplatz,13,73525 SchwÃ¤bisch GmÃ¼nd,177863470,6
+SchwÃ¤bisch Hall,7919464892,https://www.gruene-sha.de,,,Blendstatt,3,74523 SchwÃ¤bisch Hall,791946489,2
+Schwarzwald-Baar,77239297200,https://www.gruene-schwarzwald-baar.de,,,Postfach 17,28,78007 Villingen-Schwenningen,7723929720,0
+Sigmaringen,,https://www.gruene-sigmaringen.de,,,BahnhofstraÃe,3,72488 Sigmaringen,,
+Stuttgart,7116159501,https://www.gruene-stuttgart.de,info@gruene-stuttgart.de,,KÃ¶nigstr.,78,70173 Stuttgart,711615950,1
+TÃ¼bingen,707151496,https://www.gruene-tuebingen.de,,,Poststr.,2,"-4, 72072 TÃ¼bingen",70715149,6
+Tuttlingen,7711763035,https://www.gruene-tuttlingen.de,,,,,,771176303,5
+Waldshut,77646259,https://www.gruene-wt.de,,,,,,7764625,9
+Wangen,1773345782,https://www.gruene-wangen.de,,,Ravensburger StraÃe,40,88239 Wangen im AllgÃ¤u,177334578,2
+Ulm,7311658066,https://www.gruene-ulm.de,,,HeimstraÃe,7,89073 Ulm,731165806,6
+Zollernalb,74339021500,https://www.gruene-zollernalb.de,,,Postfach,4016,72322 Balingen,7433902150,0`;
+      
+      const { data, error } = await supabase.functions.invoke('import-party-associations', {
+        body: csvContent
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({ 
+        title: 'Import erfolgreich', 
+        description: 'Grüne Kreisverbände erfolgreich importiert' 
+      });
+      
+      await refetch();
+    } catch (error: any) {
+      console.error('Error importing party associations:', error);
+      toast({ 
+        title: 'Import fehlgeschlagen', 
+        description: error.message || 'Bitte erneut versuchen.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setImportingPartyAssociations(false);
+    }
+  };
+
   // Filter districts based on data
   const electionDistricts = districts.filter(d => !d.district_type || d.district_type === 'wahlkreis');
   const administrativeBoundaries = districts.filter(d => d.district_type === 'verwaltungsgrenze');
@@ -202,6 +283,7 @@ export const ElectionDistrictsView = () => {
                   districts={visibleDistricts}
                   onDistrictClick={handleDistrictClick}
                   selectedDistrict={selectedDistrict}
+                  showPartyAssociations={showPartyAssociations}
                 />
               </ErrorBoundary>
             </CardContent>
@@ -238,6 +320,18 @@ export const ElectionDistrictsView = () => {
                 />
                 <label htmlFor="administrative-boundaries" className="text-sm font-medium">
                   Verwaltungsgrenzen ({administrativeBoundaries.length})
+                </label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="party-associations"
+                  checked={showPartyAssociations}
+                  onChange={(e) => setShowPartyAssociations(e.target.checked)}
+                  className="rounded"
+                />
+                <label htmlFor="party-associations" className="text-sm font-medium">
+                  Grüne Kreisverbände (46)
                 </label>
               </div>
             </CardContent>
@@ -320,6 +414,24 @@ export const ElectionDistrictsView = () => {
                   <span className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
                     Abgeordnete importieren
+                  </span>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={importingPartyAssociations}
+                onClick={handleImportPartyAssociations}
+                className="w-full border-green-500 text-green-700 hover:bg-green-50"
+              >
+                {importingPartyAssociations ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Importiere Kreisverbände...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    🌱 Grüne Kreisverbände importieren
                   </span>
                 )}
               </Button>
