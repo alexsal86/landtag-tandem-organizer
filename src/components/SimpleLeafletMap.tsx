@@ -237,19 +237,36 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     // Add markers for party associations if enabled
     if (showPartyAssociations && associations.length > 0) {
       console.log(`Adding ${associations.length} party association markers...`);
+      console.log('Available district types:', [...new Set(districts.map(d => d.district_type))]);
+      console.log('Sample district names:', districts.slice(0, 5).map(d => `${d.district_name} (${d.district_type})`));
       
       associations.forEach(association => {
-        // Try to find matching administrative boundary for positioning
+        // Try to find matching district for positioning - look at all district types
         const matchingDistrict = districts.find(district => {
-          if (district.district_type !== 'kreis') return false;
+          const associationName = association.name.toLowerCase().trim();
+          const districtName = district.district_name?.toLowerCase().trim() || '';
           
-          const associationName = association.name.toLowerCase();
-          const districtName = district.district_name.toLowerCase();
+          // Enhanced matching logic
+          const cleanAssociation = associationName.replace(/[\/\-\s]+/g, '');
+          const cleanDistrict = districtName.replace(/[\/\-\s]+/g, '');
           
-          // Simple name matching
-          return districtName.includes(associationName) || 
-                 associationName.includes(districtName) ||
-                 associationName.replace(/[\/\-\s]+/g, '').includes(districtName.replace(/[\/\-\s]+/g, ''));
+          // Direct name matching
+          if (districtName.includes(associationName) || associationName.includes(districtName)) {
+            return true;
+          }
+          
+          // Clean name matching (remove spaces, dashes, slashes)
+          if (cleanDistrict.includes(cleanAssociation) || cleanAssociation.includes(cleanDistrict)) {
+            return true;
+          }
+          
+          // Special cases for compound names
+          if (associationName.includes('/')) {
+            const parts = associationName.split('/').map(p => p.trim());
+            return parts.some(part => districtName.includes(part) || cleanDistrict.includes(part.replace(/[\/\-\s]+/g, '')));
+          }
+          
+          return false;
         });
 
         if (matchingDistrict && matchingDistrict.center_coordinates) {
