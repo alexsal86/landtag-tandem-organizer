@@ -13,8 +13,13 @@ interface LeafletKarlsruheMapProps {
 }
 
 // Helper function to get party color for election districts and admin boundaries
-const getPartyColorHex = (district?: ElectionDistrict): string => {
+const getPartyColorHex = (district?: ElectionDistrict, isPartyAssociationBoundary = false): string => {
   if (!district) return '#6b7280';
+  
+  // Green for party association boundaries
+  if (isPartyAssociationBoundary) {
+    return '#16a34a'; // Green color for party associations
+  }
   
   // Different styling for administrative boundaries
   if (district.district_type === 'verwaltungsgrenze') {
@@ -104,58 +109,88 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     let renderedBounds: L.LatLngBounds | null = null;
 
+    // Collect all districts to render (normal districts + party association boundaries)
+    const allDistrictsToRender: Array<{ district: ElectionDistrict; isPartyBoundary: boolean; associationName?: string }> = [];
+    
+    // Add normal districts
+    districts.forEach(district => {
+      allDistrictsToRender.push({ district, isPartyBoundary: false });
+    });
+    
+    // Add party association boundary districts if enabled
+    if (showPartyAssociations) {
+      associations.forEach(association => {
+        if (association.boundary_districts && association.boundary_districts.length > 0) {
+          association.boundary_districts.forEach(boundaryDistrict => {
+            allDistrictsToRender.push({ 
+              district: boundaryDistrict, 
+              isPartyBoundary: true, 
+              associationName: association.name 
+            });
+          });
+        }
+      });
+    }
+
     // Render districts using boundaries from database
-    const geoJsonFeatures = districts
-      .filter(district => district.boundaries)
-      .map(district => ({
+    const geoJsonFeatures = allDistrictsToRender
+      .filter(item => item.district.boundaries)
+      .map(item => ({
         type: 'Feature' as const,
         properties: { 
-          district_number: district.district_number,
-          district_name: district.district_name
+          district_number: item.district.district_number,
+          district_name: item.district.district_name,
+          isPartyBoundary: item.isPartyBoundary,
+          associationName: item.associationName
         },
-        geometry: district.boundaries
+        geometry: item.district.boundaries
       }));
 
     if (geoJsonFeatures.length > 0) {
       const geoLayer = L.geoJSON(geoJsonFeatures as any, {
         style: (feature) => {
           const districtNumber = feature?.properties?.district_number;
-          const district = districts.find(d => d.district_number === districtNumber);
+          const isPartyBoundary = feature?.properties?.isPartyBoundary;
+          const allDistricts = allDistrictsToRender.map(item => item.district);
+          const district = allDistricts.find(d => d.district_number === districtNumber);
           const isSelected = district && selectedDistrict?.id === district.id;
           const isAdministrative = district?.district_type === 'verwaltungsgrenze';
-          const partyColor = getPartyColorHex(district);
+          const partyColor = getPartyColorHex(district, isPartyBoundary);
           
           return {
-            color: isSelected ? '#ffffff' : (isAdministrative ? '#6B46C1' : partyColor),
-            weight: isSelected ? 4 : (isAdministrative ? 2 : 2),
+            color: isSelected ? '#ffffff' : (isPartyBoundary ? '#15803d' : (isAdministrative ? '#6B46C1' : partyColor)),
+            weight: isSelected ? 4 : (isPartyBoundary ? 3 : (isAdministrative ? 2 : 2)),
             opacity: 1,
             fillColor: partyColor,
-            fillOpacity: isSelected ? 0.7 : (isAdministrative ? 0.3 : 0.25),
+            fillOpacity: isSelected ? 0.7 : (isPartyBoundary ? 0.4 : (isAdministrative ? 0.3 : 0.25)),
             dashArray: isAdministrative ? '5, 5' : '',
             smoothFactor: 0, // No simplification for maximum precision
           } as L.PathOptions;
         },
         onEachFeature: (feature, layer) => {
           const districtNumber = feature?.properties?.district_number;
-          const district = districts.find(d => d.district_number === districtNumber);
+          const isPartyBoundary = feature?.properties?.isPartyBoundary;
+          const associationName = feature?.properties?.associationName;
+          const allDistricts = allDistrictsToRender.map(item => item.district);
+          const district = allDistricts.find(d => d.district_number === districtNumber);
           if (!district) return;
           
           const isSelected = selectedDistrict?.id === district.id;
-          const partyColor = getPartyColorHex(district);
+          const partyColor = getPartyColorHex(district, isPartyBoundary);
           const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
 
           const isAdministrative = district.district_type === 'verwaltungsgrenze';
           
           layer.on('mouseover', () => {
             (layer as L.Path).setStyle({ 
-              weight: 3, 
-              fillOpacity: isAdministrative ? 0.5 : 0.5 
+              weight: 4, 
+              fillOpacity: isPartyBoundary ? 0.6 : (isAdministrative ? 0.5 : 0.5)
             });
           });
           layer.on('mouseout', () => {
             (layer as L.Path).setStyle({ 
-              weight: isSelected ? 4 : (isAdministrative ? 2 : 2), 
-              fillOpacity: isSelected ? 0.7 : (isAdministrative ? 0.3 : 0.25) 
+              weight: isSelected ? 4 : (isPartyBoundary ? 3 : (isAdministrative ? 2 : 2)), 
+              fillOpacity: isSelected ? 0.7 : (isPartyBoundary ? 0.4 : (isAdministrative ? 0.3 : 0.25))
             });
           });
           layer.on('click', () => onDistrictClick(district));
@@ -169,7 +204,21 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
               <div class="space-y-1 text-sm text-gray-600">
           `;
 
-          if (isAdministrative) {
+          if (isPartyBoundary) {
+            popupContent += `
+                <div class="mb-2 p-2 border-l-4 border-green-500 bg-green-50">
+                  <div class="flex items-center gap-2 text-green-700">
+                    <span>🌱</span>
+                    <strong>Grüner Kreisverband: ${associationName}</strong>
+                  </div>
+                  <div class="text-xs text-green-600 mt-1">Verwaltungsgrenze als Zuständigkeitsgebiet</div>
+                </div>
+                <div class="mb-2">
+                  <strong>Typ:</strong> Verwaltungsgrenze<br>
+                  <strong>Region:</strong> ${district.region || 'Baden-Württemberg'}
+                </div>
+            `;
+          } else if (isAdministrative) {
             popupContent += `
                 <div class="mb-2">
                   <strong>Typ:</strong> Verwaltungsgrenze<br>
@@ -196,7 +245,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
       geoLayer.addTo(districtLayerRef.current);
       renderedBounds = geoLayer.getBounds();
-      console.log(`Rendered ${districts.length} districts from database`);
+      console.log(`Rendered ${allDistrictsToRender.length} districts (${districts.length} regular + ${allDistrictsToRender.length - districts.length} party boundaries)`);
     }
 
     // Add markers with district numbers (only for election districts, not administrative boundaries)
@@ -373,7 +422,11 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             {showPartyAssociations && (
               <div className="flex items-center gap-1">
                 <span className="text-green-600">🌱</span>
-                <span className="text-green-600">{associations.length} Grüne Kreisverbände</span>
+                <span className="text-green-600">
+                  {associations.reduce((count, assoc) => 
+                    count + (assoc.boundary_districts?.length || 0), 0
+                  )} Grüne Verwaltungsgebiete
+                </span>
               </div>
             )}
           </div>
