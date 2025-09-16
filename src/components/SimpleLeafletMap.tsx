@@ -83,6 +83,15 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     };
   }, []);
 
+  // Update markers when showPartyAssociations changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !markerLayerRef.current) return;
+
+    // Re-render markers when showPartyAssociations changes
+    // This is handled in the main rendering effect above
+  }, [showPartyAssociations, associations]);
+
   // Render districts and markers whenever data changes
   useEffect(() => {
     const map = mapRef.current;
@@ -227,6 +236,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     // Add markers for party associations if enabled
     if (showPartyAssociations && associations.length > 0) {
+      console.log(`Adding ${associations.length} party association markers...`);
+      
       associations.forEach(association => {
         // Try to find matching administrative boundary for positioning
         const matchingDistrict = districts.find(district => {
@@ -290,10 +301,13 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
               marker.bindPopup(popupContent);
               marker.addTo(markerLayerRef.current!);
+              console.log(`Added marker for ${association.name}`);
             }
           } catch (error) {
             console.error('Error adding party association marker:', association.name, error);
           }
+        } else {
+          console.log(`No matching district found for association: ${association.name}`);
         }
       });
     }
@@ -307,6 +321,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       });
     }
   }, [districts, selectedDistrict, onDistrictClick, showPartyAssociations, associations]);
+  
   if (!districts.length) {
     return (
       <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border flex items-center justify-center">
@@ -335,6 +350,12 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
               <Users className="h-3 w-3" />
               <span>Klicken für Details</span>
             </div>
+            {showPartyAssociations && (
+              <div className="flex items-center gap-1">
+                <span className="text-green-600">🌱</span>
+                <span className="text-green-600">{associations.length} Grüne Kreisverbände</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
