@@ -289,7 +289,35 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         // Use boundary_districts directly from associations, independent of the districts array
         association.boundary_districts?.forEach((boundaryDistrict) => {
           if (!boundaryDistrict.center_coordinates) return;
-          const { lat, lng } = boundaryDistrict.center_coordinates as { lat: number; lng: number };
+          
+          // Debug logging to see the actual structure
+          console.log('Party association boundary district coordinates:', boundaryDistrict.center_coordinates);
+          
+          // Handle different possible coordinate structures
+          let lat: number, lng: number;
+          if (typeof boundaryDistrict.center_coordinates === 'object') {
+            if ('lat' in boundaryDistrict.center_coordinates && 'lng' in boundaryDistrict.center_coordinates) {
+              lat = boundaryDistrict.center_coordinates.lat;
+              lng = boundaryDistrict.center_coordinates.lng;
+            } else if ('latitude' in boundaryDistrict.center_coordinates && 'longitude' in boundaryDistrict.center_coordinates) {
+              lat = boundaryDistrict.center_coordinates.latitude;
+              lng = boundaryDistrict.center_coordinates.longitude;
+            } else if (Array.isArray(boundaryDistrict.center_coordinates) && boundaryDistrict.center_coordinates.length >= 2) {
+              lat = boundaryDistrict.center_coordinates[0];
+              lng = boundaryDistrict.center_coordinates[1];
+            } else {
+              console.warn('Unable to parse coordinates for party association:', boundaryDistrict);
+              return;
+            }
+          } else {
+            console.warn('center_coordinates is not an object:', boundaryDistrict.center_coordinates);
+            return;
+          }
+          
+          if (lat === undefined || lng === undefined || isNaN(lat) || isNaN(lng)) {
+            console.warn('Invalid coordinates for party association:', { lat, lng, boundaryDistrict });
+            return;
+          }
           
           const marker = L.marker([lat, lng], {
             icon: L.divIcon({
