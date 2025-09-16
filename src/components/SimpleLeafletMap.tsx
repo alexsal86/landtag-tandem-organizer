@@ -4,6 +4,7 @@ import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { PartyAssociation, usePartyAssociations } from '@/hooks/usePartyAssociations';
 import { MapPin, Users, Square } from 'lucide-react';
+import sunflowerIcon from '@/assets/sunflower.svg';
 
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
@@ -354,15 +355,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
                   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
                   font-size: 18px;
                 ">
-                  <svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M32 8 L36 20 L48 16 L40 28 L52 32 L40 36 L48 48 L36 44 L32 56 L28 44 L16 48 L24 36 L12 32 L24 28 L16 16 L28 20 Z" fill="#FFD700" stroke="#FF8C00" stroke-width="1"/>
-                    <circle cx="32" cy="32" r="12" fill="#8B4513" stroke="#654321" stroke-width="2"/>
-                    <circle cx="29" cy="29" r="1.5" fill="#5D4E37"/>
-                    <circle cx="35" cy="29" r="1.5" fill="#5D4E37"/>
-                    <circle cx="32" cy="32" r="1.5" fill="#5D4E37"/>
-                    <circle cx="29" cy="35" r="1.5" fill="#5D4E37"/>
-                    <circle cx="35" cy="35" r="1.5" fill="#5D4E37"/>
-                  </svg>
+                  <img src="${sunflowerIcon}" alt="Sunflower" width="20" height="20" />
                 </div>
               `,
               className: 'party-association-marker',
@@ -374,15 +367,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           const popupContent = `
             <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 250px;">
               <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;">
-                  <path d="M32 8 L36 20 L48 16 L40 28 L52 32 L40 36 L48 48 L36 44 L32 56 L28 44 L16 48 L24 36 L12 32 L24 28 L16 16 L28 20 Z" fill="#FFD700" stroke="#FF8C00" stroke-width="1"/>
-                  <circle cx="32" cy="32" r="12" fill="#8B4513" stroke="#654321" stroke-width="2"/>
-                  <circle cx="29" cy="29" r="1.5" fill="#5D4E37"/>
-                  <circle cx="35" cy="29" r="1.5" fill="#5D4E37"/>
-                  <circle cx="32" cy="32" r="1.5" fill="#5D4E37"/>
-                  <circle cx="29" cy="35" r="1.5" fill="#5D4E37"/>
-                  <circle cx="35" cy="35" r="1.5" fill="#5D4E37"/>
-                </svg>
+                <img src="${sunflowerIcon}" alt="Sunflower" width="24" height="24" style="margin-right: 8px;" />
                 <strong style="color: #22c55e; font-size: 16px;">Kreisverband</strong>
               </div>
               <p><strong>Wahlkreis:</strong> ${boundaryDistrict.district_name} (${boundaryDistrict.district_number})</p>
