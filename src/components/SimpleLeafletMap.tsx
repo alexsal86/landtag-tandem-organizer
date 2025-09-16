@@ -285,24 +285,44 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     // Add party association markers if enabled (independent of districts)
     if (showPartyAssociations && associations.length > 0) {
+      console.log('Processing party associations:', associations.length);
       associations.forEach((association) => {
+        console.log(`Processing association: ${association.name}, has boundary_districts:`, !!association.boundary_districts?.length);
+        
         // Use boundary_districts directly from associations, independent of the districts array
         association.boundary_districts?.forEach((boundaryDistrict) => {
-          if (!boundaryDistrict.center_coordinates) return;
+          if (!boundaryDistrict.center_coordinates) {
+            console.warn(`No center_coordinates for district: ${boundaryDistrict.district_number}`);
+            return;
+          }
           
           // Debug logging to see the actual structure
           console.log('Party association boundary district coordinates:', boundaryDistrict.center_coordinates);
           
-          // Handle different possible coordinate structures
+          // Handle GeoJSON Point format: { "type": "Point", "coordinates": [lng, lat] }
           let lat: number, lng: number;
-          if (typeof boundaryDistrict.center_coordinates === 'object') {
-            if ('lat' in boundaryDistrict.center_coordinates && 'lng' in boundaryDistrict.center_coordinates) {
+          
+          if (typeof boundaryDistrict.center_coordinates === 'object' && boundaryDistrict.center_coordinates !== null) {
+            // Check for GeoJSON Point format
+            if ('type' in boundaryDistrict.center_coordinates && 
+                boundaryDistrict.center_coordinates.type === 'Point' &&
+                'coordinates' in boundaryDistrict.center_coordinates &&
+                Array.isArray(boundaryDistrict.center_coordinates.coordinates) &&
+                boundaryDistrict.center_coordinates.coordinates.length >= 2) {
+              
+              // GeoJSON format: coordinates[0] = longitude, coordinates[1] = latitude
+              lng = boundaryDistrict.center_coordinates.coordinates[0];
+              lat = boundaryDistrict.center_coordinates.coordinates[1];
+              console.log(`Parsed GeoJSON Point: lng=${lng}, lat=${lat}`);
+              
+            } else if ('lat' in boundaryDistrict.center_coordinates && 'lng' in boundaryDistrict.center_coordinates) {
               lat = boundaryDistrict.center_coordinates.lat;
               lng = boundaryDistrict.center_coordinates.lng;
             } else if ('latitude' in boundaryDistrict.center_coordinates && 'longitude' in boundaryDistrict.center_coordinates) {
               lat = boundaryDistrict.center_coordinates.latitude;
               lng = boundaryDistrict.center_coordinates.longitude;
             } else if (Array.isArray(boundaryDistrict.center_coordinates) && boundaryDistrict.center_coordinates.length >= 2) {
+              // Assume [lat, lng] format for plain arrays
               lat = boundaryDistrict.center_coordinates[0];
               lng = boundaryDistrict.center_coordinates[1];
             } else {
