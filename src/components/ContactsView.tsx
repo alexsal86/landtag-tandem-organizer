@@ -103,6 +103,23 @@ export function ContactsView() {
     debouncedUpdate(searchTerm);
   }, [searchTerm, debouncedUpdate]);
 
+  // Fetch distribution lists - MUST be before early returns
+  useEffect(() => {
+    if (user && currentTenant) {
+      fetchDistributionLists();
+    }
+  }, [user, currentTenant]);
+
+  // Scroll event listener for back-to-top button - MUST be before early returns
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 500);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Show loading until auth and tenant are resolved
   if (!user || tenantLoading) {
     return (
@@ -131,23 +148,6 @@ export function ContactsView() {
       </div>
     );
   }
-
-  // Fetch distribution lists
-  useEffect(() => {
-    if (user && currentTenant) {
-      fetchDistributionLists();
-    }
-  }, [user, currentTenant]);
-
-  // Scroll event listener for back-to-top button
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 500);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
