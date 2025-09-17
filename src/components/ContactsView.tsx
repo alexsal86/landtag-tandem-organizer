@@ -775,6 +775,7 @@ export function ContactsView() {
             <InfiniteScrollTrigger
               onLoadMore={loadMore}
               loading={loadingMore}
+              hasMore={hasMore}
             />
           )}
         </div>
