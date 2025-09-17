@@ -5242,6 +5242,10 @@ export type Database = {
         Args: { _date: string }
         Returns: string
       }
+      assign_contact_to_organization: {
+        Args: { contact_id: string; org_id: string }
+        Returns: undefined
+      }
       auto_archive_completed_preparations: {
         Args: Record<PropertyKey, never>
         Returns: undefined
