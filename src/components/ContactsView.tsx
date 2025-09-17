@@ -19,6 +19,7 @@ import { ContactSkeleton } from "./ContactSkeleton";
 import { StakeholderView } from "./StakeholderView";
 import { debounce } from "@/utils/debounce";
 import { useCounts } from "@/hooks/useCounts";
+import { useStakeholderPreload } from "@/hooks/useStakeholderPreload";
 
 interface DistributionList {
   id: string;
@@ -84,6 +85,9 @@ export function ContactsView() {
   
   // Get accurate counts for tab badges
   const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
+
+  // Preload stakeholders for immediate visibility
+  const { stakeholders: preloadedStakeholders, loading: stakeholdersLoading } = useStakeholderPreload();
 
   // Use infinite contacts hook
   const {
@@ -755,11 +759,11 @@ export function ContactsView() {
         </div>
       ) : activeTab === "stakeholders" ? (
         <div className="space-y-6">
-          {loading && contacts.length === 0 ? (
+          {stakeholdersLoading && preloadedStakeholders.length === 0 ? (
             <ContactSkeleton count={6} viewMode="grid" />
           ) : (
             <StakeholderView
-              stakeholders={contacts.filter(c => c.contact_type === "organization")}
+              stakeholders={preloadedStakeholders}
               contacts={contacts.filter(c => c.contact_type === "person")}
               onToggleFavorite={toggleFavorite}
               onContactClick={(contactId) => {

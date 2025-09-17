@@ -23,7 +23,7 @@ export interface Contact {
   facebook?: string;
   instagram?: string;
   xing?: string;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
+  category?: "citizen" | "colleague" | "business" | "media" | "organization" | "government" | "ngo" | "academia" | "healthcare" | "legal" | "other" | "lobbyist";
   priority?: "low" | "medium" | "high";
   last_contact?: string;
   avatar_url?: string;
@@ -74,11 +74,11 @@ export const useInfiniteContacts = ({
 
     // Filter by tab
     if (activeTab === "contacts") {
-      query = query.eq('contact_type', 'person').neq('contact_type', 'archive');
+      query = query.eq('contact_type', 'person').neq('name', 'Archivierter Kontakt');
     } else if (activeTab === "stakeholders") {
       query = query.eq('contact_type', 'organization');
     } else if (activeTab === "archive") {
-      query = query.eq('contact_type', 'archive');
+      query = query.eq('name', 'Archivierter Kontakt');
     }
 
     // Search filter
