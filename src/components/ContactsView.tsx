@@ -83,7 +83,7 @@ export function ContactsView() {
   }
   
   // Get accurate counts for tab badges
-  const { contactsCount, archiveCount, distributionListsCount } = useCounts();
+  const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
 
   // Use infinite contacts hook
   const {
@@ -104,11 +104,6 @@ export function ContactsView() {
     sortDirection,
   });
 
-  // Calculate stakeholders count after contacts are loaded
-  const stakeholdersCount = useMemo(() => 
-    contacts.filter(c => c.contact_type === "organization").length, 
-    [contacts]
-  );
 
   // Create stable debounced function
   const debouncedUpdate = useMemo(

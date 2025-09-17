@@ -5,6 +5,7 @@ import { useTenant } from "@/hooks/useTenant";
 
 interface CountsData {
   contactsCount: number;
+  stakeholdersCount: number;
   archiveCount: number;
   distributionListsCount: number;
   loading: boolean;
@@ -13,6 +14,7 @@ interface CountsData {
 export function useCounts(): CountsData {
   const [counts, setCounts] = useState<CountsData>({
     contactsCount: 0,
+    stakeholdersCount: 0,
     archiveCount: 0,
     distributionListsCount: 0,
     loading: true,
@@ -27,12 +29,20 @@ export function useCounts(): CountsData {
     try {
       setCounts(prev => ({ ...prev, loading: true }));
 
-      // Get contacts count (excluding archived contacts grouped by phone)
+      // Get contacts count (persons only, excluding archived)
       const { count: contactsCount } = await supabase
         .from('contacts')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', currentTenant.id)
+        .eq('contact_type', 'person')
         .neq('name', 'Archivierter Kontakt');
+
+      // Get stakeholders count (organizations only)
+      const { count: stakeholdersCount } = await supabase
+        .from('contacts')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', currentTenant.id)
+        .eq('contact_type', 'organization');
 
       // Get archived contacts count (grouped by phone number)
       const { data: archivedContacts } = await supabase
@@ -53,6 +63,7 @@ export function useCounts(): CountsData {
 
       setCounts({
         contactsCount: contactsCount || 0,
+        stakeholdersCount: stakeholdersCount || 0,
         archiveCount,
         distributionListsCount: distributionListsCount || 0,
         loading: false,
