@@ -212,14 +212,32 @@ serve(async (req) => {
     if (matchedDistrict) {
       // Fetch party associations for this district
       console.log('Fetching party associations for district:', matchedDistrict.id);
-      const { data: partyAssociations, error: partyError } = await supabase
+      
+      // First try with the corrected JSONB query
+      let { data: partyAssociations, error: partyError } = await supabase
         .from('party_associations')
         .select(`
           id, name, party_name, phone, website, email, 
           address_street, address_number, address_city, full_address,
           contact_info, administrative_boundaries
         `)
-        .contains('administrative_boundaries', [matchedDistrict.id]);
+        .contains('administrative_boundaries', `["${matchedDistrict.id}"]`);
+      
+      // Fallback: if the first query fails, try alternative approach
+      if (partyError) {
+        console.log('First query failed, trying alternative JSONB query:', partyError);
+        const fallbackQuery = await supabase
+          .from('party_associations')
+          .select(`
+            id, name, party_name, phone, website, email, 
+            address_street, address_number, address_city, full_address,
+            contact_info, administrative_boundaries
+          `)
+          .filter('administrative_boundaries', 'cs', `["${matchedDistrict.id}"]`);
+        
+        partyAssociations = fallbackQuery.data;
+        partyError = fallbackQuery.error;
+      }
 
       if (partyError) {
         console.error('Error fetching party associations:', partyError);
