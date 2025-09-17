@@ -146,6 +146,77 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     }
   };
 
+  // Footer blocks rendering (identical to PDF logic)
+  const renderFooterBlocks = () => {
+    if (!template?.footer_blocks) return null;
+    
+    const footerBlocks = Array.isArray(template.footer_blocks) ? template.footer_blocks : [];
+    const sortedBlocks = footerBlocks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    
+    return (
+      <div 
+        className="flex" 
+        style={{ 
+          position: 'absolute',
+          bottom: '25mm', // 272mm from top = 25mm from bottom (297-272)
+          left: '25mm',
+          right: '20mm',
+          height: '18mm', // Footer area height
+          fontSize: '8pt',
+          backgroundColor: debugMode ? 'rgba(128,0,128,0.05)' : 'transparent'
+        }}
+      >
+        {sortedBlocks.map((block: any, index: number) => {
+          if (!block.content) return null;
+          
+          const blockWidth = `${block.widthPercent || 25}%`;
+          const fontSize = Math.max(6, Math.min(14, block.fontSize || 8)) + 'pt';
+          const lineHeight = block.lineHeight || 0.8;
+          const fontWeight = block.fontWeight === 'bold' ? 'bold' : 'normal';
+          const color = block.color || '#000000';
+          
+          return (
+            <div 
+              key={index}
+              style={{ 
+                width: blockWidth,
+                fontSize: fontSize,
+                fontWeight: fontWeight,
+                color: color,
+                lineHeight: lineHeight,
+                paddingRight: '2mm'
+              }}
+            >
+              {/* Block title with highlight support */}
+              {block.title && (
+                <div style={{
+                  fontWeight: block.titleHighlight ? (block.titleFontWeight || 'bold') : 'bold',
+                  fontSize: block.titleHighlight ? Math.max(8, Math.min(20, block.titleFontSize || 13)) + 'pt' : fontSize,
+                  color: block.titleHighlight ? (block.titleColor || '#107030') : color,
+                  marginBottom: '1mm'
+                }}>
+                  {block.title}
+                </div>
+              )}
+              
+              {/* Block content with formatting */}
+              <div style={{ whiteSpace: 'pre-line' }}>
+                {block.content
+                  .replace(/^Tel: /, '') // Remove "Tel: " prefix
+                  .replace(/^Web: /, '') // Remove "Web: " prefix
+                  .replace(/^https?:\/\/(www\.)?/, '') // Clean URLs
+                  .replace(/@/, '@\n') // Line break after @
+                  .replace(/^Instagram: /, '@ ') // Replace social media prefixes
+                  .replace(/^Facebook: /, '@ ')
+                }
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
     return (
     <div className={`din5008-letter bg-white ${className}`} style={{ 
       minHeight: '297mm', 
@@ -182,13 +253,14 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                     <div
                       className="absolute"
                       style={{
-                        left: `${(element.x / 595) * 100}%`, // Convert from canvas pixels to percentage
-                        top: `${(element.y / 200) * 100}%`, // Convert from canvas pixels to percentage
-                        fontSize: `${(element.fontSize || 16) / 16 * 11}pt`, // Scale font size for DIN 5008
+                        // Correct scaling: convert canvas pixels (595px = 210mm, 200px = 45mm for header)
+                        left: `${(element.x || 0) * 210 / 595}mm`, // Convert canvas x to mm
+                        top: `${(element.y || 0) * 45 / 200}mm`, // Convert canvas y to mm (header height)
+                        fontSize: `${element.fontSize || 12}pt`, // Use original font size
                         fontFamily: element.fontFamily || 'Arial, sans-serif',
                         fontWeight: element.fontWeight || 'normal',
                         color: element.color || '#000000',
-                        width: `${(element.width / 595) * 100}%`,
+                        width: `${(element.width || 100) * 210 / 595}mm`, // Convert width to mm
                         lineHeight: '1.2',
                         pointerEvents: 'none'
                       }}
@@ -202,10 +274,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                       alt="Header Image"
                       className="absolute"
                       style={{
-                        left: `${(element.x / 595) * 100}%`,
-                        top: `${(element.y / 200) * 100}%`,
-                        width: `${(element.width / 595) * 100}%`,
-                        height: `${(element.height / 200) * 100}%`,
+                        left: `${(element.x || 0) * 210 / 595}mm`,
+                        top: `${(element.y || 0) * 45 / 200}mm`,
+                        width: `${(element.width || 100) * 210 / 595}mm`,
+                        height: `${(element.height || 50) * 45 / 200}mm`,
                         objectFit: 'contain'
                       }}
                     />
@@ -228,10 +300,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         paddingBottom: '16.9mm' // Bottom margin
       }}>
         
-        {/* Main Address and Info Block Container - positioned at 46mm from top */}
+        {/* Main Address and Info Block Container - positioned at 50mm from top (corrected from 46mm) */}
         <div className="flex" style={{ 
           position: 'absolute',
-          top: '46mm', // Direkt nach Header
+          top: '50mm', // Correct DIN 5008 position (same as PDF)
           left: '25mm',
           right: '20mm',
           marginBottom: '8.46mm'
@@ -241,7 +313,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           <div style={{ 
             width: '85mm', // DIN 5008 standard
             height: '40mm', // DIN 5008 standard
-            border: debugMode ? '1px solid #e0e0e0' : 'none',
+            border: debugMode ? '2px dashed red' : 'none',
             padding: '0', // Kein interner Abstand
             marginRight: '10mm',
             backgroundColor: debugMode ? 'rgba(255,0,0,0.05)' : 'transparent'
@@ -276,11 +348,12 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* Information Block - DIN 5008 positioned */}
           <div style={{ 
             position: 'absolute',
-            left: '125mm', // 125mm from left edge
-            top: '4mm', // 50mm from top (46mm + 4mm difference)
+            left: '100mm', // 125mm from left edge of page (corrected positioning)
+            top: '0mm', // Same top as address field
             width: '75mm', // DIN 5008 standard
             height: '40mm',
             backgroundColor: debugMode ? 'rgba(0,0,255,0.05)' : 'transparent',
+            border: debugMode ? '2px dashed blue' : 'none',
             padding: '2mm'
           }}>
             {renderInformationBlock(informationBlock)}
@@ -348,11 +421,14 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           </div>
         )}
 
-        {/* Sender Address Block - DIN 5008 footer position */}
-        {senderInfo && (
+        {/* Template Footer Blocks - matches PDF exactly */}
+        {renderFooterBlocks()}
+
+        {/* Fallback Sender Address Block - only if no template footer */}
+        {!template?.footer_blocks && senderInfo && (
           <div style={{ 
             position: 'absolute',
-            bottom: '16.9mm', // DIN 5008 bottom margin
+            bottom: '25mm', // DIN 5008 footer position (same as template footer)
             left: '25mm',
             right: '20mm',
             fontSize: '8pt',
@@ -390,7 +466,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       {/* Debug Mode Overlays - Enhanced with precise measurements */}
       {debugMode && (
         <>
-          {/* DIN 5008 measurement guides */}
+          {/* DIN 5008 measurement guides - identical to PDF */}
           <div style={{
             position: 'absolute',
             top: '45mm',
@@ -434,16 +510,26 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               border: '1px solid red'
             }}>Adressfeld: 85×40mm @ 50mm/25mm</span>
             
-            {/* Window position indicator */}
+            {/* Return address area indicator */}
             <div style={{
               position: 'absolute',
-              top: '5mm',
-              left: '5mm',
-              fontSize: '7pt',
-              color: 'red',
-              backgroundColor: 'rgba(255,255,255,0.9)',
-              padding: '1px'
-            }}>Fenster: 5mm Innenabstand</div>
+              top: '0',
+              left: '0',
+              width: '85mm',
+              height: '17.7mm',
+              border: '1px dashed rgba(255,100,100,0.8)',
+              backgroundColor: 'rgba(255,100,100,0.1)'
+            }}>
+              <span style={{
+                position: 'absolute',
+                top: '14mm',
+                left: '2mm',
+                fontSize: '6pt',
+                color: 'rgba(255,100,100,1)',
+                backgroundColor: 'white',
+                padding: '1px'
+              }}>Rücksendeangaben: 17.7mm</span>
+            </div>
           </div>
           
           {/* Info block measurements */}
@@ -472,7 +558,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* Content start line */}
           <div style={{
             position: 'absolute',
-            top: '169mm',
+            top: '98.46mm',
             left: '25mm',
             right: '20mm',
             height: '2px',
@@ -488,7 +574,55 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               backgroundColor: 'white',
               padding: '3px',
               border: '1px solid green'
-            }}>169mm - Inhaltsbeginn (DIN 5008)</span>
+            }}>98.46mm - Inhaltsbeginn (DIN 5008)</span>
+          </div>
+
+          {/* Footer area measurement */}
+          <div style={{
+            position: 'absolute',
+            top: '272mm',
+            left: '25mm',
+            right: '20mm',
+            height: '18mm',
+            border: '2px dashed purple',
+            zIndex: 1000,
+            pointerEvents: 'none',
+            backgroundColor: 'rgba(128,0,128,0.05)'
+          }}>
+            <span style={{
+              position: 'absolute',
+              top: '-25px',
+              left: '0',
+              fontSize: '9pt',
+              color: 'purple',
+              backgroundColor: 'white',
+              padding: '3px',
+              border: '1px solid purple'
+            }}>Fußzeile: 272mm-290mm (18mm Höhe)</span>
+          </div>
+
+          {/* Pagination position indicator */}
+          <div style={{
+            position: 'absolute',
+            top: 'calc(272mm - 4.23mm)',
+            left: '25mm',
+            right: '20mm',
+            height: '4.23mm',
+            border: '1px dashed magenta',
+            zIndex: 1000,
+            pointerEvents: 'none',
+            backgroundColor: 'rgba(255,0,255,0.1)'
+          }}>
+            <span style={{
+              position: 'absolute',
+              top: '-18px',
+              right: '0',
+              fontSize: '8pt',
+              color: 'magenta',
+              backgroundColor: 'white',
+              padding: '2px',
+              border: '1px solid magenta'
+            }}>Paginierung: 4.23mm über Fußzeile</span>
           </div>
 
           {/* Left margin guide */}
