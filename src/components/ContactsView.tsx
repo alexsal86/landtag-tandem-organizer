@@ -16,6 +16,7 @@ import { ContactDetailSheet } from "./ContactDetailSheet";
 import { useInfiniteContacts, Contact } from "@/hooks/useInfiniteContacts";
 import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
 import { ContactSkeleton } from "./ContactSkeleton";
+import { StakeholderView } from "./StakeholderView";
 import { debounce } from "@/utils/debounce";
 import { useCounts } from "@/hooks/useCounts";
 
@@ -41,7 +42,7 @@ export function ContactsView() {
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     return localStorage.getItem('contacts-view-mode') as "grid" | "list" || "grid";
   });
-  const [activeTab, setActiveTab] = useState<"contacts" | "distribution-lists" | "archive">("contacts");
+  const [activeTab, setActiveTab] = useState<"contacts" | "stakeholders" | "distribution-lists" | "archive">("contacts");
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -102,6 +103,9 @@ export function ContactsView() {
     sortColumn,
     sortDirection,
   });
+
+  // Calculate stakeholders count after contacts are loaded
+  const stakeholdersCount = contacts.filter(c => c.contact_type === "organization").length;
 
   // Create stable debounced function
   const debouncedUpdate = useMemo(
@@ -338,6 +342,15 @@ export function ContactsView() {
           >
             <User className="h-4 w-4" />
             Kontakte ({contactsCount})
+          </Button>
+          <Button
+            variant={activeTab === "stakeholders" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab("stakeholders")}
+            className="gap-2"
+          >
+            <Building className="h-4 w-4" />
+            Stakeholder ({stakeholdersCount})
           </Button>
           <Button
             variant={activeTab === "distribution-lists" ? "default" : "outline"}
@@ -740,6 +753,29 @@ export function ContactsView() {
             </Card>
           )}
         </>
+          )}
+        </div>
+      ) : activeTab === "stakeholders" ? (
+        <div className="space-y-6">
+          {loading && contacts.length === 0 ? (
+            <ContactSkeleton count={6} viewMode="grid" />
+          ) : (
+            <StakeholderView
+              stakeholders={contacts.filter(c => c.contact_type === "organization")}
+              contacts={contacts.filter(c => c.contact_type === "person")}
+              onToggleFavorite={toggleFavorite}
+              onContactClick={(contactId) => {
+                setSelectedContactId(contactId);
+                setIsSheetOpen(true);
+              }}
+            />
+          )}
+          
+          {hasMore && !loading && (
+            <InfiniteScrollTrigger
+              onLoadMore={loadMore}
+              loading={loadingMore}
+            />
           )}
         </div>
       ) : activeTab === "archive" ? (

@@ -40,7 +40,7 @@ interface UseInfiniteContactsProps {
   searchTerm: string;
   selectedCategory: string;
   selectedType: string;
-  activeTab: "contacts" | "distribution-lists" | "archive";
+  activeTab: "contacts" | "stakeholders" | "distribution-lists" | "archive";
   sortColumn: string | null;
   sortDirection: "asc" | "desc";
 }
@@ -94,7 +94,9 @@ export const useInfiniteContacts = ({
 
     // Filter by tab
     if (activeTab === "contacts") {
-      query = query.neq('contact_type', 'archive');
+      query = query.eq('contact_type', 'person').neq('contact_type', 'archive');
+    } else if (activeTab === "stakeholders") {
+      query = query.eq('contact_type', 'organization');
     } else if (activeTab === "archive") {
       query = query.eq('contact_type', 'archive');
     }
