@@ -105,7 +105,10 @@ export function ContactsView() {
   });
 
   // Calculate stakeholders count after contacts are loaded
-  const stakeholdersCount = contacts.filter(c => c.contact_type === "organization").length;
+  const stakeholdersCount = useMemo(() => 
+    contacts.filter(c => c.contact_type === "organization").length, 
+    [contacts]
+  );
 
   // Create stable debounced function
   const debouncedUpdate = useMemo(
@@ -206,7 +209,7 @@ export function ContactsView() {
 
   // toggleFavorite is now handled by the hook
 
-  const categories = [
+  const categories = useMemo(() => [
     { value: "all", label: "Alle Kontakte", count: totalCount },
     { value: "favorites", label: "Favoriten", count: contacts.filter(c => c.is_favorite).length },
     { value: "citizen", label: "Bürger", count: contacts.filter(c => c.category === "citizen").length },
@@ -214,7 +217,7 @@ export function ContactsView() {
     { value: "business", label: "Wirtschaft", count: contacts.filter(c => c.category === "business").length },
     { value: "media", label: "Medien", count: contacts.filter(c => c.category === "media").length },
     { value: "lobbyist", label: "Lobbyisten", count: contacts.filter(c => c.category === "lobbyist").length },
-  ];
+  ], [contacts, totalCount]);
 
   const getCategoryColor = (category: Contact["category"]) => {
     switch (category) {
