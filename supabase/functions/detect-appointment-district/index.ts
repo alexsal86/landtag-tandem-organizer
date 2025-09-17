@@ -23,10 +23,11 @@ interface DetectionResult {
   partyAssociation?: {
     id: string;
     name: string;
-    contact_info?: any;
+    party?: string;
+    contact_person?: string;
     phone?: string;
-    website?: string;
     email?: string;
+    address?: string;
   };
   representatives?: {
     direct_green?: {
@@ -34,21 +35,35 @@ interface DetectionResult {
       name: string;
       party: string;
       mandate_type: string;
-      contact_info?: any;
+      email?: string;
+      phone?: string;
+      office_address?: string;
+      bio?: string;
     };
     support_green?: {
       id: string;
       name: string;
       party: string;
       mandate_type: string;
-      contact_info?: any;
+      email?: string;
+      phone?: string;
+      office_address?: string;
+      bio?: string;
+    };
+    support_district?: {
+      id: string;
+      district_name: string;
+      district_number: number;
     };
     all_representatives?: Array<{
       id: string;
       name: string;
       party: string;
       mandate_type: string;
-      contact_info?: any;
+      email?: string;
+      phone?: string;
+      office_address?: string;
+      bio?: string;
     }>;
   };
 }
@@ -194,26 +209,38 @@ serve(async (req) => {
     let representatives = null;
     
     if (matchedDistrict) {
-      // Fetch party associations
+      // Fetch party associations for this district
+      console.log('Fetching party associations for district:', matchedDistrict.id);
       const { data: partyAssociations, error: partyError } = await supabase
         .from('party_associations')
         .select(`
-          id, name, contact_info, phone, website, email,
+          id, name, party, contact_person, contact_email, contact_phone, address,
           administrative_boundaries
         `)
-        .contains('administrative_boundaries', [matchedDistrict.id]);
+        .filter('administrative_boundaries', 'cs', `["${matchedDistrict.id}"]`);
 
       if (partyError) {
         console.error('Error fetching party associations:', partyError);
-      } else if (partyAssociations && partyAssociations.length > 0) {
-        matchedPartyAssociation = partyAssociations[0];
-        console.log('Found party association:', matchedPartyAssociation.name);
+      } else {
+        console.log('Found party associations:', partyAssociations?.length || 0);
+        // Find the Green party association
+        const greenParty = partyAssociations?.find(pa => 
+          pa.party?.toLowerCase().includes('grün') || pa.name?.toLowerCase().includes('grün')
+        );
+        if (greenParty) {
+          matchedPartyAssociation = greenParty;
+          console.log('Found Green party association:', matchedPartyAssociation.name);
+        } else if (partyAssociations && partyAssociations.length > 0) {
+          matchedPartyAssociation = partyAssociations[0];
+          console.log('Found party association (fallback):', matchedPartyAssociation.name);
+        }
       }
 
-      // Fetch all representatives for this district
+      // Fetch all representatives for this district  
+      console.log('Fetching representatives for district:', matchedDistrict.id);
       const { data: allRepresentatives, error: repError } = await supabase
         .from('election_representatives')
-        .select('id, name, party, mandate_type, contact_info')
+        .select('id, name, party, mandate_type, email, phone, office_address, bio')
         .eq('district_id', matchedDistrict.id);
 
       if (repError) {
@@ -228,27 +255,46 @@ serve(async (req) => {
 
         // If no direct Green rep, check for support assignment
         let supportGreen = null;
+        let supportDistrict = null;
         if (!directGreen) {
+          console.log('No Green representative found, checking support assignments...');
           const { data: supportAssignments, error: supportError } = await supabase
             .from('district_support_assignments')
             .select(`
-              supporting_representative_id,
-              election_representatives(id, name, party, mandate_type, contact_info)
+              supporting_district_id,
+              election_districts!supporting_district_id (
+                id, district_name, district_number
+              )
             `)
-            .eq('district_id', matchedDistrict.id)
+            .eq('assigned_district_id', matchedDistrict.id)
             .eq('is_active', true)
             .order('priority', { ascending: true })
             .limit(1);
 
           if (!supportError && supportAssignments && supportAssignments.length > 0) {
-            supportGreen = supportAssignments[0].election_representatives;
-            console.log('Found support Green representative:', supportGreen?.name);
+            const supportAssignment = supportAssignments[0];
+            supportDistrict = supportAssignment.election_districts;
+            console.log('Found support district:', supportDistrict.district_name);
+            
+            // Fetch Green representative from support district
+            const { data: supportReps, error: supportRepError } = await supabase
+              .from('election_representatives')
+              .select('id, name, party, mandate_type, email, phone, office_address, bio')
+              .eq('district_id', supportAssignment.supporting_district_id)
+              .ilike('party', '%grün%')
+              .limit(1);
+              
+            if (!supportRepError && supportReps && supportReps.length > 0) {
+              supportGreen = supportReps[0];
+              console.log('Found Green representative from support district:', supportGreen.name);
+            }
           }
         }
 
         representatives = {
           direct_green: directGreen || undefined,
           support_green: supportGreen || undefined,
+          support_district: supportDistrict || undefined,
           all_representatives: allRepresentatives
         };
       }
@@ -264,10 +310,11 @@ serve(async (req) => {
       partyAssociation: matchedPartyAssociation ? {
         id: matchedPartyAssociation.id,
         name: matchedPartyAssociation.name,
-        contact_info: matchedPartyAssociation.contact_info,
-        phone: matchedPartyAssociation.phone,
-        website: matchedPartyAssociation.website,
-        email: matchedPartyAssociation.email
+        party: matchedPartyAssociation.party,
+        contact_person: matchedPartyAssociation.contact_person,
+        phone: matchedPartyAssociation.contact_phone,
+        email: matchedPartyAssociation.contact_email,
+        address: matchedPartyAssociation.address
       } : undefined,
       representatives
     };

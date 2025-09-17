@@ -713,42 +713,33 @@ const CreateAppointment = () => {
                                </div>
                              )}
 
-                             {districtResult.partyAssociation && (
-                               <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                                 <div className="flex items-start gap-3">
-                                   <div className="flex-shrink-0">
-                                     <img src={sunflowerIcon} alt="Kreisverband" className="w-6 h-6" />
-                                   </div>
-                                   <div className="flex-1">
-                                     <h4 className="font-medium text-green-800">Zuständiger Kreisverband</h4>
-                                     <div className="mt-2 space-y-1 text-sm text-green-700">
-                                       <p><strong>{districtResult.partyAssociation.name}</strong></p>
-                                        {districtResult.partyAssociation.contact_info?.contact_person && (
-                                          <p>Ansprechpartner: {districtResult.partyAssociation.contact_info.contact_person}</p>
+                              {districtResult.partyAssociation && (
+                                <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex-shrink-0">
+                                      <img src={sunflowerIcon} alt="Kreisverband" className="w-6 h-6" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <h4 className="font-medium text-green-800">Zuständiger Kreisverband</h4>
+                                      <div className="mt-2 space-y-1 text-sm text-green-700">
+                                        <p><strong>{districtResult.partyAssociation.name}</strong></p>
+                                         {districtResult.partyAssociation.contact_person && (
+                                           <p>Ansprechpartner: {districtResult.partyAssociation.contact_person}</p>
+                                         )}
+                                        {districtResult.partyAssociation.phone && (
+                                          <p>Telefon: {districtResult.partyAssociation.phone}</p>
                                         )}
-                                       {districtResult.partyAssociation.phone && (
-                                         <p>Telefon: {districtResult.partyAssociation.phone}</p>
-                                       )}
-                                       {districtResult.partyAssociation.email && (
-                                         <p>E-Mail: {districtResult.partyAssociation.email}</p>
-                                       )}
-                                       {districtResult.partyAssociation.website && (
-                                         <p>
-                                           Website: <a 
-                                             href={districtResult.partyAssociation.website} 
-                                             target="_blank" 
-                                             rel="noopener noreferrer"
-                                             className="text-green-600 hover:text-green-500 underline"
-                                           >
-                                             {districtResult.partyAssociation.website}
-                                           </a>
-                                         </p>
-                                       )}
-                                     </div>
-                                   </div>
+                                        {districtResult.partyAssociation.email && (
+                                          <p>E-Mail: {districtResult.partyAssociation.email}</p>
+                                        )}
+                                        {districtResult.partyAssociation.address && (
+                                          <p>Adresse: {districtResult.partyAssociation.address}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
                                  </div>
-                                </div>
-                              )}
+                               )}
 
                               {/* Representatives Section */}
                               {districtResult.representatives && (
@@ -760,27 +751,32 @@ const CreateAppointment = () => {
                                         <div className="flex-shrink-0">
                                           <img src={sunflowerIcon} alt="Grüner Abgeordneter" className="w-6 h-6" />
                                         </div>
-                                        <div className="flex-1">
-                                          <h4 className="font-medium text-green-800">
-                                            {districtResult.representatives.direct_green ? 'Grüner Abgeordneter' : 'Betreuender Abgeordneter'}
-                                          </h4>
-                                          {(() => {
-                                            const rep = districtResult.representatives.direct_green || districtResult.representatives.support_green;
-                                            return rep ? (
-                                              <div className="mt-2 space-y-1 text-sm text-green-700">
-                                                <p><strong>{rep.name}</strong></p>
-                                                <p>Partei: {rep.party}</p>
-                                                <p>Mandat: {rep.mandate_type === 'direct' ? 'Direktmandat' : 'Listenplatz'}</p>
-                                                {rep.contact_info?.email && (
-                                                  <p>E-Mail: {rep.contact_info.email}</p>
-                                                )}
-                                                {rep.contact_info?.phone && (
-                                                  <p>Telefon: {rep.contact_info.phone}</p>
-                                                )}
-                                              </div>
-                                            ) : null;
-                                          })()}
-                                        </div>
+                                         <div className="flex-1">
+                                           <h4 className="font-medium text-green-800">
+                                             {districtResult.representatives.direct_green ? 'Grüner Abgeordneter' : 'Betreuender Abgeordneter'}
+                                             {districtResult.representatives.support_district && (
+                                               <span className="text-xs text-green-600 ml-1">
+                                                 (aus {districtResult.representatives.support_district.district_name})
+                                               </span>
+                                             )}
+                                           </h4>
+                                           {(() => {
+                                             const rep = districtResult.representatives.direct_green || districtResult.representatives.support_green;
+                                             return rep ? (
+                                               <div className="mt-2 space-y-1 text-sm text-green-700">
+                                                 <p><strong>{rep.name}</strong></p>
+                                                 <p>Partei: {rep.party}</p>
+                                                 <p>Mandat: {rep.mandate_type === 'direct' ? 'Direktmandat' : 'Listenplatz'}</p>
+                                                 {rep.email && (
+                                                   <p>E-Mail: {rep.email}</p>
+                                                 )}
+                                                 {rep.phone && (
+                                                   <p>Telefon: {rep.phone}</p>
+                                                 )}
+                                               </div>
+                                             ) : null;
+                                           })()}
+                                         </div>
                                       </div>
                                     </div>
                                   )}
@@ -795,18 +791,21 @@ const CreateAppointment = () => {
                                         <ChevronDown className="h-4 w-4 text-blue-600" />
                                       </CollapsibleTrigger>
                                       <CollapsibleContent className="space-y-2 mt-2">
-                                        {districtResult.representatives.all_representatives.map((rep) => (
-                                          <div key={rep.id} className="p-3 bg-gray-50 rounded border">
-                                            <div className="space-y-1 text-sm">
-                                              <p><strong>{rep.name}</strong></p>
-                                              <p>Partei: {rep.party}</p>
-                                              <p>Mandat: {rep.mandate_type === 'direct' ? 'Direktmandat' : 'Listenplatz'}</p>
-                                              {rep.contact_info?.email && (
-                                                <p>E-Mail: {rep.contact_info.email}</p>
-                                              )}
-                                            </div>
-                                          </div>
-                                        ))}
+                                         {districtResult.representatives.all_representatives.map((rep) => (
+                                           <div key={rep.id} className="p-3 bg-gray-50 rounded border">
+                                             <div className="space-y-1 text-sm">
+                                               <p><strong>{rep.name}</strong></p>
+                                               <p>Partei: {rep.party}</p>
+                                               <p>Mandat: {rep.mandate_type === 'direct' ? 'Direktmandat' : 'Listenplatz'}</p>
+                                               {rep.email && (
+                                                 <p>E-Mail: {rep.email}</p>
+                                               )}
+                                               {rep.phone && (
+                                                 <p>Telefon: {rep.phone}</p>
+                                               )}
+                                             </div>
+                                           </div>
+                                         ))}
                                       </CollapsibleContent>
                                     </Collapsible>
                                   )}
