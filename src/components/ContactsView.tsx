@@ -20,6 +20,7 @@ import { StakeholderView } from "./StakeholderView";
 import { debounce } from "@/utils/debounce";
 import { useCounts } from "@/hooks/useCounts";
 import { useStakeholderPreload } from "@/hooks/useStakeholderPreload";
+import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 
 interface DistributionList {
   id: string;
@@ -59,6 +60,9 @@ export function ContactsView() {
 
   // Preload stakeholders for immediate visibility - MUST be before early returns
   const { stakeholders: preloadedStakeholders, loading: stakeholdersLoading } = useStakeholderPreload();
+
+  // Load all person contacts for stakeholder assignments - MUST be before early returns  
+  const { personContacts, loading: personContactsLoading } = useAllPersonContacts();
 
   // Use infinite contacts hook - MUST be before early returns
   const {
@@ -764,7 +768,7 @@ export function ContactsView() {
           ) : (
             <StakeholderView
               stakeholders={preloadedStakeholders}
-              contacts={contacts.filter(c => c.contact_type === "person")}
+              contacts={personContacts}
               onToggleFavorite={toggleFavorite}
               onContactClick={(contactId) => {
                 setSelectedContactId(contactId);

@@ -30,36 +30,60 @@ export function useCounts(): CountsData {
       setCounts(prev => ({ ...prev, loading: true }));
 
       // Get contacts count (persons only, excluding archived)
-      const { count: contactsCount } = await supabase
+      const { count: contactsCount, error: contactsError } = await supabase
         .from('contacts')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', currentTenant.id)
         .eq('contact_type', 'person')
         .neq('name', 'Archivierter Kontakt');
 
+      if (contactsError) {
+        console.error('Error fetching contacts count:', contactsError);
+      }
+
       // Get stakeholders count (organizations only)
-      const { count: stakeholdersCount } = await supabase
+      const { count: stakeholdersCount, error: stakeholdersError } = await supabase
         .from('contacts')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', currentTenant.id)
         .eq('contact_type', 'organization');
 
+      if (stakeholdersError) {
+        console.error('Error fetching stakeholders count:', stakeholdersError);
+      }
+
       // Get archived contacts count (grouped by phone number)
-      const { data: archivedContacts } = await supabase
+      const { data: archivedContacts, error: archiveError } = await supabase
         .from('contacts')
         .select('phone')
         .eq('tenant_id', currentTenant.id)
         .eq('name', 'Archivierter Kontakt');
+
+      if (archiveError) {
+        console.error('Error fetching archived contacts:', archiveError);
+      }
 
       // Count unique phone numbers for archive
       const uniquePhones = new Set(archivedContacts?.map(c => c.phone).filter(Boolean));
       const archiveCount = uniquePhones.size;
 
       // Get distribution lists count
-      const { count: distributionListsCount } = await supabase
+      const { count: distributionListsCount, error: distributionError } = await supabase
         .from('distribution_lists')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', currentTenant.id);
+
+      if (distributionError) {
+        console.error('Error fetching distribution lists count:', distributionError);
+      }
+
+      console.log('Count debug info:', {
+        contactsCount,
+        stakeholdersCount,
+        archiveCount,
+        distributionListsCount,
+        tenantId: currentTenant.id
+      });
 
       setCounts({
         contactsCount: contactsCount || 0,
