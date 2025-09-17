@@ -54,13 +54,13 @@ export function ContactsView() {
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
 
-  // Get accurate counts for tab badges
+  // Get accurate counts for tab badges - MUST be before early returns
   const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
 
-  // Preload stakeholders for immediate visibility
+  // Preload stakeholders for immediate visibility - MUST be before early returns
   const { stakeholders: preloadedStakeholders, loading: stakeholdersLoading } = useStakeholderPreload();
 
-  // Use infinite contacts hook
+  // Use infinite contacts hook - MUST be before early returns
   const {
     contacts,
     loading,
@@ -78,6 +78,30 @@ export function ContactsView() {
     sortColumn,
     sortDirection,
   });
+
+  // Create stable debounced function - MUST be before early returns
+  const debouncedUpdate = useMemo(
+    () => debounce((term: string) => {
+      setDebouncedSearchTerm(term);
+    }, 300),
+    []
+  );
+
+  // Categories memo - MUST be before early returns
+  const categories = useMemo(() => [
+    { value: "all", label: "Alle Kontakte", count: totalCount },
+    { value: "favorites", label: "Favoriten", count: contacts.filter(c => c.is_favorite).length },
+    { value: "citizen", label: "Bürger", count: contacts.filter(c => c.category === "citizen").length },
+    { value: "colleague", label: "Kollegen", count: contacts.filter(c => c.category === "colleague").length },
+    { value: "business", label: "Wirtschaft", count: contacts.filter(c => c.category === "business").length },
+    { value: "media", label: "Medien", count: contacts.filter(c => c.category === "media").length },
+    { value: "lobbyist", label: "Lobbyisten", count: contacts.filter(c => c.category === "lobbyist").length },
+  ], [contacts, totalCount]);
+
+  // Update debounced search term when searchTerm changes - MUST be before early returns
+  useEffect(() => {
+    debouncedUpdate(searchTerm);
+  }, [searchTerm, debouncedUpdate]);
 
   // Show loading until auth and tenant are resolved
   if (!user || tenantLoading) {
@@ -107,20 +131,6 @@ export function ContactsView() {
       </div>
     );
   }
-
-
-  // Create stable debounced function
-  const debouncedUpdate = useMemo(
-    () => debounce((term: string) => {
-      setDebouncedSearchTerm(term);
-    }, 300),
-    []
-  );
-
-  // Update debounced search term when searchTerm changes
-  useEffect(() => {
-    debouncedUpdate(searchTerm);
-  }, [searchTerm, debouncedUpdate]);
 
   // Fetch distribution lists
   useEffect(() => {
@@ -207,16 +217,6 @@ export function ContactsView() {
   };
 
   // toggleFavorite is now handled by the hook
-
-  const categories = useMemo(() => [
-    { value: "all", label: "Alle Kontakte", count: totalCount },
-    { value: "favorites", label: "Favoriten", count: contacts.filter(c => c.is_favorite).length },
-    { value: "citizen", label: "Bürger", count: contacts.filter(c => c.category === "citizen").length },
-    { value: "colleague", label: "Kollegen", count: contacts.filter(c => c.category === "colleague").length },
-    { value: "business", label: "Wirtschaft", count: contacts.filter(c => c.category === "business").length },
-    { value: "media", label: "Medien", count: contacts.filter(c => c.category === "media").length },
-    { value: "lobbyist", label: "Lobbyisten", count: contacts.filter(c => c.category === "lobbyist").length },
-  ], [contacts, totalCount]);
 
   const getCategoryColor = (category: Contact["category"]) => {
     switch (category) {
