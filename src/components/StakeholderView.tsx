@@ -34,7 +34,15 @@ export function StakeholderView({
   };
 
   const getStakeholderContacts = (stakeholderId: string) => {
-    return contacts.filter(contact => contact.organization_id === stakeholderId);
+    // Find the stakeholder to get its name
+    const stakeholder = stakeholders.find(s => s.id === stakeholderId);
+    if (!stakeholder) return [];
+    
+    // Filter contacts by organization_id OR organization name match
+    return contacts.filter(contact => 
+      contact.organization_id === stakeholderId || 
+      (contact.organization && contact.organization.trim() === stakeholder.name.trim())
+    );
   };
 
   const getInitials = (name: string) => {
