@@ -26,6 +26,7 @@ import AppointmentPreparationTemplateAdmin from "@/components/AppointmentPrepara
 import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
 import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
 import { DistrictSupportManager } from "@/components/administration/DistrictSupportManager";
+import { PartyDistrictMappingManager } from "@/components/administration/PartyDistrictMappingManager";
 import { CalendarSyncDebug } from "@/components/CalendarSyncDebug";
 import { PartyAssociationsAdmin } from "@/components/PartyAssociationsAdmin";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -1460,6 +1461,8 @@ export default function Administration() {
 
         <TabsContent value="district-support" className="space-y-6">
           <DistrictSupportManager />
+          
+          <PartyDistrictMappingManager />
         </TabsContent>
 
         {isSuperAdmin && (

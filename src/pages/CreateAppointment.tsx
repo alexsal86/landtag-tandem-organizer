@@ -735,6 +735,18 @@ const CreateAppointment = () => {
                                         {districtResult.partyAssociation.address && (
                                           <p>Adresse: {districtResult.partyAssociation.address}</p>
                                         )}
+                                        {districtResult.partyAssociation.website && (
+                                          <p>
+                                            Website: <a 
+                                              href={districtResult.partyAssociation.website} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="text-green-600 hover:text-green-500 underline"
+                                            >
+                                              {districtResult.partyAssociation.website}
+                                            </a>
+                                          </p>
+                                        )}
                                       </div>
                                     </div>
                                   </div>

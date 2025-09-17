@@ -16,6 +16,7 @@ export interface DistrictDetectionResult {
     phone?: string;
     email?: string;
     address?: string;
+    website?: string;
   };
   representatives?: {
     direct_green?: {

@@ -28,6 +28,7 @@ interface DetectionResult {
     phone?: string;
     email?: string;
     address?: string;
+    website?: string;
   };
   representatives?: {
     direct_green?: {
@@ -214,10 +215,11 @@ serve(async (req) => {
       const { data: partyAssociations, error: partyError } = await supabase
         .from('party_associations')
         .select(`
-          id, name, party, contact_person, contact_email, contact_phone, address,
-          administrative_boundaries
+          id, name, party_name, phone, website, email, 
+          address_street, address_number, address_city, full_address,
+          contact_info, administrative_boundaries
         `)
-        .filter('administrative_boundaries', 'cs', `["${matchedDistrict.id}"]`);
+        .contains('administrative_boundaries', [matchedDistrict.id]);
 
       if (partyError) {
         console.error('Error fetching party associations:', partyError);
@@ -225,7 +227,7 @@ serve(async (req) => {
         console.log('Found party associations:', partyAssociations?.length || 0);
         // Find the Green party association
         const greenParty = partyAssociations?.find(pa => 
-          pa.party?.toLowerCase().includes('grün') || pa.name?.toLowerCase().includes('grün')
+          pa.party_name?.toLowerCase().includes('grün') || pa.name?.toLowerCase().includes('grün')
         );
         if (greenParty) {
           matchedPartyAssociation = greenParty;
@@ -310,11 +312,12 @@ serve(async (req) => {
       partyAssociation: matchedPartyAssociation ? {
         id: matchedPartyAssociation.id,
         name: matchedPartyAssociation.name,
-        party: matchedPartyAssociation.party,
-        contact_person: matchedPartyAssociation.contact_person,
-        phone: matchedPartyAssociation.contact_phone,
-        email: matchedPartyAssociation.contact_email,
-        address: matchedPartyAssociation.address
+        party: matchedPartyAssociation.party_name,
+        contact_person: matchedPartyAssociation.contact_info?.contact_person,
+        phone: matchedPartyAssociation.phone,
+        email: matchedPartyAssociation.email,
+        address: matchedPartyAssociation.full_address || `${matchedPartyAssociation.address_street || ''} ${matchedPartyAssociation.address_number || ''} ${matchedPartyAssociation.address_city || ''}`.trim(),
+        website: matchedPartyAssociation.website
       } : undefined,
       representatives
     };
