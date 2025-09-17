@@ -54,6 +54,31 @@ export function ContactsView() {
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { toast } = useToast();
 
+  // Get accurate counts for tab badges
+  const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
+
+  // Preload stakeholders for immediate visibility
+  const { stakeholders: preloadedStakeholders, loading: stakeholdersLoading } = useStakeholderPreload();
+
+  // Use infinite contacts hook
+  const {
+    contacts,
+    loading,
+    loadingMore,
+    hasMore,
+    totalCount,
+    loadMore,
+    toggleFavorite,
+    refreshContacts
+  } = useInfiniteContacts({
+    searchTerm: debouncedSearchTerm,
+    selectedCategory,
+    selectedType,
+    activeTab,
+    sortColumn,
+    sortDirection,
+  });
+
   // Show loading until auth and tenant are resolved
   if (!user || tenantLoading) {
     return (
@@ -82,31 +107,6 @@ export function ContactsView() {
       </div>
     );
   }
-  
-  // Get accurate counts for tab badges
-  const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
-
-  // Preload stakeholders for immediate visibility
-  const { stakeholders: preloadedStakeholders, loading: stakeholdersLoading } = useStakeholderPreload();
-
-  // Use infinite contacts hook
-  const {
-    contacts,
-    loading,
-    loadingMore,
-    hasMore,
-    totalCount,
-    loadMore,
-    toggleFavorite,
-    refreshContacts
-  } = useInfiniteContacts({
-    searchTerm: debouncedSearchTerm,
-    selectedCategory,
-    selectedType,
-    activeTab,
-    sortColumn,
-    sortDirection,
-  });
 
 
   // Create stable debounced function
