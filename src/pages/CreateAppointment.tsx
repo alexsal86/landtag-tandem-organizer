@@ -25,6 +25,8 @@ import { ContactSelector } from "@/components/ContactSelector";
 import { GuestManager } from "@/components/GuestManager";
 import { RecurrenceSelector } from "@/components/ui/recurrence-selector";
 import { useDistrictDetection } from "@/hooks/useDistrictDetection";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import sunflowerIcon from "@/assets/sunflower.svg";
 
 // Helper functions for intelligent date/time defaults
@@ -721,9 +723,9 @@ const CreateAppointment = () => {
                                      <h4 className="font-medium text-green-800">Zuständiger Kreisverband</h4>
                                      <div className="mt-2 space-y-1 text-sm text-green-700">
                                        <p><strong>{districtResult.partyAssociation.name}</strong></p>
-                                       {districtResult.partyAssociation.contact_person && (
-                                         <p>Ansprechpartner: {districtResult.partyAssociation.contact_person}</p>
-                                       )}
+                                        {districtResult.partyAssociation.contact_info?.contact_person && (
+                                          <p>Ansprechpartner: {districtResult.partyAssociation.contact_info.contact_person}</p>
+                                        )}
                                        {districtResult.partyAssociation.phone && (
                                          <p>Telefon: {districtResult.partyAssociation.phone}</p>
                                        )}
@@ -745,8 +747,71 @@ const CreateAppointment = () => {
                                      </div>
                                    </div>
                                  </div>
-                               </div>
-                             )}
+                                </div>
+                              )}
+
+                              {/* Representatives Section */}
+                              {districtResult.representatives && (
+                                <div className="space-y-3">
+                                  {/* Direct or Support Green Representative */}
+                                  {(districtResult.representatives.direct_green || districtResult.representatives.support_green) && (
+                                    <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                                      <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                          <img src={sunflowerIcon} alt="Grüner Abgeordneter" className="w-6 h-6" />
+                                        </div>
+                                        <div className="flex-1">
+                                          <h4 className="font-medium text-green-800">
+                                            {districtResult.representatives.direct_green ? 'Grüner Abgeordneter' : 'Betreuender Abgeordneter'}
+                                          </h4>
+                                          {(() => {
+                                            const rep = districtResult.representatives.direct_green || districtResult.representatives.support_green;
+                                            return rep ? (
+                                              <div className="mt-2 space-y-1 text-sm text-green-700">
+                                                <p><strong>{rep.name}</strong></p>
+                                                <p>Partei: {rep.party}</p>
+                                                <p>Mandat: {rep.mandate_type === 'direct' ? 'Direktmandat' : 'Listenplatz'}</p>
+                                                {rep.contact_info?.email && (
+                                                  <p>E-Mail: {rep.contact_info.email}</p>
+                                                )}
+                                                {rep.contact_info?.phone && (
+                                                  <p>Telefon: {rep.contact_info.phone}</p>
+                                                )}
+                                              </div>
+                                            ) : null;
+                                          })()}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* All Representatives - Collapsible */}
+                                  {districtResult.representatives.all_representatives && districtResult.representatives.all_representatives.length > 0 && (
+                                    <Collapsible>
+                                      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
+                                        <h4 className="font-medium text-blue-800">
+                                          Alle Abgeordneten des Wahlkreises ({districtResult.representatives.all_representatives.length})
+                                        </h4>
+                                        <ChevronDown className="h-4 w-4 text-blue-600" />
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent className="space-y-2 mt-2">
+                                        {districtResult.representatives.all_representatives.map((rep) => (
+                                          <div key={rep.id} className="p-3 bg-gray-50 rounded border">
+                                            <div className="space-y-1 text-sm">
+                                              <p><strong>{rep.name}</strong></p>
+                                              <p>Partei: {rep.party}</p>
+                                              <p>Mandat: {rep.mandate_type === 'direct' ? 'Direktmandat' : 'Listenplatz'}</p>
+                                              {rep.contact_info?.email && (
+                                                <p>E-Mail: {rep.contact_info.email}</p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </CollapsibleContent>
+                                    </Collapsible>
+                                  )}
+                                </div>
+                              )}
 
                              {districtResult.district && !districtResult.partyAssociation && (
                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">

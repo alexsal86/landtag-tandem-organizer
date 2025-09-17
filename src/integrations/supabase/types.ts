@@ -1367,6 +1367,57 @@ export type Database = {
           },
         ]
       }
+      district_support_assignments: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          district_id: string
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          priority: number | null
+          supporting_representative_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          district_id: string
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          priority?: number | null
+          supporting_representative_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          district_id?: string
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          priority?: number | null
+          supporting_representative_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "district_support_assignments_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "election_districts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "district_support_assignments_supporting_representative_id_fkey"
+            columns: ["supporting_representative_id"]
+            isOneToOne: false
+            referencedRelation: "election_representatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           archived_attachments: Json | null

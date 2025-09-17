@@ -25,6 +25,7 @@ import { DefaultGuestsAdmin } from "@/components/DefaultGuestsAdmin";
 import AppointmentPreparationTemplateAdmin from "@/components/AppointmentPreparationTemplateAdmin";
 import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
 import { InformationBlockManager } from "@/components/administration/InformationBlockManager";
+import { DistrictSupportManager } from "@/components/administration/DistrictSupportManager";
 import { CalendarSyncDebug } from "@/components/CalendarSyncDebug";
 import { PartyAssociationsAdmin } from "@/components/PartyAssociationsAdmin";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -1455,6 +1456,10 @@ export default function Administration() {
 
         <TabsContent value="party-associations" className="space-y-6">
           <PartyAssociationsAdmin />
+        </TabsContent>
+
+        <TabsContent value="district-support" className="space-y-6">
+          <DistrictSupportManager />
         </TabsContent>
 
         {isSuperAdmin && (

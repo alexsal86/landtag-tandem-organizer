@@ -11,10 +11,33 @@ export interface DistrictDetectionResult {
   partyAssociation?: {
     id: string;
     name: string;
-    contact_person?: string;
+    contact_info?: any;
     phone?: string;
     website?: string;
     email?: string;
+  };
+  representatives?: {
+    direct_green?: {
+      id: string;
+      name: string;
+      party: string;
+      mandate_type: string;
+      contact_info?: any;
+    };
+    support_green?: {
+      id: string;
+      name: string;
+      party: string;
+      mandate_type: string;
+      contact_info?: any;
+    };
+    all_representatives?: Array<{
+      id: string;
+      name: string;
+      party: string;
+      mandate_type: string;
+      contact_info?: any;
+    }>;
   };
 }
 

@@ -23,10 +23,33 @@ interface DetectionResult {
   partyAssociation?: {
     id: string;
     name: string;
-    contact_person?: string;
+    contact_info?: any;
     phone?: string;
     website?: string;
     email?: string;
+  };
+  representatives?: {
+    direct_green?: {
+      id: string;
+      name: string;
+      party: string;
+      mandate_type: string;
+      contact_info?: any;
+    };
+    support_green?: {
+      id: string;
+      name: string;
+      party: string;
+      mandate_type: string;
+      contact_info?: any;
+    };
+    all_representatives?: Array<{
+      id: string;
+      name: string;
+      party: string;
+      mandate_type: string;
+      contact_info?: any;
+    }>;
   };
 }
 
@@ -166,14 +189,16 @@ serve(async (req) => {
 
     console.log('Matched district:', matchedDistrict?.district_name || 'none');
 
-    // If we found a district, look for the corresponding party association
+    // If we found a district, look for representatives and party association
     let matchedPartyAssociation = null;
+    let representatives = null;
     
     if (matchedDistrict) {
+      // Fetch party associations
       const { data: partyAssociations, error: partyError } = await supabase
         .from('party_associations')
         .select(`
-          id, name, contact_person, phone, website, email,
+          id, name, contact_info, phone, website, email,
           administrative_boundaries
         `)
         .contains('administrative_boundaries', [matchedDistrict.id]);
@@ -183,6 +208,49 @@ serve(async (req) => {
       } else if (partyAssociations && partyAssociations.length > 0) {
         matchedPartyAssociation = partyAssociations[0];
         console.log('Found party association:', matchedPartyAssociation.name);
+      }
+
+      // Fetch all representatives for this district
+      const { data: allRepresentatives, error: repError } = await supabase
+        .from('election_representatives')
+        .select('id, name, party, mandate_type, contact_info')
+        .eq('district_id', matchedDistrict.id);
+
+      if (repError) {
+        console.error('Error fetching representatives:', repError);
+      } else if (allRepresentatives && allRepresentatives.length > 0) {
+        console.log(`Found ${allRepresentatives.length} representatives for district`);
+        
+        // Find direct Green representative
+        const directGreen = allRepresentatives.find(rep => 
+          rep.party && rep.party.toLowerCase().includes('grün')
+        );
+
+        // If no direct Green rep, check for support assignment
+        let supportGreen = null;
+        if (!directGreen) {
+          const { data: supportAssignments, error: supportError } = await supabase
+            .from('district_support_assignments')
+            .select(`
+              supporting_representative_id,
+              election_representatives(id, name, party, mandate_type, contact_info)
+            `)
+            .eq('district_id', matchedDistrict.id)
+            .eq('is_active', true)
+            .order('priority', { ascending: true })
+            .limit(1);
+
+          if (!supportError && supportAssignments && supportAssignments.length > 0) {
+            supportGreen = supportAssignments[0].election_representatives;
+            console.log('Found support Green representative:', supportGreen?.name);
+          }
+        }
+
+        representatives = {
+          direct_green: directGreen || undefined,
+          support_green: supportGreen || undefined,
+          all_representatives: allRepresentatives
+        };
       }
     }
 
@@ -196,11 +264,12 @@ serve(async (req) => {
       partyAssociation: matchedPartyAssociation ? {
         id: matchedPartyAssociation.id,
         name: matchedPartyAssociation.name,
-        contact_person: matchedPartyAssociation.contact_person,
+        contact_info: matchedPartyAssociation.contact_info,
         phone: matchedPartyAssociation.phone,
         website: matchedPartyAssociation.website,
         email: matchedPartyAssociation.email
-      } : undefined
+      } : undefined,
+      representatives
     };
 
     console.log('Detection result:', result);
