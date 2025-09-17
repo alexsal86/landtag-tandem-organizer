@@ -66,26 +66,6 @@ export const useInfiniteContacts = ({
   const { currentTenant } = useTenant();
   const { toast } = useToast();
 
-  // Reset pagination when filters change
-  const resetPagination = useCallback(() => {
-    setContacts([]);
-    setCurrentPage(0);
-    setHasMore(true);
-    setTotalCount(0);
-  }, []);
-
-  // Reset pagination when filters change
-  useEffect(() => {
-    resetPagination();
-  }, [searchTerm, selectedCategory, selectedType, activeTab, sortColumn, sortDirection, resetPagination]);
-
-  // Initial fetch when user and tenant are available or when pagination resets
-  useEffect(() => {
-    if (user && currentTenant && currentPage === 0) {
-      fetchContacts(false);
-    }
-  }, [user, currentTenant, currentPage]);
-
   const buildQuery = useCallback((offset: number, limit: number) => {
     let query = supabase
       .from('contacts')
@@ -136,6 +116,31 @@ export const useInfiniteContacts = ({
     return query;
   }, [currentTenant?.id, activeTab, searchTerm, selectedCategory, selectedType, sortColumn, sortDirection]);
 
+  const insertSampleContacts = useCallback(async () => {
+    try {
+      const { error } = await supabase.rpc('insert_sample_contacts', {
+        target_user_id: user!.id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Willkommen!",
+        description: "Beispielkontakte wurden zu Ihrem Account hinzugefügt.",
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error inserting sample contacts:', error);
+      toast({
+        title: "Fehler",
+        description: "Beispielkontakte konnten nicht erstellt werden.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  }, [user, toast]);
+
   const fetchContacts = useCallback(async (isLoadMore = false) => {
     if (!user || !currentTenant) {
       console.log('Missing user or tenant:', { user: !!user, currentTenant: !!currentTenant });
@@ -151,7 +156,7 @@ export const useInfiniteContacts = ({
         setLoading(true);
       }
 
-      const offset = isLoadMore ? contacts.length : 0;
+      const offset = isLoadMore ? currentPage * ITEMS_PER_PAGE : 0;
       const query = buildQuery(offset, ITEMS_PER_PAGE);
       
       console.log('Fetching contacts with query:', { 
@@ -208,7 +213,48 @@ export const useInfiniteContacts = ({
         
         // Insert sample data if no contacts exist and no filters are applied
         if (formattedContacts.length === 0 && !searchTerm && selectedCategory === "all" && selectedType === "all" && activeTab === "contacts") {
-          await insertSampleContacts();
+          const sampleInserted = await insertSampleContacts();
+          if (sampleInserted) {
+            // Refetch after inserting samples
+            const { data: newData, error: newError, count: newCount } = await buildQuery(0, ITEMS_PER_PAGE);
+            if (!newError && newData) {
+              const newFormattedContacts = newData.map(contact => ({
+                id: contact.id,
+                contact_type: (contact.contact_type as "person" | "organization" | "archive") || "person",
+                name: contact.name,
+                role: contact.role,
+                organization: contact.organization,
+                organization_id: contact.organization_id,
+                email: contact.email,
+                phone: contact.phone,
+                location: contact.location,
+                address: contact.address,
+                birthday: contact.birthday,
+                website: contact.website,
+                linkedin: contact.linkedin,
+                twitter: contact.twitter,
+                facebook: contact.facebook,
+                instagram: contact.instagram,
+                xing: contact.xing,
+                category: contact.category as Contact["category"],
+                priority: contact.priority as Contact["priority"],
+                last_contact: contact.last_contact,
+                avatar_url: contact.avatar_url,
+                notes: contact.notes,
+                additional_info: contact.additional_info,
+                legal_form: contact.legal_form,
+                industry: contact.industry,
+                main_contact_person: contact.main_contact_person,
+                business_description: contact.business_description,
+                is_favorite: contact.is_favorite,
+              }));
+              setContacts(newFormattedContacts);
+              setTotalCount(newCount || 0);
+              setHasMore(newFormattedContacts.length === ITEMS_PER_PAGE);
+            }
+          }
+          setLoading(false);
+          setLoadingMore(false);
           return;
         }
       }
@@ -227,32 +273,7 @@ export const useInfiniteContacts = ({
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [user, currentTenant, contacts.length, buildQuery, searchTerm, selectedCategory, selectedType, activeTab, toast]);
-
-  const insertSampleContacts = async () => {
-    try {
-      const { error } = await supabase.rpc('insert_sample_contacts', {
-        target_user_id: user!.id
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Willkommen!",
-        description: "Beispielkontakte wurden zu Ihrem Account hinzugefügt.",
-      });
-
-      // Fetch the newly inserted contacts
-      fetchContacts(false);
-    } catch (error) {
-      console.error('Error inserting sample contacts:', error);
-      toast({
-        title: "Fehler",
-        description: "Beispielkontakte konnten nicht erstellt werden.",
-        variant: "destructive",
-      });
-    }
-  };
+  }, [user, currentTenant, currentPage, buildQuery, searchTerm, selectedCategory, selectedType, activeTab, insertSampleContacts, toast]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
@@ -260,7 +281,7 @@ export const useInfiniteContacts = ({
     }
   }, [fetchContacts, loadingMore, hasMore]);
 
-  const toggleFavorite = async (contactId: string, isFavorite: boolean) => {
+  const toggleFavorite = useCallback(async (contactId: string, isFavorite: boolean) => {
     try {
       const { error } = await supabase
         .from('contacts')
@@ -270,7 +291,7 @@ export const useInfiniteContacts = ({
       if (error) throw error;
 
       // Update local state
-      setContacts(contacts.map(contact => 
+      setContacts(prev => prev.map(contact => 
         contact.id === contactId 
           ? { ...contact, is_favorite: isFavorite }
           : contact
@@ -290,14 +311,22 @@ export const useInfiniteContacts = ({
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
-  // Initial load and reload when dependencies change
+  // Reset pagination when filters change
   useEffect(() => {
-    if (contacts.length === 0 && currentPage === 0) {
+    setContacts([]);
+    setCurrentPage(0);
+    setHasMore(true);
+    setTotalCount(0);
+  }, [searchTerm, selectedCategory, selectedType, activeTab, sortColumn, sortDirection]);
+
+  // Fetch contacts when page is reset to 0 or when initial load
+  useEffect(() => {
+    if (user && currentTenant && currentPage === 0) {
       fetchContacts(false);
     }
-  }, [fetchContacts, contacts.length, currentPage]);
+  }, [user, currentTenant, searchTerm, selectedCategory, selectedType, activeTab, sortColumn, sortDirection]);
 
   return {
     contacts,
@@ -307,6 +336,11 @@ export const useInfiniteContacts = ({
     totalCount,
     loadMore,
     toggleFavorite,
-    refreshContacts: () => fetchContacts(false)
+    refreshContacts: useCallback(() => {
+      setContacts([]);
+      setCurrentPage(0);
+      setHasMore(true);
+      setTotalCount(0);
+    }, [])
   };
 };
