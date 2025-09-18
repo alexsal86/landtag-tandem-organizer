@@ -49,6 +49,8 @@ export function ContactsView() {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [selectedTag, setSelectedTag] = useState<string>("");
+  const [allTags, setAllTags] = useState<string[]>([]);
   
   const navigate = useNavigate();
   const { user } = useAuth();

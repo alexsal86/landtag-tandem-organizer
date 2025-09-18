@@ -730,6 +730,16 @@ export function CreateContact() {
                     />
                   </div>
                   <div>
+                    <Label htmlFor="tags">Tags</Label>
+                    <TagInput
+                      tags={formData.tags}
+                      onTagsChange={(tags) => setFormData(prev => ({ ...prev, tags }))}
+                      suggestions={allTags}
+                      placeholder="Tags hinzufügen..."
+                    />
+                  </div>
+
+                  <div>
                     <Label htmlFor="additional_info">Weitere Informationen</Label>
                     <Textarea
                       id="additional_info"

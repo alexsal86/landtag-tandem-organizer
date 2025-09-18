@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag } from "lucide-react";
+import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { Link } from "react-router-dom";
+import { StakeholderToDistributionDialog } from "./StakeholderToDistributionDialog";
 
 interface StakeholderViewProps {
   stakeholders: Contact[];
@@ -22,6 +23,8 @@ export function StakeholderView({
   onContactClick,
 }: StakeholderViewProps) {
   const [expandedStakeholders, setExpandedStakeholders] = useState<Set<string>>(new Set());
+  const [distributionDialogOpen, setDistributionDialogOpen] = useState(false);
+  const [selectedStakeholder, setSelectedStakeholder] = useState<Contact | null>(null);
 
   const toggleExpanded = (stakeholderId: string) => {
     const newExpanded = new Set(expandedStakeholders);
@@ -34,11 +37,9 @@ export function StakeholderView({
   };
 
   const getStakeholderContacts = (stakeholderId: string) => {
-    // Find the stakeholder to get its name
     const stakeholder = stakeholders.find(s => s.id === stakeholderId);
     if (!stakeholder) return [];
     
-    // Filter contacts by organization_id OR organization name match
     return contacts.filter(contact => 
       contact.organization_id === stakeholderId || 
       (contact.organization && contact.organization.trim() === stakeholder.name.trim())
@@ -66,11 +67,17 @@ export function StakeholderView({
     }
   };
 
+  const handleCreateDistributionList = (stakeholder: Contact) => {
+    setSelectedStakeholder(stakeholder);
+    setDistributionDialogOpen(true);
+  };
+
   return (
     <div className="space-y-4">
       {stakeholders.map((stakeholder) => {
         const associatedContacts = getStakeholderContacts(stakeholder.id);
         const isExpanded = expandedStakeholders.has(stakeholder.id);
+        const stakeholderTags = (stakeholder as any).tags || [];
 
         return (
           <Card key={stakeholder.id} className="bg-card shadow-card border-border">
@@ -99,11 +106,28 @@ export function StakeholderView({
                           </Badge>
                         )}
                       </div>
+
+                      {/* Tags */}
+                      {stakeholderTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {stakeholderTags.slice(0, 3).map((tag: string) => (
+                            <Badge key={tag} variant="outline" className="text-xs flex items-center gap-1">
+                              <Tag className="h-2 w-2" />
+                              {tag}
+                            </Badge>
+                          ))}
+                          {stakeholderTags.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{stakeholderTags.length - 3} weitere
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                       
                       <div className="text-sm text-muted-foreground space-y-1">
                         {stakeholder.industry && (
                           <div className="flex items-center gap-2">
-                            <Tag className="h-3 w-3" />
+                            <Building className="h-3 w-3" />
                             <span>{stakeholder.industry}</span>
                           </div>
                         )}
@@ -133,6 +157,18 @@ export function StakeholderView({
                     <Badge variant="outline" className="text-xs">
                       {associatedContacts.length} Kontakt{associatedContacts.length !== 1 ? 'e' : ''}
                     </Badge>
+                    
+                    {associatedContacts.length > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleCreateDistributionList(stakeholder)}
+                        className="gap-1"
+                      >
+                        <Users className="h-4 w-4" />
+                        <span className="hidden sm:inline">Verteiler</span>
+                      </Button>
+                    )}
                     
                     <Link to={`/contacts/${stakeholder.id}/edit`}>
                       <Button variant="ghost" size="sm">
@@ -249,6 +285,19 @@ export function StakeholderView({
             </Button>
           </Link>
         </div>
+      )}
+
+      {/* Distribution List Dialog */}
+      {selectedStakeholder && (
+        <StakeholderToDistributionDialog
+          isOpen={distributionDialogOpen}
+          onClose={() => {
+            setDistributionDialogOpen(false);
+            setSelectedStakeholder(null);
+          }}
+          stakeholder={selectedStakeholder}
+          associatedContacts={getStakeholderContacts(selectedStakeholder.id)}
+        />
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus } from "lucide-react";
+import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +58,8 @@ interface Contact {
   industry?: string;
   main_contact_person?: string;
   business_description?: string;
+  tags?: string[];
+  inherited_tags?: string[];
 }
 
 interface ContactDetailSheetProps {
@@ -74,12 +76,14 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
   const [loadingCallLogs, setLoadingCallLogs] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showCallLogWidget, setShowCallLogWidget] = useState(false);
+  const [allTags, setAllTags] = useState<{ direct: string[], inherited: string[] }>({ direct: [], inherited: [] });
   const { toast } = useToast();
 
   useEffect(() => {
     if (contactId && isOpen) {
       fetchContact();
       fetchCallLogs();
+      fetchContactTags();
     }
   }, [contactId, isOpen]);
 
@@ -122,6 +126,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
         contact_type: data.contact_type as "person" | "organization",
         category: data.category as Contact["category"],
         priority: data.priority as Contact["priority"],
+        tags: data.tags || [],
       });
     } catch (error) {
       console.error('Error fetching contact:', error);
@@ -132,6 +137,33 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchContactTags = async () => {
+    if (!contactId || !contact) return;
+    
+    try {
+      let inheritedTags: string[] = [];
+      
+      // If this is a person with an organization, fetch inherited tags
+      if (contact.contact_type === 'person' && contact.organization_id) {
+        const { data: orgData, error: orgError } = await supabase
+          .from('contacts')
+          .select('tags')
+          .eq('id', contact.organization_id)
+          .single();
+        
+        if (!orgError && orgData?.tags) {
+          inheritedTags = orgData.tags;
+        }
+      }
+      
+      const directTags = contact.tags || [];
+      setAllTags({ direct: directTags, inherited: inheritedTags });
+    } catch (error) {
+      console.error('Error fetching contact tags:', error);
+      setAllTags({ direct: [], inherited: [] });
     }
   };
 
@@ -188,6 +220,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
     setIsEditing(false);
     fetchContact();
     fetchCallLogs();
+    fetchContactTags();
     onContactUpdate();
   };
 
@@ -419,6 +452,33 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                     <CardContent className="p-4">
                       <h3 className="font-semibold text-lg mb-2">Geschäftsbeschreibung</h3>
                       <p className="text-muted-foreground">{contact.business_description}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Tags */}
+                {(allTags.direct.length > 0 || allTags.inherited.length > 0) && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-lg mb-2">Tags</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {allTags.inherited.map((tag) => (
+                          <Badge 
+                            key={`inherited-${tag}`} 
+                            variant="outline" 
+                            className="bg-muted/30 text-muted-foreground border-dashed flex items-center gap-1"
+                          >
+                            <Tag className="h-3 w-3" />
+                            {tag}
+                            <span className="text-xs">(geerbt)</span>
+                          </Badge>
+                        ))}
+                        {allTags.direct.map((tag) => (
+                          <Badge key={`direct-${tag}`} variant="secondary">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
                     </CardContent>
                   </Card>
                 )}
