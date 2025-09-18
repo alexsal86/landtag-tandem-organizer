@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ArrowUpWideNarrow, ArrowDownWideNarrow, Star, ChevronUp } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,12 @@ export function ContactsView() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     return localStorage.getItem('contacts-view-mode') as "grid" | "list" || "grid";
+  });
+  const [stakeholderViewMode, setStakeholderViewMode] = useState<"grid" | "list">(() => {
+    return localStorage.getItem('stakeholders-view-mode') as "grid" | "list" || "grid";
+  });
+  const [distributionViewMode, setDistributionViewMode] = useState<"grid" | "list">(() => {
+    return localStorage.getItem('distribution-view-mode') as "grid" | "list" || "grid";
   });
   const [activeTab, setActiveTab] = useState<"contacts" | "stakeholders" | "distribution-lists" | "archive">("contacts");
   const [showFilters, setShowFilters] = useState(false);
@@ -277,14 +283,14 @@ export function ContactsView() {
       <div className="flex items-center gap-2">
         {children}
         <div className="flex flex-col gap-0">
-          <ArrowUpWideNarrow 
+          <ChevronUp 
             className={`h-3 w-3 transition-colors ${
               sortColumn === sortKey && sortDirection === "asc" 
                 ? "text-primary" 
                 : "text-muted-foreground/40 hover:text-muted-foreground/60"
             }`} 
           />
-          <ArrowDownWideNarrow 
+          <ChevronDown 
             className={`h-3 w-3 transition-colors -mt-0.5 ${
               sortColumn === sortKey && sortDirection === "desc" 
                 ? "text-primary" 
@@ -394,22 +400,46 @@ export function ContactsView() {
           <div className="flex gap-2">
             <div className="flex border border-border rounded-md">
               <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
+                variant={
+                  (activeTab === "contacts" ? viewMode : 
+                   activeTab === "stakeholders" ? stakeholderViewMode : 
+                   distributionViewMode) === "grid" ? "default" : "ghost"
+                }
                 size="sm"
                 onClick={() => {
-                  setViewMode("grid");
-                  localStorage.setItem('contacts-view-mode', 'grid');
+                  if (activeTab === "contacts") {
+                    setViewMode("grid");
+                    localStorage.setItem('contacts-view-mode', 'grid');
+                  } else if (activeTab === "stakeholders") {
+                    setStakeholderViewMode("grid");
+                    localStorage.setItem('stakeholders-view-mode', 'grid');
+                  } else {
+                    setDistributionViewMode("grid");
+                    localStorage.setItem('distribution-view-mode', 'grid');
+                  }
                 }}
                 className="rounded-r-none"
               >
                 <Grid3X3 className="h-4 w-4" />
               </Button>
               <Button
-                variant={viewMode === "list" ? "default" : "ghost"}
+                variant={
+                  (activeTab === "contacts" ? viewMode : 
+                   activeTab === "stakeholders" ? stakeholderViewMode : 
+                   distributionViewMode) === "list" ? "default" : "ghost"
+                }
                 size="sm"
                 onClick={() => {
-                  setViewMode("list");
-                  localStorage.setItem('contacts-view-mode', 'list');
+                  if (activeTab === "contacts") {
+                    setViewMode("list");
+                    localStorage.setItem('contacts-view-mode', 'list');
+                  } else if (activeTab === "stakeholders") {
+                    setStakeholderViewMode("list");
+                    localStorage.setItem('stakeholders-view-mode', 'list');
+                  } else {
+                    setDistributionViewMode("list");
+                    localStorage.setItem('distribution-view-mode', 'list');
+                  }
                 }}
                 className="rounded-l-none"
               >
@@ -771,6 +801,7 @@ export function ContactsView() {
             <StakeholderView
               stakeholders={preloadedStakeholders}
               contacts={personContacts}
+              viewMode={stakeholderViewMode}
               onToggleFavorite={toggleFavorite}
               onContactClick={(contactId) => {
                 setSelectedContactId(contactId);
