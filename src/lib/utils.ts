@@ -112,3 +112,19 @@ export function getDuplicateMessage(duplicate: DuplicateMatch): string {
       return 'Mögliches Duplikat gefunden';
   }
 }
+
+// German date formatting utility
+export function formatGermanDate(dateString: string): string {
+  if (!dateString) return '';
+  
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric'
+    });
+  } catch (error) {
+    return dateString; // Fallback to original string if parsing fails
+  }
+}

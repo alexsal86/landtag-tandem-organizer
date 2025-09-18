@@ -230,6 +230,31 @@ export function ContactsView() {
 
   // toggleFavorite is now handled by the hook
 
+  const handleDeleteContact = async (contactId: string, contactName: string) => {
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .delete()
+        .eq('id', contactId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Kontakt gelöscht",
+        description: `${contactName} wurde erfolgreich gelöscht.`,
+      });
+
+      refreshContacts();
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+      toast({
+        title: "Fehler",
+        description: "Kontakt konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getCategoryColor = (category: Contact["category"]) => {
     switch (category) {
       case "citizen":
@@ -627,6 +652,19 @@ export function ContactsView() {
                   <Button size="sm" variant="outline" className="flex-1">
                     <Phone className="h-4 w-4 mr-1" />
                     Anrufen
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Sind Sie sicher, dass Sie "${contact.name}" löschen möchten?`)) {
+                        handleDeleteContact(contact.id, contact.name);
+                      }
+                    }}
+                    className="px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>

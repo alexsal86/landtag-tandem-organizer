@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag } from "lucide-react";
+import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag, Linkedin, Twitter, Facebook, Instagram } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ContactEditForm } from "./ContactEditForm";
 import { CallLogWidget } from "@/components/widgets/CallLogWidget";
+import { formatGermanDate } from "@/lib/utils";
 
 interface CallLog {
   id: string;
@@ -295,13 +296,15 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                       : contact.role
                     }
                   </SheetDescription>
-                  <Badge className={`mt-2 ${getCategoryColor(contact.category)}`}>
-                    {contact.category === "citizen" && "Bürger"}
-                    {contact.category === "colleague" && "Kollege"}
-                    {contact.category === "business" && "Wirtschaft"}
-                    {contact.category === "media" && "Medien"}
-                    {contact.category === "lobbyist" && "Lobbyist"}
-                  </Badge>
+                  {contact.contact_type === "organization" && (
+                    <Badge className={`mt-2 ${getCategoryColor(contact.category)}`}>
+                      {contact.category === "citizen" && "Bürger"}
+                      {contact.category === "colleague" && "Kollege"}
+                      {contact.category === "business" && "Wirtschaft"}
+                      {contact.category === "media" && "Medien"}
+                      {contact.category === "lobbyist" && "Lobbyist"}
+                    </Badge>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2 pt-4">
@@ -366,7 +369,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                   </div>
                 )}
 
-                {(contact.location || contact.address) && (
+                {(contact.address || contact.location) && (
                   <div className="flex items-center gap-3">
                     <MapPin className="h-5 w-5 text-muted-foreground" />
                     <div>
@@ -383,7 +386,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                     <Calendar className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <p className="font-medium">Geburtstag</p>
-                      <p className="text-muted-foreground">{contact.birthday}</p>
+                      <p className="text-muted-foreground">{formatGermanDate(contact.birthday)}</p>
                     </div>
                   </div>
                 )}
@@ -410,35 +413,75 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                   <Card>
                     <CardContent className="p-4">
                       <h3 className="font-semibold text-lg mb-4">Social Media</h3>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-3">
                         {contact.linkedin && (
-                          <div>
-                            <p className="font-medium">LinkedIn</p>
-                            <p className="text-muted-foreground text-sm">{contact.linkedin}</p>
+                          <div className="flex items-center gap-3">
+                            <Linkedin className="h-5 w-5 text-blue-600" />
+                            <div className="flex-1">
+                              <p className="font-medium">LinkedIn</p>
+                              <p className="text-muted-foreground text-sm">{contact.linkedin}</p>
+                            </div>
+                            <Button size="sm" variant="outline" asChild>
+                              <a href={contact.linkedin.startsWith('http') ? contact.linkedin : `https://${contact.linkedin}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
                           </div>
                         )}
                         {contact.twitter && (
-                          <div>
-                            <p className="font-medium">Twitter</p>
-                            <p className="text-muted-foreground text-sm">{contact.twitter}</p>
+                          <div className="flex items-center gap-3">
+                            <Twitter className="h-5 w-5 text-sky-500" />
+                            <div className="flex-1">
+                              <p className="font-medium">Twitter</p>
+                              <p className="text-muted-foreground text-sm">{contact.twitter}</p>
+                            </div>
+                            <Button size="sm" variant="outline" asChild>
+                              <a href={contact.twitter.startsWith('http') ? contact.twitter : `https://${contact.twitter}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
                           </div>
                         )}
                         {contact.facebook && (
-                          <div>
-                            <p className="font-medium">Facebook</p>
-                            <p className="text-muted-foreground text-sm">{contact.facebook}</p>
+                          <div className="flex items-center gap-3">
+                            <Facebook className="h-5 w-5 text-blue-600" />
+                            <div className="flex-1">
+                              <p className="font-medium">Facebook</p>
+                              <p className="text-muted-foreground text-sm">{contact.facebook}</p>
+                            </div>
+                            <Button size="sm" variant="outline" asChild>
+                              <a href={contact.facebook.startsWith('http') ? contact.facebook : `https://${contact.facebook}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
                           </div>
                         )}
                         {contact.instagram && (
-                          <div>
-                            <p className="font-medium">Instagram</p>
-                            <p className="text-muted-foreground text-sm">{contact.instagram}</p>
+                          <div className="flex items-center gap-3">
+                            <Instagram className="h-5 w-5 text-pink-500" />
+                            <div className="flex-1">
+                              <p className="font-medium">Instagram</p>
+                              <p className="text-muted-foreground text-sm">{contact.instagram}</p>
+                            </div>
+                            <Button size="sm" variant="outline" asChild>
+                              <a href={contact.instagram.startsWith('http') ? contact.instagram : `https://${contact.instagram}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
                           </div>
                         )}
                         {contact.xing && (
-                          <div>
-                            <p className="font-medium">XING</p>
-                            <p className="text-muted-foreground text-sm">{contact.xing}</p>
+                          <div className="flex items-center gap-3">
+                            <User className="h-5 w-5 text-green-600" />
+                            <div className="flex-1">
+                              <p className="font-medium">XING</p>
+                              <p className="text-muted-foreground text-sm">{contact.xing}</p>
+                            </div>
+                            <Button size="sm" variant="outline" asChild>
+                              <a href={contact.xing.startsWith('http') ? contact.xing : `https://${contact.xing}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
                           </div>
                         )}
                       </div>
