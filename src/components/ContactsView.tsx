@@ -67,7 +67,7 @@ export function ContactsView() {
   const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
 
   // Preload stakeholders for immediate visibility - MUST be before early returns
-  const { stakeholders: preloadedStakeholders, loading: stakeholdersLoading } = useStakeholderPreload();
+  const { stakeholders: preloadedStakeholders, loading: stakeholdersLoading, refreshStakeholders } = useStakeholderPreload();
 
   // Load all person contacts for stakeholder assignments - MUST be before early returns  
   const { personContacts, loading: personContactsLoading } = useAllPersonContacts();
@@ -807,6 +807,7 @@ export function ContactsView() {
                 setSelectedContactId(contactId);
                 setIsSheetOpen(true);
               }}
+              onRefresh={refreshStakeholders}
             />
           )}
           

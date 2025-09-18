@@ -19,6 +19,7 @@ interface StakeholderViewProps {
   viewMode: "grid" | "list";
   onToggleFavorite: (contactId: string, isFavorite: boolean) => void;
   onContactClick: (contactId: string) => void;
+  onRefresh?: () => void;
 }
 
 export function StakeholderView({
@@ -27,15 +28,23 @@ export function StakeholderView({
   viewMode,
   onToggleFavorite,
   onContactClick,
+  onRefresh,
 }: StakeholderViewProps) {
   const [expandedStakeholders, setExpandedStakeholders] = useState<Set<string>>(new Set());
   const [distributionDialogOpen, setDistributionDialogOpen] = useState(false);
   const [selectedStakeholder, setSelectedStakeholder] = useState<Contact | null>(null);
   const [editingTags, setEditingTags] = useState<string | null>(null);
+  const [localTagUpdates, setLocalTagUpdates] = useState<Record<string, string[]>>({});
   const { toast } = useToast();
 
   const updateStakeholderTags = async (stakeholderId: string, tags: string[]) => {
     try {
+      // Optimistically update local state
+      setLocalTagUpdates(prev => ({
+        ...prev,
+        [stakeholderId]: tags
+      }));
+
       const { error } = await supabase
         .from('contacts')
         .update({ tags })
@@ -43,12 +52,27 @@ export function StakeholderView({
 
       if (error) throw error;
 
+      // Refresh data from parent if callback is provided
+      if (onRefresh) {
+        onRefresh();
+      }
+
       toast({
         title: "Erfolg",
         description: "Tags wurden erfolgreich aktualisiert.",
       });
+
+      setEditingTags(null);
     } catch (error) {
       console.error('Error updating tags:', error);
+      
+      // Revert optimistic update on error
+      setLocalTagUpdates(prev => {
+        const newState = { ...prev };
+        delete newState[stakeholderId];
+        return newState;
+      });
+
       toast({
         title: "Fehler",
         description: "Tags konnten nicht aktualisiert werden.",
@@ -103,7 +127,7 @@ export function StakeholderView({
       {viewMode === "grid" ? (
         // Grid View
         stakeholders.map((stakeholder) => {
-          const stakeholderTags = (stakeholder as any).tags || [];
+          const stakeholderTags = localTagUpdates[stakeholder.id] || (stakeholder as any).tags || [];
           const stakeholderContacts = getStakeholderContacts(stakeholder.id);
           const isExpanded = expandedStakeholders.has(stakeholder.id);
           
@@ -351,7 +375,7 @@ export function StakeholderView({
             </TableHeader>
             <TableBody>
               {stakeholders.map((stakeholder) => {
-                const stakeholderTags = (stakeholder as any).tags || [];
+                const stakeholderTags = localTagUpdates[stakeholder.id] || (stakeholder as any).tags || [];
                 const stakeholderContacts = getStakeholderContacts(stakeholder.id);
                 
                 return (
