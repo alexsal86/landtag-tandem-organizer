@@ -67,11 +67,11 @@ export function useCounts(): CountsData {
       const uniquePhones = new Set(archivedContacts?.map(c => c.phone).filter(Boolean));
       const archiveCount = uniquePhones.size;
 
-      // Get distribution lists count
+      // Get distribution lists count (including those with null tenant_id)
       const { count: distributionListsCount, error: distributionError } = await supabase
         .from('distribution_lists')
         .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', currentTenant.id);
+        .or(`tenant_id.eq.${currentTenant.id},tenant_id.is.null`);
 
       if (distributionError) {
         console.error('Error fetching distribution lists count:', distributionError);

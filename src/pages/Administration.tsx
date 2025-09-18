@@ -29,6 +29,7 @@ import { DistrictSupportManager } from "@/components/administration/DistrictSupp
 import { PartyDistrictMappingManager } from "@/components/administration/PartyDistrictMappingManager";
 import { CalendarSyncDebug } from "@/components/CalendarSyncDebug";
 import { PartyAssociationsAdmin } from "@/components/PartyAssociationsAdmin";
+import { TagAdminSettings } from "@/components/TagAdminSettings";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -509,10 +510,14 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="system" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             System & Allgemein
+          </TabsTrigger>
+          <TabsTrigger value="tags" className="flex items-center gap-2">
+            <Building className="h-4 w-4" />
+            Tags & Kategorien
           </TabsTrigger>
           <TabsTrigger value="appointments" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
@@ -649,6 +654,11 @@ export default function Administration() {
               </TabsContent>
             )}
           </Tabs>
+        </TabsContent>
+
+        {/* Tags & Kategorien */}
+        <TabsContent value="tags">
+          <TagAdminSettings />
         </TabsContent>
 
         {/* Termine & Kalender */}

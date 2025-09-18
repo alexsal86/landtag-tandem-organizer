@@ -12,6 +12,7 @@ import { StakeholderToDistributionDialog } from "./StakeholderToDistributionDial
 import { TagInput } from "@/components/ui/tag-input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTags } from "@/hooks/useTags";
 
 interface StakeholderViewProps {
   stakeholders: Contact[];
@@ -36,6 +37,7 @@ export function StakeholderView({
   const [editingTags, setEditingTags] = useState<string | null>(null);
   const [localTagUpdates, setLocalTagUpdates] = useState<Record<string, string[]>>({});
   const { toast } = useToast();
+  const { tagSuggestions } = useTags();
 
   const updateStakeholderTags = async (stakeholderId: string, tags: string[]) => {
     try {
@@ -226,6 +228,7 @@ export function StakeholderView({
                             }}
                             placeholder="Tags hinzufügen..."
                             className="w-full"
+                            suggestions={tagSuggestions}
                           />
                           <div className="flex gap-2">
                             <Button 
@@ -364,9 +367,8 @@ export function StakeholderView({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">Favorit</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Kategorie</TableHead>
-                <TableHead>Kontakte</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Kontakte</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefon</TableHead>
                 <TableHead>Tags</TableHead>
@@ -413,13 +415,6 @@ export function StakeholderView({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {stakeholder.category && (
-                        <Badge variant="outline" className={getCategoryColor(stakeholder.category)}>
-                          {stakeholder.category}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
                       <span className="text-sm">{stakeholderContacts.length} Kontakte</span>
                     </TableCell>
                     <TableCell>
@@ -457,6 +452,7 @@ export function StakeholderView({
                               }}
                               placeholder="Tags..."
                               className="w-full"
+                              suggestions={tagSuggestions}
                             />
                             <Button 
                               size="sm" 

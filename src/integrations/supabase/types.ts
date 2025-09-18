@@ -4324,6 +4324,39 @@ export type Database = {
           },
         ]
       }
+      tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          name: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          name: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          name?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_archive_settings: {
         Row: {
           auto_delete_after_days: number | null

@@ -37,6 +37,7 @@ interface Contact {
   business_description?: string | null;
   main_contact_person?: string | null;
   is_favorite?: boolean | null;
+  tags?: string[] | null;
 }
 
 export const useStakeholderPreload = () => {
@@ -98,6 +99,7 @@ export const useStakeholderPreload = () => {
         business_description: contact.business_description,
         main_contact_person: contact.main_contact_person,
         is_favorite: contact.is_favorite || false,
+        tags: contact.tags || [],
       })) || [];
 
       setStakeholders(formattedStakeholders);
