@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact as UtilContact } from "@/lib/utils";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
+import { TagInput } from "@/components/ui/tag-input";
 
 interface Contact {
   id: string;
@@ -38,6 +39,7 @@ interface Contact {
   industry?: string;
   main_contact_person?: string;
   business_description?: string;
+  tags?: string[];
 }
 
 interface ContactEditFormProps {
@@ -47,7 +49,10 @@ interface ContactEditFormProps {
 }
 
 export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFormProps) {
-  const [formData, setFormData] = useState(contact);
+  const [formData, setFormData] = useState({
+    ...contact,
+    tags: (contact as any).tags || [],
+  });
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [useCustomOrganization, setUseCustomOrganization] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -55,6 +60,8 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [emailValidationError, setEmailValidationError] = useState<string>('');
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [inheritedTags, setInheritedTags] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -62,7 +69,11 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       fetchOrganizations();
     }
     fetchExistingContacts();
-  }, [contact.contact_type]);
+    fetchAllTags();
+    if (formData.organization_id) {
+      fetchInheritedTags();
+    }
+  }, [contact.contact_type, formData.organization_id]);
 
   useEffect(() => {
     if (contact.organization && organizations.length > 0) {
@@ -75,7 +86,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     try {
       const { data, error } = await supabase
         .from('contacts')
-        .select('name')
+        .select('id, name')
         .eq('contact_type', 'organization')
         .order('name');
 
@@ -91,7 +102,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       const { data, error } = await supabase
         .from('contacts')
         .select('id, name, email, phone, organization')
-        .neq('id', contact.id) // Exclude current contact being edited
+        .neq('id', contact.id)
         .order('name');
 
       if (error) throw error;
@@ -104,6 +115,49 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       })) || []);
     } catch (error) {
       console.error('Error fetching existing contacts:', error);
+    }
+  };
+
+  const fetchAllTags = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('tags')
+        .not('tags', 'is', null);
+
+      if (error) throw error;
+      
+      const tagsSet = new Set<string>();
+      data?.forEach(contact => {
+        if (contact.tags && Array.isArray(contact.tags)) {
+          contact.tags.forEach((tag: string) => tagsSet.add(tag));
+        }
+      });
+      setAllTags(Array.from(tagsSet));
+    } catch (error) {
+      console.error('Error fetching tags:', error);
+    }
+  };
+
+  const fetchInheritedTags = async () => {
+    if (!formData.organization_id) {
+      setInheritedTags([]);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('tags')
+        .eq('id', formData.organization_id)
+        .single();
+
+      if (error) throw error;
+      
+      setInheritedTags((data?.tags as string[]) || []);
+    } catch (error) {
+      console.error('Error fetching inherited tags:', error);
+      setInheritedTags([]);
     }
   };
 
@@ -131,12 +185,10 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate email if provided
     if (formData.email && !validateEmail(formData.email)) {
       return;
     }
 
-    // Check for duplicates before saving
     const currentContactData = {
       name: formData.name,
       email: formData.email,
@@ -160,7 +212,10 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     try {
       const { error } = await supabase
         .from('contacts')
-        .update(formData)
+        .update({
+          ...formData,
+          tags: formData.tags.length > 0 ? formData.tags : null,
+        })
         .eq('id', contact.id);
 
       if (error) throw error;
@@ -184,18 +239,16 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
   };
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Validate email on change
     if (field === 'email') {
       validateEmail(value);
     }
     
-    // Check for duplicates when key fields change
     if (['name', 'email', 'phone', 'organization'].includes(field)) {
       const updatedData = { ...formData, [field]: value };
-      if (updatedData.name) { // Only check if name is present
+      if (updatedData.name) {
         checkForDuplicates({
           name: updatedData.name,
           email: updatedData.email,
@@ -204,11 +257,20 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         });
       }
     }
+
+    // Fetch inherited tags when organization changes
+    if (field === 'organization_id') {
+      setFormData(prev => ({ ...prev, organization_id: value }));
+      if (value) {
+        fetchInheritedTags();
+      } else {
+        setInheritedTags([]);
+      }
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Duplicate Warning */}
       {duplicateMatches.length > 0 && (
         <DuplicateWarning
           duplicates={duplicateMatches}
@@ -221,7 +283,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         />
       )}
 
-      {/* Basic Information */}
       <Card>
         <CardHeader>
           <CardTitle>Grundlegende Informationen</CardTitle>
@@ -262,42 +323,23 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Organisation</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUseCustomOrganization(!useCustomOrganization)}
-                  >
-                    {useCustomOrganization ? "Aus Liste wählen" : "Eigene eingeben"}
-                  </Button>
-                </div>
-                
-                {useCustomOrganization ? (
-                  <Input
-                    value={formData.organization || ''}
-                    onChange={(e) => handleChange('organization', e.target.value)}
-                    placeholder="Organisation eingeben"
-                  />
-                ) : (
-                  <Select
-                    value={formData.organization === "" || !organizations.some(org => org.name === formData.organization) ? "none" : formData.organization || "none"}
-                    onValueChange={(value) => handleChange('organization', value === "none" ? "" : value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Organisation auswählen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Keine Organisation</SelectItem>
-                      {organizations.map((org) => (
-                        <SelectItem key={org.name} value={org.name}>
-                          {org.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                <Label htmlFor="organization_id">Organisation</Label>
+                <Select
+                  value={formData.organization_id || 'none'}
+                  onValueChange={(value) => handleChange('organization_id', value === 'none' ? '' : value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Organisation auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Keine Organisation</SelectItem>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </>
           )}
@@ -374,7 +416,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         </CardContent>
       </Card>
 
-      {/* Contact Information */}
       <Card>
         <CardHeader>
           <CardTitle>Kontaktinformationen</CardTitle>
@@ -432,7 +473,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         </CardContent>
       </Card>
 
-      {/* Social Media */}
       <Card>
         <CardHeader>
           <CardTitle>Social Media</CardTitle>
@@ -487,7 +527,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         </CardContent>
       </Card>
 
-      {/* Additional Information */}
       <Card>
         <CardHeader>
           <CardTitle>Zusätzliche Informationen</CardTitle>
@@ -523,6 +562,23 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
               onChange={(e) => handleChange('additional_info', e.target.value)}
               rows={4}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="tags">Tags</Label>
+            <TagInput
+              tags={formData.tags}
+              onTagsChange={(tags) => handleChange('tags', tags)}
+              suggestions={allTags}
+              showInherited={formData.contact_type === 'person' && inheritedTags.length > 0}
+              inheritedTags={inheritedTags}
+              placeholder="Tags hinzufügen..."
+            />
+            {inheritedTags.length > 0 && formData.contact_type === 'person' && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Tags werden von der zugeordneten Organisation geerbt
+              </p>
+            )}
           </div>
 
           <div>

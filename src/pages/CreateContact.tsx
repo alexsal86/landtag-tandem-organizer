@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact } from "@/lib/utils";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
+import { TagInput } from "@/components/ui/tag-input";
 
 interface ContactFormData {
   contact_type: "person" | "organization";
@@ -91,11 +92,13 @@ export function CreateContact() {
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [emailValidationError, setEmailValidationError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [allTags, setAllTags] = useState<string[]>([]);
 
   useEffect(() => {
     if (user) {
       fetchOrganizations();
       fetchExistingContacts();
+      fetchAllTags();
     }
   }, [user]);
 
@@ -131,6 +134,27 @@ export function CreateContact() {
       })) || []);
     } catch (error) {
       console.error('Error fetching existing contacts:', error);
+    }
+  };
+
+  const fetchAllTags = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('tags')
+        .not('tags', 'is', null);
+
+      if (error) throw error;
+      
+      const tagsSet = new Set<string>();
+      data?.forEach(contact => {
+        if (contact.tags && Array.isArray(contact.tags)) {
+          contact.tags.forEach((tag: string) => tagsSet.add(tag));
+        }
+      });
+      setAllTags(Array.from(tagsSet));
+    } catch (error) {
+      console.error('Error fetching tags:', error);
     }
   };
 
