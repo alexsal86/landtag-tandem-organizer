@@ -5465,6 +5465,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      sync_existing_contact_tags: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
