@@ -249,7 +249,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       let updateData = { ...formData };
       
       // Handle organization creation if needed
-      if (formData.contact_type === 'person' && !formData.organization_id && formData.organization) {
+      if (formData.contact_type === 'person' && !formData.organization_id && formData.organization && formData.organization.trim()) {
         try {
           console.log('Creating new organization:', formData.organization.trim());
           
@@ -261,7 +261,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
               tenant_id: currentTenant.id,
               name: formData.organization.trim(),
               contact_type: 'organization',
-              category: 'organization'
+              category: 'business'
             })
             .select('id')
             .single();
@@ -271,12 +271,19 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
           } else if (newOrg) {
             console.log('Organization created successfully:', newOrg.id);
             updateData.organization_id = newOrg.id;
+            updateData.organization = formData.organization.trim();
             // Refresh organizations list
             fetchOrganizations();
           }
         } catch (orgError) {
           console.warn('Could not create organization:', orgError);
         }
+      }
+
+      // Clear organization fields if no organization is selected
+      if (formData.contact_type === 'person' && !formData.organization_id && !formData.organization) {
+        updateData.organization_id = null;
+        updateData.organization = null;
       }
 
       const finalUpdateData = {
@@ -351,9 +358,8 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       }
     }
 
-    // Fetch inherited tags when organization changes
-    if (field === 'organization_id') {
-      setFormData(prev => ({ ...prev, organization_id: value }));
+    // Fetch inherited tags when organization changes via direct field edit
+    if (field === 'organization_id' && value !== formData.organization_id) {
       if (value) {
         fetchInheritedTags();
       } else {
@@ -513,7 +519,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
                 />
               </div>
 
-              <div>
+                <div>
                 <Label htmlFor="organization_id">Organisation</Label>
                 <div className="space-y-2">
                   <Select
@@ -521,10 +527,28 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
                     onValueChange={(value) => {
                       if (value === 'create_new') {
                         // Show input for new organization
-                        handleChange('organization_id', '');
-                        handleChange('organization', '');
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          organization_id: '', 
+                          organization: '' 
+                        }));
+                      } else if (value === 'none') {
+                        // No organization selected - clear both fields
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          organization_id: '', 
+                          organization: '' 
+                        }));
+                        setInheritedTags([]);
                       } else {
-                        handleChange('organization_id', value === 'none' ? '' : value);
+                        // Existing organization selected - set both ID and name
+                        const selectedOrg = organizations.find(org => org.id === value);
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          organization_id: value, 
+                          organization: selectedOrg?.name || '' 
+                        }));
+                        fetchInheritedTags();
                       }
                     }}
                   >
