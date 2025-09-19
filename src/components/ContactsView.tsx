@@ -839,7 +839,7 @@ export function ContactsView() {
             <ContactSkeleton count={6} viewMode="grid" />
           ) : (
             <StakeholderView
-              stakeholders={contacts}
+              stakeholders={contacts.filter(contact => contact.contact_type === 'organization')}
               contacts={personContacts}
               viewMode={stakeholderViewMode}
               onToggleFavorite={toggleFavorite}
@@ -857,6 +857,7 @@ export function ContactsView() {
             />
           )}
           
+          {/* Only one InfiniteScrollTrigger per view to prevent duplicates */}
           {hasMore && !loading && (
             <InfiniteScrollTrigger
               onLoadMore={loadMore}

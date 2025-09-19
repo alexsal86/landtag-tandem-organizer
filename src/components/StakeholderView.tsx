@@ -13,7 +13,6 @@ import { TagInput } from "@/components/ui/tag-input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTags } from "@/hooks/useTags";
-import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
 
 interface StakeholderViewProps {
   stakeholders: Contact[];
@@ -142,7 +141,12 @@ export function StakeholderView({
   }, [stakeholders, contacts]);
 
   const sortedStakeholders = useMemo(() => {
-    return [...stakeholders].sort((a, b) => {
+    const filtered = [...stakeholders];
+    
+    // Log for debugging duplicate issues
+    console.log(`StakeholderView: Processing ${filtered.length} stakeholders, sortColumn: ${sortColumn}`);
+    
+    return filtered.sort((a, b) => {
       if (!sortColumn || !onSort) return 0;
       
       let aValue: any;
@@ -154,9 +158,8 @@ export function StakeholderView({
           bValue = b.name?.toLowerCase() || "";
           break;
         case "contacts":
-          aValue = contactCounts.get(a.id) || 0;
-          bValue = contactCounts.get(b.id) || 0;
-          break;
+          // Disable client-side contact count sorting as it conflicts with server-side pagination
+          return 0;
         case "tags":
           const aTags = (localTagUpdates[a.id] || (a as any).tags || []);
           const bTags = (localTagUpdates[b.id] || (b as any).tags || []);
@@ -181,7 +184,7 @@ export function StakeholderView({
       
       return result;
     });
-  }, [stakeholders, sortColumn, sortDirection, onSort, contactCounts, localTagUpdates]);
+  }, [stakeholders, sortColumn, sortDirection, onSort, localTagUpdates]);
 
   const SortableTableHead = ({ children, sortKey, className = "" }: { 
     children: React.ReactNode; 
@@ -455,7 +458,7 @@ export function StakeholderView({
               <TableRow>
                 <TableHead className="w-12">Favorit</TableHead>
                 <SortableTableHead sortKey="name">Name</SortableTableHead>
-                <SortableTableHead sortKey="contacts">Kontakte</SortableTableHead>
+                <TableHead>Kontakte</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefon</TableHead>
                 <SortableTableHead sortKey="tags">Tags</SortableTableHead>
@@ -637,13 +640,7 @@ export function StakeholderView({
         />
       )}
       
-      {hasMore && loadMore && (
-        <InfiniteScrollTrigger
-          onLoadMore={loadMore}
-          loading={loadingMore}
-          hasMore={hasMore}
-        />
-      )}
+      {/* Note: InfiniteScrollTrigger is handled by ContactsView.tsx to prevent duplicates */}
     </div>
   );
 }
