@@ -13,6 +13,9 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 
+// Import JSON serialization functions from Lexical
+import { $generateHtmlFromNodes } from '@lexical/html';
+
 // Lexical nodes
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -421,14 +424,16 @@ function CollaborationPlugin({
   return <OnChangePlugin onChange={handleLocalContentChange} />;
 }
 
-// Content Sync Plugin for Yjs (enhanced for rich text)
+// Content Sync Plugin for Yjs (enhanced with JSON serialization)
 function YjsContentSyncPlugin({ 
-  initialContent, 
+  initialContent,
+  initialContentNodes,
   onContentSync,
   documentId 
 }: { 
   initialContent: string;
-  onContentSync: (content: string) => void;
+  initialContentNodes?: any;
+  onContentSync: (content: string, contentNodes?: any) => void;
   documentId: string;
 }) {
   const [editor] = useLexicalComposerContext();
@@ -437,14 +442,31 @@ function YjsContentSyncPlugin({
   const syncIntervalRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    if (yjsProvider?.isSynced && initialContent && initialContent !== lastSyncedContentRef.current) {
+    if (yjsProvider?.isSynced && (initialContentNodes || initialContent) && initialContent !== lastSyncedContentRef.current) {
       console.log('🔄 [Hybrid] Syncing initial Supabase content to Yjs:', initialContent);
       
       editor.update(() => {
         const root = $getRoot();
         root.clear();
         
-        if (initialContent.trim()) {
+          if (initialContentNodes) {
+            // Try to deserialize JSON nodes first
+            try {
+              const parsedNodes = JSON.parse(initialContentNodes);
+              if (parsedNodes && parsedNodes.content) {
+                const paragraph = $createParagraphNode();
+                paragraph.append($createTextNode(parsedNodes.content));
+                root.append(paragraph);
+              }
+            } catch (error) {
+              console.warn('Failed to deserialize initial JSON nodes, falling back to plain text:', error);
+              if (initialContent && initialContent.trim()) {
+                const paragraph = $createParagraphNode();
+                paragraph.append($createTextNode(initialContent));
+                root.append(paragraph);
+              }
+            }
+          } else if (initialContent && initialContent.trim()) {
           const paragraph = $createParagraphNode();
           paragraph.append($createTextNode(initialContent));
           root.append(paragraph);
@@ -453,7 +475,7 @@ function YjsContentSyncPlugin({
         lastSyncedContentRef.current = initialContent;
       });
     }
-  }, [yjsProvider?.isSynced, initialContent, editor]);
+  }, [yjsProvider?.isSynced, initialContent, initialContentNodes, editor]);
 
   useEffect(() => {
     if (yjsProvider?.isSynced) {

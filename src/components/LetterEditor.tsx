@@ -26,6 +26,7 @@ interface Letter {
   title: string;
   content: string;
   content_html?: string;
+  content_nodes?: any;
   recipient_name?: string;
   recipient_address?: string;
   contact_id?: string;
@@ -114,6 +115,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     title: '',
     content: '',
     content_html: '',
+    content_nodes: null,
     recipient_name: '',
     recipient_address: '',
     status: 'draft',
@@ -221,7 +223,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       
       setEditedLetter({
         ...letter,
-        content_html: letter.content_html || ''
+        content_html: letter.content_html || '',
+        content_nodes: letter.content_nodes || null
       });
       // Set proofreading mode based on actual letter status
       setIsProofreadingMode(letter.status === 'review');
@@ -246,6 +249,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         title: '',
         content: '',
         content_html: '',
+        content_nodes: null,
         recipient_name: '',
         recipient_address: '',
         status: 'draft',
@@ -352,7 +356,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         setActiveUsers(users);
       })
       .on('broadcast', { event: 'content_change' }, (payload) => {
-        const { user_id, field, value, content_html } = payload.payload;
+        const { user_id, field, value } = payload.payload;
         if (user_id !== user.id) {
           isUpdatingFromRemoteRef.current = true;
           
@@ -362,8 +366,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           
           setEditedLetter(prev => ({
             ...prev,
-            [field]: value,
-            ...(content_html && field === 'content' ? { content_html } : {})
+            [field]: value
           }));
           
           setTimeout(() => {
@@ -983,6 +986,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           title: editedLetter.title,
           content: editedLetter.content,
           content_html: editedLetter.content_html,
+          content_nodes: editedLetter.content_nodes,
           recipient_name: editedLetter.recipient_name,
           recipient_address: editedLetter.recipient_address,
           contact_id: editedLetter.contact_id,
@@ -1024,6 +1028,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             title: editedLetter.title,
             content: editedLetter.content,
             content_html: editedLetter.content_html,
+            content_nodes: editedLetter.content_nodes,
             recipient_name: editedLetter.recipient_name,
             recipient_address: editedLetter.recipient_address,
             contact_id: editedLetter.contact_id,
@@ -1049,6 +1054,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             title: editedLetter.title || 'Neuer Brief',
             content: editedLetter.content || '',
             content_html: editedLetter.content_html || '',
+            content_nodes: editedLetter.content_nodes,
             recipient_name: editedLetter.recipient_name,
             recipient_address: editedLetter.recipient_address,
             contact_id: editedLetter.contact_id,
@@ -1772,10 +1778,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     setEditedLetter(prev => ({
                       ...prev,
                       content: content,
-                      content_html: content
+                      content_nodes: JSON.stringify({ timestamp: Date.now(), content })
                     }));
                     
-                    broadcastContentChange('content', content, content);
+                    broadcastContentChange('content', content);
                   }}
                   placeholder="Hier können Sie Ihren Brief verfassen..."
                   documentId={letter?.id}

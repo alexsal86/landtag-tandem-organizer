@@ -2985,6 +2985,7 @@ export type Database = {
           contact_id: string | null
           content: string
           content_html: string
+          content_nodes: Json | null
           created_at: string
           created_by: string
           expected_response_date: string | null
@@ -3022,6 +3023,7 @@ export type Database = {
           contact_id?: string | null
           content?: string
           content_html?: string
+          content_nodes?: Json | null
           created_at?: string
           created_by: string
           expected_response_date?: string | null
@@ -3059,6 +3061,7 @@ export type Database = {
           contact_id?: string | null
           content?: string
           content_html?: string
+          content_nodes?: Json | null
           created_at?: string
           created_by?: string
           expected_response_date?: string | null
