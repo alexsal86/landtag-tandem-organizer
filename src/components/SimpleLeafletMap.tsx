@@ -407,7 +407,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   }
 
   return (
-    <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border">
+    <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border z-0">
       <div ref={mapEl} className="w-full h-full" />
       
       <div className="absolute top-4 right-4 z-[1000] space-y-2">
