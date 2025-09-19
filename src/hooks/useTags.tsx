@@ -10,7 +10,7 @@ interface Tag {
   order_index: number;
 }
 
-export function useTags() {
+export const useTags = () => {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
 
