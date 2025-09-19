@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag, Users, Star, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -131,47 +131,57 @@ export function StakeholderView({
     }
   };
 
-  const sortedStakeholders = [...stakeholders].sort((a, b) => {
-    if (!sortColumn || !onSort) return 0;
-    
-    let aValue: any;
-    let bValue: any;
-    
-    switch (sortColumn) {
-      case "name":
-        aValue = a.name.toLowerCase();
-        bValue = b.name.toLowerCase();
-        break;
-      case "contacts":
-        aValue = getStakeholderContacts(a.id).length;
-        bValue = getStakeholderContacts(b.id).length;
-        // Secondary sort by name for stable sorting when contact counts are equal
-        if (aValue === bValue) {
-          const aName = a.name.toLowerCase();
-          const bName = b.name.toLowerCase();
-          return aName < bName ? -1 : aName > bName ? 1 : 0;
-        }
-        break;
-      case "tags":
-        const aTags = (localTagUpdates[a.id] || (a as any).tags || []).join(" ").toLowerCase();
-        const bTags = (localTagUpdates[b.id] || (b as any).tags || []).join(" ").toLowerCase();
-        aValue = aTags;
-        bValue = bTags;
-        // Secondary sort by name for stable sorting when tags are equal
-        if (aValue === bValue) {
-          const aName = a.name.toLowerCase();
-          const bName = b.name.toLowerCase();
-          return aName < bName ? -1 : aName > bName ? 1 : 0;
-        }
-        break;
-      default:
-        return 0;
-    }
-    
-    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
-    return 0;
-  });
+  // Cache contact counts for performance optimization
+  const contactCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    stakeholders.forEach(stakeholder => {
+      const contactCount = getStakeholderContacts(stakeholder.id)?.length || 0;
+      counts.set(stakeholder.id, contactCount);
+    });
+    return counts;
+  }, [stakeholders, contacts]);
+
+  const sortedStakeholders = useMemo(() => {
+    return [...stakeholders].sort((a, b) => {
+      if (!sortColumn || !onSort) return 0;
+      
+      let aValue: any;
+      let bValue: any;
+      
+      switch (sortColumn) {
+        case "name":
+          aValue = a.name?.toLowerCase() || "";
+          bValue = b.name?.toLowerCase() || "";
+          break;
+        case "contacts":
+          aValue = contactCounts.get(a.id) || 0;
+          bValue = contactCounts.get(b.id) || 0;
+          break;
+        case "tags":
+          const aTags = (localTagUpdates[a.id] || (a as any).tags || []);
+          const bTags = (localTagUpdates[b.id] || (b as any).tags || []);
+          aValue = Array.isArray(aTags) ? aTags.join(" ").toLowerCase() : "";
+          bValue = Array.isArray(bTags) ? bTags.join(" ").toLowerCase() : "";
+          break;
+        default:
+          return 0;
+      }
+      
+      // Primary sorting
+      let result = 0;
+      if (aValue < bValue) result = sortDirection === "asc" ? -1 : 1;
+      else if (aValue > bValue) result = sortDirection === "asc" ? 1 : -1;
+      
+      // Secondary sort by name for stable sorting when primary values are equal
+      if (result === 0) {
+        const aName = a.name?.toLowerCase() || "";
+        const bName = b.name?.toLowerCase() || "";
+        result = aName < bName ? -1 : aName > bName ? 1 : 0;
+      }
+      
+      return result;
+    });
+  }, [stakeholders, sortColumn, sortDirection, onSort, contactCounts, localTagUpdates]);
 
   const SortableTableHead = ({ children, sortKey, className = "" }: { 
     children: React.ReactNode; 
