@@ -73,7 +73,8 @@ const ENABLE_YJS_COLLABORATION = true;
 
 interface EnhancedLexicalEditorProps {
   content: string;
-  onChange: (content: string) => void;
+  contentNodes?: string; // JSON serialized EditorState
+  onChange: (content: string, contentNodes?: string) => void;
   placeholder?: string;
   documentId?: string;
   enableCollaboration?: boolean;
@@ -332,11 +333,24 @@ function KeyboardShortcutsPlugin() {
   return null;
 }
 
-// Content Plugin to sync content (simplified for Supabase Realtime)
-function ContentPlugin({ content }: { content: string }) {
+// Content Plugin to sync content using official Lexical serialization
+function ContentPlugin({ content, contentNodes }: { content: string; contentNodes?: string }) {
   const [editor] = useLexicalComposerContext();
   
   React.useEffect(() => {
+    if (contentNodes) {
+      // Prioritize JSON serialized content (with full formatting)
+      try {
+        const editorState = editor.parseEditorState(contentNodes);
+        editor.setEditorState(editorState);
+        console.log('🎯 Loaded content from JSON nodes');
+        return;
+      } catch (error) {
+        console.warn('Failed to parse JSON nodes, falling back to plain text:', error);
+      }
+    }
+    
+    // Fallback to plain text content
     if (content) {
       editor.update(() => {
         const root = $getRoot();
@@ -346,13 +360,14 @@ function ContentPlugin({ content }: { content: string }) {
           root.append(paragraph);
         }
       });
+      console.log('📝 Loaded content from plain text');
     }
-  }, [editor, content]);
+  }, [editor, content, contentNodes]);
 
   return null;
 }
 
-// Collaboration Plugin for Supabase Realtime (enhanced for rich text)
+// Collaboration Plugin for Supabase Realtime (enhanced with JSON serialization)
 function CollaborationPlugin({ 
   documentId, 
   onContentChange,
@@ -360,8 +375,8 @@ function CollaborationPlugin({
   remoteContent 
 }: { 
   documentId: string;
-  onContentChange: (content: string) => void;
-  sendContentUpdate: (content: string) => void;
+  onContentChange: (content: string, contentNodes?: string) => void;
+  sendContentUpdate: (content: string, contentNodes?: string) => void;
   remoteContent: string;
 }) {
   const [editor] = useLexicalComposerContext();
@@ -395,7 +410,7 @@ function CollaborationPlugin({
     }
   }, [editor, remoteContent]);
 
-  // Handle local content changes
+  // Handle local content changes with JSON serialization
   const handleLocalContentChange = useCallback((editorState: EditorState) => {
     if (isRemoteUpdateRef.current) {
       console.log('🚫 Skipping local change handler - remote update in progress');
@@ -405,16 +420,17 @@ function CollaborationPlugin({
     editorState.read(() => {
       const root = $getRoot();
       const textContent = root.getTextContent();
+      const jsonContent = JSON.stringify(editorState.toJSON());
       
       if (textContent !== lastContentRef.current) {
         console.log('📝 Local content change detected:', textContent);
         lastContentRef.current = textContent;
-        onContentChange(textContent);
+        onContentChange(textContent, jsonContent);
         
         setTimeout(() => {
           if (lastContentRef.current === textContent) {
             console.log('📡 Sending content update to collaboration:', textContent);
-            sendContentUpdate(textContent);
+            sendContentUpdate(textContent, jsonContent);
           }
         }, 300);
       }
@@ -449,24 +465,20 @@ function YjsContentSyncPlugin({
         const root = $getRoot();
         root.clear();
         
-          if (initialContentNodes) {
-            // Try to deserialize JSON nodes first
-            try {
-              const parsedNodes = JSON.parse(initialContentNodes);
-              if (parsedNodes && parsedNodes.content) {
-                const paragraph = $createParagraphNode();
-                paragraph.append($createTextNode(parsedNodes.content));
-                root.append(paragraph);
-              }
-            } catch (error) {
-              console.warn('Failed to deserialize initial JSON nodes, falling back to plain text:', error);
-              if (initialContent && initialContent.trim()) {
-                const paragraph = $createParagraphNode();
-                paragraph.append($createTextNode(initialContent));
-                root.append(paragraph);
-              }
-            }
-          } else if (initialContent && initialContent.trim()) {
+        if (initialContentNodes) {
+          // Try to deserialize JSON nodes first using official Lexical method
+          try {
+            const editorState = editor.parseEditorState(initialContentNodes);
+            editor.setEditorState(editorState);
+            console.log('🎯 [Hybrid] Loaded content from JSON nodes');
+            lastSyncedContentRef.current = initialContent;
+            return;
+          } catch (error) {
+            console.warn('Failed to deserialize initial JSON nodes, falling back to plain text:', error);
+          }
+        }
+        
+        if (initialContent && initialContent.trim()) {
           const paragraph = $createParagraphNode();
           paragraph.append($createTextNode(initialContent));
           root.append(paragraph);
