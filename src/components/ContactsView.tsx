@@ -751,12 +751,7 @@ export function ContactsView() {
                         <div className="flex items-start gap-1">
                           <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                           <div className="leading-tight">
-                            {contact.address && (
-                              <div>{contact.address}</div>
-                            )}
-                            {contact.location && (
-                              <div className="text-muted-foreground">{contact.location}</div>
-                            )}
+                            <div>{contact.address || contact.location}</div>
                           </div>
                         </div>
                       )}
