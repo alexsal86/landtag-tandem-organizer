@@ -228,36 +228,45 @@ export default function EditContact() {
     setLoading(true);
 
     try {
+      // Sanitize date fields - convert empty strings to null
+      const sanitizedContact = {
+        name: contact.name,
+        role: contact.role,
+        organization: contact.organization,
+        email: contact.email,
+        phone: contact.phone,
+        location: contact.location,
+        address: contact.address,
+        birthday: contact.birthday && contact.birthday.trim() !== '' ? contact.birthday : null,
+        website: contact.website,
+        linkedin: contact.linkedin,
+        twitter: contact.twitter,
+        facebook: contact.facebook,
+        instagram: contact.instagram,
+        xing: contact.xing,
+        category: contact.category,
+        priority: contact.priority,
+        notes: contact.notes,
+        additional_info: contact.additional_info,
+        avatar_url: contact.avatar_url,
+        legal_form: contact.legal_form,
+        industry: contact.industry,
+        main_contact_person: contact.main_contact_person,
+        business_description: contact.business_description,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Updating contact with sanitized data:', sanitizedContact);
+
       const { error } = await supabase
         .from('contacts')
-        .update({
-          name: contact.name,
-          role: contact.role,
-          organization: contact.organization,
-          email: contact.email,
-          phone: contact.phone,
-          location: contact.location,
-          address: contact.address,
-          birthday: contact.birthday,
-          website: contact.website,
-          linkedin: contact.linkedin,
-          twitter: contact.twitter,
-          facebook: contact.facebook,
-          instagram: contact.instagram,
-          xing: contact.xing,
-          category: contact.category,
-          priority: contact.priority,
-          notes: contact.notes,
-          additional_info: contact.additional_info,
-          avatar_url: contact.avatar_url,
-          legal_form: contact.legal_form,
-          industry: contact.industry,
-          main_contact_person: contact.main_contact_person,
-          business_description: contact.business_description,
-        })
+        .update(sanitizedContact)
         .eq('id', contact.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       toast({
         title: "Erfolg",
@@ -265,11 +274,11 @@ export default function EditContact() {
       });
       
       navigate(`/contacts/${contact.id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating contact:', error);
       toast({
         title: "Fehler",
-        description: "Kontakt konnte nicht aktualisiert werden.",
+        description: `Kontakt konnte nicht aktualisiert werden: ${error.message || 'Unbekannter Fehler'}`,
         variant: "destructive",
       });
     } finally {
