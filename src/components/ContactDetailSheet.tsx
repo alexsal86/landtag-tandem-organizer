@@ -286,9 +286,6 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <SheetTitle className="text-2xl">{contact.name}</SheetTitle>
-                    <Badge variant="outline">
-                      {contact.contact_type === "organization" ? "Organisation" : "Person"}
-                    </Badge>
                   </div>
                   <SheetDescription className="text-base">
                     {contact.contact_type === "organization" 
