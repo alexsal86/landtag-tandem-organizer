@@ -720,22 +720,22 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
 
   // Handle comment highlighting from text clicks
   const handleCommentHighlight = useCallback((commentId: string) => {
+    // Clear previous highlighting
+    if (highlightedComment) {
+      const prevHighlightElements = document.querySelectorAll(`[data-comment-id="${highlightedComment}"]`);
+      prevHighlightElements.forEach(element => {
+        element.classList.remove('comment-highlight-active');
+      });
+    }
+    
     setHighlightedComment(commentId);
     
-    // Add CSS class to highlight the text
+    // Add CSS class to highlight the text - persistent until another comment is clicked
     const highlightElements = document.querySelectorAll(`[data-comment-id="${commentId}"]`);
     highlightElements.forEach(element => {
       element.classList.add('comment-highlight-active');
     });
-
-    // Remove highlight after a few seconds
-    setTimeout(() => {
-      setHighlightedComment(null);
-      highlightElements.forEach(element => {
-        element.classList.remove('comment-highlight-active');
-      });
-    }, 3000);
-  }, []);
+  }, [highlightedComment]);
 
   // Register editor commands and event listeners
   useEffect(() => {
@@ -795,7 +795,19 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         <Button
           variant={showSidebar ? "default" : "outline"}
           size="sm"
-          onClick={() => setShowSidebar(!showSidebar)}
+          onClick={() => {
+            const newShowSidebar = !showSidebar;
+            setShowSidebar(newShowSidebar);
+            
+            // Clear highlighting when closing sidebar
+            if (!newShowSidebar && highlightedComment) {
+              const highlightElements = document.querySelectorAll(`[data-comment-id="${highlightedComment}"]`);
+              highlightElements.forEach(element => {
+                element.classList.remove('comment-highlight-active');
+              });
+              setHighlightedComment(null);
+            }
+          }}
           className="bg-background shadow-lg"
         >
           <MessageSquare className="h-4 w-4 mr-1" />

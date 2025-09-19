@@ -103,25 +103,25 @@ All colors MUST be HSL.
 
   /* Comment highlighting styles */
   .comment-highlight {
-    background-color: hsl(45 95% 70% / 0.4);
+    background-color: hsl(45 100% 85% / 0.3);
+    border-bottom: 2px dotted hsl(35 90% 45%);
     border-radius: 2px;
     padding: 1px 2px;
     cursor: pointer;
     transition: all 0.2s ease;
-    border: 1px solid hsl(45 95% 60% / 0.3);
     position: relative;
   }
 
   .comment-highlight:hover {
-    background-color: hsl(45 95% 60% / 0.6);
-    transform: scale(1.02);
-    box-shadow: 0 2px 8px hsl(45 95% 30% / 0.2);
+    background-color: hsl(45 100% 80% / 0.5);
+    border-bottom-color: hsl(35 90% 35%);
+    border-bottom-style: solid;
   }
 
   .comment-highlight-active {
-    background-color: hsl(45 95% 50% / 0.8) !important;
-    box-shadow: 0 0 0 2px hsl(45 95% 40% / 0.6);
-    animation: comment-pulse 2s ease-in-out;
+    background-color: hsl(45 100% 75% / 0.6) !important;
+    border-bottom: 3px solid hsl(35 95% 30%) !important;
+    box-shadow: 0 1px 3px hsl(35 80% 40% / 0.3);
   }
 
   @keyframes comment-pulse {
@@ -135,17 +135,19 @@ All colors MUST be HSL.
 
   /* Dark mode comment styles */
   :root.dark .comment-highlight {
-    background-color: hsl(45 80% 50% / 0.3);
-    border-color: hsl(45 80% 40% / 0.4);
+    background-color: hsl(45 70% 40% / 0.25);
+    border-bottom-color: hsl(35 80% 60%);
   }
 
   :root.dark .comment-highlight:hover {
-    background-color: hsl(45 80% 40% / 0.5);
+    background-color: hsl(45 70% 35% / 0.4);
+    border-bottom-color: hsl(35 80% 50%);
   }
 
   :root.dark .comment-highlight-active {
-    background-color: hsl(45 80% 40% / 0.7) !important;
-    box-shadow: 0 0 0 2px hsl(45 80% 30% / 0.8);
+    background-color: hsl(45 70% 30% / 0.5) !important;
+    border-bottom-color: hsl(35 85% 65%) !important;
+    box-shadow: 0 1px 3px hsl(35 60% 60% / 0.4);
   }
 
   /* Strikethrough styling */
