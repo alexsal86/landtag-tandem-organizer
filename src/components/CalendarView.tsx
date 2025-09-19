@@ -382,29 +382,27 @@ export function CalendarView() {
         const birthdayDate = new Date(originalDate);
         birthdayDate.setFullYear(year);
         
-        // Check if this birthday falls within our date range
-        if (birthdayDate >= startDate && birthdayDate <= endDate) {
-          // Set proper times for all-day birthday event
-          const birthdayStart = new Date(birthdayDate);
-          birthdayStart.setHours(0, 0, 0, 0);
-          
-          const birthdayEnd = new Date(birthdayDate);
-          birthdayEnd.setHours(23, 59, 59, 999);
-          
-          const age = year - realBirthYear;
-          
-          birthdayInstances.push({
-            ...event,
-            id: `${event.id}-birthday-${year}`,
-            title: `${event.title} (${age}. Geburtstag)`,
-            start_time: birthdayStart.toISOString(),
-            end_time: birthdayEnd.toISOString(),
-            is_all_day: true,
-            _isBirthdayInstance: true,
-            _originalId: event.id,
-            _age: age
-          });
-        }
+        // Generate birthday instance for this year (no date range restriction)
+        // Set proper times for all-day birthday event
+        const birthdayStart = new Date(birthdayDate);
+        birthdayStart.setHours(0, 0, 0, 0);
+        
+        const birthdayEnd = new Date(birthdayDate);
+        birthdayEnd.setHours(23, 59, 59, 999);
+        
+        const age = year - realBirthYear;
+        
+        birthdayInstances.push({
+          ...event,
+          id: `${event.id}-birthday-${year}`,
+          title: `${event.title} (${age}. Geburtstag)`,
+          start_time: birthdayStart.toISOString(),
+          end_time: birthdayEnd.toISOString(),
+          is_all_day: true,
+          _isBirthdayInstance: true,
+          _originalId: event.id,
+          _age: age
+        });
       }
       
       console.log('🎂 Generated', birthdayInstances.length, 'birthday instances for', event.title);
