@@ -493,13 +493,21 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       editor.update(() => {
         const selection = $getSelection();
         if ($isRangeSelection(selection) && !selection.isCollapsed()) {
-          // Create the comment mark node and apply it to the selection
-          const markNode = $createCommentMarkNode(data.id);
+          console.log('Applying comment mark to selection:', data.id);
           
-          // Use extract and insertNodes to properly wrap the selection
+          // Create a comment mark node
+          const commentMark = $createCommentMarkNode(data.id);
+          
+          // Extract the selected nodes and wrap them in the mark
           const selectedNodes = selection.extract();
-          markNode.append(...selectedNodes);
-          selection.insertNodes([markNode]);
+          
+          // Add the selected nodes to the mark
+          commentMark.append(...selectedNodes);
+          
+          // Insert the mark node back into the selection
+          selection.insertNodes([commentMark]);
+          
+          console.log('Comment mark applied successfully');
         }
       });
 
