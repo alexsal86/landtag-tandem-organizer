@@ -51,14 +51,23 @@ export function StakeholderView({
   const { toast } = useToast();
   const { tagSuggestions } = useTags();
 
+  console.log('StakeholderView: Tag suggestions loaded:', tagSuggestions);
+
   const updateStakeholderTags = async (stakeholderId: string, tags: string[]) => {
     try {
+      console.log('StakeholderView: Attempting to update tags for stakeholder:', stakeholderId, 'with tags:', tags);
+      
       const { error } = await supabase
         .from('contacts')
         .update({ tags })
         .eq('id', stakeholderId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('StakeholderView: Database error updating tags:', error);
+        throw error;
+      }
+
+      console.log('StakeholderView: Tags updated successfully in database');
 
       // Clear local tag updates for this stakeholder after successful update
       setLocalTagUpdates(prev => {
@@ -69,6 +78,7 @@ export function StakeholderView({
 
       // Refresh data from parent to ensure consistency
       if (onRefresh) {
+        console.log('StakeholderView: Calling onRefresh to update data');
         onRefresh();
       }
 
@@ -79,7 +89,7 @@ export function StakeholderView({
 
       setEditingTags(null);
     } catch (error) {
-      console.error('Error updating tags:', error);
+      console.error('StakeholderView: Error updating tags:', error);
 
       toast({
         title: "Fehler",
@@ -312,9 +322,10 @@ export function StakeholderView({
                     <div className="pt-2">
                       {editingTags === stakeholder.id ? (
                         <div className="space-y-2">
-                          <TagInput
+                           <TagInput
                             tags={stakeholderTags}
                             onTagsChange={(newTags) => {
+                              console.log('StakeholderView: TagInput onChange triggered for stakeholder:', stakeholder.id, 'with tags:', newTags);
                               updateStakeholderTags(stakeholder.id, newTags);
                             }}
                             placeholder="Tags hinzufügen..."
