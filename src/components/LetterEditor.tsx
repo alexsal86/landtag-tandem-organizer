@@ -1779,7 +1779,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     setEditedLetter(prev => ({
                       ...prev,
                       content: content,
-                      content_nodes: contentNodes || null
+                      content_nodes: contentNodes || ''
                     }));
                     
                     broadcastContentChange('content', content);

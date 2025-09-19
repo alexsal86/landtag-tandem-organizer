@@ -495,11 +495,13 @@ function YjsContentSyncPlugin({
         editor.getEditorState().read(() => {
           const root = $getRoot();
           const currentContent = root.getTextContent();
+          const currentEditorState = editor.getEditorState();
+          const jsonContent = JSON.stringify(currentEditorState.toJSON());
           
           if (currentContent !== lastSyncedContentRef.current) {
             console.log('💾 [Hybrid] Syncing Yjs content back to Supabase:', currentContent);
             lastSyncedContentRef.current = currentContent;
-            onContentSync(currentContent);
+            onContentSync(currentContent, jsonContent);
           }
         });
       }, 2000);
@@ -573,6 +575,7 @@ function YjsCollaborationEditor(props: any) {
             
             <YjsContentSyncPlugin
               initialContent={props.initialContent}
+              initialContentNodes={props.initialContentNodes}
               onContentSync={props.onContentSync}
               documentId={props.documentId}
             />
@@ -604,8 +607,9 @@ function YjsCollaborationEditor(props: any) {
 
 export default function EnhancedLexicalEditor({
   content, 
-  onChange, 
-  placeholder = "Beginnen Sie zu schreiben...",
+      contentNodes,
+      onChange, 
+      placeholder = "Beginnen Sie zu schreiben...",
   documentId,
   enableCollaboration = false,
   useYjsCollaboration = ENABLE_YJS_COLLABORATION,
@@ -686,9 +690,9 @@ export default function EnhancedLexicalEditor({
     }
   }), []);
 
-  const handleContentChange = useCallback((newContent: string) => {
+  const handleContentChange = useCallback((newContent: string, newContentNodes?: string) => {
     setLocalContent(newContent);
-    onChange(newContent);
+    onChange(newContent, newContentNodes);
   }, [onChange]);
 
   const sendContentUpdate = useCallback((content: string) => {
@@ -697,9 +701,9 @@ export default function EnhancedLexicalEditor({
     }
   }, [realtimeCollaboration]);
 
-  const handleYjsContentSync = useCallback((content: string) => {
+  const handleYjsContentSync = useCallback((content: string, contentNodes?: string) => {
     setLocalContent(content);
-    onChange(content);
+    onChange(content, contentNodes);
   }, [onChange]);
 
   // Render Yjs collaboration editor
@@ -716,6 +720,7 @@ export default function EnhancedLexicalEditor({
           documentId={documentId}
           showToolbar={showToolbar}
           initialContent={content}
+          initialContentNodes={contentNodes}
           onContentSync={handleYjsContentSync}
         />
       </YjsProvider>
@@ -748,10 +753,12 @@ export default function EnhancedLexicalEditor({
           
           <CollaborationPlugin
             documentId={documentId || 'default'}
-            onContentChange={setLocalContent}
+            onContentChange={handleContentChange}
             sendContentUpdate={realtimeCollaboration.sendContentUpdate}
             remoteContent={remoteContent}
           />
+          
+          <ContentPlugin content={content} contentNodes={contentNodes} />
           
           {/* Enhanced Plugins */}
             <EnhancedTablePlugin />
