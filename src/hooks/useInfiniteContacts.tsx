@@ -34,6 +34,7 @@ export interface Contact {
   industry?: string;
   main_contact_person?: string;
   business_description?: string;
+  tags?: string[];
 }
 
 interface UseInfiniteContactsProps {
@@ -208,6 +209,7 @@ export const useInfiniteContacts = ({
         main_contact_person: contact.main_contact_person,
         business_description: contact.business_description,
         is_favorite: contact.is_favorite,
+        tags: contact.tags || [],
       })) || [];
 
       if (isLoadMore) {
@@ -253,6 +255,7 @@ export const useInfiniteContacts = ({
                 main_contact_person: contact.main_contact_person,
                 business_description: contact.business_description,
                 is_favorite: contact.is_favorite,
+                tags: contact.tags || [],
               }));
               setContacts(newFormattedContacts);
               setTotalCount(newCount || 0);
