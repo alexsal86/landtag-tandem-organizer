@@ -361,7 +361,7 @@ export function CalendarView() {
       const displayStartYear = startDate.getFullYear();
       const displayEndYear = endDate.getFullYear();
       
-      const startYear = Math.max(displayStartYear, currentYear);
+      const startYear = displayStartYear;
       const endYear = Math.min(displayEndYear, maxYear);
       
       console.log('🎂 Birthday expansion range:', { 
