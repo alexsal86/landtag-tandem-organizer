@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag, Linkedin, Twitter, Facebook, Instagram } from "lucide-react";
+import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag, Linkedin, Facebook, Instagram, Hash } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,38 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
   const [showCallLogWidget, setShowCallLogWidget] = useState(false);
   const [allTags, setAllTags] = useState<{ direct: string[], inherited: string[] }>({ direct: [], inherited: [] });
   const { toast } = useToast();
+
+  // Helper functions for social media
+  const cleanUsername = (input: string): string => {
+    if (!input) return '';
+    
+    return input
+      .replace(/^https?:\/\//, '') // Remove protocol
+      .replace(/^(www\.)?/, '') // Remove www
+      .replace(/^(linkedin\.com\/in\/|x\.com\/|facebook\.com\/|instagram\.com\/|xing\.com\/profile\/)/, '') // Remove platform prefixes
+      .replace(/^@/, '') // Remove @ symbol
+      .replace(/\/$/, '') // Remove trailing slash
+      .trim();
+  };
+
+  const generateSocialMediaUrl = (platform: string, username: string): string => {
+    const cleanedUsername = cleanUsername(username);
+    
+    switch (platform) {
+      case 'linkedin':
+        return `https://www.linkedin.com/in/${cleanedUsername}`;
+      case 'twitter':
+        return `https://x.com/${cleanedUsername}`;
+      case 'facebook':
+        return `https://www.facebook.com/${cleanedUsername}`;
+      case 'instagram':
+        return `https://www.instagram.com/${cleanedUsername}`;
+      case 'xing':
+        return `https://www.xing.com/profile/${cleanedUsername}`;
+      default:
+        return `https://${cleanedUsername}`;
+    }
+  };
 
   useEffect(() => {
     if (contactId && isOpen) {
@@ -416,10 +448,10 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                             <Linkedin className="h-5 w-5 text-blue-600" />
                             <div className="flex-1">
                               <p className="font-medium">LinkedIn</p>
-                              <p className="text-muted-foreground text-sm">{contact.linkedin}</p>
+                              <p className="text-muted-foreground text-sm">@{cleanUsername(contact.linkedin)}</p>
                             </div>
                             <Button size="sm" variant="outline" asChild>
-                              <a href={contact.linkedin.startsWith('http') ? contact.linkedin : `https://${contact.linkedin}`} target="_blank" rel="noopener noreferrer">
+                              <a href={generateSocialMediaUrl('linkedin', contact.linkedin)} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="h-4 w-4" />
                               </a>
                             </Button>
@@ -427,13 +459,13 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                         )}
                         {contact.twitter && (
                           <div className="flex items-center gap-3">
-                            <Twitter className="h-5 w-5 text-sky-500" />
+                            <Hash className="h-5 w-5 text-foreground" />
                             <div className="flex-1">
-                              <p className="font-medium">Twitter</p>
-                              <p className="text-muted-foreground text-sm">{contact.twitter}</p>
+                              <p className="font-medium">X</p>
+                              <p className="text-muted-foreground text-sm">@{cleanUsername(contact.twitter)}</p>
                             </div>
                             <Button size="sm" variant="outline" asChild>
-                              <a href={contact.twitter.startsWith('http') ? contact.twitter : `https://${contact.twitter}`} target="_blank" rel="noopener noreferrer">
+                              <a href={generateSocialMediaUrl('twitter', contact.twitter)} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="h-4 w-4" />
                               </a>
                             </Button>
@@ -444,10 +476,10 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                             <Facebook className="h-5 w-5 text-blue-600" />
                             <div className="flex-1">
                               <p className="font-medium">Facebook</p>
-                              <p className="text-muted-foreground text-sm">{contact.facebook}</p>
+                              <p className="text-muted-foreground text-sm">{cleanUsername(contact.facebook)}</p>
                             </div>
                             <Button size="sm" variant="outline" asChild>
-                              <a href={contact.facebook.startsWith('http') ? contact.facebook : `https://${contact.facebook}`} target="_blank" rel="noopener noreferrer">
+                              <a href={generateSocialMediaUrl('facebook', contact.facebook)} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="h-4 w-4" />
                               </a>
                             </Button>
@@ -458,10 +490,10 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                             <Instagram className="h-5 w-5 text-pink-500" />
                             <div className="flex-1">
                               <p className="font-medium">Instagram</p>
-                              <p className="text-muted-foreground text-sm">{contact.instagram}</p>
+                              <p className="text-muted-foreground text-sm">@{cleanUsername(contact.instagram)}</p>
                             </div>
                             <Button size="sm" variant="outline" asChild>
-                              <a href={contact.instagram.startsWith('http') ? contact.instagram : `https://${contact.instagram}`} target="_blank" rel="noopener noreferrer">
+                              <a href={generateSocialMediaUrl('instagram', contact.instagram)} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="h-4 w-4" />
                               </a>
                             </Button>
@@ -472,10 +504,10 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                             <User className="h-5 w-5 text-green-600" />
                             <div className="flex-1">
                               <p className="font-medium">XING</p>
-                              <p className="text-muted-foreground text-sm">{contact.xing}</p>
+                              <p className="text-muted-foreground text-sm">{cleanUsername(contact.xing)}</p>
                             </div>
                             <Button size="sm" variant="outline" asChild>
-                              <a href={contact.xing.startsWith('http') ? contact.xing : `https://${contact.xing}`} target="_blank" rel="noopener noreferrer">
+                              <a href={generateSocialMediaUrl('xing', contact.xing)} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="h-4 w-4" />
                               </a>
                             </Button>
