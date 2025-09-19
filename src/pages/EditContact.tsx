@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 interface Contact {
   id: string;
+  contact_type?: "person" | "organization";
   name: string;
   role?: string;
   organization?: string;
@@ -33,6 +34,11 @@ interface Contact {
   notes?: string;
   additional_info?: string;
   avatar_url?: string;
+  // Organization specific fields
+  legal_form?: string;
+  industry?: string;
+  main_contact_person?: string;
+  business_description?: string;
 }
 
 export default function EditContact() {
@@ -46,6 +52,7 @@ export default function EditContact() {
   const [useCustomOrganization, setUseCustomOrganization] = useState(false);
   const [contact, setContact] = useState<Contact>({
     id: "",
+    contact_type: "person",
     name: "",
     role: "",
     organization: "",
@@ -65,6 +72,10 @@ export default function EditContact() {
     notes: "",
     additional_info: "",
     avatar_url: "",
+    legal_form: "",
+    industry: "",
+    main_contact_person: "",
+    business_description: "",
   });
 
   useEffect(() => {
@@ -109,6 +120,7 @@ export default function EditContact() {
       if (data) {
         setContact({
           id: data.id,
+          contact_type: (data.contact_type as "person" | "organization") || "person",
           name: data.name || "",
           role: data.role || "",
           organization: data.organization || "",
@@ -128,6 +140,10 @@ export default function EditContact() {
           notes: data.notes || "",
           additional_info: data.additional_info || "",
           avatar_url: data.avatar_url || "",
+          legal_form: data.legal_form || "",
+          industry: data.industry || "",
+          main_contact_person: data.main_contact_person || "",
+          business_description: data.business_description || "",
         });
       }
     } catch (error) {
@@ -207,6 +223,10 @@ export default function EditContact() {
           notes: contact.notes,
           additional_info: contact.additional_info,
           avatar_url: contact.avatar_url,
+          legal_form: contact.legal_form,
+          industry: contact.industry,
+          main_contact_person: contact.main_contact_person,
+          business_description: contact.business_description,
         })
         .eq('id', contact.id);
 
@@ -303,64 +323,97 @@ export default function EditContact() {
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="organization">Organisation</Label>
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant={!useCustomOrganization ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            setUseCustomOrganization(false);
-                            setContact({ ...contact, organization: "" });
-                          }}
-                        >
-                          Aus Liste wählen
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={useCustomOrganization ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            setUseCustomOrganization(true);
-                            setContact({ ...contact, organization: "" });
-                          }}
-                        >
-                          Eigene eingeben
-                        </Button>
+                  {contact.contact_type === "person" && (
+                    <div>
+                      <Label htmlFor="organization">Organisation</Label>
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={!useCustomOrganization ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setUseCustomOrganization(false);
+                              setContact({ ...contact, organization: "" });
+                            }}
+                          >
+                            Aus Liste wählen
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={useCustomOrganization ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setUseCustomOrganization(true);
+                              setContact({ ...contact, organization: "" });
+                            }}
+                          >
+                            Eigene eingeben
+                          </Button>
+                        </div>
+                        
+                        {!useCustomOrganization ? (
+                          <Select
+                            value={contact.organization === "" ? "none" : contact.organization}
+                            onValueChange={(value) => setContact({ 
+                              ...contact, 
+                              organization: value === "none" ? "" : value 
+                            })}
+                          >
+                            <SelectTrigger className="bg-background border-input">
+                              <SelectValue placeholder="Organisation auswählen..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border-border shadow-lg z-50">
+                              <SelectItem value="none">Keine Organisation</SelectItem>
+                              {organizations.map((org) => (
+                                <SelectItem key={org.id} value={org.name}>
+                                  {org.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            id="organization"
+                            placeholder="Organisation eingeben..."
+                            value={contact.organization}
+                            onChange={(e) => setContact({ ...contact, organization: e.target.value })}
+                          />
+                        )}
                       </div>
-                      
-                      {!useCustomOrganization ? (
-                        <Select
-                          value={contact.organization === "" ? "none" : contact.organization}
-                          onValueChange={(value) => setContact({ 
-                            ...contact, 
-                            organization: value === "none" ? "" : value 
-                          })}
-                        >
-                          <SelectTrigger className="bg-background border-input">
-                            <SelectValue placeholder="Organisation auswählen..." />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border-border shadow-lg z-50">
-                            <SelectItem value="none">Keine Organisation</SelectItem>
-                            {organizations.map((org) => (
-                              <SelectItem key={org.id} value={org.name}>
-                                {org.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input
-                          id="organization"
-                          placeholder="Organisation eingeben..."
-                          value={contact.organization}
-                          onChange={(e) => setContact({ ...contact, organization: e.target.value })}
-                        />
-                      )}
                     </div>
-                  </div>
+                  )}
+
+                  {contact.contact_type === "organization" && (
+                    <>
+                      <div>
+                        <Label htmlFor="legal_form">Rechtsform</Label>
+                        <Input
+                          id="legal_form"
+                          value={contact.legal_form || ""}
+                          onChange={(e) => setContact({ ...contact, legal_form: e.target.value })}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="industry">Branche</Label>
+                        <Input
+                          id="industry"
+                          value={contact.industry || ""}
+                          onChange={(e) => setContact({ ...contact, industry: e.target.value })}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="main_contact_person">Hauptansprechpartner</Label>
+                        <Input
+                          id="main_contact_person"
+                          value={contact.main_contact_person || ""}
+                          onChange={(e) => setContact({ ...contact, main_contact_person: e.target.value })}
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <Label htmlFor="email">E-Mail</Label>
@@ -402,15 +455,17 @@ export default function EditContact() {
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="birthday">Geburtstag</Label>
-                    <Input
-                      id="birthday"
-                      type="date"
-                      value={contact.birthday}
-                      onChange={(e) => setContact({ ...contact, birthday: e.target.value })}
-                    />
-                  </div>
+                  {contact.contact_type === "person" && (
+                    <div>
+                      <Label htmlFor="birthday">Geburtstag</Label>
+                      <Input
+                        id="birthday"
+                        type="date"
+                        value={contact.birthday}
+                        onChange={(e) => setContact({ ...contact, birthday: e.target.value })}
+                      />
+                    </div>
+                  )}
 
                   <div>
                     <Label htmlFor="website">Website</Label>

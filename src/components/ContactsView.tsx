@@ -67,7 +67,9 @@ export function ContactsView() {
   const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
 
   // Preload stakeholders for immediate visibility - MUST be before early returns
-  const { stakeholders: preloadedStakeholders, loading: stakeholdersLoading, refreshStakeholders } = useStakeholderPreload();
+  const { stakeholders: preloadedStakeholders, loading: stakeholdersLoading, refreshStakeholders } = useStakeholderPreload(
+    activeTab === "stakeholders" ? debouncedSearchTerm : undefined
+  );
 
   // Load all person contacts for stakeholder assignments - MUST be before early returns  
   const { personContacts, loading: personContactsLoading } = useAllPersonContacts();

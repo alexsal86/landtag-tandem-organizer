@@ -40,8 +40,9 @@ interface Contact {
   tags?: string[] | null;
 }
 
-export const useStakeholderPreload = () => {
+export const useStakeholderPreload = (searchTerm?: string) => {
   const [stakeholders, setStakeholders] = useState<Contact[]>([]);
+  const [filteredStakeholders, setFilteredStakeholders] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   
   const { user } = useAuth();
@@ -103,6 +104,7 @@ export const useStakeholderPreload = () => {
       })) || [];
 
       setStakeholders(formattedStakeholders);
+      setFilteredStakeholders(formattedStakeholders);
     } catch (error) {
       console.error('Error in fetchStakeholders:', error);
     } finally {
@@ -139,5 +141,27 @@ export const useStakeholderPreload = () => {
     };
   }, [user, currentTenant]);
 
-  return { stakeholders, loading, refreshStakeholders: fetchStakeholders };
+  // Filter stakeholders based on search term
+  useEffect(() => {
+    if (!searchTerm || searchTerm.trim() === '') {
+      setFilteredStakeholders(stakeholders);
+    } else {
+      const searchLower = searchTerm.toLowerCase().trim();
+      const filtered = stakeholders.filter(stakeholder => 
+        stakeholder.name.toLowerCase().includes(searchLower) ||
+        (stakeholder.industry && stakeholder.industry.toLowerCase().includes(searchLower)) ||
+        (stakeholder.business_description && stakeholder.business_description.toLowerCase().includes(searchLower)) ||
+        (stakeholder.main_contact_person && stakeholder.main_contact_person.toLowerCase().includes(searchLower)) ||
+        (stakeholder.email && stakeholder.email.toLowerCase().includes(searchLower)) ||
+        (stakeholder.tags && stakeholder.tags.some(tag => tag.toLowerCase().includes(searchLower)))
+      );
+      setFilteredStakeholders(filtered);
+    }
+  }, [searchTerm, stakeholders]);
+
+  return { 
+    stakeholders: filteredStakeholders, 
+    loading, 
+    refreshStakeholders: fetchStakeholders 
+  };
 };
