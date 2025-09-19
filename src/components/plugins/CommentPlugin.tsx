@@ -5,7 +5,8 @@ import {
   SELECTION_CHANGE_COMMAND,
   COMMAND_PRIORITY_LOW,
   $getNodeByKey,
-  NodeKey
+  NodeKey,
+  $getRoot
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $createMarkNode, $isMarkNode, MarkNode } from '@lexical/mark';
@@ -75,6 +76,7 @@ class CommentMarkNode extends MarkNode {
     element.style.padding = '1px 2px';
     element.style.cursor = 'pointer';
     element.style.transition = 'all 0.2s ease';
+    element.style.border = '1px solid hsl(45 95% 60% / 0.3)';
     
     element.addEventListener('click', (e) => {
       e.preventDefault();
@@ -87,10 +89,12 @@ class CommentMarkNode extends MarkNode {
     
     element.addEventListener('mouseenter', () => {
       element.style.backgroundColor = 'hsl(45 95% 60% / 0.6)';
+      element.style.transform = 'scale(1.02)';
     });
     
     element.addEventListener('mouseleave', () => {
       element.style.backgroundColor = 'hsl(45 95% 70% / 0.4)';
+      element.style.transform = 'scale(1)';
     });
     
     return element;
@@ -405,10 +409,23 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   };
 
   const highlightExistingComments = (commentsList: Comment[]) => {
-    // For now, we'll skip automatic highlighting of existing comments
-    // since position mapping is complex. Comments will be highlighted
-    // when they're created in the current session.
-    console.log(`Loaded ${commentsList.length} existing comments`);
+    if (commentsList.length === 0) return;
+    
+    console.log(`Highlighting ${commentsList.length} existing comments`);
+    
+    // Since we can't reliably map old text positions, we'll register a node transform
+    // to handle existing comment marks when they're encountered in the editor
+    editor.registerNodeTransform(CommentMarkNode, (node) => {
+      const commentId = node.getCommentId();
+      if (commentId && commentsList.some(comment => comment.id === commentId)) {
+        // Ensure the node has the correct styling
+        const dom = node.createDOM();
+        if (dom) {
+          dom.className = `comment-highlight comment-${commentId}`;
+          dom.setAttribute('data-comment-id', commentId);
+        }
+      }
+    });
   };
 
   useEffect(() => {
@@ -472,15 +489,15 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
 
       if (error) throw error;
 
-      // Create highlight in editor using correct Lexical API
+      // Create highlight in editor using correct Lexical Mark API
       editor.update(() => {
         const selection = $getSelection();
         if ($isRangeSelection(selection) && !selection.isCollapsed()) {
-          // Create the comment mark node
+          // Create the comment mark node and apply it to the selection
           const markNode = $createCommentMarkNode(data.id);
-          const selectedNodes = selection.extract();
           
-          // Apply the mark to the selection
+          // Use extract and insertNodes to properly wrap the selection
+          const selectedNodes = selection.extract();
           markNode.append(...selectedNodes);
           selection.insertNodes([markNode]);
         }
@@ -646,6 +663,15 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
 
   // Register editor commands and event listeners
   useEffect(() => {
+    // Register the CommentMarkNode transform for proper rendering
+    const unregisterTransform = editor.registerNodeTransform(CommentMarkNode, (node) => {
+      const commentId = node.getCommentId();
+      if (commentId) {
+        console.log(`[CommentPlugin] Transforming comment node: ${commentId}`);
+        // The node's createDOM method will handle the styling
+      }
+    });
+
     const selectionCommand = editor.registerCommand(
       SELECTION_CHANGE_COMMAND,
       () => {
@@ -671,6 +697,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
     window.addEventListener('comment-highlight-click', handleCommentClick as EventListener);
 
     return () => {
+      unregisterTransform();
       selectionCommand();
       window.removeEventListener('comment-highlight-click', handleCommentClick as EventListener);
     };
