@@ -7,7 +7,8 @@ import {
   $getNodeByKey,
   NodeKey,
   $getRoot,
-  $createRangeSelection
+  $createRangeSelection,
+  $createTextNode
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $createMarkNode, $isMarkNode, MarkNode } from '@lexical/mark';
@@ -557,10 +558,16 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
                 currentSelection.anchor.set(targetNode.getKey(), startOffset, 'text');
                 currentSelection.focus.set(targetNode.getKey(), endOffset, 'text');
                 
-                // Now extract and wrap with mark
+                // Apply comment mark using proper Lexical approach  
                 const commentMark = $createCommentMarkNode(data.id);
-                const selectedNodes = currentSelection.extract();
-                commentMark.append(...selectedNodes);
+                
+                // Get the selected text content and create a text node for it
+                const selectedTextContent = currentSelection.getTextContent();
+                const textNode = $createTextNode(selectedTextContent);
+                
+                // Add text to the mark and replace selection
+                commentMark.append(textNode);
+                currentSelection.removeText();
                 currentSelection.insertNodes([commentMark]);
                 
                 console.log('Comment mark applied successfully');
