@@ -19,7 +19,6 @@ import { ContactSkeleton } from "./ContactSkeleton";
 import { StakeholderView } from "./StakeholderView";
 import { debounce } from "@/utils/debounce";
 import { useCounts } from "@/hooks/useCounts";
-import { useStakeholderPreload } from "@/hooks/useStakeholderPreload";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 
 interface DistributionList {
@@ -65,11 +64,6 @@ export function ContactsView() {
 
   // Get accurate counts for tab badges - MUST be before early returns
   const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
-
-  // Preload stakeholders for immediate visibility - MUST be before early returns
-  const { stakeholders: preloadedStakeholders, loading: stakeholdersLoading, refreshStakeholders } = useStakeholderPreload(
-    activeTab === "stakeholders" ? debouncedSearchTerm : undefined
-  );
 
   // Load all person contacts for stakeholder assignments - MUST be before early returns  
   const { personContacts, loading: personContactsLoading } = useAllPersonContacts();
@@ -830,11 +824,11 @@ export function ContactsView() {
         </div>
       ) : activeTab === "stakeholders" ? (
         <div className="space-y-6">
-          {stakeholdersLoading && preloadedStakeholders.length === 0 ? (
+          {loading && contacts.length === 0 ? (
             <ContactSkeleton count={6} viewMode="grid" />
           ) : (
             <StakeholderView
-              stakeholders={preloadedStakeholders}
+              stakeholders={contacts}
               contacts={personContacts}
               viewMode={stakeholderViewMode}
               onToggleFavorite={toggleFavorite}
@@ -842,7 +836,10 @@ export function ContactsView() {
                 setSelectedContactId(contactId);
                 setIsSheetOpen(true);
               }}
-              onRefresh={refreshStakeholders}
+              onRefresh={refreshContacts}
+              hasMore={hasMore}
+              loadMore={loadMore}
+              loadingMore={loadingMore}
             />
           )}
           

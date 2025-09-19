@@ -13,6 +13,7 @@ import { TagInput } from "@/components/ui/tag-input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTags } from "@/hooks/useTags";
+import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
 
 interface StakeholderViewProps {
   stakeholders: Contact[];
@@ -21,6 +22,9 @@ interface StakeholderViewProps {
   onToggleFavorite: (contactId: string, isFavorite: boolean) => void;
   onContactClick: (contactId: string) => void;
   onRefresh?: () => void;
+  hasMore?: boolean;
+  loadMore?: () => void;
+  loadingMore?: boolean;
 }
 
 export function StakeholderView({
@@ -30,6 +34,9 @@ export function StakeholderView({
   onToggleFavorite,
   onContactClick,
   onRefresh,
+  hasMore = false,
+  loadMore,
+  loadingMore = false,
 }: StakeholderViewProps) {
   const [expandedStakeholders, setExpandedStakeholders] = useState<Set<string>>(new Set());
   const [distributionDialogOpen, setDistributionDialogOpen] = useState(false);
@@ -547,6 +554,14 @@ export function StakeholderView({
           }}
           stakeholder={selectedStakeholder}
           associatedContacts={getStakeholderContacts(selectedStakeholder.id)}
+        />
+      )}
+      
+      {hasMore && loadMore && (
+        <InfiniteScrollTrigger
+          onLoadMore={loadMore}
+          loading={loadingMore}
+          hasMore={hasMore}
         />
       )}
     </div>
