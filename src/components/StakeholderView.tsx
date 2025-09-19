@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag, Users, Star } from "lucide-react";
+import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag, Users, Star, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,9 @@ interface StakeholderViewProps {
   hasMore?: boolean;
   loadMore?: () => void;
   loadingMore?: boolean;
+  sortColumn?: string | null;
+  sortDirection?: "asc" | "desc";
+  onSort?: (column: string) => void;
 }
 
 export function StakeholderView({
@@ -37,6 +40,9 @@ export function StakeholderView({
   hasMore = false,
   loadMore,
   loadingMore = false,
+  sortColumn,
+  sortDirection = "asc",
+  onSort,
 }: StakeholderViewProps) {
   const [expandedStakeholders, setExpandedStakeholders] = useState<Set<string>>(new Set());
   const [distributionDialogOpen, setDistributionDialogOpen] = useState(false);
@@ -131,11 +137,69 @@ export function StakeholderView({
     }
   };
 
+  const sortedStakeholders = [...stakeholders].sort((a, b) => {
+    if (!sortColumn || !onSort) return 0;
+    
+    let aValue: any;
+    let bValue: any;
+    
+    switch (sortColumn) {
+      case "name":
+        aValue = a.name.toLowerCase();
+        bValue = b.name.toLowerCase();
+        break;
+      case "contacts":
+        aValue = getStakeholderContacts(a.id).length;
+        bValue = getStakeholderContacts(b.id).length;
+        break;
+      case "tags":
+        const aTags = (localTagUpdates[a.id] || (a as any).tags || []).join(" ").toLowerCase();
+        const bTags = (localTagUpdates[b.id] || (b as any).tags || []).join(" ").toLowerCase();
+        aValue = aTags;
+        bValue = bTags;
+        break;
+      default:
+        return 0;
+    }
+    
+    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const SortableTableHead = ({ children, sortKey, className = "" }: { 
+    children: React.ReactNode; 
+    sortKey: string; 
+    className?: string; 
+  }) => (
+    <TableHead className={`cursor-pointer select-none hover:bg-muted/50 transition-colors ${className}`} onClick={() => onSort?.(sortKey)}>
+      <div className="flex items-center gap-2">
+        {children}
+        <div className="flex flex-col gap-0">
+          <ChevronUp 
+            className={`h-3 w-3 transition-colors ${
+              sortColumn === sortKey && sortDirection === "asc" 
+                ? "text-primary" 
+                : "text-muted-foreground/40 hover:text-muted-foreground/60"
+            }`} 
+          />
+          <ChevronDown 
+            className={`h-3 w-3 transition-colors -mt-0.5 ${
+              sortColumn === sortKey && sortDirection === "desc" 
+                ? "text-primary" 
+                : "text-muted-foreground/40 hover:text-muted-foreground/60"
+            }`} 
+          />
+        </div>
+      </div>
+    </TableHead>
+  );
+
   return (
     <div className="space-y-4">
       {viewMode === "grid" ? (
         // Grid View
-        stakeholders.map((stakeholder) => {
+        sortedStakeholders.map((stakeholder) => {
           const stakeholderTags = localTagUpdates[stakeholder.id] || (stakeholder as any).tags || [];
           const stakeholderContacts = getStakeholderContacts(stakeholder.id);
           const isExpanded = expandedStakeholders.has(stakeholder.id);
@@ -374,16 +438,16 @@ export function StakeholderView({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">Favorit</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Kontakte</TableHead>
+                <SortableTableHead sortKey="name">Name</SortableTableHead>
+                <SortableTableHead sortKey="contacts">Kontakte</SortableTableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefon</TableHead>
-                <TableHead>Tags</TableHead>
+                <SortableTableHead sortKey="tags">Tags</SortableTableHead>
                 <TableHead className="w-32">Aktionen</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stakeholders.map((stakeholder) => {
+              {sortedStakeholders.map((stakeholder) => {
                 const stakeholderTags = localTagUpdates[stakeholder.id] || (stakeholder as any).tags || [];
                 const stakeholderContacts = getStakeholderContacts(stakeholder.id);
                 

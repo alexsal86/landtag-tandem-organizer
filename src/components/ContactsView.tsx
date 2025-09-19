@@ -53,6 +53,8 @@ export function ContactsView() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [stakeholderSortColumn, setStakeholderSortColumn] = useState<string | null>(null);
+  const [stakeholderSortDirection, setStakeholderSortDirection] = useState<"asc" | "desc">("asc");
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [allTags, setAllTags] = useState<string[]>([]);
@@ -83,8 +85,8 @@ export function ContactsView() {
     selectedCategory,
     selectedType,
     activeTab,
-    sortColumn,
-    sortDirection,
+    sortColumn: activeTab === "stakeholders" ? stakeholderSortColumn : sortColumn,
+    sortDirection: activeTab === "stakeholders" ? stakeholderSortDirection : sortDirection,
   });
 
   // Create stable debounced function - MUST be before early returns
@@ -285,6 +287,15 @@ export function ContactsView() {
     } else {
       setSortColumn(column);
       setSortDirection("asc");
+    }
+  };
+
+  const handleStakeholderSort = (column: string) => {
+    if (stakeholderSortColumn === column) {
+      setStakeholderSortDirection(stakeholderSortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setStakeholderSortColumn(column);
+      setStakeholderSortDirection("asc");
     }
   };
 
@@ -840,6 +851,9 @@ export function ContactsView() {
               hasMore={hasMore}
               loadMore={loadMore}
               loadingMore={loadingMore}
+              sortColumn={stakeholderSortColumn}
+              sortDirection={stakeholderSortDirection}
+              onSort={handleStakeholderSort}
             />
           )}
           
