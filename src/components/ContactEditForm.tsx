@@ -192,7 +192,11 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Form submitted with data:', formData);
+    console.log('User:', user?.id, 'Tenant:', currentTenant?.id);
+    
     if (formData.email && !validateEmail(formData.email)) {
+      console.log('Email validation failed');
       return;
     }
 
@@ -206,14 +210,39 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     const duplicates = checkForDuplicates(currentContactData);
     
     if (duplicates.length > 0 && !showDuplicateWarning) {
+      console.log('Duplicate warning shown');
       setShowDuplicateWarning(true);
       return;
     }
 
+    console.log('Proceeding with update');
     await performUpdate();
   };
 
   const performUpdate = async () => {
+    // Early validation
+    if (!user) {
+      console.error('No user available');
+      toast({
+        title: "Fehler",
+        description: "Benutzer nicht authentifiziert. Bitte melden Sie sich erneut an.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!currentTenant) {
+      console.error('No tenant available');
+      toast({
+        title: "Fehler", 
+        description: "Mandant nicht verfügbar. Bitte wählen Sie einen Mandanten aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('Starting update for contact:', contact.id, 'User:', user.id, 'Tenant:', currentTenant.id);
+    
     setLoading(true);
 
     try {
@@ -221,39 +250,33 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       
       // Handle organization creation if needed
       if (formData.contact_type === 'person' && !formData.organization_id && formData.organization) {
-        try {          
-          if (user && currentTenant) {
-            // Create new organization
-            const { data: newOrg, error: orgError } = await supabase
-              .from('contacts')
-              .insert({
-                user_id: user.id,
-                tenant_id: currentTenant.id,
-                name: formData.organization.trim(),
-                contact_type: 'organization',
-                category: 'organization'
-              })
-              .select('id')
-              .single();
+        try {
+          console.log('Creating new organization:', formData.organization.trim());
+          
+          // Create new organization
+          const { data: newOrg, error: orgError } = await supabase
+            .from('contacts')
+            .insert({
+              user_id: user.id,
+              tenant_id: currentTenant.id,
+              name: formData.organization.trim(),
+              contact_type: 'organization',
+              category: 'organization'
+            })
+            .select('id')
+            .single();
 
-            if (!orgError && newOrg) {
-              updateData.organization_id = newOrg.id;
-              // Refresh organizations list
-              fetchOrganizations();
-            }
+          if (orgError) {
+            console.error('Error creating organization:', orgError);
+          } else if (newOrg) {
+            console.log('Organization created successfully:', newOrg.id);
+            updateData.organization_id = newOrg.id;
+            // Refresh organizations list
+            fetchOrganizations();
           }
         } catch (orgError) {
           console.warn('Could not create organization:', orgError);
         }
-      }
-
-      if (!user || !currentTenant) {
-        toast({
-          title: "Fehler",
-          description: "Benutzer oder Mandant nicht verfügbar.",
-          variant: "destructive",
-        });
-        return;
       }
 
       const finalUpdateData = {
@@ -263,17 +286,32 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         updated_at: new Date().toISOString()
       };
 
-      console.log('Updating contact with data:', finalUpdateData);
+      console.log('Updating contact with final data:', finalUpdateData);
 
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('contacts')
         .update(finalUpdateData)
-        .eq('id', contact.id);
+        .eq('id', contact.id)
+        .select();
 
       if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+        console.error('Supabase update error:', error);
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        toast({
+          title: "Fehler beim Speichern",
+          description: `Fehler: ${error.message}${error.hint ? ' - ' + error.hint : ''}`,
+          variant: "destructive",
+        });
+        return;
       }
+
+      console.log('Contact updated successfully:', data);
 
       toast({
         title: "Kontakt aktualisiert",
