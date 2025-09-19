@@ -180,23 +180,6 @@ export function ContactsView() {
     );
   }
 
-  // Debug effect for stakeholder loading
-  useEffect(() => {
-    if (activeTab === "stakeholders") {
-      console.log('ContactsView: Stakeholders tab activated, contacts:', {
-        contactsLength: contacts.length,
-        loading,
-        hasMore,
-        firstFew: contacts.slice(0, 5).map(c => ({ 
-          id: c.id, 
-          name: c.name, 
-          contact_type: c.contact_type, 
-          is_favorite: c.is_favorite 
-        }))
-      });
-    }
-  }, [activeTab, contacts, loading, hasMore]);
-
   const fetchDistributionLists = async () => {
     try {
       setDistributionListsLoading(true);
