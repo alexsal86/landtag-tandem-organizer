@@ -54,12 +54,6 @@ export function StakeholderView({
 
   const updateStakeholderTags = async (stakeholderId: string, tags: string[]) => {
     try {
-      // Optimistically update local state
-      setLocalTagUpdates(prev => ({
-        ...prev,
-        [stakeholderId]: tags
-      }));
-
       const { error } = await supabase
         .from('contacts')
         .update({ tags })
@@ -67,7 +61,14 @@ export function StakeholderView({
 
       if (error) throw error;
 
-      // Refresh data from parent if callback is provided
+      // Clear local tag updates for this stakeholder after successful update
+      setLocalTagUpdates(prev => {
+        const newState = { ...prev };
+        delete newState[stakeholderId];
+        return newState;
+      });
+
+      // Refresh data from parent to ensure consistency
       if (onRefresh) {
         onRefresh();
       }
@@ -80,13 +81,6 @@ export function StakeholderView({
       setEditingTags(null);
     } catch (error) {
       console.error('Error updating tags:', error);
-      
-      // Revert optimistic update on error
-      setLocalTagUpdates(prev => {
-        const newState = { ...prev };
-        delete newState[stakeholderId];
-        return newState;
-      });
 
       toast({
         title: "Fehler",
@@ -151,12 +145,24 @@ export function StakeholderView({
       case "contacts":
         aValue = getStakeholderContacts(a.id).length;
         bValue = getStakeholderContacts(b.id).length;
+        // Secondary sort by name for stable sorting when contact counts are equal
+        if (aValue === bValue) {
+          const aName = a.name.toLowerCase();
+          const bName = b.name.toLowerCase();
+          return aName < bName ? -1 : aName > bName ? 1 : 0;
+        }
         break;
       case "tags":
         const aTags = (localTagUpdates[a.id] || (a as any).tags || []).join(" ").toLowerCase();
         const bTags = (localTagUpdates[b.id] || (b as any).tags || []).join(" ").toLowerCase();
         aValue = aTags;
         bValue = bTags;
+        // Secondary sort by name for stable sorting when tags are equal
+        if (aValue === bValue) {
+          const aName = a.name.toLowerCase();
+          const bName = b.name.toLowerCase();
+          return aName < bName ? -1 : aName > bName ? 1 : 0;
+        }
         break;
       default:
         return 0;

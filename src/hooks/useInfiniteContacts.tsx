@@ -328,6 +328,17 @@ export const useInfiniteContacts = ({
     }
   }, [user, currentTenant, searchTerm, selectedCategory, selectedType, activeTab, sortColumn, sortDirection]);
 
+  const refreshContacts = useCallback(() => {
+    setContacts([]);
+    setCurrentPage(0);
+    setHasMore(true);
+    setTotalCount(0);
+    // Trigger actual refetch after state reset
+    if (user && currentTenant) {
+      fetchContacts(false);
+    }
+  }, [user, currentTenant, fetchContacts]);
+
   return {
     contacts,
     loading,
@@ -336,11 +347,6 @@ export const useInfiniteContacts = ({
     totalCount,
     loadMore,
     toggleFavorite,
-    refreshContacts: useCallback(() => {
-      setContacts([]);
-      setCurrentPage(0);
-      setHasMore(true);
-      setTotalCount(0);
-    }, [])
+    refreshContacts
   };
 };
