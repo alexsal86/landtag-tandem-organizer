@@ -376,8 +376,8 @@ export function CalendarView() {
       
       // Generate birthday instances for each year in range
       for (let year = startYear; year <= endYear; year++) {
-        // Skip the original birth year since it's already in the database
-        if (year === realBirthYear) continue;
+        // Skip the year that's already in the database to avoid duplicates
+        if (year === originalDate.getFullYear()) continue;
         
         const birthdayDate = new Date(originalDate);
         birthdayDate.setFullYear(year);
