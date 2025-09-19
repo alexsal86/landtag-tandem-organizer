@@ -328,6 +328,84 @@ export function CalendarView() {
     }
   };
 
+  // Function to expand birthday events up to age 99
+  const expandBirthdayEvents = (event: any, startDate: Date, endDate: Date) => {
+    // Only handle birthday events or events with birthday category
+    if (event.category !== 'birthday' || !event.start_time) {
+      return [event];
+    }
+
+    try {
+      console.log('🎂 Expanding birthday event:', event.title);
+      
+      const originalDate = new Date(event.start_time);
+      const currentYear = new Date().getFullYear();
+      const birthYear = originalDate.getFullYear();
+      
+      // Calculate maximum age (99 years)
+      const maxYear = birthYear + 99;
+      
+      // Find relevant years within the display range
+      const displayStartYear = startDate.getFullYear();
+      const displayEndYear = endDate.getFullYear();
+      
+      const startYear = Math.max(displayStartYear, currentYear);
+      const endYear = Math.min(displayEndYear, maxYear);
+      
+      console.log('🎂 Birthday expansion range:', { 
+        birthYear, 
+        startYear, 
+        endYear, 
+        maxYear,
+        displayRange: `${displayStartYear}-${displayEndYear}`
+      });
+      
+      const birthdayInstances = [];
+      
+      // Generate birthday instances for each year in range
+      for (let year = startYear; year <= endYear; year++) {
+        // Skip the original birth year since it's already in the database
+        if (year === birthYear) continue;
+        
+        const birthdayDate = new Date(originalDate);
+        birthdayDate.setFullYear(year);
+        
+        // Check if this birthday falls within our date range
+        if (birthdayDate >= startDate && birthdayDate <= endDate) {
+          // Set proper times for all-day birthday event
+          const birthdayStart = new Date(birthdayDate);
+          birthdayStart.setHours(0, 0, 0, 0);
+          
+          const birthdayEnd = new Date(birthdayDate);
+          birthdayEnd.setHours(23, 59, 59, 999);
+          
+          const age = year - birthYear;
+          
+          birthdayInstances.push({
+            ...event,
+            id: `${event.id}-birthday-${year}`,
+            title: `${event.title} (${age}. Geburtstag)`,
+            start_time: birthdayStart.toISOString(),
+            end_time: birthdayEnd.toISOString(),
+            is_all_day: true,
+            _isBirthdayInstance: true,
+            _originalId: event.id,
+            _age: age
+          });
+        }
+      }
+      
+      console.log('🎂 Generated', birthdayInstances.length, 'birthday instances for', event.title);
+      
+      // Return original event plus all birthday instances
+      return [event, ...birthdayInstances];
+      
+    } catch (error) {
+      console.error('❌ Error expanding birthday event', event.title, ':', error);
+      return [event];
+    }
+  };
+
   // Function to expand recurring events using RRULE
   const expandRecurringEvent = (event: any, startDate: Date, endDate: Date) => {
     if (!event.recurrence_rule) return [event];
@@ -468,11 +546,18 @@ export function CalendarView() {
       // Process regular appointments with RRULE expansion
       console.log('📅 Processing', appointmentsData.length, 'regular appointments');
       
-      // Expand recurring appointments
+      // Expand recurring appointments and birthdays
       const expandedAppointments: any[] = [];
       for (const appointment of appointmentsData) {
-        const expandedEvents = expandRecurringEvent(appointment, startDate, endDate);
-        expandedAppointments.push(...expandedEvents);
+        // Handle birthdays with special logic
+        if (appointment.category === 'birthday') {
+          const birthdayEvents = expandBirthdayEvents(appointment, startDate, endDate);
+          expandedAppointments.push(...birthdayEvents);
+        } else {
+          // Handle other recurring events with RRULE
+          const expandedEvents = expandRecurringEvent(appointment, startDate, endDate);
+          expandedAppointments.push(...expandedEvents);
+        }
       }
       
       console.log('📊 Expanded', appointmentsData.length, 'appointments to', expandedAppointments.length, 'occurrences');
