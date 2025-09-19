@@ -144,7 +144,8 @@ export function StakeholderView({
     const filtered = [...stakeholders];
     
     // Log for debugging duplicate issues
-    console.log(`StakeholderView: Processing ${filtered.length} stakeholders, sortColumn: ${sortColumn}`);
+    console.log(`StakeholderView: Processing ${filtered.length} stakeholders for rendering, sortColumn: ${sortColumn}`);
+    console.log(`First few stakeholders:`, filtered.slice(0, 3).map(s => ({ id: s.id, name: s.name, contact_type: s.contact_type })));
     
     return filtered.sort((a, b) => {
       if (!sortColumn || !onSort) return 0;

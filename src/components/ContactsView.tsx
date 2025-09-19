@@ -130,6 +130,27 @@ export function ContactsView() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Debug effect for stakeholder loading
+  useEffect(() => {
+    if (activeTab === "stakeholders") {
+      console.log('ContactsView: Stakeholders tab activated, contacts:', {
+        contactsLength: contacts.length,
+        loading,
+        hasMore,
+        firstFew: contacts.slice(0, 5).map(c => ({ 
+          id: c.id, 
+          name: c.name, 
+          contact_type: c.contact_type, 
+          is_favorite: c.is_favorite 
+        }))
+      });
+    }
+  }, [activeTab, contacts, loading, hasMore]);
+
   // Show loading until auth and tenant are resolved
   if (!user || tenantLoading) {
     return (
@@ -159,7 +180,21 @@ export function ContactsView() {
     );
   }
 
-  const scrollToTop = () => {
+  useEffect(() => {
+    if (activeTab === "stakeholders") {
+      console.log('ContactsView: Stakeholders tab activated, contacts:', {
+        contactsLength: contacts.length,
+        loading,
+        hasMore,
+        firstFew: contacts.slice(0, 5).map(c => ({ 
+          id: c.id, 
+          name: c.name, 
+          contact_type: c.contact_type, 
+          is_favorite: c.is_favorite 
+        }))
+      });
+    }
+  }, [activeTab, contacts, loading, hasMore]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -839,11 +874,12 @@ export function ContactsView() {
             <ContactSkeleton count={6} viewMode="grid" />
           ) : (
             <StakeholderView
-              stakeholders={contacts.filter(contact => contact.contact_type === 'organization')}
+              stakeholders={contacts}
               contacts={personContacts}
               viewMode={stakeholderViewMode}
               onToggleFavorite={toggleFavorite}
               onContactClick={(contactId) => {
+                console.log('ContactsView: Stakeholder contact clicked:', contactId);
                 setSelectedContactId(contactId);
                 setIsSheetOpen(true);
               }}

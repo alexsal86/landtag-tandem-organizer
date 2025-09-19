@@ -104,10 +104,16 @@ export const useInfiniteContacts = ({
     if (sortColumn) {
       query = query.order(sortColumn, { ascending: sortDirection === "asc" });
     } else {
-      // Default sorting: favorites first, then by name
-      query = query
-        .order('is_favorite', { ascending: false })
-        .order('name', { ascending: true });
+      // Different default sorting for stakeholders vs other tabs
+      if (activeTab === "stakeholders") {
+        // For stakeholders, sort alphabetically by name to ensure consistent ordering
+        query = query.order('name', { ascending: true });
+      } else {
+        // Default sorting for contacts: favorites first, then by name
+        query = query
+          .order('is_favorite', { ascending: false })
+          .order('name', { ascending: true });
+      }
     }
 
     // Pagination
