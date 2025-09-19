@@ -286,8 +286,18 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         updateData.organization = null;
       }
 
+      // Clean date fields - convert empty strings to null for database
+      const cleanedUpdateData = { ...updateData };
+      const dateFields = ['birthday', 'founding_date', 'contract_start_date', 'contract_end_date', 'gdpr_consent_date'];
+      
+      dateFields.forEach(field => {
+        if (cleanedUpdateData[field] === '' || cleanedUpdateData[field] === undefined) {
+          cleanedUpdateData[field] = null;
+        }
+      });
+
       const finalUpdateData = {
-        ...updateData,
+        ...cleanedUpdateData,
         tags: formData.tags.length > 0 ? formData.tags : null,
         tenant_id: currentTenant.id,
         updated_at: new Date().toISOString()
