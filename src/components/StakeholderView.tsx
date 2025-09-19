@@ -53,9 +53,9 @@ export function StakeholderView({
 
   console.log('StakeholderView: Tag suggestions loaded:', tagSuggestions);
 
-  const updateStakeholderTags = async (stakeholderId: string, tags: string[]) => {
+  const updateStakeholderTagsInDatabase = async (stakeholderId: string, tags: string[]) => {
     try {
-      console.log('StakeholderView: Attempting to update tags for stakeholder:', stakeholderId, 'with tags:', tags);
+      console.log('StakeholderView: Saving tags to database for stakeholder:', stakeholderId, 'with tags:', tags);
       
       const { error } = await supabase
         .from('contacts')
@@ -67,9 +67,9 @@ export function StakeholderView({
         throw error;
       }
 
-      console.log('StakeholderView: Tags updated successfully in database');
+      console.log('StakeholderView: Tags saved successfully to database');
 
-      // Clear local tag updates for this stakeholder after successful update
+      // Clear local tag updates after successful save
       setLocalTagUpdates(prev => {
         const newState = { ...prev };
         delete newState[stakeholderId];
@@ -83,20 +83,59 @@ export function StakeholderView({
       }
 
       toast({
-        title: "Erfolg",
-        description: "Tags wurden erfolgreich aktualisiert.",
+        title: "Erfolg", 
+        description: "Tags wurden erfolgreich gespeichert.",
       });
 
       setEditingTags(null);
     } catch (error) {
-      console.error('StakeholderView: Error updating tags:', error);
+      console.error('StakeholderView: Error saving tags:', error);
+
+      // Rollback local changes on error
+      setLocalTagUpdates(prev => {
+        const newState = { ...prev };
+        delete newState[stakeholderId];
+        return newState;
+      });
 
       toast({
         title: "Fehler",
-        description: "Tags konnten nicht aktualisiert werden.",
+        description: "Tags konnten nicht gespeichert werden. Änderungen wurden rückgängig gemacht.",
         variant: "destructive",
       });
     }
+  };
+
+  const handleTagsLocalChange = (stakeholderId: string, newTags: string[]) => {
+    console.log('StakeholderView: Updating local tags for stakeholder:', stakeholderId, 'with tags:', newTags);
+    
+    // Update local state immediately for optimistic UI updates
+    setLocalTagUpdates(prev => ({
+      ...prev,
+      [stakeholderId]: newTags
+    }));
+  };
+
+  const handleSaveTags = (stakeholderId: string) => {
+    const pendingTags = localTagUpdates[stakeholderId];
+    if (pendingTags) {
+      updateStakeholderTagsInDatabase(stakeholderId, pendingTags);
+    } else {
+      setEditingTags(null);
+    }
+  };
+
+  const handleCancelTags = (stakeholderId: string) => {
+    console.log('StakeholderView: Canceling tag edits for stakeholder:', stakeholderId);
+    
+    // Remove local changes
+    setLocalTagUpdates(prev => {
+      const newState = { ...prev };
+      delete newState[stakeholderId];
+      return newState;
+    });
+    
+    setEditingTags(null);
   };
 
   const toggleExpanded = (stakeholderId: string) => {
@@ -326,7 +365,7 @@ export function StakeholderView({
                             tags={stakeholderTags}
                             onTagsChange={(newTags) => {
                               console.log('StakeholderView: TagInput onChange triggered for stakeholder:', stakeholder.id, 'with tags:', newTags);
-                              updateStakeholderTags(stakeholder.id, newTags);
+                              handleTagsLocalChange(stakeholder.id, newTags);
                             }}
                             placeholder="Tags hinzufügen..."
                             className="w-full"
@@ -337,10 +376,20 @@ export function StakeholderView({
                               size="sm" 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setEditingTags(null);
+                                handleSaveTags(stakeholder.id);
                               }}
                             >
-                              Fertig
+                              Speichern
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancelTags(stakeholder.id);
+                              }}
+                            >
+                              Abbrechen
                             </Button>
                           </div>
                         </div>
@@ -545,25 +594,34 @@ export function StakeholderView({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 flex-wrap max-w-[200px]">
-                        {editingTags === stakeholder.id ? (
+                         {editingTags === stakeholder.id ? (
                           <div className="space-y-1 w-full">
                             <TagInput
                               tags={stakeholderTags}
                               onTagsChange={(newTags) => {
-                                updateStakeholderTags(stakeholder.id, newTags);
+                                handleTagsLocalChange(stakeholder.id, newTags);
                               }}
                               placeholder="Tags..."
                               className="w-full"
                               suggestions={tagSuggestions}
                             />
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => setEditingTags(null)}
-                              className="h-6 px-2 text-xs"
-                            >
-                              Fertig
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleSaveTags(stakeholder.id)}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Speichern
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleCancelTags(stakeholder.id)}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Abbrechen
+                              </Button>
+                            </div>
                           </div>
                         ) : (
                           <>
