@@ -332,7 +332,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         console.log('showPagination at auto-save time:', showPagination);
         handleAutoSave();
       }
-    }, 3000); // Increased from 1000ms to 3000ms for better performance
+    }, 500); // Reduced from 3000ms to 500ms for faster responsiveness
 
     return () => {
       if (saveTimeoutRef.current) {
@@ -970,15 +970,20 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
   // Removed old toolbar handlers - EnhancedLexicalEditor handles formatting internally
 
-  const handleAutoSave = async () => {
+  const handleAutoSave = async (immediateContent?: string, immediateContentNodes?: string) => {
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
+    
+    // Use immediate parameters if provided, otherwise use current state
+    const contentToSave = immediateContent !== undefined ? immediateContent : editedLetter.content;
+    const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : editedLetter.content_nodes;
     
     console.log('=== AUTO-SAVE STARTED ===');
     console.log('Current showPagination value:', showPagination);
     console.log('Letter ID:', letter?.id);
-    console.log('content_nodes to save:', editedLetter.content_nodes ? 'HAS JSON DATA' : 'NO JSON DATA');
-    console.log('content_nodes length:', editedLetter.content_nodes?.length || 0);
-    console.log('content_nodes preview:', editedLetter.content_nodes?.slice(0, 100) || 'null');
+    console.log('content_nodes to save:', contentNodesToSave ? 'HAS JSON DATA' : 'NO JSON DATA');
+    console.log('content_nodes length:', contentNodesToSave?.length || 0);
+    console.log('content_nodes preview:', contentNodesToSave?.slice(0, 100) || 'null');
+    console.log('Using immediate parameters:', { immediateContent: !!immediateContent, immediateContentNodes: !!immediateContentNodes });
     
     setSaving(true);
     try {
@@ -987,9 +992,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         .from('letters')
         .update({
           title: editedLetter.title,
-          content: editedLetter.content,
+          content: contentToSave,
           content_html: editedLetter.content_html,
-          content_nodes: editedLetter.content_nodes,
+          content_nodes: contentNodesToSave,
           recipient_name: editedLetter.recipient_name,
           recipient_address: editedLetter.recipient_address,
           contact_id: editedLetter.contact_id,
@@ -1009,6 +1014,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
       console.log('=== AUTO-SAVE SUCCESSFUL ===');
       console.log('Saved showPagination:', showPagination);
+      console.log('Saved content_nodes successfully:', !!contentNodesToSave);
       setLastSaved(new Date());
     } catch (error) {
       console.error('Error auto-saving letter:', error);
@@ -1787,11 +1793,25 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                         jsonPreview: contentNodes?.slice(0, 100) || 'null'
                       });
                      
+                      const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
+                      
                       setEditedLetter(prev => ({
                         ...prev,
                         content: content || '',
-                        content_nodes: contentNodes && contentNodes.trim() !== '' ? contentNodes : null
+                        content_nodes: processedContentNodes
                       }));
+                     
+                      // Trigger immediate auto-save with new content to avoid timing issues
+                      if (saveTimeoutRef.current) {
+                        clearTimeout(saveTimeoutRef.current);
+                      }
+                      
+                      saveTimeoutRef.current = setTimeout(() => {
+                        if (!isUpdatingFromRemoteRef.current && letter?.id) {
+                          console.log('=== IMMEDIATE AUTO-SAVE AFTER CONTENT CHANGE ===');
+                          handleAutoSave(content, processedContentNodes);
+                        }
+                      }, 300); // Shorter delay for content changes
                      
                      broadcastContentChange('content', content);
                    }}
