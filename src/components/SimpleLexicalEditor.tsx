@@ -55,7 +55,7 @@ function CollaborationPlugin({
 }: { 
   documentId: string;
   onContentChange: (content: string) => void;
-  sendContentUpdate: (content: string) => void;
+  sendContentUpdate: (content: string, contentNodes?: string) => void;
   remoteContent: string;
 }) {
   const [editor] = useLexicalComposerContext();

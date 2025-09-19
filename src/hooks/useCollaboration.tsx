@@ -16,7 +16,7 @@ interface Collaborator {
 
 interface UseCollaborationProps {
   documentId: string;
-  onContentChange?: (content: string) => void;
+  onContentChange?: (content: string, contentNodes?: string) => void;
   onCursorChange?: (userId: string, cursor: any) => void;
   onSelectionChange?: (userId: string, selection: any) => void;
 }
@@ -204,8 +204,8 @@ export function useCollaboration({
           lastContentRef.current = payload.payload.content;
           
           if (stableOnContentChange.current) {
-            console.log('📝 Applying content update');
-            stableOnContentChange.current(payload.payload.content);
+            console.log('📝 Applying content update with JSON:', !!payload.payload?.contentNodes);
+            stableOnContentChange.current(payload.payload.content, payload.payload?.contentNodes);
           }
         }
       });
@@ -311,7 +311,7 @@ export function useCollaboration({
     }
   }, [documentId, currentUser]);
 
-  const sendContentUpdate = useCallback((content: string) => {
+  const sendContentUpdate = useCallback((content: string, contentNodes?: string) => {
     if (channelRef.current && currentUser && content !== lastContentRef.current) {
       lastContentRef.current = content;
       channelRef.current.send({
@@ -321,6 +321,7 @@ export function useCollaboration({
           userId: currentUser.id,
           documentId,
           content,
+          contentNodes,
           timestamp: Date.now()
         }
       });

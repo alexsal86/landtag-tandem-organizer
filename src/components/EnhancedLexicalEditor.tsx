@@ -706,9 +706,9 @@ export default function EnhancedLexicalEditor({
     onChange(newContent, newContentNodes);
   }, [onChange]);
 
-  const sendContentUpdate = useCallback((content: string) => {
+  const sendContentUpdate = useCallback((content: string, contentNodes?: string) => {
     if (realtimeCollaboration?.sendContentUpdate) {
-      realtimeCollaboration.sendContentUpdate(content);
+      realtimeCollaboration.sendContentUpdate(content, contentNodes);
     }
   }, [realtimeCollaboration]);
 
@@ -781,7 +781,7 @@ export default function EnhancedLexicalEditor({
             <CollaborationPlugin
               documentId={documentId || 'default'}
               onContentChange={handleContentChange}
-              sendContentUpdate={realtimeCollaboration.sendContentUpdate}
+              sendContentUpdate={sendContentUpdate}
               remoteContent={remoteContent}
             />
           )}
