@@ -33,9 +33,9 @@ export class CalendarEventAdapter {
     if (event.endTime) {
       endTime = this.extractDateFromObject(event.endTime);
       
-      // Special handling for external all-day events
-      if (event.is_all_day && (event as any)._isExternal) {
-        endTime = this.normalizeExternalAllDayEnd(startTime, endTime);
+      // Special handling for all-day events (both external and internal)
+      if (event.is_all_day) {
+        endTime = this.normalizeAllDayEnd(startTime, endTime, (event as any)._isExternal);
       }
     } else if (event.duration && event.duration !== "Ganztägig") {
       // Parse duration string (e.g., "2h", "30min", "1h 30min")
@@ -196,6 +196,53 @@ export class CalendarEventAdapter {
    */
   private static isValidDate(date: Date): boolean {
     return date instanceof Date && !isNaN(date.getTime());
+  }
+
+  /**
+   * Normalize end time for all-day events (both external and internal)
+   * All-day events often have end_time set to midnight of the next day,
+   * but should be displayed as single-day events ending at 23:59:59
+   */
+  private static normalizeAllDayEnd(startTime: Date, endTime: Date, isExternal: boolean = false): Date {
+    // Check if this follows the all-day pattern (ends at midnight of next day)
+    const isAllDayPattern = this.isAllDayPattern(startTime, endTime);
+    
+    if (isAllDayPattern) {
+      // Set end time to 23:59:59 of the start day
+      const normalizedEnd = new Date(startTime);
+      normalizedEnd.setHours(23, 59, 59, 999);
+      
+      console.log('🔧 CalendarEventAdapter: Normalized all-day end time:', {
+        original: endTime.toISOString(),
+        normalized: normalizedEnd.toISOString(),
+        startDay: startTime.toDateString(),
+        endDay: endTime.toDateString(),
+        isExternal
+      });
+      
+      return normalizedEnd;
+    }
+    
+    // For actual multi-day events, return original end time
+    return endTime;
+  }
+
+  /**
+   * Check if dates follow all-day event pattern (internal or external)
+   */
+  private static isAllDayPattern(startTime: Date, endTime: Date): boolean {
+    // Check if end time is midnight of the next day
+    const isEndMidnight = endTime.getHours() === 0 && 
+                         endTime.getMinutes() === 0 && 
+                         endTime.getSeconds() === 0;
+    
+    // Check if it's exactly 24 hours apart (single day event)
+    const timeDiff = endTime.getTime() - startTime.getTime();
+    const is24Hours = timeDiff === 24 * 60 * 60 * 1000;
+    
+    // For internal events, start time might not be midnight
+    // But if it ends at midnight and is 24 hours, it's likely a single-day all-day event
+    return isEndMidnight && is24Hours;
   }
 
   /**
