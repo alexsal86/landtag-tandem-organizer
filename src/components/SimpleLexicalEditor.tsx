@@ -13,6 +13,8 @@ import CollaborationStatus from './CollaborationStatus';
 import { YjsProvider, useYjsProvider } from './collaboration/YjsProvider';
 import { LexicalYjsCollaborationPlugin } from './collaboration/LexicalYjsCollaborationPlugin';
 import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
+import { CommentMarkNode } from './plugins/CommentPlugin';
+import { MarkNode } from '@lexical/mark';
 
 // Feature flag for Yjs collaboration
 const ENABLE_YJS_COLLABORATION = true;
@@ -291,7 +293,7 @@ export default function SimpleLexicalEditor({
     onError: (error: Error) => {
       console.error('Lexical Error:', error);
     },
-    nodes: []
+    nodes: [MarkNode, CommentMarkNode]
   }), []);
 
   const handleOnChange = useCallback((editorState: EditorState) => {

@@ -6,7 +6,8 @@ import {
   COMMAND_PRIORITY_LOW,
   $getNodeByKey,
   NodeKey,
-  $getRoot
+  $getRoot,
+  $createRangeSelection
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $createMarkNode, $isMarkNode, MarkNode } from '@lexical/mark';
@@ -323,6 +324,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   const [textLength, setTextLength] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
   const [highlightedComment, setHighlightedComment] = useState<string | null>(null);
+  const [savedSelection, setSavedSelection] = useState<any>(null);
   const { toast } = useToast();
 
   const loadComments = async () => {
@@ -458,6 +460,17 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       const selection = $getSelection();
       if ($isRangeSelection(selection) && !selection.isCollapsed()) {
         const text = selection.getTextContent();
+        
+        // Save the selection before opening dialog
+        setSavedSelection({
+          anchor: selection.anchor,
+          focus: selection.focus,
+          anchorKey: selection.anchor.key,
+          focusKey: selection.focus.key,
+          anchorOffset: selection.anchor.offset,
+          focusOffset: selection.focus.offset
+        });
+        
         setSelectedText(text);
         setTextPosition(0);
         setTextLength(text.length);
@@ -489,25 +502,73 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
 
       if (error) throw error;
 
-      // Create highlight in editor using correct Lexical Mark API
+      // Create highlight in editor
       editor.update(() => {
-        const selection = $getSelection();
-        if ($isRangeSelection(selection) && !selection.isCollapsed()) {
-          console.log('Applying comment mark to selection:', data.id);
-          
-          // Create a comment mark node
-          const commentMark = $createCommentMarkNode(data.id);
-          
-          // Extract the selected nodes and wrap them in the mark
-          const selectedNodes = selection.extract();
-          
-          // Add the selected nodes to the mark
-          commentMark.append(...selectedNodes);
-          
-          // Insert the mark node back into the selection
-          selection.insertNodes([commentMark]);
-          
-          console.log('Comment mark applied successfully');
+        console.log('Applying comment mark for text:', selectedText);
+        
+        // Since we can't reliably restore selection after dialog,
+        // we'll search for the text in the editor and mark it
+        const root = $getRoot();
+        const textContent = root.getTextContent();
+        const textIndex = textContent.indexOf(selectedText);
+        
+        if (textIndex !== -1) {
+          try {
+            // Create a new selection at the found text position
+            const selection = $createRangeSelection();
+            
+            // Find the text node that contains our text
+            let currentOffset = 0;
+            let targetNode = null;
+            let startOffset = 0;
+            let endOffset = 0;
+            
+            function findTextNode(node: any): boolean {
+              if (node.getType && node.getType() === 'text') {
+                const nodeText = node.getTextContent();
+                const nodeStart = currentOffset;
+                const nodeEnd = currentOffset + nodeText.length;
+                
+                if (textIndex >= nodeStart && textIndex < nodeEnd) {
+                  targetNode = node;
+                  startOffset = textIndex - nodeStart;
+                  endOffset = startOffset + selectedText.length;
+                  return true;
+                }
+                currentOffset = nodeEnd;
+              } else if (node.getChildren) {
+                const children = node.getChildren();
+                for (const child of children) {
+                  if (findTextNode(child)) return true;
+                }
+              }
+              return false;
+            }
+            
+            if (findTextNode(root) && targetNode) {
+              // Set selection on the found text
+              selection.anchor.set(targetNode.getKey(), startOffset, 'text');
+              selection.focus.set(targetNode.getKey(), endOffset, 'text');
+              
+              // Apply the selection
+              root.select();
+              const currentSelection = $getSelection();
+              if ($isRangeSelection(currentSelection)) {
+                currentSelection.anchor.set(targetNode.getKey(), startOffset, 'text');
+                currentSelection.focus.set(targetNode.getKey(), endOffset, 'text');
+                
+                // Now extract and wrap with mark
+                const commentMark = $createCommentMarkNode(data.id);
+                const selectedNodes = currentSelection.extract();
+                commentMark.append(...selectedNodes);
+                currentSelection.insertNodes([commentMark]);
+                
+                console.log('Comment mark applied successfully');
+              }
+            }
+          } catch (error) {
+            console.error('Error applying comment mark:', error);
+          }
         }
       });
 
