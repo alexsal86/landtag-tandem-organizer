@@ -1773,17 +1773,24 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 <EnhancedLexicalEditor
                   content={editedLetter.content || ''}
                   contentNodes={editedLetter.content_nodes}
-                  onChange={(content, contentNodes) => {
-                    if (isUpdatingFromRemoteRef.current || !canEdit) return;
-                    
-                    setEditedLetter(prev => ({
-                      ...prev,
-                      content: content,
-                      content_nodes: contentNodes || ''
-                    }));
-                    
-                    broadcastContentChange('content', content);
-                  }}
+                   onChange={(content, contentNodes) => {
+                     if (isUpdatingFromRemoteRef.current || !canEdit) return;
+                     
+                     console.log('📝 [LetterEditor] Content changed:', { 
+                       plainTextLength: content?.length, 
+                       hasJsonContent: !!contentNodes,
+                       jsonLength: contentNodes?.length,
+                       contentPreview: content?.slice(0, 50)
+                     });
+                     
+                     setEditedLetter(prev => ({
+                       ...prev,
+                       content: content || '',
+                       content_nodes: contentNodes || ''
+                     }));
+                     
+                     broadcastContentChange('content', content);
+                   }}
                   placeholder="Hier können Sie Ihren Brief verfassen..."
                   documentId={letter?.id}
                   enableCollaboration={!!letter?.id}

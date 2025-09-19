@@ -338,29 +338,40 @@ function ContentPlugin({ content, contentNodes }: { content: string; contentNode
   const [editor] = useLexicalComposerContext();
   
   React.useEffect(() => {
-    if (contentNodes) {
-      // Prioritize JSON serialized content (with full formatting)
+    if (!editor) return;
+
+    // Priority: JSON contentNodes > plain text content
+    if (contentNodes && contentNodes.trim()) {
       try {
+        // Use official Lexical parseEditorState method
         const editorState = editor.parseEditorState(contentNodes);
         editor.setEditorState(editorState);
-        console.log('🎯 Loaded content from JSON nodes');
+        console.log('📄 [ContentPlugin] Successfully loaded from JSON contentNodes');
         return;
       } catch (error) {
-        console.warn('Failed to parse JSON nodes, falling back to plain text:', error);
+        console.warn('Failed to parse contentNodes JSON, falling back to plain text:', error);
       }
     }
     
     // Fallback to plain text content
-    if (content) {
+    if (content && content.trim()) {
       editor.update(() => {
         const root = $getRoot();
-        if (root.isEmpty()) {
-          const paragraph = $createParagraphNode();
-          paragraph.append($createTextNode(content));
-          root.append(paragraph);
-        }
+        root.clear();
+        const paragraph = $createParagraphNode();
+        paragraph.append($createTextNode(content));
+        root.append(paragraph);
       });
-      console.log('📝 Loaded content from plain text');
+      console.log('📄 [ContentPlugin] Loaded from plain text content');
+    } else if (!contentNodes && !content) {
+      // Initialize with empty content
+      editor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        const paragraph = $createParagraphNode();
+        root.append(paragraph);
+      });
+      console.log('📄 [ContentPlugin] Initialized with empty content');
     }
   }, [editor, content, contentNodes]);
 
@@ -751,12 +762,29 @@ export default function EnhancedLexicalEditor({
             <FloatingTextFormatToolbar />
           </div>
           
-          <CollaborationPlugin
-            documentId={documentId || 'default'}
-            onContentChange={handleContentChange}
-            sendContentUpdate={realtimeCollaboration.sendContentUpdate}
-            remoteContent={remoteContent}
-          />
+          {/* Content Serialization - always serialize to JSON */}
+          {!enableCollaboration && (
+            <OnChangePlugin
+              onChange={(editorState) => {
+                editorState.read(() => {
+                  const root = $getRoot();
+                  const plainText = root.getTextContent();
+                  const jsonContent = JSON.stringify(editorState.toJSON());
+                  handleContentChange(plainText, jsonContent);
+                });
+              }}
+            />
+          )}
+          
+          {/* Collaboration Plugin - handles both local changes and remote updates */}
+          {enableCollaboration && (
+            <CollaborationPlugin
+              documentId={documentId || 'default'}
+              onContentChange={handleContentChange}
+              sendContentUpdate={realtimeCollaboration.sendContentUpdate}
+              remoteContent={remoteContent}
+            />
+          )}
           
           <ContentPlugin content={content} contentNodes={contentNodes} />
           
