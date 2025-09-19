@@ -295,6 +295,50 @@ export function ContactImport() {
           contactData.name = `${contactData.first_name || ''} ${contactData.last_name || ''}`.trim();
         }
 
+        // Handle organization creation and linking
+        if (contactData.organization && contactData.organization.trim()) {
+          const orgName = contactData.organization.trim();
+          
+          // Check if organization already exists
+          let existingOrg = existingContacts.find(
+            c => c.organization === orgName || (c.name === orgName && !c.organization)
+          );
+          
+          if (!existingOrg) {
+            // Create new organization contact
+            try {
+              const { data: newOrg, error: orgError } = await supabase
+                .from('contacts')
+                .insert({
+                  user_id: user.id,
+                  tenant_id: currentTenant.id,
+                  name: orgName,
+                  contact_type: 'organization',
+                  category: 'organization'
+                })
+                .select('id, name')
+                .single();
+
+              if (!orgError && newOrg) {
+                contactData.organization_id = newOrg.id;
+                // Add to existing contacts to prevent duplicates in this session
+                existingContacts.push({
+                  id: newOrg.id,
+                  name: newOrg.name,
+                  email: null,
+                  phone: null,
+                  organization: null
+                });
+              }
+            } catch (orgCreateError) {
+              console.warn('Could not create organization:', orgCreateError);
+            }
+          } else {
+            // Link to existing organization
+            contactData.organization_id = existingOrg.id;
+          }
+        }
+
         // Skip if no name
         if (!contactData.name || contactData.name.trim() === '') {
           setErrors(prev => [...prev, `Zeile ${i + 1}: Kein Name angegeben`]);

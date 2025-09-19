@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact as UtilContact } from "@/lib/utils";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { TagInput } from "@/components/ui/tag-input";
@@ -63,6 +65,8 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const [allTags, setAllTags] = useState<string[]>([]);
   const [inheritedTags, setInheritedTags] = useState<string[]>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
 
   useEffect(() => {
     if (contact.contact_type === "person") {
@@ -210,10 +214,40 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     setLoading(true);
 
     try {
+      let updateData = { ...formData };
+      
+      // Handle organization creation if needed
+      if (formData.contact_type === 'person' && !formData.organization_id && formData.organization) {
+        try {          
+          if (user && currentTenant) {
+            // Create new organization
+            const { data: newOrg, error: orgError } = await supabase
+              .from('contacts')
+              .insert({
+                user_id: user.id,
+                tenant_id: currentTenant.id,
+                name: formData.organization.trim(),
+                contact_type: 'organization',
+                category: 'organization'
+              })
+              .select('id')
+              .single();
+
+            if (!orgError && newOrg) {
+              updateData.organization_id = newOrg.id;
+              // Refresh organizations list
+              fetchOrganizations();
+            }
+          }
+        } catch (orgError) {
+          console.warn('Could not create organization:', orgError);
+        }
+      }
+
       const { error } = await supabase
         .from('contacts')
         .update({
-          ...formData,
+          ...updateData,
           tags: formData.tags.length > 0 ? formData.tags : null,
         })
         .eq('id', contact.id);
@@ -324,22 +358,45 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
               <div>
                 <Label htmlFor="organization_id">Organisation</Label>
-                <Select
-                  value={formData.organization_id || 'none'}
-                  onValueChange={(value) => handleChange('organization_id', value === 'none' ? '' : value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Organisation auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Keine Organisation</SelectItem>
-                    {organizations.map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <Select
+                    value={formData.organization_id || 'none'}
+                    onValueChange={(value) => {
+                      if (value === 'create_new') {
+                        // Show input for new organization
+                        handleChange('organization_id', '');
+                        handleChange('organization', '');
+                      } else {
+                        handleChange('organization_id', value === 'none' ? '' : value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Organisation auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Keine Organisation</SelectItem>
+                      <SelectItem value="create_new">+ Neue Organisation erstellen</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {!formData.organization_id && (
+                    <div>
+                      <Label htmlFor="organization">Neue Organisation</Label>
+                      <Input
+                        id="organization"
+                        placeholder="Name der Organisation eingeben"
+                        value={formData.organization || ''}
+                        onChange={(e) => handleChange('organization', e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
