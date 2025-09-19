@@ -340,18 +340,59 @@ export function CalendarView() {
         dtstart: new Date(event.start_time)
       });
       
-      // Generate occurrences within the date range
-      const occurrences = rule.between(startDate, endDate, true);
-      console.log('📊 Generated', occurrences.length, 'occurrences for', event.title);
+      // For better coverage of yearly events like birthdays, expand search range slightly
+      const expandedStartDate = new Date(startDate);
+      const expandedEndDate = new Date(endDate);
+      
+      // For yearly events, ensure we catch birthdays by expanding the range
+      if (event.recurrence_rule.includes('FREQ=YEARLY') || event.category === 'birthday') {
+        expandedStartDate.setFullYear(expandedStartDate.getFullYear() - 1);
+        expandedEndDate.setFullYear(expandedEndDate.getFullYear() + 2);
+        console.log('🎂 Expanded date range for yearly event:', {
+          original: `${startDate.toISOString()} - ${endDate.toISOString()}`,
+          expanded: `${expandedStartDate.toISOString()} - ${expandedEndDate.toISOString()}`
+        });
+      }
+      
+      // Generate occurrences within the expanded date range
+      const allOccurrences = rule.between(expandedStartDate, expandedEndDate, true);
+      
+      // Filter occurrences to only include those in the actual requested range
+      const occurrences = allOccurrences.filter(occurrence => 
+        occurrence >= startDate && occurrence <= endDate
+      );
+      
+      console.log('📊 Generated', occurrences.length, 'occurrences for', event.title, 
+                  'from', allOccurrences.length, 'total occurrences');
       
       return occurrences.map((occurrence, index) => {
         const originalStart = new Date(event.start_time);
         const originalEnd = new Date(event.end_time);
-        const duration = originalEnd.getTime() - originalStart.getTime();
         
-        // Create new event with adjusted dates
+        // For all-day events like birthdays, preserve the time structure
         const newStart = new Date(occurrence);
-        const newEnd = new Date(newStart.getTime() + duration);
+        let newEnd: Date;
+        
+        if (event.is_all_day || event.category === 'birthday') {
+          // For all-day events, set proper start time (usually midnight) and end time
+          newStart.setHours(originalStart.getHours(), originalStart.getMinutes(), originalStart.getSeconds());
+          newEnd = new Date(newStart);
+          
+          // Calculate duration or use original end time structure
+          if (originalEnd.getTime() - originalStart.getTime() === 24 * 60 * 60 * 1000) {
+            // If original was exactly 24 hours, maintain that
+            newEnd.setDate(newEnd.getDate() + 1);
+            newEnd.setHours(0, 0, 0, 0);
+          } else {
+            // Otherwise use the original duration
+            const duration = originalEnd.getTime() - originalStart.getTime();
+            newEnd = new Date(newStart.getTime() + duration);
+          }
+        } else {
+          // For timed events, use original duration
+          const duration = originalEnd.getTime() - originalStart.getTime();
+          newEnd = new Date(newStart.getTime() + duration);
+        }
         
         return {
           ...event,

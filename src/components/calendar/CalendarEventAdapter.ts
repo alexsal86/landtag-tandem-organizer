@@ -34,14 +34,14 @@ export class CalendarEventAdapter {
       endTime = this.extractDateFromObject(event.endTime);
       
       // Special handling for all-day events (both external and internal)
-      if (event.is_all_day) {
-        endTime = this.normalizeAllDayEnd(startTime, endTime, (event as any)._isExternal);
+      if (event.is_all_day || event.duration === "Ganztägig") {
+        endTime = this.normalizeAllDayEnd(startTime, endTime, event);
       }
     } else if (event.duration && event.duration !== "Ganztägig") {
       // Parse duration string (e.g., "2h", "30min", "1h 30min")
       const durationMs = this.parseDurationToMs(event.duration);
       endTime = new Date(startTime.getTime() + durationMs);
-    } else if (event.is_all_day) {
+    } else if (event.is_all_day || event.duration === "Ganztägig") {
       // For all-day events, end at end of day
       endTime = new Date(startTime);
       endTime.setHours(23, 59, 59, 999);
@@ -203,7 +203,27 @@ export class CalendarEventAdapter {
    * All-day events often have end_time set to midnight of the next day,
    * but should be displayed as single-day events ending at 23:59:59
    */
-  private static normalizeAllDayEnd(startTime: Date, endTime: Date, isExternal: boolean = false): Date {
+  private static normalizeAllDayEnd(startTime: Date, endTime: Date, eventInfo: any = {}): Date {
+    const isExternal = eventInfo._isExternal || false;
+    const eventType = eventInfo.type;
+    
+    // Special handling for birthdays and other recurring all-day events
+    if (eventType === 'birthday' || eventInfo.category === 'birthday') {
+      // Always normalize birthdays to single-day events
+      const normalizedEnd = new Date(startTime);
+      normalizedEnd.setHours(23, 59, 59, 999);
+      
+      console.log('🎂 CalendarEventAdapter: Normalized birthday end time:', {
+        title: eventInfo.title,
+        original: endTime.toISOString(),
+        normalized: normalizedEnd.toISOString(),
+        startDay: startTime.toDateString(),
+        endDay: endTime.toDateString()
+      });
+      
+      return normalizedEnd;
+    }
+    
     // Check if this follows the all-day pattern (ends at midnight of next day)
     const isAllDayPattern = this.isAllDayPattern(startTime, endTime);
     
@@ -217,7 +237,8 @@ export class CalendarEventAdapter {
         normalized: normalizedEnd.toISOString(),
         startDay: startTime.toDateString(),
         endDay: endTime.toDateString(),
-        isExternal
+        isExternal,
+        eventType
       });
       
       return normalizedEnd;
