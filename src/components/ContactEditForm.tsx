@@ -247,15 +247,33 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         }
       }
 
+      if (!user || !currentTenant) {
+        toast({
+          title: "Fehler",
+          description: "Benutzer oder Mandant nicht verfügbar.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const finalUpdateData = {
+        ...updateData,
+        tags: formData.tags.length > 0 ? formData.tags : null,
+        tenant_id: currentTenant.id,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Updating contact with data:', finalUpdateData);
+
       const { error } = await supabase
         .from('contacts')
-        .update({
-          ...updateData,
-          tags: formData.tags.length > 0 ? formData.tags : null,
-        })
+        .update(finalUpdateData)
         .eq('id', contact.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       toast({
         title: "Kontakt aktualisiert",
@@ -312,33 +330,60 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       const file = event.target.files?.[0];
       if (!file) return;
 
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Ungültiger Dateityp",
+          description: "Bitte wählen Sie eine Bilddatei aus.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!user) {
+        toast({
+          title: "Fehler",
+          description: "Benutzer nicht authentifiziert.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user!.id}_${contact.id}_${Math.random()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const fileName = `avatar-${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      console.log('Uploading avatar to:', filePath);
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, file);
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('documents')
+        .from('avatars')
         .getPublicUrl(filePath);
 
+      console.log('Avatar uploaded successfully:', publicUrl);
       setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
       
       toast({
         title: "Erfolg",
         description: "Profilbild wurde hochgeladen.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading avatar:', error);
       toast({
         title: "Fehler",
-        description: "Profilbild konnte nicht hochgeladen werden.",
+        description: `Profilbild konnte nicht hochgeladen werden: ${error.message || 'Unbekannter Fehler'}`,
         variant: "destructive",
       });
     } finally {
