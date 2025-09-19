@@ -329,21 +329,33 @@ export function CalendarView() {
   };
 
   // Function to expand birthday events up to age 99
-  const expandBirthdayEvents = (event: any, startDate: Date, endDate: Date) => {
+  const expandBirthdayEvents = async (event: any, startDate: Date, endDate: Date) => {
     // Only handle birthday events or events with birthday category
-    if (event.category !== 'birthday' || !event.start_time) {
+    if (event.category !== 'birthday' || !event.start_time || !event.contact_id) {
       return [event];
     }
 
     try {
       console.log('🎂 Expanding birthday event:', event.title);
       
+      // Load contact data to get the real birth year
+      const { data: contact } = await supabase
+        .from('contacts')
+        .select('birthday')
+        .eq('id', event.contact_id)
+        .single();
+
+      if (!contact?.birthday) {
+        console.warn('🎂 No birthday found for contact:', event.contact_id);
+        return [event];
+      }
+
       const originalDate = new Date(event.start_time);
       const currentYear = new Date().getFullYear();
-      const birthYear = originalDate.getFullYear();
+      const realBirthYear = new Date(contact.birthday).getFullYear();
       
       // Calculate maximum age (99 years)
-      const maxYear = birthYear + 99;
+      const maxYear = realBirthYear + 99;
       
       // Find relevant years within the display range
       const displayStartYear = startDate.getFullYear();
@@ -353,7 +365,7 @@ export function CalendarView() {
       const endYear = Math.min(displayEndYear, maxYear);
       
       console.log('🎂 Birthday expansion range:', { 
-        birthYear, 
+        realBirthYear, 
         startYear, 
         endYear, 
         maxYear,
@@ -365,7 +377,7 @@ export function CalendarView() {
       // Generate birthday instances for each year in range
       for (let year = startYear; year <= endYear; year++) {
         // Skip the original birth year since it's already in the database
-        if (year === birthYear) continue;
+        if (year === realBirthYear) continue;
         
         const birthdayDate = new Date(originalDate);
         birthdayDate.setFullYear(year);
@@ -379,7 +391,7 @@ export function CalendarView() {
           const birthdayEnd = new Date(birthdayDate);
           birthdayEnd.setHours(23, 59, 59, 999);
           
-          const age = year - birthYear;
+          const age = year - realBirthYear;
           
           birthdayInstances.push({
             ...event,
@@ -551,7 +563,7 @@ export function CalendarView() {
       for (const appointment of appointmentsData) {
         // Handle birthdays with special logic
         if (appointment.category === 'birthday') {
-          const birthdayEvents = expandBirthdayEvents(appointment, startDate, endDate);
+          const birthdayEvents = await expandBirthdayEvents(appointment, startDate, endDate);
           expandedAppointments.push(...birthdayEvents);
         } else {
           // Handle other recurring events with RRULE
