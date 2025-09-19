@@ -80,20 +80,16 @@ export function CalendarView() {
   const fetchMonthAppointments = async () => {
     try {
       setLoading(true);
-      
-      // For month view, expand the range to include events that might span across month boundaries
       const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-      monthStart.setDate(monthStart.getDate() - 7); // Start 7 days before month
       monthStart.setHours(0, 0, 0, 0);
       
       const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-      monthEnd.setDate(monthEnd.getDate() + 7); // End 7 days after month
       monthEnd.setHours(23, 59, 59, 999);
-      
-      console.log('🔍 Fetching appointments for month (extended range):', monthStart.toISOString(), 'to', monthEnd.toISOString());
-      
-      // Fetch appointments that overlap with the extended month range
-      const { data: appointmentsData, error } = await supabase
+
+      console.log('🔍 Fetching appointments for month:', monthStart.toISOString(), 'to', monthEnd.toISOString());
+
+      // Fetch regular appointments that overlap with the month
+      const { data: regularAppointments, error: regularError } = await supabase
         .from('appointments')
         .select(`
           id,
@@ -109,15 +105,48 @@ export function CalendarView() {
           meeting_id,
           contact_id,
           poll_id,
-          reminder_minutes
+          reminder_minutes,
+          recurrence_rule,
+          recurrence_end_date
         `)
         .or(`and(start_time.lte.${monthEnd.toISOString()},end_time.gte.${monthStart.toISOString()}),and(start_time.gte.${monthStart.toISOString()},start_time.lte.${monthEnd.toISOString()})`)
+        .is('recurrence_rule', null)
         .order('start_time', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching appointments:', error);
+      // Fetch ALL recurring appointments (regardless of their original date)
+      const { data: recurringAppointments, error: recurringError } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          title,
+          description,
+          start_time,
+          end_time,
+          category,
+          priority,
+          location,
+          status,
+          is_all_day,
+          meeting_id,
+          contact_id,
+          poll_id,
+          reminder_minutes,
+          recurrence_rule,
+          recurrence_end_date
+        `)
+        .not('recurrence_rule', 'is', null)
+        .order('start_time', { ascending: true });
+
+      if (regularError || recurringError) {
+        console.error('Error fetching appointments:', regularError || recurringError);
         return;
       }
+
+      // Combine regular and recurring appointments
+      const appointmentsData = [
+        ...(regularAppointments || []),
+        ...(recurringAppointments || [])
+      ];
 
       console.log('📊 Found appointments for month:', appointmentsData?.length || 0);
       appointmentsData?.forEach(apt => {
@@ -142,9 +171,8 @@ export function CalendarView() {
       
       console.log('🔍 Fetching appointments for week:', weekStart.toISOString(), 'to', weekEnd.toISOString());
       
-      // Fetch appointments that overlap with the week (not just start in the week)
-      // This ensures multi-day events like vacations are included
-      const { data: appointmentsData, error } = await supabase
+      // Fetch regular appointments that overlap with the week
+      const { data: regularAppointments, error: regularError } = await supabase
         .from('appointments')
         .select(`
           id,
@@ -160,15 +188,48 @@ export function CalendarView() {
           meeting_id,
           contact_id,
           poll_id,
-          reminder_minutes
+          reminder_minutes,
+          recurrence_rule,
+          recurrence_end_date
         `)
         .or(`and(start_time.lte.${weekEnd.toISOString()},end_time.gte.${weekStart.toISOString()}),and(start_time.gte.${weekStart.toISOString()},start_time.lte.${weekEnd.toISOString()})`)
+        .is('recurrence_rule', null)
         .order('start_time', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching appointments:', error);
+      // Fetch ALL recurring appointments (regardless of their original date)
+      const { data: recurringAppointments, error: recurringError } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          title,
+          description,
+          start_time,
+          end_time,
+          category,
+          priority,
+          location,
+          status,
+          is_all_day,
+          meeting_id,
+          contact_id,
+          poll_id,
+          reminder_minutes,
+          recurrence_rule,
+          recurrence_end_date
+        `)
+        .not('recurrence_rule', 'is', null)
+        .order('start_time', { ascending: true });
+
+      if (regularError || recurringError) {
+        console.error('Error fetching appointments:', regularError || recurringError);
         return;
       }
+
+      // Combine regular and recurring appointments
+      const appointmentsData = [
+        ...(regularAppointments || []),
+        ...(recurringAppointments || [])
+      ];
 
       console.log('📊 Found appointments:', appointmentsData?.length || 0);
       appointmentsData?.forEach(apt => {
@@ -194,9 +255,8 @@ export function CalendarView() {
 
       console.log('🔍 Fetching appointments for day:', startOfDay.toISOString(), 'to', endOfDay.toISOString());
 
-      // Fetch appointments that overlap with this day (not just start on this day)
-      // This ensures multi-day events like vacations are included
-      const { data: appointmentsData, error } = await supabase
+      // Fetch regular appointments that overlap with this day
+      const { data: regularAppointments, error: regularError } = await supabase
         .from('appointments')
         .select(`
           id,
@@ -212,15 +272,48 @@ export function CalendarView() {
           meeting_id,
           contact_id,
           poll_id,
-          reminder_minutes
+          reminder_minutes,
+          recurrence_rule,
+          recurrence_end_date
         `)
         .or(`and(start_time.lte.${endOfDay.toISOString()},end_time.gte.${startOfDay.toISOString()}),and(start_time.gte.${startOfDay.toISOString()},start_time.lte.${endOfDay.toISOString()})`)
+        .is('recurrence_rule', null)
         .order('start_time', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching appointments:', error);
+      // Fetch ALL recurring appointments (regardless of their original date)
+      const { data: recurringAppointments, error: recurringError } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          title,
+          description,
+          start_time,
+          end_time,
+          category,
+          priority,
+          location,
+          status,
+          is_all_day,
+          meeting_id,
+          contact_id,
+          poll_id,
+          reminder_minutes,
+          recurrence_rule,
+          recurrence_end_date
+        `)
+        .not('recurrence_rule', 'is', null)
+        .order('start_time', { ascending: true });
+
+      if (regularError || recurringError) {
+        console.error('Error fetching appointments:', regularError || recurringError);
         return;
       }
+
+      // Combine regular and recurring appointments
+      const appointmentsData = [
+        ...(regularAppointments || []),
+        ...(recurringAppointments || [])
+      ];
 
       console.log('📊 Found appointments for day:', appointmentsData?.length || 0);
       appointmentsData?.forEach(apt => {
