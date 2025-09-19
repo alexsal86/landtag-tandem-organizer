@@ -38,24 +38,26 @@ export interface Contact {
 }
 
 interface UseInfiniteContactsProps {
-  searchTerm: string;
-  selectedCategory: string;
-  selectedType: string;
-  activeTab: "contacts" | "stakeholders" | "distribution-lists" | "archive";
-  sortColumn: string | null;
-  sortDirection: "asc" | "desc";
+  searchTerm?: string;
+  selectedCategory?: string;
+  selectedType?: string;
+  activeTab?: "contacts" | "stakeholders" | "distribution-lists" | "archive";
+  sortColumn?: string | null;
+  sortDirection?: "asc" | "desc";
+  selectedTagFilter?: string;
 }
 
 const ITEMS_PER_PAGE = 50;
 
 export const useInfiniteContacts = ({
-  searchTerm,
-  selectedCategory,
-  selectedType,
-  activeTab,
-  sortColumn,
-  sortDirection,
-}: UseInfiniteContactsProps) => {
+  searchTerm = "",
+  selectedCategory = "all",
+  selectedType = "all",
+  activeTab = "contacts",
+  sortColumn = null,
+  sortDirection = "asc",
+  selectedTagFilter = ""
+}: UseInfiniteContactsProps = {}) => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -96,6 +98,11 @@ export const useInfiniteContacts = ({
       }
     }
 
+    // Tag filter
+    if (selectedTagFilter) {
+      query = query.contains('tags', [selectedTagFilter]);
+    }
+
     // Type filter
     if (selectedType !== "all") {
       query = query.eq('contact_type', selectedType);
@@ -121,7 +128,7 @@ export const useInfiniteContacts = ({
     query = query.range(offset, offset + limit - 1);
 
     return query;
-  }, [currentTenant?.id, activeTab, searchTerm, selectedCategory, selectedType, sortColumn, sortDirection]);
+  }, [currentTenant?.id, activeTab, searchTerm, selectedCategory, selectedType, selectedTagFilter, sortColumn, sortDirection]);
 
   const insertSampleContacts = useCallback(async () => {
     try {
@@ -282,7 +289,7 @@ export const useInfiniteContacts = ({
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [user, currentTenant, currentPage, buildQuery, searchTerm, selectedCategory, selectedType, activeTab, insertSampleContacts, toast]);
+  }, [user, currentTenant, currentPage, buildQuery, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, insertSampleContacts, toast]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
@@ -328,14 +335,14 @@ export const useInfiniteContacts = ({
     setCurrentPage(0);
     setHasMore(true);
     setTotalCount(0);
-  }, [searchTerm, selectedCategory, selectedType, activeTab, sortColumn, sortDirection]);
+  }, [searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, sortColumn, sortDirection]);
 
   // Fetch contacts when page is reset to 0 or when initial load
   useEffect(() => {
     if (user && currentTenant && currentPage === 0) {
       fetchContacts(false);
     }
-  }, [user, currentTenant, searchTerm, selectedCategory, selectedType, activeTab, sortColumn, sortDirection]);
+  }, [user, currentTenant, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, sortColumn, sortDirection]);
 
   const refreshContacts = useCallback(() => {
     setContacts([]);

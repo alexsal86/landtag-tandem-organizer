@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, Star } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, Star, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,7 @@ export function ContactsView() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string>("");
   
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -87,6 +88,7 @@ export function ContactsView() {
     activeTab,
     sortColumn: activeTab === "stakeholders" ? stakeholderSortColumn : sortColumn,
     sortDirection: activeTab === "stakeholders" ? stakeholderSortDirection : sortDirection,
+    selectedTagFilter,
   });
 
   // Create stable debounced function - MUST be before early returns
@@ -446,6 +448,20 @@ export function ContactsView() {
               className="pl-10"
             />
           </div>
+          {selectedTagFilter && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-md">
+              <Tag className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Tag: {selectedTagFilter}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedTagFilter("")}
+                className="h-auto p-0 text-muted-foreground hover:text-foreground"
+              >
+                ×
+              </Button>
+            </div>
+          )}
           <div className="flex gap-2">
             <div className="flex border border-border rounded-md">
               <Button
@@ -872,6 +888,7 @@ export function ContactsView() {
               sortColumn={stakeholderSortColumn}
               sortDirection={stakeholderSortDirection}
               onSort={handleStakeholderSort}
+              onTagClick={(tag) => setSelectedTagFilter(tag)}
             />
           )}
           

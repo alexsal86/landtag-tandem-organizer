@@ -27,6 +27,7 @@ interface StakeholderViewProps {
   sortColumn?: string | null;
   sortDirection?: "asc" | "desc";
   onSort?: (column: string) => void;
+  onTagClick?: (tag: string) => void;
 }
 
 export function StakeholderView({
@@ -42,6 +43,7 @@ export function StakeholderView({
   sortColumn,
   sortDirection = "asc",
   onSort,
+  onTagClick,
 }: StakeholderViewProps) {
   const [expandedStakeholders, setExpandedStakeholders] = useState<Set<string>>(new Set());
   const [distributionDialogOpen, setDistributionDialogOpen] = useState(false);
@@ -213,8 +215,23 @@ export function StakeholderView({
         case "tags":
           const aTags = (localTagUpdates[a.id] || (a as any).tags || []);
           const bTags = (localTagUpdates[b.id] || (b as any).tags || []);
-          aValue = Array.isArray(aTags) ? aTags.join(" ").toLowerCase() : "";
-          bValue = Array.isArray(bTags) ? bTags.join(" ").toLowerCase() : "";
+          
+          // Smart tag sorting: stakeholders with more common tags come first
+          const aTagsArray = Array.isArray(aTags) ? aTags : [];
+          const bTagsArray = Array.isArray(bTags) ? bTags : [];
+          
+          // Calculate tag similarity score
+          const allTags = new Set([...aTagsArray, ...bTagsArray]);
+          const aScore = aTagsArray.length;
+          const bScore = bTagsArray.length;
+          
+          if (aScore !== bScore) {
+            aValue = aScore;
+            bValue = bScore;
+          } else {
+            aValue = aTagsArray.join(" ").toLowerCase();
+            bValue = bTagsArray.join(" ").toLowerCase();
+          }
           break;
         default:
           return 0;
@@ -395,13 +412,21 @@ export function StakeholderView({
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 flex-wrap">
-                          {stakeholderTags.length > 0 ? (
-                            stakeholderTags.map((tag) => (
-                              <Badge key={tag} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))
-                          ) : (
+                           {stakeholderTags.length > 0 ? (
+                             stakeholderTags.map((tag) => (
+                               <Badge 
+                                 key={tag} 
+                                 variant="secondary" 
+                                 className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   onTagClick?.(tag);
+                                 }}
+                               >
+                                 {tag}
+                               </Badge>
+                             ))
+                           ) : (
                             <span className="text-muted-foreground text-xs">Keine Tags</span>
                           )}
                           <Button
@@ -625,13 +650,21 @@ export function StakeholderView({
                           </div>
                         ) : (
                           <>
-                            {stakeholderTags.length > 0 ? (
-                              stakeholderTags.slice(0, 2).map((tag) => (
-                                <Badge key={tag} variant="secondary" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))
-                            ) : (
+                             {stakeholderTags.length > 0 ? (
+                               stakeholderTags.slice(0, 2).map((tag) => (
+                                 <Badge 
+                                   key={tag} 
+                                   variant="secondary" 
+                                   className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     onTagClick?.(tag);
+                                   }}
+                                 >
+                                   {tag}
+                                 </Badge>
+                               ))
+                             ) : (
                               <span className="text-muted-foreground text-xs">—</span>
                             )}
                             {stakeholderTags.length > 2 && (
