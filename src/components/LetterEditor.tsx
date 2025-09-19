@@ -976,6 +976,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     console.log('=== AUTO-SAVE STARTED ===');
     console.log('Current showPagination value:', showPagination);
     console.log('Letter ID:', letter?.id);
+    console.log('content_nodes to save:', editedLetter.content_nodes ? 'HAS JSON DATA' : 'NO JSON DATA');
+    console.log('content_nodes length:', editedLetter.content_nodes?.length || 0);
+    console.log('content_nodes preview:', editedLetter.content_nodes?.slice(0, 100) || 'null');
     
     setSaving(true);
     try {
@@ -1776,18 +1779,19 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                    onChange={(content, contentNodes) => {
                      if (isUpdatingFromRemoteRef.current || !canEdit) return;
                      
-                     console.log('📝 [LetterEditor] Content changed:', { 
-                       plainTextLength: content?.length, 
-                       hasJsonContent: !!contentNodes,
-                       jsonLength: contentNodes?.length,
-                       contentPreview: content?.slice(0, 50)
-                     });
+                      console.log('📝 [LetterEditor] Content changed:', { 
+                        plainTextLength: content?.length, 
+                        hasJsonContent: !!contentNodes,
+                        jsonLength: contentNodes?.length,
+                        contentPreview: content?.slice(0, 50),
+                        jsonPreview: contentNodes?.slice(0, 100) || 'null'
+                      });
                      
-                     setEditedLetter(prev => ({
-                       ...prev,
-                       content: content || '',
-                       content_nodes: contentNodes || ''
-                     }));
+                      setEditedLetter(prev => ({
+                        ...prev,
+                        content: content || '',
+                        content_nodes: contentNodes && contentNodes.trim() !== '' ? contentNodes : null
+                      }));
                      
                      broadcastContentChange('content', content);
                    }}
