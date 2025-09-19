@@ -970,6 +970,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
   // Removed old toolbar handlers - EnhancedLexicalEditor handles formatting internally
 
+  // Ref to store latest content for immediate saving
+  const latestContentRef = useRef<{ content: string; contentNodes: string | null }>({
+    content: editedLetter.content,
+    contentNodes: editedLetter.content_nodes
+  });
+
   const handleAutoSave = async (immediateContent?: string, immediateContentNodes?: string) => {
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
     
@@ -1024,8 +1030,17 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   };
 
-  const handleManualSave = async () => {
+  const handleManualSave = async (immediateContent?: string, immediateContentNodes?: string) => {
     if (!canEdit || !currentTenant || !user) return;
+
+    // Use immediate parameters if provided, otherwise use latest ref values, fallback to state
+    const contentToSave = immediateContent !== undefined ? immediateContent : latestContentRef.current.content;
+    const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : latestContentRef.current.contentNodes;
+
+    console.log('=== MANUAL SAVE STARTED ===');
+    console.log('content_nodes to save:', contentNodesToSave ? 'HAS JSON DATA' : 'NO JSON DATA');
+    console.log('content_nodes length:', contentNodesToSave?.length || 0);
+    console.log('Using immediate parameters:', { immediateContent: !!immediateContent, immediateContentNodes: !!immediateContentNodes });
 
     setSaving(true);
     try {
@@ -1035,9 +1050,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           .from('letters')
           .update({
             title: editedLetter.title,
-            content: editedLetter.content,
+            content: contentToSave,
             content_html: editedLetter.content_html,
-            content_nodes: editedLetter.content_nodes,
+            content_nodes: contentNodesToSave,
             recipient_name: editedLetter.recipient_name,
             recipient_address: editedLetter.recipient_address,
             contact_id: editedLetter.contact_id,
@@ -1061,9 +1076,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             tenant_id: currentTenant.id,
             created_by: user.id,
             title: editedLetter.title || 'Neuer Brief',
-            content: editedLetter.content || '',
+            content: contentToSave || '',
             content_html: editedLetter.content_html || '',
-            content_nodes: editedLetter.content_nodes,
+            content_nodes: contentNodesToSave,
             recipient_name: editedLetter.recipient_name,
             recipient_address: editedLetter.recipient_address,
             contact_id: editedLetter.contact_id,
@@ -1080,6 +1095,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         if (error) throw error;
       }
 
+      console.log('=== MANUAL SAVE SUCCESSFUL ===');
+      console.log('Saved content_nodes successfully:', !!contentNodesToSave);
       setLastSaved(new Date());
       onSave();
       toast({
@@ -1088,6 +1105,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       });
     } catch (error) {
       console.error('Error saving letter:', error);
+      console.log('=== MANUAL SAVE FAILED ===');
       toast({
         title: "Fehler beim Speichern",
         description: "Der Brief konnte nicht gespeichert werden.",
@@ -1186,7 +1204,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
             )}
             
             <Button 
-              onClick={handleManualSave} 
+              onClick={() => handleManualSave(latestContentRef.current.content, latestContentRef.current.contentNodes)} 
               disabled={!canEdit || saving}
               size="sm"
             >
@@ -1794,6 +1812,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       });
                      
                       const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
+                      
+                      // Update the ref with latest content for immediate access
+                      latestContentRef.current = {
+                        content: content || '',
+                        contentNodes: processedContentNodes
+                      };
                       
                       setEditedLetter(prev => ({
                         ...prev,
