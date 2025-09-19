@@ -1771,17 +1771,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               {/* Enhanced Lexical Editor with Collaboration */}
               <div className="relative">
                 <EnhancedLexicalEditor
-                  content={editedLetter.content || ''}
-                  onChange={(content) => {
-                    if (isUpdatingFromRemoteRef.current || !canEdit) return;
-                    
-                    setEditedLetter(prev => ({
-                      ...prev,
-                      content: content,
-                      content_nodes: JSON.stringify({ timestamp: Date.now(), content })
-                    }));
-                    
-                    broadcastContentChange('content', content);
+              content={editedLetter.content || ''}
+              contentNodes={editedLetter.content_nodes}
+              onChange={(content, contentNodes) => {
+                if (isUpdatingFromRemoteRef.current || !canEdit) return;
+                
+                setEditedLetter(prev => ({
+                  ...prev,
+                  content: content,
+                  content_nodes: contentNodes
+                }));
+                
+                broadcastContentChange('content', content);
                   }}
                   placeholder="Hier können Sie Ihren Brief verfassen..."
                   documentId={letter?.id}
