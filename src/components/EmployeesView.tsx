@@ -278,12 +278,6 @@ export function EmployeesView() {
     load();
   }, [user, currentTenant, toast]);
 
-  // Check if current user is the main representative (tenant owner)
-  const isMainRepresentative = () => {
-    // Check if user has admin role in the current tenant
-    // Main representatives typically won't have employee settings
-    return isAdmin || (currentTenant && user);
-  };
 
   // Load self data for non-admin users who are actual employees
   useEffect(() => {
