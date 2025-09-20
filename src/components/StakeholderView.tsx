@@ -555,9 +555,11 @@ export function StakeholderView({
               {sortedStakeholders.map((stakeholder) => {
                 const stakeholderTags = localTagUpdates[stakeholder.id] || (stakeholder as any).tags || [];
                 const stakeholderContacts = getStakeholderContacts(stakeholder.id);
+                const isExpanded = expandedStakeholders.has(stakeholder.id);
                 
                 return (
-                  <TableRow key={stakeholder.id} className="hover:bg-muted/50">
+                  <>
+                    <TableRow key={stakeholder.id} className="hover:bg-muted/50">
                     <TableCell>
                       <Button
                         variant="ghost"
@@ -591,7 +593,21 @@ export function StakeholderView({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">{stakeholderContacts.length} Kontakte</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleExpanded(stakeholder.id)}
+                        className="p-1 h-auto text-sm hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ChevronRight 
+                            className={`h-3 w-3 transition-transform ${
+                              isExpanded ? 'rotate-90' : ''
+                            }`} 
+                          />
+                          <span>{stakeholderContacts.length} Kontakte</span>
+                        </div>
+                      </Button>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
@@ -705,6 +721,83 @@ export function StakeholderView({
                       </div>
                     </TableCell>
                   </TableRow>
+                  
+                  {/* Collapsible contact rows */}
+                  {isExpanded && stakeholderContacts.map((contact) => (
+                    <TableRow 
+                      key={`contact-${contact.id}`} 
+                      className="bg-muted/30 border-l-4 border-l-primary/30"
+                    >
+                      <TableCell></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 pl-8">
+                          <div className="p-1 bg-blue-100 dark:bg-blue-900 rounded">
+                            <User className="h-3 w-3 text-blue-600 dark:text-blue-300" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">{contact.name}</div>
+                            {contact.role && (
+                              <div className="text-xs text-muted-foreground">{contact.role}</div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onContactClick(contact.id)}
+                          className="text-xs text-primary hover:bg-primary/10"
+                        >
+                          Details
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {contact.email ? (
+                            <div className="flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              <span className="truncate max-w-[150px]">{contact.email}</span>
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {contact.phone ? (
+                            <div className="flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              <span>{contact.phone}</span>
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {contact.tags && contact.tags.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {contact.tags.slice(0, 2).map((tag) => (
+                              <Badge key={tag} variant="outline" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                            {contact.tags.length > 2 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{contact.tags.length - 2}
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
+                  ))}
+                </>
                 );
               })}
             </TableBody>
