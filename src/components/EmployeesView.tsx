@@ -278,10 +278,54 @@ export function EmployeesView() {
     load();
   }, [user, currentTenant, toast]);
 
-  // Load self data for non-admin users
+  // Check if current user is the main representative (tenant owner)
+  const isMainRepresentative = () => {
+    // Check if user has admin role in the current tenant
+    // Main representatives typically won't have employee settings
+    return isAdmin || (currentTenant && user);
+  };
+
+  // Load self data for non-admin users who are actual employees
   useEffect(() => {
+    // Only try to load employee settings for users who are not admins
     if (!user || isAdmin) return;
-    const loadSelf = async () => {
+    
+    // First check if this user actually has employee settings before showing warnings
+    const checkEmployeeStatus = async () => {
+      const { data: hasSettings } = await supabase
+        .from('employee_settings')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      // If no employee settings exist, this user is likely the main representative (Abgeordneter)
+      if (!hasSettings) {
+        console.log('User is main representative (Abgeordneter) - no employee settings needed');
+        // Just load profile without showing error messages
+        loadProfileOnly();
+        return;
+      }
+      
+      // If settings exist, this is an actual employee - load full employee data
+      loadEmployeeData();
+    };
+    
+    const loadProfileOnly = async () => {
+      try {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url")
+          .eq("user_id", user.id)
+          .single();
+        
+        setSelfProfile(profileData as Profile || null);
+        console.log('Loaded profile for main representative:', profileData);
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    };
+    
+    const loadEmployeeData = async () => {
       setLoading(true);
       try {
         const [settingsRes, profileRes, leavesRes] = await Promise.all([
@@ -413,7 +457,8 @@ export function EmployeesView() {
         setLoading(false);
       }
     };
-    loadSelf();
+    
+    checkEmployeeStatus();
   }, [user, isAdmin, toast]);
 
   // Berechne Arbeitstage zwischen zwei Daten (exklusive Wochenenden)
