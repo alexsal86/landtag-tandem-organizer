@@ -5,9 +5,14 @@ Echter Parser – Iteration 1–2:
 - Extrahiert Text, entfernt Kopf/Fuß
 - Segmentiert Reden mittels Regex
 - Erkennt rudimentäre Agenda Items
-- Schreibt JSON nach data/<session-number or 'unknown'>.json
+- Schreibt JSON nach data/<sprechender Name>.json
+Dateinamensschema (Priorität):
+  session_<legislativePeriod>_<sessionNumber>_<date>.json
+  session_<sessionNumber>_<date>.json
+  session_<sessionNumber>.json
+  session_unknown_<hash>.json
 """
-import argparse, json, os, sys, datetime
+import argparse, json, os, sys, datetime, hashlib
 from pathlib import Path
 
 from parser_core.downloader import download_pdf
@@ -18,6 +23,7 @@ from parser_core.agenda import extract_agenda, link_agenda
 from parser_core.metadata import parse_session_info
 from parser_core.schema_def import validate_payload
 
+
 def parse_args():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list-file")
@@ -25,7 +31,10 @@ def parse_args():
     ap.add_argument("--schema-validate", action="store_true")
     ap.add_argument("--log-level", default="INFO")
     ap.add_argument("--force-download", action="store_true")
+    ap.add_argument("--skip-existing", action="store_true",
+                    help="Falls Zieldatei schon existiert und gleiches PDF verarbeitet wurde, überspringen (TODO Hash-Prüfung).")
     return ap.parse_args()
+
 
 def gather_urls(args):
     if args.single_url:
@@ -33,11 +42,30 @@ def gather_urls(args):
     if args.list_file and os.path.isfile(args.list_file):
         urls = []
         for line in Path(args.list_file).read_text(encoding="utf-8").splitlines():
-            line=line.strip()
+            line = line.strip()
             if line and not line.startswith("#"):
                 urls.append(line)
-        return urls
+        if urls:
+            return urls
     raise SystemExit("Keine URL angegeben (--single-url oder --list-file).")
+
+
+def build_session_filename(payload: dict) -> str:
+    sess = payload.get("session", {})
+    lp = sess.get("legislative_period")
+    num = sess.get("number")
+    date = sess.get("date")  # ISO (YYYY-MM-DD) oder None
+    if lp and num and date:
+        return f"session_{lp}_{num}_{date}.json"
+    if num and date:
+        return f"session_{num}_{date}.json"
+    if num:
+        return f"session_{num}.json"
+    # Fallback mit stabiler, kurzer Hash-ID basierend auf URL
+    url = (sess.get("source_pdf_url") or "").encode("utf-8")
+    short = hashlib.sha256(url).hexdigest()[:8] if url else "na"
+    return f"session_unknown_{short}.json"
+
 
 def process_pdf(url: str, force_download: bool):
     pdf_path = download_pdf(url, force=force_download)
@@ -76,6 +104,7 @@ def process_pdf(url: str, force_download: bool):
     }
     return payload
 
+
 def main():
     args = parse_args()
     urls = gather_urls(args)
@@ -92,19 +121,36 @@ def main():
             except Exception as e:
                 print(f"[WARN] Schema-Validierung fehlgeschlagen: {e}")
         all_results.append(payload)
-        session_num = payload["session"]["number"] or "unknown"
-        out_file = out_dir / f"session_{session_num}.json"
+
+        filename = build_session_filename(payload)
+        out_file = out_dir / filename
+
+        # (Optional zukünftige Logik: wenn --skip-existing und out_file existiert + Hash gleich -> continue)
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
         print(f"[INFO] geschrieben: {out_file}")
 
-    # Optional: zusätzlich eine Sammeldatei
     if len(all_results) > 1:
-        combined = out_dir / "sessions_index.json"
-        with open(combined, "w", encoding="utf-8") as f:
-            json.dump({"sessions": [r["session"] for r in all_results]}, f, ensure_ascii=False, indent=2)
-        print(f"[INFO] Index aktualisiert: {combined}")
+        index_path = out_dir / "sessions_index.json"
+        index = {
+            "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
+            "sessions": [
+                {
+                    "legislative_period": r["session"]["legislative_period"],
+                    "number": r["session"]["number"],
+                    "date": r["session"]["date"],
+                    "file": build_session_filename(r),
+                    "speeches": r["stats"]["speeches"],
+                    "pages": r["stats"]["pages"],
+                    "source_pdf_url": r["session"]["source_pdf_url"]
+                } for r in all_results
+            ]
+        }
+        with open(index_path, "w", encoding="utf-8") as f:
+            json.dump(index, f, ensure_ascii=False, indent=2)
+        print(f"[INFO] Index aktualisiert: {index_path}")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
