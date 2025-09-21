@@ -1,3 +1,5 @@
 # Eine URL pro Zeile (Kommentare mit #)
 https://www.landtag-bw.de/resource/blob/585716/eb33e3ba4bd8e8632e29d100dadf6695/17_0129_24072025.pdf
+https://www.landtag-bw.de/files/live/sites/LTBW/files/dokumente/WP17/Drucksachen/9000/17_9111.pdf
+https://www.landtag-bw.de/files/live/sites/LTBW/files/dokumente/WP17/Drucksachen/9000/17_9410.pdf
 # Weitere zukünftige Sitzungen können hier ergänzt werden.
