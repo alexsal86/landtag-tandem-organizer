@@ -196,7 +196,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           original_filename: fileData.file.name,
           file_path: filePath,
           file_size: fileData.file.size,
-          processing_status: 'analyzing',
+          processing_status: 'processing',
           raw_text: parsedData?.raw_text?.slice(0, 50000), // Truncate for storage
           ...protocolMetadata
         })
