@@ -1,4 +1,4 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { NavigationBadge } from "./NavigationBadge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
@@ -90,6 +90,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
     { id: "wahlkreise", label: "Wahlkreise", icon: MapPin },
     { id: "documents", label: "Dokumente", icon: FileText },
+    ...(isAdmin ? [{ id: "drucksachen", label: "Drucksachen", icon: Archive }] : []),
     { id: "knowledge", label: "Wissen", icon: Database },
     { id: "settings", label: "Einstellungen", icon: Settings },
     { id: "time", label: "Zeiterfassung", icon: Clock, adminOnly: false },

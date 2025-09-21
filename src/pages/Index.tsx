@@ -19,6 +19,7 @@ import { EmployeesView } from "@/components/EmployeesView";
 import TimeTrackingView from "@/components/TimeTrackingView";
 import Administration from "@/pages/Administration";
 import { DecisionOverview } from "@/components/task-decisions/DecisionOverview";
+import { DrucksachenView } from "@/components/DrucksachenView";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -138,6 +139,9 @@ const Index = () => {
       case "administration":
         console.log('Rendering Administration');
         return <Administration />;
+      case "drucksachen":
+        console.log('Rendering DrucksachenView');
+        return <DrucksachenView />;
       default:
         console.log('Rendering default Dashboard');
         return <Dashboard />;

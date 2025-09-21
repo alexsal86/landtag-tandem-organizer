@@ -3559,6 +3559,60 @@ export type Database = {
           },
         ]
       }
+      parliament_protocols: {
+        Row: {
+          created_at: string
+          file_path: string
+          file_size: number | null
+          id: string
+          legislature_period: string
+          original_filename: string
+          processing_error_message: string | null
+          processing_status: string
+          protocol_date: string
+          raw_text: string | null
+          session_number: string
+          structured_data: Json | null
+          tenant_id: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          legislature_period: string
+          original_filename: string
+          processing_error_message?: string | null
+          processing_status?: string
+          protocol_date: string
+          raw_text?: string | null
+          session_number: string
+          structured_data?: Json | null
+          tenant_id: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          legislature_period?: string
+          original_filename?: string
+          processing_error_message?: string | null
+          processing_status?: string
+          protocol_date?: string
+          raw_text?: string | null
+          session_number?: string
+          structured_data?: Json | null
+          tenant_id?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       party_associations: {
         Row: {
           address_city: string | null
@@ -4073,6 +4127,151 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocol_agenda_items: {
+        Row: {
+          agenda_number: string
+          created_at: string
+          description: string | null
+          end_time: string | null
+          id: string
+          item_type: string | null
+          page_number: number | null
+          protocol_id: string
+          start_time: string | null
+          title: string
+        }
+        Insert: {
+          agenda_number: string
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          item_type?: string | null
+          page_number?: number | null
+          protocol_id: string
+          start_time?: string | null
+          title: string
+        }
+        Update: {
+          agenda_number?: string
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          item_type?: string | null
+          page_number?: number | null
+          protocol_id?: string
+          start_time?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocol_agenda_items_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "parliament_protocols"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocol_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          page_number: number | null
+          protocol_id: string
+          session_type: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          page_number?: number | null
+          protocol_id: string
+          session_type: string
+          timestamp: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          page_number?: number | null
+          protocol_id?: string
+          session_type?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocol_sessions_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "parliament_protocols"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocol_speeches: {
+        Row: {
+          agenda_item_id: string | null
+          created_at: string
+          end_time: string | null
+          id: string
+          page_number: number | null
+          protocol_id: string
+          speaker_name: string
+          speaker_party: string | null
+          speaker_role: string | null
+          speech_content: string
+          speech_type: string | null
+          start_time: string | null
+        }
+        Insert: {
+          agenda_item_id?: string | null
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          page_number?: number | null
+          protocol_id: string
+          speaker_name: string
+          speaker_party?: string | null
+          speaker_role?: string | null
+          speech_content: string
+          speech_type?: string | null
+          start_time?: string | null
+        }
+        Update: {
+          agenda_item_id?: string | null
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          page_number?: number | null
+          protocol_id?: string
+          speaker_name?: string
+          speaker_party?: string | null
+          speaker_role?: string | null
+          speech_content?: string
+          speech_type?: string | null
+          start_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocol_speeches_agenda_item_id_fkey"
+            columns: ["agenda_item_id"]
+            isOneToOne: false
+            referencedRelation: "protocol_agenda_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocol_speeches_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "parliament_protocols"
             referencedColumns: ["id"]
           },
         ]
