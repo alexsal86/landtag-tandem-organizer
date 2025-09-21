@@ -3,28 +3,18 @@ requests==2.32.3
 
 # PDF Parsing (Text + Layout)
 pdfplumber==0.11.0
-# (Alternativ oder zusätzlich:)
-# PyPDF2==3.0.1
+# PyPDF2==3.0.1  # optional
 
 # JSON Schema Validierung
 jsonschema==4.23.0
-
-# Datums-/Zeitverarbeitung
 python-dateutil==2.9.0.post0
 
-# HTML Parsing (falls Metadaten-Seiten oder Extraktion aus HTML nötig)
 beautifulsoup4==4.12.3
 lxml==5.2.2
-
-# Fortschrittsbalken (optional)
 tqdm==4.66.5
-
-# Besseres Logging / farbige Ausgabe (optional)
 rich==13.7.1
-
-# CLI-Komfort (falls dein Skript erweitertes Argument-Parsing hat)
 click==8.1.7
 
-# Optional: Weitere Tools (auskommentiert lassen bis benötigt)
-# pydantic==2.9.2
-# PyYAML==6.0.2
+# ---- Test / Dev ----
+pytest==8.3.3
+# pytest-cov==5.0.0    # optional für Coverage
