@@ -62,65 +62,64 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
     try {
       // Update status to uploading
       setUploadFiles(prev => prev.map((f, i) => 
-        i === index ? { ...f, status: 'uploading', progress: 0 } : f
+        i === index ? { ...f, status: 'uploading', progress: 25 } : f
       ));
 
-      // Create unique filename
+      // Step 1: Parse PDF locally FIRST for immediate feedback
+      setUploadFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, status: 'processing', progress: 50 } : f
+      ));
+      
+      let parsedData = null;
+      let pdfMetadata = null;
+      try {
+        console.log('Starting local PDF analysis...');
+        const pdfData = await parsePDFFile(fileData.file);
+        const structuredData = analyzeProtocolStructure(pdfData.text);
+        parsedData = {
+          raw_text: pdfData.text,
+          agendaItems: structuredData.agendaItems,
+          speeches: structuredData.speeches,
+          sessions: structuredData.sessions
+        };
+        pdfMetadata = pdfData.metadata;
+        console.log('Local PDF analysis completed:', {
+          agendaItems: structuredData.agendaItems.length,
+          speeches: structuredData.speeches.length,
+          sessions: structuredData.sessions.length,
+          textLength: pdfData.text.length
+        });
+        
+        // Show preview to user
+        toast.success(`PDF analysiert: ${structuredData.agendaItems.length} Tagesordnungspunkte, ${structuredData.speeches.length} Reden gefunden`);
+      } catch (parseError) {
+        console.error('Local PDF parsing failed:', parseError);
+        toast.error(`PDF-Analyse fehlgeschlagen: ${parseError.message}`);
+        throw parseError;
+      }
+
+      // Step 2: Upload file to storage
+      setUploadFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, status: 'uploading', progress: 75 } : f
+      ));
+
       const timestamp = new Date().toISOString().slice(0, 10);
       const fileName = `${timestamp}-${fileData.file.name}`;
       const filePath = `${currentTenant.id}/${fileName}`;
 
-      // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('parliament-protocols')
         .upload(filePath, fileData.file);
 
       if (uploadError) throw uploadError;
 
-      // Parse PDF locally for immediate feedback
-      setUploadFiles(prev => prev.map((f, i) => 
-        i === index ? { ...f, status: 'processing', progress: 100 } : f
-      ));
-      
-      let parsedData = null;
-      try {
-        const pdfData = await parsePDFFile(fileData.file);
-        const structuredData = analyzeProtocolStructure(pdfData.text);
-        parsedData = structuredData;
-        console.log('Local PDF analysis completed:', structuredData);
-      } catch (parseError) {
-        console.warn('Local PDF parsing failed:', parseError);
-      }
-
-      // Extract metadata from filename (if follows convention)
-      const extractMetadata = (filename: string) => {
-        // Try to extract session info from filename like "17_0129_24072025.pdf"
-        const match = filename.match(/(\d+)_(\d+)_(\d{8})\.pdf$/);
-        if (match) {
-          const [, legislature, session, dateStr] = match;
-          const year = dateStr.slice(4, 8);
-          const month = dateStr.slice(2, 4);
-          const day = dateStr.slice(0, 2);
-          const protocolDate = `${year}-${month}-${day}`;
-          
-          return {
-            legislature_period: legislature,
-            session_number: session,
-            protocol_date: protocolDate
-          };
-        }
-        
-        // Fallback to current date
-        return {
-          legislature_period: '17',
-          session_number: '0',
-          protocol_date: new Date().toISOString().split('T')[0]
-        };
+      // Step 3: Create protocol record with parsed metadata
+      const protocolMetadata = {
+        legislature_period: pdfMetadata?.legislature || '17',
+        session_number: pdfMetadata?.sessionNumber || '0',
+        protocol_date: pdfMetadata?.date || new Date().toISOString().split('T')[0]
       };
 
-      const metadata = extractMetadata(fileData.file.name);
-
-      // Create protocol record in database
       const { data: protocolData, error: dbError } = await supabase
         .from('parliament_protocols')
         .insert({
@@ -129,34 +128,45 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           original_filename: fileData.file.name,
           file_path: filePath,
           file_size: fileData.file.size,
-          processing_status: 'uploaded',
-          ...metadata
+          processing_status: 'analyzing',
+          raw_text: parsedData?.raw_text?.slice(0, 50000), // Truncate for storage
+          ...protocolMetadata
         })
         .select()
         .single();
 
       if (dbError) throw dbError;
 
-      // Update status to completed
+      // Step 4: Send structured data to edge function for database insertion
       setUploadFiles(prev => prev.map((f, i) => 
-        i === index ? { ...f, status: 'completed', protocolId: protocolData.id } : f
+        i === index ? { ...f, status: 'processing', progress: 90 } : f
       ));
 
-      // Trigger analysis (would call edge function here)
       try {
         const { data: analysisResult, error: analysisError } = await supabase.functions.invoke('analyze-parliament-protocol', {
-          body: { protocolId: protocolData.id }
+          body: { 
+            protocolId: protocolData.id,
+            structuredData: parsedData // Send the already analyzed data
+          }
         });
         
         if (analysisError) {
-          console.warn('Protocol analysis error:', analysisError);
-          // Still mark as completed, just without detailed analysis
+          console.warn('Database insertion error:', analysisError);
+          // Still mark as completed with warning
+          toast.warning('PDF hochgeladen, aber Datenbankfehler bei der Analyse');
         } else {
-          console.log('Analysis completed:', analysisResult);
+          console.log('Database insertion completed:', analysisResult);
+          toast.success('PDF erfolgreich analysiert und gespeichert');
         }
       } catch (error) {
-        console.warn('Protocol analysis function not available:', error);
+        console.warn('Analysis function error:', error);
+        toast.warning('PDF hochgeladen, aber Analyse-Service nicht verfügbar');
       }
+
+      // Update status to completed
+      setUploadFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, status: 'completed', protocolId: protocolData.id, progress: 100 } : f
+      ));
 
       onUploadSuccess(protocolData);
       

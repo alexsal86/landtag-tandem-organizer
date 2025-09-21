@@ -52,13 +52,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { protocolId } = await req.json();
+    const { protocolId, structuredData } = await req.json();
 
     if (!protocolId) {
       throw new Error('Protocol ID is required');
     }
 
-    console.log(`Starting analysis for protocol: ${protocolId}`);
+    console.log(`Starting database insertion for protocol: ${protocolId}`);
 
     // Update status to processing
     await supabaseClient
@@ -69,43 +69,64 @@ serve(async (req) => {
       })
       .eq('id', protocolId);
 
-    // Get protocol record
-    const { data: protocol, error: protocolError } = await supabaseClient
-      .from('parliament_protocols')
-      .select('*')
-      .eq('id', protocolId)
-      .single();
+    let finalStructuredData;
 
-    if (protocolError || !protocol) {
-      throw new Error(`Protocol not found: ${protocolError?.message}`);
+    if (structuredData) {
+      // Use data provided by frontend (frontend-first approach)
+      console.log('Using structured data from frontend:', {
+        agendaItems: structuredData.agendaItems?.length || 0,
+        speeches: structuredData.speeches?.length || 0,
+        sessions: structuredData.sessions?.length || 0
+      });
+
+      finalStructuredData = {
+        agenda_items: structuredData.agendaItems || [],
+        speeches: structuredData.speeches || [],
+        sessions: structuredData.sessions || []
+      };
+    } else {
+      // Fallback: Server-side analysis (legacy approach)
+      console.log('No structured data provided, performing server-side analysis...');
+      
+      const { data: protocol, error: protocolError } = await supabaseClient
+        .from('parliament_protocols')
+        .select('*')
+        .eq('id', protocolId)
+        .single();
+
+      if (protocolError || !protocol) {
+        throw new Error(`Protocol not found: ${protocolError?.message}`);
+      }
+
+      const { data: fileData, error: downloadError } = await supabaseClient.storage
+        .from('parliament-protocols')
+        .download(protocol.file_path);
+
+      if (downloadError || !fileData) {
+        throw new Error(`Failed to download PDF: ${downloadError?.message}`);
+      }
+
+      const pdfText = await extractTextFromPDF(fileData);
+      finalStructuredData = parseParliamentProtocol(pdfText);
+
+      // Update protocol with raw text
+      await supabaseClient
+        .from('parliament_protocols')
+        .update({
+          raw_text: pdfText.slice(0, 50000),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', protocolId);
     }
-
-    // Download PDF from storage
-    const { data: fileData, error: downloadError } = await supabaseClient.storage
-      .from('parliament-protocols')
-      .download(protocol.file_path);
-
-    if (downloadError || !fileData) {
-      throw new Error(`Failed to download PDF: ${downloadError?.message}`);
-    }
-
-    // Convert PDF to text (simplified - in reality would use PDF.js or similar)
-    const pdfText = await extractTextFromPDF(fileData);
-    
-    console.log(`Extracted ${pdfText.length} characters from PDF`);
-
-    // Parse the text using rule-based patterns
-    const structuredData = parseParliamentProtocol(pdfText);
 
     // Save structured data to database
-    await saveStructuredData(supabaseClient, protocolId, structuredData);
+    await saveStructuredData(supabaseClient, protocolId, finalStructuredData);
 
-    // Update protocol with raw text and completion status
+    // Update protocol with completion status
     await supabaseClient
       .from('parliament_protocols')
       .update({
-        raw_text: pdfText.slice(0, 50000), // Truncate for storage
-        structured_data: structuredData,
+        structured_data: finalStructuredData,
         processing_status: 'completed',
         updated_at: new Date().toISOString()
       })
@@ -118,10 +139,9 @@ serve(async (req) => {
         success: true, 
         protocolId,
         stats: {
-          textLength: pdfText.length,
-          agendaItems: structuredData.agenda_items.length,
-          speeches: structuredData.speeches.length,
-          sessions: structuredData.sessions.length
+          agendaItems: finalStructuredData.agenda_items.length,
+          speeches: finalStructuredData.speeches.length,
+          sessions: finalStructuredData.sessions.length
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -162,53 +182,41 @@ serve(async (req) => {
   }
 });
 
-// Simplified PDF text extraction (would need proper PDF.js implementation)
+// Fallback PDF text extraction for server-side analysis
 async function extractTextFromPDF(pdfData: Blob): Promise<string> {
-  // This is a placeholder - in reality you'd use PDF.js or similar
-  // For now, return mock text based on the uploaded filename pattern
-  const mockText = `
-Landtag von Baden-Württemberg
-17. Wahlperiode
-
-129. Sitzung am 24. Juli 2025, 09:00 Uhr
-
-Tagesordnung:
-
-1. Fragestunde
-   - Aktuelle Stunde zur Verkehrspolitik
-   
-2. Antrag der Fraktion der CDU
-   Verbesserung der Infrastruktur in ländlichen Gebieten
-   
-3. Regierungserklärung des Ministerpräsidenten
-   Zur aktuellen Landespolitik
-
-Sitzungsbeginn: 09:00 Uhr
-
-Präsident Dr. Muhterem Aras: Guten Morgen, liebe Kolleginnen und Kollegen! Ich eröffne die 129. Sitzung des Landtags von Baden-Württemberg.
-
-09:05 Uhr
-
-Abg. Andreas Schwarz (GRÜNE): Herr Präsident, meine Damen und Herren! Zur aktuellen Verkehrspolitik möchte ich folgendes anmerken...
-
-(Beifall bei den GRÜNEN)
-
-09:15 Uhr
-
-Abg. Dr. Christina Baum (AfD): Sehr geehrter Herr Präsident! Die Verkehrspolitik der Landesregierung ist gescheitert...
-
-(Zuruf von der SPD: Das stimmt nicht!)
-
-09:25 Uhr - Unterbrechung der Sitzung
-
-10:00 Uhr - Fortsetzung der Sitzung
-
-Ministerpräsident Winfried Kretschmann: Herr Präsident, liebe Kolleginnen und Kollegen! Zur aktuellen Lage in unserem Land möchte ich folgende Erklärung abgeben...
-
-12:00 Uhr - Ende der Sitzung
-`;
-
-  return mockText;
+  // This is a simplified fallback implementation
+  // In a production environment, you would use a proper PDF parsing library
+  try {
+    // Try to read as text if it's a simple PDF
+    const arrayBuffer = await pdfData.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    // Basic text extraction attempt
+    let text = '';
+    for (let i = 0; i < uint8Array.length; i++) {
+      const char = String.fromCharCode(uint8Array[i]);
+      if (char.match(/[a-zA-ZäöüÄÖÜß0-9\s.,;:!?()\-]/)) {
+        text += char;
+      }
+    }
+    
+    // Clean up the text
+    text = text
+      .replace(/\s+/g, ' ')
+      .replace(/(.)\1{3,}/g, '$1')  // Remove repeated characters
+      .trim();
+    
+    if (text.length > 100) {
+      console.log(`Extracted ${text.length} characters using fallback method`);
+      return text;
+    }
+  } catch (error) {
+    console.warn('Fallback text extraction failed:', error);
+  }
+  
+  // Ultimate fallback - return empty text
+  console.warn('PDF text extraction failed completely - frontend analysis should have provided the data');
+  return '';
 }
 
 // Rule-based parsing of parliament protocol text
