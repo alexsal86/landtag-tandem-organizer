@@ -55,17 +55,84 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
     setUploadFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Check for duplicate files (storage + database)
+  const checkForDuplicates = async (fileName: string) => {
+    if (!currentTenant) return { exists: false };
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const generatedFileName = `${timestamp}-${fileName}`;
+    const filePath = `${currentTenant.id}/${generatedFileName}`;
+
+    // Check storage
+    const { data: storageData } = await supabase.storage
+      .from('parliament-protocols')
+      .list(currentTenant.id, { search: generatedFileName });
+
+    const storageExists = storageData?.some(file => file.name === generatedFileName);
+
+    // Check database
+    const { data: dbData } = await supabase
+      .from('parliament_protocols')
+      .select('id, original_filename')
+      .eq('tenant_id', currentTenant.id)
+      .eq('original_filename', fileName);
+
+    const dbExists = dbData && dbData.length > 0;
+
+    return { 
+      exists: storageExists || dbExists, 
+      storageExists, 
+      dbExists, 
+      filePath,
+      orphaned: storageExists && !dbExists 
+    };
+  };
+
+  // Clean up orphaned files
+  const cleanupOrphanedFile = async (filePath: string) => {
+    try {
+      await supabase.storage
+        .from('parliament-protocols')
+        .remove([filePath]);
+      console.log('Cleaned up orphaned file:', filePath);
+      return true;
+    } catch (error) {
+      console.error('Failed to cleanup orphaned file:', error);
+      return false;
+    }
+  };
+
   // Upload a single file
   const uploadFile = async (fileData: UploadFile, index: number) => {
     if (!currentTenant || !user) return;
 
+    let uploadedFilePath: string | null = null;
+    let protocolId: string | null = null;
+
     try {
+      // Step 1: Check for duplicates
+      const duplicateCheck = await checkForDuplicates(fileData.file.name);
+      
+      if (duplicateCheck.exists) {
+        if (duplicateCheck.orphaned) {
+          // Clean up orphaned file and retry
+          const cleaned = await cleanupOrphanedFile(duplicateCheck.filePath);
+          if (cleaned) {
+            toast.info('Verwaiste Datei bereinigt, Upload wird fortgesetzt...');
+          } else {
+            throw new Error('Datei existiert bereits im Storage (Bereinigung fehlgeschlagen)');
+          }
+        } else {
+          throw new Error('Datei bereits hochgeladen');
+        }
+      }
+
       // Update status to uploading
       setUploadFiles(prev => prev.map((f, i) => 
         i === index ? { ...f, status: 'uploading', progress: 25 } : f
       ));
 
-      // Step 1: Parse PDF locally FIRST for immediate feedback
+      // Step 2: Parse PDF locally FIRST for immediate feedback
       setUploadFiles(prev => prev.map((f, i) => 
         i === index ? { ...f, status: 'processing', progress: 50 } : f
       ));
@@ -98,7 +165,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         throw parseError;
       }
 
-      // Step 2: Upload file to storage
+      // Step 3: Upload file to storage
       setUploadFiles(prev => prev.map((f, i) => 
         i === index ? { ...f, status: 'uploading', progress: 75 } : f
       ));
@@ -106,6 +173,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       const timestamp = new Date().toISOString().slice(0, 10);
       const fileName = `${timestamp}-${fileData.file.name}`;
       const filePath = `${currentTenant.id}/${fileName}`;
+      uploadedFilePath = filePath; // Track for cleanup
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('parliament-protocols')
@@ -113,7 +181,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
 
       if (uploadError) throw uploadError;
 
-      // Step 3: Create protocol record with parsed metadata
+      // Step 4: Create protocol record with parsed metadata
       const protocolMetadata = {
         legislature_period: pdfMetadata?.legislature || '17',
         session_number: pdfMetadata?.sessionNumber || '0',
@@ -135,9 +203,14 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         .select()
         .single();
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database insertion failed:', dbError);
+        throw new Error(`Datenbankfehler: ${dbError.message}`);
+      }
 
-      // Step 4: Send structured data to edge function for database insertion
+      protocolId = protocolData.id;
+
+      // Step 5: Send structured data to edge function for database insertion
       setUploadFiles(prev => prev.map((f, i) => 
         i === index ? { ...f, status: 'processing', progress: 90 } : f
       ));
@@ -169,9 +242,24 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       ));
 
       onUploadSuccess(protocolData);
+      onProtocolsRefresh(); // Refresh the list
       
     } catch (error) {
       console.error('Upload error:', error);
+      
+      // Cleanup on error: remove uploaded file if database insert failed
+      if (uploadedFilePath && !protocolId) {
+        console.log('Cleaning up uploaded file due to database error...');
+        try {
+          await supabase.storage
+            .from('parliament-protocols')
+            .remove([uploadedFilePath]);
+          console.log('Successfully cleaned up orphaned file');
+        } catch (cleanupError) {
+          console.error('Failed to cleanup file after error:', cleanupError);
+        }
+      }
+
       setUploadFiles(prev => prev.map((f, i) => 
         i === index ? { 
           ...f, 
@@ -225,14 +313,64 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
     }
   };
 
+  // Clean up orphaned files function for admin use
+  const cleanupOrphanedFiles = async () => {
+    if (!currentTenant) return;
+
+    try {
+      // Get all files in storage
+      const { data: storageFiles } = await supabase.storage
+        .from('parliament-protocols')
+        .list(currentTenant.id);
+
+      if (!storageFiles) return;
+
+      // Get all database records
+      const { data: dbRecords } = await supabase
+        .from('parliament_protocols')
+        .select('file_path')
+        .eq('tenant_id', currentTenant.id);
+
+      const dbFilePaths = new Set(dbRecords?.map(r => r.file_path.split('/').pop()) || []);
+      
+      const orphanedFiles = storageFiles.filter(file => !dbFilePaths.has(file.name));
+
+      if (orphanedFiles.length > 0) {
+        const filesToRemove = orphanedFiles.map(file => `${currentTenant.id}/${file.name}`);
+        await supabase.storage
+          .from('parliament-protocols')
+          .remove(filesToRemove);
+        
+        toast.success(`${orphanedFiles.length} verwaiste Dateien bereinigt`);
+      } else {
+        toast.info('Keine verwaisten Dateien gefunden');
+      }
+    } catch (error) {
+      console.error('Cleanup error:', error);
+      toast.error('Fehler bei der Bereinigung');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Protokoll hochladen</CardTitle>
-          <CardDescription>
-            Laden Sie PDF-Protokolle des Landtags Baden-Württemberg zur Analyse hoch
-          </CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>Protokoll hochladen</CardTitle>
+              <CardDescription>
+                Laden Sie PDF-Protokolle des Landtags Baden-Württemberg zur Analyse hoch
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={cleanupOrphanedFiles}
+              className="text-xs"
+            >
+              Bereinigung
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Drag and Drop Area */}

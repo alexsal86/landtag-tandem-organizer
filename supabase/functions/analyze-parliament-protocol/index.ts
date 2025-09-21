@@ -151,9 +151,17 @@ serve(async (req) => {
     console.error('Analysis error:', error);
 
     // Update protocol with error status if we have the ID
+    let protocolIdFromError = null;
     try {
-      const { protocolId } = await req.json();
-      if (protocolId) {
+      // Try to get protocolId from the original request
+      const requestBody = await req.clone().json();
+      protocolIdFromError = requestBody.protocolId;
+    } catch (parseError) {
+      console.error('Could not parse request body for error handling:', parseError);
+    }
+
+    if (protocolIdFromError) {
+      try {
         const supabaseClient = createClient(
           Deno.env.get('SUPABASE_URL') ?? '',
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -166,14 +174,20 @@ serve(async (req) => {
             processing_error_message: error.message,
             updated_at: new Date().toISOString()
           })
-          .eq('id', protocolId);
+          .eq('id', protocolIdFromError);
+          
+        console.log(`Updated protocol ${protocolIdFromError} with error status`);
+      } catch (updateError) {
+        console.error('Failed to update error status:', updateError);
       }
-    } catch (updateError) {
-      console.error('Failed to update error status:', updateError);
     }
 
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        protocolId: protocolIdFromError,
+        timestamp: new Date().toISOString()
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
