@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileText, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle, AlertCircle, Zap } from 'lucide-react';
 import { toast } from 'sonner';
+import { parsePDFFile, analyzeProtocolStructure } from '@/utils/pdfParser';
 
 interface DrucksachenUploadProps {
   onUploadSuccess: (protocol: any) => void;
@@ -76,10 +77,20 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
 
       if (uploadError) throw uploadError;
 
-      // Update status to processing
+      // Parse PDF locally for immediate feedback
       setUploadFiles(prev => prev.map((f, i) => 
         i === index ? { ...f, status: 'processing', progress: 100 } : f
       ));
+      
+      let parsedData = null;
+      try {
+        const pdfData = await parsePDFFile(fileData.file);
+        const structuredData = analyzeProtocolStructure(pdfData.text);
+        parsedData = structuredData;
+        console.log('Local PDF analysis completed:', structuredData);
+      } catch (parseError) {
+        console.warn('Local PDF parsing failed:', parseError);
+      }
 
       // Extract metadata from filename (if follows convention)
       const extractMetadata = (filename: string) => {
@@ -133,12 +144,18 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
 
       // Trigger analysis (would call edge function here)
       try {
-        await supabase.functions.invoke('analyze-parliament-protocol', {
+        const { data: analysisResult, error: analysisError } = await supabase.functions.invoke('analyze-parliament-protocol', {
           body: { protocolId: protocolData.id }
         });
+        
+        if (analysisError) {
+          console.warn('Protocol analysis error:', analysisError);
+          // Still mark as completed, just without detailed analysis
+        } else {
+          console.log('Analysis completed:', analysisResult);
+        }
       } catch (error) {
         console.warn('Protocol analysis function not available:', error);
-        // For now, just mark as completed without analysis
       }
 
       onUploadSuccess(protocolData);

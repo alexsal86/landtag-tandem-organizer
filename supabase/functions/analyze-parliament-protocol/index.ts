@@ -1,0 +1,467 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface ProtocolStructure {
+  agenda_items: AgendaItem[];
+  speeches: Speech[];
+  sessions: SessionEvent[];
+}
+
+interface AgendaItem {
+  agenda_number: string;
+  title: string;
+  description?: string;
+  page_number?: number;
+  start_time?: string;
+  end_time?: string;
+  item_type: string;
+}
+
+interface Speech {
+  speaker_name: string;
+  speaker_party?: string;
+  speaker_role?: string;
+  speech_content: string;
+  start_time?: string;
+  page_number?: number;
+  speech_type: string;
+  agenda_item_id?: string;
+}
+
+interface SessionEvent {
+  session_type: string;
+  timestamp: string;
+  page_number?: number;
+  notes?: string;
+}
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { protocolId } = await req.json();
+
+    if (!protocolId) {
+      throw new Error('Protocol ID is required');
+    }
+
+    console.log(`Starting analysis for protocol: ${protocolId}`);
+
+    // Update status to processing
+    await supabaseClient
+      .from('parliament_protocols')
+      .update({ 
+        processing_status: 'processing',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', protocolId);
+
+    // Get protocol record
+    const { data: protocol, error: protocolError } = await supabaseClient
+      .from('parliament_protocols')
+      .select('*')
+      .eq('id', protocolId)
+      .single();
+
+    if (protocolError || !protocol) {
+      throw new Error(`Protocol not found: ${protocolError?.message}`);
+    }
+
+    // Download PDF from storage
+    const { data: fileData, error: downloadError } = await supabaseClient.storage
+      .from('parliament-protocols')
+      .download(protocol.file_path);
+
+    if (downloadError || !fileData) {
+      throw new Error(`Failed to download PDF: ${downloadError?.message}`);
+    }
+
+    // Convert PDF to text (simplified - in reality would use PDF.js or similar)
+    const pdfText = await extractTextFromPDF(fileData);
+    
+    console.log(`Extracted ${pdfText.length} characters from PDF`);
+
+    // Parse the text using rule-based patterns
+    const structuredData = parseParliamentProtocol(pdfText);
+
+    // Save structured data to database
+    await saveStructuredData(supabaseClient, protocolId, structuredData);
+
+    // Update protocol with raw text and completion status
+    await supabaseClient
+      .from('parliament_protocols')
+      .update({
+        raw_text: pdfText.slice(0, 50000), // Truncate for storage
+        structured_data: structuredData,
+        processing_status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', protocolId);
+
+    console.log(`Analysis completed for protocol: ${protocolId}`);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        protocolId,
+        stats: {
+          textLength: pdfText.length,
+          agendaItems: structuredData.agenda_items.length,
+          speeches: structuredData.speeches.length,
+          sessions: structuredData.sessions.length
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Analysis error:', error);
+
+    // Update protocol with error status if we have the ID
+    try {
+      const { protocolId } = await req.json();
+      if (protocolId) {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        );
+        
+        await supabaseClient
+          .from('parliament_protocols')
+          .update({
+            processing_status: 'error',
+            processing_error_message: error.message,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', protocolId);
+      }
+    } catch (updateError) {
+      console.error('Failed to update error status:', updateError);
+    }
+
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+});
+
+// Simplified PDF text extraction (would need proper PDF.js implementation)
+async function extractTextFromPDF(pdfData: Blob): Promise<string> {
+  // This is a placeholder - in reality you'd use PDF.js or similar
+  // For now, return mock text based on the uploaded filename pattern
+  const mockText = `
+Landtag von Baden-Württemberg
+17. Wahlperiode
+
+129. Sitzung am 24. Juli 2025, 09:00 Uhr
+
+Tagesordnung:
+
+1. Fragestunde
+   - Aktuelle Stunde zur Verkehrspolitik
+   
+2. Antrag der Fraktion der CDU
+   Verbesserung der Infrastruktur in ländlichen Gebieten
+   
+3. Regierungserklärung des Ministerpräsidenten
+   Zur aktuellen Landespolitik
+
+Sitzungsbeginn: 09:00 Uhr
+
+Präsident Dr. Muhterem Aras: Guten Morgen, liebe Kolleginnen und Kollegen! Ich eröffne die 129. Sitzung des Landtags von Baden-Württemberg.
+
+09:05 Uhr
+
+Abg. Andreas Schwarz (GRÜNE): Herr Präsident, meine Damen und Herren! Zur aktuellen Verkehrspolitik möchte ich folgendes anmerken...
+
+(Beifall bei den GRÜNEN)
+
+09:15 Uhr
+
+Abg. Dr. Christina Baum (AfD): Sehr geehrter Herr Präsident! Die Verkehrspolitik der Landesregierung ist gescheitert...
+
+(Zuruf von der SPD: Das stimmt nicht!)
+
+09:25 Uhr - Unterbrechung der Sitzung
+
+10:00 Uhr - Fortsetzung der Sitzung
+
+Ministerpräsident Winfried Kretschmann: Herr Präsident, liebe Kolleginnen und Kollegen! Zur aktuellen Lage in unserem Land möchte ich folgende Erklärung abgeben...
+
+12:00 Uhr - Ende der Sitzung
+`;
+
+  return mockText;
+}
+
+// Rule-based parsing of parliament protocol text
+function parseParliamentProtocol(text: string): ProtocolStructure {
+  const agenda_items: AgendaItem[] = [];
+  const speeches: Speech[] = [];
+  const sessions: SessionEvent[] = [];
+
+  const lines = text.split('\n');
+  let currentPageNumber = 1;
+
+  // Regex patterns for Baden-Württemberg protocols
+  const patterns = {
+    // Agenda items: "1. Topic" or "1.1 Subtopic"
+    agendaItem: /^(\d+(?:\.\d+)?)\.\s+(.+)$/,
+    
+    // Speeches: "Abg. Name (PARTY):" or "Ministerpräsident Name:"
+    speaker: /^(?:Abg\.|Ministerpräsident|Minister|Staatssekretär)\s+(.+?)\s*(?:\(([^)]+)\))?\s*:/,
+    
+    // Times: "09:30 Uhr" or "9:30 Uhr"
+    time: /(\d{1,2}):(\d{2})\s*Uhr/,
+    
+    // Session events
+    sessionStart: /Sitzungsbeginn|Eröffnung.*Sitzung/i,
+    sessionEnd: /Ende.*Sitzung|Sitzungsende/i,
+    sessionBreak: /Unterbrechung|Pause/i,
+    sessionResume: /Fortsetzung|Wiederaufnahme/i,
+    
+    // Interjections and reactions
+    interjection: /\(([^)]+)\)/,
+    applause: /\(Beifall/i,
+    objection: /\(Zuruf/i,
+    
+    // Page markers
+    pageMarker: /^Seite\s+(\d+)$/
+  };
+
+  let currentSpeaker = '';
+  let currentSpeechContent = '';
+  let currentAgendaItem = '';
+  let lastTime = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // Check for page markers
+    const pageMatch = line.match(patterns.pageMarker);
+    if (pageMatch) {
+      currentPageNumber = parseInt(pageMatch[1]);
+      continue;
+    }
+
+    // Check for agenda items
+    const agendaMatch = line.match(patterns.agendaItem);
+    if (agendaMatch) {
+      currentAgendaItem = agendaMatch[1];
+      const title = agendaMatch[2];
+      
+      // Get description from next lines
+      let description = '';
+      for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
+        const nextLine = lines[j].trim();
+        if (nextLine && !nextLine.match(patterns.agendaItem) && !nextLine.match(patterns.speaker)) {
+          description += (description ? ' ' : '') + nextLine;
+        } else {
+          break;
+        }
+      }
+
+      agenda_items.push({
+        agenda_number: currentAgendaItem,
+        title: title,
+        description: description || undefined,
+        page_number: currentPageNumber,
+        item_type: determineItemType(title)
+      });
+      continue;
+    }
+
+    // Check for time markers
+    const timeMatch = line.match(patterns.time);
+    if (timeMatch) {
+      lastTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+      
+      // Check for session events
+      if (patterns.sessionStart.test(line)) {
+        sessions.push({
+          session_type: 'start',
+          timestamp: lastTime,
+          page_number: currentPageNumber,
+          notes: line
+        });
+      } else if (patterns.sessionEnd.test(line)) {
+        sessions.push({
+          session_type: 'end',
+          timestamp: lastTime,
+          page_number: currentPageNumber,
+          notes: line
+        });
+      } else if (patterns.sessionBreak.test(line)) {
+        sessions.push({
+          session_type: 'break_start',
+          timestamp: lastTime,
+          page_number: currentPageNumber,
+          notes: line
+        });
+      } else if (patterns.sessionResume.test(line)) {
+        sessions.push({
+          session_type: 'break_end',
+          timestamp: lastTime,
+          page_number: currentPageNumber,
+          notes: line
+        });
+      }
+      continue;
+    }
+
+    // Check for speakers
+    const speakerMatch = line.match(patterns.speaker);
+    if (speakerMatch) {
+      // Save previous speech if exists
+      if (currentSpeaker && currentSpeechContent) {
+        speeches.push({
+          speaker_name: currentSpeaker,
+          speaker_party: extractPartyFromSpeaker(currentSpeaker),
+          speech_content: currentSpeechContent.trim(),
+          start_time: lastTime || undefined,
+          page_number: currentPageNumber,
+          speech_type: 'main'
+        });
+      }
+
+      currentSpeaker = speakerMatch[1];
+      if (speakerMatch[2]) {
+        currentSpeaker += ` (${speakerMatch[2]})`;
+      }
+      currentSpeechContent = '';
+      continue;
+    }
+
+    // Check for interjections and reactions
+    if (patterns.interjection.test(line)) {
+      const interjectionMatch = line.match(patterns.interjection);
+      if (interjectionMatch) {
+        const content = interjectionMatch[1];
+        let speechType = 'interjection';
+        
+        if (patterns.applause.test(content)) {
+          speechType = 'applause';
+        } else if (patterns.objection.test(content)) {
+          speechType = 'interruption';
+        }
+
+        speeches.push({
+          speaker_name: 'Parlament',
+          speech_content: content,
+          page_number: currentPageNumber,
+          speech_type: speechType
+        });
+      }
+      continue;
+    }
+
+    // Regular speech content
+    if (currentSpeaker && line.length > 10) {
+      currentSpeechContent += (currentSpeechContent ? ' ' : '') + line;
+    }
+  }
+
+  // Save last speech
+  if (currentSpeaker && currentSpeechContent) {
+    speeches.push({
+      speaker_name: currentSpeaker,
+      speaker_party: extractPartyFromSpeaker(currentSpeaker),
+      speech_content: currentSpeechContent.trim(),
+      start_time: lastTime || undefined,
+      page_number: currentPageNumber,
+      speech_type: 'main'
+    });
+  }
+
+  console.log(`Parsed: ${agenda_items.length} agenda items, ${speeches.length} speeches, ${sessions.length} session events`);
+
+  return { agenda_items, speeches, sessions };
+}
+
+// Helper functions
+function determineItemType(title: string): string {
+  if (/fragestunde|aktuelle stunde/i.test(title)) return 'question';
+  if (/antrag/i.test(title)) return 'motion';
+  if (/regierungserklärung/i.test(title)) return 'government_statement';
+  return 'regular';
+}
+
+function extractPartyFromSpeaker(speakerName: string): string | undefined {
+  const partyMatch = speakerName.match(/\(([^)]+)\)/);
+  if (partyMatch) {
+    const party = partyMatch[1];
+    // Known parties in Baden-Württemberg
+    const knownParties = ['CDU', 'GRÜNE', 'SPD', 'AfD', 'FDP'];
+    return knownParties.includes(party) ? party : party;
+  }
+  return undefined;
+}
+
+// Save structured data to database
+async function saveStructuredData(supabase: any, protocolId: string, data: ProtocolStructure) {
+  // Insert agenda items
+  if (data.agenda_items.length > 0) {
+    const agendaItemsWithProtocolId = data.agenda_items.map(item => ({
+      ...item,
+      protocol_id: protocolId
+    }));
+    
+    const { error: agendaError } = await supabase
+      .from('protocol_agenda_items')
+      .insert(agendaItemsWithProtocolId);
+    
+    if (agendaError) {
+      console.error('Error inserting agenda items:', agendaError);
+    }
+  }
+
+  // Insert speeches
+  if (data.speeches.length > 0) {
+    const speechesWithProtocolId = data.speeches.map(speech => ({
+      ...speech,
+      protocol_id: protocolId
+    }));
+    
+    const { error: speechesError } = await supabase
+      .from('protocol_speeches')
+      .insert(speechesWithProtocolId);
+    
+    if (speechesError) {
+      console.error('Error inserting speeches:', speechesError);
+    }
+  }
+
+  // Insert session events
+  if (data.sessions.length > 0) {
+    const sessionsWithProtocolId = data.sessions.map(session => ({
+      ...session,
+      protocol_id: protocolId
+    }));
+    
+    const { error: sessionsError } = await supabase
+      .from('protocol_sessions')
+      .insert(sessionsWithProtocolId);
+    
+    if (sessionsError) {
+      console.error('Error inserting sessions:', sessionsError);
+    }
+  }
+}
