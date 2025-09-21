@@ -190,50 +190,102 @@ function extractMetadata(filename: string, text: string, pageCount: number): Pro
   };
 }
 
-// Advanced rule-based text analysis
+// Advanced rule-based text analysis with enhanced debugging and preprocessing
 export function analyzeProtocolStructure(text: string): {
   agendaItems: any[];
   speeches: any[];
   sessions: any[];
 } {
-  console.log('Starting advanced protocol analysis...');
+  console.log('🔍 Starting enhanced protocol analysis...');
+  console.log(`📄 Input text length: ${text.length} characters`);
   
-  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  // Enhanced text preprocessing
+  const preprocessedText = preprocessProtocolText(text);
+  console.log(`✅ Preprocessed text length: ${preprocessedText.length} characters`);
+  
+  // Split into lines with multiple strategies
+  const lines = smartLineSplit(preprocessedText);
+  console.log(`📝 Total lines after splitting: ${lines.length}`);
+  
+  // Debug: Show first 10 lines for pattern analysis
+  console.log('🔍 First 10 lines for debugging:');
+  lines.slice(0, 10).forEach((line, i) => {
+    console.log(`  ${i + 1}: "${line.substring(0, 100)}${line.length > 100 ? '...' : ''}"`);
+  });
   
   const agendaItems: any[] = [];
   const speeches: any[] = [];
   const sessions: any[] = [];
   
-  // Improved patterns for Baden-Württemberg protocols
+  // Enhanced patterns with multiple alternatives and case insensitive matching
   const patterns = {
-    agendaItem: /^(\d+(?:\.\d+)?)\.\s+(.+)$/,
-    speaker: /^(?:Abg\.|Ministerpräsident|Minister|Staatssekretär|Präsident)\s+(.+?)(?:\s*\(([^)]+)\))?\s*:/,
-    time: /(\d{1,2}):(\d{2})\s*Uhr/,
-    sessionEvent: /(Sitzungsbeginn|Sitzungsende|Unterbrechung|Fortsetzung|Pause)/i,
+    // Agenda item patterns - multiple formats
+    agendaItem: [
+      /^(\d+(?:\.\d+)?)\.\s+(.+)$/i,                    // "1. Topic"
+      /^TOP\s+(\d+(?:\.\d+)?)\s*[:\-]?\s*(.+)$/i,       // "TOP 1: Topic" or "TOP 1 - Topic"
+      /^Punkt\s+(\d+(?:\.\d+)?)\s*[:\-]?\s*(.+)$/i,     // "Punkt 1: Topic"
+      /^Tagesordnungspunkt\s+(\d+(?:\.\d+)?)\s*[:\-]?\s*(.+)$/i, // "Tagesordnungspunkt 1:"
+      /^(\d+(?:\.\d+)?)\s*[:\-]\s*(.+)$/i               // "1: Topic" or "1 - Topic"
+    ],
+    
+    // Speaker patterns - enhanced for German parliament
+    speaker: [
+      /^((?:Abg\.|Abgeordnete[rn]?)\s+(?:Dr\.\s+)?[A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)*)\s*(?:\(([^)]+)\))?\s*:/i,
+      /^(Ministerpräsident(?:in)?(?:\s+(?:Dr\.\s+)?[A-ZÄÖÜ][a-zäöüß]+)*)\s*(?:\(([^)]+)\))?\s*:/i,
+      /^(Minister(?:in)?(?:\s+(?:Dr\.\s+)?[A-ZÄÖÜ][a-zäöüß]+)*)\s*(?:\(([^)]+)\))?\s*:/i,
+      /^(Staatssekretär(?:in)?(?:\s+(?:Dr\.\s+)?[A-ZÄÖÜ][a-zäöüß]+)*)\s*(?:\(([^)]+)\))?\s*:/i,
+      /^(Präsident(?:in)?(?:\s+(?:Dr\.\s+)?[A-ZÄÖÜ][a-zäöüß]+)*)\s*:/i,
+      /^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)*)\s*\(([A-Z]+(?:\s*\/\s*[A-Z]+)*)\)\s*:/i  // "Name (PARTY):"
+    ],
+    
+    // Time patterns
+    time: /(\d{1,2}):(\d{2})\s*Uhr/gi,
+    
+    // Session events
+    sessionEvent: /(Sitzungsbeginn|Sitzungsende|Beginn|Schluss|Unterbrechung|Fortsetzung|Pause)/gi,
+    
+    // Interjections and reactions
     interjection: /^\(([^)]+)\)$/,
-    applause: /Beifall/i,
-    objection: /Zuruf|Widerspruch/i
+    applause: /(Beifall|Applaus|Klatschen)/gi,
+    objection: /(Zuruf|Widerspruch|Protest|Unruhe)/gi
   };
   
   let currentAgendaNumber = '';
   let currentSpeaker = '';
   let currentSpeechContent = '';
   let lastTime = '';
+  let debugMatches = { agenda: 0, speakers: 0, times: 0, sessions: 0 };
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     
-    // Check for agenda items
-    const agendaMatch = line.match(patterns.agendaItem);
+    // Check for agenda items with multiple patterns
+    let agendaMatch: RegExpMatchArray | null = null;
+    let matchedPattern = -1;
+    
+    for (let p = 0; p < patterns.agendaItem.length; p++) {
+      agendaMatch = line.match(patterns.agendaItem[p]);
+      if (agendaMatch) {
+        matchedPattern = p;
+        debugMatches.agenda++;
+        break;
+      }
+    }
+    
     if (agendaMatch) {
       currentAgendaNumber = agendaMatch[1];
       const title = agendaMatch[2];
+      
+      console.log(`📋 Found agenda item (pattern ${matchedPattern}): "${currentAgendaNumber}. ${title}"`);
       
       // Look ahead for description
       let description = '';
       for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
         const nextLine = lines[j];
-        if (!nextLine.match(patterns.agendaItem) && !nextLine.match(patterns.speaker) && nextLine.length > 20) {
+        if (!isAgendaLine(nextLine, patterns.agendaItem) && 
+            !isSpeakerLine(nextLine, patterns.speaker) && 
+            nextLine.length > 20 && 
+            !nextLine.match(/^\d+$/)) {  // Skip page numbers
           description += (description ? ' ' : '') + nextLine;
         } else {
           break;
@@ -242,8 +294,8 @@ export function analyzeProtocolStructure(text: string): {
       
       agendaItems.push({
         agenda_number: currentAgendaNumber,
-        title: title.replace(/^-\s*/, ''), // Remove leading dash
-        description: description || undefined,
+        title: title.replace(/^-\s*/, '').trim(),
+        description: description.trim() || undefined,
         item_type: determineItemType(title)
       });
       
@@ -251,30 +303,53 @@ export function analyzeProtocolStructure(text: string): {
     }
     
     // Check for time markers and session events
-    const timeMatch = line.match(patterns.time);
-    if (timeMatch) {
+    const timeMatches = Array.from(line.matchAll(patterns.time));
+    if (timeMatches.length > 0) {
+      debugMatches.times++;
+      const timeMatch = timeMatches[0];
       lastTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
       
-      const sessionMatch = line.match(patterns.sessionEvent);
-      if (sessionMatch) {
+      console.log(`🕐 Found time marker: ${lastTime} in line "${line}"`);
+      
+      const sessionMatches = Array.from(line.matchAll(patterns.sessionEvent));
+      if (sessionMatches.length > 0) {
+        debugMatches.sessions++;
+        const sessionMatch = sessionMatches[0];
         const eventType = sessionMatch[1].toLowerCase();
         let sessionType = 'start';
         
-        if (eventType.includes('ende')) sessionType = 'end';
-        else if (eventType.includes('unterbrechung') || eventType.includes('pause')) sessionType = 'break_start';
-        else if (eventType.includes('fortsetzung')) sessionType = 'break_end';
+        if (eventType.includes('ende') || eventType.includes('schluss')) {
+          sessionType = 'end';
+        } else if (eventType.includes('unterbrechung') || eventType.includes('pause')) {
+          sessionType = 'break_start';
+        } else if (eventType.includes('fortsetzung')) {
+          sessionType = 'break_end';
+        }
+        
+        console.log(`🎯 Found session event: ${sessionType} at ${lastTime}`);
         
         sessions.push({
           session_type: sessionType,
           timestamp: lastTime,
-          notes: line
+          notes: line.trim()
         });
       }
       continue;
     }
     
-    // Check for speakers
-    const speakerMatch = line.match(patterns.speaker);
+    // Check for speakers with multiple patterns
+    let speakerMatch: RegExpMatchArray | null = null;
+    let speakerPattern = -1;
+    
+    for (let p = 0; p < patterns.speaker.length; p++) {
+      speakerMatch = line.match(patterns.speaker[p]);
+      if (speakerMatch) {
+        speakerPattern = p;
+        debugMatches.speakers++;
+        break;
+      }
+    }
+    
     if (speakerMatch) {
       // Save previous speech
       if (currentSpeaker && currentSpeechContent.trim()) {
@@ -285,13 +360,16 @@ export function analyzeProtocolStructure(text: string): {
           start_time: lastTime || undefined,
           speech_type: 'main'
         });
+        console.log(`💬 Saved speech from: ${currentSpeaker} (${currentSpeechContent.length} chars)`);
       }
       
-      currentSpeaker = speakerMatch[1];
+      currentSpeaker = speakerMatch[1].trim();
       if (speakerMatch[2]) {
-        currentSpeaker += ` (${speakerMatch[2]})`;
+        currentSpeaker += ` (${speakerMatch[2].trim()})`;
       }
       currentSpeechContent = '';
+      
+      console.log(`🎤 Found speaker (pattern ${speakerPattern}): "${currentSpeaker}"`);
       continue;
     }
     
@@ -309,11 +387,13 @@ export function analyzeProtocolStructure(text: string): {
         speech_content: content,
         speech_type: speechType
       });
+      
+      console.log(`👥 Found interjection: ${speechType} - "${content}"`);
       continue;
     }
     
     // Accumulate speech content
-    if (currentSpeaker && line.length > 10) {
+    if (currentSpeaker && line.length > 10 && !line.match(/^\d+$/)) {  // Skip page numbers
       currentSpeechContent += (currentSpeechContent ? ' ' : '') + line;
     }
   }
@@ -327,11 +407,112 @@ export function analyzeProtocolStructure(text: string): {
       start_time: lastTime || undefined,
       speech_type: 'main'
     });
+    console.log(`💬 Saved final speech from: ${currentSpeaker} (${currentSpeechContent.length} chars)`);
   }
   
-  console.log(`Analysis complete: ${agendaItems.length} agenda items, ${speeches.length} speeches, ${sessions.length} sessions`);
+  console.log('🎯 Debug match counts:', debugMatches);
+  console.log(`✅ Analysis complete: ${agendaItems.length} agenda items, ${speeches.length} speeches, ${sessions.length} sessions`);
+  
+  // Additional debugging for empty results
+  if (agendaItems.length === 0 && speeches.length === 0 && sessions.length === 0) {
+    console.warn('⚠️ No structured data found! Analyzing potential issues:');
+    console.log('📊 Text analysis:');
+    console.log(`   - Contains "Landtag": ${text.includes('Landtag')}`);
+    console.log(`   - Contains "Baden-Württemberg": ${text.includes('Baden-Württemberg')}`);
+    console.log(`   - Contains "Sitzung": ${text.includes('Sitzung')}`);
+    console.log(`   - Contains "Abg.": ${text.includes('Abg.')}`);
+    console.log(`   - Contains numbers: ${/\d+/.test(text)}`);
+    console.log(`   - Contains time patterns: ${patterns.time.test(text)}`);
+    
+    // Show sample lines that might contain relevant data
+    console.log('📝 Sample lines that might be relevant:');
+    lines.slice(0, 50).forEach((line, i) => {
+      if (line.includes('Abg.') || line.includes('Landtag') || line.includes('Sitzung') || /\d+\./.test(line)) {
+        console.log(`   Line ${i + 1}: "${line}"`);
+      }
+    });
+  }
   
   return { agendaItems, speeches, sessions };
+}
+
+// Enhanced text preprocessing function
+function preprocessProtocolText(text: string): string {
+  console.log('🔧 Preprocessing protocol text...');
+  
+  // Step 1: Normalize whitespace and special characters
+  let processed = text
+    .replace(/\r\n/g, '\n')           // Normalize line endings
+    .replace(/\r/g, '\n')             // Mac line endings
+    .replace(/\u00A0/g, ' ')          // Replace non-breaking spaces
+    .replace(/\t/g, ' ')              // Replace tabs with spaces
+    .replace(/\s{2,}/g, ' ');         // Collapse multiple spaces
+  
+  // Step 2: Try to detect and fix PDF text extraction issues
+  // PDF text often comes as one long line without proper breaks
+  if (processed.split('\n').length < 10 && processed.length > 1000) {
+    console.log('📄 Detected single-line PDF text, attempting to split...');
+    
+    // Split on likely sentence/section boundaries
+    processed = processed
+      // Split before numbered items
+      .replace(/(\d+\.\s+[A-ZÄÖÜ])/g, '\n$1')
+      // Split before speaker names
+      .replace(/(Abg\.\s+[A-ZÄÖÜ])/g, '\n$1')
+      .replace(/(Ministerpräsident)/g, '\n$1')
+      .replace(/(Präsident[^a-z])/g, '\n$1')
+      // Split on time markers
+      .replace(/(\d{1,2}:\d{2}\s*Uhr)/g, '\n$1')
+      // Split on session events
+      .replace(/(Sitzungsbeginn|Sitzungsende|Beginn|Schluss)/gi, '\n$1')
+      // Split on periods followed by capital letters (careful approach)
+      .replace(/\.\s+([A-ZÄÖÜ][a-zäöü]{2,})/g, '.\n$1')
+      // Split on question marks and exclamation marks
+      .replace(/([?!])\s+([A-ZÄÖÜ])/g, '$1\n$2');
+  }
+  
+  console.log(`✅ Preprocessing complete. Line count: ${processed.split('\n').length}`);
+  return processed;
+}
+
+// Smart line splitting with multiple strategies
+function smartLineSplit(text: string): string[] {
+  const lines = text.split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+  
+  console.log(`📝 Smart line split: ${lines.length} non-empty lines`);
+  
+  // Additional processing for very long lines
+  const processedLines: string[] = [];
+  
+  for (const line of lines) {
+    if (line.length > 500) {
+      // Try to split very long lines at sentence boundaries
+      const sentences = line.split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ])/)
+        .filter(s => s.trim().length > 0);
+      
+      if (sentences.length > 1) {
+        console.log(`✂️ Split long line (${line.length} chars) into ${sentences.length} sentences`);
+        processedLines.push(...sentences);
+      } else {
+        processedLines.push(line);
+      }
+    } else {
+      processedLines.push(line);
+    }
+  }
+  
+  return processedLines;
+}
+
+// Helper functions for pattern matching
+function isAgendaLine(line: string, patterns: RegExp[]): boolean {
+  return patterns.some(pattern => pattern.test(line));
+}
+
+function isSpeakerLine(line: string, patterns: RegExp[]): boolean {
+  return patterns.some(pattern => pattern.test(line));
 }
 
 function determineItemType(title: string): string {
