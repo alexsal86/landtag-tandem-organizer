@@ -245,10 +245,12 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
 
       {/* Content Tabs */}
       <Tabs defaultValue="agenda">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="agenda">Tagesordnung</TabsTrigger>
           <TabsTrigger value="speeches">Reden</TabsTrigger>
           <TabsTrigger value="sessions">Sitzungsverlauf</TabsTrigger>
+          <TabsTrigger value="search">Suche</TabsTrigger>
+          <TabsTrigger value="export">Export</TabsTrigger>
           <TabsTrigger value="raw">Rohtext</TabsTrigger>
         </TabsList>
 
@@ -441,6 +443,23 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
               </ScrollArea>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="search">
+          <ProtocolSearch 
+            protocolId={protocol.id}
+            onResultSelect={(result) => {
+              console.log('Selected result:', result);
+              // Could navigate to specific section
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="export">
+          <ProtocolExport 
+            protocolId={protocol.id}
+            protocolTitle={protocol.original_filename}
+          />
         </TabsContent>
 
         <TabsContent value="raw">

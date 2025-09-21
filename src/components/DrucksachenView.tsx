@@ -5,10 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileUp, FileText, Search, Settings } from 'lucide-react';
+import { FileUp, FileText, Search, Settings, Eye } from 'lucide-react';
 import { DrucksachenUpload } from './drucksachen/DrucksachenUpload';
 import { ProtocolsList } from './drucksachen/ProtocolsList';
 import { ProtocolViewer } from './drucksachen/ProtocolViewer';
+import { ProtocolSearch } from './drucksachen/ProtocolSearch';
+import { ProtocolAnalytics } from './drucksachen/ProtocolAnalytics';
 import { toast } from 'sonner';
 
 interface Protocol {
@@ -125,7 +127,7 @@ export function DrucksachenView() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="upload" className="flex items-center gap-2">
             <FileUp className="h-4 w-4" />
             Upload
@@ -134,12 +136,20 @@ export function DrucksachenView() {
             <FileText className="h-4 w-4" />
             Protokolle ({protocols.length})
           </TabsTrigger>
+          <TabsTrigger value="search" className="flex items-center gap-2">
+            <Search className="h-4 w-4" />
+            Suche
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Analytik
+          </TabsTrigger>
           <TabsTrigger 
             value="viewer" 
             disabled={!selectedProtocol} 
             className="flex items-center gap-2"
           >
-            <Search className="h-4 w-4" />
+            <Eye className="h-4 w-4" />
             Viewer
           </TabsTrigger>
         </TabsList>
@@ -157,6 +167,27 @@ export function DrucksachenView() {
             onProtocolSelect={handleProtocolSelect}
             onProtocolsRefresh={loadProtocols}
           />
+        </TabsContent>
+
+        <TabsContent value="search" className="space-y-6">
+          <ProtocolSearch 
+            onResultSelect={(result) => {
+              // Find and select the protocol
+              const protocol = protocols.find(p => p.id === result.protocol_id);
+              if (protocol) {
+                setSelectedProtocol(protocol);
+                setActiveTab('viewer');
+              }
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          {currentTenant && (
+            <ProtocolAnalytics 
+              tenantId={currentTenant.id}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="viewer" className="space-y-6">
