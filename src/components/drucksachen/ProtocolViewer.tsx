@@ -17,6 +17,8 @@ import {
   Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ProtocolSearch } from './ProtocolSearch';
+import { ProtocolExport } from './ProtocolExport';
 
 interface Protocol {
   id: string;
