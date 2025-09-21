@@ -29,8 +29,8 @@ interface ProtocolSearchProps {
 export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'all' | 'agenda_item' | 'speech' | 'session'>('all');
-  const [speakerFilter, setSpeakerFilter] = useState('');
-  const [partyFilter, setPartyFilter] = useState('');
+  const [speakerFilter, setSpeakerFilter] = useState('all_speakers');
+  const [partyFilter, setPartyFilter] = useState('all_parties');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -119,10 +119,10 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
         if (protocolId) {
           speechQuery = speechQuery.eq('protocol_id', protocolId);
         }
-        if (speakerFilter) {
+        if (speakerFilter && speakerFilter !== 'all_speakers') {
           speechQuery = speechQuery.eq('speaker_name', speakerFilter);
         }
-        if (partyFilter) {
+        if (partyFilter && partyFilter !== 'all_parties') {
           speechQuery = speechQuery.eq('speaker_party', partyFilter);
         }
 
@@ -163,8 +163,8 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
   const clearFilters = () => {
     setSearchTerm('');
     setSearchType('all');
-    setSpeakerFilter('');
-    setPartyFilter('');
+    setSpeakerFilter('all_speakers');
+    setPartyFilter('all_parties');
     setDateRange({ from: '', to: '' });
     setResults([]);
   };
@@ -218,7 +218,7 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
                 <SelectValue placeholder="Redner" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Alle Redner</SelectItem>
+                <SelectItem value="all_speakers">Alle Redner</SelectItem>
                 {availableSpeakers.map(speaker => (
                   <SelectItem key={speaker} value={speaker}>{speaker}</SelectItem>
                 ))}
@@ -230,7 +230,7 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
                 <SelectValue placeholder="Partei" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Alle Parteien</SelectItem>
+                <SelectItem value="all_parties">Alle Parteien</SelectItem>
                 {availableParties.map(party => (
                   <SelectItem key={party} value={party}>{party}</SelectItem>
                 ))}
