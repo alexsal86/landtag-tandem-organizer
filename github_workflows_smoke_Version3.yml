@@ -1,0 +1,17 @@
+name: Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python scripts/parse_landtag_pdf.py --log-level INFO
+      - run: |
+          ls -1 data/*.json || (echo "Keine JSON-Dateien erzeugt." && exit 1)

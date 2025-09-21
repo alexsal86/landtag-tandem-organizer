@@ -1,0 +1,88 @@
+name: Update Landtag Sessions
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: parser-update
+  cancel-in-progress: false
+
+jobs:
+  parse-and-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
+      - name: Install Python deps
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Determine Parser Input Mode
+        id: mode
+        run: |
+          if [ -f scripts/urls.txt ]; then
+            echo "mode=list" >> $GITHUB_OUTPUT
+          else
+            echo "mode=single" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Parser (list mode)
+        if: steps.mode.outputs.mode == 'list'
+        run: |
+          python scripts/parse_landtag_pdf.py --list-file scripts/urls.txt --schema-validate --log-level INFO
+
+      - name: Run Parser (single default)
+        if: steps.mode.outputs.mode == 'single'
+        run: |
+          python scripts/parse_landtag_pdf.py --schema-validate --log-level INFO
+
+      - name: Stage data changes
+        id: diff
+        run: |
+          git add data/
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "Keine Änderungen in data/."
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit & Push
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(parser): update Landtag session data [auto]"
+          git push
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.diff.outputs.changed }}" = "true" ]; then
+            echo "Neue oder geänderte JSONs wurden committet." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Keine Änderungen erkannt." >> $GITHUB_STEP_SUMMARY
+          fi
