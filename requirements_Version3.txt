@@ -1,0 +1,36 @@
+# Basis: HTTP Downloads
+requests==2.32.3
+
+# PDF Parsing (Text + Layout)
+pdfplumber==0.11.0
+# (Alternativ oder zusätzlich:)
+# PyPDF2==3.0.1
+
+# JSON Schema Validierung
+jsonschema==4.23.0
+
+# Datums-/Zeitverarbeitung
+python-dateutil==2.9.0.post0
+
+# HTML Parsing (falls Metadaten-Seiten oder Extraktion aus HTML nötig)
+beautifulsoup4==4.12.3
+lxml==5.2.2
+
+# Fortschrittsbalken (optional)
+tqdm==4.66.5
+
+# Besseres Logging / farbige Ausgabe (optional)
+rich==13.7.1
+
+# CLI-Komfort (falls Skript Argument-Parsing erweitern soll)
+click==8.1.7
+
+# Optional: Validierung via Pydantic (nur falls du sie nutzt)
+# pydantic==2.9.2
+
+# Falls du strukturierte Konfiguration (YAML) nutzt:
+# PyYAML==6.0.2
+
+# Sicherheitshinweis:
+# Fixiere Versionen um reproduzierbare Runs in GitHub Actions zu erhalten.
+# Ab und zu (z.B. monatlich) gezielt aktualisieren & Tests laufen lassen.
