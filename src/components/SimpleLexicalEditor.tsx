@@ -15,6 +15,7 @@ import { LexicalYjsCollaborationPlugin } from './collaboration/LexicalYjsCollabo
 import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
 import { CommentMarkNode } from './plugins/CommentPlugin';
 import { MarkNode } from '@lexical/mark';
+import { sanitizeContent, parseContentSafely, areContentsEquivalent } from '@/utils/contentValidation';
 
 // Feature flag for Yjs collaboration
 const ENABLE_YJS_COLLABORATION = true;
@@ -64,35 +65,39 @@ function CollaborationPlugin({
   const lastContentRef = useRef<string>('');
   const isRemoteUpdateRef = useRef<boolean>(false);
 
-  // Handle remote content changes
+  // Handle remote content changes with validation
   React.useEffect(() => {
-    if (remoteContent && remoteContent !== lastContentRef.current) {
+    if (remoteContent && !areContentsEquivalent(remoteContent, lastContentRef.current)) {
       console.log('📝 Applying remote content to editor:', remoteContent);
+      
+      // Validate and sanitize remote content
+      const { plainText } = parseContentSafely(remoteContent);
+      
       isRemoteUpdateRef.current = true;
       
       editor.update(() => {
         const root = $getRoot();
         root.clear();
         
-        if (remoteContent.trim()) {
+        if (plainText.trim()) {
           const paragraph = $createParagraphNode();
-          paragraph.append($createTextNode(remoteContent));
+          paragraph.append($createTextNode(plainText));
           root.append(paragraph);
         }
         
-        lastContentRef.current = remoteContent;
+        lastContentRef.current = plainText;
       }, {
         onUpdate: () => {
           // Reset the flag after the update is complete
           setTimeout(() => {
             isRemoteUpdateRef.current = false;
-          }, 0);
+          }, 100);
         }
       });
     }
   }, [editor, remoteContent]);
 
-  // Handle local content changes
+  // Handle local content changes with safe processing
   const handleLocalContentChange = useCallback((editorState: EditorState) => {
     if (isRemoteUpdateRef.current) {
       console.log('🚫 Skipping local change handler - remote update in progress');
@@ -103,14 +108,14 @@ function CollaborationPlugin({
       const root = $getRoot();
       const textContent = root.getTextContent();
       
-      if (textContent !== lastContentRef.current) {
+      if (!areContentsEquivalent(textContent, lastContentRef.current)) {
         console.log('📝 Local content change detected:', textContent);
         lastContentRef.current = textContent;
         onContentChange(textContent);
         
         // Debounce sending to collaboration
         setTimeout(() => {
-          if (lastContentRef.current === textContent) {
+          if (areContentsEquivalent(lastContentRef.current, textContent)) {
             console.log('📡 Sending content update to collaboration:', textContent);
             sendContentUpdate(textContent);
           }

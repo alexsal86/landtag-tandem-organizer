@@ -48,6 +48,7 @@ import CollaborationStatus from './CollaborationStatus';
 import { YjsProvider, useYjsProvider } from './collaboration/YjsProvider';
 import { ManualYjsCollaborationPlugin } from './collaboration/ManualYjsCollaborationPlugin';
 import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
+import { sanitizeContent, parseContentSafely, createDebouncedContentUpdate, areContentsEquivalent } from '@/utils/contentValidation';
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
 import { Button } from './ui/button';
 import { Bold, Italic, List, ListOrdered, Quote, Code, Heading1, Heading2, Heading3 } from 'lucide-react';
@@ -333,20 +334,23 @@ function KeyboardShortcutsPlugin() {
   return null;
 }
 
-// Content Plugin to sync content using official Lexical serialization
+// Content Plugin to sync content using safe parsing
 function ContentPlugin({ content, contentNodes }: { content: string; contentNodes?: string }) {
   const [editor] = useLexicalComposerContext();
   
   React.useEffect(() => {
     if (!editor) return;
 
+    // Use safe content parsing to prevent corruption
+    const { plainText, jsonNodes } = parseContentSafely(content, contentNodes);
+    
     // Priority: JSON contentNodes > plain text content
-    if (contentNodes && contentNodes.trim()) {
+    if (jsonNodes && jsonNodes.trim()) {
       try {
         // Use official Lexical parseEditorState method
-        const editorState = editor.parseEditorState(contentNodes);
+        const editorState = editor.parseEditorState(jsonNodes);
         editor.setEditorState(editorState);
-        console.log('📄 [ContentPlugin] Successfully loaded from JSON contentNodes');
+        console.log('📄 [ContentPlugin] Successfully loaded from validated JSON contentNodes');
         return;
       } catch (error) {
         console.warn('Failed to parse contentNodes JSON, falling back to plain text:', error);
@@ -354,16 +358,16 @@ function ContentPlugin({ content, contentNodes }: { content: string; contentNode
     }
     
     // Fallback to plain text content
-    if (content && content.trim()) {
+    if (plainText && plainText.trim()) {
       editor.update(() => {
         const root = $getRoot();
         root.clear();
         const paragraph = $createParagraphNode();
-        paragraph.append($createTextNode(content));
+        paragraph.append($createTextNode(plainText));
         root.append(paragraph);
       });
-      console.log('📄 [ContentPlugin] Loaded from plain text content');
-    } else if (!contentNodes && !content) {
+      console.log('📄 [ContentPlugin] Loaded from validated plain text content');
+    } else {
       // Initialize with empty content
       editor.update(() => {
         const root = $getRoot();
@@ -378,7 +382,7 @@ function ContentPlugin({ content, contentNodes }: { content: string; contentNode
   return null;
 }
 
-// Collaboration Plugin for Supabase Realtime (enhanced with JSON serialization)
+// Collaboration Plugin for Supabase Realtime (enhanced with safe serialization)
 function CollaborationPlugin({ 
   documentId, 
   onContentChange,
@@ -393,35 +397,49 @@ function CollaborationPlugin({
   const [editor] = useLexicalComposerContext();
   const lastContentRef = useRef<string>('');
   const isRemoteUpdateRef = useRef<boolean>(false);
+  
+  // Create debounced update function to prevent race conditions
+  const debouncedSendUpdate = useRef(
+    createDebouncedContentUpdate((content: string, contentNodes?: string) => {
+      if (!isRemoteUpdateRef.current) {
+        console.log('📡 Sending debounced content update to collaboration:', content);
+        sendContentUpdate(content, contentNodes);
+      }
+    }, 300)
+  );
 
-  // Handle remote content changes
+  // Handle remote content changes with validation
   React.useEffect(() => {
-    if (remoteContent && remoteContent !== lastContentRef.current) {
+    if (remoteContent && !areContentsEquivalent(remoteContent, lastContentRef.current)) {
       console.log('📝 Applying remote content to editor:', remoteContent);
+      
+      // Validate and sanitize remote content
+      const { plainText } = parseContentSafely(remoteContent);
+      
       isRemoteUpdateRef.current = true;
       
       editor.update(() => {
         const root = $getRoot();
         root.clear();
         
-        if (remoteContent.trim()) {
+        if (plainText.trim()) {
           const paragraph = $createParagraphNode();
-          paragraph.append($createTextNode(remoteContent));
+          paragraph.append($createTextNode(plainText));
           root.append(paragraph);
         }
         
-        lastContentRef.current = remoteContent;
+        lastContentRef.current = plainText;
       }, {
         onUpdate: () => {
           setTimeout(() => {
             isRemoteUpdateRef.current = false;
-          }, 0);
+          }, 100);
         }
       });
     }
   }, [editor, remoteContent]);
 
-  // Handle local content changes with JSON serialization
+  // Handle local content changes with safe serialization
   const handleLocalContentChange = useCallback((editorState: EditorState) => {
     if (isRemoteUpdateRef.current) {
       console.log('🚫 Skipping local change handler - remote update in progress');
@@ -431,27 +449,34 @@ function CollaborationPlugin({
     editorState.read(() => {
       const root = $getRoot();
       const textContent = root.getTextContent();
-      const jsonContent = JSON.stringify(editorState.toJSON());
       
-      if (textContent !== lastContentRef.current) {
+      // Only proceed if content actually changed
+      if (!areContentsEquivalent(textContent, lastContentRef.current)) {
         console.log('📝 Local content change detected:', textContent);
         lastContentRef.current = textContent;
+        
+        // Safe JSON serialization
+        let jsonContent: string | undefined;
+        try {
+          jsonContent = JSON.stringify(editorState.toJSON());
+        } catch (error) {
+          console.warn('JSON serialization failed, using text only:', error);
+          jsonContent = undefined;
+        }
+        
+        // Update parent component immediately
         onContentChange(textContent, jsonContent);
         
-        setTimeout(() => {
-          if (lastContentRef.current === textContent) {
-            console.log('📡 Sending content update to collaboration:', textContent);
-            sendContentUpdate(textContent, jsonContent);
-          }
-        }, 300);
+        // Send to collaboration with debouncing
+        debouncedSendUpdate.current(textContent, jsonContent);
       }
     });
-  }, [onContentChange, sendContentUpdate]);
+  }, [onContentChange]);
 
   return <OnChangePlugin onChange={handleLocalContentChange} />;
 }
 
-// Content Sync Plugin for Yjs (enhanced with JSON serialization)
+// Content Sync Plugin for Yjs (enhanced with safe serialization)
 function YjsContentSyncPlugin({ 
   initialContent,
   initialContentNodes,

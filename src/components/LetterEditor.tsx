@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { sanitizeContent, parseContentSafely } from '@/utils/contentValidation';
 import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
@@ -984,12 +985,23 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : editedLetter.content_nodes;
     
     console.log('=== AUTO-SAVE STARTED ===');
-    console.log('Current showPagination value:', showPagination);
+    console.log('Current showPagination value:', showPagination);  
     console.log('Letter ID:', letter?.id);
-    console.log('content_nodes to save:', contentNodesToSave ? 'HAS JSON DATA' : 'NO JSON DATA');
-    console.log('content_nodes length:', contentNodesToSave?.length || 0);
-    console.log('content_nodes preview:', contentNodesToSave?.slice(0, 100) || 'null');
-    console.log('Using immediate parameters:', { immediateContent: !!immediateContent, immediateContentNodes: !!immediateContentNodes });
+    console.log('Content to save length:', contentToSave?.length);
+    console.log('Content to save preview:', contentToSave?.substring(0, 100) + '...');
+    console.log('=========================');
+    
+    // Validate content before saving to prevent corruption
+    if (contentToSave && contentToSave.includes('{"root":{"children"') && contentToSave.split('{"root":{"children"').length > 2) {
+      console.error('🚨 Detected corrupted content, aborting save');
+      toast({
+        title: "Inhalt beschädigt",
+        description: "Der Inhalt scheint beschädigt zu sein. Bitte laden Sie die Seite neu.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
     
     setSaving(true);
     try {
@@ -998,7 +1010,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         .from('letters')
         .update({
           title: editedLetter.title,
-          content: contentToSave,
+          content: contentToSave?.trim() || '',
           content_html: editedLetter.content_html,
           content_nodes: contentNodesToSave,
           recipient_name: editedLetter.recipient_name,
@@ -1010,8 +1022,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           sender_info_id: editedLetter.sender_info_id,
           information_block_ids: editedLetter.information_block_ids,
           letter_date: editedLetter.letter_date,
-          show_pagination: showPagination, // WICHTIG: Paginierung beim Auto-Save speichern
-          // Removed status from auto-save to prevent conflicts
+          show_pagination: showPagination,
           updated_at: new Date().toISOString()
         })
         .eq('id', letter.id);
@@ -1020,11 +1031,17 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
       console.log('=== AUTO-SAVE SUCCESSFUL ===');
       console.log('Saved showPagination:', showPagination);
-      console.log('Saved content_nodes successfully:', !!contentNodesToSave);
+      console.log('Saved content successfully:', !!contentToSave);
       setLastSaved(new Date());
     } catch (error) {
       console.error('Error auto-saving letter:', error);
       console.log('=== AUTO-SAVE FAILED ===');
+      toast({
+        title: "Auto-Speichern fehlgeschlagen",
+        description: "Änderungen konnten nicht gespeichert werden.",
+        variant: "destructive",
+        duration: 3000,
+      });
     } finally {
       setTimeout(() => setSaving(false), 200);
     }
@@ -1803,41 +1820,47 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                    onChange={(content, contentNodes) => {
                      if (isUpdatingFromRemoteRef.current || !canEdit) return;
                      
-                      console.log('📝 [LetterEditor] Content changed:', { 
-                        plainTextLength: content?.length, 
-                        hasJsonContent: !!contentNodes,
-                        jsonLength: contentNodes?.length,
-                        contentPreview: content?.slice(0, 50),
-                        jsonPreview: contentNodes?.slice(0, 100) || 'null'
-                      });
+                     console.log('📝 [LetterEditor] Content changed:', { 
+                       plainTextLength: content?.length, 
+                       hasJsonContent: !!contentNodes,
+                       jsonLength: contentNodes?.length,
+                       contentPreview: content?.slice(0, 50),
+                       jsonPreview: contentNodes?.slice(0, 100) || 'null'
+                     });
                      
-                      const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
-                      
-                      // Update the ref with latest content for immediate access
-                      latestContentRef.current = {
-                        content: content || '',
-                        contentNodes: processedContentNodes
-                      };
-                      
-                      setEditedLetter(prev => ({
-                        ...prev,
-                        content: content || '',
-                        content_nodes: processedContentNodes
-                      }));
+                     // Validate content before processing to prevent corruption
+                     if (content && content.includes('{"root":{"children"') && content.split('{"root":{"children"').length > 2) {
+                       console.error('🚨 Rejected corrupted content in onChange handler');
+                       return;
+                     }
                      
-                      // Trigger immediate auto-save with new content to avoid timing issues
-                      if (saveTimeoutRef.current) {
-                        clearTimeout(saveTimeoutRef.current);
-                      }
-                      
-                      saveTimeoutRef.current = setTimeout(() => {
-                        if (!isUpdatingFromRemoteRef.current && letter?.id) {
-                          console.log('=== IMMEDIATE AUTO-SAVE AFTER CONTENT CHANGE ===');
-                          handleAutoSave(content, processedContentNodes);
-                        }
-                      }, 300); // Shorter delay for content changes
+                     const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
                      
-                     broadcastContentChange('content', content);
+                     // Update the ref with latest content for immediate access
+                     latestContentRef.current = {
+                       content: content?.trim() || '',
+                       contentNodes: processedContentNodes
+                     };
+                     
+                     setEditedLetter(prev => ({
+                       ...prev,
+                       content: content?.trim() || '',
+                       content_nodes: processedContentNodes
+                     }));
+                    
+                     // Trigger immediate auto-save with new content to avoid timing issues
+                     if (saveTimeoutRef.current) {
+                       clearTimeout(saveTimeoutRef.current);
+                     }
+                     
+                     saveTimeoutRef.current = setTimeout(() => {
+                       if (!isUpdatingFromRemoteRef.current && letter?.id) {
+                         console.log('=== IMMEDIATE AUTO-SAVE AFTER CONTENT CHANGE ===');
+                         handleAutoSave(content?.trim() || '', processedContentNodes);
+                       }
+                     }, 300); // Shorter delay for content changes
+                    
+                    broadcastContentChange('content', content?.trim() || '');
                    }}
                   placeholder="Hier können Sie Ihren Brief verfassen..."
                   documentId={letter?.id}
