@@ -1,9 +1,11 @@
 import React from 'react';
 import { CalendarEvent } from '../CalendarView';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, Users, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Clock, MapPin, Users, AlertCircle, ListTodo } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 interface CalendarEventComponentProps {
   event: CalendarEvent;
@@ -18,6 +20,7 @@ export function CalendarEventComponent({
   style = {}, 
   compact = false 
 }: CalendarEventComponentProps) {
+  const navigate = useNavigate();
   
   // Get event type color and styling
   const getEventTypeColor = (type: CalendarEvent["type"]) => {
@@ -71,6 +74,25 @@ export function CalendarEventComponent({
     ...style
   };
 
+  const handlePlanningClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const params = new URLSearchParams({
+      appointmentId: event.id,
+      title: event.title,
+      date: event.date.toISOString(),
+      time: event.time,
+      location: event.location || ''
+    });
+    navigate(`/eventplanning?${params.toString()}`);
+  };
+
+  // Don't show planning icon for blocked events or external events
+  const showPlanningIcon = !compact && 
+    event.type !== 'blocked' && 
+    !event.id.startsWith('blocked-') && 
+    !event.id.startsWith('external-') &&
+    event.id !== 'no-id';
+
   if (compact) {
     return (
       <div
@@ -98,17 +120,30 @@ export function CalendarEventComponent({
           {getPriorityIcon(event.priority)}
           <h4 className="font-semibold text-sm truncate">{event.title}</h4>
         </div>
-        <Badge 
-          variant="secondary" 
-          className="text-xs ml-2 flex-shrink-0"
-          style={{ 
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-            color: textColor,
-            border: 'none'
-          }}
-        >
-          {getEventTypeLabel(event.type)}
-        </Badge>
+        <div className="flex items-center gap-1 ml-2">
+          {showPlanningIcon && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0 hover:bg-white/20"
+              onClick={handlePlanningClick}
+              title="Terminplanung erstellen"
+            >
+              <ListTodo className="h-3 w-3" style={{ color: textColor }} />
+            </Button>
+          )}
+          <Badge 
+            variant="secondary" 
+            className="text-xs flex-shrink-0"
+            style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              color: textColor,
+              border: 'none'
+            }}
+          >
+            {getEventTypeLabel(event.type)}
+          </Badge>
+        </div>
       </div>
 
       {/* Event details */}

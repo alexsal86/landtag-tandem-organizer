@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon } from "lucide-react";
+import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon, ListTodo } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -28,6 +29,7 @@ export function AppointmentDetailsSidebar({
 }: AppointmentDetailsSidebarProps) {
   const { toast } = useToast();
   const { currentTenant } = useTenant();
+  const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string; color: string }>>([]);
@@ -171,6 +173,19 @@ export function AppointmentDetailsSidebar({
       endTime: endTime
     });
     setIsEditing(true);
+  };
+
+  const handlePlanningCreate = () => {
+    if (!appointment) return;
+    
+    const params = new URLSearchParams({
+      appointmentId: appointment.id,
+      title: appointment.title,
+      date: appointment.date.toISOString(),
+      time: appointment.time,
+      location: appointment.location || ''
+    });
+    navigate(`/eventplanning?${params.toString()}`);
   };
 
   const handleSave = async () => {
@@ -805,6 +820,19 @@ export function AppointmentDetailsSidebar({
                   <Edit className="h-4 w-4" />
                   Bearbeiten
                 </Button>
+                
+                {/* Planning Button */}
+                {appointment.id && !appointment.id.startsWith('blocked-') && !appointment.id.startsWith('external-') && appointment.id !== 'no-id' && (
+                  <Button 
+                    className="flex-1 gap-2"
+                    variant="secondary"
+                    onClick={handlePlanningCreate}
+                  >
+                    <ListTodo className="h-4 w-4" />
+                    Planung
+                  </Button>
+                )}
+                
                 <Button 
                   className="flex-1 gap-2"
                   variant="destructive"

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -163,6 +163,7 @@ export function EventPlanningView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('eventplanning');
   const [plannings, setPlannings] = useState<EventPlanning[]>([]);
@@ -231,6 +232,22 @@ export function EventPlanningView() {
       return;
     }
     
+    // Check for appointment parameters from URL
+    const appointmentId = searchParams.get('appointmentId');
+    const appointmentTitle = searchParams.get('title');
+    const appointmentDate = searchParams.get('date');
+    const appointmentTime = searchParams.get('time');
+    const appointmentLocation = searchParams.get('location');
+    
+    if (appointmentId && appointmentTitle) {
+      // Pre-fill the create dialog with appointment data
+      setNewPlanningTitle(`Planung: ${appointmentTitle}`);
+      setIsCreateDialogOpen(true);
+      
+      // Clear URL parameters after reading them
+      navigate('/eventplanning', { replace: true });
+    }
+    
     // Use async wrapper to avoid blocking
     const loadData = async () => {
       try {
@@ -251,7 +268,7 @@ export function EventPlanningView() {
     return () => {
       clearAllIndicators();
     };
-  }, [user, currentTenant?.id]); // Only depend on currentTenant.id, not the whole object
+  }, [user, currentTenant?.id, searchParams]); // Added searchParams to dependencies
 
   // Load view preferences from localStorage
   const loadViewPreferences = () => {
