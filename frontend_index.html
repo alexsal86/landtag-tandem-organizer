@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Landtag Sessions Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Landtag Tandem – Parser Viewer</h1>
+    <p class="subtitle">Visuelle Prüfung der extrahierten Sitzungsdaten</p>
+  </header>
+  <main>
+    <aside id="sidebar">
+      <h2>Sitzungen</h2>
+      <div id="session-list" class="session-list">
+        <div class="loading">Lade Index…</div>
+      </div>
+    </aside>
+    <section id="content">
+      <div id="controls" class="controls hidden">
+        <div class="control-row">
+          <input type="text" id="search" placeholder="Suche in Reden (Case-insensitive)" />
+          <select id="party-filter">
+            <option value="">Partei (alle)</option>
+          </select>
+          <select id="role-filter">
+            <option value="">Rolle (alle)</option>
+            <option value="Präsidium">Präsidium</option>
+            <option value="Abgeordnete/r">Abgeordnete/r</option>
+            <option value="Minister">Minister</option>
+            <option value="Staatssekretär">Staatssekretär</option>
+            <option value="Staatsminister">Staatsminister</option>
+          </select>
+          <label>
+            <input type="checkbox" id="only-speaker-lines" />
+            Nur Sprecherkopf
+          </label>
+          <button id="reset-filters" class="secondary">Reset</button>
+          <button id="copy-json" class="secondary">Copy JSON</button>
+        </div>
+        <div id="stats-bar" class="stats-bar"></div>
+      </div>
+      <div id="session-meta"></div>
+      <div id="speeches-container" class="speeches"></div>
+      <div id="raw-json" class="raw-json hidden"></div>
+    </section>
+  </main>
+  <footer>
+    <small>Viewer – lokal statisch. Datenquelle: Parser-Ausgaben im data/-Verzeichnis.</small>
+  </footer>
+  <script src="./app.js"></script>
+</body>
+</html>
