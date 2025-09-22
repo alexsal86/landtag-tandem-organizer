@@ -4,12 +4,286 @@
     "legislative_period": 17,
     "date": "2025-07-16",
     "source_pdf_url": "https://www.landtag-bw.de/resource/blob/584334/59a6c5950d692e7ba8a2e8d8be879b26/17_0127_16072025.pdf",
-    "extracted_at": "2025-09-22T05:12:27.223056Z"
+    "extracted_at": "2025-09-22T22:12:20.788563Z"
+  },
+  "sitting": {
+    "start_time": "9:02",
+    "end_time": "12:43",
+    "location": "Haus des Landtags"
   },
   "stats": {
     "pages": 44,
     "speeches": 39
   },
+  "toc": [
+    {
+      "raw": "Eröffnung – Mitteilungen der Präsidentin . . . . . . . . . . . 7639 Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9077 . . . . . . . . . . . . . . . . . . . 7657",
+      "index": null,
+      "title": "Eröffnung – Mitteilungen der Präsidentin . . . . . . . . . . . 7639 Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9077 . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7657,
+      "numbered": false
+    },
+    {
+      "raw": "1. Aktuelle Debatte – Schleichender Verlust kultureller und pädagogischer Selbstbestimmung Abg. Peter Seimer GRÜNE . . . . . . . . . . . . . . . . . . 7657",
+      "index": 1,
+      "title": "Aktuelle Debatte – Schleichender Verlust kultureller und pädagogischer Selbstbestimmung Abg. Peter Seimer GRÜNE . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7657,
+      "numbered": true
+    },
+    {
+      "raw": "unserer Kinder – beantragt von der Fraktion der Abg. Isabell Huber CDU . . . . . . . . . . . . . . . . . . . . 7658",
+      "index": null,
+      "title": "unserer Kinder – beantragt von der Fraktion der Abg. Isabell Huber CDU . . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7658,
+      "numbered": false
+    },
+    {
+      "raw": "AfD . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7639 Abg. Jonas Hoffmann SPD . . . . . . . . . . . . . . . . . . 7659",
+      "index": null,
+      "title": "AfD . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7639 Abg. Jonas Hoffmann SPD . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7659,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Daniel Karrais FDP/DVP . . . . . . . . . . . . . . . 7660",
+      "index": null,
+      "title": "Abg. Daniel Karrais FDP/DVP . . . . . . . . . . . . . .",
+      "page_in_pdf": 7660,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Dr. Rainer Balzer AfD . . . . . . . . . . . . . 7639, 7650",
+      "index": null,
+      "title": "Abg. Dr. Rainer Balzer AfD . . . . . . . . . . . . . 7639,",
+      "page_in_pdf": 7650,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Daniel Lindenschmid AfD . . . . . . . . . . . . . . 7661",
+      "index": null,
+      "title": "Abg. Daniel Lindenschmid AfD . . . . . . . . . . . . .",
+      "page_in_pdf": 7661,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Dr. Marilena Geugjes GRÜNE . . . . . . 7641, 7650",
+      "index": null,
+      "title": "Abg. Dr. Marilena Geugjes GRÜNE . . . . . . 7641,",
+      "page_in_pdf": 7650,
+      "numbered": false
+    },
+    {
+      "raw": "Minister Thomas Strobl . . . . . . . . . . . . . . . . . . . . . 7663",
+      "index": null,
+      "title": "Minister Thomas Strobl . . . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7663,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Andreas Sturm CDU . . . . . . . . . . . . . . . . . . . 7643",
+      "index": null,
+      "title": "Abg. Andreas Sturm CDU . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7643,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Dr. Stefan Fulst-Blei SPD . . . . . . . . . . . . . . . 7644 Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7664",
+      "index": null,
+      "title": "Abg. Dr. Stefan Fulst-Blei SPD . . . . . . . . . . . . . . . 7644 Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7664,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Alena Fink-Trauschel FDP/DVP . . . . . 7646, 7651",
+      "index": null,
+      "title": "Abg. Alena Fink-Trauschel FDP/DVP . . . . . 7646,",
+      "page_in_pdf": 7651,
+      "numbered": false
+    },
+    {
+      "raw": "Staatssekretärin Sandra Boser . . . . . . . . . . . . . . . . 7648",
+      "index": null,
+      "title": "Staatssekretärin Sandra Boser . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7648,
+      "numbered": false
+    },
+    {
+      "raw": "4. Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung kommunal2. Zweite Beratung des Gesetzentwurfs der Landesrechtlicher und weiterer Vorschriften – Druckregierung – Gesetz zur Neuregelung des Lansache 17/8922",
+      "index": 4,
+      "title": "Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung kommunal2. Zweite Beratung des Gesetzentwurfs der Landesrechtlicher und weiterer Vorschriften – Druckregierung – Gesetz zur Neuregelung des Lansache 17/",
+      "page_in_pdf": 8922,
+      "numbered": true
+    },
+    {
+      "raw": "Beschlussempfehlung und Bericht des AusschusBeschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommuses für Wissenschaft, Forschung und Kunst – nen – Drucksache 17/9078 . . . . . . . . . . . . . . . . . . . 7664",
+      "index": null,
+      "title": "Beschlussempfehlung und Bericht des AusschusBeschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommuses für Wissenschaft, Forschung und Kunst – nen – Drucksache 17/9078 . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7664,
+      "numbered": false
+    },
+    {
+      "raw": "Drucksache 17/8861 . . . . . . . . . . . . . . . . . . . . . . . . 7651",
+      "index": null,
+      "title": "Drucksache 17/8861 . . . . . . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7651,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Swantje Sperling GRÜNE . . . . . . . . . . . . . . . 7664",
+      "index": null,
+      "title": "Abg. Swantje Sperling GRÜNE . . . . . . . . . . . . . .",
+      "page_in_pdf": 7664,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Stefanie Seemann GRÜNE . . . . . . . . . . . . . . 7651",
+      "index": null,
+      "title": "Abg. Stefanie Seemann GRÜNE . . . . . . . . . . . . .",
+      "page_in_pdf": 7651,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Ulli Hockenberger CDU . . . . . . . . . . . . . . . . 7665",
+      "index": null,
+      "title": "Abg. Ulli Hockenberger CDU . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7665,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Dr. Alexander Becker CDU . . . . . . . . . . . . . . 7652",
+      "index": null,
+      "title": "Abg. Dr. Alexander Becker CDU . . . . . . . . . . . . .",
+      "page_in_pdf": 7652,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Klaus Ranger SPD . . . . . . . . . . . . . . . . . . . . . 7667",
+      "index": null,
+      "title": "Abg. Klaus Ranger SPD . . . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7667,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Martin Rivoir SPD . . . . . . . . . . . . . . . . . . . . 7652",
+      "index": null,
+      "title": "Abg. Martin Rivoir SPD . . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7652,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Julia Goll FDP/DVP . . . . . . . . . . . . . . . . . . . 7667",
+      "index": null,
+      "title": "Abg. Julia Goll FDP/DVP . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7667,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Stephen Brauer FDP/DVP . . . . . . . . . . . . . . . 7653",
+      "index": null,
+      "title": "Abg. Stephen Brauer FDP/DVP . . . . . . . . . . . . . .",
+      "page_in_pdf": 7653,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Sandro Scheer AfD . . . . . . . . . . . . . . . . . . . . 7668",
+      "index": null,
+      "title": "Abg. Sandro Scheer AfD . . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7668,
+      "numbered": false
+    },
+    {
+      "raw": "Abg. Alfred Bamberger AfD . . . . . . . . . . . . . . . . . 7654",
+      "index": null,
+      "title": "Abg. Alfred Bamberger AfD . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7654,
+      "numbered": false
+    },
+    {
+      "raw": "Minister Thomas Strobl . . . . . . . . . . . . . . . . . . . . . 7669",
+      "index": null,
+      "title": "Minister Thomas Strobl . . . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7669,
+      "numbered": false
+    },
+    {
+      "raw": "Staatssekretär Arne Braun . . . . . . . . . . . . . . . . . . . 7655",
+      "index": null,
+      "title": "Staatssekretär Arne Braun . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7655,
+      "numbered": false
+    },
+    {
+      "raw": "Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7656 Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7671",
+      "index": null,
+      "title": "Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7656 Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "page_in_pdf": 7671,
+      "numbered": false
+    },
+    {
+      "raw": "3. Zweite Beratung des Gesetzentwurfs der Fraktion 5. Zweite Beratung des Gesetzentwurfs der Landesreder AfD – Gesetz zur Änderung des Gesetzes gierung – Gesetz zur Änderung der Landeshauszur Förderung der elektronischen Verwaltung haltsordnung für Baden-Württemberg und des",
+      "index": 3,
+      "title": "Zweite Beratung des Gesetzentwurfs der Fraktion 5. Zweite Beratung des Gesetzentwurfs der Landesreder AfD – Gesetz zur Änderung des Gesetzes gierung – Gesetz zur Änderung der Landeshauszur Förderung der elektronischen Verwaltung haltsordnung für Baden-Württemberg und des",
+      "page_in_pdf": null,
+      "numbered": true
+    }
+  ],
+  "agenda_items": [
+    {
+      "code": "Punkt 1",
+      "title": "Aktuelle Debatte – Schleichender Verlust kultureller und und der Juristinnen heute angekommen? Mit dem christlichen",
+      "start_page": 3,
+      "speech_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "source": "callout"
+    },
+    {
+      "code": "Punkt 2",
+      "title": "Zweite Beratung des Gesetzentwurfs der Landesregierung",
+      "start_page": 15,
+      "speech_indices": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ],
+      "source": "callout"
+    }
+  ],
   "speeches": [
     {
       "index": 1,
@@ -964,6 +1238,5 @@
       "end_page": 44,
       "text": "Vielen Dank, Frau\nStaatssekretärin, für das Zulassen der Zwischenfrage. – Sie Ich danke Ihnen ganz herzlich und wünsche einen schönen\nhaben vorhin auf das Thema Effizienz abgehoben. Ich finde Nachmittag.\nes auch richtig, dass man schaut, was hinten dabei herauskommt. Können Sie mir grob sagen, in wie vielen der 300 För- Ich schließe hiermit die Sitzung.\nSchluss: 12:43 Uhr\n7680"
     }
-  ],
-  "agenda_items": []
+  ]
 }
