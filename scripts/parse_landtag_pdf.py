@@ -47,6 +47,12 @@ from parser_core.cleanup import clean_page_footers, cleanup_interjections
 from parser_core.textflow import reflow_speeches
 from parser_core.segments import build_speech_segments
 
+# Neuer TOC-Parser (strukturierte TOC "items")
+try:
+    from scripts.parser_core.pipeline import parse_protocol as parse_protocol_new
+except Exception:
+    parse_protocol_new = None
+
 
 def parse_args():
     ap = argparse.ArgumentParser(description="Parst ein Landtags-PDF und erzeugt strukturierte JSON-Ausgabe.")
@@ -124,8 +130,29 @@ def process_pdf(url: str,
 
     meta = parse_session_info(all_text)
 
+    # Bisherige TOC-Ermittlung (beibehalten für Backward-Compatibility)
     toc_full = parse_toc(normalized_pages[0]) if normalized_pages else []
     toc_parts = partition_toc(toc_full)
+
+    # Neue TOC-Struktur via neuer Parser-Pipeline (strukturierte items)
+    toc2: Dict[str, Any] = {}
+    if parse_protocol_new is not None:
+        try:
+            toc_bundle = parse_protocol_new(
+                flat,
+                capture_offsets=False,
+                debug=False,
+                require_bold_for_header=False,
+                allow_abg_without_party=True,
+                fallback_inline_header=True,
+                compact_interjections=True,
+                include_interjection_category=False,
+                externalize_interjection_offsets=False,
+                stop_toc_at_first_body_header=True
+            )
+            toc2 = toc_bundle.get("toc", {}) or {}
+        except Exception as e:
+            print(f"[WARN] Neuer TOC-Parser fehlgeschlagen: {e}")
 
     speeches = segment_speeches(flat)
 
@@ -162,10 +189,13 @@ def process_pdf(url: str,
             "applied": True,
             "reason": "forced-always"
         },
+        # Alte TOC-Felder (bestehende Konsumenten bleiben funktionsfähig)
         "toc": toc_full,
         "toc_agenda": toc_parts["agenda"],
         "toc_speakers": toc_parts["speakers"],
         "toc_other": toc_parts["other"],
+        # Neue, strukturierte TOC-Ausgabe des verbesserten Parsers
+        "toc2": toc2,
         "agenda_items": inline_agenda,
         "speeches": speeches,
         "cleanup_stats": {
