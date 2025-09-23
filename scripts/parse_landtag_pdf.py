@@ -55,9 +55,9 @@ def process_pdf(url: str, force_download: bool):
     pages_lines, debug_meta = extract_pages_with_layout(
         str(pdf_path),
         force_two_column=True,
-        min_words_for_detection=20,
-        rel_gap_threshold=0.18,
-        line_consistency_min=0.45
+        min_words_for_detection=10,
+        rel_gap_threshold=0.15,
+        line_consistency_min=0.40
     )
 
     # Kopf-/Fußzeilen raus
