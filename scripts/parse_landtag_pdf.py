@@ -58,7 +58,7 @@ def process_pdf(url: str, force_download: bool):
     min_words_for_detection=20,
     min_side_fraction=0.08,       # etwas liberal, falls Seite ungleichmäßig
     hist_bins=70,
-    min_peak_sep_rel=0.20,
+    min_peak_separation_rel=0.20,
     min_valley_rel_drop=0.30,
     line_y_quant=3.0
 )
