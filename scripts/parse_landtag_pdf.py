@@ -47,6 +47,7 @@ from parser_core.cleanup import clean_page_footers, cleanup_interjections
 from parser_core.textflow import reflow_speeches
 from parser_core.segments import build_speech_segments
 
+
 def parse_args():
     ap = argparse.ArgumentParser(description="Parst ein Landtags-PDF und erzeugt strukturierte JSON-Ausgabe.")
     ap.add_argument("--list-file", help="Datei mit Zeilenweise URLs (optional).")
@@ -56,6 +57,7 @@ def parse_args():
     ap.add_argument("--layout-min-peak-sep", type=float, default=0.18, help="min_peak_separation_rel für Layout.")
     ap.add_argument("--layout-min-valley-drop", type=float, default=0.30, help="min_valley_rel_drop für Layout.")
     return ap.parse_args()
+
 
 def gather_urls(args) -> List[str]:
     if args.single_url:
@@ -69,6 +71,7 @@ def gather_urls(args) -> List[str]:
         if urls:
             return urls
     raise SystemExit("Keine URL angegeben (--single-url oder --list-file).")
+
 
 def build_session_filename(payload: Dict[str, Any]) -> str:
     sess = payload.get("session", {})
@@ -85,10 +88,12 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
     short = hashlib.sha256(url).hexdigest()[:8] if url else "na"
     return f"session_unknown_{short}.json"
 
+
 def process_pdf(url: str,
                 force_download: bool,
                 layout_min_peak_sep: float,
-                layout_min_valley_drop: float) -> Dict[str, Any]:
+                layout_min_valley_drop: float,
+                externalize_layout_debug: bool = True) -> Dict[str, Any]:
     pdf_path = download_pdf(url, force=force_download)
 
     pages_lines, layout_debug = extract_pages_with_layout(
@@ -157,7 +162,6 @@ def process_pdf(url: str,
             "applied": True,
             "reason": "forced-always"
         },
-        "layout_debug": layout_debug,
         "toc": toc_full,
         "toc_agenda": toc_parts["agenda"],
         "toc_speakers": toc_parts["speakers"],
@@ -170,7 +174,19 @@ def process_pdf(url: str,
             "reflow": reflow_stats
         }
     }
+
+    if externalize_layout_debug:
+        payload["schema_version"] = "1.2-split-layout"
+        base_name = build_session_filename(payload)
+        layout_filename = base_name.replace(".json", ".layout.json")
+        payload["layout_debug_file"] = layout_filename
+        payload["_layout_debug_internal"] = layout_debug
+    else:
+        payload["schema_version"] = "1.1-full"
+        payload["layout_debug"] = layout_debug
+
     return payload
+
 
 def write_index(results: List[Dict[str, Any]], out_dir: Path):
     index = {
@@ -179,7 +195,7 @@ def write_index(results: List[Dict[str, Any]], out_dir: Path):
     }
     for r in results:
         fname = build_session_filename(r)
-        index["sessions"].append({
+        session_entry = {
             "legislative_period": r["session"].get("legislative_period"),
             "number": r["session"].get("number"),
             "date": r["session"].get("date"),
@@ -189,10 +205,42 @@ def write_index(results: List[Dict[str, Any]], out_dir: Path):
             "layout_applied": r["layout"]["applied"],
             "layout_reason": r["layout"]["reason"],
             "source_pdf_url": r["session"]["source_pdf_url"]
-        })
+        }
+        if r.get("layout_debug_file"):
+            session_entry["layout_debug_file"] = r["layout_debug_file"]
+        index["sessions"].append(session_entry)
+
     with open(out_dir / "sessions_index.json", "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
     print("[INFO] Index aktualisiert.")
+
+
+def write_session_payload(payload: Dict[str, Any], out_dir: Path) -> Path:
+    """
+    Schreibt die Haupt-Session-Datei und – falls ausgelagert – die Layout-Debug Sidecar-Datei.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    base_name = build_session_filename(payload)
+    session_path = out_dir / base_name
+
+    layout_debug_internal = payload.pop("_layout_debug_internal", None)
+    layout_debug_file = payload.get("layout_debug_file")
+
+    if layout_debug_file and layout_debug_internal is not None:
+        sidecar_path = out_dir / layout_debug_file
+        sidecar_doc = {
+            "session_ref": base_name,
+            "schema_version": "1.0-layout-debug",
+            "layout_debug": layout_debug_internal
+        }
+        with sidecar_path.open("w", encoding="utf-8") as sf:
+            json.dump(sidecar_doc, sf, ensure_ascii=False, indent=2)
+
+    with session_path.open("w", encoding="utf-8") as mf:
+        json.dump(payload, mf, ensure_ascii=False, indent=2)
+
+    return session_path
+
 
 def main() -> int:
     args = parse_args()
@@ -207,7 +255,8 @@ def main() -> int:
             url,
             force_download=args.force_download,
             layout_min_peak_sep=args.layout_min_peak_sep,
-            layout_min_valley_drop=args.layout_min_valley_drop
+            layout_min_valley_drop=args.layout_min_valley_drop,
+            externalize_layout_debug=True  # Standard: ausgelagerte layout_debug
         )
 
         if args.schema_validate:
@@ -217,15 +266,14 @@ def main() -> int:
                 print(f"[WARN] Schema-Validierung fehlgeschlagen: {e}")
 
         results.append(payload)
-        fname = build_session_filename(payload)
-        with open(out_dir / fname, "w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=2)
-        print(f"[INFO] geschrieben: {fname}")
+        spath = write_session_payload(payload, out_dir)
+        print(f"[INFO] geschrieben: {spath.name} (layout_debug {'ausgelagert' if payload.get('layout_debug_file') else 'inline'})")
 
     if results:
         write_index(results, out_dir)
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
