@@ -53,7 +53,7 @@ def process_pdf(url: str, force_download: bool):
 
     # Immer Layout / Zwei-Spalten-Verarbeitung erzwingen
     pages_lines, debug_meta = extract_pages_with_layout(
-        strstr(pdf_path),
+        str(pdf_path),
     force_two_column=True,        # IMMER versuchen
     min_words_for_detection=20,
     min_side_fraction=0.08,       # etwas liberal, falls Seite ungleichmäßig
