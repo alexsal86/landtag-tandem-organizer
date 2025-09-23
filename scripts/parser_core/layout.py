@@ -2,7 +2,6 @@ import pdfplumber
 from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple
 import math
-from collections import Counter
 
 @dataclass
 class PageLayoutResult:
@@ -16,22 +15,17 @@ def extract_pages_with_layout(pdf_path: str,
                               min_words_for_detection: int = 25,
                               min_side_fraction: float = 0.10,
                               hist_bins: int = 80,
-                              min_peak_separation_rel: float = 0.22,
-                              min_valley_rel_drop: float = 0.35,
-                              line_y_quant: float = 3.0):
+                              min_peak_separation_rel: float = 0.18,
+                              min_valley_rel_drop: float = 0.30,
+                              line_y_quant: float = 3.0,
+                              rebalance_target_low: float = 0.42,
+                              rebalance_target_high: float = 0.58,
+                              rebalance_scan_step: float = 5.0):
     """
-    Zwei-Spalten-Erkennung ohne externe Dependencies.
+    Zwei-Spalten-Erkennung (Histogramm + Zeilen) + Rebalancing-Pass.
 
-    force_two_column:    Wenn True -> wenn kein sauberer Split ermittelt werden kann,
-                         wird ein 'best guess' gewählt (two-column-forced), solange
-                         beide Seiten ausreichend Wörter enthalten.
-    min_words_for_detection: Mindestanzahl Wörter pro Seite, bevor wir überhaupt einen Split versuchen.
-    min_side_fraction:  Mindestens dieser Anteil (0..1) aller Wörter muss pro Seite landen,
-                         sonst gilt Split als ungültig (außer forced).
-    hist_bins:          Anzahl Histogramm-Bins für Midpoint-Verteilung.
-    min_peak_separation_rel: Relativer Mindestabstand (in % Seitenbreite) zwischen zwei Peaks.
-    min_valley_rel_drop: Relativer Einbruch (Valley) zwischen Peaks gegenüber dem Durchschnitt der Peak-Höhen.
-    line_y_quant:       y-Quantisierung für Zeilenbucketing (kleiner = feinere Zeilen).
+    rebalance_target_low / high: akzeptabler Bereich für linke Spaltenfraktion.
+    rebalance_scan_step: Schrittweite beim Scannen alternativer Split-X-Werte.
     """
     pages_lines = []
     debug_meta = []
@@ -47,7 +41,10 @@ def extract_pages_with_layout(pdf_path: str,
                 hist_bins=hist_bins,
                 min_peak_sep_rel=min_peak_separation_rel,
                 min_valley_rel_drop=min_valley_rel_drop,
-                line_y_quant=line_y_quant
+                line_y_quant=line_y_quant,
+                rebalance_target_low=rebalance_target_low,
+                rebalance_target_high=rebalance_target_high,
+                rebalance_scan_step=rebalance_scan_step
             )
             pages_lines.append(result.lines)
             debug_meta.append({
@@ -56,7 +53,6 @@ def extract_pages_with_layout(pdf_path: str,
                 "columns": result.columns,
                 **result.meta
             })
-
     return pages_lines, debug_meta
 
 def _process_page(page,
@@ -67,7 +63,10 @@ def _process_page(page,
                   hist_bins: int,
                   min_peak_sep_rel: float,
                   min_valley_rel_drop: float,
-                  line_y_quant: float) -> PageLayoutResult:
+                  line_y_quant: float,
+                  rebalance_target_low: float,
+                  rebalance_target_high: float,
+                  rebalance_scan_step: float) -> PageLayoutResult:
 
     try:
         words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
@@ -81,12 +80,10 @@ def _process_page(page,
         )
 
     if not words:
-        return PageLayoutResult(
-            lines=[], method="empty-page", columns=1, meta={}
-        )
+        return PageLayoutResult(lines=[], method="empty-page", columns=1, meta={})
 
-    page_width = float(page.width or 0.0)
-    if page_width <= 0:
+    pw = float(page.width or 0.0)
+    if pw <= 0:
         txt = page.extract_text() or ""
         return PageLayoutResult(
             lines=_clean_lines(txt.splitlines()),
@@ -104,94 +101,61 @@ def _process_page(page,
             meta={"words": len(words)}
         )
 
-    # Wortmittelpunkte
     mid_word_pairs = [(((w["x0"] + w["x1"]) / 2.0), w) for w in words]
     mid_word_pairs.sort(key=lambda x: x[0])
-    mids = [mw[0] for mw in mid_word_pairs]
-
-    # 1) Histogrammverfahren
-    hist_decision = _histogram_split(
-        mids, page_width, hist_bins,
-        min_peak_sep_rel=min_peak_sep_rel,
-        min_valley_rel_drop=min_valley_rel_drop
-    )
+    mids = [m for m, _ in mid_word_pairs]
 
     debug_info: Dict[str, Any] = {
         "words": len(words),
-        "page_width": round(page_width, 2),
+        "page_width": round(pw, 2)
     }
 
+    hist_decision = _histogram_split(
+        mids, pw, hist_bins,
+        min_peak_sep_rel=min_peak_sep_rel,
+        min_valley_rel_drop=min_valley_rel_drop
+    )
     split_candidates: List[Tuple[float, str, Dict[str, Any]]] = []
     if hist_decision:
         split_x, meta = hist_decision
         split_candidates.append((split_x, "two-column-hist", meta))
 
-    # 2) Zeilenbasierte Analyse (line voting)
-    line_split = _line_based_split(mid_word_pairs, page_width, line_y_quant=line_y_quant)
-    if line_split:
-        split_x, meta = line_split
+    line_decision = _line_based_split(mid_word_pairs, pw, line_y_quant=line_y_quant)
+    if line_decision:
+        split_x, meta = line_decision
         split_candidates.append((split_x, "two-column-lines", meta))
 
-    # 3) Wähle besten Kandidaten nach (1) minimaler Balance-Diskrepanz (Differenz der Wortzahlen)
     chosen = None
     if split_candidates:
         evals = []
         for split_x, method_name, meta in split_candidates:
-            left_words = [w for mid, w in mid_word_pairs if mid < split_x]
-            right_words = [w for mid, w in mid_word_pairs if mid >= split_x]
+            left_words = [w for m, w in mid_word_pairs if m < split_x]
+            right_words = [w for m, w in mid_word_pairs if m >= split_x]
             imbalance = abs(len(left_words) - len(right_words))
             evals.append((imbalance, split_x, method_name, meta, left_words, right_words))
-        evals.sort(key=lambda x: x[0])  # minimaler Imbalance zuerst
-        imbalance, split_x, method_name, method_meta, left_words, right_words = evals[0]
-        frac_left = len(left_words)/len(words)
-        frac_right = len(right_words)/len(words)
+        evals.sort(key=lambda x: x[0])
+        imbalance, sx, mname, mmeta, lws, rws = evals[0]
+        frac_left = len(lws) / len(words)
+        frac_right = len(rws) / len(words)
         if frac_left >= min_side_fraction and frac_right >= min_side_fraction:
-            chosen = (split_x, method_name, method_meta, left_words, right_words)
-            debug_info["candidate_methods"] = [c[2] for c in evals[:3]]
+            chosen = (sx, mname, mmeta, lws, rws)
+            debug_info["candidate_methods"] = [e[2] for e in evals[:3]]
         else:
             debug_info["candidate_rejected_min_side_fraction"] = {
-                "frac_left": round(frac_left,3),
-                "frac_right": round(frac_right,3),
+                "frac_left": round(frac_left, 3),
+                "frac_right": round(frac_right, 3),
                 "min_side_fraction": min_side_fraction
             }
 
-    # 4) Falls kein Kandidat brauchbar und Force aktiv -> erzwingen
     if chosen is None and force_two_column:
-        # Einfacher heuristischer Split: median midpoint
-        median_mid = mids[len(mids)//2]
-        # Variation: probiere Offsets (40%..60%)
-        fallback_splits = [
-            page_width * 0.45,
-            page_width * 0.50,
-            page_width * 0.40,
-            median_mid,
-            page_width * 0.55
-        ]
-        best_fb = None
-        for split_x in fallback_splits:
-            left_words = [w for mid, w in mid_word_pairs if mid < split_x]
-            right_words = [w for mid, w in mid_word_pairs if mid >= split_x]
-            frac_left = len(left_words)/len(words)
-            frac_right = len(right_words)/len(words)
-            if frac_left >= min_side_fraction and frac_right >= min_side_fraction:
-                imbalance = abs(len(left_words) - len(right_words))
-                if best_fb is None or imbalance < best_fb[0]:
-                    best_fb = (imbalance, split_x, left_words, right_words, frac_left, frac_right)
-        if best_fb:
-            _, split_x, left_words, right_words, frac_left, frac_right = best_fb
-            chosen = (
-                split_x,
-                "two-column-forced",
-                {
-                    "forced_reason": "no_valid_hist_or_line_candidate",
-                    "frac_left": round(frac_left,3),
-                    "frac_right": round(frac_right,3)
-                },
-                left_words,
-                right_words
-            )
+        # Fallback forced candidate scan
+        forced = _forced_balance_scan(mid_word_pairs, words, pw, min_side_fraction)
+        if forced:
+            chosen = (*forced, )
+        else:
+            # kein sinnvoller forced kandidat
+            pass
 
-    # 5) Falls immer noch nichts → Single
     if chosen is None:
         txt = page.extract_text() or ""
         single_meta = {
@@ -201,8 +165,8 @@ def _process_page(page,
         }
         if hist_decision:
             single_meta["hist_meta"] = hist_decision[1]
-        if line_split:
-            single_meta["line_meta"] = line_split[1]
+        if line_decision:
+            single_meta["line_meta"] = line_decision[1]
         return PageLayoutResult(
             lines=_clean_lines(txt.splitlines()),
             method="single-fallback",
@@ -211,6 +175,23 @@ def _process_page(page,
         )
 
     split_x, method_name, method_meta, left_words, right_words = chosen
+    frac_left = len(left_words) / len(words)
+    frac_right = len(right_words) / len(words)
+
+    # Rebalance, falls stark unausgeglichen
+    rebalanced = False
+    if not (rebalance_target_low <= frac_left <= rebalance_target_high):
+        reb = _rebalance_split(mid_word_pairs, pw, left_words, right_words,
+                               initial_split_x=split_x,
+                               target_low=rebalance_target_low,
+                               target_high=rebalance_target_high,
+                               scan_step=rebalance_scan_step)
+        if reb:
+            rebalanced = True
+            split_x, left_words, right_words, frac_left, frac_right, extra_meta = reb
+            method_name = method_name + "-rebalanced"
+            method_meta["rebalance"] = extra_meta
+
     left_lines = _lines_from_words(left_words, line_y_quant)
     right_lines = _lines_from_words(right_words, line_y_quant)
     merged = left_lines + right_lines
@@ -218,12 +199,13 @@ def _process_page(page,
     meta = {
         **debug_info,
         **method_meta,
-        "split_x": round(split_x,2),
+        "split_x": round(split_x, 2),
         "left_count": len(left_words),
         "right_count": len(right_words),
-        "left_fraction": round(len(left_words)/len(words),3),
-        "right_fraction": round(len(right_words)/len(words),3),
-        "force_two_column": force_two_column
+        "left_fraction": round(frac_left, 3),
+        "right_fraction": round(frac_right, 3),
+        "force_two_column": force_two_column,
+        "rebalanced": rebalanced
     }
 
     return PageLayoutResult(
@@ -232,6 +214,124 @@ def _process_page(page,
         columns=2,
         meta=meta
     )
+
+# ---------- Hilfsfunktionen ----------
+
+def _forced_balance_scan(mid_word_pairs, words_all, page_width, min_side_fraction):
+    total = len(words_all)
+    mids_only = [m for m, _ in mid_word_pairs]
+    lo = page_width * 0.35
+    hi = page_width * 0.65
+    steps = max(1, int((hi - lo) / 10))
+    best = None
+    for i in range(steps + 1):
+        x = lo + i * (hi - lo) / steps
+        left_words = [w for m, w in mid_word_pairs if m < x]
+        right_words = [w for m, w in mid_word_pairs if m >= x]
+        fl = len(left_words) / total
+        fr = len(right_words) / total
+        if fl >= min_side_fraction and fr >= min_side_fraction:
+            imbalance = abs(fl - 0.5)
+            # Mixed line penalty
+            penalty = _mixed_line_penalty(left_words, right_words)
+            score = imbalance * 2 + penalty * 0.5
+            if best is None or score < best[0]:
+                best = (score, x, left_words, right_words, fl, fr, penalty)
+    if best:
+        _, sx, lws, rws, fl, fr, penalty = best
+        return (sx, "two-column-forced", {"forced_reason": "forced_balance_scan",
+                                          "forced_penalty": round(penalty,3)}, lws, rws)
+    return None
+
+def _rebalance_split(mid_word_pairs,
+                     page_width,
+                     left_words_initial,
+                     right_words_initial,
+                     initial_split_x,
+                     target_low,
+                     target_high,
+                     scan_step: float):
+    total = len(left_words_initial) + len(right_words_initial)
+    # Wenn Spanne extrem schlecht (<0.35 oder >0.65), scanne breiter
+    scan_lo = page_width * 0.35
+    scan_hi = page_width * 0.65
+    candidate_positions = set()
+
+    # Gaps hinzufügen
+    mids_only = [m for m, _ in mid_word_pairs]
+    for i in range(1, len(mids_only)):
+        gap_mid = (mids_only[i] + mids_only[i-1]) / 2.0
+        if scan_lo <= gap_mid <= scan_hi:
+            candidate_positions.add(round(gap_mid, 2))
+
+    # Gleichmäßiger Raster
+    x = scan_lo
+    while x <= scan_hi:
+        candidate_positions.add(round(x, 2))
+        x += scan_step
+
+    # Immer initialen Split hinzufügen
+    candidate_positions.add(round(initial_split_x, 2))
+
+    best = None
+    for sx in sorted(candidate_positions):
+        lws = [w for m, w in mid_word_pairs if m < sx]
+        rws = [w for m, w in mid_word_pairs if m >= sx]
+        fl = len(lws) / total
+        fr = 1 - fl
+        mixed_penalty = _mixed_line_penalty(lws, rws)
+        imbalance = abs(fl - 0.5)
+        # Score: je näher an 0.5 desto besser, Penalize mixing
+        score = imbalance * 2 + mixed_penalty * 0.6
+        if best is None or score < best[0]:
+            best = (score, sx, lws, rws, fl, fr, mixed_penalty)
+
+        # Früher Abbruch wenn schon im Zielbereich und sehr niedriger penalty
+        if target_low <= fl <= target_high and mixed_penalty == 0:
+            break
+
+    if not best:
+        return None
+
+    score, sx, lws, rws, fl, fr, mp = best
+    # Nur akzeptieren, wenn Verbesserung gegenüber initialer Fraktion
+    initial_fl = len(left_words_initial) / total
+    initial_imb = abs(initial_fl - 0.5)
+    improved = abs(fl - 0.5) < initial_imb or (target_low <= fl <= target_high)
+
+    if not improved:
+        return None
+
+    extra_meta = {
+        "rebalance_initial_split_x": round(initial_split_x,2),
+        "rebalance_new_split_x": round(sx,2),
+        "rebalance_initial_left_fraction": round(initial_fl,3),
+        "rebalance_new_left_fraction": round(fl,3),
+        "rebalance_mixed_penalty": round(mp,3),
+        "rebalance_score": round(score,3),
+        "rebalance_initial_mixed_penalty": round(_mixed_line_penalty(left_words_initial, right_words_initial),3)
+    }
+    return sx, lws, rws, fl, fr, extra_meta
+
+def _mixed_line_penalty(left_words, right_words, y_quant=3.0):
+    # Penalty: Anzahl Zeilen (nach Quantisierung), die sowohl linke als auch rechte Wörter enthalten
+    # geteilt durch Gesamtzeilen, skaliert 0..1
+    tagged = [("L", w) for w in left_words] + [("R", w) for w in right_words]
+    if not tagged:
+        return 0.0
+    buckets = {}
+    for side, w in tagged:
+        yk = round(w["top"] / y_quant)
+        buckets.setdefault(yk, []).append(side)
+    mixed = 0
+    total = 0
+    for sides in buckets.values():
+        total += 1
+        if "L" in sides and "R" in sides:
+            mixed += 1
+    if total == 0:
+        return 0.0
+    return mixed / total
 
 def _histogram_split(mids: List[float],
                      page_width: float,
@@ -242,7 +342,6 @@ def _histogram_split(mids: List[float],
         return None
     lo = min(mids); hi = max(mids)
     if hi - lo < page_width * 0.3:
-        # Sehr kompakt – wohl keine zwei klar getrennten Spalten
         return None
     bin_w = (hi - lo) / bins if bins > 0 else (hi - lo)
     if bin_w <= 0:
@@ -250,28 +349,29 @@ def _histogram_split(mids: List[float],
 
     counts = []
     edges = []
+    # einfache Bin-Zählung
     for i in range(bins):
-        start = lo + i*bin_w
+        start = lo + i * bin_w
         end = start + bin_w
         edges.append((start, end))
-        cnt = sum(1 for m in mids if start <= m < end)  # naive; ok für moderate Wortzahlen
+        cnt = 0
+        for m in mids:
+            if start <= m < end:
+                cnt += 1
         counts.append(cnt)
 
-    # Finde Peaks (lokale Maxima)
+    # lokale Maxima
     peaks = []
-    for i in range(1, bins-1):
+    for i in range(1, bins - 1):
         if counts[i] > counts[i-1] and counts[i] > counts[i+1]:
             peaks.append((counts[i], i))
     if len(peaks) < 2:
         return None
-    # Top 2 Peaks
     peaks.sort(reverse=True)
     top2 = peaks[:2]
-    p1, p2 = sorted(top2, key=lambda x: x[1])  # nach Index
+    p1, p2 = sorted(top2, key=lambda x: x[1])
     c1, i1 = p1
     c2, i2 = p2
-    # Indizes weit genug auseinander?
-    dist_bins = abs(i2 - i1)
     center1 = (edges[i1][0] + edges[i1][1]) / 2.0
     center2 = (edges[i2][0] + edges[i2][1]) / 2.0
     sep_abs = abs(center2 - center1)
@@ -279,44 +379,36 @@ def _histogram_split(mids: List[float],
     if sep_rel < min_peak_sep_rel:
         return None
 
-    # Valley suchen zwischen i1 und i2 (exklusiv)
+    # Valley
     valley = None
     valley_i = None
-    for j in range(min(i1,i2)+1, max(i1,i2)):
-        if valley is None or counts[j] < valley:
-            valley = counts[j]; valley_i = j
+    for j in range(i1 + 1, i2):
+        val = counts[j]
+        if valley is None or val < valley:
+            valley = val
+            valley_i = j
     if valley is None:
         return None
-
     avg_peak_height = (c1 + c2) / 2.0
     if avg_peak_height == 0:
         return None
     drop_rel = 1.0 - (valley / avg_peak_height)
-
     if drop_rel < min_valley_rel_drop:
-        # Tal nicht tief genug
         return None
 
     valley_center = (edges[valley_i][0] + edges[valley_i][1]) / 2.0
     meta = {
-        "hist_peak1_bin": i1,
-        "hist_peak2_bin": i2,
-        "hist_peak1_center": round(center1,2),
-        "hist_peak2_center": round(center2,2),
-        "hist_sep_abs": round(sep_abs,2),
-        "hist_sep_rel": round(sep_rel,3),
+        "hist_peak1_center": round(center1, 2),
+        "hist_peak2_center": round(center2, 2),
+        "hist_sep_abs": round(sep_abs, 2),
+        "hist_sep_rel": round(sep_rel, 3),
+        "hist_valley_drop_rel": round(drop_rel, 3),
         "hist_valley_bin": valley_i,
-        "hist_valley_drop_rel": round(drop_rel,3),
         "hist_bins": bins
     }
     return valley_center, meta
 
 def _line_based_split(mid_word_pairs, page_width: float, line_y_quant: float):
-    """
-    Zeilenweise: Für jede Zeile (y quantisiert) X-Min + X-Max sammeln.
-    Falls genug Zeilen zwei „Clusterlöcher“ nahe einer vertikalen Trennzone zeigen,
-    Vote-Mechanismus: Candidate Split = Durchschnitt der linearen Lücken-Zentren.
-    """
     buckets = {}
     for mid, w in mid_word_pairs:
         ykey = round(w["top"] / line_y_quant)
@@ -324,12 +416,11 @@ def _line_based_split(mid_word_pairs, page_width: float, line_y_quant: float):
 
     gap_centers = []
     total_lines = 0
-    considered_lines = 0
+    considered = 0
     for yk, entries in buckets.items():
         total_lines += 1
         entries.sort(key=lambda x: x[0])
         mids_line = [e[0] for e in entries]
-        # Finde größte Lücke in dieser Zeile
         if len(mids_line) < 2:
             continue
         gaps = []
@@ -338,29 +429,26 @@ def _line_based_split(mid_word_pairs, page_width: float, line_y_quant: float):
             gaps.append((gap, (mids_line[i] + mids_line[i-1]) / 2.0))
         gaps.sort(reverse=True)
         largest_gap, gap_center = gaps[0]
-        # Heuristik: wenn Lücke > 0.15 * page_width → potentielle Spaltentrennung in der Zeile
         if largest_gap > page_width * 0.15:
-            considered_lines += 1
+            considered += 1
             gap_centers.append(gap_center)
 
     if not gap_centers:
         return None
 
-    # Cluster der gap_centers grob: median
-    # (Wir brauchen eigentlich nur EIN robustes Zentrum)
-    # Wenn Streuung groß, uninteressant.
     mean_gap = sum(gap_centers) / len(gap_centers)
-    # optional: Varianz prüfen
     variance = sum((g - mean_gap)**2 for g in gap_centers) / len(gap_centers)
     stddev = math.sqrt(variance)
-    if stddev > page_width * 0.08 and considered_lines < max(5, 0.2 * total_lines):
+
+    # Wenn zu diffuse Verteilung und wenige Votes: unsicher
+    if stddev > page_width * 0.09 and considered < max(4, 0.08 * total_lines):
         return None
 
     meta = {
         "line_total_buckets": total_lines,
-        "line_candidate_votes": considered_lines,
-        "line_gap_center_mean": round(mean_gap,2),
-        "line_gap_center_stddev": round(stddev,2)
+        "line_candidate_votes": considered,
+        "line_gap_center_mean": round(mean_gap, 2),
+        "line_gap_center_stddev": round(stddev, 2)
     }
     return mean_gap, meta
 
@@ -369,18 +457,18 @@ def _lines_from_words(words, line_y_quant: float):
         return []
     lines_map = {}
     for w in words:
-        ykey = round(w["top"] / line_y_quant)
-        lines_map.setdefault(ykey, []).append(w)
-    lines = []
+        yk = round(w["top"] / line_y_quant)
+        lines_map.setdefault(yk, []).append(w)
+    out = []
     for y in sorted(lines_map.keys()):
         seg = sorted(lines_map[y], key=lambda x: x["x0"])
-        lines.append(" ".join(s["text"] for s in seg))
-    return lines
+        out.append(" ".join(s["text"] for s in seg))
+    return out
 
 def _clean_lines(lines):
-    out = []
+    res = []
     for l in lines:
         l = l.rstrip()
         if l.strip():
-            out.append(l)
-    return out
+            res.append(l)
+    return res
