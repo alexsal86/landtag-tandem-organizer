@@ -1,8 +1,10 @@
-# macht parser_core zum Paket und re-exportiert zentrale Funktionen
+from .segment import segment_speeches
+from .toc_parser import parse_toc
+from .pipeline import parse_protocol, split_toc_and_body
 
-from .segment import segment_speeches  # bestehende Funktion
-try:
-    from .segments import build_speech_segments
-except ImportError:
-    # Falls segments.py (noch) nicht vorhanden ist
-    build_speech_segments = None  # wird im Aufrufer abgefangen
+__all__ = [
+    "segment_speeches",
+    "parse_toc",
+    "parse_protocol",
+    "split_toc_and_body",
+]
