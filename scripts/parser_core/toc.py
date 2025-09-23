@@ -4,7 +4,6 @@ from typing import List, Dict, Optional
 # Erkennung des "INHALT" Headers (auch gesperrte Schreibweise)
 TOC_HEADER_PATTERN = re.compile(r"^\s*(I\s+N\s+H\s+A\s+L\s+T|INHALT)\s*$", re.IGNORECASE)
 
-# Nummerierte Tagesordnungspunkte (z.B. "1. Aktuelle Debatte – ... 7639")
 NUM_ITEM_CORE = re.compile(
     r"""
     ^(?P<num>\d{1,2})\.\s+
@@ -14,7 +13,6 @@ NUM_ITEM_CORE = re.compile(
     re.VERBOSE
 )
 
-# Unnummerierte Einträge (Eröffnung, Beschluss etc.)
 UNNUM_ITEM_CORE = re.compile(
     r"""
     ^(?P<title>(Eröffnung|Beschluss|Zweite\s+Beratung|Dritte\s+Beratung|Erste\s+Beratung|Aktuelle\s+Debatte|Beratung|Fortsetzung|Schluss|Beschlussempfehlung).+?)
@@ -23,7 +21,6 @@ UNNUM_ITEM_CORE = re.compile(
     re.VERBOSE | re.IGNORECASE
 )
 
-# Sprecherzeile im TOC (Index), z.B. "Abg. Dr. Rainer Balzer AfD . . . . 7639, 7650"
 SPEAKER_LINE_RE = re.compile(
     r"""
     ^
@@ -35,13 +32,9 @@ SPEAKER_LINE_RE = re.compile(
     re.VERBOSE | re.IGNORECASE
 )
 
-# Hilfs-Regex: Dot-Leader entfernen
 DOT_LEADERS = re.compile(r"\.{2,}")
-
-# Erkennen von Seitenzahlen-Blöcken im "verklebt"-Fall
 PAGE_NUMBER_BLOCK = re.compile(r"\b\d{3,5}(?:\s*,\s*\d{3,5})*\b")
 
-# Keywords, die darauf hindeuten, dass ein Segment Agenda-artig ist
 AGENDA_KEYWORDS = [
     "beratung", "beschlussempfehlung", "gesetz", "aktuelle debatte",
     "eröffnung", "beschluss", "tagesordnung", "antrag", "fortsetzung"
@@ -49,22 +42,11 @@ AGENDA_KEYWORDS = [
 
 
 def parse_toc(first_page_lines: List[str]) -> List[Dict]:
-    """
-    Extrahiert TOC-Einträge aus der ersten Seite.
-    Gibt eine Liste von Einträgen zurück:
-    {
-      raw, index (oder None), title, page_in_pdf, numbered (bool), type: 'agenda'|'speaker'
-    }
-    """
     region = _extract_toc_region(first_page_lines)
     if not region:
         return []
-
-    # Vor-Normalisierung
     cleaned_lines = [DOT_LEADERS.sub(" ", l).strip() for l in region if l.strip()]
-    # Zusammenführen von offensichtlichen Fortsetzungszeilen ohne Seitenzahl
     merged = _merge_wrapped_lines(cleaned_lines)
-    # Aufspalten „verklebt“: Segmentierung anhand mehrerer Page-Blöcke in einer Zeile
     exploded = []
     for line in merged:
         exploded.extend(_split_multi_entry_line(line))
@@ -72,7 +54,6 @@ def parse_toc(first_page_lines: List[str]) -> List[Dict]:
     entries: List[Dict] = []
     for seg in exploded:
         seg_norm = _compakt_spaces(seg)
-        # Versuch: Nummerierte Agenda
         m_num = NUM_ITEM_CORE.match(seg_norm)
         if m_num:
             entries.append(_make_entry(
@@ -84,7 +65,6 @@ def parse_toc(first_page_lines: List[str]) -> List[Dict]:
                 type_="agenda"
             ))
             continue
-        # Unnummeriert (Agenda)
         m_un = UNNUM_ITEM_CORE.match(seg_norm)
         if m_un:
             entries.append(_make_entry(
@@ -96,11 +76,9 @@ def parse_toc(first_page_lines: List[str]) -> List[Dict]:
                 type_="agenda"
             ))
             continue
-        # Sprecherzeile (Index)
         m_sp = SPEAKER_LINE_RE.match(seg_norm)
         if m_sp:
             page_field = m_sp.group("pages")
-            # Nehme ersten Wert als Referenzseite
             first_page = int(page_field.split(",")[0].strip())
             entries.append(_make_entry(
                 raw=seg,
@@ -111,7 +89,6 @@ def parse_toc(first_page_lines: List[str]) -> List[Dict]:
                 type_="speaker"
             ))
             continue
-        # Heuristischer Agenda-Fallback
         if _looks_like_agenda(seg_norm):
             page = _extract_last_page(seg_norm)
             if page:
@@ -125,15 +102,37 @@ def parse_toc(first_page_lines: List[str]) -> List[Dict]:
                     type_="agenda"
                 ))
                 continue
-        # Letzte Kategorie: Nicht klassifizierbar → skip (oder debug)
-        # (Optional könnte man hier "type":"other" ausgeben)
+        # (Optional: weitere Typen später)
     return entries
 
 
+def partition_toc(toc_entries: List[Dict]) -> Dict[str, List[Dict]]:
+    """
+    Teilt die komplette TOC-Liste in drei Listen:
+      agenda, speakers, other
+    Gibt Dict zurück.
+    """
+    agenda = []
+    speakers = []
+    other = []
+    for e in toc_entries:
+        t = e.get("type")
+        if t == "agenda":
+            agenda.append(e)
+        elif t == "speaker":
+            speakers.append(e)
+        else:
+            other.append(e)
+    return {
+        "agenda": agenda,
+        "speakers": speakers,
+        "other": other
+    }
+
+
+# ---------------- interne Helfer ----------------
+
 def _extract_toc_region(lines: List[str]) -> List[str]:
-    """
-    Suche 'INHALT' und nehme folgende Zeilen bis zu zwei Leerzeilen oder Break.
-    """
     start = None
     for i, l in enumerate(lines):
         if TOC_HEADER_PATTERN.match(l):
@@ -158,9 +157,6 @@ def _extract_toc_region(lines: List[str]) -> List[str]:
 
 
 def _merge_wrapped_lines(lines: List[str]) -> List[str]:
-    """
-    Führt Zeilen zusammen, wenn eine Zeile keine Seitenzahl enthält und offensichtlich fortgesetzt wird.
-    """
     merged = []
     buf = ""
     for l in lines:
@@ -168,11 +164,9 @@ def _merge_wrapped_lines(lines: List[str]) -> List[str]:
             buf = l
             continue
         if PAGE_NUMBER_BLOCK.search(buf):
-            # Buf hat schon Seitenzahl → commit und neu
             merged.append(buf)
             buf = l
         else:
-            # Prüfe ob l eher eine Fortsetzung ist (klein anfängt oder Bindestrich-Fortsetzung)
             if _looks_continuation(l):
                 buf += " " + l
             else:
@@ -184,20 +178,12 @@ def _merge_wrapped_lines(lines: List[str]) -> List[str]:
 
 
 def _split_multi_entry_line(line: str) -> List[str]:
-    """
-    Splittet Zeilen, die mehrere getrennte Einträge enthalten,
-    indem nach Seitenzahlblöcken segmentiert wird.
-    Beispiel:
-      "Eröffnung ... 7639 Beschlussempfehlung ... 7657"
-      → ["Eröffnung ... 7639", "Beschlussempfehlung ... 7657"]
-    """
     segs = []
     matches = list(PAGE_NUMBER_BLOCK.finditer(line))
     if len(matches) <= 1:
         return [line.strip()]
     last_end = 0
     for i, m in enumerate(matches):
-        # Segment bis inklusive dieser Seitenzahl
         seg = line[last_end:m.end()]
         segs.append(seg.strip())
         last_end = m.end()
@@ -207,14 +193,11 @@ def _split_multi_entry_line(line: str) -> List[str]:
 def _looks_continuation(line: str) -> bool:
     if not line:
         return False
-    # klein anfang = Fortsetzung (z.B. "und weiterer Vorschriften ...")
     first = line.lstrip()[:1]
     if first and first.islower():
         return True
-    # Bindestrich hängt
     if line.startswith("–") or line.startswith("-"):
         return True
-    # beginnt mit (Fortsetzung eines Gedankenstrich Satzes)
     if line.startswith("("):
         return True
     return False
@@ -224,7 +207,6 @@ def _looks_like_agenda(line: str) -> bool:
     low = line.lower()
     if any(k in low for k in AGENDA_KEYWORDS) and PAGE_NUMBER_BLOCK.search(line):
         return True
-    # Falls nummeriert aber Regex nicht gegriffen hat
     if re.match(r"^\d{1,2}\.\s+\S+", line) and PAGE_NUMBER_BLOCK.search(line):
         return True
     return False
@@ -235,7 +217,6 @@ def _extract_last_page(line: str) -> Optional[int]:
     if not pages:
         return None
     last = pages[-1]
-    # Letzter Block kann "7639, 7650" sein → nehme letzten
     last_split = [p.strip() for p in last.split(",")]
     try:
         return int(last_split[-1])
@@ -258,7 +239,6 @@ def _remove_leading_num(line: str) -> str:
 
 
 def _strip_trailing_page_artifacts(title: str) -> str:
-    # Entfernt eventuelle Reste von Seitenzahlen-Leadern im Titel
     t = PAGE_NUMBER_BLOCK.sub("", title)
     t = DOT_LEADERS.sub(" ", t)
     t = re.sub(r"\s{2,}", " ", t)
