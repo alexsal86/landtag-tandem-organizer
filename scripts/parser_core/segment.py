@@ -1,27 +1,23 @@
 import re
+import unicodedata
 from typing import List, Dict, Any, Optional, Tuple
 
 """
-Vereinfachte Segmentierung gemäß Absatzregel (aktualisierte Version mit Früherkennung
-des ersten Headers auch ohne vorangehende Leerzeile).
+Rede-Segmentierung – Version mit robustem Header-Matching (Abg., Präsident(in), Minister usw.)
+und tolerant gegenüber:
+- führenden Whitespaces (auch NBSP)
+- Multi-Line Headern (Name / Partei getrennt)
+- erster Header ohne vorangehende Leerzeile (Frontmatter)
+- Partei in eigener Folgezeile (z.B. Zeile 1: 'Abg. Dr. Rainer Balzer', Zeile 2: 'AfD:')
 
-Grundregel (unverändert):
-- Neue Rede nur am Beginn eines Absatzes: Dokumentanfang oder nach mindestens einer Leerzeile.
-- Ausnahme NEU: Der ALLERERSTE gültige Header (Rolle + Name + ":" / ggf. Multi-Line) startet die erste Rede
-  auch dann, wenn keine Leerzeile davor stand (Frontmatter wird ignoriert).
-- Multi-Line-Header: Zeile 1 beginnt mit Rolle, enthält keinen ":", Zeile 2 ergänzt ":" → zusammen Header.
-- Keine Inline-Header-Segmentierung mitten im Absatz.
-- Interjektionen (Abg. ...: ...) innerhalb von Klammern → Annotation, keine neue Rede.
-- Partei bei Abg. optional (allow_abg_without_party=True Standard).
-- Continuation-Flag bei wiederholtem (role, name).
-
-Neu hinzugefügt:
-- first_speech_started Logik
-- Header-Früherkennung vor erster Rede auch ohne at_paragraph_start
+Konfigurierbar:
+- require_bold_for_header
+- allow_abg_without_party
+- fallback_inline_header (wenn Absatzstart-Flag verfehlt wurde)
 """
 
 # -----------------------------------------------------------
-# Rollen- & Partei-Definitionen / Regex
+# Rollen / Partei Regex-Komponenten
 # -----------------------------------------------------------
 
 ROLE_TOKENS = [
@@ -42,14 +38,22 @@ PARTY_VARIANTS = [
 ROLE_PATTERN = "(?:" + "|".join(ROLE_TOKENS) + ")"
 PARTY_PATTERN = "(?:" + "|".join(PARTY_VARIANTS) + ")"
 
+# Einzeiliger Header:
+# Führende Whitespaces erlaubt, Name-Block = alles bis optionaler Partei und vor dem ':'
 HEADER_LINE_RE = re.compile(
-    rf"^(?P<role>{ROLE_PATTERN})\s+"
-    rf"(?P<name_block>(?:[^\n:()]|\((?!.*?:\))){{1,150}}?)"
-    rf"(?:\s+(?P<party>{PARTY_PATTERN}))?\s*:"
+    rf"^\s*(?P<role>{ROLE_PATTERN})\s+"
+    rf"(?P<name_block>[^:\n]{{1,160}}?)"
+    rf"(?:\s+(?P<party>{PARTY_PATTERN}))?\s*:",
+    re.IGNORECASE
 )
 
-LINE_START_ROLE_RE = re.compile(rf"^(?P<role>{ROLE_PATTERN})\b")
+# Zeile beginnt mit Rolle (für Multi-Line Start)
+LINE_START_ROLE_RE = re.compile(rf"^\s*(?P<role>{ROLE_PATTERN})\b", re.IGNORECASE)
 
+# Partei-Zeile (nur Partei + evtl. Whitespaces + ':')
+PARTY_ONLY_LINE_RE = re.compile(rf"^\s*(?P<party>{PARTY_PATTERN})\s*:\s*$", re.IGNORECASE)
+
+# Interjektionen (innerhalb von Klammern)
 PAREN_INTERJECTION_RE = re.compile(
     r"Abg\.\s+([^:()]{2,120}?)(?:\s+(AfD|CDU|SPD|FDP/DVP|FDP|GRÜNE|GRUENE|B90/GRÜNE|BÜNDNIS\s+90/DIE\s+GRÜNEN|LINKE|DIE\s+LINKE|Freie\s+Wähler|fraktionslos))?:\s*([^()]*?)(?=$|[)–\-])",
     re.IGNORECASE
@@ -85,7 +89,8 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                      capture_offsets: bool = False,
                      debug: bool = False,
                      require_bold_for_header: bool = False,
-                     allow_abg_without_party: bool = True) -> List[Dict[str, Any]]:
+                     allow_abg_without_party: bool = True,
+                     fallback_inline_header: bool = True) -> List[Dict[str, Any]]:
     speeches: List[Dict[str, Any]] = []
     current: Optional[Dict[str, Any]] = None
     body_line_entries: List[Dict[str, Any]] = []
@@ -94,7 +99,7 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
 
     at_paragraph_start = True
     pending_header_first_line: Optional[Dict[str, Any]] = None
-    first_speech_started = False  # NEU
+    first_speech_started = False
 
     def flush_current():
         nonlocal current, body_line_entries, speeches
@@ -107,7 +112,7 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
             if t.strip():
                 parts.append(t)
             else:
-                parts.append("")
+                parts.append("")  # Absatz erhalten
         final_text = "\n".join(parts).strip("\n")
         if capture_offsets:
             current["lines"] = _compute_offsets(body_line_entries)
@@ -120,16 +125,21 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
 
     for line_obj in flat_lines:
         raw_line = (line_obj.get("text") or "")
+        # Unicode Normalisierung
+        raw_line = unicodedata.normalize("NFKC", raw_line)
         page = line_obj.get("page")
         line_idx = line_obj.get("line_index")
         bold_flag = _extract_bold_flag(line_obj)
         norm_line = raw_line.rstrip("\n\r")
 
-        if not norm_line.strip():
+        # Erweitertes Leere-Zeilen Matching (inkl. NBSP, BOM)
+        line_strip_extended = norm_line.replace("\u00A0", "").replace("\ufeff", "").strip()
+        if not line_strip_extended:
             if current is not None:
                 body_line_entries.append({"page": page, "line_index": line_idx, "text": ""})
             at_paragraph_start = True
             if pending_header_first_line:
+                # keine zweite Zeile mit ":" -> erste Bestandszeile in Body
                 if current is None:
                     speech_index += 1
                     current = _make_new_speech(speech_index,
@@ -143,14 +153,20 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                 pending_header_first_line = None
             continue
 
-        # Multi-Line Phase (zweite Zeile versucht Header abzuschließen)
+        # Multi-Line zweiter Teil?
         if pending_header_first_line:
-            combined = f"{pending_header_first_line['text']} {norm_line}"
+            # Spezialfall: zweite Zeile enthält nur Partei + ":"  (z. B. 'AfD:')
+            party_only = PARTY_ONLY_LINE_RE.match(norm_line)
+            if party_only:
+                combined = f"{pending_header_first_line['text']} {party_only.group('party')}:"
+            else:
+                combined = f"{pending_header_first_line['text']} {norm_line}"
+
             if ":" in combined:
-                m = HEADER_LINE_RE.match(combined)
-                if m and _accept_header_match(m, allow_abg_without_party):
+                m_comb = HEADER_LINE_RE.match(combined)
+                if m_comb and _accept_header_match(m_comb, allow_abg_without_party):
                     if require_bold_for_header and pending_header_first_line.get("bold") is False:
-                        # Bold verlangt aber nicht vorhanden -> Body
+                        # Bold verlangt, nicht da -> Body
                         if current is None:
                             speech_index += 1
                             current = _make_new_speech(speech_index,
@@ -169,14 +185,14 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                     else:
                         flush_current()
                         speech_index += 1
-                        speaker_meta = _speaker_meta_from_match(m)
+                        speaker_meta = _speaker_meta_from_match(m_comb)
                         signature = (speaker_meta.get("role"), speaker_meta.get("name"))
                         continuation = (previous_speaker_signature == signature)
                         current = _make_new_speech(speech_index, pending_header_first_line["page"],
                                                    speaker_meta, continuation)
                         previous_speaker_signature = signature
                         first_speech_started = True
-                        after = combined[m.end():].strip()
+                        after = combined[m_comb.end():].strip()
                         if after:
                             body_line_entries.append({
                                 "page": page,
@@ -191,7 +207,7 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                     at_paragraph_start = False
                     continue
                 else:
-                    # Nicht akzeptiert -> Body
+                    # Kein gültiger Header -> Body
                     if current is None:
                         speech_index += 1
                         current = _make_new_speech(speech_index,
@@ -211,7 +227,7 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                     at_paragraph_start = False
                     continue
             else:
-                # Kein ":" → Body
+                # Keine ':' – treat as body
                 if current is None:
                     speech_index += 1
                     current = _make_new_speech(speech_index,
@@ -231,72 +247,50 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                 at_paragraph_start = False
                 continue
 
-        # Früherkennung des ersten Headers (NEU):
+        # Früherkennung erster Header (Frontmatter umgehen)
         if not first_speech_started:
             m_first = HEADER_LINE_RE.match(norm_line)
             if m_first and _accept_header_match(m_first, allow_abg_without_party):
-                # Bold-Pflicht?
                 if require_bold_for_header and bold_flag is False:
-                    # Als Body (falls du das lieber doch erzwingen willst, setze require_bold_for_header False)
-                    if current is None:
-                        speech_index += 1
-                        current = _make_new_speech(speech_index, page, _empty_speaker(), False)
+                    # trotzdem akzeptieren? -> wir akzeptieren, um nicht am Start zu scheitern
+                    pass
+                flush_current()
+                speech_index += 1
+                speaker_meta = _speaker_meta_from_match(m_first)
+                signature = (speaker_meta.get("role"), speaker_meta.get("name"))
+                current = _make_new_speech(speech_index, page, speaker_meta, False)
+                previous_speaker_signature = signature
+                first_speech_started = True
+                after = norm_line[m_first.end():].strip()
+                if after:
                     body_line_entries.append({
                         "page": page,
                         "line_index": line_idx,
-                        "text": norm_line
+                        "text": after
                     })
-                else:
-                    flush_current()
-                    speech_index += 1
-                    speaker_meta = _speaker_meta_from_match(m_first)
-                    signature = (speaker_meta.get("role"), speaker_meta.get("name"))
-                    current = _make_new_speech(speech_index, page, speaker_meta, False)
-                    previous_speaker_signature = signature
-                    first_speech_started = True
-                    after = norm_line[m_first.end():].strip()
-                    if after:
-                        body_line_entries.append({
-                            "page": page,
-                            "line_index": line_idx,
-                            "text": after
-                        })
-                    if debug:
-                        current.setdefault("debug", {})
-                        current["debug"]["origin"] = "first_header_no_paragraph_break"
-                        current["debug"]["bold_used"] = bold_flag
+                if debug:
+                    current.setdefault("debug", {})
+                    current["debug"]["origin"] = "first_header_no_paragraph_break"
+                    current["debug"]["bold_used"] = bold_flag
                 at_paragraph_start = False
                 continue
-            # Multi-Line Start vor erster Rede
             if at_paragraph_start and LINE_START_ROLE_RE.match(norm_line) and ":" not in norm_line:
-                # Bold-Pflicht beachten
-                if require_bold_for_header and bold_flag is False:
-                    # Kein Header -> Body
-                    if current is None:
-                        speech_index += 1
-                        current = _make_new_speech(speech_index, page, _empty_speaker(), False)
-                    body_line_entries.append({
-                        "page": page,
-                        "line_index": line_idx,
-                        "text": norm_line
-                    })
-                else:
-                    pending_header_first_line = {
-                        "page": page,
-                        "line_index": line_idx,
-                        "text": norm_line,
-                        "bold": bold_flag
-                    }
+                # Multi-Line Start
+                pending_header_first_line = {
+                    "page": page,
+                    "line_index": line_idx,
+                    "text": norm_line.strip(),
+                    "bold": bold_flag
+                }
                 at_paragraph_start = False
                 continue
 
-        # Regulärer Absatzstart (für nachfolgende Reden)
+        # Regulärer Absatzstart (weitere Reden)
         if at_paragraph_start:
             m = HEADER_LINE_RE.match(norm_line)
-            header_accepted = False
             if m and _accept_header_match(m, allow_abg_without_party):
                 if require_bold_for_header and bold_flag is False:
-                    # Body
+                    # Optional streng: treat as body
                     pass
                 else:
                     flush_current()
@@ -317,33 +311,20 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                     if debug:
                         current.setdefault("debug", {})
                         current["debug"]["origin"] = "singleline_header"
-                    header_accepted = True
+                        current["debug"]["bold_used"] = bold_flag
                     at_paragraph_start = False
-            if header_accepted:
-                continue
-
-            # Multi-Line Start
+                    continue
+            # Multi-Line Start am Absatzbeginn
             if LINE_START_ROLE_RE.match(norm_line) and ":" not in norm_line:
-                if require_bold_for_header and bold_flag is False:
-                    if current is None:
-                        speech_index += 1
-                        current = _make_new_speech(speech_index, page, _empty_speaker(), False)
-                    body_line_entries.append({
-                        "page": page,
-                        "line_index": line_idx,
-                        "text": norm_line
-                    })
-                else:
-                    pending_header_first_line = {
-                        "page": page,
-                        "line_index": line_idx,
-                        "text": norm_line,
-                        "bold": bold_flag
-                    }
+                pending_header_first_line = {
+                    "page": page,
+                    "line_index": line_idx,
+                    "text": norm_line.strip(),
+                    "bold": bold_flag
+                }
                 at_paragraph_start = False
                 continue
-
-            # Kein Header → Body
+            # Sonst Body
             if current is None:
                 speech_index += 1
                 current = _make_new_speech(speech_index, page, _empty_speaker(), False)
@@ -353,9 +334,31 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                 "text": norm_line
             })
             at_paragraph_start = False
-
         else:
-            # Innerhalb Absatz rein Body
+            # Innerhalb Absatz
+            if fallback_inline_header:
+                m_inline = HEADER_LINE_RE.match(norm_line)
+                if m_inline and _accept_header_match(m_inline, allow_abg_without_party):
+                    # Neuer Sprecher mitten im Absatz → vermutlich fehlende Leerzeile; wir segmentieren trotzdem
+                    flush_current()
+                    speech_index += 1
+                    speaker_meta = _speaker_meta_from_match(m_inline)
+                    signature = (speaker_meta.get("role"), speaker_meta.get("name"))
+                    continuation = (previous_speaker_signature == signature)
+                    current = _make_new_speech(speech_index, page, speaker_meta, continuation)
+                    previous_speaker_signature = signature
+                    after = norm_line[m_inline.end():].strip()
+                    if after:
+                        body_line_entries.append({
+                            "page": page,
+                            "line_index": line_idx,
+                            "text": after
+                        })
+                    if debug:
+                        current.setdefault("debug", {})
+                        current["debug"]["origin"] = "fallback_inline_header"
+                    continue
+
             if current is None:
                 speech_index += 1
                 current = _make_new_speech(speech_index, page, _empty_speaker(), False)
@@ -368,24 +371,24 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                 "text": norm_line
             })
 
-        # Interjektionen in Klammern
+        # Interjektionen
         if "(" in norm_line and ")" in norm_line and current is not None:
             for im in PAREN_INTERJECTION_RE.finditer(norm_line):
                 raw_name = im.group(1).strip()
                 party_raw = im.group(2)
-                utterance = im.group(3).strip()
+                utt = im.group(3).strip()
                 ann = {
                     "type": "interjection",
                     "speaker_hint": _strip_academic_titles(raw_name),
                     "party_hint": _normalize_party_token(party_raw) if party_raw else None,
-                    "text": utterance,
+                    "text": utt,
                     "source_line_index": line_idx,
                     "source_page": page
                 }
                 current.setdefault("annotations", []).append(ann)
 
-    # Falls noch Multi-Line-Anfang ohne Abschluss
     if pending_header_first_line:
+        # Unvollendeter Headerstart -> Body
         if current is None:
             speech_index += 1
             current = _make_new_speech(speech_index,
@@ -432,7 +435,7 @@ def _speaker_meta_from_match(m: re.Match) -> Dict[str, Any]:
 
 def _normalize_role(r: str) -> str:
     r = r.strip()
-    if r in ("Abgeordneter", "Abgeordnete"):
+    if r.lower().startswith("abgeordnete"):
         return "Abg."
     return r
 
@@ -540,16 +543,20 @@ def _compute_offsets(body_line_entries: List[Dict[str, Any]]) -> List[Dict[str, 
 # -----------------------------------------------------------
 if __name__ == "__main__":
     demo = [
-        # Frontmatter ohne Leerzeilen dazwischen
         {"page": 1, "line_index": 0, "text": "Protokoll"},
-        {"page": 1, "line_index": 1, "text": "über die 127. Sitzung vom 16. Juli 2025"},
-        {"page": 1, "line_index": 2, "text": "Beginn: 9:02 Uhr"},
-        {"page": 1, "line_index": 3, "text": "Präsidentin Muhterem Aras: Guten Morgen, meine Damen und Herren!"},
-        {"page": 1, "line_index": 4, "text": "Ich eröffne die 127. Sitzung des 17. Landtags."},
-        {"page": 1, "line_index": 5, "text": ""},
-        {"page": 1, "line_index": 6, "text": "Abg. Dr. Rainer Balzer AfD: Sehr geehrte Frau Präsidentin,"},
-        {"page": 1, "line_index": 7, "text": "sehr geehrte Damen und Herren ..."},
+        {"page": 1, "line_index": 1, "text": "Beginn: 9:02 Uhr"},
+        {"page": 1, "line_index": 2, "text": "Präsidentin Muhterem Aras: Guten Morgen!"},
+        {"page": 1, "line_index": 3, "text": "Weiterer Satz ihrer Rede."},
+        {"page": 1, "line_index": 4, "text": ""},
+        # Simuliere Split-Header in zwei Zeilen (Name / Partei)
+        {"page": 1, "line_index": 5, "text": "Abg. Dr. Rainer Balzer"},
+        {"page": 1, "line_index": 6, "text": "AfD:"},
+        {"page": 1, "line_index": 7, "text": "Sehr geehrte Frau Präsidentin ..."},
         {"page": 1, "line_index": 8, "text": "(Beifall bei der AfD)"},
+        {"page": 1, "line_index": 9, "text": ""},
+        # Einzeiliger Header mit führenden Spaces
+        {"page": 1, "line_index": 10, "text": "   Abg. Max Mustermann FDP/DVP: Danke."},
+        {"page": 1, "line_index": 11, "text": "Fortsetzung."},
     ]
     speeches = segment_speeches(demo, capture_offsets=True, debug=True)
     import json
