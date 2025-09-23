@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-09-23T12:45:58.114457Z",
+  "generated_at": "2025-09-23T13:17:16.775657Z",
   "sessions": [
     {
       "legislative_period": 17,
@@ -8,6 +8,8 @@
       "file": "session_17_127_2025-07-16.json",
       "speeches": 57,
       "pages": 44,
+      "layout_applied": true,
+      "layout_reason": "forced-always",
       "source_pdf_url": "https://www.landtag-bw.de/resource/blob/584334/59a6c5950d692e7ba8a2e8d8be879b26/17_0127_16072025.pdf"
     }
   ]

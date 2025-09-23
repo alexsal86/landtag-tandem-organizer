@@ -4,7 +4,7 @@
     "legislative_period": 17,
     "date": "2025-07-16",
     "source_pdf_url": "https://www.landtag-bw.de/resource/blob/584334/59a6c5950d692e7ba8a2e8d8be879b26/17_0127_16072025.pdf",
-    "extracted_at": "2025-09-23T12:45:58.103650Z"
+    "extracted_at": "2025-09-23T13:17:16.771208Z"
   },
   "sitting": {
     "start_time": "9:02",
@@ -15,7 +15,320 @@
     "pages": 44,
     "speeches": 57
   },
-  "layout_debug": null,
+  "layout": {
+    "applied": true,
+    "reason": "forced-always"
+  },
+  "layout_debug": [
+    {
+      "page": 1,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 943,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 2,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 330,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 3,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 669,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 4,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 749,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 5,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 793,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 6,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 746,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 7,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 788,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 8,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 788,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 9,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 759,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 10,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 761,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 11,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 776,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 12,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 737,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 13,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 807,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 14,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 740,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 15,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 777,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 16,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 840,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 17,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 817,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 18,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 780,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 19,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 738,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 20,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 809,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 21,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 703,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 22,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 869,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 23,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 891,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 24,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 780,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 25,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 865,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 26,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 784,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 27,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 788,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 28,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 720,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 29,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 880,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 30,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 849,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 31,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 864,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 32,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 895,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 33,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 817,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 34,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 837,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 35,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 713,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 36,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 503,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 37,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 715,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 38,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 836,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 39,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 839,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 40,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 895,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 41,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 902,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 42,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 827,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 43,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 829,
+      "note": "sklearn not available"
+    },
+    {
+      "page": 44,
+      "method": "single-no-sklearn",
+      "columns": 1,
+      "words": 836,
+      "note": "sklearn not available"
+    }
+  ],
   "toc": [
     {
       "raw": "Eröffnung – Mitteilungen der Präsidentin . . . . . . . . . . . 7639",
