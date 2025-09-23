@@ -1,4 +1,4 @@
-import json, datetime, sys
+import json, datetime, sys, argparse
 from pathlib import Path
 from parser_core.downloader import download_pdf
 from parser_core.toc import parse_toc, partition_toc
@@ -47,4 +47,18 @@ def run(url: str):
     print("Geschrieben:", out)
 
 if __name__ == "__main__":
-    run(sys.argv[1])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--list-file", type=str, help="Pfad zur Datei mit einer URL pro Zeile")
+    parser.add_argument("url", nargs="?", help="Einzelne PDF-URL")
+    args = parser.parse_args()
+
+    if args.list_file:
+        with open(args.list_file, encoding="utf-8") as f:
+            urls = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+        for url in urls:
+            run(url)
+    elif args.url:
+        run(args.url)
+    else:
+        print("Fehler: Entweder --list-file angeben oder einzelne URL übergeben.", file=sys.stderr)
+        sys.exit(1)
