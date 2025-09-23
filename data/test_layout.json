@@ -4,7 +4,7 @@
     "legislative_period": 17,
     "date": "2025-07-16",
     "source_pdf_url": "https://www.landtag-bw.de/resource/blob/584334/59a6c5950d692e7ba8a2e8d8be879b26/17_0127_16072025.pdf",
-    "extracted_at": "2025-09-23T13:04:23.462495Z"
+    "extracted_at": "2025-09-23T13:11:57.110615Z"
   },
   "layout": {
     "applied": true,
@@ -15,356 +15,309 @@
       "page": 1,
       "method": "single-heuristic",
       "columns": 1,
-      "words": 942,
-      "largest_gap": 12.572499999999991,
-      "avg_other": 0.5054482978723405
+      "words": 943,
+      "forced": false
     },
     {
       "page": 2,
-      "method": "two-column",
-      "columns": 2,
+      "method": "single-heuristic",
+      "columns": 1,
       "words": 330,
-      "largest_gap": 26.186900000000037,
-      "avg_other": 1.3966493902439023,
-      "split_x": 304.91145,
-      "left_count": 117,
-      "right_count": 213
+      "forced": false
     },
     {
       "page": 3,
       "method": "single-heuristic",
       "columns": 1,
       "words": 669,
-      "largest_gap": 8.058100000000024,
-      "avg_other": 0.7225763868065965
+      "forced": false
     },
     {
       "page": 4,
       "method": "single-heuristic",
       "columns": 1,
       "words": 749,
-      "largest_gap": 13.731799999999964,
-      "avg_other": 0.6390782463186079
+      "forced": false
     },
     {
       "page": 5,
       "method": "single-heuristic",
       "columns": 1,
       "words": 793,
-      "largest_gap": 13.745600000000024,
-      "avg_other": 0.6025656131479139
+      "forced": false
     },
     {
       "page": 6,
       "method": "single-heuristic",
       "columns": 1,
       "words": 746,
-      "largest_gap": 14.856299999999976,
-      "avg_other": 0.6390909946236558
+      "forced": false
     },
     {
       "page": 7,
       "method": "single-heuristic",
       "columns": 1,
       "words": 788,
-      "largest_gap": 13.605600000000038,
-      "avg_other": 0.6048319338422392
+      "forced": false
     },
     {
       "page": 8,
       "method": "single-heuristic",
       "columns": 1,
       "words": 788,
-      "largest_gap": 14.026299999999992,
-      "avg_other": 0.6105899491094147
+      "forced": false
     },
     {
       "page": 9,
       "method": "single-heuristic",
       "columns": 1,
       "words": 759,
-      "largest_gap": 13.465599999999995,
-      "avg_other": 0.6328974900924702
+      "forced": false
     },
     {
       "page": 10,
       "method": "single-heuristic",
       "columns": 1,
       "words": 761,
-      "largest_gap": 14.071300000000008,
-      "avg_other": 0.6275516469038208
+      "forced": false
     },
     {
       "page": 11,
       "method": "single-heuristic",
       "columns": 1,
       "words": 776,
-      "largest_gap": 13.975600000000043,
-      "avg_other": 0.616538630490956
+      "forced": false
     },
     {
       "page": 12,
       "method": "single-heuristic",
       "columns": 1,
       "words": 737,
-      "largest_gap": 12.636300000000006,
-      "avg_other": 0.6514540136054421
+      "forced": false
     },
     {
       "page": 13,
       "method": "single-heuristic",
       "columns": 1,
       "words": 807,
-      "largest_gap": 13.445600000000013,
-      "avg_other": 0.5901166459627328
+      "forced": false
     },
     {
       "page": 14,
       "method": "single-heuristic",
       "columns": 1,
       "words": 740,
-      "largest_gap": 12.636300000000006,
-      "avg_other": 0.648190514905149
+      "forced": false
     },
     {
       "page": 15,
       "method": "single-heuristic",
       "columns": 1,
       "words": 777,
-      "largest_gap": 14.855600000000038,
-      "avg_other": 0.6163979354838709
+      "forced": false
     },
     {
       "page": 16,
       "method": "single-heuristic",
       "columns": 1,
       "words": 840,
-      "largest_gap": 13.746299999999962,
-      "avg_other": 0.5703886634844868
+      "forced": false
     },
     {
       "page": 17,
       "method": "single-heuristic",
       "columns": 1,
       "words": 817,
-      "largest_gap": 14.020600000000059,
-      "avg_other": 0.5873747239263805
+      "forced": false
     },
     {
       "page": 18,
       "method": "single-heuristic",
       "columns": 1,
       "words": 780,
-      "largest_gap": 12.636300000000006,
-      "avg_other": 0.6150908740359896
+      "forced": false
     },
     {
       "page": 19,
       "method": "single-heuristic",
       "columns": 1,
       "words": 738,
-      "largest_gap": 14.010600000000068,
-      "avg_other": 0.6490793478260868
+      "forced": false
     },
     {
       "page": 20,
       "method": "single-heuristic",
       "columns": 1,
       "words": 809,
-      "largest_gap": 14.051300000000026,
-      "avg_other": 0.5901198265179677
+      "forced": false
     },
     {
       "page": 21,
       "method": "single-heuristic",
       "columns": 1,
       "words": 703,
-      "largest_gap": 12.355600000000038,
-      "avg_other": 0.6838650499286731
+      "forced": false
     },
     {
       "page": 22,
       "method": "single-heuristic",
       "columns": 1,
       "words": 869,
-      "largest_gap": 13.746299999999962,
-      "avg_other": 0.550990426758939
+      "forced": false
     },
     {
       "page": 23,
       "method": "single-heuristic",
       "columns": 1,
       "words": 891,
-      "largest_gap": 12.355600000000038,
-      "avg_other": 0.5392254218222723
+      "forced": false
     },
     {
       "page": 24,
       "method": "single-heuristic",
       "columns": 1,
       "words": 780,
-      "largest_gap": 13.731299999999976,
-      "avg_other": 0.6112579048843187
+      "forced": false
     },
     {
       "page": 25,
       "method": "single-heuristic",
       "columns": 1,
       "words": 865,
-      "largest_gap": 14.020600000000059,
-      "avg_other": 0.5526505214368477
+      "forced": false
     },
     {
       "page": 26,
       "method": "single-heuristic",
       "columns": 1,
       "words": 784,
-      "largest_gap": 13.85129999999998,
-      "avg_other": 0.6079027493606137
+      "forced": false
     },
     {
       "page": 27,
       "method": "single-heuristic",
       "columns": 1,
       "words": 788,
-      "largest_gap": 14.575600000000009,
-      "avg_other": 0.6042167938931298
+      "forced": false
     },
     {
       "page": 28,
       "method": "single-heuristic",
       "columns": 1,
       "words": 720,
-      "largest_gap": 12.636300000000006,
-      "avg_other": 0.6650956128133705
+      "forced": false
     },
     {
       "page": 29,
       "method": "single-heuristic",
       "columns": 1,
       "words": 880,
-      "largest_gap": 14.575600000000009,
-      "avg_other": 0.5444070615034168
+      "forced": false
     },
     {
       "page": 30,
       "method": "single-heuristic",
       "columns": 1,
       "words": 849,
-      "largest_gap": 16.16629999999998,
-      "avg_other": 0.5601377804014165
+      "forced": false
     },
     {
       "page": 31,
       "method": "single-heuristic",
       "columns": 1,
       "words": 864,
-      "largest_gap": 13.740600000000029,
-      "avg_other": 0.5545120649651971
+      "forced": false
     },
     {
       "page": 32,
       "method": "single-heuristic",
       "columns": 1,
       "words": 895,
-      "largest_gap": 12.636300000000006,
-      "avg_other": 0.5342880179171333
+      "forced": false
     },
     {
       "page": 33,
       "method": "single-heuristic",
       "columns": 1,
       "words": 817,
-      "largest_gap": 13.745600000000024,
-      "avg_other": 0.5858207361963191
+      "forced": false
     },
     {
       "page": 34,
       "method": "single-heuristic",
       "columns": 1,
       "words": 837,
-      "largest_gap": 13.743300000000033,
-      "avg_other": 0.5696433532934132
+      "forced": false
     },
     {
       "page": 35,
       "method": "single-heuristic",
       "columns": 1,
       "words": 713,
-      "largest_gap": 12.355600000000038,
-      "avg_other": 0.6726011251758087
+      "forced": false
     },
     {
       "page": 36,
       "method": "single-heuristic",
       "columns": 1,
       "words": 503,
-      "largest_gap": 12.636300000000006,
-      "avg_other": 0.956274850299401
+      "forced": false
     },
     {
       "page": 37,
       "method": "single-heuristic",
       "columns": 1,
       "words": 715,
-      "largest_gap": 13.465599999999995,
-      "avg_other": 0.6683014025245441
+      "forced": false
     },
     {
       "page": 38,
       "method": "single-heuristic",
       "columns": 1,
       "words": 836,
-      "largest_gap": 13.886300000000006,
-      "avg_other": 0.5716782973621103
+      "forced": false
     },
     {
       "page": 39,
       "method": "single-heuristic",
       "columns": 1,
       "words": 839,
-      "largest_gap": 13.745600000000024,
-      "avg_other": 0.5697400238948627
+      "forced": false
     },
     {
       "page": 40,
       "method": "single-heuristic",
       "columns": 1,
       "words": 895,
-      "largest_gap": 14.846299999999985,
-      "avg_other": 0.5329492721164615
+      "forced": false
     },
     {
       "page": 41,
       "method": "single-heuristic",
       "columns": 1,
       "words": 902,
-      "largest_gap": 13.745600000000024,
-      "avg_other": 0.5320226666666666
+      "forced": false
     },
     {
       "page": 42,
       "method": "single-heuristic",
       "columns": 1,
       "words": 827,
-      "largest_gap": 12.636300000000006,
-      "avg_other": 0.5757632727272728
+      "forced": false
     },
     {
       "page": 43,
       "method": "single-heuristic",
       "columns": 1,
       "words": 829,
-      "largest_gap": 14.855600000000038,
-      "avg_other": 0.5763789600967347
+      "forced": false
     },
     {
       "page": 44,
       "method": "single-heuristic",
       "columns": 1,
       "words": 836,
-      "largest_gap": 12.017300000000034,
-      "avg_other": 0.5746890887290167
+      "forced": false
     }
   ],
   "toc": [
