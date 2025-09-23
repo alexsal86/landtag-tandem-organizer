@@ -3,24 +3,26 @@
 parse_landtag_pdf.py
 
 Pipeline zum Herunterladen und Parsen eines Landtagsprotokolls.
-Schritte (in Reihenfolge):
+Schritte:
 
-1. Download PDF (Caching gesteuert durch --force-download)
-2. Layout-Extraktion mit Zwei-Spalten-Heuristik (immer erzwungen)
-3. Entfernen wiederholter Header / Footer (allgemein)
-4. Spezifische Footer-/Schluss-/Seitennummer-Bereinigung (clean_page_footers)
+1. Download PDF (Cache steuerbar via --force-download)
+2. Layout-Extraktion (Zwei-Spalten-Erkennung + Rebalancing)
+3. Entfernen wiederholter Header / Footer (generisch)
+4. Spezifische Footer-/Schluss-/Seitennummer-Bereinigung
 5. Normalisierung + Dehyphenation
-6. Flatten der Seitenzeilen (für Segmentierung)
-7. Sitzungs-Metadaten extrahieren
-8. TOC (Inhaltsverzeichnis) parsen
+6. Flatten für Segmentierung / Agenda
+7. Metadaten extrahieren
+8. TOC parsen & partitionieren
 9. Segmentierung in Reden
-10. Interjection-Cleanup (Extraktion von Beifall / Zuruf / Heiterkeit etc.)
-11. Inline-Agenda erkennen & mit Reden verknüpfen
-12. Payload erstellen (inkl. Debug-/Cleanup-Statistiken)
-13. (Optional) Schema-Validierung
-14. Schreiben der Session-Datei + Index aktualisieren
+10. Interjection-Cleanup (extrahiert + Offsets)
+11. Reflow (Absatzbildung)
+12. Bau von Segmenten (Text/Interjections im Fluss)
+13. Inline-Agenda extrahieren + Verknüpfung
+14. Payload bauen (inkl. Debug & Cleanup Stats)
+15. Optional: Schema-Validierung
+16. Schreiben JSON + Index
 
-Ausgabe liegt in data/session_<...>.json + sessions_index.json
+Ausgabe: data/session_<...>.json & data/sessions_index.json
 """
 
 import argparse
@@ -42,11 +44,8 @@ from parser_core.metadata import parse_session_info
 from parser_core.schema_def import validate_payload
 from parser_core.toc import parse_toc, partition_toc
 from parser_core.cleanup import clean_page_footers, cleanup_interjections
-
-
-# -----------------------------------------------------------
-# Argument Parsing
-# -----------------------------------------------------------
+from parser_core.textflow import reflow_speeches
+from parser_core.segments import build_speech_segments
 
 def parse_args():
     ap = argparse.ArgumentParser(description="Parst ein Landtags-PDF und erzeugt strukturierte JSON-Ausgabe.")
@@ -54,15 +53,9 @@ def parse_args():
     ap.add_argument("--single-url", help="Einzelne PDF-URL.")
     ap.add_argument("--schema-validate", action="store_true", help="Schema-Validierung aktivieren.")
     ap.add_argument("--force-download", action="store_true", help="PDF erneut herunterladen, auch wenn im Cache.")
-    # Optional: einfache Parameter für Layout (könnten erweitert werden)
     ap.add_argument("--layout-min-peak-sep", type=float, default=0.18, help="min_peak_separation_rel für Layout.")
     ap.add_argument("--layout-min-valley-drop", type=float, default=0.30, help="min_valley_rel_drop für Layout.")
     return ap.parse_args()
-
-
-# -----------------------------------------------------------
-# URL Sammlung
-# -----------------------------------------------------------
 
 def gather_urls(args) -> List[str]:
     if args.single_url:
@@ -76,11 +69,6 @@ def gather_urls(args) -> List[str]:
         if urls:
             return urls
     raise SystemExit("Keine URL angegeben (--single-url oder --list-file).")
-
-
-# -----------------------------------------------------------
-# Dateiname für Session
-# -----------------------------------------------------------
 
 def build_session_filename(payload: Dict[str, Any]) -> str:
     sess = payload.get("session", {})
@@ -97,18 +85,12 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
     short = hashlib.sha256(url).hexdigest()[:8] if url else "na"
     return f"session_unknown_{short}.json"
 
-
-# -----------------------------------------------------------
-# Hauptverarbeitung für EIN PDF
-# -----------------------------------------------------------
-
 def process_pdf(url: str,
                 force_download: bool,
                 layout_min_peak_sep: float,
                 layout_min_valley_drop: float) -> Dict[str, Any]:
     pdf_path = download_pdf(url, force=force_download)
 
-    # 1) Layout-Extraktion (immer Zwei-Spalten erzwungen)
     pages_lines, layout_debug = extract_pages_with_layout(
         str(pdf_path),
         force_two_column=True,
@@ -123,43 +105,37 @@ def process_pdf(url: str,
         rebalance_scan_step=5.0
     )
 
-    # 2) Entferne wiederholte Kopf- / Fußzeilen (generisch)
     pages_lines = remove_repeated_headers_footers(pages_lines)
-
-    # 3) Spezifische Footer / Schluss / Druckseitenzahlen bereinigen
     pages_lines, footer_stats = clean_page_footers(pages_lines)
 
-    # 4) Normalisieren + Dehyphenation pro Seite
     normalized_pages: List[List[str]] = []
     for lines in pages_lines:
-        # Normalisierung
         lines = [normalize_line(l) for l in lines if l.strip()]
-        # Dehyphenation (Silbentrennungen)
         lines = dehyphenate(lines)
         normalized_pages.append(lines)
 
-    # 5) Flatten für Segmentierung / Agenda / Metadaten
     flat = flatten_pages(normalized_pages)
     all_text = "\n".join(l["text"] for l in flat)
 
-    # 6) Metadaten (Sitzung)
     meta = parse_session_info(all_text)
 
-    # 7) TOC (nur wenn Seiten vorhanden)
     toc_full = parse_toc(normalized_pages[0]) if normalized_pages else []
     toc_parts = partition_toc(toc_full)
 
-    # 8) Segmentierung in Reden
     speeches = segment_speeches(flat)
 
-    # 9) Interjection-Cleanup (nach Segmentierung, damit wir Interjections als separate Annotations erhalten)
     interjection_stats = cleanup_interjections(speeches)
 
-    # 10) Inline-Agenda extrahieren & mit Reden verknüpfen
+    reflow_stats = reflow_speeches(speeches, min_merge_len=35, keep_original=True)
+
+    build_speech_segments(speeches,
+                          renormalize_text_segments=True,
+                          merge_adjacent_text=True,
+                          numbering_mode="all")
+
     inline_agenda = extract_agenda(flat)
     link_agenda(inline_agenda, speeches)
 
-    # 11) Payload bauen
     payload: Dict[str, Any] = {
         "session": {
             "number": meta.get("number"),
@@ -190,15 +166,11 @@ def process_pdf(url: str,
         "speeches": speeches,
         "cleanup_stats": {
             "footers": footer_stats,
-            "interjections": interjection_stats
+            "interjections": interjection_stats,
+            "reflow": reflow_stats
         }
     }
     return payload
-
-
-# -----------------------------------------------------------
-# Index schreiben
-# -----------------------------------------------------------
 
 def write_index(results: List[Dict[str, Any]], out_dir: Path):
     index = {
@@ -222,11 +194,6 @@ def write_index(results: List[Dict[str, Any]], out_dir: Path):
         json.dump(index, f, ensure_ascii=False, indent=2)
     print("[INFO] Index aktualisiert.")
 
-
-# -----------------------------------------------------------
-# main
-# -----------------------------------------------------------
-
 def main() -> int:
     args = parse_args()
     urls = gather_urls(args)
@@ -235,7 +202,7 @@ def main() -> int:
     results: List[Dict[str, Any]] = []
 
     for url in urls:
-        print(f"[INFO] Verarbeite {url} (layout=always, footer+interjections cleanup aktiv)")
+        print(f"[INFO] Verarbeite {url} (layout=always, cleanup aktiv)")
         payload = process_pdf(
             url,
             force_download=args.force_download,
@@ -259,7 +226,6 @@ def main() -> int:
         write_index(results, out_dir)
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())
