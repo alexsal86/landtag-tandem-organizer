@@ -4,7 +4,7 @@
     "legislative_period": 17,
     "date": "2025-07-16",
     "source_pdf_url": "https://www.landtag-bw.de/resource/blob/584334/59a6c5950d692e7ba8a2e8d8be879b26/17_0127_16072025.pdf",
-    "extracted_at": "2025-09-22T22:12:20.788563Z"
+    "extracted_at": "2025-09-23T12:10:07.768179Z"
   },
   "sitting": {
     "start_time": "9:02",
@@ -15,6 +15,7 @@
     "pages": 44,
     "speeches": 39
   },
+  "layout_debug": null,
   "toc": [
     {
       "raw": "Eröffnung – Mitteilungen der Präsidentin . . . . . . . . . . . 7639 Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9077 . . . . . . . . . . . . . . . . . . . 7657",
