@@ -21,8 +21,8 @@ Ausgabe: Liste von Speech-Objekten:
      "name": "Muhterem Aras",
      "role": "Präsidentin",
      "party": None,
-     "normalized": None,
-     "parliament_function": None
+     "normalized": "Muhterem Aras",
+     "parliament_function": "chair"
   },
   "text": "Redezeilen...\nNoch eine Zeile...",
   "lines": [  # optional für Debug / Offsets
@@ -44,39 +44,67 @@ Optional: Offsets und char_start/char_end werden nur gefüllt, wenn capture_offs
 """
 
 # -----------------------------------------------------------
-# Muster & Regex
+# Muster & Regex / Konfiguration
 # -----------------------------------------------------------
 
+# Reihenfolge so, dass längere / spezifischere Titel zuerst erkannt werden
 ROLE_PREFIX_RE = re.compile(
-    r"^(Abg\.|Abgeordnete[rn]?|Präsident(?:in)?|Vizepräsident(?:in)?|Stellv\.\s*Präsident(?:in)?|"
-    r"Ministerpräsident(?:in)?|Minister(?:in)?|Staatssekretär(?:in)?|Justizminister(?:in)?|"
-    r"Innenminister(?:in)?|Finanzminister(?:in)?|Wirtschaftsminister(?:in)?|Kultusminister(?:in)?|"
-    r"Landesbeauftragte[rn]?|Ombudsmann|Ombudsfrau)\b"
+    r"^(?:"
+    r"Ministerpräsidentin?|Ministerpräsident|"
+    r"Stellv\.\s*Präsidentin?|Stellv\.\s*Präsident|"
+    r"Präsidentin|Präsident|"
+    r"Staatssekretärin?|Staatssekretär|"
+    r"Ministerin?|Minister|"
+    r"Abg\.|Abgeordnete|Abgeordneter"
+    r")$"
 )
 
-# Partei-Kürzel (kann erweitert werden)
+# Partei-Kürzel / Varianten – Plain Token (ohne Klammern)
 PARTY_TOKEN_RE = re.compile(
-    r"^(CDU|SPD|AfD|FDP\/DVP|FDP|Grüne|GRÜNE|Bündnis\s*90\/Die\s*Grünen|BÜNDNIS\s*90\/DIE\s*GRÜNEN|"
-    r"FW|Freie\s*Wähler|Linke|LINKE|fraktionslos)$",
+    r"^(AfD|CDU|SPD|FDP\/DVP|FDP|GRÜNE|GRUENE|B90\/GRÜNE|BÜNDNIS|BÜNDNIS90\/DIEGRÜNEN|"
+    r"BÜNDNIS\s*90\/DIE\s*GRÜNEN|FREIE\s*WÄHLER|FW|LINKE|DIE\s+LINKE|fraktionslos)$",
     re.IGNORECASE
 )
 
-PAREN_PARTY_RE = re.compile(r"\(([^()]{2,50})\)\s*$")
+PAREN_PARTY_RE = re.compile(r"\(([^()]{2,60})\)")
 MULTI_SPACE_RE = re.compile(r"\s{2,}")
-ALL_CAPS_NAME_RE = re.compile(r"^[A-ZÄÖÜÄÖÜß][A-ZÄÖÜÄÖÜß\- ]{2,}$")
+ALL_CAPS_NAME_RE = re.compile(r"^[A-ZÄÖÜẞ][A-ZÄÖÜẞ\- ']{2,}$")
 TRAILING_COLON_RE = re.compile(r":\s*$")
+ACADEMIC_TITLE_RE = re.compile(
+    r"\b(?:Dr\.?|Prof\.?|Professor(?:in)?|Dipl\.-Ing\.?|Dipl\.-Kfm\.?|Mag\.|BSc|MSc|LL\.M\.|MBA|MdL)\b\.?",
+    re.IGNORECASE
+)
 
 # Zeilen, die wir ignorieren wollen (Kopfzeilen, Artefakte)
 INLINE_PAGE_BREAK_MARKERS = [
     "Landtag von Baden-Württemberg",
 ]
 
-# Heuristik für „Fortsetzung desselben Sprechers“ (z. B. wenn Protokoll eine formale Einleitung hat)
-SAME_SPEAKER_ROLES_FOR_CONTINUATION = {
-    "Abg.", "Abgeordneter", "Abgeordnete", "Abgeordneter", "Präsident", "Präsidentin",
-    "Ministerpräsident", "Ministerpräsidentin", "Minister", "Ministerin", "Staatssekretär", "Staatssekretärin"
+# Kategorien
+CATEGORY_BY_ROLE = {
+    "Präsident": "chair",
+    "Präsidentin": "chair",
+    "Stellv. Präsident": "chair",
+    "Stellv. Präsidentin": "chair",
+    "Ministerpräsident": "government",
+    "Ministerpräsidentin": "government",
+    "Minister": "government",
+    "Ministerin": "government",
+    "Staatssekretär": "government",
+    "Staatssekretärin": "government",
+    "Abg.": "member",
+    "Abgeordnete": "member",
+    "Abgeordneter": "member"
 }
 
+# Heuristik für „Fortsetzung desselben Sprechers“
+SAME_SPEAKER_ROLES_FOR_CONTINUATION = {
+    "Abg.", "Abgeordneter", "Abgeordnete",
+    "Präsident", "Präsidentin", "Stellv. Präsident", "Stellv. Präsidentin",
+    "Ministerpräsident", "Ministerpräsidentin",
+    "Minister", "Ministerin",
+    "Staatssekretär", "Staatssekretärin"
+}
 
 # -----------------------------------------------------------
 # Öffentliche Hauptfunktion
@@ -88,51 +116,33 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                      min_header_confidence: float = 0.5) -> List[Dict[str, Any]]:
     """
     Segmentiert flache Zeilen in Reden.
-
-    Parameter:
-      capture_offsets: Wenn True, werden pro Speech die einzelnen Zeilen inkl. char_start/char_end
-                       innerhalb des zusammengesetzten Rede-Texts gespeichert (nützlich für spätere
-                       Mapping-Schritte von Interjections / Highlight).
-      debug: Wenn True, wird in jeder Rede ein debug-Dict mit Erkennungs-Heuristiken abgelegt.
-      min_header_confidence: Placeholder (aktuell nicht genutzt für Scoring, aber vorbereitet für spätere
-                             gewichtete Header-Klassifikation).
-
-    Rückgabe:
-      Liste von Speech-Dicts (siehe Modul-Docstring).
     """
     speeches: List[Dict[str, Any]] = []
     current: Optional[Dict[str, Any]] = None
     body_line_entries: List[Dict[str, Any]] = []
     pending_speaker_lines: List[Dict[str, Any]] = []
     speech_index = 0
-    previous_speaker_signature: Optional[Tuple[str, str]] = None  # (role, name) zur Continuation-Heuristik
+    previous_speaker_signature: Optional[Tuple[str, str]] = None  # (role, name)
 
     def flush_current():
         nonlocal current, body_line_entries, speeches
         if current is None:
             body_line_entries = []
             return
-        # Text aus Body bauen
         text_parts = []
-        char_cursor = 0
         for entry in body_line_entries:
             line_text = entry["text"]
             if line_text.strip():
                 text_parts.append(line_text)
             else:
-                # Leere Zeile als Absatztrenner
                 text_parts.append("")
-        # Rekonstruiere Text (bewahre leere Absätze -> späterer reflow kann das noch justieren)
-        # Wir lassen einfache "\n" – Downstream Reflow vereinheitlicht später
         final_text = "\n".join(text_parts).strip("\n")
 
         if capture_offsets:
-            # Offsets neu berechnen
             enriched_lines = []
             accum = 0
             for entry in body_line_entries:
                 t = entry["text"]
-                # Speichere Start/End nur für nicht-leere Zeilen; leere bekommen Länge 0
                 if t:
                     start = accum
                     accum += len(t)
@@ -143,8 +153,7 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                         "char_start": start,
                         "char_end": start + len(t)
                     })
-                    # newline im zusammengesetzten Text
-                    accum += 1  # für das '\n'
+                    accum += 1  # newline
                 else:
                     start = accum
                     enriched_lines.append({
@@ -167,19 +176,14 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
             current.setdefault("debug", {})
             current["debug"]["line_count"] = len(body_line_entries)
             current["debug"]["pending_header_lines"] = len(current["debug"].get("pending_header_lines", []))
-
         speeches.append(current)
         current = None
         body_line_entries = []
 
     for line_obj in flat_lines:
-        raw_line = line_obj.get("text", "")
-        if raw_line is None:
-            raw_line = ""
+        raw_line = line_obj.get("text", "") or ""
         page = line_obj.get("page")
         line_index = line_obj.get("line_index")
-
-        # Normalisierung (nur für Header-Erkennung – Body speichern wir original)
         norm_line = raw_line.rstrip()
 
         if not norm_line.strip():
@@ -187,32 +191,53 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                 body_line_entries.append({"page": page, "line_index": line_index, "text": ""})
             continue
 
-        # Kopf-/Seitentrennermarker wegfiltern
+        # Kopf-/Seitentrennermarker
         if any(norm_line.startswith(m) for m in INLINE_PAGE_BREAK_MARKERS):
             continue
 
-        # Prüfen ob die Zeile (oder ein Fragment) wie ein Sprecherheader aussieht
         is_header_candidate = _looks_like_speaker_line(norm_line)
 
         if is_header_candidate:
-            # Sammeln für evtl. Multi-Line Header
+            # Sammeln für Multi-Line
             pending_speaker_lines.append({
                 "page": page,
                 "line_index": line_index,
                 "text": norm_line
             })
-            # Wenn Zeile wahrscheinlich komplett (endet mit ":")
+
+            # Fail-safe: nach 3 Zeilen ohne Doppelpunkt abbrechen -> Body
+            if len(pending_speaker_lines) >= 3 and not norm_line.endswith(":"):
+                # In Body umwandeln
+                if current is None:
+                    speech_index += 1
+                    pl0 = pending_speaker_lines[0]
+                    current = {
+                        "index": speech_index,
+                        "start_page": pl0["page"],
+                        "end_page": pl0["page"],
+                        "speaker": _empty_speaker(),
+                        "continuation": False
+                    }
+                for pl in pending_speaker_lines:
+                    body_line_entries.append({
+                        "page": pl["page"],
+                        "line_index": pl["line_index"],
+                        "text": pl["text"]
+                    })
+                pending_speaker_lines.clear()
+                continue
+
+            # Kompletter Header?
             if norm_line.endswith(":"):
                 full_header_text = _merge_speaker_header([p["text"] for p in pending_speaker_lines])
                 header_page = pending_speaker_lines[0]["page"]
-                header_line_index = pending_speaker_lines[0]["line_index"]
 
-                # Alte Rede flushen
+                # Alte Rede abschließen
                 flush_current()
                 speech_index += 1
                 speaker_meta = _parse_speaker_header(full_header_text)
 
-                # Continuation-Heuristik: gleicher (role, name) wie vorheriger?
+                # Continuation?
                 signature = (speaker_meta.get("role"), speaker_meta.get("name"))
                 continuation = False
                 if previous_speaker_signature and signature == previous_speaker_signature:
@@ -233,26 +258,19 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                 previous_speaker_signature = signature
                 pending_speaker_lines.clear()
             else:
-                # Header ist evtl. umgebrochen – weiter sammeln
+                # Weitere Headerzeile sammeln
                 continue
         else:
-            # Es gibt pending Speaker Lines, aber Zeile passt nicht -> false positive
+            # Bisher gesammelte Header-Zeilen waren wohl falsch
             if pending_speaker_lines:
-                # Dann interpretieren wir die bisher gesammelten als normalen Bodytext
                 if current is None:
                     speech_index += 1
+                    pl0 = pending_speaker_lines[0]
                     current = {
                         "index": speech_index,
-                        "start_page": page,
-                        "end_page": page,
-                        "speaker": {
-                            "raw": None,
-                            "name": None,
-                            "role": None,
-                            "party": None,
-                            "normalized": None,
-                            "parliament_function": None
-                        },
+                        "start_page": pl0["page"],
+                        "end_page": pl0["page"],
+                        "speaker": _empty_speaker(),
                         "continuation": False
                     }
                 for pl in pending_speaker_lines:
@@ -265,20 +283,12 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
 
             # Normale Body-Zeile
             if current is None:
-                # Text vor erster Sprecherzeile → anonyme Rede
                 speech_index += 1
                 current = {
                     "index": speech_index,
                     "start_page": page,
                     "end_page": page,
-                    "speaker": {
-                        "raw": None,
-                        "name": None,
-                        "role": None,
-                        "party": None,
-                        "normalized": None,
-                        "parliament_function": None
-                    },
+                    "speaker": _empty_speaker(),
                     "continuation": False
                 }
                 previous_speaker_signature = None
@@ -292,27 +302,16 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                 "text": norm_line
             })
 
-    # Offene pending Header Lines am Ende?
+    # Offene Header-Zeilen am Ende → als Body behandeln
     if pending_speaker_lines:
-        # Falls keine Rede offen -> neue anonyme Rede
         if current is None:
-            if flat_lines:
-                last_page = flat_lines[-1]["page"]
-            else:
-                last_page = 1
             speech_index += 1
+            pl0 = pending_speaker_lines[0]
             current = {
                 "index": speech_index,
-                "start_page": last_page,
-                "end_page": last_page,
-                "speaker": {
-                    "raw": None,
-                    "name": None,
-                    "role": None,
-                    "party": None,
-                    "normalized": None,
-                    "parliament_function": None
-                },
+                "start_page": pl0["page"],
+                "end_page": pl0["page"],
+                "speaker": _empty_speaker(),
                 "continuation": False
             }
         for pl in pending_speaker_lines:
@@ -323,114 +322,165 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
             })
         pending_speaker_lines.clear()
 
-    # Letzte Rede flushen
     flush_current()
-
     return speeches
-
 
 # -----------------------------------------------------------
 # Hilfsfunktionen
 # -----------------------------------------------------------
 
+def _empty_speaker() -> Dict[str, Any]:
+    return {
+        "raw": None,
+        "name": None,
+        "role": None,
+        "party": None,
+        "normalized": None,
+        "parliament_function": None
+    }
+
 def _looks_like_speaker_line(line: str) -> bool:
     """
-    Heuristik zur Erkennung einer (Teil-)Sprecherzeile.
+    Verschärfte Heuristik: akzeptiert nur glaubhafte Rollenanfänge
+    und typische Formatierungen (Rolle + Name + optional Partei + ':').
     """
     stripped = line.strip()
     if not stripped:
         return False
 
-    # Offensichtlicher Rolleneinstieg
-    if ROLE_PREFIX_RE.search(stripped):
+    # Potenzieller Header muss Doppelpunkt haben oder eine Rolle führen
+    has_colon = stripped.endswith(":")
+    tokens = stripped.replace(":", "").split()
+    if not tokens:
+        return False
+
+    first = tokens[0]
+    first_is_role = bool(ROLE_PREFIX_RE.match(first))
+
+    # Direkter Rollenstart
+    if first_is_role and (has_colon or len(tokens) >= 1):
         return True
 
-    # Zeile endet mit ":" und hat wenige Tokens (z. B. "Präsidentin:"), oft verkürzte Form
-    if stripped.endswith(":") and len(stripped.split()) <= 2:
+    # All-Caps Name mit ":" (seltener Fall)
+    if has_colon and ALL_CAPS_NAME_RE.match(stripped[:-1].strip()):
         return True
 
-    # Zeile endet mit ":" und erstes Token ist eine Rolle
-    if stripped.endswith(":") and ROLE_PREFIX_RE.search(stripped.split()[0]):
+    # Partei in Klammern + ":" irgendwo
+    if has_colon and "(" in stripped and ")" in stripped:
         return True
 
-    # All-Caps Name + Doppelpunkt (typografische Variationen)
-    if stripped.endswith(":") and ALL_CAPS_NAME_RE.match(stripped[:-1].strip()):
+    # Multi-Line Beginn: Rolle irgendwo in Zeile, aber noch kein ":" → sammeln
+    if not has_colon and any(ROLE_PREFIX_RE.match(tok) for tok in tokens):
         return True
 
-    # Doppelpunkt + Klammern (Partei)
-    if stripped.endswith(":") and "(" in stripped and ")" in stripped:
-        return True
-
-    # Falls kein Doppelpunkt, aber Rolle drin (Multi-Line Header, nächste Zeile folgt evtl. mit Rest + ":")
-    if ROLE_PREFIX_RE.search(stripped) and not stripped.endswith(":"):
+    # Kurze Ein-Wort + ":" nur akzeptieren, wenn Wort Rolle ist (z. B. "Präsidentin:")
+    if has_colon and len(tokens) <= 2 and first_is_role:
         return True
 
     return False
 
-
 def _merge_speaker_header(lines: List[str]) -> str:
-    """
-    Fasse mehrere (umgebrochene) Sprecherheaderzeilen zusammen.
-    Entfernt doppelte Leerzeichen.
-    """
     raw = " ".join(l.strip() for l in lines)
     raw = MULTI_SPACE_RE.sub(" ", raw)
     return raw
 
+def _normalize_party_token(tok: str) -> Optional[str]:
+    t = tok.strip()
+    upper = t.upper().replace("\u00A0", " ")
+    upper_compact = re.sub(r"\s+", "", upper)
+    mapping = {
+        "GRUENE": "GRÜNE",
+        "B90/GRÜNE": "GRÜNE",
+        "BÜNDNIS": "BÜNDNIS 90/DIE GRÜNEN",
+        "BÜNDNIS90/DIEGRÜNEN": "BÜNDNIS 90/DIE GRÜNEN",
+        "BÜNDNIS90/DIEGRÜNEN": "BÜNDNIS 90/DIE GRÜNEN",
+        "BÜNDNIS90/DIEGRUENEN": "BÜNDNIS 90/DIE GRÜNEN"
+    }
+    if upper_compact in mapping:
+        return mapping[upper_compact]
+    # FDP/DVP unverändert
+    if upper_compact == "FDP/DVP":
+        return "FDP/DVP"
+    if upper_compact == "FDP":
+        return "FDP"
+    if upper_compact == "AFD":
+        return "AfD"
+    if upper_compact == "CDU":
+        return "CDU"
+    if upper_compact == "SPD":
+        return "SPD"
+    if upper_compact == "GRÜNE":
+        return "GRÜNE"
+    if upper_compact in ("LINKE", "DIELINKE"):
+        return "DIE LINKE"
+    if upper_compact in ("FRSAKTIONSLOS", "FRAKTIONSLOS", "FRAKTIONSLOS"):
+        return "fraktionslos"
+    if upper_compact in ("FW", "FREIEWÄHLER", "FREIEWAHLER"):
+        return "Freie Wähler"
+    return t
+
+def _strip_academic_titles(name: Optional[str]) -> Optional[str]:
+    if not name:
+        return None
+    cleaned = ACADEMIC_TITLE_RE.sub("", name)
+    cleaned = MULTI_SPACE_RE.sub(" ", cleaned).strip()
+    return cleaned or name
 
 def _parse_speaker_header(header: str) -> Dict[str, Any]:
-    """
-    Parsed finalen Sprecherheader (mit ":" am Ende).
-    Entfernt abschließenden ":" und extrahiert Rolle, Name, Partei.
-    Gibt strukturierte Speaker-Metadaten zurück.
-    """
     h = header.strip()
     if h.endswith(":"):
         h = h[:-1].strip()
 
-    # Partei in Klammern extrahieren
-    party = None
-    m_paren = PAREN_PARTY_RE.search(h)
-    if m_paren:
-        candidate = m_paren.group(1).strip()
-        if len(candidate) < 60:
-            party = candidate
-            h = h[:m_paren.start()].strip()
+    # Partei(en) in Klammern extrahieren (alle Vorkommen – selten mehrere)
+    parties_found: List[str] = []
+    def _paren_repl(m):
+        parties_found.append(m.group(1).strip())
+        return ""
+    h_no_paren = PAREN_PARTY_RE.sub(_paren_repl, h).strip()
 
-    tokens = h.split()
+    tokens = h_no_paren.split()
     role = None
     name_tokens = tokens[:]
 
-    if tokens:
-        m_role = ROLE_PREFIX_RE.match(tokens[0])
-        if m_role:
-            role = m_role.group(0)
-            name_tokens = tokens[1:]
+    if tokens and ROLE_PREFIX_RE.match(tokens[0]):
+        role = tokens[0]
+        name_tokens = tokens[1:]
 
-    # Partei als letztes Token ohne Klammern
+    # Plain Partei am Ende
     if name_tokens:
         last = name_tokens[-1]
         if PARTY_TOKEN_RE.match(last):
-            if party:
-                party = f"{party}; {last}"
-            else:
-                party = last
+            parties_found.append(last)
             name_tokens = name_tokens[:-1]
 
+    # Name zusammensetzen
     name = " ".join(name_tokens).strip() or None
+    normalized_name = _strip_academic_titles(name)
+
+    # Parteien normalisieren und deduplizieren
+    norm_parties: List[str] = []
+    for p in parties_found:
+        # Split bei ; oder / nicht blind – nur wenn im Pattern
+        parts = [pp.strip() for pp in re.split(r"[;]", p) if pp.strip()]
+        for part in parts:
+            np = _normalize_party_token(part)
+            if np and np not in norm_parties:
+                norm_parties.append(np)
+    party = "; ".join(norm_parties) if norm_parties else None
+
+    category = CATEGORY_BY_ROLE.get(role)
 
     return {
-        "raw": h,
+        "raw": h.strip(),
         "role": role,
         "name": name,
         "party": party,
-        "normalized": None,            # Platzhalter für spätere Normalisierung
-        "parliament_function": None    # z. B. Ausschussvorsitz, falls extrahiert
+        "normalized": normalized_name,
+        "parliament_function": category
     }
 
-
 # -----------------------------------------------------------
-# Optional: Test / Demo (kannst du entfernen oder guarden)
+# Optional: Demo
 # -----------------------------------------------------------
 if __name__ == "__main__":
     demo = [
@@ -439,8 +489,15 @@ if __name__ == "__main__":
         {"page": 1, "line_index": 2, "text": "Abg. Dr. Erik Schweickert FDP/DVP:"},
         {"page": 1, "line_index": 3, "text": "Vielen Dank Frau Präsidentin."},
         {"page": 1, "line_index": 4, "text": "(Beifall bei der FDP/DVP und der CDU)"},
-        {"page": 2, "line_index": 0, "text": "Präsidentin Muhterem Aras:"},
-        {"page": 2, "line_index": 1, "text": "Ich erteile das Wort …"}
+        {"page": 2, "line_index": 0, "text": "Stellv. Präsident Karl Beispiel:"},
+        {"page": 2, "line_index": 1, "text": "Ich erteile das Wort …"},
+        {"page": 2, "line_index": 2, "text": "Ministerpräsident Winfried Kretschmann:"},
+        {"page": 2, "line_index": 3, "text": "Sehr geehrtes Präsidium, meine Damen und Herren."},
+        {"page": 3, "line_index": 0, "text": "Abg. Dr. Anna"},
+        {"page": 3, "line_index": 1, "text": "Beispielmann GRÜNE:"},
+        {"page": 3, "line_index": 2, "text": "Ich möchte Folgendes ausführen."},
+        {"page": 4, "line_index": 0, "text": "Danke:"},  # False positive vermeiden
+        {"page": 4, "line_index": 1, "text": "Das war kein Header."}
     ]
     result = segment_speeches(demo, capture_offsets=True, debug=True)
     import json
