@@ -53,12 +53,14 @@ def process_pdf(url: str, force_download: bool):
 
     # Immer Layout / Zwei-Spalten-Verarbeitung erzwingen
     pages_lines, debug_meta = extract_pages_with_layout(
-        str(pdf_path),
-    force_two_column=True,
+        strstr(pdf_path),
+    force_two_column=True,        # IMMER versuchen
     min_words_for_detection=20,
-    min_gap_abs=40.0,
-    min_gap_rel=0.16,          # evtl. etwas lockerer
-    line_consistency_min=0.40  # lockerer, damit es greift
+    min_side_fraction=0.08,       # etwas liberal, falls Seite ungleichmäßig
+    hist_bins=70,
+    min_peak_sep_rel=0.20,
+    min_valley_rel_drop=0.30,
+    line_y_quant=3.0
 )
 
     # Kopf-/Fußzeilen raus
