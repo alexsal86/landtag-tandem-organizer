@@ -19,7 +19,7 @@ def parse_args():
     ap.add_argument("--schema-validate", action="store_true")
     ap.add_argument("--log-level", default="INFO")
     ap.add_argument("--force-download", action="store_true")
-    ap.add_argument("--skip-existing", action="store-true", default=False)
+    ap.add_argument("--skip-existing", action="store_true", default=False)
     ap.add_argument("--layout", action="store_true",
                     help="Nutze Layout-/Spaltenerkennung (zweispaltiger Seitenfluss).")
     return ap.parse_args()
