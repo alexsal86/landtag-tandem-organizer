@@ -1,12 +1,12 @@
 {
-  "generated_at": "2025-09-23T18:43:46.270155Z",
+  "generated_at": "2025-09-23T19:24:03.220102Z",
   "sessions": [
     {
       "legislative_period": 17,
       "number": 127,
       "date": "2025-07-16",
       "file": "session_17_127_2025-07-16.json",
-      "speeches": 110,
+      "speeches": 104,
       "pages": 44,
       "layout_applied": true,
       "layout_reason": "forced-always",
