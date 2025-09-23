@@ -70,6 +70,7 @@ const App = () => (
             <Route path="/poll-guest/:pollId" element={<PollGuest />} />
             <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
             <Route path="/guest-response/:token" element={<GuestResponse />} />
+            <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
             <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
             <Route path="/collaboration-test" element={<CollaborationTest />} />
             <Route path="/yjs-collaboration-test" element={<YjsCollaborationTestPage />} />

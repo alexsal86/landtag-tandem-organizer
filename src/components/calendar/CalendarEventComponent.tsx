@@ -99,10 +99,25 @@ export function CalendarEventComponent({
         style={eventStyle}
         onClick={() => onClick(event)}
       >
+        {/* Event hover overlay with planning icon */}
+        {showPlanningIcon && (
+          <div className="absolute inset-0 group/overlay">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover/overlay:opacity-100 transition-opacity hover:bg-white/20 z-10"
+              onClick={handlePlanningClick}
+              title="Terminplanung erstellen"
+            >
+              <ListTodo className="h-3 w-3" style={{ color: textColor }} />
+            </Button>
+          </div>
+        )}
         <div className="flex items-center gap-1">
           {getPriorityIcon(event.priority)}
           <span className="font-medium truncate">{event.title}</span>
         </div>
+        {/* Show planning icon on hover for compact mode */}
         {showPlanningIcon && (
           <Button
             size="sm"
@@ -120,10 +135,22 @@ export function CalendarEventComponent({
 
   return (
     <div
-      className="p-2 rounded cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
+      className="p-2 rounded cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] relative group"
       style={eventStyle}
       onClick={() => onClick(event)}
     >
+      {/* Planning icon - always visible on hover */}
+      {showPlanningIcon && (
+        <Button
+          size="sm"
+          variant="ghost"  
+          className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20 z-10"
+          onClick={handlePlanningClick}
+          title="Terminplanung erstellen"
+        >
+          <ListTodo className="h-3 w-3" style={{ color: textColor }} />
+        </Button>
+      )}
       {/* Event header */}
       <div className="flex items-start justify-between mb-1">
         <div className="flex items-center gap-1 flex-1">
@@ -131,17 +158,7 @@ export function CalendarEventComponent({
           <h4 className="font-semibold text-sm truncate">{event.title}</h4>
         </div>
         <div className="flex items-center gap-1 ml-2">
-          {showPlanningIcon && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 w-6 p-0 hover:bg-white/20"
-              onClick={handlePlanningClick}
-              title="Terminplanung erstellen"
-            >
-              <ListTodo className="h-3 w-3" style={{ color: textColor }} />
-            </Button>
-          )}
+          {/* Planning icon is now always visible on hover above */}
           <Badge 
             variant="secondary" 
             className="text-xs flex-shrink-0"
