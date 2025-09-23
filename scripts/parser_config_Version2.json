@@ -1,0 +1,9 @@
+{
+  "layout": {
+    "mode": "always",
+    "sample_pages": 3,
+    "min_words": 40,
+    "min_gap": 25.0,
+    "gap_factor": 1.4
+  }
+}
