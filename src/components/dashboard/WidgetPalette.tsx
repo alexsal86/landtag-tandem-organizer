@@ -125,9 +125,9 @@ const WIDGET_TYPES = [
     type: 'news' as const,
     title: 'RSS News',
     description: 'Aktuelle Nachrichten aus RSS-Feeds',
-    icon: MessageCircle,
+    icon: Search,
     category: 'communication',
-    popular: false
+    popular: true
   },
   {
     type: 'blackboard' as const,
