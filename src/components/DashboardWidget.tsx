@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MessageSystem } from './MessageSystem';
 import { BlackBoard } from './BlackBoard';
 import { CombinedMessagesWidget } from './CombinedMessagesWidget';
+import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 import { PomodoroWidget } from '@/components/widgets/PomodoroWidget';
 import { HabitsWidget } from '@/components/widgets/HabitsWidget';
@@ -563,6 +564,8 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         return <MessageSystem />;
       case 'combined-messages':
         return <CombinedMessagesWidget configuration={widget.configuration} />;
+      case 'news':
+        return <NewsWidget widgetId={widget.id} />;
 
       default:
         return <div>Unbekanntes Widget</div>;
@@ -570,7 +573,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
   };
 
   // For new widget types that handle their own layout, render them directly
-  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions'].includes(widget.type)) {
+  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news'].includes(widget.type)) {
     return (
       <div 
         className={`relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}

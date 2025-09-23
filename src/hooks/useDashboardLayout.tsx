@@ -12,7 +12,7 @@ export type WidgetSize =
 
 export interface DashboardWidget {
   id: string;
-  type: 'stats' | 'tasks' | 'schedule' | 'actions' | 'messages' | 'blackboard' | 'combined-messages' | 'quicknotes' | 'pomodoro' | 'habits' | 'calllog' | 'teamchat' | 'quickactions';
+  type: 'stats' | 'tasks' | 'schedule' | 'actions' | 'messages' | 'blackboard' | 'combined-messages' | 'quicknotes' | 'pomodoro' | 'habits' | 'calllog' | 'teamchat' | 'quickactions' | 'news';
   title: string;
   position: { x: number; y: number };
   size: { width: number; height: number };

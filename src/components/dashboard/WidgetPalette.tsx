@@ -122,6 +122,14 @@ const WIDGET_TYPES = [
     popular: true
   },
   {
+    type: 'news' as const,
+    title: 'RSS News',
+    description: 'Aktuelle Nachrichten aus RSS-Feeds',
+    icon: MessageCircle,
+    category: 'communication',
+    popular: false
+  },
+  {
     type: 'blackboard' as const,
     title: 'Schwarzes Brett',
     description: 'Öffentliche Bekanntmachungen bestätigen',
