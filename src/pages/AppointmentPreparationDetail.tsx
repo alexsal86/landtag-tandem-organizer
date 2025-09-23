@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Edit, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,26 @@ import { useAppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import { AppointmentPreparationDataTab } from "@/components/appointment-preparations/AppointmentPreparationDataTab";
 import { AppointmentPreparationChecklistTab } from "@/components/appointment-preparations/AppointmentPreparationChecklistTab";
 import { AppointmentPreparationDetailsTab } from "@/components/appointment-preparations/AppointmentPreparationDetailsTab";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 
 export default function AppointmentPreparationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [activeTab, setActiveTab] = useState("preparation"); // Changed default from "overview"
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Check if we have URL parameters for creating a new preparation
+  const appointmentId = searchParams.get('appointmentId');
+  const title = searchParams.get('title');
+  const date = searchParams.get('date');
+  const time = searchParams.get('time');
+  const location = searchParams.get('location');
 
   const {
     preparation,
@@ -25,12 +39,66 @@ export default function AppointmentPreparationDetail() {
     archivePreparation
   } = useAppointmentPreparation(id);
 
-  if (loading) {
+  // Create new preparation if we have URL parameters but no ID
+  useEffect(() => {
+    const createNewPreparation = async () => {
+      if (!id && appointmentId && title && !isCreating && user && currentTenant) {
+        setIsCreating(true);
+        try {
+          const { data, error } = await supabase
+            .from('appointment_preparations')
+            .insert({
+              title: `Terminplanung: ${title}`,
+              appointment_id: appointmentId,
+              tenant_id: currentTenant.id,
+              created_by: user.id,
+              status: 'draft',
+              preparation_data: {
+                contact_name: title.includes('@') ? title : '',
+                event_type: 'Termin',
+                ...(location && { contact_info: location }),
+                ...(date && time && { 
+                  notes: `Geplant für ${new Date(date).toLocaleDateString('de-DE')} um ${time}` 
+                })
+              },
+              checklist_items: [
+                { id: crypto.randomUUID(), label: 'Agenda vorbereiten', completed: false },
+                { id: crypto.randomUUID(), label: 'Unterlagen zusammenstellen', completed: false },
+                { id: crypto.randomUUID(), label: 'Teilnehmer informieren', completed: false },
+                { id: crypto.randomUUID(), label: 'Technische Ausstattung prüfen', completed: false }
+              ]
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          // Redirect to the new preparation
+          navigate(`/appointment-preparation/${data.id}`, { replace: true });
+        } catch (error) {
+          console.error('Error creating preparation:', error);
+          toast({
+            title: "Fehler",
+            description: "Terminplanung konnte nicht erstellt werden.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsCreating(false);
+        }
+      }
+    };
+
+    createNewPreparation();
+  }, [id, appointmentId, title, date, time, location, isCreating, user, currentTenant, navigate, toast]);
+
+  if (loading || isCreating) {
     return (
       <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Terminplanung wird geladen...</p>
+          <p className="text-muted-foreground">
+            {isCreating ? "Erstelle neue Terminplanung..." : "Terminplanung wird geladen..."}
+          </p>
         </div>
       </div>
     );
@@ -79,7 +147,7 @@ export default function AppointmentPreparationDetail() {
         title: "Archiviert",
         description: "Terminplanung wurde erfolgreich archiviert.",
       });
-      navigate("/eventplanning");
+      navigate("/calendar");
     } catch (error) {
       toast({
         title: "Fehler",
@@ -96,10 +164,10 @@ export default function AppointmentPreparationDetail() {
         <div className="flex items-center justify-between mb-6">
           <Button 
             variant="outline" 
-            onClick={() => navigate("/eventplanning")}
+            onClick={() => navigate("/calendar")}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück zu Planungen
+            Zurück zum Kalender
           </Button>
         </div>
 

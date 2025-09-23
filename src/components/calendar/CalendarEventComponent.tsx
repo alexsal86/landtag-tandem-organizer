@@ -83,12 +83,11 @@ export function CalendarEventComponent({
       time: event.time,
       location: event.location || ''
     });
-    navigate(`/eventplanning?${params.toString()}`);
+    navigate(`/appointment-preparation?${params.toString()}`);
   };
 
   // Don't show planning icon for blocked events or external events
-  const showPlanningIcon = !compact && 
-    event.type !== 'blocked' && 
+  const showPlanningIcon = event.type !== 'blocked' && 
     !event.id.startsWith('blocked-') && 
     !event.id.startsWith('external-') &&
     event.id !== 'no-id';
@@ -96,7 +95,7 @@ export function CalendarEventComponent({
   if (compact) {
     return (
       <div
-        className="p-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity"
+        className="relative group p-1 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity"
         style={eventStyle}
         onClick={() => onClick(event)}
       >
@@ -104,6 +103,17 @@ export function CalendarEventComponent({
           {getPriorityIcon(event.priority)}
           <span className="font-medium truncate">{event.title}</span>
         </div>
+        {showPlanningIcon && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="absolute top-0 right-0 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20"
+            onClick={handlePlanningClick}
+            title="Terminplanung erstellen"
+          >
+            <ListTodo className="h-3 w-3" style={{ color: textColor }} />
+          </Button>
+        )}
       </div>
     );
   }

@@ -185,7 +185,7 @@ export function AppointmentDetailsSidebar({
       time: appointment.time,
       location: appointment.location || ''
     });
-    navigate(`/eventplanning?${params.toString()}`);
+    navigate(`/appointment-preparation?${params.toString()}`);
   };
 
   const handleSave = async () => {
