@@ -9,8 +9,8 @@ from parser_core.segment import segment_speeches
 from parser_core.agenda import extract_agenda, link_agenda
 from parser_core.metadata import parse_session_info
 from parser_core.schema_def import validate_payload
-from parser_core.toc import parse_toc
-from parser_core.layout import extract_pages_with_layout  # NEU
+from parser_core.toc import parse_toc, partition_toc   # <--- NEU
+
 
 def parse_args():
     ap = argparse.ArgumentParser()
@@ -19,10 +19,11 @@ def parse_args():
     ap.add_argument("--schema-validate", action="store_true")
     ap.add_argument("--log-level", default="INFO")
     ap.add_argument("--force-download", action="store_true")
-    ap.add_argument("--skip-existing", action="store_true", default=False)
+    ap.add_argument("--skip-existing", action="store_true")
     ap.add_argument("--layout", action="store_true",
                     help="Nutze Layout-/Spaltenerkennung (zweispaltiger Seitenfluss).")
     return ap.parse_args()
+
 
 def gather_urls(args):
     if args.single_url:
@@ -36,6 +37,7 @@ def gather_urls(args):
         if urls:
             return urls
     raise SystemExit("Keine URL angegeben (--single-url oder --list-file).")
+
 
 def build_session_filename(payload: dict) -> str:
     sess = payload.get("session", {})
@@ -52,10 +54,13 @@ def build_session_filename(payload: dict) -> str:
     short = hashlib.sha256(url).hexdigest()[:8] if url else "na"
     return f"session_unknown_{short}.json"
 
+
 def process_pdf(url: str, force_download: bool, use_layout: bool):
     pdf_path = download_pdf(url, force=force_download)
 
     if use_layout:
+        # Falls du layout.py eingebunden hast – hier unverändert lassen
+        from parser_core.layout import extract_pages_with_layout
         pages_lines, debug_meta = extract_pages_with_layout(str(pdf_path))
     else:
         pages_lines = extract_pages(pdf_path)
@@ -63,7 +68,6 @@ def process_pdf(url: str, force_download: bool, use_layout: bool):
 
     pages_lines = remove_repeated_headers_footers(pages_lines)
 
-    # Normalize + dehyphenate per page lines
     normalized_pages = []
     for lines in pages_lines:
         lines = [normalize_line(l) for l in lines if l.strip()]
@@ -74,9 +78,11 @@ def process_pdf(url: str, force_download: bool, use_layout: bool):
     all_text = "\n".join(l["text"] for l in flat)
     meta = parse_session_info(all_text)
 
-    toc_items = []
+    toc_items_full = []
+    toc_partitions = {"agenda": [], "speakers": [], "other": []}
     if normalized_pages:
-        toc_items = parse_toc(normalized_pages[0])
+        toc_items_full = parse_toc(normalized_pages[0])
+        toc_partitions = partition_toc(toc_items_full)
 
     speeches = segment_speeches(flat)
     inline_agenda = extract_agenda(flat)
@@ -100,11 +106,17 @@ def process_pdf(url: str, force_download: bool, use_layout: bool):
             "speeches": len(speeches)
         },
         "layout_debug": debug_meta if use_layout else None,
-        "toc": toc_items,
+        # ALT (Komplettliste für Kompatibilität)
+        "toc": toc_items_full,
+        # NEU gesplittet:
+        "toc_agenda": toc_partitions["agenda"],
+        "toc_speakers": toc_partitions["speakers"],
+        "toc_other": toc_partitions["other"],
         "agenda_items": inline_agenda,
         "speeches": speeches
     }
     return payload
+
 
 def main():
     args = parse_args()
@@ -148,6 +160,7 @@ def main():
             json.dump(index, f, ensure_ascii=False, indent=2)
         print(f"[INFO] Index aktualisiert: {index_path}")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
