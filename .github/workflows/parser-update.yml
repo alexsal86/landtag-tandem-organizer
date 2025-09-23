@@ -53,12 +53,11 @@ jobs:
       - name: Run Parser (list mode)
         if: steps.mode.outputs.mode == 'list'
         run: |
-          python scripts/parse_landtag_pdf.py --list-file scripts/urls.txt --schema-validate --log-level INFO
-
+          python scripts/parse_landtag_pdf.py --list-file scripts/urls.txt
       - name: Run Parser (single default)
         if: steps.mode.outputs.mode == 'single'
         run: |
-          python scripts/parse_landtag_pdf.py --schema-validate --log-level INFO
+          python scripts/parse_landtag_pdf.py
 
       - name: Stage data changes
         id: diff
