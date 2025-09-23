@@ -1,55 +1,51 @@
 import re
 import unicodedata
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 
 """
-Rede-Segmentierung (vereinfachte, robuste Version)
+Rede-Segmentierung mit kompakten Interjektionen.
 
-Änderungen / Features dieser Version:
-- Einfache Absatz-Regel: Neue Rede nur am Absatzanfang (oder erster gefundener Header).
-- Erster Header (Rolle + Name + :) wird auch ohne vorausgehende Leerzeile erkannt (Frontmatter wird übersprungen).
-- Multi-Line-Header:
-    Zeile 1 beginnt mit Rolle (kein ":"), Zeile 2 ergänzt Doppelpunkt (oder Partei + ":").
-- Führende Whitespaces (inkl. NBSP) erlaubt vor Headern.
-- Fallback: Falls versehentlich keine Leerzeile vorhanden war und ein klarer Header mitten im Absatz auftaucht
-  (fallback_inline_header=True) → neue Rede, sofern NICHT innerhalb von Klammern.
-- Geklammerter Bereich (runde Klammern) wird über Zeilengrenzen mittels paren_depth verfolgt.
-  ALLES was innerhalb offener Klammern detected wird (auch über mehrere Zeilen) kann Interjektionen enthalten,
-  startet aber KEINE neue Rede.
-- Interjektionen: Vereinheitlichte, minimalistische Struktur:
-    {
-      "type": "interjection",
-      "raw": "...",
-      "speaker_hint": "...",   # optional
-      "role_hint": "Abg."|...  # optional
-      "party_hint": "...",     # optional
-      "category": "applaus" | "zuruf" | "lachen" | "unklar",
-      "source_page": int,
-      "source_line_index": int
-    }
-  Keine raw_start/raw_end/context_before/context_after/sequence_index mehr.
-- Interjektionsextraktion innerhalb Klammern:
-    * Segmentierung an ' – ', ' — ', ' - ' (Gedanken- / Halbgeviertstriche)
-    * Erkennung von:
-        - Vollen Sprecherfragmenten mit Rolle+Name(+Partei)+':'
-        - 'Zuruf ...' Varianten (mit oder ohne Abg. / Partei / Doppelpunkt)
-        - 'Beifall', 'Applaus', 'Heiterkeit', 'Lachen'
-        - Falls in 'Zuruf ...' ein 'Abg.' + Name + Partei vorkommt ohne Doppelpunkt → trotzdem speaker_hint
-- Kategorien:
-    applaus  -> wenn 'beifall' oder 'applaus'
-    zuruf    -> wenn 'zuruf'
-    lachen   -> wenn 'heiterkeit' oder 'lachen'
-    unklar   -> sonst
+NEU (gegenüber letzter Version):
+- Interjektionen werden (wenn compact_interjections=True) im Speech-Objekt nur noch so gespeichert:
+    { "type": "interjection", "text": "...", "annotation_ref": <int> }
+  (Optional: + "category", falls include_interjection_category=True)
+- Ausführliche Positionsdaten (raw_start, raw_end) werden – falls externalize_interjection_offsets=True – in
+  einem separaten Rückgabeobjekt interjection_offsets ausgegeben (Top-Level).
+- raw_start / raw_end beziehen sich auf den zusammengesetzten Rede-Text (speech["text"]) – also auf
+  denselben String, den ihr speichert. Sie können separat persistiert werden.
+- Keine alten Felder wie raw, role_hint, speaker_hint, party_hint usw. mehr in den Speech-Annotations
+  (stark verkleinertes JSON). Wer diese Infos braucht, kann sie bei Bedarf anreichern.
 
-Konfigurierbare Parameter:
-- capture_offsets (Body-Zeilen Offsets)
-- debug
-- require_bold_for_header
-- allow_abg_without_party
-- fallback_inline_header (siehe oben)
+Rückgabeformat:
+- Wenn externalize_interjection_offsets=False:
+    -> List[Speech]
+- Wenn externalize_interjection_offsets=True:
+    -> Dict{
+          "speeches": [...],
+          "interjection_offsets": [
+             {
+               "annotation_ref": 7,
+               "speech_index": 3,
+               "raw_start": 842,
+               "raw_end": 863,
+               "page": 5,
+               "line_index": 217
+             },
+             ...
+          ]
+       }
 
-WICHTIG: Parser erwartet Zeilenobjekte mit mindestens:
-  { "page": int, "line_index": int, "text": str, (optional) bold/is_bold/font_weight }
+Parameter:
+- capture_offsets: falls True, speichert weiterhin speech["lines"] mit char_start/char_end pro Body-Zeile
+- compact_interjections: aktiviert kompaktes Schema (Default True)
+- include_interjection_category: falls True, bleibt "category" Feld in jeder Annotation
+- externalize_interjection_offsets: erzeugt separate Offsets-Liste
+- fallback_inline_header: heuristische Erkennung neuer Header wenn Leerzeile/Absatz fehlt
+
+Hinweis:
+- Für Offsets der Interjektionen wird eine simple Heuristik verwendet:
+  Wir suchen das Interjektions-Textstück (annotation text) innerhalb der zugehörigen Body-Zeile.
+  Bei mehrfach gleichem Vorkommen wird der erste Treffer genommen.
 """
 
 # -----------------------------------------------------------
@@ -74,7 +70,6 @@ PARTY_VARIANTS = [
 ROLE_PATTERN = "(?:" + "|".join(ROLE_TOKENS) + ")"
 PARTY_PATTERN = "(?:" + "|".join(PARTY_VARIANTS) + ")"
 
-# Einzeiliger Header (Zeilenanfang)
 HEADER_LINE_RE = re.compile(
     rf"^\s*(?P<role>{ROLE_PATTERN})\s+"
     rf"(?P<name_block>[^:\n]{{1,160}}?)"
@@ -82,13 +77,9 @@ HEADER_LINE_RE = re.compile(
     re.IGNORECASE
 )
 
-# Für Multi-Line Start (erste Zeile ohne ':')
 LINE_START_ROLE_RE = re.compile(rf"^\s*(?P<role>{ROLE_PATTERN})\b", re.IGNORECASE)
-
-# Partei-eigene Folgezeile (nur Partei + ':')
 PARTY_ONLY_LINE_RE = re.compile(rf"^\s*(?P<party>{PARTY_PATTERN})\s*:\s*$", re.IGNORECASE)
 
-# Eingebettete Sprecherfragmente innerhalb Klammern (ohne Zeilenanker)
 EMBEDDED_ROLE_RE = re.compile(
     rf"(?P<role>{ROLE_PATTERN})\s+"
     rf"(?P<name_block>[^:\n]{{1,160}}?)"
@@ -96,7 +87,6 @@ EMBEDDED_ROLE_RE = re.compile(
     re.IGNORECASE
 )
 
-# Fallback "Abg. Name Partei" ohne Doppelpunkt (z.B. in 'Zuruf des Abg. ...')
 FALLBACK_ABG_INNER_RE = re.compile(
     rf"Abg\.\s+(?P<name>[^()–—\-:]{{2,120}}?)"
     rf"(?:\s+(?P<party>{PARTY_PATTERN}))?(?=$|[\s)–—\-])",
@@ -108,6 +98,7 @@ ACADEMIC_TITLE_RE = re.compile(
     re.IGNORECASE
 )
 MULTI_SPACE_RE = re.compile(r"\s{2,}")
+SEGMENT_SPLIT_RE = re.compile(r"\s[–—-]\s")
 
 CATEGORY_BY_ROLE = {
     "Präsident": "chair",
@@ -125,11 +116,8 @@ CATEGORY_BY_ROLE = {
     "Abgeordnete": "member"
 }
 
-# Interjektion Segment Separator (Gedanken-/Halbgeviertstriche + normaler Bindestrich umgeben von Spaces)
-SEGMENT_SPLIT_RE = re.compile(r"\s[–—-]\s")
-
 # -----------------------------------------------------------
-# Öffentliche Hauptfunktion
+# Hauptfunktion
 # -----------------------------------------------------------
 
 def segment_speeches(flat_lines: List[Dict[str, Any]],
@@ -137,8 +125,15 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                      debug: bool = False,
                      require_bold_for_header: bool = False,
                      allow_abg_without_party: bool = True,
-                     fallback_inline_header: bool = True) -> List[Dict[str, Any]]:
+                     fallback_inline_header: bool = True,
+                     compact_interjections: bool = True,
+                     include_interjection_category: bool = False,
+                     externalize_interjection_offsets: bool = False
+                     ) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
     speeches: List[Dict[str, Any]] = []
+    # Wenn externalize_interjection_offsets=True sammeln wir hier Offsets
+    interjection_offset_records: List[Dict[str, Any]] = []
+
     current: Optional[Dict[str, Any]] = None
     body_line_entries: List[Dict[str, Any]] = []
     speech_index = 0
@@ -147,31 +142,81 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
     at_paragraph_start = True
     pending_header_first_line: Optional[Dict[str, Any]] = None
     first_speech_started = False
+    paren_depth = 0
 
-    # Parenthesis / Klammer-Depth über Zeilen
-    paren_depth = 0  # depth > 0 => innerhalb eines offenen Klammerblocks
-    # Für Debug sammeln wir optional Zeileninfos
-    if debug:
-        debug_events = []
+    # Globale laufende Referenzen für Interjektionen
+    next_annotation_ref = 1
+
+    # Temporäre Speicherung für Annotation-Metadaten zur späteren Offsets-Berechnung
+    # pro Speech (ID -> Liste)
+    pending_interjection_meta: Dict[int, List[Dict[str, Any]]] = {}
+
+    def ensure_current(page_for_new: int):
+        nonlocal current, speech_index
+        if current is None:
+            speech_index += 1
+            current = _make_new_speech(speech_index, page_for_new, _empty_speaker(), False)
+            pending_interjection_meta[current["index"]] = []
 
     def flush_current():
         nonlocal current, body_line_entries, speeches
         if current is None:
             body_line_entries.clear()
             return
+        # Text zusammensetzen
         parts = []
         for entry in body_line_entries:
-            txt = entry["text"]
-            if txt.strip():
-                parts.append(txt)
-            else:
-                parts.append("")  # Leerzeilen erhalten
-        final_text = "\n".join(parts).strip("\n")
-        if capture_offsets:
-            current["lines"] = _compute_offsets(body_line_entries)
+            t = entry["text"]
+            parts.append(t)
+        final_text = "\n".join(parts).rstrip("\n")
+
+        # Berechne line offsets falls nötig (auch nötig für externe interjection offsets)
+        line_offsets = _compute_offsets(body_line_entries) if (capture_offsets or externalize_interjection_offsets) else None
+        if capture_offsets and line_offsets is not None:
+            current["lines"] = line_offsets
+
         current["text"] = final_text
         current["end_page"] = current.get("end_page") or current["start_page"]
         current.setdefault("annotations", [])
+
+        if externalize_interjection_offsets and compact_interjections:
+            # Offsets für Interjektionen berechnen
+            # Map (page,line_index) -> (line_text,char_start)
+            line_map = {}
+            if line_offsets is not None:
+                for lo in line_offsets:
+                    key = (lo["page"], lo["line_index"])
+                    line_map[key] = {
+                        "char_start": lo["char_start"],
+                        "text": lo["text"]
+                    }
+            meta_list = pending_interjection_meta.get(current["index"], [])
+            for meta in meta_list:
+                key = (meta["page"], meta["line_index"])
+                base = line_map.get(key)
+                if not base:
+                    raw_start = None
+                    raw_end = None
+                else:
+                    # Finde Substring
+                    sub = meta["text"]
+                    line_text = base["text"]
+                    local_pos = line_text.find(sub)
+                    if local_pos == -1:
+                        raw_start = None
+                        raw_end = None
+                    else:
+                        raw_start = base["char_start"] + local_pos
+                        raw_end = raw_start + len(sub)
+                interjection_offset_records.append({
+                    "annotation_ref": meta["annotation_ref"],
+                    "speech_index": current["index"],
+                    "raw_start": raw_start,
+                    "raw_end": raw_end,
+                    "page": meta["page"],
+                    "line_index": meta["line_index"]
+                })
+
         speeches.append(current)
         current = None
         body_line_entries.clear()
@@ -184,25 +229,16 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
         bold_flag = _extract_bold_flag(line_obj)
         norm_line = raw_line.rstrip("\n\r")
 
-        # Bestimme Klammersegmente dieser Zeile
+        # Klammersegmente
         segments_in_paren, paren_depth = _parenthesis_segments(norm_line, paren_depth)
-        inside_any_parentheses = paren_depth > 0 or bool(segments_in_paren)
 
-        # Leerzeilen (auch NBSP) -> Absatzgrenze
+        # Leerzeile?
         if _is_effectively_blank(norm_line):
             if current is not None:
                 body_line_entries.append({"page": page, "line_index": line_idx, "text": ""})
             at_paragraph_start = True
             if pending_header_first_line:
-                # Unvollendeter Multi-Line Header -> Body
-                if current is None:
-                    speech_index += 1
-                    current = _make_new_speech(
-                        speech_index,
-                        pending_header_first_line["page"],
-                        _empty_speaker(),
-                        False
-                    )
+                ensure_current(pending_header_first_line["page"])
                 body_line_entries.append({
                     "page": pending_header_first_line["page"],
                     "line_index": pending_header_first_line["line_index"],
@@ -214,7 +250,6 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
         # Multi-Line Header Abschluss?
         if pending_header_first_line:
             combined = _combine_multiline_header(pending_header_first_line["text"], norm_line)
-            # Partei-folgt-Zeile könnte nur Partei + ":" enthalten
             m_comb = HEADER_LINE_RE.match(combined)
             if m_comb and _accept_header_match(m_comb, allow_abg_without_party):
                 if not (require_bold_for_header and pending_header_first_line.get("bold") is False):
@@ -223,12 +258,8 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                     speaker_meta = _speaker_meta_from_match(m_comb)
                     signature = (speaker_meta.get("role"), speaker_meta.get("name"))
                     continuation = (previous_speaker_signature == signature)
-                    current = _make_new_speech(
-                        speech_index,
-                        pending_header_first_line["page"],
-                        speaker_meta,
-                        continuation
-                    )
+                    current = _make_new_speech(speech_index, pending_header_first_line["page"], speaker_meta, continuation)
+                    pending_interjection_meta[current["index"]] = []
                     previous_speaker_signature = signature
                     first_speech_started = True
                     after = combined[m_comb.end():].strip()
@@ -238,15 +269,8 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                             "line_index": line_idx,
                             "text": after
                         })
-                    if debug:
-                        current.setdefault("debug", {})
-                        current["debug"]["origin"] = "multiline_header"
-                        current["debug"]["lines"] = [pending_header_first_line["text"], norm_line]
                 else:
-                    # Bold gefordert aber nicht vorhanden -> alles Body
-                    if current is None:
-                        speech_index += 1
-                        current = _make_new_speech(speech_index, pending_header_first_line["page"], _empty_speaker(), False)
+                    ensure_current(pending_header_first_line["page"])
                     body_line_entries.append({
                         "page": pending_header_first_line["page"],
                         "line_index": pending_header_first_line["line_index"],
@@ -259,15 +283,17 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                     })
                 pending_header_first_line = None
                 at_paragraph_start = False
-                # Interjektionen (Klammern) trotzdem extrahieren
+                # Interjektionen aus aktueller Zeile
                 if segments_in_paren:
-                    _collect_interjections(norm_line, segments_in_paren, current, page, line_idx)
+                    next_annotation_ref = _collect_interjections(
+                        norm_line, segments_in_paren, current, page, line_idx,
+                        next_annotation_ref, pending_interjection_meta, compact_interjections,
+                        include_interjection_category
+                    )
                 continue
             else:
-                # Kein vollständiger Header -> Body beider Zeilen
-                if current is None:
-                    speech_index += 1
-                    current = _make_new_speech(speech_index, pending_header_first_line["page"], _empty_speaker(), False)
+                # Kein vollständiger Header
+                ensure_current(pending_header_first_line["page"])
                 body_line_entries.append({
                     "page": pending_header_first_line["page"],
                     "line_index": pending_header_first_line["line_index"],
@@ -281,20 +307,23 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                 pending_header_first_line = None
                 at_paragraph_start = False
                 if segments_in_paren:
-                    _collect_interjections(norm_line, segments_in_paren, current, page, line_idx)
+                    next_annotation_ref = _collect_interjections(
+                        norm_line, segments_in_paren, current, page, line_idx,
+                        next_annotation_ref, pending_interjection_meta, compact_interjections,
+                        include_interjection_category
+                    )
                 continue
 
-        # Früherkennung erster Header (Frontmatter überspringen)
+        # Erster Header?
         if not first_speech_started:
             m_first = HEADER_LINE_RE.match(norm_line)
             if m_first and _accept_header_match(m_first, allow_abg_without_party) and not _match_inside_parentheses(m_first, segments_in_paren):
-                # Bold-Anforderung am Start sehr häufig optional tolerieren
                 flush_current()
                 speech_index += 1
                 speaker_meta = _speaker_meta_from_match(m_first)
-                signature = (speaker_meta.get("role"), speaker_meta.get("name"))
                 current = _make_new_speech(speech_index, page, speaker_meta, False)
-                previous_speaker_signature = signature
+                pending_interjection_meta[current["index"]] = []
+                previous_speaker_signature = (speaker_meta.get("role"), speaker_meta.get("name"))
                 first_speech_started = True
                 after = norm_line[m_first.end():].strip()
                 if after:
@@ -304,14 +333,14 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                         "text": after
                     })
                 at_paragraph_start = False
-                if debug:
-                    current.setdefault("debug", {})
-                    current["debug"]["origin"] = "first_header"
                 if segments_in_paren:
-                    _collect_interjections(norm_line, segments_in_paren, current, page, line_idx)
+                    next_annotation_ref = _collect_interjections(
+                        norm_line, segments_in_paren, current, page, line_idx,
+                        next_annotation_ref, pending_interjection_meta, compact_interjections,
+                        include_interjection_category
+                    )
                 continue
-            # Multi-Line Start vor erster Rede
-            if at_paragraph_start and LINE_START_ROLE_RE.match(norm_line) and ":" not in norm_line and not inside_any_parentheses:
+            if at_paragraph_start and LINE_START_ROLE_RE.match(norm_line) and ":" not in norm_line and not segments_in_paren:
                 pending_header_first_line = {
                     "page": page,
                     "line_index": line_idx,
@@ -319,11 +348,9 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                     "bold": bold_flag
                 }
                 at_paragraph_start = False
-                if segments_in_paren:
-                    _collect_interjections(norm_line, segments_in_paren, current, page, line_idx)
                 continue
 
-        # Regulärer Absatzbeginn (nach erster Rede)
+        # Regulärer Absatzanfang
         if at_paragraph_start:
             m = HEADER_LINE_RE.match(norm_line)
             if m and _accept_header_match(m, allow_abg_without_party) and not _match_inside_parentheses(m, segments_in_paren):
@@ -334,6 +361,7 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                     signature = (speaker_meta.get("role"), speaker_meta.get("name"))
                     continuation = (previous_speaker_signature == signature)
                     current = _make_new_speech(speech_index, page, speaker_meta, continuation)
+                    pending_interjection_meta[current["index"]] = []
                     previous_speaker_signature = signature
                     first_speech_started = True
                     after = norm_line[m.end():].strip()
@@ -344,13 +372,14 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                             "text": after
                         })
                     at_paragraph_start = False
-                    if debug:
-                        current.setdefault("debug", {})
-                        current["debug"]["origin"] = "singleline_header"
                     if segments_in_paren:
-                        _collect_interjections(norm_line, segments_in_paren, current, page, line_idx)
+                        next_annotation_ref = _collect_interjections(
+                            norm_line, segments_in_paren, current, page, line_idx,
+                            next_annotation_ref, pending_interjection_meta, compact_interjections,
+                            include_interjection_category
+                        )
                     continue
-            if LINE_START_ROLE_RE.match(norm_line) and ":" not in norm_line and not inside_any_parentheses:
+            if LINE_START_ROLE_RE.match(norm_line) and ":" not in norm_line and not segments_in_paren:
                 pending_header_first_line = {
                     "page": page,
                     "line_index": line_idx,
@@ -358,13 +387,9 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                     "bold": bold_flag
                 }
                 at_paragraph_start = False
-                if segments_in_paren:
-                    _collect_interjections(norm_line, segments_in_paren, current, page, line_idx)
                 continue
-            # Kein Header → Body
-            if current is None:
-                speech_index += 1
-                current = _make_new_speech(speech_index, page, _empty_speaker(), False)
+            # Body
+            ensure_current(page)
             body_line_entries.append({
                 "page": page,
                 "line_index": line_idx,
@@ -372,7 +397,7 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
             })
             at_paragraph_start = False
         else:
-            # Innerhalb Absatz
+            # Absatz läuft
             if fallback_inline_header:
                 m_inline = HEADER_LINE_RE.match(norm_line)
                 if (m_inline and
@@ -384,6 +409,7 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                     signature = (speaker_meta.get("role"), speaker_meta.get("name"))
                     continuation = (previous_speaker_signature == signature)
                     current = _make_new_speech(speech_index, page, speaker_meta, continuation)
+                    pending_interjection_meta[current["index"]] = []
                     previous_speaker_signature = signature
                     after = norm_line[m_inline.end():].strip()
                     if after:
@@ -392,36 +418,33 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
                             "line_index": line_idx,
                             "text": after
                         })
-                    if debug:
-                        current.setdefault("debug", {})
-                        current["debug"]["origin"] = "fallback_inline_header"
                     if segments_in_paren:
-                        _collect_interjections(norm_line, segments_in_paren, current, page, line_idx)
+                        next_annotation_ref = _collect_interjections(
+                            norm_line, segments_in_paren, current, page, line_idx,
+                            next_annotation_ref, pending_interjection_meta, compact_interjections,
+                            include_interjection_category
+                        )
                     continue
-
-            if current is None:
-                speech_index += 1
-                current = _make_new_speech(speech_index, page, _empty_speaker(), False)
-            else:
-                if page > current.get("end_page", page):
-                    current["end_page"] = page
+            ensure_current(page)
+            if page > current.get("end_page", page):
+                current["end_page"] = page
             body_line_entries.append({
                 "page": page,
                 "line_index": line_idx,
                 "text": norm_line
             })
 
-        # Interjektionen sammeln (nur sinnvoll falls es Klammersegmente gibt)
-        if segments_in_paren:
-            _collect_interjections(norm_line, segments_in_paren, current, page, line_idx)
+        # Interjektionen
+        if segments_in_paren and current is not None:
+            next_annotation_ref = _collect_interjections(
+                norm_line, segments_in_paren, current, page, line_idx,
+                next_annotation_ref, pending_interjection_meta, compact_interjections,
+                include_interjection_category
+            )
 
-    # Offener Multi-Line Header ohne Abschluss -> Body
+    # Offener Multi-Line Header?
     if pending_header_first_line:
-        if current is None:
-            speech_index += 1
-            current = _make_new_speech(speech_index,
-                                       pending_header_first_line["page"],
-                                       _empty_speaker(), False)
+        ensure_current(pending_header_first_line["page"])
         body_line_entries.append({
             "page": pending_header_first_line["page"],
             "line_index": pending_header_first_line["line_index"],
@@ -430,21 +453,166 @@ def segment_speeches(flat_lines: List[Dict[str, Any]],
         pending_header_first_line = None
 
     flush_current()
+
+    if externalize_interjection_offsets:
+        return {
+            "speeches": speeches,
+            "interjection_offsets": interjection_offset_records
+        }
     return speeches
 
 # -----------------------------------------------------------
-# Klammer-Handling / Interjektionen
+# Interjektionen
+# -----------------------------------------------------------
+
+def _collect_interjections(line: str,
+                           paren_segments: List[Tuple[int, int]],
+                           current_speech: Optional[Dict[str, Any]],
+                           page: int,
+                           line_index: int,
+                           next_annotation_ref: int,
+                           pending_interjection_meta: Dict[int, List[Dict[str, Any]]],
+                           compact: bool,
+                           include_category: bool) -> int:
+    if current_speech is None:
+        return next_annotation_ref
+    speech_idx = current_speech["index"]
+    if speech_idx not in pending_interjection_meta:
+        pending_interjection_meta[speech_idx] = []
+
+    for seg_start, seg_end in paren_segments:
+        seg_text = line[seg_start:seg_end]
+        pieces = _split_parenthetical_segment(seg_text)
+        for piece in pieces:
+            cleaned = piece.strip()
+            if not cleaned:
+                continue
+
+            # 1) Voller eingebetteter Sprecher (mit ':')
+            emb = EMBEDDED_ROLE_RE.search(cleaned)
+            if emb:
+                # Der ganze 'cleaned' Block ist die Interjektion
+                annotation_ref = next_annotation_ref
+                next_annotation_ref += 1
+                category = _classify_interjection(cleaned)
+                ann_obj = {
+                    "type": "interjection",
+                    "text": cleaned,
+                    "annotation_ref": annotation_ref
+                }
+                if include_category:
+                    ann_obj["category"] = category
+                current_speech["annotations"].append(ann_obj)
+                # Meta für Offsets
+                pending_interjection_meta[speech_idx].append({
+                    "annotation_ref": annotation_ref,
+                    "text": cleaned,
+                    "page": page,
+                    "line_index": line_index
+                })
+
+                # Rest hinter Match?
+                tail = cleaned[emb.end():].strip()
+                if tail:
+                    cat_tail = _classify_interjection(tail)
+                    annotation_ref = next_annotation_ref
+                    next_annotation_ref += 1
+                    tail_ann = {
+                        "type": "interjection",
+                        "text": tail,
+                        "annotation_ref": annotation_ref
+                    }
+                    if include_category:
+                        tail_ann["category"] = cat_tail
+                    current_speech["annotations"].append(tail_ann)
+                    pending_interjection_meta[speech_idx].append({
+                        "annotation_ref": annotation_ref,
+                        "text": tail,
+                        "page": page,
+                        "line_index": line_index
+                    })
+                continue
+
+            # 2) Stichworte (Beifall / Zuruf / Heiterkeit / Lachen) oder Fallback Abg.-Muster
+            lower = cleaned.lower()
+            if any(k in lower for k in ("beifall", "applaus", "zuruf", "heiterkeit", "lachen")):
+                annotation_ref = next_annotation_ref
+                next_annotation_ref += 1
+                category = _classify_interjection(cleaned)
+                ann_obj = {
+                    "type": "interjection",
+                    "text": cleaned,
+                    "annotation_ref": annotation_ref
+                }
+                if include_category:
+                    ann_obj["category"] = category
+                current_speech["annotations"].append(ann_obj)
+                pending_interjection_meta[speech_idx].append({
+                    "annotation_ref": annotation_ref,
+                    "text": cleaned,
+                    "page": page,
+                    "line_index": line_index
+                })
+                continue
+            # Sonst ignorieren
+    return next_annotation_ref
+
+def _split_parenthetical_segment(text: str) -> List[str]:
+    return [p for p in SEGMENT_SPLIT_RE.split(text) if p]
+
+# -----------------------------------------------------------
+# Header / Speaker Hilfsfunktionen
+# -----------------------------------------------------------
+
+def _accept_header_match(m: re.Match, allow_abg_without_party: bool) -> bool:
+    role = m.group("role")
+    party = m.group("party")
+    norm_role = _normalize_role(role)
+    if norm_role == "Abg." and not allow_abg_without_party and not party:
+        return False
+    return True
+
+def _combine_multiline_header(line1: str, line2: str) -> str:
+    m_party_only = PARTY_ONLY_LINE_RE.match(line2)
+    if m_party_only:
+        return f"{line1} {m_party_only.group('party')}:"
+    return f"{line1} {line2}"
+
+def _speaker_meta_from_match(m: re.Match) -> Dict[str, Any]:
+    role_raw = m.group("role")
+    name_block = (m.group("name_block") or "").strip()
+    party_raw = m.group("party")
+    role_norm = _normalize_role(role_raw)
+    name_clean = _strip_academic_titles(name_block)
+    party_norm = _normalize_party_token(party_raw) if party_raw else None
+    category = CATEGORY_BY_ROLE.get(role_norm)
+    return {
+        "raw": f"{role_raw} {name_block}".strip(),
+        "role": role_norm,
+        "name": name_clean,
+        "party": party_norm,
+        "normalized": name_clean,
+        "parliament_function": category
+    }
+
+def _normalize_role(r: str) -> str:
+    r = r.strip()
+    if r.lower().startswith("abgeordnete"):
+        return "Abg."
+    return r
+
+def _match_inside_parentheses(m: re.Match, paren_segments: List[Tuple[int, int]]) -> bool:
+    start, end = m.start(), m.end()
+    for s, e in paren_segments:
+        if start >= s and end <= e:
+            return True
+    return False
+
+# -----------------------------------------------------------
+# Parenthesis Handling
 # -----------------------------------------------------------
 
 def _parenthesis_segments(line: str, initial_depth: int) -> Tuple[List[Tuple[int, int]], int]:
-    """
-    Ermittelt Segmente innerhalb Klammern für diese Zeile.
-    initial_depth gibt an, ob wir aus vorheriger Zeile bereits innerhalb einer Klammer waren.
-    Rückgabe:
-        segments: Liste (start, end) innerhalb der Zeile (end exklusiv)
-        new_depth: Tiefe nach dieser Zeile (0 = geschlossen)
-    Hinweis: Mehrfach verschachtelte Klammern werden als ein zusammenhängender Segmentbereich betrachtet.
-    """
     depth = initial_depth
     segments: List[Tuple[int, int]] = []
     seg_start = 0 if depth > 0 else None
@@ -462,192 +630,10 @@ def _parenthesis_segments(line: str, initial_depth: int) -> Tuple[List[Tuple[int
                     seg_start = None
 
     if depth > 0:
-        # Offener Segmentrest bis Zeilenende
         if seg_start is None:
-            seg_start = 0  # falls z. B. erst mitten in der Zeile '(' öffnete und nicht schloss
-        segments.append((seg_start, len(line)))  # temporärer offener Bereich
+            seg_start = 0
+        segments.append((seg_start, len(line)))
     return segments, depth
-
-def _collect_interjections(line: str,
-                           paren_segments: List[Tuple[int, int]],
-                           current_speech: Optional[Dict[str, Any]],
-                           page: int,
-                           line_idx: int):
-    """
-    Extrahiert Interjektionen aus den geklammerten Segmenten einer Zeile.
-    Erzeugt mehrere Annotationen (type=interjection) direkt im current_speech.
-    """
-    if current_speech is None:
-        return
-    for seg_start, seg_end in paren_segments:
-        segment_text = line[seg_start:seg_end]
-        # In Teilstücke splitten an gedanklichen Trennstrichen
-        pieces = _split_parenthetical_segment(segment_text)
-        for piece in pieces:
-            cleaned = piece.strip()
-            if not cleaned:
-                continue
-            # 1) Versuche Sprecherfragment mit EMBEDDED_ROLE_RE
-            emb_match = EMBEDDED_ROLE_RE.search(cleaned)
-            if emb_match:
-                role = _normalize_role(emb_match.group("role"))
-                name_block = emb_match.group("name_block").strip()
-                party_raw = emb_match.group("party")
-                party_norm = _normalize_party_token(party_raw) if party_raw else None
-                name_clean = _strip_academic_titles(name_block)
-                raw_fragment = _cut_fragment_after_header(cleaned, emb_match)
-                ann = _make_interjection_annotation(
-                    raw_fragment,
-                    role_hint=role,
-                    speaker_hint=name_clean,
-                    party_hint=party_norm,
-                    page=page,
-                    line_index=line_idx
-                )
-                current_speech["annotations"].append(ann)
-                # Restlicher Text nach dem Header (falls existiert) als eigener piece?
-                tail = cleaned[emb_match.end():].strip()
-                if tail:
-                    # tail könnte 'Bravo!' etc. sein → zuruf/applaus extrahieren
-                    cat = _classify_interjection(tail)
-                    if cat != "unklar":
-                        current_speech["annotations"].append(_make_interjection_annotation(
-                            tail, role_hint=None, speaker_hint=None, party_hint=None,
-                            page=page, line_index=line_idx, category_override=cat
-                        ))
-                continue
-
-            # 2) Fallback: 'Zuruf' / 'Beifall' / 'Heiterkeit' / 'Lachen'
-            lowered = cleaned.lower()
-            if any(k in lowered for k in ("beifall", "applaus", "zuruf", "heiterkeit", "lachen")):
-                # Try fallback Abg pattern inside piece (ohne ':')
-                fb = FALLBACK_ABG_INNER_RE.search(cleaned)
-                speaker_hint = None
-                party_hint = None
-                role_hint = None
-                if fb:
-                    role_hint = "Abg."
-                    name_clean = _strip_academic_titles(fb.group("name"))
-                    speaker_hint = name_clean
-                    if fb.group("party"):
-                        party_hint = _normalize_party_token(fb.group("party"))
-                ann = _make_interjection_annotation(
-                    cleaned,
-                    role_hint=role_hint,
-                    speaker_hint=speaker_hint,
-                    party_hint=party_hint,
-                    page=page,
-                    line_index=line_idx
-                )
-                current_speech["annotations"].append(ann)
-                continue
-
-            # 3) Sonst ignorieren (kein klarer Interjektionsinhalt)
-            continue
-
-def _split_parenthetical_segment(text: str) -> List[str]:
-    """
-    Teilt den geklammerten Segmenttext an Trennstrichen ' – ', ' — ', ' - '.
-    Erhält die Reihenfolge.
-    """
-    parts = SEGMENT_SPLIT_RE.split(text)
-    return [p for p in parts if p is not None]
-
-def _cut_fragment_after_header(full_piece: str, match: re.Match) -> str:
-    """
-    Schneidet einen Sprecher-Header innerhalb eines Pieces so ab,
-    dass header + unmittelbar folgende inhaltliche Worte (bis Segmentende) als raw bleiben.
-    (Hier behalten wir standardmäßig das komplette Piece bei.)
-    """
-    return full_piece.strip()
-
-# -----------------------------------------------------------
-# Interjektionserzeugung & Klassifikation
-# -----------------------------------------------------------
-
-def _make_interjection_annotation(raw: str,
-                                  role_hint: Optional[str],
-                                  speaker_hint: Optional[str],
-                                  party_hint: Optional[str],
-                                  page: int,
-                                  line_index: int,
-                                  category_override: Optional[str] = None) -> Dict[str, Any]:
-    category = category_override or _classify_interjection(raw)
-    return {
-        "type": "interjection",
-        "raw": raw.strip(),
-        "speaker_hint": speaker_hint,
-        "role_hint": role_hint,
-        "party_hint": party_hint,
-        "category": category,
-        "source_page": page,
-        "source_line_index": line_index
-    }
-
-def _classify_interjection(raw: str) -> str:
-    l = raw.lower()
-    if "beifall" in l or "applaus" in l:
-        return "applaus"
-    if "zuruf" in l:
-        return "zuruf"
-    if "heiterkeit" in l or "lachen" in l:
-        return "lachen"
-    return "unklar"
-
-# -----------------------------------------------------------
-# Header / Speaker Hilfen
-# -----------------------------------------------------------
-
-def _accept_header_match(m: re.Match, allow_abg_without_party: bool) -> bool:
-    role = m.group("role")
-    party = m.group("party")
-    norm_role = _normalize_role(role)
-    if norm_role == "Abg." and not allow_abg_without_party and not party:
-        return False
-    return True
-
-def _combine_multiline_header(line1: str, line2: str) -> str:
-    """
-    Kombiniert Zeile 1 + Zeile 2 für Multi-Line Header.
-    Falls Zeile2 nur Partei + ':' → spezielles Zusammenführen.
-    """
-    m_party_only = PARTY_ONLY_LINE_RE.match(line2)
-    if m_party_only:
-        return f"{line1} {m_party_only.group('party')}:"
-    return f"{line1} {line2}"
-
-def _speaker_meta_from_match(m: re.Match) -> Dict[str, Any]:
-    role_raw = m.group("role")
-    name_block = (m.group("name_block") or "").strip()
-    party_raw = m.group("party")
-    role_norm = _normalize_role(role_raw)
-    name_clean = _strip_academic_titles(name_block)
-    party_norm = _normalize_party_token(party_raw) if party_raw else None
-    category = CATEGORY_BY_ROLE.get(role_norm, None)
-    return {
-        "raw": f"{role_raw} {name_block}".strip(),
-        "role": role_norm,
-        "name": name_clean,
-        "party": party_norm,
-        "normalized": name_clean,
-        "parliament_function": category
-    }
-
-def _normalize_role(r: str) -> str:
-    r = r.strip()
-    if r.lower().startswith("abgeordnete"):
-        return "Abg."
-    return r
-
-def _match_inside_parentheses(m: re.Match, paren_segments: List[Tuple[int, int]]) -> bool:
-    """
-    Prüft, ob ein Match vollständig innerhalb eines Klammersegments liegt.
-    """
-    start, end = m.start(), m.end()
-    for s, e in paren_segments:
-        if start >= s and end <= e:
-            return True
-    return False
 
 # -----------------------------------------------------------
 # Normalisierung & Utilities
@@ -709,7 +695,7 @@ def _is_effectively_blank(line: str) -> bool:
     return line.replace("\u00A0", "").replace("\ufeff", "").strip() == ""
 
 # -----------------------------------------------------------
-# Speech Objekte & Offsets
+# Speech / Offsets
 # -----------------------------------------------------------
 
 def _make_new_speech(index: int, page: int, speaker_meta: Dict[str, Any], continuation: bool) -> Dict[str, Any]:
@@ -737,52 +723,57 @@ def _compute_offsets(body_line_entries: List[Dict[str, Any]]) -> List[Dict[str, 
     accum = 0
     for entry in body_line_entries:
         t = entry["text"]
-        if t:
-            start = accum
-            end = start + len(t)
-            enriched.append({
-                "page": entry["page"],
-                "line_index": entry["line_index"],
-                "text": t,
-                "char_start": start,
-                "char_end": end
-            })
-            accum = end + 1  # newline
-        else:
-            enriched.append({
-                "page": entry["page"],
-                "line_index": entry["line_index"],
-                "text": t,
-                "char_start": accum,
-                "char_end": accum
-            })
-            accum += 1
+        start = accum
+        end = start + len(t)
+        enriched.append({
+            "page": entry["page"],
+            "line_index": entry["line_index"],
+            "text": t,
+            "char_start": start,
+            "char_end": end
+        })
+        accum = end + 1  # newline char
     return enriched
+
+# -----------------------------------------------------------
+# Klassifikation
+# -----------------------------------------------------------
+
+def _classify_interjection(raw: str) -> str:
+    l = raw.lower()
+    if "beifall" in l or "applaus" in l:
+        return "applaus"
+    if "zuruf" in l:
+        return "zuruf"
+    if "heiterkeit" in l or "lachen" in l:
+        return "lachen"
+    return "unklar"
 
 # -----------------------------------------------------------
 # Demo
 # -----------------------------------------------------------
 
 if __name__ == "__main__":
-    demo_lines = [
-        # Frontmatter
+    demo = [
         {"page": 1, "line_index": 0, "text": "Protokoll"},
         {"page": 1, "line_index": 1, "text": "Beginn: 9:02 Uhr"},
-        {"page": 1, "line_index": 2, "text": "Präsidentin Muhterem Aras: Guten Morgen, meine Damen und Herren!"},
-        {"page": 1, "line_index": 3, "text": "Ich eröffne die 127. Sitzung des Landtags."},
+        {"page": 1, "line_index": 2, "text": "Präsidentin Muhterem Aras: Guten Morgen!"},
+        {"page": 1, "line_index": 3, "text": "Ich eröffne die Sitzung."},
         {"page": 1, "line_index": 4, "text": ""},
-        # Split Header in zwei Zeilen (Name / Partei)
         {"page": 1, "line_index": 5, "text": "Abg. Dr. Rainer Balzer"},
         {"page": 1, "line_index": 6, "text": "AfD:"},
-        {"page": 1, "line_index": 7, "text": "Sehr geehrte Frau Präsidentin, sehr geehrte Damen und Herren ..."},
+        {"page": 1, "line_index": 7, "text": "Sehr geehrte Frau Präsidentin ..."},
         {"page": 1, "line_index": 8, "text": "(Beifall bei der AfD – Zuruf von der AfD: Bravo! – Abg. Dr. Timm Kern FDP/DVP: Was für ein Unsinn! – Zuruf des Abg. Thomas Poreski GRÜNE)"},
         {"page": 1, "line_index": 9, "text": ""},
-        # Fallback inline header (keine Leerzeile davor)
         {"page": 1, "line_index": 10, "text": "Abg. Max Mustermann FDP/DVP: Danke."},
-        {"page": 1, "line_index": 11, "text": "Weitere Sätze."},
+        {"page": 1, "line_index": 11, "text": "Fortsetzung."},
         {"page": 1, "line_index": 12, "text": "(Heiterkeit und Zuruf)"},
-        {"page": 1, "line_index": 13, "text": ""},
     ]
-    speeches = segment_speeches(demo_lines, capture_offsets=True, debug=True)
+    result = segment_speeches(
+        demo,
+        capture_offsets=True,
+        externalize_interjection_offsets=True,
+        include_interjection_category=True  # falls Kategorie behalten werden soll
+    )
     import json
-    print(json.dumps(speeches, ensure_ascii=False, indent=2))
+    print(json.dumps(result, ensure_ascii=False, indent=2))
