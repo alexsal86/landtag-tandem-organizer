@@ -54,11 +54,12 @@ def process_pdf(url: str, force_download: bool):
     # Immer Layout / Zwei-Spalten-Verarbeitung erzwingen
     pages_lines, debug_meta = extract_pages_with_layout(
         str(pdf_path),
-        force_two_column=True,
-        min_words_for_detection=10,
-        rel_gap_threshold=0.15,
-        line_consistency_min=0.40
-    )
+    force_two_column=True,
+    min_words_for_detection=20,
+    min_gap_abs=40.0,
+    min_gap_rel=0.16,          # evtl. etwas lockerer
+    line_consistency_min=0.40  # lockerer, damit es greift
+)
 
     # Kopf-/Fußzeilen raus
     pages_lines = remove_repeated_headers_footers(pages_lines)
