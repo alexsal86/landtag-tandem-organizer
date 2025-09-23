@@ -1,110 +1,209 @@
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
-WHITESPACE_RE = re.compile(r"\s+")
+# -----------------------------------------------------------
+# Regex-Heuristiken für Sprecherzeilen
+# -----------------------------------------------------------
 
-def build_speech_segments(speeches: List[Dict[str, Any]],
-                          renormalize_text_segments: bool = True,
-                          merge_adjacent_text: bool = True,
-                          numbering_mode: str = "all"):
+# Beispiele, die wir abfangen wollen:
+# "Abg. Dr. Erik Schweickert FDP/DVP:"
+# "Abg. Erik Schweickert (FDP/DVP):"
+# "Präsidentin Muhterem Aras:"
+# "Stellv. Präsident Daniel Born:"
+# "Ministerpräsident Winfried Kretschmann:"
+# "Staatssekretärin Dr. Gisela Splett:"
+# "Minister der Finanzen Dr. XYZ:"
+# "Vizepräsident ...:"
+# Variation mit Partei am Ende oder in Klammern.
+
+SPEAKER_LINE_RE = re.compile(
+    r"^(?P<prefix>"
+    r"(Abg\.|Abgeordnete[rn]?|Präsident(?:in)?|Vizepräsident(?:in)?|Stellv\.\s*Präsident(?:in)?|Ministerpräsident(?:in)?|Minister(?:in)?|Staatssekretär(?:in)?|Justizminister(?:in)?|Innenminister(?:in)?|Finanzminister(?:in)?))"
+    r"(?P<rest>.*?):\s*$"
+)
+
+# Partei-Kürzel Muster (locker – kann erweitert werden)
+PARTY_RE = re.compile(
+    r"\b(CDU|SPD|AfD|FDP\/DVP|FDP|Grüne|Grünen|Bündnis\s*90\/Die\s*Grünen|FW|Linke|fraktionslos)\b",
+    re.IGNORECASE
+)
+
+# Klammer-Partei am Ende z. B. "Name (CDU)" – extrahieren.
+PAREN_PARTY_RE = re.compile(r"\(([^()]{2,30})\)\s*$")
+
+# Entferne multiple Spaces für Normalisierung
+MULTI_SPACE_RE = re.compile(r"\s{2,}")
+
+
+def segment_speeches(flat_lines: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Erzeugt speech['segments'] aus text_raw + Interjection-Annotations.
-    numbering_mode:
-      - 'all'           -> alle Segmente nummeriert (index, index.1, index.2, ...)
-      - 'interjections' -> nur Interjections bekommen Subnummern
-      - 'none'          -> keine Nummerierung
+    Nimmt die durch flatten_pages erzeugte Liste von Zeilen:
+      flat_lines[i] = {
+          "page": <int>,
+          "line_index": <int>,
+          "text": <str>
+      }
+
+    Erzeugt daraus eine Liste von Speech-Objekten:
+      {
+        "index": fortlaufend ab 1,
+        "start_page": int,
+        "end_page": int,
+        "speaker": {
+            "raw": <Original Sprecherzeile ohne abschließenden Doppelpunkt>,
+            "name": <heuristisch extrahiert oder None>,
+            "role": <z. B. Präsident, Abg., Minister...>,
+            "party": <heuristisch extrahiert oder None>
+        },
+        "text": "Rede ohne Sprecherzeile(n)",
+        "annotations": []
+      }
+
+    Hinweis: Interjections werden später entfernt & als annotations ergänzt.
     """
-    for sp in speeches:
-        raw = sp.get("text_raw") or sp.get("text")
-        if not raw:
+    speeches: List[Dict[str, Any]] = []
+    current: Optional[Dict[str, Any]] = None
+    buffer_lines: List[str] = []
+    current_speaker_line_raw: Optional[str] = None
+    current_speaker_meta: Optional[Dict[str, Any]] = None
+
+    def flush_current():
+        nonlocal current, buffer_lines, current_speaker_line_raw, current_speaker_meta
+        if current is None:
+            buffer_lines = []
+            return
+        # Text zusammenbauen
+        text = "\n".join(l for l in buffer_lines if l.strip())
+        current["text"] = text
+        current["end_page"] = current.get("end_page") or current["start_page"]
+        current["annotations"] = current.get("annotations", [])
+        current["speaker"] = current_speaker_meta or {
+            "raw": current_speaker_line_raw,
+            "name": None,
+            "role": None,
+            "party": None
+        }
+        speeches.append(current)
+        # Reset
+        current = None
+        buffer_lines = []
+        current_speaker_line_raw = None
+        current_speaker_meta = None
+
+    speech_index = 0
+
+    for line_obj in flat_lines:
+        raw_text = line_obj.get("text", "")
+        page = line_obj.get("page")
+
+        if not raw_text or not raw_text.strip():
+            # Leere Zeile -> einfach puffern (kann Absatzgrenze bedeuten)
+            if current is not None:
+                buffer_lines.append("")
             continue
 
-        anns = sp.get("annotations") or []
-        interjs = [a for a in anns
-                   if a.get("type") == "interjection"
-                   and isinstance(a.get("raw_start"), int)
-                   and isinstance(a.get("raw_end"), int)]
-        interjs.sort(key=lambda a: a["raw_start"])
+        stripped = raw_text.rstrip()
+        speaker_match = SPEAKER_LINE_RE.match(stripped)
 
-        segments: List[Dict[str, Any]] = []
-        cursor = 0
-        for ann in interjs:
-            rs = ann["raw_start"]
-            re_ = ann["raw_end"]
-            if rs > cursor:
-                fragment = raw[cursor:rs]
-                frag_text = _clean_text_fragment(fragment, renormalize_text_segments)
-                if frag_text:
-                    segments.append({"type": "text", "text": frag_text})
-            seg_int = {
-                "type": "interjection",
-                "text": ann.get("text"),
-                "annotation_ref": anns.index(ann),
-                "raw_start": rs,
-                "raw_end": re_
+        if speaker_match:
+            # Neue Sprecherzeile gefunden -> aktuelle Rede flushen
+            flush_current()
+            speech_index += 1
+            # Sprecherzeile ohne abschließenden Doppelpunkt
+            speaker_line_no_colon = stripped[:-1].strip()
+
+            # Metadaten heuristisch parsen
+            meta = _parse_speaker_line(speaker_line_no_colon)
+
+            current = {
+                "index": speech_index,
+                "start_page": page,
+                "end_page": page
             }
-            segments.append(seg_int)
-            cursor = re_
-
-        if cursor < len(raw):
-            tail = raw[cursor:]
-            tail_text = _clean_text_fragment(tail, renormalize_text_segments)
-            if tail_text:
-                segments.append({"type": "text", "text": tail_text})
-
-        if merge_adjacent_text:
-            segments = _merge_adjacent_text_segments(segments)
-
-        # Neubau von speech["text"] ohne Interjections
-        text_only = [seg["text"] for seg in segments if seg["type"] == "text"]
-        sp["segments"] = segments
-        sp["text"] = "\n\n".join(text_only)
-
-        if numbering_mode != "none":
-            base = str(sp.get("index"))
-            numbering = []
-            sub = 0
-            for i, seg in enumerate(segments):
-                if numbering_mode == "all":
-                    if i == 0:
-                        numbering.append(base)
-                    else:
-                        sub += 1
-                        numbering.append(f"{base}.{sub}")
-                elif numbering_mode == "interjections":
-                    if seg["type"] == "interjection":
-                        sub += 1
-                        numbering.append(f"{base}.{sub}")
-                    else:
-                        numbering.append(base)
-            sp["segment_numbering"] = numbering
-
-def _clean_text_fragment(txt: str, normalize: bool) -> str:
-    if not txt:
-        return ""
-    trimmed = txt.strip()
-    if normalize:
-        trimmed = WHITESPACE_RE.sub(" ", trimmed)
-    return trimmed.strip()
-
-def _merge_adjacent_text_segments(segments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    if not segments:
-        return segments
-    merged: List[Dict[str, Any]] = []
-    buffer = None
-    for seg in segments:
-        if seg["type"] == "text":
-            if buffer is None:
-                buffer = {"type": "text", "text": seg["text"]}
-            else:
-                buffer["text"] += " " + seg["text"]
+            current_speaker_line_raw = speaker_line_no_colon
+            current_speaker_meta = meta
         else:
-            if buffer is not None:
-                buffer["text"] = buffer["text"].strip()
-                if buffer["text"]:
-                    merged.append(buffer)
-                buffer = None
-            merged.append(seg)
-    if buffer is not None and buffer["text"].strip():
-        merged.append(buffer)
-    return merged
+            # Normale Redezeile
+            if current is None:
+                # Wenn wir Text vor der ersten erkannten Sprecherzeile haben, legen wir eine "anonyme" Rede an.
+                speech_index += 1
+                current = {
+                    "index": speech_index,
+                    "start_page": page,
+                    "end_page": page
+                }
+                current_speaker_line_raw = None
+                current_speaker_meta = {
+                    "raw": None,
+                    "name": None,
+                    "role": None,
+                    "party": None
+                }
+            else:
+                # Update end_page
+                if page > current.get("end_page", page):
+                    current["end_page"] = page
+
+            buffer_lines.append(stripped)
+
+    # Am Ende letzte Rede flushen
+    flush_current()
+
+    return speeches
+
+
+def _parse_speaker_line(line: str) -> Dict[str, Any]:
+    """
+    Versucht aus der kompletten Sprecherzeile ohne abschließenden Doppelpunkt
+    Sprecherrolle, Name und Partei zu extrahieren.
+    """
+    # Beispiel: "Abg. Dr. Erik Schweickert FDP/DVP"
+    # Beispiel: "Präsidentin Muhterem Aras"
+    # Beispiel: "Stellv. Präsident Daniel Born"
+    # Beispiel: "Ministerpräsident Winfried Kretschmann (Grüne)"
+
+    role = None
+    party = None
+    name = None
+
+    working = line.strip()
+    working = MULTI_SPACE_RE.sub(" ", working)
+
+    # Partei in Klammern am Ende?
+    m_paren = PAREN_PARTY_RE.search(working)
+    if m_paren:
+        possible_party = m_paren.group(1).strip()
+        if PARTY_RE.search(possible_party):
+            party = possible_party
+            working = working[:m_paren.start()].strip()
+
+    # Partei als letztes Token?
+    tokens = working.split()
+    if tokens:
+        last_token = tokens[-1]
+        if PARTY_RE.match(last_token):
+            party = last_token
+            working = " ".join(tokens[:-1]).strip()
+
+    # Rolle am Anfang?
+    role_match_prefix = re.match(
+        r"^(Abg\.|Abgeordnete[rn]?|Präsident(?:in)?|Vizepräsident(?:in)?|Stellv\.\s*Präsident(?:in)?|Ministerpräsident(?:in)?|Minister(?:in)?|Staatssekretär(?:in)?|Justizminister(?:in)?|Innenminister(?:in)?|Finanzminister(?:in)?)\b",
+        working
+    )
+    if role_match_prefix:
+        role = role_match_prefix.group(1)
+        name = working[role_match_prefix.end():].strip()
+    else:
+        # Kein klarer Rollenprefix → alles als Name
+        name = working
+
+    # Falls Name leer, None setzen
+    if name == "":
+        name = None
+
+    return {
+        "raw": line,
+        "name": name,
+        "role": role,
+        "party": party
+    }
