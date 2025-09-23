@@ -84,3 +84,6 @@ verify_jwt = true
 
 [functions.import-representatives]
 verify_jwt = true
+
+[functions.fetch-rss-feeds]
+verify_jwt = true
