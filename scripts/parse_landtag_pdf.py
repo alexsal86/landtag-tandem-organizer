@@ -45,7 +45,7 @@ from parser_core.schema_def import validate_payload
 from parser_core.toc import parse_toc, partition_toc
 from parser_core.cleanup import clean_page_footers, cleanup_interjections
 from parser_core.textflow import reflow_speeches
-from parser_core.segment import build_speech_segments
+from parser_core.segments import build_speech_segments
 
 def parse_args():
     ap = argparse.ArgumentParser(description="Parst ein Landtags-PDF und erzeugt strukturierte JSON-Ausgabe.")
