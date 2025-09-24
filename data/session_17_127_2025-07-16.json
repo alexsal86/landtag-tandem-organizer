@@ -4,7 +4,7 @@
     "legislative_period": 17,
     "date": "2025-07-16",
     "source_pdf_url": "https://www.landtag-bw.de/resource/blob/584334/59a6c5950d692e7ba8a2e8d8be879b26/17_0127_16072025.pdf",
-    "extracted_at": "2025-09-24T09:23:09.546308Z"
+    "extracted_at": "2025-09-24T14:01:19.101466Z"
   },
   "sitting": {
     "start_time": null,
@@ -26,8 +26,7 @@
       "title": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/",
       "page_in_pdf": 9077,
       "numbered": false,
-      "type": "agenda",
-      "docket": "17/9077"
+      "type": "agenda"
     },
     {
       "raw": "Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7664",
@@ -43,8 +42,7 @@
       "title": "Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung kommunalrechtlicher und weiterer Vorschriften – Drucksache 17/",
       "page_in_pdf": 8922,
       "numbered": true,
-      "type": "agenda",
-      "docket": "17/8922"
+      "type": "agenda"
     },
     {
       "raw": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9078",
@@ -52,8 +50,7 @@
       "title": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/",
       "page_in_pdf": 9078,
       "numbered": false,
-      "type": "agenda",
-      "docket": "17/9078"
+      "type": "agenda"
     },
     {
       "raw": "Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7671",
@@ -69,8 +66,7 @@
       "title": "Beteiligungsfondsgesetzes Baden-Württemberg – Drucksache 17/",
       "page_in_pdf": 8972,
       "numbered": false,
-      "type": "agenda",
-      "docket": "17/8972"
+      "type": "agenda"
     }
   ],
   "toc_agenda": [
@@ -196,47 +192,59 @@
       "speakers": []
     },
     {
-      "title": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9077",
-      "raw": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9077",
+      "title": "7639 Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9077",
+      "raw": "7639 Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9077 . . . . . . . . . . . . . . . . . . . 7657",
       "index": null,
       "numbered": false,
       "type": "agenda",
-      "page_in_pdf": 9077,
+      "page_in_pdf": null,
       "docket": "17/9077",
-      "speakers": [],
+      "speakers": [
+        "Abg. Peter Seimer GRÜNE Abg. Isabell Huber CDU",
+        "7639 Abg. Jonas Hoffmann SPD Abg. Daniel Karrais FDP/DVP",
+        "Abg. Daniel Lindenschmid AfD",
+        "Minister Thomas Strobl"
+      ],
       "source": "tocpage"
     },
     {
-      "title": "Beschluss",
-      "raw": "Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7664",
+      "title": "7644 Beschluss",
+      "raw": "7644 Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7664",
       "index": null,
       "numbered": false,
       "type": "agenda",
-      "page_in_pdf": 7664,
+      "page_in_pdf": null,
       "docket": null,
       "speakers": [],
       "source": "tocpage"
     },
     {
-      "title": "Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung kommunalrechtlicher und weiterer Vorschriften – Drucksache 17/8922",
+      "title": "4. Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung kommunalrechtlicher und weiterer Vorschriften – Drucksache 17/8922",
       "raw": "4. Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung kommunalrechtlicher und weiterer Vorschriften – Drucksache 17/8922",
-      "index": 4,
+      "index": null,
       "numbered": true,
       "type": "agenda",
-      "page_in_pdf": 8922,
+      "page_in_pdf": null,
       "docket": "17/8922",
       "speakers": [],
       "source": "tocpage"
     },
     {
       "title": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9078",
-      "raw": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9078",
+      "raw": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9078 . . . . . . . . . . . . . . . . . . . 7664",
       "index": null,
       "numbered": false,
       "type": "agenda",
-      "page_in_pdf": 9078,
+      "page_in_pdf": null,
       "docket": "17/9078",
-      "speakers": [],
+      "speakers": [
+        "Abg. Swantje Sperling GRÜNE",
+        "Abg. Ulli Hockenberger CDU",
+        "Abg. Klaus Ranger SPD",
+        "Abg. Julia Goll FDP/DVP",
+        "Abg. Sandro Scheer AfD",
+        "Minister Thomas Strobl"
+      ],
       "source": "tocpage"
     },
     {
@@ -245,20 +253,22 @@
       "index": null,
       "numbered": false,
       "type": "agenda",
-      "page_in_pdf": 7671,
+      "page_in_pdf": null,
       "docket": null,
       "speakers": [],
       "source": "tocpage"
     },
     {
-      "title": "Beteiligungsfondsgesetzes Baden-Württemberg – Drucksache 17/8972",
-      "raw": "Beteiligungsfondsgesetzes Baden-Württemberg – Drucksache 17/8972",
+      "title": "5. Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung der Landeshaushaltsordnung für Baden-Württemberg und des",
+      "raw": "5. Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung der Landeshaushaltsordnung für Baden-Württemberg und des",
       "index": null,
-      "numbered": false,
+      "numbered": true,
       "type": "agenda",
-      "page_in_pdf": 8972,
-      "docket": "17/8972",
-      "speakers": [],
+      "page_in_pdf": null,
+      "docket": null,
+      "speakers": [
+        "Beteiligungsfondsgesetzes Baden-Württemberg – Drucksache 17/8972"
+      ],
       "source": "tocpage"
     }
   ],
