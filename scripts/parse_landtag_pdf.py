@@ -1,31 +1,33 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 parse_landtag_pdf.py
 
-Pipeline zum Herunterladen und Parsen eines Landtagsprotokolls.
-
-Wesentliche Punkte:
-- Erzeugt jetzt wieder ein Layout-Sidecar, das neben den Layout-Metadaten
-  auch die normalisierten Zeilen der einzelnen Seiten enthält (normalized_pages).
-  Damit kannst Du die TOC‑Heuristiken genau an den extrahierten Linien testen.
-- Alte Felder und Ausgabeformate bleiben kompatibel (toc, toc_agenda, toc2).
-- Die Sidecar wird standardmäßig ausgelagert (externalize_layout_debug=True).
+Vollständiges Parsing-Skript für Landtag-Protokolle mit folgenden Verbesserungen:
+- Erzeugt wieder ein Layout-Sidecar mit normalized_pages (dehyphenated, normalisiert)
+  damit TOC-Heuristiken gezielt an den extrahierten Zeilen tunbar sind.
+- Fügt eine robuste Seitenseiten-basierte TOC-Rekonstruktion assemble_toc_from_normalized hinzu,
+  die Agenda-Punkte, Dockets und Sprecher aus der ersten TOC-Seite extrahiert.
+- Entfernt Leader-Dots und trailing Seitenzahlen in TOC-Titeln und Speaker-Zeilen.
+- Säubert strukturierte toc2 (falls vorhanden) rekursiv.
+- Bewahrt Abwärtskompatibilität: "toc" bleibt erhalten; "toc_agenda" wird bereinigt.
 """
 from __future__ import annotations
 
 import argparse
-import json
-import os
-import sys
 import datetime
 import hashlib
+import json
+import os
 import re
+import sys
 from pathlib import Path
-from typing import List, Dict, Any, Union, Optional
+from typing import Any, Dict, List, Optional, Union
 
+# Projektinterne Module (angenommen vorhanden)
 from parser_core.downloader import download_pdf
-from parser_core.pdftext import remove_repeated_headers_footers, flatten_pages
 from parser_core.layout import extract_pages_with_layout
+from parser_core.pdftext import remove_repeated_headers_footers, flatten_pages
 from parser_core.normalize import normalize_line, dehyphenate
 from parser_core.segment import segment_speeches
 from parser_core.agenda import extract_agenda, link_agenda
@@ -36,27 +38,31 @@ from parser_core.cleanup import clean_page_footers, cleanup_interjections
 from parser_core.textflow import reflow_speeches
 from parser_core.segments import build_speech_segments
 
-# Optionaler, neuer TOC-Parser (wenn vorhanden)
+# Optionaler neuer TOC-Parser (falls verfügbar)
 try:
     from scripts.parser_core.pipeline import parse_protocol as parse_protocol_new  # type: ignore
 except Exception:
-    parse_protocol_new = None  # fallback auf None
+    parse_protocol_new = None
 
 
 # -------------------- Cleaning helpers --------------------
 
-DOT_MARKER = "\x07"  # temporary marker for long dot sequences
+DOT_MARKER = "\x07"
 
 
 def _replace_long_dot_sequences(s: str) -> str:
     if not isinstance(s, str):
         return s
-    s = re.sub(r"\.{2,}", DOT_MARKER, s)  # two or more ascii dots -> marker
-    s = s.replace("…", DOT_MARKER)  # unicode ellipsis -> marker
+    s = re.sub(r"\.{2,}", DOT_MARKER, s)  # zwei oder mehr Punkte -> Marker
+    s = s.replace("…", DOT_MARKER)
     return s
 
 
 def clean_leader_and_page(s: str) -> str:
+    """
+    Entfernt leader-dots / ellipses und trailing Seitenzahlen; konservativ gegenüber
+    einzelnen Punkten in Abkürzungen (z.B. 'Dr.').
+    """
     if not isinstance(s, str):
         return s
     orig = s
@@ -65,44 +71,26 @@ def clean_leader_and_page(s: str) -> str:
         return s
 
     s = _replace_long_dot_sequences(s)
-
+    # Marker gefolgt von Seitenzahl entfernen
     s = re.sub(rf"{DOT_MARKER}\s*\d{{1,5}}[.,]?$", "", s)
+    # plain trailing page numbers entfernen
     s = re.sub(r"\s+\d{1,5}[.,]?$", "", s)
-
+    # Marker durch Leerzeichen ersetzen, überflüssige Punkte entfernen
     s = s.replace(DOT_MARKER, " ")
     s = re.sub(r"\.{2,}", " ", s)
     s = s.replace("…", " ")
-
+    # trailing punctuation/dashes entfernen
     s = re.sub(r"[.,\-\u2013\u2014\—\–\s]+$", "", s)
     s = re.sub(r"\s{2,}", " ", s).strip()
-
     if not s:
         return orig.strip()
     return s
 
 
-def clean_toc_agenda_list(lst: List[str]) -> List[str]:
-    if not isinstance(lst, list):
-        return lst
-    out: List[str] = []
-    for line in lst:
-        if not isinstance(line, str):
-            out.append(line)
-            continue
-        cleaned = clean_leader_and_page(line)
-        if out:
-            prev = out[-1]
-            if len(cleaned) < 40 and cleaned and (cleaned[0].islower() or cleaned[0].isdigit()):
-                out[-1] = prev + " " + cleaned
-                continue
-            if prev.endswith("-"):
-                out[-1] = prev.rstrip("-") + cleaned
-                continue
-        out.append(cleaned)
-    return out
-
-
 def _clean_string_fields_in_obj(obj: Any) -> Any:
+    """
+    Rekursive Säuberung für strukturierte toc2-Objekte.
+    """
     if isinstance(obj, str):
         return clean_leader_and_page(obj)
     if isinstance(obj, list):
@@ -112,10 +100,7 @@ def _clean_string_fields_in_obj(obj: Any) -> Any:
         for k, v in obj.items():
             lk = k.lower()
             if lk in ("title", "text", "label", "name", "speaker", "heading"):
-                if isinstance(v, str):
-                    cleaned[k] = clean_leader_and_page(v)
-                else:
-                    cleaned[k] = _clean_string_fields_in_obj(v)
+                cleaned[k] = clean_leader_and_page(v) if isinstance(v, str) else _clean_string_fields_in_obj(v)
             elif lk in ("speakers", "participants", "authors"):
                 if isinstance(v, list):
                     cleaned[k] = [clean_leader_and_page(x) if isinstance(x, str) else _clean_string_fields_in_obj(x) for x in v]
@@ -124,10 +109,7 @@ def _clean_string_fields_in_obj(obj: Any) -> Any:
             elif lk in ("items", "children", "nodes", "agenda", "entries"):
                 cleaned[k] = _clean_string_fields_in_obj(v)
             else:
-                if isinstance(v, (dict, list)):
-                    cleaned[k] = _clean_string_fields_in_obj(v)
-                else:
-                    cleaned[k] = v
+                cleaned[k] = _clean_string_fields_in_obj(v) if isinstance(v, (dict, list)) else v
         return cleaned
     return obj
 
@@ -138,6 +120,181 @@ def clean_toc2_structure(obj: Any) -> Any:
     except Exception as e:
         print(f"[WARN] toc2 cleaning failed: {e}")
         return obj
+
+
+# -------------------- TOC-from-page assembly --------------------
+
+# Regex / Heuristiken
+_PAGE_ONLY_RX = re.compile(r"^\s*\d{3,5}\s*$")
+_TOC_START_RX = re.compile(r"\bINHALT\b|\bINHALTSVERZEICHNIS\b", re.IGNORECASE)
+_DOCKET_RX = re.compile(r"Drucksache\s*(\d+\/\d+|\d+)\b", re.IGNORECASE)
+_AGENDA_NUMBER_RX = re.compile(r"^\s*\d+\.\s")  # "1. " etc.
+_AGENDA_KEYWORDS_RX = re.compile(r"\b(Beschluss|Beschlussempfehlung|Zweite Beratung|Aktuelle Debatte)\b", re.IGNORECASE)
+_PARTY_TOKENS_RX = re.compile(r"\b(AfD|GRÜNE|GRUENE|SPD|CDU|FDP|DVP|FDP/DVP|BÜNDNIS|Bündnis)\b", re.IGNORECASE)
+
+
+def _is_probable_speaker_line(ln: str) -> bool:
+    """Erweiterte Heuristik für Speaker-Zeilen (vermeidet 'Drucksache' etc.)."""
+    if not ln or not isinstance(ln, str):
+        return False
+    s = ln.strip()
+    if re.search(r"\bDrucksache\b", s, flags=re.IGNORECASE):
+        return False
+    if re.search(r"\b(Der Landtag|druckt|Recyclingpapier|Umweltzeichen|Blaue Engel)\b", s, flags=re.IGNORECASE):
+        return False
+    if re.match(r"^(Abg\.|Abg|Staatssekretärin|Staatssekretär|Staatsministerin|Staatsminister|Ministerin|Minister|Präsidentin|Präsident|Dr\.|Prof\.)", s, flags=re.IGNORECASE):
+        return True
+    if _PARTY_TOKENS_RX.search(s) and re.search(r"\b[A-ZÄÖÜ][a-zäöüß\-]{2,}\s+[A-ZÄÖÜ][a-zäöüß\-]{2,}\b", s):
+        return True
+    if len(s) < 80 and re.search(r"\b[A-ZÄÖÜ][a-zäöüß\-]{2,}\s+[A-ZÄÖÜ][a-zäöüß\-]{2,}\b", s):
+        return True
+    return False
+
+
+def assemble_toc_from_normalized(page_lines: List[str]) -> List[Dict[str, Any]]:
+    """
+    Rekonstruiert aus normalized page lines (typisch die erste Seite mit INHALT)
+    eine Liste von Agenda-Punkten mit Titel, optional docket/page und speakers.
+    """
+    if not page_lines:
+        return []
+
+    # Suche TOC-Start ("INHALT")
+    start_idx = 0
+    for i, ln in enumerate(page_lines):
+        if _TOC_START_RX.search(ln):
+            start_idx = i + 1
+            break
+    lines = page_lines[start_idx:] if start_idx < len(page_lines) else page_lines[:]
+
+    items: List[Dict[str, Any]] = []
+    cur_lines: List[str] = []
+    cur_docket: Optional[str] = None
+    cur_page: Optional[int] = None
+
+    def finalize_current():
+        nonlocal cur_lines, cur_docket, cur_page
+        if not cur_lines:
+            cur_lines = []
+            cur_docket = None
+            cur_page = None
+            return
+        raw = " ".join(cur_lines).strip()
+        # fallback: find docket inline
+        dmatch = _DOCKET_RX.search(raw)
+        if dmatch:
+            cur_docket = dmatch.group(1)
+        title = clean_leader_and_page(raw)
+        items.append({"raw_lines": cur_lines.copy(), "title": title, "docket": cur_docket, "page_in_pdf": cur_page, "speakers": []})
+        cur_lines = []
+        cur_docket = None
+        cur_page = None
+
+    i = 0
+    n = len(lines)
+    while i < n:
+        ln = (lines[i] or "").rstrip()
+        # Skip isolated page-number lines
+        if _PAGE_ONLY_RX.match(ln):
+            # if we are building a current item and previous ended with dots, treat this as page number
+            if cur_lines and cur_page is None and re.search(r"\.{2,}\s*$", cur_lines[-1]):
+                try:
+                    cur_page = int(ln.strip())
+                    i += 1
+                    continue
+                except Exception:
+                    pass
+            i += 1
+            continue
+
+        # Detect start of new agenda element
+        is_new_agenda = False
+        if _AGENDA_NUMBER_RX.match(ln):
+            is_new_agenda = True
+        elif _AGENDA_KEYWORDS_RX.search(ln):
+            is_new_agenda = True
+        elif "Drucksache" in ln and re.search(r"\.{2,}", ln):
+            is_new_agenda = True
+
+        if is_new_agenda:
+            # finalize previous
+            finalize_current()
+            # start new item
+            cur_lines.append(ln)
+            # extract trailing page number if present
+            m = re.search(r"\.{2,}\s*(\d{3,5})[.,]?$", ln)
+            if m:
+                try:
+                    cur_page = int(m.group(1))
+                    cur_lines[-1] = re.sub(r"\.{2,}\s*\d{3,5}[.,]?$", "", cur_lines[-1]).strip()
+                except Exception:
+                    pass
+            # Lookahead: if 'Drucksache' present but docket number on next line, attach it
+            if "Drucksache" in ln and "/" not in ln:
+                j = i + 1
+                while j < n and not lines[j].strip():
+                    j += 1
+                if j < n and re.search(r"\d+\/\d+|\d{3,5}", lines[j]):
+                    cur_lines.append(lines[j].strip())
+                    i = j
+            i += 1
+            continue
+
+        # Continuation of a multi-line title
+        if cur_lines:
+            # If the line looks like a speaker, finalize title and then attach speakers
+            if _is_probable_speaker_line(ln):
+                finalize_current()
+                # attach speaker to last item if exists
+                if items:
+                    items[-1]["speakers"].append(clean_leader_and_page(ln))
+                    i += 1
+                    # maybe attach immediate continuation (party on next line)
+                    if i < n and len(lines[i].strip()) < 80 and re.search(r"\b[A-ZÄÖÜ][a-zäöüß\-]{2,}\b", lines[i]):
+                        items[-1]["speakers"][-1] = items[-1]["speakers"][-1] + " " + clean_leader_and_page(lines[i].strip())
+                        i += 1
+                    continue
+            # otherwise append as wrap continuation
+            cur_lines.append(ln)
+            i += 1
+            continue
+
+        # No current item: maybe this line is a speaker that belongs to last item
+        if _is_probable_speaker_line(ln) and items:
+            items[-1]["speakers"].append(clean_leader_and_page(ln))
+            i += 1
+            # try to append possible continuation line
+            if i < n and len(lines[i].strip()) < 80 and re.search(r"\b[A-ZÄÖÜ][a-zäöüß\-]{2,}\b", lines[i]):
+                items[-1]["speakers"][-1] = items[-1]["speakers"][-1] + " " + clean_leader_and_page(lines[i].strip())
+                i += 1
+            continue
+
+        # Otherwise skip noisy / boilerplate lines
+        i += 1
+
+    # finalize any open item
+    finalize_current()
+
+    # Postprocessing: filter too short / duplicate titles and tidy docket fields
+    cleaned: List[Dict[str, Any]] = []
+    seen_titles = set()
+    for it in items:
+        t = (it.get("title") or "").strip()
+        if not t or len(t) < 4:
+            continue
+        tl = t.lower()
+        if tl in seen_titles:
+            # merge speakers if duplicate
+            prev = cleaned[-1]
+            for s in it.get("speakers", []):
+                if s not in prev["speakers"]:
+                    prev["speakers"].append(s)
+            continue
+        seen_titles.add(tl)
+        if it.get("docket"):
+            it["docket"] = it["docket"].strip()
+        cleaned.append(it)
+    return cleaned
 
 
 # -------------------- Body-start detection --------------------
@@ -164,69 +321,7 @@ def _find_first_body_speech_index(speeches: List[Dict[str, Any]], pattern: str) 
     return 0
 
 
-# -------------------- TOC helpers --------------------
-
-
-def _find_line_index_for_item(raw_lines: List[str], snippet: str) -> int:
-    if not snippet:
-        return -1
-    snippet = snippet.strip()[:40].lower()
-    for i, ln in enumerate(raw_lines):
-        if not isinstance(ln, str):
-            continue
-        if snippet in ln.lower():
-            return i
-    return -1
-
-
-def _is_probable_speaker_line(ln: str) -> bool:
-    if not ln or not isinstance(ln, str):
-        return False
-    s = ln.strip()
-    if re.search(r'\bDrucksache\b', s, flags=re.IGNORECASE):
-        return False
-    if re.search(r'\b(Der Landtag|druckt|Recyclingpapier|Umweltzeichen|Blaue Engel)\b', s, flags=re.IGNORECASE):
-        return False
-    if re.match(r'^(Abg\.|Abg|Staatssekretärin|Staatssekretär|Staatsministerin|Staatsminister|Ministerin|Minister|Präsidentin|Präsident|Dr\.|Prof\.)', s, flags=re.IGNORECASE):
-        return True
-    if re.search(r'\b(AfD|GRÜNE|GRUENE|SPD|CDU|FDP|DVP|FDP/DVP|BÜNDNIS|Bündnis)\b', s, flags=re.IGNORECASE):
-        if re.search(r'\b[A-ZÄÖÜ][a-zäöüß\-]{2,}\s+[A-ZÄÖÜ][a-zäöüß\-]{2,}\b', s):
-            return True
-    if len(s) < 80 and re.search(r'\b[A-ZÄÖÜ][a-zäöüß\-]{2,}\s+[A-ZÄÖÜ][a-zäöüß\-]{2,}\b', s):
-        return True
-    return False
-
-
-def _extract_speakers_after_index(raw_lines: List[str], start_idx: int, stop_at_indices: set) -> List[str]:
-    speakers: List[str] = []
-    n = len(raw_lines)
-    i = start_idx + 1
-    agenda_start_rx = re.compile(r'^\s*(\d+\.)|\bBeschluss\b|\bZweite Beratung\b', re.IGNORECASE)
-    while i < n:
-        if i in stop_at_indices:
-            break
-        ln = (raw_lines[i] or "").strip()
-        if not ln:
-            break
-        if agenda_start_rx.search(ln):
-            break
-        if _is_probable_speaker_line(ln):
-            speakers.append(clean_leader_and_page(ln))
-            i += 1
-            if i < n:
-                peek = (raw_lines[i] or "").strip()
-                if peek and _is_probable_speaker_line(peek):
-                    continue
-                if peek and len(peek) < 80 and re.search(r'\b[A-ZÄÖÜ][a-zäöüß\-]{2,}\b', peek):
-                    speakers[-1] = speakers[-1] + " " + clean_leader_and_page(peek)
-                    i += 1
-                    continue
-            continue
-        break
-    return speakers
-
-
-# -------------------- Argument parsing --------------------
+# -------------------- CLI and helpers --------------------
 
 
 def parse_args():
@@ -238,7 +333,7 @@ def parse_args():
     ap.add_argument("--layout-min-peak-sep", type=float, default=0.18, help="min_peak_separation_rel für Layout.")
     ap.add_argument("--layout-min-valley-drop", type=float, default=0.30, help="min_valley_rel_drop für Layout.")
     ap.add_argument("--no-new-toc", action="store_true", help="Neuen TOC-Parser deaktivieren (Fallback auf alten Parser).")
-    ap.add_argument("--body-start-pattern", default=r'^(Präsident(?:in)?|Vorsitz(?:ender|ende)|Präsident\.)\b.*:', help="Regex für Body-Start (erste Rede).")
+    ap.add_argument("--body-start-pattern", default=r"^(Präsident(?:in)?|Vorsitz(?:ender|ende)|Präsident\.)\b.*:", help="Regex für Body-Start (erste Rede).")
     return ap.parse_args()
 
 
@@ -254,9 +349,6 @@ def gather_urls(args) -> List[str]:
         if urls:
             return urls
     raise SystemExit("Keine URL angegeben (--single-url oder --list-file).")
-
-
-# -------------------- Filename helper --------------------
 
 
 def build_session_filename(payload: Dict[str, Any]) -> str:
@@ -275,16 +367,18 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
     return f"session_unknown_{short}.json"
 
 
-# -------------------- Main processing --------------------
+# -------------------- Main pipeline --------------------
 
 
-def process_pdf(url: str,
-                force_download: bool,
-                layout_min_peak_sep: float,
-                layout_min_valley_drop: float,
-                externalize_layout_debug: bool = True,
-                use_new_toc: bool = True,
-                body_start_pattern: str = r'^(Präsident(?:in)?|Vorsitz(?:ender|ende)|Präsident\.)\b.*:') -> Dict[str, Any]:
+def process_pdf(
+    url: str,
+    force_download: bool,
+    layout_min_peak_sep: float,
+    layout_min_valley_drop: float,
+    externalize_layout_debug: bool = True,
+    use_new_toc: bool = True,
+    body_start_pattern: str = r"^(Präsident(?:in)?|Vorsitz(?:ender|ende)|Präsident\.)\b.*:",
+) -> Dict[str, Any]:
     pdf_path = download_pdf(url, force=force_download)
 
     pages_lines, layout_debug = extract_pages_with_layout(
@@ -298,29 +392,29 @@ def process_pdf(url: str,
         line_y_quant=3.0,
         rebalance_target_low=0.44,
         rebalance_target_high=0.56,
-        rebalance_scan_step=5.0
+        rebalance_scan_step=5.0,
     )
 
     pages_lines = remove_repeated_headers_footers(pages_lines)
     pages_lines, footer_stats = clean_page_footers(pages_lines)
 
-    # normalize and dehyphenate -> these are the text lines you requested
+    # normalized_pages: dehyphenated & normalized strings per page
     normalized_pages: List[List[str]] = []
     for lines in pages_lines:
-        lines = [normalize_line(l) for l in lines if l.strip()]
+        lines = [normalize_line(l) for l in lines if isinstance(l, str) and l.strip()]
         lines = dehyphenate(lines)
         normalized_pages.append(lines)
 
+    # flatten for downstream tasks
     flat = flatten_pages(normalized_pages)
     all_text = "\n".join(l["text"] for l in flat)
-
     meta = parse_session_info(all_text)
 
-    # Legacy TOC extraction (kept for compatibility)
+    # legacy TOC parse (kept)
     toc_full = parse_toc(normalized_pages[0]) if normalized_pages else []
     toc_parts = partition_toc(toc_full)
 
-    # Optional: structured TOC via new parser pipeline
+    # optional structured toc2
     toc2: Any = {}
     if use_new_toc and parse_protocol_new is not None:
         try:
@@ -334,7 +428,7 @@ def process_pdf(url: str,
                 compact_interjections=True,
                 include_interjection_category=False,
                 externalize_interjection_offsets=False,
-                stop_toc_at_first_body_header=True
+                stop_toc_at_first_body_header=True,
             )
             if isinstance(toc_bundle, dict):
                 toc2 = toc_bundle.get("toc") or toc_bundle.get("items") or toc_bundle
@@ -344,22 +438,7 @@ def process_pdf(url: str,
             print(f"[WARN] Neuer TOC-Parser fehlgeschlagen: {e}")
             toc2 = {}
 
-    # Build a cleaned agenda (legacy toc parts -> lines)
-    raw_agenda_lines: List[str] = []
-    toc_agenda_items_raw: List[Dict[str, Any]] = []
-    if isinstance(toc_parts, dict):
-        for it in toc_parts.get("agenda", []):
-            if isinstance(it, dict):
-                raw_val = it.get("raw") or it.get("title") or ""
-                toc_agenda_items_raw.append(it)
-            else:
-                raw_val = str(it)
-                toc_agenda_items_raw.append({"raw": raw_val, "title": raw_val})
-            raw_agenda_lines.append(raw_val)
-
-    cleaned_agenda_lines = clean_toc_agenda_list(raw_agenda_lines)
-
-    # Clean structured toc2 if present
+    # Clean structured toc2
     cleaned_toc2 = toc2
     if toc2:
         try:
@@ -368,80 +447,37 @@ def process_pdf(url: str,
             print(f"[WARN] Fehler beim Säubern von toc2: {e}")
             cleaned_toc2 = toc2
 
-    # Raw TOC page lines for speaker extraction
-    raw_toc_page_lines: List[str] = normalized_pages[0] if normalized_pages and isinstance(normalized_pages[0], list) else []
+    # Build TOC from normalized first page (robuster)
+    toc_from_page = assemble_toc_from_normalized(normalized_pages[0] if normalized_pages else [])
 
-    # stop indices: positions of recognized raw agenda lines on the page
-    stop_indices = set()
-    for raw in raw_agenda_lines:
-        idx = _find_line_index_for_item(raw_toc_page_lines, raw)
-        if idx >= 0:
-            stop_indices.add(idx)
-
-    # Build cleaned agenda items from toc_parts, attach speakers where reasonable
-    cleaned_agenda_items: List[Dict[str, Any]] = []
-    for orig_item in toc_agenda_items_raw:
-        raw = orig_item.get("raw") or ""
-        title = orig_item.get("title") or raw
-        title_clean = clean_leader_and_page(title)
-
-        if isinstance(title_clean, str) and re.search(r'Drucksache\s*\d+\/\s*$', title_clean):
-            num = orig_item.get("page_in_pdf")
-            if num:
-                title_clean = title_clean.rstrip('/ ') + "/" + str(num)
-                try:
-                    docnum = re.search(r'Drucksache\s*(\d+)', title_clean).group(1)
-                    orig_item["docket"] = f"{docnum}/{num}"
-                except Exception:
-                    orig_item["docket"] = f"{num}"
-
-        speakers: List[str] = []
-        idx = _find_line_index_for_item(raw_toc_page_lines, raw or title)
-        if idx >= 0:
-            try:
-                speakers = _extract_speakers_after_index(raw_toc_page_lines, idx, stop_indices)
-            except Exception as e:
-                print(f"[WARN] Fehler beim Extrahieren von Sprechern für TOC-Item '{title}': {e}")
-                speakers = []
-
-        cleaned_item: Dict[str, Any] = {
-            "raw": raw,
-            "title": title_clean,
-            "index": orig_item.get("index"),
-            "numbered": orig_item.get("numbered", False),
-            "type": orig_item.get("type", "agenda"),
-            "page_in_pdf": orig_item.get("page_in_pdf"),
-            "docket": orig_item.get("docket"),
-            "speakers": speakers,
-        }
-        cleaned_agenda_items.append(cleaned_item)
-
-    # Build speeches and perform body-start trimming
+    # Merge strategies:
+    # - prefer inline agenda_items (extracted from callouts in body) for titles if present
+    # - otherwise use toc_from_page
     speeches = segment_speeches(flat)
 
+    # Trim prelude segments until first body speech
     removed_before = 0
     try:
         first_idx = _find_first_body_speech_index(speeches, body_start_pattern)
         if first_idx > 0:
             removed_before = first_idx
             speeches = speeches[first_idx:]
-            print(f"[INFO] Entferne {removed_before} vorläufige Segmente (TOC/Deckblatt). Erste Rede erkannt bei Index {first_idx}.")
+            print(f"[INFO] Entferne {removed_before} vorläufige Segmente (TOC/Deckblatt). Erste Rede bei Index {first_idx}.")
     except Exception as e:
         print(f"[WARN] Fehler bei Erkennung des Body-Starts: {e}")
 
     interjection_stats = cleanup_interjections(speeches)
     reflow_stats = reflow_speeches(speeches, min_merge_len=35, keep_original=True)
 
-    build_speech_segments(speeches,
-                          renormalize_text_segments=True,
-                          merge_adjacent_text=True,
-                          numbering_mode="all")
+    build_speech_segments(speeches, renormalize_text_segments=True, merge_adjacent_text=True, numbering_mode="all")
 
     inline_agenda = extract_agenda(flat)
     link_agenda(inline_agenda, speeches)
 
-    # Merge inline_agenda with TOC page items
+    # Build merged agenda list
     merged_agenda: List[Dict[str, Any]] = []
+
+    # prefer inline agenda first (more semantic)
     if isinstance(inline_agenda, list) and inline_agenda:
         for ia in inline_agenda:
             title = ia.get("title") if isinstance(ia, dict) else str(ia)
@@ -455,10 +491,12 @@ def process_pdf(url: str,
                 "speakers": [],
             })
 
+    # add items from toc_from_page if not duplicates; attach speakers to matching inline entries
     seen_titles = {entry["title"].lower() for entry in merged_agenda if isinstance(entry.get("title"), str)}
-    for it in cleaned_agenda_items:
+    for it in toc_from_page:
         t = it.get("title", "")
         if isinstance(t, str) and t.lower() in seen_titles:
+            # attach speakers/docket/page to existing inline entry
             for ma in merged_agenda:
                 if isinstance(ma.get("title"), str) and ma["title"].lower() == t.lower():
                     if it.get("speakers"):
@@ -471,34 +509,32 @@ def process_pdf(url: str,
             continue
         merged_agenda.append({
             "title": t,
-            "raw": it.get("raw"),
-            "index": it.get("index"),
-            "numbered": it.get("numbered"),
-            "type": it.get("type"),
+            "raw": " ".join(it.get("raw_lines", [])) if it.get("raw_lines") else None,
+            "index": None,
+            "numbered": bool(re.match(r"^\s*\d+\.", t)),
+            "type": "agenda",
             "page_in_pdf": it.get("page_in_pdf"),
             "docket": it.get("docket"),
             "speakers": it.get("speakers", []),
             "source": "tocpage"
         })
 
-    # Prefer structured toc2 if available and merge info by title
-    final_toc_agenda: List[Any] = merged_agenda
+    # If toc2 looks authoritative, try to prefer/merge it
+    final_toc_agenda = merged_agenda
     try:
         if cleaned_toc2:
+            candidate = None
             if isinstance(cleaned_toc2, dict) and cleaned_toc2.get("agenda"):
                 candidate = cleaned_toc2["agenda"]
             elif isinstance(cleaned_toc2, dict) and cleaned_toc2.get("items"):
                 candidate = cleaned_toc2["items"]
             elif isinstance(cleaned_toc2, list):
                 candidate = cleaned_toc2
-            else:
-                candidate = None
-
             if candidate:
                 normalized_final: List[Dict[str, Any]] = []
                 for c in candidate:
                     if isinstance(c, dict):
-                        title = c.get("title") or c.get("text") or c.get("label") or str(c)
+                        title = c.get("title") or c.get("text") or c.get("label") or ""
                     else:
                         title = str(c)
                     title_clean = clean_leader_and_page(title) if isinstance(title, str) else title
@@ -510,6 +546,7 @@ def process_pdf(url: str,
                         "page_in_pdf": c.get("page_in_pdf") if isinstance(c, dict) else None,
                         "source": "toc2"
                     }
+                    # try to merge speakers/docket/page from merged_agenda
                     for m in merged_agenda:
                         if isinstance(m.get("title"), str) and isinstance(title_clean, str) and m["title"].lower() == title_clean.lower():
                             if m.get("speakers"):
@@ -525,13 +562,11 @@ def process_pdf(url: str,
     except Exception:
         final_toc_agenda = merged_agenda
 
-    # ------------------ Important: prepare layout sidecar payload ------------------
-    # Include both the layout metadata and the normalized page lines so you can inspect
-    # and tune TOC heuristics without rerunning the whole extraction.
+    # Prepare enriched layout_debug for sidecar (metadata + normalized pages)
     layout_debug_internal = {
-        "layout_metadata": layout_debug,         # as returned by extract_pages_with_layout
-        "normalized_pages": normalized_pages,    # dehyphenated & normalized lines per page
-        "raw_pages_lines": pages_lines           # raw lines per page before normalizing/dehyphenating
+        "layout_metadata": layout_debug,
+        "normalized_pages": normalized_pages,
+        "raw_pages_lines": pages_lines,
     }
 
     payload: Dict[str, Any] = {
@@ -540,21 +575,18 @@ def process_pdf(url: str,
             "legislative_period": meta.get("legislative_period"),
             "date": meta.get("date"),
             "source_pdf_url": url,
-            "extracted_at": datetime.datetime.utcnow().isoformat() + "Z"
+            "extracted_at": datetime.datetime.utcnow().isoformat() + "Z",
         },
         "sitting": {
             "start_time": meta.get("start_time"),
             "end_time": meta.get("end_time"),
-            "location": meta.get("location")
+            "location": meta.get("location"),
         },
         "stats": {
             "pages": len(pages_lines),
-            "speeches": len(speeches)
+            "speeches": len(speeches),
         },
-        "layout": {
-            "applied": True,
-            "reason": "forced-always"
-        },
+        "layout": {"applied": True, "reason": "forced-always"},
         "toc": toc_full,
         "toc_agenda": final_toc_agenda,
         "toc_speakers": toc_parts.get("speakers", []) if isinstance(toc_parts, dict) else [],
@@ -566,8 +598,8 @@ def process_pdf(url: str,
             "footers": footer_stats,
             "interjections": interjection_stats,
             "reflow": reflow_stats,
-            "removed_prelude_speeches": removed_before
-        }
+            "removed_prelude_speeches": removed_before,
+        },
     }
 
     if externalize_layout_debug:
@@ -575,24 +607,19 @@ def process_pdf(url: str,
         base_name = build_session_filename(payload)
         layout_filename = base_name.replace(".json", ".layout.json")
         payload["layout_debug_file"] = layout_filename
-        # attach the enriched layout debug (metadata + normalized page lines) for sidecar
         payload["_layout_debug_internal"] = layout_debug_internal
     else:
         payload["schema_version"] = "1.1-full"
-        # if not externalizing, include the layout_debug inline (with normalized pages)
         payload["layout_debug"] = layout_debug_internal
 
     return payload
 
 
-# -------------------- Output helpers --------------------
+# -------------------- IO helpers --------------------
 
 
 def write_index(results: List[Dict[str, Any]], out_dir: Path):
-    index = {
-        "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
-        "sessions": []
-    }
+    index = {"generated_at": datetime.datetime.utcnow().isoformat() + "Z", "sessions": []}
     for r in results:
         fname = build_session_filename(r)
         session_entry = {
@@ -604,12 +631,12 @@ def write_index(results: List[Dict[str, Any]], out_dir: Path):
             "pages": r["stats"]["pages"],
             "layout_applied": r["layout"]["applied"],
             "layout_reason": r["layout"]["reason"],
-            "source_pdf_url": r["session"]["source_pdf_url"]
+            "source_pdf_url": r["session"]["source_pdf_url"],
         }
         if r.get("layout_debug_file"):
             session_entry["layout_debug_file"] = r["layout_debug_file"]
         index["sessions"].append(session_entry)
-
+    out_dir.mkdir(parents=True, exist_ok=True)
     with open(out_dir / "sessions_index.json", "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
     print("[INFO] Index aktualisiert.")
@@ -625,12 +652,7 @@ def write_session_payload(payload: Dict[str, Any], out_dir: Path) -> Path:
 
     if layout_debug_file and layout_debug_internal is not None:
         sidecar_path = out_dir / layout_debug_file
-        sidecar_doc = {
-            "session_ref": base_name,
-            "schema_version": "1.0-layout-debug",
-            # write the enriched layout debug which now contains normalized_pages
-            "layout_debug": layout_debug_internal
-        }
+        sidecar_doc = {"session_ref": base_name, "schema_version": "1.0-layout-debug", "layout_debug": layout_debug_internal}
         with sidecar_path.open("w", encoding="utf-8") as sf:
             json.dump(sidecar_doc, sf, ensure_ascii=False, indent=2)
 
@@ -659,7 +681,7 @@ def main() -> int:
             layout_min_valley_drop=args.layout_min_valley_drop,
             externalize_layout_debug=True,
             use_new_toc=not args.no_new_toc,
-            body_start_pattern=args.body_start_pattern
+            body_start_pattern=args.body_start_pattern,
         )
 
         if args.schema_validate:
