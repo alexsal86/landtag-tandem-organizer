@@ -3,7 +3,10 @@
 parse_landtag_pdf.py
 
 Pipeline zum Herunterladen und Parsen eines Landtagsprotokolls.
-(gekürzte Header-Dokumentation im Kommentar)
+Enthält zusätzliche Reinigung von TOC-Einträgen:
+- Entfernen von Leader-Dots / Ellipsen
+- Entfernen von trailing Seitenzahlen
+- Säubern strukturierter toc2-Objekte (rekursiv)
 """
 import argparse
 import json
@@ -13,7 +16,7 @@ import datetime
 import hashlib
 import re
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 
 from parser_core.downloader import download_pdf
 from parser_core.pdftext import remove_repeated_headers_footers, flatten_pages
@@ -28,12 +31,151 @@ from parser_core.cleanup import clean_page_footers, cleanup_interjections
 from parser_core.textflow import reflow_speeches
 from parser_core.segments import build_speech_segments
 
-# Neuer TOC-Parser (strukturierte TOC "items")
+# Neuer TOC-Parser (strukturierte TOC "items"), optional importieren
 try:
     from scripts.parser_core.pipeline import parse_protocol as parse_protocol_new
 except Exception:
     parse_protocol_new = None
 
+
+# -------------------- Cleaning helpers --------------------
+
+def _replace_long_dot_sequences(s: str) -> str:
+    """
+    Replace sequences of 2+ ASCII dots or unicode ellipsis with a marker.
+    Keep single dots (e.g., in 'Dr.') untouched.
+    """
+    # temporary marker unlikely to appear in real text
+    MARK = "\x07"
+    # replace sequences of two or more dots
+    s = re.sub(r"\.{2,}", MARK, s)
+    # replace unicode ellipsis
+    s = s.replace("…", MARK)
+    return s
+
+
+def clean_leader_and_page(s: str) -> str:
+    """
+    Remove leader dots/ellipsis and trailing page numbers from a TOC line.
+    Conservative: does not remove single dots inside abbreviations like 'Dr.'.
+    Examples:
+      'Titel ........ 7639' -> 'Titel'
+      'Abg. Name AfD ........ 7640' -> 'Abg. Name AfD'
+    """
+    if not isinstance(s, str):
+        return s
+    orig = s
+    s = s.strip()
+
+    if not s:
+        return s
+
+    # Replace long dot sequences with temporary marker
+    s = _replace_long_dot_sequences(s)
+
+    # Remove marker followed by optional punctuation and trailing page number at end
+    # e.g. '\x07 7639', '\x077639', '\x07 7639.'
+    s = re.sub(r"(\x07|\|\|SEP\|\|)\s*\d{1,5}[.,]?$", "", s)
+    # Also remove plain trailing page numbers (whitespace + digits) if present
+    s = re.sub(r"\s+\d{1,5}[.,]?$", "", s)
+
+    # Remove any leftover marker
+    s = s.replace("\x07", " ")
+
+    # Remove remaining long sequences of dots (in case they weren't caught)
+    s = re.sub(r"\.{2,}", " ", s)
+    s = s.replace("…", " ")
+
+    # Remove leftover punctuation at end (commas/dots/dashes), but keep single-dot abbreviations inside
+    s = re.sub(r"[.,\-\u2013\u2014\—\–\s]+$", "", s)
+
+    # Collapse multiple spaces
+    s = re.sub(r"\s{2,}", " ", s).strip()
+
+    # If result is empty, return original trimmed line as fallback
+    if not s:
+        return orig.strip()
+    return s
+
+
+def clean_toc_agenda_list(lst: List[str]) -> List[str]:
+    """
+    Clean a list of agenda lines. Also merges short continuation lines that likely belong to the previous item.
+    Heuristic: if a line is short (<40 chars) and does not contain long dot sequences or trailing digits
+    but previous line does not end with punctuation / looks like it was wrapped, join them.
+    """
+    if not isinstance(lst, list):
+        return lst
+    out: List[str] = []
+    for line in lst:
+        if not isinstance(line, str):
+            out.append(line)
+            continue
+        cleaned = clean_leader_and_page(line)
+        # Merge heuristics: if the previous item exists and current looks like a continuation,
+        # join with a space to re-create wrapped titles.
+        if out:
+            prev = out[-1]
+            # continuation if current is short and starts with lowercase or not capitalized word
+            if len(cleaned) < 40 and cleaned and (cleaned[0].islower() or cleaned[0].isdigit()):
+                out[-1] = prev + " " + cleaned
+                continue
+            # also join if previous seems to have been truncated (ends with a hyphen)
+            if prev.endswith("-"):
+                out[-1] = prev.rstrip("-") + cleaned
+                continue
+        out.append(cleaned)
+    return out
+
+
+def _clean_string_fields_in_obj(obj: Any) -> Any:
+    """
+    Helper that applies clean_leader_and_page to objects that are strings,
+    or walks into lists/dicts to apply cleaning to known text fields.
+    """
+    if isinstance(obj, str):
+        return clean_leader_and_page(obj)
+    if isinstance(obj, list):
+        return [_clean_string_fields_in_obj(x) for x in obj]
+    if isinstance(obj, dict):
+        cleaned = {}
+        for k, v in obj.items():
+            if k.lower() in ("title", "text", "label", "name", "speaker", "heading"):
+                if isinstance(v, str):
+                    cleaned[k] = clean_leader_and_page(v)
+                else:
+                    cleaned[k] = _clean_string_fields_in_obj(v)
+            elif k.lower() in ("speakers", "participants", "authors"):
+                # likely a list of names; clean each entry if it's a str
+                if isinstance(v, list):
+                    cleaned[k] = [clean_leader_and_page(x) if isinstance(x, str) else _clean_string_fields_in_obj(x) for x in v]
+                else:
+                    cleaned[k] = _clean_string_fields_in_obj(v)
+            elif k.lower() in ("items", "children", "nodes", "agenda", "entries"):
+                cleaned[k] = _clean_string_fields_in_obj(v)
+            else:
+                # preserve unknown fields, but recurse if complex
+                if isinstance(v, (dict, list)):
+                    cleaned[k] = _clean_string_fields_in_obj(v)
+                else:
+                    cleaned[k] = v
+        return cleaned
+    return obj
+
+
+def clean_toc2_structure(obj: Any) -> Any:
+    """
+    Clean a structured toc2 object in-place (returns cleaned copy).
+    Tries to find and clean typical fields like 'title', 'text', 'speakers', and recurses into children.
+    """
+    try:
+        return _clean_string_fields_in_obj(obj)
+    except Exception as e:
+        print(f"[WARN] toc2 cleaning failed: {e}")
+        return obj
+
+
+# -------------------- rest of pipeline --------------------
 
 def parse_args():
     ap = argparse.ArgumentParser(description="Parst ein Landtags-PDF und erzeugt strukturierte JSON-Ausgabe.")
@@ -79,28 +221,21 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
 
 
 def _find_first_body_speech_index(speeches: List[Dict[str, Any]], pattern: str) -> int:
-    """
-    Scans the speech segments for the first speech that matches the body-start pattern.
-    Returns the index of that speech or 0 if not found.
-    The matching is tolerant: checks start of speech text and speaker fields if present.
-    """
     rx = re.compile(pattern, flags=re.IGNORECASE)
     for i, s in enumerate(speeches):
-        # There are different possible shapes for a speech segment; be permissive:
-        text = s.get("text", "")
+        text = s.get("text", "") if isinstance(s, dict) else ""
         speaker = s.get("speaker", "") if isinstance(s.get("speaker", ""), str) else ""
-        # Prefer checking explicit speaker field first
         if speaker and rx.match(speaker.strip()):
             return i
-        # Otherwise check the beginning of the text (first ~120 chars)
-        head = text.strip().splitlines()[0] if text and isinstance(text, str) else ""
-        if rx.match(head):
-            return i
-        # Some segments present as list of text segments
+        head = ""
+        if text:
+            head = text.strip().splitlines()[0]
+            if rx.match(head):
+                return i
         if isinstance(s.get("segments"), list):
             for seg in s["segments"]:
                 seg_text = seg.get("text", "") if isinstance(seg, dict) else (seg if isinstance(seg, str) else "")
-                if rx.match(seg_text.strip().splitlines()[0] if seg_text else ""):
+                if seg_text and rx.match(seg_text.strip().splitlines()[0]):
                     return i
     return 0
 
@@ -142,12 +277,12 @@ def process_pdf(url: str,
 
     meta = parse_session_info(all_text)
 
-    # Bisherige TOC-Ermittlung (beibehalten für Backward-Compatibility)
+    # Legacy TOC
     toc_full = parse_toc(normalized_pages[0]) if normalized_pages else []
     toc_parts = partition_toc(toc_full)
 
-    # Neue TOC-Struktur via neuer Parser-Pipeline (strukturierte items)
-    toc2: Dict[str, Any] = {}
+    # New structured TOC (optional)
+    toc2: Any = {}
     if use_new_toc and parse_protocol_new is not None:
         try:
             toc_bundle = parse_protocol_new(
@@ -163,15 +298,29 @@ def process_pdf(url: str,
                 stop_toc_at_first_body_header=True
             )
             if isinstance(toc_bundle, dict):
-                toc2 = toc_bundle.get("toc", {}) or toc_bundle.get("items", {}) or {}
+                toc2 = toc_bundle.get("toc", {}) or toc_bundle.get("items", {}) or toc_bundle
             else:
                 toc2 = toc_bundle or {}
         except Exception as e:
             print(f"[WARN] Neuer TOC-Parser fehlgeschlagen: {e}")
+            toc2 = {}
+
+    # Clean legacy toc_agenda (remove dots + page numbers)
+    raw_agenda = toc_parts.get("agenda", []) if isinstance(toc_parts, dict) else []
+    cleaned_agenda = clean_toc_agenda_list(raw_agenda)
+
+    # Clean structured toc2 if present
+    cleaned_toc2 = toc2
+    if toc2:
+        try:
+            cleaned_toc2 = clean_toc2_structure(toc2)
+        except Exception as e:
+            print(f"[WARN] Fehler beim Säubern von toc2: {e}")
+            cleaned_toc2 = toc2
 
     speeches = segment_speeches(flat)
 
-    # --- Neuer Schritt: alles vor der ersten echten Rede abschneiden ---
+    # Remove everything before first actual speech header (usually 'Präsident...' etc.)
     removed_before = 0
     try:
         first_idx = _find_first_body_speech_index(speeches, body_start_pattern)
@@ -183,7 +332,6 @@ def process_pdf(url: str,
         print(f"[WARN] Fehler bei Erkennung des Body-Starts: {e}")
 
     interjection_stats = cleanup_interjections(speeches)
-
     reflow_stats = reflow_speeches(speeches, min_merge_len=35, keep_original=True)
 
     build_speech_segments(speeches,
@@ -194,22 +342,21 @@ def process_pdf(url: str,
     inline_agenda = extract_agenda(flat)
     link_agenda(inline_agenda, speeches)
 
-    # Falls der neue TOC strukturiert eine Agenda liefert, nutze sie als toc_agenda
-    final_toc_agenda = toc_parts["agenda"]
-    if toc2:
-        # try common keys in structured toc
-        if isinstance(toc2, dict):
-            # flexible heuristics: toc2 may contain 'agenda', 'items' or a list of nodes
-            if toc2.get("agenda"):
-                final_toc_agenda = toc2["agenda"]
-            elif toc2.get("items"):
-                final_toc_agenda = toc2["items"]
-            else:
-                # If toc2 itself is a list/sequence, use it directly
-                if isinstance(toc2, list):
-                    final_toc_agenda = toc2
-        elif isinstance(toc2, list):
-            final_toc_agenda = toc2
+    # If cleaned_toc2 contains an agenda-like list, prefer that for toc_agenda
+    final_toc_agenda = cleaned_agenda
+    try:
+        if cleaned_toc2:
+            # common shapes: dict with 'agenda' or 'items', or a list
+            if isinstance(cleaned_toc2, dict):
+                if cleaned_toc2.get("agenda"):
+                    final_toc_agenda = cleaned_toc2["agenda"]
+                elif cleaned_toc2.get("items"):
+                    final_toc_agenda = cleaned_toc2["items"]
+            elif isinstance(cleaned_toc2, list):
+                final_toc_agenda = cleaned_toc2
+    except Exception:
+        # fall back to cleaned_agenda on any error
+        final_toc_agenda = cleaned_agenda
 
     payload: Dict[str, Any] = {
         "session": {
@@ -232,14 +379,13 @@ def process_pdf(url: str,
             "applied": True,
             "reason": "forced-always"
         },
-        # Alte TOC-Felder (bestehende Konsumenten bleiben funktionsfähig)
+        # legacy fields preserved
         "toc": toc_full,
-        # replace or augment toc_agenda with structured agenda if available
         "toc_agenda": final_toc_agenda,
-        "toc_speakers": toc_parts["speakers"],
-        "toc_other": toc_parts["other"],
-        # Neue, strukturierte TOC-Ausgabe des verbesserten Parsers
-        "toc2": toc2,
+        "toc_speakers": toc_parts.get("speakers", []),
+        "toc_other": toc_parts.get("other", []),
+        # new structured toc
+        "toc2": cleaned_toc2,
         "agenda_items": inline_agenda,
         "speeches": speeches,
         "cleanup_stats": {
