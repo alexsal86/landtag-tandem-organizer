@@ -3,28 +3,8 @@
 parse_landtag_pdf.py
 
 Pipeline zum Herunterladen und Parsen eines Landtagsprotokolls.
-Schritte:
-
-1. Download PDF (Cache steuerbar via --force-download)
-2. Layout-Extraktion (Zwei-Spalten-Erkennung + Rebalancing)
-3. Entfernen wiederholter Header / Footer (generisch)
-4. Spezifische Footer-/Schluss-/Seitennummer-Bereinigung
-5. Normalisierung + Dehyphenation
-6. Flatten für Segmentierung / Agenda
-7. Metadaten extrahieren
-8. TOC parsen & partitionieren
-9. Segmentierung in Reden
-10. Interjection-Cleanup (extrahiert + Offsets)
-11. Reflow (Absatzbildung)
-12. Bau von Segmenten (Text/Interjections im Fluss)
-13. Inline-Agenda extrahieren + Verknüpfung
-14. Payload bauen (inkl. Debug & Cleanup Stats)
-15. Optional: Schema-Validierung
-16. Schreiben JSON + Index
-
-Ausgabe: data/session_<...>.json & data/sessions_index.json
+(gekürzte Header-Dokumentation im Kommentar)
 """
-
 import argparse
 import json
 import os
@@ -49,6 +29,7 @@ from parser_core.segments import build_speech_segments
 
 # Neuer TOC-Parser (strukturierte TOC "items")
 try:
+    # scripts/__init__.py stellt sicher, dass "scripts" ein Paket ist, daher ist dieser Import möglich.
     from scripts.parser_core.pipeline import parse_protocol as parse_protocol_new
 except Exception:
     parse_protocol_new = None
@@ -62,6 +43,7 @@ def parse_args():
     ap.add_argument("--force-download", action="store_true", help="PDF erneut herunterladen, auch wenn im Cache.")
     ap.add_argument("--layout-min-peak-sep", type=float, default=0.18, help="min_peak_separation_rel für Layout.")
     ap.add_argument("--layout-min-valley-drop", type=float, default=0.30, help="min_valley_rel_drop für Layout.")
+    ap.add_argument("--no-new-toc", action="store_true", help="Neuen TOC-Parser deaktivieren (Fallback auf alten Parser).")
     return ap.parse_args()
 
 
@@ -99,7 +81,8 @@ def process_pdf(url: str,
                 force_download: bool,
                 layout_min_peak_sep: float,
                 layout_min_valley_drop: float,
-                externalize_layout_debug: bool = True) -> Dict[str, Any]:
+                externalize_layout_debug: bool = True,
+                use_new_toc: bool = True) -> Dict[str, Any]:
     pdf_path = download_pdf(url, force=force_download)
 
     pages_lines, layout_debug = extract_pages_with_layout(
@@ -136,8 +119,10 @@ def process_pdf(url: str,
 
     # Neue TOC-Struktur via neuer Parser-Pipeline (strukturierte items)
     toc2: Dict[str, Any] = {}
-    if parse_protocol_new is not None:
+    if use_new_toc and parse_protocol_new is not None:
         try:
+            # parse_protocol_new erwartet typischerweise die geflatteten Text-Objekte (flat),
+            # wir übergeben conservative defaults; Fehler werden gefangen.
             toc_bundle = parse_protocol_new(
                 flat,
                 capture_offsets=False,
@@ -150,8 +135,13 @@ def process_pdf(url: str,
                 externalize_interjection_offsets=False,
                 stop_toc_at_first_body_header=True
             )
-            toc2 = toc_bundle.get("toc", {}) or {}
+            if isinstance(toc_bundle, dict):
+                toc2 = toc_bundle.get("toc", {}) or {}
+            else:
+                # Manchmal liefert die Pipeline direkt ein TOC-Objekt
+                toc2 = toc_bundle or {}
         except Exception as e:
+            # Fehler beim neuen Parser dürfen nicht zum Abbruch führen
             print(f"[WARN] Neuer TOC-Parser fehlgeschlagen: {e}")
 
     speeches = segment_speeches(flat)
@@ -286,7 +276,8 @@ def main() -> int:
             force_download=args.force_download,
             layout_min_peak_sep=args.layout_min_peak_sep,
             layout_min_valley_drop=args.layout_min_valley_drop,
-            externalize_layout_debug=True  # Standard: ausgelagerte layout_debug
+            externalize_layout_debug=True,  # Standard: ausgelagerte layout_debug
+            use_new_toc=not args.no_new_toc
         )
 
         if args.schema_validate:
