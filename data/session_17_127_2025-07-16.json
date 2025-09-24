@@ -4,7 +4,7 @@
     "legislative_period": 17,
     "date": "2025-07-16",
     "source_pdf_url": "https://www.landtag-bw.de/resource/blob/584334/59a6c5950d692e7ba8a2e8d8be879b26/17_0127_16072025.pdf",
-    "extracted_at": "2025-09-24T08:39:46.937717Z"
+    "extracted_at": "2025-09-24T08:53:46.266796Z"
   },
   "sitting": {
     "start_time": null,
@@ -26,7 +26,8 @@
       "title": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/",
       "page_in_pdf": 9077,
       "numbered": false,
-      "type": "agenda"
+      "type": "agenda",
+      "docket": "17/9077"
     },
     {
       "raw": "Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7664",
@@ -42,7 +43,8 @@
       "title": "Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung kommunalrechtlicher und weiterer Vorschriften – Drucksache 17/",
       "page_in_pdf": 8922,
       "numbered": true,
-      "type": "agenda"
+      "type": "agenda",
+      "docket": "17/8922"
     },
     {
       "raw": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9078",
@@ -50,7 +52,8 @@
       "title": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/",
       "page_in_pdf": 9078,
       "numbered": false,
-      "type": "agenda"
+      "type": "agenda",
+      "docket": "17/9078"
     },
     {
       "raw": "Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7671",
@@ -66,57 +69,90 @@
       "title": "Beteiligungsfondsgesetzes Baden-Württemberg – Drucksache 17/",
       "page_in_pdf": 8972,
       "numbered": false,
-      "type": "agenda"
+      "type": "agenda",
+      "docket": "17/8972"
     }
   ],
   "toc_agenda": [
     {
       "raw": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9077",
+      "title": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9077",
       "index": null,
-      "title": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/",
-      "page_in_pdf": 9077,
       "numbered": false,
-      "type": "agenda"
+      "type": "agenda",
+      "page_in_pdf": 9077,
+      "docket": "17/9077",
+      "speakers": [
+        "Drucksache 17/8861",
+        "Abg. Stefanie Seemann GRÜNE",
+        "Abg. Dr. Alexander Becker CDU",
+        "Abg. Martin Rivoir SPD",
+        "Abg. Stephen Brauer FDP/DVP",
+        "Abg. Alfred Bamberger AfD",
+        "Staatssekretär Arne Braun"
+      ]
     },
     {
       "raw": "Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7664",
-      "index": null,
       "title": "Beschluss",
-      "page_in_pdf": 7664,
+      "index": null,
       "numbered": false,
-      "type": "agenda"
+      "type": "agenda",
+      "page_in_pdf": 7664,
+      "docket": null,
+      "speakers": []
     },
     {
       "raw": "4. Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung kommunalrechtlicher und weiterer Vorschriften – Drucksache 17/8922",
+      "title": "Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung kommunalrechtlicher und weiterer Vorschriften – Drucksache 17/8922",
       "index": 4,
-      "title": "Zweite Beratung des Gesetzentwurfs der Landesregierung – Gesetz zur Änderung kommunalrechtlicher und weiterer Vorschriften – Drucksache 17/",
-      "page_in_pdf": 8922,
       "numbered": true,
-      "type": "agenda"
+      "type": "agenda",
+      "page_in_pdf": 8922,
+      "docket": "17/8922",
+      "speakers": []
     },
     {
       "raw": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9078",
+      "title": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/9078",
       "index": null,
-      "title": "Beschlussempfehlung und Bericht des Ausschusses des Inneren, für Digitalisierung und Kommunen – Drucksache 17/",
-      "page_in_pdf": 9078,
       "numbered": false,
-      "type": "agenda"
+      "type": "agenda",
+      "page_in_pdf": 9078,
+      "docket": "17/9078",
+      "speakers": [
+        "Drucksache 17/8861",
+        "Abg. Stefanie Seemann GRÜNE",
+        "Abg. Dr. Alexander Becker CDU",
+        "Abg. Martin Rivoir SPD",
+        "Abg. Stephen Brauer FDP/DVP",
+        "Abg. Alfred Bamberger AfD",
+        "Staatssekretär Arne Braun"
+      ]
     },
     {
       "raw": "Beschluss . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7671",
-      "index": null,
       "title": "Beschluss",
-      "page_in_pdf": 7671,
+      "index": null,
       "numbered": false,
-      "type": "agenda"
+      "type": "agenda",
+      "page_in_pdf": 7671,
+      "docket": null,
+      "speakers": []
     },
     {
       "raw": "Beteiligungsfondsgesetzes Baden-Württemberg – Drucksache 17/8972",
+      "title": "Beteiligungsfondsgesetzes Baden-Württemberg – Drucksache 17/8972",
       "index": null,
-      "title": "Beteiligungsfondsgesetzes Baden-Württemberg – Drucksache 17/",
-      "page_in_pdf": 8972,
       "numbered": false,
-      "type": "agenda"
+      "type": "agenda",
+      "page_in_pdf": 8972,
+      "docket": "17/8972",
+      "speakers": [
+        "– Drucksache 17/8972",
+        "Der Landtag druckt auf Recyclingpapier, ausgezeich- I",
+        "net mit dem Umweltzeichen „Der Blaue Engel“"
+      ]
     }
   ],
   "toc_speakers": [],
