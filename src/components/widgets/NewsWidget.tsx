@@ -41,27 +41,41 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
     setError(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke('fetch-rss-feeds', {
+      // Add timeout wrapper to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+      
+      const fetchPromise = supabase.functions.invoke('fetch-rss-feeds', {
         body: { 
           category: selectedCategory === 'all' ? undefined : selectedCategory,
           limit: 20 
         }
       });
 
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+
       if (error) throw error;
       
       setArticles(data?.articles || []);
     } catch (err) {
       console.error('Error fetching news:', err);
-      setError('Fehler beim Laden der Nachrichten');
-      toast.error('Fehler beim Laden der Nachrichten');
+      const errorMessage = err instanceof Error && err.message === 'Request timeout' 
+        ? 'Zeitüberschreitung beim Laden der Nachrichten'
+        : 'Fehler beim Laden der Nachrichten';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchNews();
+    // Delay initial load to prevent UI blocking
+    const timer = setTimeout(() => {
+      fetchNews();
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, [selectedCategory]);
 
   const filteredArticles = articles.filter(article => 
