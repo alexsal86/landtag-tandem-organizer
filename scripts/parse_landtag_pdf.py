@@ -3,11 +3,17 @@
 parse_landtag_pdf.py
 
 Pipeline zum Herunterladen und Parsen eines Landtagsprotokolls.
-Enthält zusätzliche Reinigung von TOC-Einträgen:
-- Entfernen von Leader-Dots / Ellipsen
-- Entfernen von trailing Seitenzahlen
-- Säubern strukturierter toc2-Objekte (rekursiv)
+
+Enthält:
+- Integration des optionalen, neuen TOC-Parsers (scripts.parser_core.pipeline.parse_protocol)
+- Abschneiden aller Segmente vor der ersten echten Rede (z.B. 'Präsident(in) ...:')
+- Reinigung von TOC-Einträgen: Entfernen von Leader-Dots/Ellipsen und trailing Seitenzahlen
+- Reinigung/Normalisierung einer strukturierten toc2-Repräsentation (falls vorhanden)
+- Rückwärtskompatible Ausgabe: 'toc' (legacy) bleibt erhalten; 'toc_agenda' wird bereinigt;
+  strukturierter Parser-Ausgabe landet in 'toc2' (bereinigt).
 """
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -18,6 +24,7 @@ import re
 from pathlib import Path
 from typing import List, Dict, Any, Union
 
+# projekt-interne modules
 from parser_core.downloader import download_pdf
 from parser_core.pdftext import remove_repeated_headers_footers, flatten_pages
 from parser_core.layout import extract_pages_with_layout
@@ -31,33 +38,34 @@ from parser_core.cleanup import clean_page_footers, cleanup_interjections
 from parser_core.textflow import reflow_speeches
 from parser_core.segments import build_speech_segments
 
-# Neuer TOC-Parser (strukturierte TOC "items"), optional importieren
+# Optionaler, neuer TOC-Parser (wenn vorhanden)
 try:
-    from scripts.parser_core.pipeline import parse_protocol as parse_protocol_new
+    from scripts.parser_core.pipeline import parse_protocol as parse_protocol_new  # type: ignore
 except Exception:
-    parse_protocol_new = None
+    parse_protocol_new = None  # fallback auf None
 
 
 # -------------------- Cleaning helpers --------------------
 
+DOT_MARKER = "\x07"  # temporary marker for long dot sequences
+
+
 def _replace_long_dot_sequences(s: str) -> str:
     """
-    Replace sequences of 2+ ASCII dots or unicode ellipsis with a marker.
-    Keep single dots (e.g., in 'Dr.') untouched.
+    Replace ASCII sequences of 2+ dots and unicode ellipsis with a temporary marker,
+    preserving single dots (e.g. in 'Dr.').
     """
-    # temporary marker unlikely to appear in real text
-    MARK = "\x07"
-    # replace sequences of two or more dots
-    s = re.sub(r"\.{2,}", MARK, s)
-    # replace unicode ellipsis
-    s = s.replace("…", MARK)
+    if not isinstance(s, str):
+        return s
+    s = re.sub(r"\.{2,}", DOT_MARKER, s)  # two or more ascii dots -> marker
+    s = s.replace("…", DOT_MARKER)  # unicode ellipsis -> marker
     return s
 
 
 def clean_leader_and_page(s: str) -> str:
     """
     Remove leader dots/ellipsis and trailing page numbers from a TOC line.
-    Conservative: does not remove single dots inside abbreviations like 'Dr.'.
+    Conservative: single dots in abbreviations like 'Dr.' are preserved.
     Examples:
       'Titel ........ 7639' -> 'Titel'
       'Abg. Name AfD ........ 7640' -> 'Abg. Name AfD'
@@ -66,34 +74,32 @@ def clean_leader_and_page(s: str) -> str:
         return s
     orig = s
     s = s.strip()
-
     if not s:
         return s
 
-    # Replace long dot sequences with temporary marker
+    # replace long dot sequences with marker
     s = _replace_long_dot_sequences(s)
 
-    # Remove marker followed by optional punctuation and trailing page number at end
-    # e.g. '\x07 7639', '\x077639', '\x07 7639.'
-    s = re.sub(r"(\x07|\|\|SEP\|\|)\s*\d{1,5}[.,]?$", "", s)
-    # Also remove plain trailing page numbers (whitespace + digits) if present
+    # remove marker followed by optional punctuation and trailing page number at end
+    s = re.sub(rf"{DOT_MARKER}\s*\d{{1,5}}[.,]?$", "", s)
+    # also remove plain trailing page numbers (whitespace + digits) if present
     s = re.sub(r"\s+\d{1,5}[.,]?$", "", s)
 
-    # Remove any leftover marker
-    s = s.replace("\x07", " ")
+    # replace marker with a space
+    s = s.replace(DOT_MARKER, " ")
 
-    # Remove remaining long sequences of dots (in case they weren't caught)
+    # remove leftover sequences of multiple dots
     s = re.sub(r"\.{2,}", " ", s)
     s = s.replace("…", " ")
 
-    # Remove leftover punctuation at end (commas/dots/dashes), but keep single-dot abbreviations inside
+    # strip trailing punctuation / dashes, but keep dots inside abbreviations
     s = re.sub(r"[.,\-\u2013\u2014\—\–\s]+$", "", s)
 
-    # Collapse multiple spaces
+    # collapse multiple spaces
     s = re.sub(r"\s{2,}", " ", s).strip()
 
-    # If result is empty, return original trimmed line as fallback
     if not s:
+        # fallback to original trimmed string if cleaning removed everything
         return orig.strip()
     return s
 
@@ -101,8 +107,9 @@ def clean_leader_and_page(s: str) -> str:
 def clean_toc_agenda_list(lst: List[str]) -> List[str]:
     """
     Clean a list of agenda lines. Also merges short continuation lines that likely belong to the previous item.
-    Heuristic: if a line is short (<40 chars) and does not contain long dot sequences or trailing digits
-    but previous line does not end with punctuation / looks like it was wrapped, join them.
+    Heuristic:
+      - If a line is short (<40 chars) and starts lowercase (continuation), join it with the previous.
+      - If previous ends with hyphen, join without hyphen.
     """
     if not isinstance(lst, list):
         return lst
@@ -112,15 +119,12 @@ def clean_toc_agenda_list(lst: List[str]) -> List[str]:
             out.append(line)
             continue
         cleaned = clean_leader_and_page(line)
-        # Merge heuristics: if the previous item exists and current looks like a continuation,
-        # join with a space to re-create wrapped titles.
         if out:
             prev = out[-1]
-            # continuation if current is short and starts with lowercase or not capitalized word
+            # continuation heuristics
             if len(cleaned) < 40 and cleaned and (cleaned[0].islower() or cleaned[0].isdigit()):
                 out[-1] = prev + " " + cleaned
                 continue
-            # also join if previous seems to have been truncated (ends with a hyphen)
             if prev.endswith("-"):
                 out[-1] = prev.rstrip("-") + cleaned
                 continue
@@ -130,31 +134,30 @@ def clean_toc_agenda_list(lst: List[str]) -> List[str]:
 
 def _clean_string_fields_in_obj(obj: Any) -> Any:
     """
-    Helper that applies clean_leader_and_page to objects that are strings,
-    or walks into lists/dicts to apply cleaning to known text fields.
+    Recursively clean string fields in a structured object.
+    Target keys: title, text, label, name, speaker, heading, and lists like speakers/items/children/agenda.
     """
     if isinstance(obj, str):
         return clean_leader_and_page(obj)
     if isinstance(obj, list):
         return [_clean_string_fields_in_obj(x) for x in obj]
     if isinstance(obj, dict):
-        cleaned = {}
+        cleaned: Dict[str, Any] = {}
         for k, v in obj.items():
-            if k.lower() in ("title", "text", "label", "name", "speaker", "heading"):
+            lk = k.lower()
+            if lk in ("title", "text", "label", "name", "speaker", "heading"):
                 if isinstance(v, str):
                     cleaned[k] = clean_leader_and_page(v)
                 else:
                     cleaned[k] = _clean_string_fields_in_obj(v)
-            elif k.lower() in ("speakers", "participants", "authors"):
-                # likely a list of names; clean each entry if it's a str
+            elif lk in ("speakers", "participants", "authors"):
                 if isinstance(v, list):
                     cleaned[k] = [clean_leader_and_page(x) if isinstance(x, str) else _clean_string_fields_in_obj(x) for x in v]
                 else:
                     cleaned[k] = _clean_string_fields_in_obj(v)
-            elif k.lower() in ("items", "children", "nodes", "agenda", "entries"):
+            elif lk in ("items", "children", "nodes", "agenda", "entries"):
                 cleaned[k] = _clean_string_fields_in_obj(v)
             else:
-                # preserve unknown fields, but recurse if complex
                 if isinstance(v, (dict, list)):
                     cleaned[k] = _clean_string_fields_in_obj(v)
                 else:
@@ -165,8 +168,8 @@ def _clean_string_fields_in_obj(obj: Any) -> Any:
 
 def clean_toc2_structure(obj: Any) -> Any:
     """
-    Clean a structured toc2 object in-place (returns cleaned copy).
-    Tries to find and clean typical fields like 'title', 'text', 'speakers', and recurses into children.
+    Clean a structured toc2 object and return cleaned copy.
+    Non-fatal: on errors return original object and emit warning.
     """
     try:
         return _clean_string_fields_in_obj(obj)
@@ -175,7 +178,88 @@ def clean_toc2_structure(obj: Any) -> Any:
         return obj
 
 
-# -------------------- rest of pipeline --------------------
+# -------------------- Helper to find body start --------------------
+
+
+def _find_first_body_speech_index(speeches: List[Dict[str, Any]], pattern: str) -> int:
+    """
+    Scans the speech segments for the first speech that matches the body-start pattern.
+    Returns the index of that speech or 0 if not found.
+    The matching is tolerant: checks speaker field, the beginning of text and segments if present.
+    """
+    rx = re.compile(pattern, flags=re.IGNORECASE)
+    for i, s in enumerate(speeches):
+        if not isinstance(s, dict):
+            continue
+        speaker = s.get("speaker", "")
+        if isinstance(speaker, str) and speaker.strip() and rx.match(speaker.strip()):
+            return i
+        text = s.get("text", "")
+        if isinstance(text, str) and text.strip():
+            head = text.strip().splitlines()[0]
+            if rx.match(head):
+                return i
+        if isinstance(s.get("segments"), list):
+            for seg in s["segments"]:
+                seg_text = seg.get("text") if isinstance(seg, dict) else (seg if isinstance(seg, str) else "")
+                if seg_text and rx.match(seg_text.strip().splitlines()[0]):
+                    return i
+    return 0
+
+
+# -------------------- Minimal TOC speaker extraction helpers --------------------
+
+def _find_line_index_for_item(raw_lines: List[str], snippet: str) -> int:
+    """
+    Find a raw line index containing a snippet from the TOC item.
+    Returns index or -1.
+    """
+    if not snippet:
+        return -1
+    snippet = snippet.strip()[:40].lower()
+    for i, ln in enumerate(raw_lines):
+        if not isinstance(ln, str):
+            continue
+        if snippet in ln.lower():
+            return i
+    return -1
+
+
+def _extract_speakers_after_index(raw_lines: List[str], start_idx: int, stop_at_indices: set) -> List[str]:
+    """
+    Collect subsequent lines that look like speaker lines (e.g., start with 'Abg.' or titles).
+    Stop when reaching a stop index, a blank line, or likely next agenda header.
+    """
+    speakers: List[str] = []
+    n = len(raw_lines)
+    i = start_idx + 1
+    speaker_rx = re.compile(r'^(Abg\.|Abg|Staatssekretär|Minister|Präsident(?:in)?|Dr\.|Prof\.)', re.IGNORECASE)
+    agenda_start_rx = re.compile(r'^\s*(\d+\.)|\bBeschluss\b|\bZweite Beratung\b', re.IGNORECASE)
+    party_rx = re.compile(r'\b(AfD|GRÜNE|GRUENE|SPD|CDU|FDP|DVP|FDP/DVP|Bündnis|BÜNDNIS)\b', re.IGNORECASE)
+    while i < n:
+        if i in stop_at_indices:
+            break
+        ln = (raw_lines[i] or "").strip()
+        if not ln:
+            break
+        if agenda_start_rx.search(ln):
+            break
+        if speaker_rx.search(ln) or party_rx.search(ln):
+            speakers.append(clean_leader_and_page(ln))
+            i += 1
+            continue
+        # short capitalized-lines may be names
+        if len(ln) < 80 and re.search(r'\b[A-ZÄÖÜ][a-zäöüß\-]{2,}\b', ln):
+            speakers.append(clean_leader_and_page(ln))
+            i += 1
+            continue
+        # otherwise stop collecting
+        break
+    return speakers
+
+
+# -------------------- Argument parsing --------------------
+
 
 def parse_args():
     ap = argparse.ArgumentParser(description="Parst ein Landtags-PDF und erzeugt strukturierte JSON-Ausgabe.")
@@ -204,6 +288,9 @@ def gather_urls(args) -> List[str]:
     raise SystemExit("Keine URL angegeben (--single-url oder --list-file).")
 
 
+# -------------------- Filename helper --------------------
+
+
 def build_session_filename(payload: Dict[str, Any]) -> str:
     sess = payload.get("session", {})
     lp = sess.get("legislative_period")
@@ -220,24 +307,7 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
     return f"session_unknown_{short}.json"
 
 
-def _find_first_body_speech_index(speeches: List[Dict[str, Any]], pattern: str) -> int:
-    rx = re.compile(pattern, flags=re.IGNORECASE)
-    for i, s in enumerate(speeches):
-        text = s.get("text", "") if isinstance(s, dict) else ""
-        speaker = s.get("speaker", "") if isinstance(s.get("speaker", ""), str) else ""
-        if speaker and rx.match(speaker.strip()):
-            return i
-        head = ""
-        if text:
-            head = text.strip().splitlines()[0]
-            if rx.match(head):
-                return i
-        if isinstance(s.get("segments"), list):
-            for seg in s["segments"]:
-                seg_text = seg.get("text", "") if isinstance(seg, dict) else (seg if isinstance(seg, str) else "")
-                if seg_text and rx.match(seg_text.strip().splitlines()[0]):
-                    return i
-    return 0
+# -------------------- Main processing --------------------
 
 
 def process_pdf(url: str,
@@ -266,6 +336,7 @@ def process_pdf(url: str,
     pages_lines = remove_repeated_headers_footers(pages_lines)
     pages_lines, footer_stats = clean_page_footers(pages_lines)
 
+    # normalize and dehyphenate
     normalized_pages: List[List[str]] = []
     for lines in pages_lines:
         lines = [normalize_line(l) for l in lines if l.strip()]
@@ -277,11 +348,11 @@ def process_pdf(url: str,
 
     meta = parse_session_info(all_text)
 
-    # Legacy TOC
+    # Legacy TOC extraction (kept for compatibility)
     toc_full = parse_toc(normalized_pages[0]) if normalized_pages else []
     toc_parts = partition_toc(toc_full)
 
-    # New structured TOC (optional)
+    # Optional: structured TOC via new parser pipeline
     toc2: Any = {}
     if use_new_toc and parse_protocol_new is not None:
         try:
@@ -298,16 +369,26 @@ def process_pdf(url: str,
                 stop_toc_at_first_body_header=True
             )
             if isinstance(toc_bundle, dict):
-                toc2 = toc_bundle.get("toc", {}) or toc_bundle.get("items", {}) or toc_bundle
+                # pipeline may return { 'toc': ..., 'items': ... } or similar
+                toc2 = toc_bundle.get("toc") or toc_bundle.get("items") or toc_bundle
             else:
                 toc2 = toc_bundle or {}
         except Exception as e:
             print(f"[WARN] Neuer TOC-Parser fehlgeschlagen: {e}")
             toc2 = {}
 
-    # Clean legacy toc_agenda (remove dots + page numbers)
-    raw_agenda = toc_parts.get("agenda", []) if isinstance(toc_parts, dict) else []
-    cleaned_agenda = clean_toc_agenda_list(raw_agenda)
+    # Clean legacy toc_agenda strings
+    raw_agenda_lines = []
+    if isinstance(toc_parts, dict):
+        # toc_parts['agenda'] may be a list of dicts or strings; extract displayable raw/title
+        for it in toc_parts.get("agenda", []):
+            if isinstance(it, dict):
+                raw_val = it.get("raw") or it.get("title") or ""
+            else:
+                raw_val = str(it)
+            raw_agenda_lines.append(raw_val)
+
+    cleaned_agenda_lines = clean_toc_agenda_list(raw_agenda_lines)
 
     # Clean structured toc2 if present
     cleaned_toc2 = toc2
@@ -318,9 +399,57 @@ def process_pdf(url: str,
             print(f"[WARN] Fehler beim Säubern von toc2: {e}")
             cleaned_toc2 = toc2
 
+    # Try to extract speakers from raw TOC page lines, if available
+    raw_toc_page_lines: List[str] = normalized_pages[0] if normalized_pages and isinstance(normalized_pages[0], list) else []
+    stop_indices = set()
+    # compute stop indices for each agenda raw line found on the page
+    for raw in raw_agenda_lines:
+        idx = _find_line_index_for_item(raw_toc_page_lines, raw)
+        if idx >= 0:
+            stop_indices.add(idx)
+
+    # build cleaned agenda items with optional speakers
+    cleaned_agenda_items: List[Dict[str, Any]] = []
+    for orig_item in toc_parts.get("agenda", []) if isinstance(toc_parts, dict) else []:
+        raw = orig_item.get("raw") if isinstance(orig_item, dict) else (str(orig_item) if orig_item is not None else "")
+        title = orig_item.get("title") if isinstance(orig_item, dict) else raw
+        title = title or raw
+        title_clean = clean_leader_and_page(title)
+
+        # If the title ends with an incomplete 'Drucksache 17/' try to attach page_in_pdf number (docket)
+        if isinstance(title_clean, str) and re.search(r'Drucksache\s*\d+\/\s*$', title_clean):
+            num = orig_item.get("page_in_pdf")
+            if num:
+                title_clean = title_clean.rstrip('/ ') + "/" + str(num)
+                # store docket explicitly if useful
+                orig_item["docket"] = f"{re.search(r'Drucksache\s*(\d+)', title_clean).group(1) if re.search(r'Drucksache\s*(\d+)', title_clean) else ''}/{num}"
+
+        # find index of raw line and try to extract following speaker lines
+        speakers: List[str] = []
+        idx = _find_line_index_for_item(raw_toc_page_lines, raw or title)
+        if idx >= 0:
+            try:
+                speakers = _extract_speakers_after_index(raw_toc_page_lines, idx, stop_indices)
+            except Exception as e:
+                print(f"[WARN] Fehler beim Extrahieren von Sprechern für TOC-Item '{title}': {e}")
+                speakers = []
+
+        # fallback: if parser filled toc_parts speakers mapping, we leave it untouched (compat)
+        cleaned_item: Dict[str, Any] = {
+            "raw": raw,
+            "title": title_clean,
+            "index": orig_item.get("index") if isinstance(orig_item, dict) else None,
+            "numbered": orig_item.get("numbered") if isinstance(orig_item, dict) else False,
+            "type": orig_item.get("type") if isinstance(orig_item, dict) else "agenda",
+            "page_in_pdf": orig_item.get("page_in_pdf") if isinstance(orig_item, dict) else None,
+            "docket": orig_item.get("docket") if isinstance(orig_item, dict) else None,
+            "speakers": speakers,
+        }
+        cleaned_agenda_items.append(cleaned_item)
+
+    # Build speeches and perform body-start trimming
     speeches = segment_speeches(flat)
 
-    # Remove everything before first actual speech header (usually 'Präsident...' etc.)
     removed_before = 0
     try:
         first_idx = _find_first_body_speech_index(speeches, body_start_pattern)
@@ -342,11 +471,10 @@ def process_pdf(url: str,
     inline_agenda = extract_agenda(flat)
     link_agenda(inline_agenda, speeches)
 
-    # If cleaned_toc2 contains an agenda-like list, prefer that for toc_agenda
-    final_toc_agenda = cleaned_agenda
+    # Prefer structured agenda from cleaned_toc2 if it looks like an agenda list
+    final_toc_agenda: Union[List[Any], List[Dict[str, Any]]] = cleaned_agenda_items
     try:
         if cleaned_toc2:
-            # common shapes: dict with 'agenda' or 'items', or a list
             if isinstance(cleaned_toc2, dict):
                 if cleaned_toc2.get("agenda"):
                     final_toc_agenda = cleaned_toc2["agenda"]
@@ -355,8 +483,7 @@ def process_pdf(url: str,
             elif isinstance(cleaned_toc2, list):
                 final_toc_agenda = cleaned_toc2
     except Exception:
-        # fall back to cleaned_agenda on any error
-        final_toc_agenda = cleaned_agenda
+        final_toc_agenda = cleaned_agenda_items
 
     payload: Dict[str, Any] = {
         "session": {
@@ -379,12 +506,13 @@ def process_pdf(url: str,
             "applied": True,
             "reason": "forced-always"
         },
-        # legacy fields preserved
+        # Legacy fields preserved for backward compatibility
         "toc": toc_full,
+        # toc_agenda now contains cleaned/normalized agenda items (no leader dots / trailing page numbers)
         "toc_agenda": final_toc_agenda,
-        "toc_speakers": toc_parts.get("speakers", []),
-        "toc_other": toc_parts.get("other", []),
-        # new structured toc
+        "toc_speakers": toc_parts.get("speakers", []) if isinstance(toc_parts, dict) else [],
+        "toc_other": toc_parts.get("other", []) if isinstance(toc_parts, dict) else [],
+        # structured TOC (if available) cleaned
         "toc2": cleaned_toc2,
         "agenda_items": inline_agenda,
         "speeches": speeches,
@@ -407,6 +535,9 @@ def process_pdf(url: str,
         payload["layout_debug"] = layout_debug
 
     return payload
+
+
+# -------------------- Output helpers --------------------
 
 
 def write_index(results: List[Dict[str, Any]], out_dir: Path):
@@ -463,6 +594,9 @@ def write_session_payload(payload: Dict[str, Any], out_dir: Path) -> Path:
     return session_path
 
 
+# -------------------- CLI entrypoint --------------------
+
+
 def main() -> int:
     args = parse_args()
     urls = gather_urls(args)
@@ -477,7 +611,7 @@ def main() -> int:
             force_download=args.force_download,
             layout_min_peak_sep=args.layout_min_peak_sep,
             layout_min_valley_drop=args.layout_min_valley_drop,
-            externalize_layout_debug=True,  # Standard: ausgelagerte layout_debug
+            externalize_layout_debug=True,
             use_new_toc=not args.no_new_toc,
             body_start_pattern=args.body_start_pattern
         )
