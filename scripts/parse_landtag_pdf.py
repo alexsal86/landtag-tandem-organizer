@@ -643,21 +643,44 @@ def write_index(results: List[Dict[str, Any]], out_dir: Path):
 
 
 def write_session_payload(payload: Dict[str, Any], out_dir: Path) -> Path:
+    """
+    Schreibt die Haupt-Session-Datei und die Layout-Sidecar, falls layout-debug intern vorhanden ist.
+    Robust: falls layout_debug_file fehlt, erzeugen wir selbst einen Dateinamen.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     base_name = build_session_filename(payload)
     session_path = out_dir / base_name
 
     layout_debug_internal = payload.pop("_layout_debug_internal", None)
+    # prefer existing layout_debug_file, otherwise build a sensible name
     layout_debug_file = payload.get("layout_debug_file")
+    if not layout_debug_file and layout_debug_internal is not None:
+        layout_debug_file = base_name.replace(".json", ".layout.json")
+        payload["layout_debug_file"] = layout_debug_file
 
-    if layout_debug_file and layout_debug_internal is not None:
+    # Write sidecar if we have internal debug content
+    if layout_debug_internal is not None:
         sidecar_path = out_dir / layout_debug_file
-        sidecar_doc = {"session_ref": base_name, "schema_version": "1.0-layout-debug", "layout_debug": layout_debug_internal}
-        with sidecar_path.open("w", encoding="utf-8") as sf:
-            json.dump(sidecar_doc, sf, ensure_ascii=False, indent=2)
+        sidecar_doc = {
+            "session_ref": base_name,
+            "schema_version": "1.0-layout-debug",
+            "layout_debug": layout_debug_internal
+        }
+        try:
+            with sidecar_path.open("w", encoding="utf-8") as sf:
+                json.dump(sidecar_doc, sf, ensure_ascii=False, indent=2)
+            print(f"[INFO] layout sidecar written: {sidecar_path.name}")
+        except Exception as e:
+            print(f"[WARN] konnte layout-sidecar nicht schreiben: {e}")
 
-    with session_path.open("w", encoding="utf-8") as mf:
-        json.dump(payload, mf, ensure_ascii=False, indent=2)
+    # Always write main session payload (without the internal debug blob)
+    try:
+        with session_path.open("w", encoding="utf-8") as mf:
+            json.dump(payload, mf, ensure_ascii=False, indent=2)
+        print(f"[INFO] session payload written: {session_path.name}")
+    except Exception as e:
+        print(f"[ERROR] konnte session payload nicht schreiben: {e}")
+        raise
 
     return session_path
 
