@@ -135,9 +135,18 @@ export function useDashboardLayout() {
         type: 'actions',
         title: 'Schnellaktionen',
         position: { x: 0, y: 5 },
-        size: { width: 8, height: 1 },
-        widgetSize: '8x1',
+        size: { width: 6, height: 1 },
+        widgetSize: '6x1',
         configuration: { theme: 'default', showIcons: true }
+      },
+      {
+        id: 'news',
+        type: 'news',
+        title: 'News Feed',
+        position: { x: 6, y: 5 },
+        size: { width: 2, height: 2 },
+        widgetSize: '2x2',
+        configuration: { theme: 'default', refreshInterval: 300 }
       }
     ]
   };
@@ -481,7 +490,12 @@ export function useDashboardLayout() {
 
   // Add new widget with position parameter
   const addWidget = (type: string, position?: { x: number; y: number }) => {
-    if (!currentLayout) return;
+    console.log('🆕 useDashboardLayout: Adding widget:', { type, position, hasCurrentLayout: !!currentLayout });
+    
+    if (!currentLayout) {
+      console.error('❌ No currentLayout available for adding widget');
+      return;
+    }
     
     // Find next available position
     const existingPositions = currentLayout.widgets.map(w => ({
@@ -492,6 +506,7 @@ export function useDashboardLayout() {
     }));
 
     const defaultPosition = position || findAvailablePosition(existingPositions);
+    console.log('📍 Calculated position for new widget:', defaultPosition);
 
     const newWidget: DashboardWidget = {
       id: `widget-${Date.now()}`,
@@ -502,14 +517,19 @@ export function useDashboardLayout() {
       widgetSize: '2x2'
     };
     
+    console.log('✨ Creating new widget:', newWidget);
+    
     const updatedLayout = {
       ...currentLayout,
       widgets: [...currentLayout.widgets, newWidget]
     };
+    
+    console.log('💾 Setting updated layout with new widget, total widgets:', updatedLayout.widgets.length);
     setCurrentLayout(updatedLayout);
     
     // Auto-save after a delay to ensure state is updated
     setTimeout(() => {
+      console.log('⏰ Auto-saving layout after widget addition...');
       saveCurrentLayout();
     }, 100);
   };
