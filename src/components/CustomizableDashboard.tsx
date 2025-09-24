@@ -32,7 +32,8 @@ import {
   FileText,
   Clock,
   Phone,
-  Users
+  Users,
+  Rss
 } from 'lucide-react';
 
 // CSS imports for react-grid-layout
@@ -170,7 +171,8 @@ export const CustomizableDashboard: React.FC = () => {
     { type: 'quicknotes', title: 'Notizen', icon: FileText, description: 'Schnelle Notizen' },
     { type: 'pomodoro', title: 'Pomodoro Timer', icon: Clock, description: 'Produktivitäts-Timer' },
     { type: 'habits', title: 'Gewohnheiten', icon: CheckSquare, description: 'Habit Tracker' },
-    { type: 'calllog', title: 'Anrufliste', icon: Phone, description: 'Anruf-Protokoll' }
+    { type: 'calllog', title: 'Anrufliste', icon: Phone, description: 'Anruf-Protokoll' },
+    { type: 'news', title: 'News Feed', icon: Rss, description: 'Aktuelle Nachrichten aus verschiedenen Quellen' }
   ];
 
   const handleAddWidget = (widgetType: string) => {
