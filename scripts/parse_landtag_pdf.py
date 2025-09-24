@@ -11,6 +11,7 @@ import os
 import sys
 import datetime
 import hashlib
+import re
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -29,7 +30,6 @@ from parser_core.segments import build_speech_segments
 
 # Neuer TOC-Parser (strukturierte TOC "items")
 try:
-    # scripts/__init__.py stellt sicher, dass "scripts" ein Paket ist, daher ist dieser Import möglich.
     from scripts.parser_core.pipeline import parse_protocol as parse_protocol_new
 except Exception:
     parse_protocol_new = None
@@ -44,6 +44,7 @@ def parse_args():
     ap.add_argument("--layout-min-peak-sep", type=float, default=0.18, help="min_peak_separation_rel für Layout.")
     ap.add_argument("--layout-min-valley-drop", type=float, default=0.30, help="min_valley_rel_drop für Layout.")
     ap.add_argument("--no-new-toc", action="store_true", help="Neuen TOC-Parser deaktivieren (Fallback auf alten Parser).")
+    ap.add_argument("--body-start-pattern", default=r'^(Präsident(?:in)?|Vorsitz(?:ender|ende)|Präsident\.)\b.*:', help="Regex für Body-Start (erste Rede).")
     return ap.parse_args()
 
 
@@ -77,12 +78,40 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
     return f"session_unknown_{short}.json"
 
 
+def _find_first_body_speech_index(speeches: List[Dict[str, Any]], pattern: str) -> int:
+    """
+    Scans the speech segments for the first speech that matches the body-start pattern.
+    Returns the index of that speech or 0 if not found.
+    The matching is tolerant: checks start of speech text and speaker fields if present.
+    """
+    rx = re.compile(pattern, flags=re.IGNORECASE)
+    for i, s in enumerate(speeches):
+        # There are different possible shapes for a speech segment; be permissive:
+        text = s.get("text", "")
+        speaker = s.get("speaker", "") if isinstance(s.get("speaker", ""), str) else ""
+        # Prefer checking explicit speaker field first
+        if speaker and rx.match(speaker.strip()):
+            return i
+        # Otherwise check the beginning of the text (first ~120 chars)
+        head = text.strip().splitlines()[0] if text and isinstance(text, str) else ""
+        if rx.match(head):
+            return i
+        # Some segments present as list of text segments
+        if isinstance(s.get("segments"), list):
+            for seg in s["segments"]:
+                seg_text = seg.get("text", "") if isinstance(seg, dict) else (seg if isinstance(seg, str) else "")
+                if rx.match(seg_text.strip().splitlines()[0] if seg_text else ""):
+                    return i
+    return 0
+
+
 def process_pdf(url: str,
                 force_download: bool,
                 layout_min_peak_sep: float,
                 layout_min_valley_drop: float,
                 externalize_layout_debug: bool = True,
-                use_new_toc: bool = True) -> Dict[str, Any]:
+                use_new_toc: bool = True,
+                body_start_pattern: str = r'^(Präsident(?:in)?|Vorsitz(?:ender|ende)|Präsident\.)\b.*:') -> Dict[str, Any]:
     pdf_path = download_pdf(url, force=force_download)
 
     pages_lines, layout_debug = extract_pages_with_layout(
@@ -121,8 +150,6 @@ def process_pdf(url: str,
     toc2: Dict[str, Any] = {}
     if use_new_toc and parse_protocol_new is not None:
         try:
-            # parse_protocol_new erwartet typischerweise die geflatteten Text-Objekte (flat),
-            # wir übergeben conservative defaults; Fehler werden gefangen.
             toc_bundle = parse_protocol_new(
                 flat,
                 capture_offsets=False,
@@ -136,15 +163,24 @@ def process_pdf(url: str,
                 stop_toc_at_first_body_header=True
             )
             if isinstance(toc_bundle, dict):
-                toc2 = toc_bundle.get("toc", {}) or {}
+                toc2 = toc_bundle.get("toc", {}) or toc_bundle.get("items", {}) or {}
             else:
-                # Manchmal liefert die Pipeline direkt ein TOC-Objekt
                 toc2 = toc_bundle or {}
         except Exception as e:
-            # Fehler beim neuen Parser dürfen nicht zum Abbruch führen
             print(f"[WARN] Neuer TOC-Parser fehlgeschlagen: {e}")
 
     speeches = segment_speeches(flat)
+
+    # --- Neuer Schritt: alles vor der ersten echten Rede abschneiden ---
+    removed_before = 0
+    try:
+        first_idx = _find_first_body_speech_index(speeches, body_start_pattern)
+        if first_idx > 0:
+            removed_before = first_idx
+            speeches = speeches[first_idx:]
+            print(f"[INFO] Entferne {removed_before} vorläufige Segmente (TOC/Deckblatt). Erste Rede erkannt bei Index {first_idx}.")
+    except Exception as e:
+        print(f"[WARN] Fehler bei Erkennung des Body-Starts: {e}")
 
     interjection_stats = cleanup_interjections(speeches)
 
@@ -157,6 +193,23 @@ def process_pdf(url: str,
 
     inline_agenda = extract_agenda(flat)
     link_agenda(inline_agenda, speeches)
+
+    # Falls der neue TOC strukturiert eine Agenda liefert, nutze sie als toc_agenda
+    final_toc_agenda = toc_parts["agenda"]
+    if toc2:
+        # try common keys in structured toc
+        if isinstance(toc2, dict):
+            # flexible heuristics: toc2 may contain 'agenda', 'items' or a list of nodes
+            if toc2.get("agenda"):
+                final_toc_agenda = toc2["agenda"]
+            elif toc2.get("items"):
+                final_toc_agenda = toc2["items"]
+            else:
+                # If toc2 itself is a list/sequence, use it directly
+                if isinstance(toc2, list):
+                    final_toc_agenda = toc2
+        elif isinstance(toc2, list):
+            final_toc_agenda = toc2
 
     payload: Dict[str, Any] = {
         "session": {
@@ -181,7 +234,8 @@ def process_pdf(url: str,
         },
         # Alte TOC-Felder (bestehende Konsumenten bleiben funktionsfähig)
         "toc": toc_full,
-        "toc_agenda": toc_parts["agenda"],
+        # replace or augment toc_agenda with structured agenda if available
+        "toc_agenda": final_toc_agenda,
         "toc_speakers": toc_parts["speakers"],
         "toc_other": toc_parts["other"],
         # Neue, strukturierte TOC-Ausgabe des verbesserten Parsers
@@ -191,7 +245,8 @@ def process_pdf(url: str,
         "cleanup_stats": {
             "footers": footer_stats,
             "interjections": interjection_stats,
-            "reflow": reflow_stats
+            "reflow": reflow_stats,
+            "removed_prelude_speeches": removed_before
         }
     }
 
@@ -277,7 +332,8 @@ def main() -> int:
             layout_min_peak_sep=args.layout_min_peak_sep,
             layout_min_valley_drop=args.layout_min_valley_drop,
             externalize_layout_debug=True,  # Standard: ausgelagerte layout_debug
-            use_new_toc=not args.no_new_toc
+            use_new_toc=not args.no_new_toc,
+            body_start_pattern=args.body_start_pattern
         )
 
         if args.schema_validate:
