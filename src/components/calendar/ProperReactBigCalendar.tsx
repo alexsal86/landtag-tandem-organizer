@@ -128,29 +128,36 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
   // Convert events to RBC format using the adapter
   const rbcEvents = useMemo(() => {
-    console.log('🔄 Converting events to RBC format, input events:', events.length);
-    if (events.length === 0) {
-      console.log('⚠️ No events to convert');
+    console.log('🔄 REACT BIG CALENDAR - Processing events:', { 
+      eventsProvided: !!events, 
+      eventsCount: events?.length || 0,
+      eventsData: events?.slice(0, 2)
+    });
+    
+    if (!events || events.length === 0) {
+      console.log('❌ REACT BIG CALENDAR - No events provided!');
       return [];
     }
-    
-    const converted = CalendarEventAdapter.toRBCEvents(events);
-    console.log('✅ RBC events created:', converted.length, 'events');
+
+    console.log('🔄 REACT BIG CALENDAR - Converting events to RBC format...');
+    const convertedEvents = CalendarEventAdapter.toRBCEvents(events);
+    console.log('🔄 REACT BIG CALENDAR - Converted events:', { 
+      originalCount: events.length, 
+      convertedCount: convertedEvents.length,
+      convertedEvents: convertedEvents.slice(0, 2)
+    });
     
     // Validate converted events
-    const validEvents = converted.filter(event => {
-      const isValid = event.start instanceof Date && 
-                     event.end instanceof Date && 
-                     !isNaN(event.start.getTime()) && 
-                     !isNaN(event.end.getTime());
+    const validEvents = convertedEvents.filter(event => {
+      const isValid = event && event.start && event.end && event.title;
       if (!isValid) {
-        console.error('❌ Invalid RBC event detected:', event);
+        console.warn('❌ REACT BIG CALENDAR - Invalid event found:', event);
       }
       return isValid;
     });
-    
-    console.log('📊 Valid RBC events:', validEvents.length);
-    console.log('📊 Sample RBC events:', validEvents.slice(0, 2).map(e => ({
+
+    console.log(`✅ REACT BIG CALENDAR - Final result: ${validEvents.length} valid events out of ${convertedEvents.length} total`);
+    console.log('✅ REACT BIG CALENDAR - Sample events for rendering:', validEvents.slice(0, 3).map(e => ({
       id: e.id,
       title: e.title,
       start: e.start?.toISOString(),

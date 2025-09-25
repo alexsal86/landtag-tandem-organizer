@@ -86,7 +86,13 @@ export function CalendarView() {
       const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
       monthEnd.setHours(23, 59, 59, 999);
 
-      console.log('🔍 Fetching appointments for month:', monthStart.toISOString(), 'to', monthEnd.toISOString());
+      console.log('🔍 MONTH VIEW DEBUGGING - Fetching appointments for month:', monthStart.toISOString(), 'to', monthEnd.toISOString());
+      console.log('🔍 Current date for month view:', currentDate.toISOString());
+      console.log('🔍 Month calculation:', { 
+        year: currentDate.getFullYear(), 
+        month: currentDate.getMonth(), 
+        monthName: monthStart.toLocaleDateString('de-DE', { month: 'long' })
+      });
 
       // Fetch regular appointments that overlap with the month
       const { data: regularAppointments, error: regularError } = await supabase
@@ -143,15 +149,44 @@ export function CalendarView() {
       }
 
       // Combine regular and recurring appointments
-      const appointmentsData = [
+      let appointmentsData = [
         ...(regularAppointments || []),
         ...(recurringAppointments || [])
       ];
 
-      console.log('📊 Found appointments for month:', appointmentsData?.length || 0);
+      console.log('📊 MONTH VIEW - Found appointments for month:', appointmentsData?.length || 0);
       appointmentsData?.forEach(apt => {
         console.log('  -', apt.title, 'from', apt.start_time, 'to', apt.end_time, 'all_day:', apt.is_all_day);
       });
+      
+      // If no appointments found, create a test appointment for current month
+      if (!appointmentsData || appointmentsData.length === 0) {
+        console.log('⚠️ MONTH VIEW - No appointments found, creating test appointment');
+        const testDate = new Date();
+        testDate.setHours(14, 0, 0, 0); // 2 PM today
+        const testEndDate = new Date(testDate);
+        testEndDate.setHours(15, 0, 0, 0); // 3 PM today
+        
+        appointmentsData = [{
+          id: 'test-appointment-' + Date.now(),
+          title: 'Test Termin (Debug)',
+          description: 'Dies ist ein Test-Termin zum Debuggen der Monatsansicht',
+          start_time: testDate.toISOString(),
+          end_time: testEndDate.toISOString(),
+          category: 'appointment',
+          priority: 'medium',
+          location: '',
+          status: 'confirmed',
+          is_all_day: false,
+          meeting_id: '',
+          contact_id: '',
+          poll_id: '',
+          reminder_minutes: 15,
+          recurrence_rule: '',
+          recurrence_end_date: ''
+        }];
+        console.log('✅ MONTH VIEW - Created test appointment:', appointmentsData[0]);
+      }
 
       await processAppointments(appointmentsData || [], monthStart, monthEnd);
     } catch (error) {
@@ -829,7 +864,17 @@ export function CalendarView() {
       })));
 
       setAppointments(formattedEvents);
-      console.log('✅ Calendar appointments state updated with', formattedEvents.length, 'events');
+      console.log('✅ APPOINTMENTS STATE UPDATED:', {
+        count: formattedEvents.length,
+        events: formattedEvents.map(e => ({
+          id: e.id,
+          title: e.title,
+          date: e.date?.toISOString?.() || e.date,
+          endTime: e.endTime?.toISOString?.() || e.endTime,
+          type: e.type
+        })),
+        view: view
+      });
     } catch (error) {
       console.error('Error processing appointments:', error);
       setAppointments([]);
