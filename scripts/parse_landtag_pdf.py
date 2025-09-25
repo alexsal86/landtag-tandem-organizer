@@ -14,6 +14,7 @@ NEU:
 - Verwendet parse_protocol_with_toc aus segment.py für verbessertes TOC-Parsing,
   das TOPs mit Rednern und Beschlüssen gruppiert.
 - Fügt toc_structured zum Payload hinzu, wenn use_new_toc=True.
+- Import von segment_page statt segment_speeches für Rede-Segmentierung.
 """
 from __future__ import annotations
 import argparse
@@ -29,7 +30,7 @@ from parser_core.downloader import download_pdf
 from parser_core.layout import extract_pages_with_layout
 from parser_core.pdftext import remove_repeated_headers_footers, flatten_pages
 from parser_core.normalize import normalize_line, dehyphenate
-from parser_core.segment import segment_speeches, parse_protocol_with_toc
+from parser_core.segment import segment_page, parse_protocol_with_toc
 from parser_core.agenda import extract_agenda, link_agenda
 from parser_core.metadata import parse_session_info
 from parser_core.schema_def import validate_payload
@@ -133,13 +134,27 @@ def process_pdf(
                 fallback_inline_header=True
             )
             toc_structured = result.get("toc_segments", [])
-            # Optional: Speeches aus neuer Logik, falls segment_speeches ersetzt werden soll
+            # Optional: Speeches aus neuer Logik, falls segment_page ersetzt werden soll
             # speeches = result.get("speeches", speeches)
         except Exception as e:
             print(f"[WARN] Neue TOC-Verarbeitung fehlgeschlagen: {e}")
             toc_structured = {}
-    # Speeches (legacy)
-    speeches = segment_speeches(flat)
+    # Speeches (using segment_page instead of segment_speeches)
+    speeches = []
+    for page in pdfplumber.open(pdf_path).pages:
+        result = segment_page(
+            page,
+            capture_offsets=True,
+            compact_interjections=True,
+            include_interjection_category=False,
+            externalize_interjection_offsets=False,
+            fallback_inline_header=True
+        )
+        if isinstance(result, tuple):
+            page_speeches, _ = result
+        else:
+            page_speeches = result
+        speeches.extend(page_speeches)
     # Trim prelude until first body-speech
     removed_before = 0
     try:
