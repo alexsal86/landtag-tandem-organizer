@@ -15,6 +15,7 @@ NEU:
   das TOPs mit Rednern und Beschlüssen gruppiert.
 - Fügt toc_structured zum Payload hinzu, wenn use_new_toc=True.
 - Import von segment_page statt segment_speeches für Rede-Segmentierung.
+- Hinzugefügt: import pdfplumber für direkten Seiten-Zugriff.
 """
 from __future__ import annotations
 import argparse
@@ -24,6 +25,7 @@ import json
 import os
 import re
 import sys
+import pdfplumber
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 from parser_core.downloader import download_pdf
