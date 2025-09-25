@@ -219,7 +219,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
   }, [onEventResize]);
 
   return (
-    <div className="h-full w-full bg-background">
+    <div className="h-full w-full bg-background min-h-[600px]">
       <DnDCalendar
         localizer={localizer}
         events={rbcEvents}
@@ -240,8 +240,8 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         dayPropGetter={dayPropGetter}
         messages={messages}
         formats={{
-          dayFormat: 'DD',
-          weekdayFormat: 'dddd',
+          dayFormat: 'D',
+          weekdayFormat: 'ddd',
           monthHeaderFormat: 'MMMM YYYY',
           dayHeaderFormat: 'dddd, DD. MMMM YYYY',
           dayRangeHeaderFormat: ({ start, end }) => 
@@ -253,7 +253,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
           timeGutterFormat: 'HH:mm',
           eventTimeRangeFormat: ({ start, end }) => 
             `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
-          dateFormat: 'DD',
+          dateFormat: 'D',
           selectRangeFormat: ({ start, end }) =>
             `${moment(start).format('DD. MMM')} – ${moment(end).format('DD. MMM')}`
         }}
@@ -267,7 +267,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
         defaultView={Views.MONTH}
         className="rbc-calendar"
-        style={{ height: '100%' }}
+        style={{ height: '100%', minHeight: '500px' }}
       />
     </div>
   );

@@ -124,11 +124,77 @@
 /* Month view specific */
 .rbc-month-view {
   border: 1px solid hsl(var(--border));
+  min-height: 500px;
+}
+
+.rbc-month-row {
+  min-height: 80px;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .rbc-date-cell {
-  padding: 0.25rem;
-  border: 1px solid hsl(var(--border));
+  padding: 0.5rem;
+  border-right: 1px solid hsl(var(--border));
+  min-height: 80px;
+  vertical-align: top;
+}
+
+.rbc-date-cell:last-child {
+  border-right: none;
+}
+
+.rbc-date-cell.rbc-off-range {
+  background-color: hsl(var(--muted) / 0.3);
+  color: hsl(var(--muted-foreground));
+}
+
+.rbc-date-cell.rbc-off-range .rbc-button-link {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Month view events */
+.rbc-month-view .rbc-event {
+  margin: 1px 2px;
+  padding: 2px 4px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  border-radius: 3px;
+  max-width: calc(100% - 4px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rbc-month-view .rbc-event.rbc-selected {
+  box-shadow: 0 0 0 2px hsl(var(--primary));
+}
+
+/* Day numbers in month view */
+.rbc-button-link {
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  text-decoration: none;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.rbc-button-link:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+/* More events indicator */
+.rbc-show-more {
+  color: hsl(var(--primary));
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  margin-top: 2px;
+}
+
+.rbc-show-more:hover {
+  text-decoration: underline;
 }
 
 /* Week/Day view specific */
@@ -168,6 +234,53 @@
   
   .rbc-toolbar-label {
     text-align: center;
+  }
+  
+  /* Mobile month view optimizations */
+  .rbc-month-view {
+    min-height: 400px;
+  }
+  
+  .rbc-month-row {
+    min-height: 60px;
+  }
+  
+  .rbc-date-cell {
+    min-height: 60px;
+    padding: 0.25rem;
+  }
+  
+  .rbc-month-view .rbc-event {
+    font-size: 0.6rem;
+    padding: 1px 2px;
+  }
+  
+  .rbc-button-link {
+    font-size: 0.875rem;
+  }
+  
+  .rbc-show-more {
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .rbc-month-view {
+    min-height: 350px;
+  }
+  
+  .rbc-month-row {
+    min-height: 50px;
+  }
+  
+  .rbc-date-cell {
+    min-height: 50px;
+    padding: 0.125rem;
+  }
+  
+  .rbc-month-view .rbc-event {
+    font-size: 0.5rem;
+    padding: 1px;
   }
 }
 

@@ -1078,7 +1078,7 @@ export function CalendarView() {
               {view === "polls" && "Terminabstimmungen"}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 h-[600px]">
             {view === "polls" ? (
               <PollListView />
             ) : loading ? (
