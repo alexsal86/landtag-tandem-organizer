@@ -16,6 +16,7 @@ NEU:
 - Fügt toc_structured zum Payload hinzu, wenn use_new_toc=True.
 - Import von segment_page statt segment_speeches für Rede-Segmentierung.
 - Hinzugefügt: import pdfplumber für direkten Seiten-Zugriff.
+- Fix: Fügt start_page-Feld zu speeches hinzu, um KeyError in link_agenda zu vermeiden.
 """
 from __future__ import annotations
 import argparse
@@ -156,6 +157,9 @@ def process_pdf(
             page_speeches, _ = result
         else:
             page_speeches = result
+        # Füge start_page-Feld hinzu, um KeyError in link_agenda zu vermeiden
+        for speech in page_speeches:
+            speech["start_page"] = speech.get("page")
         speeches.extend(page_speeches)
     # Trim prelude until first body-speech
     removed_before = 0
