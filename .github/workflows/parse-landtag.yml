@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       pdf_url:
-        description: "PDF-URL (leer lassen, wenn du stattdessen eine URLs-Liste nutzen willst)"
+        description: "PDF-URL (leer lassen, wenn URLs-Liste genutzt wird)"
         required: false
         type: string
       list_file:
-        description: "Pfad zur URLs-Liste im Repo (eine URL pro Zeile, Kommentare mit #)"
+        description: "Pfad zur URLs-Liste im Repo (eine URL pro Zeile)"
         required: false
         default: "scripts/urls.txt"
         type: string
@@ -18,7 +18,7 @@ on:
         default: true
         type: boolean
       commit_results:
-        description: "Ergebnisse automatisch in einen Branch committen und PR erstellen"
+        description: "Ergebnisse in Branch committen und PR erstellen"
         required: false
         default: false
         type: boolean
@@ -28,12 +28,18 @@ on:
         default: "automation/parsed-sessions"
         type: string
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   parse:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -54,7 +60,7 @@ jobs:
           elif [ -f "parse_landtag_pdf.py" ]; then
             echo "script=parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
           else
-            echo "Parser-Skript nicht gefunden. Lege es unter scripts/parse_landtag_pdf.py oder parse_landtag_pdf.py an."
+            echo "::error::Parser-Skript nicht gefunden. Lege es unter scripts/parse_landtag_pdf.py an."
             exit 1
           fi
 
@@ -76,7 +82,7 @@ jobs:
             python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" ${FORCE_FLAG}
           else
             if [ ! -f "${{ inputs.list_file }}" ]; then
-              echo "URLs-Liste nicht gefunden: ${{ inputs.list_file }}"
+              echo "::error::URLs-Liste nicht gefunden: ${{ inputs.list_file }}"
               exit 1
             fi
             echo "Starte Parser für URLs-Liste: ${{ inputs.list_file }}"
@@ -89,7 +95,7 @@ jobs:
       - name: Upload artifacts (JSON + Layout)
         uses: actions/upload-artifact@v4
         with:
-          name: parsed-session
+          name: parsed-session-${{ github.run_id }}
           path: |
             data/session_*.json
             data/session_*.layout.json
@@ -104,9 +110,9 @@ jobs:
           title: "Automated: Parsed Landtag sessions"
           commit-message: "Add/update parsed session outputs (JSON + layout)"
           body: |
-            This PR was created automatically by the Parse Landtag PDF workflow.
-            It contains:
-            - session_*.json (speeches, toc_agenda, etc.)
-            - session_*.layout.json (normalized_pages + layout metadata)
+            Automated run of Parse Landtag PDF.
+            Includes:
+            - data/session_*.json (speeches, toc_agenda, etc.)
+            - data/session_*.layout.json (normalized_pages + layout metadata)
           add-paths: |
             data/**
