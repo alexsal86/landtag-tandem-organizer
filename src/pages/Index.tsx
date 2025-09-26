@@ -20,6 +20,7 @@ import TimeTrackingView from "@/components/TimeTrackingView";
 import Administration from "@/pages/Administration";
 import { DecisionOverview } from "@/components/task-decisions/DecisionOverview";
 import { DrucksachenView } from "@/components/DrucksachenView";
+import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -39,6 +40,21 @@ const Index = () => {
   };
   
   const [activeSection, setActiveSection] = useState(() => getActiveSectionFromPath(location.pathname));
+  
+  // Dialog state management
+  const [showCreateAppointmentDialog, setShowCreateAppointmentDialog] = useState(false);
+  
+  // Check URL parameters for dialog state
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const action = urlParams.get('action');
+    
+    if (action === 'create-appointment') {
+      setShowCreateAppointmentDialog(true);
+    } else {
+      setShowCreateAppointmentDialog(false);
+    }
+  }, [location.search]);
 
   // Update active section when URL changes
   useEffect(() => {
@@ -51,6 +67,19 @@ const Index = () => {
   const handleSectionChange = (section: string) => {
     const path = section === 'dashboard' ? '/' : `/${section}`;
     navigate(path);
+  };
+  
+  // Handle dialog close
+  const handleCreateAppointmentDialogChange = (open: boolean) => {
+    setShowCreateAppointmentDialog(open);
+    if (!open) {
+      // Remove action parameter from URL when closing dialog
+      const urlParams = new URLSearchParams(location.search);
+      urlParams.delete('action');
+      const newSearch = urlParams.toString();
+      const newUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
+      navigate(newUrl, { replace: true });
+    }
   };
 
   useEffect(() => {
@@ -159,6 +188,12 @@ const Index = () => {
           <main className="flex-1">
             {renderActiveSection()}
           </main>
+          
+          {/* Create Appointment Dialog */}
+          <CreateAppointmentDialog
+            open={showCreateAppointmentDialog}
+            onOpenChange={handleCreateAppointmentDialogChange}
+          />
         </div>
       </SidebarProvider>
     </ThemeProvider>

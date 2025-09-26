@@ -1050,7 +1050,7 @@ export function CalendarView() {
           <div className="flex gap-2">
             <Button 
               className="gap-2"
-              onClick={() => navigate("/appointments/new")}
+              onClick={() => navigate("/calendar?action=create-appointment")}
             >
               <Plus className="h-4 w-4" />
               Neuer Termin
@@ -1150,12 +1150,12 @@ export function CalendarView() {
                        onEventSelect={handleAppointmentClick}
                        onEventDrop={handleEventDrop}
                        onEventResize={handleEventResize}
-                       onSelectSlot={(slotInfo) => {
-                         // Navigate to appointment creation with pre-filled date/time
-                         const startDate = slotInfo.start.toISOString();
-                         const endDate = slotInfo.end.toISOString();
-                         navigate(`/appointments/new?start=${startDate}&end=${endDate}`);
-                       }}
+                        onSelectSlot={(slotInfo) => {
+                          // Navigate to appointment creation with pre-filled date/time and show dialog
+                          const startDate = slotInfo.start.toISOString();
+                          const endDate = slotInfo.end.toISOString();
+                          navigate(`/calendar?action=create-appointment&start=${startDate}&end=${endDate}`);
+                        }}
                      />
                    );
                 })()}

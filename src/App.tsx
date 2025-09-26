@@ -2,12 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
-import CreateAppointment from "./pages/CreateAppointment";
 import CreateTask from "./pages/CreateTask";
 import ContactDetail from "./pages/ContactDetail";
 import EditContact from "./pages/EditContact";
@@ -59,7 +58,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/contacts/new" element={<CreateContact />} />
             <Route path="/contacts/import" element={<ImportContacts />} />
-            <Route path="/appointments/new" element={<CreateAppointment />} />
+            <Route path="/appointments/new" element={<Navigate to="/calendar?action=create-appointment" replace />} />
             <Route path="/tasks/new" element={<CreateTask />} />
             
             <Route path="/contacts/:id" element={<ContactDetail />} />
