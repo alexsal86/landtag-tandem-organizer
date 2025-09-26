@@ -1,3 +1,4 @@
+```python
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -197,6 +198,7 @@ def process_pdf(
             "start_time": meta.get("start_time"),
             "end_time": meta.get("end_time"),
             "location": meta.get("location"),
+            "lunch_break": meta.get("lunch_break"),  # Neu
         },
         "stats": {"pages": len(pages_lines), "speeches": len(speeches)},
         "layout": {"applied": True, "reason": "forced-always"},
@@ -341,3 +343,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+```
