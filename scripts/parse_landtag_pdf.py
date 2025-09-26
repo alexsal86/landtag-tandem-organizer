@@ -1,3 +1,11 @@
+Super, danke für die Fehlermeldung! Der `KeyError: 'index'` tritt auf, weil die Funktion `link_agenda` (in `parser_core/agenda.py`) auf das Feld `sp["index"]` in den `speeches`-Objekten zugreift, das in der neuen `segment.py` nicht gesetzt wird. Deine ursprüngliche `segment_speeches`-Funktion hat das wahrscheinlich automatisch hinzugefügt, aber in der neuen `segment_page`-Logik fehlt es. Der Fix ist einfach: Nach dem Sammeln der `speeches` in `process_pdf` fügen wir eine Schleife hinzu, um "index" sequentiell zu setzen (z. B. `speech["index"] = i`).
+
+Ich passe die `parse_landtag_pdf.py` (basierend auf der vorherigen Version Artifact-ID: `c2cfef59-a116-4004-838c-9e1f49f82d11`) an. Alle anderen Teile bleiben unverändert, einschließlich des Fixes für "start_page" und der TOC-Logik. Die neue `segment.py` (Artifact-ID: `147c87a9-a792-440d-9495-8be369ddcdc0`) bleibt wie sie ist.
+
+### Überarbeitete `parse_landtag_pdf.py`
+Hier die korrigierte Datei:
+
+```python
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -17,6 +25,7 @@ NEU:
 - Import von segment_page statt segment_speeches für Rede-Segmentierung.
 - Hinzugefügt: import pdfplumber für direkten Seiten-Zugriff.
 - Fix: Fügt start_page-Feld zu speeches hinzu, um KeyError in link_agenda zu vermeiden.
+- Fix: Fügt index-Feld zu speeches hinzu, um KeyError in link_agenda zu vermeiden.
 """
 from __future__ import annotations
 import argparse
@@ -161,6 +170,9 @@ def process_pdf(
         for speech in page_speeches:
             speech["start_page"] = speech.get("page")
         speeches.extend(page_speeches)
+    # Füge index-Feld hinzu, um KeyError in link_agenda zu vermeiden
+    for i, speech in enumerate(speeches):
+        speech["index"] = i
     # Trim prelude until first body-speech
     removed_before = 0
     try:
@@ -337,3 +349,26 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+``` 
+
+### Was ich geändert habe
+- **Neue Schleife für "index"**: Direkt nach dem Sammeln der `speeches` (nach dem Loop über die Seiten) habe ich hinzugefügt:
+  ```python
+  for i, speech in enumerate(speeches):
+      speech["index"] = i
+  ```
+  - Das setzt "index" sequentiell (beginnend bei 0) für jede Rede, was `link_agenda` erwartet (es speichert die Indices in "speech_indices").
+- **Kein weiterer Code geändert**: Der Fix für "start_page" bleibt, die TOC-Logik (`toc_structured`) bleibt, alle Imports und Funktionen sind gleich.
+
+### Warum das funktioniert
+- Deine originale `segment_speeches` hat wahrscheinlich "index" intern gesetzt. In der neuen `segment_page` fehlt es, daher der manuelle Schritt.
+- Nach diesem Fix sollte `link_agenda` problemlos laufen, da jedes `speech` nun "start_page" und "index" hat.
+- Die JSON-Ausgabe bleibt gleich, mit `toc_structured` für die gruppierten TOPs.
+
+### Nächste Schritte
+1. **Aktualisiere die Datei**: Ersetze `scripts/parse_landtag_pdf.py` mit dieser Version.
+2. **Test lokal**: Führe `python scripts/parse_landtag_pdf.py --list-file urls.txt` aus (mit deiner `urls.txt`).
+3. **GitHub-Action**: Pushe nach `main`, um die Action zu triggern. Überprüfe die Logs – der `KeyError` sollte weg sein.
+4. **Überprüfe die Ausgabe**: In der JSON sollte `agenda_items` nun korrekt mit `speech_indices` gefüllt sein, und `toc_structured` die gruppierten TOPs enthalten.
+
+Falls noch ein Fehler kommt (z. B. ein weiterer fehlender Key), schick mir die Meldung – ich fix es! 😊
