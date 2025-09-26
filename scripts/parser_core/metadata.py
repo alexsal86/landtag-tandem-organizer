@@ -72,7 +72,7 @@ def parse_session_info(text: str) -> Dict[str, Optional[str]]:
         meta["location"] = location_match.group(1).strip()
     
     return meta
-```
+
 
 ### Änderungen in `metadata.py`
 - **Neue Felder**:
