@@ -1,0 +1,112 @@
+name: Parse Landtag PDF
+
+on:
+  workflow_dispatch:
+    inputs:
+      pdf_url:
+        description: "PDF-URL (leer lassen, wenn du stattdessen eine URLs-Liste nutzen willst)"
+        required: false
+        type: string
+      list_file:
+        description: "Pfad zur URLs-Liste im Repo (eine URL pro Zeile, Kommentare mit #)"
+        required: false
+        default: "scripts/urls.txt"
+        type: string
+      force_download:
+        description: "PDF(s) immer neu laden"
+        required: false
+        default: true
+        type: boolean
+      commit_results:
+        description: "Ergebnisse automatisch in einen Branch committen und PR erstellen"
+        required: false
+        default: false
+        type: boolean
+      target_branch:
+        description: "Branch für Commit/PR (nur wenn commit_results=true)"
+        required: false
+        default: "automation/parsed-sessions"
+        type: string
+
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          pip install pdfplumber requests jsonschema
+
+      - name: Detect parser script path
+        id: detect
+        shell: bash
+        run: |
+          if [ -f "scripts/parse_landtag_pdf.py" ]; then
+            echo "script=scripts/parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
+          elif [ -f "parse_landtag_pdf.py" ]; then
+            echo "script=parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
+          else
+            echo "Parser-Skript nicht gefunden. Lege es unter scripts/parse_landtag_pdf.py oder parse_landtag_pdf.py an."
+            exit 1
+          fi
+
+      - name: Run parser
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/scripts:${{ github.workspace }}/parser_core
+        shell: bash
+        run: |
+          set -euo pipefail
+          FORCE_FLAG=""
+          if [ "${{ inputs.force_download }}" = "true" ]; then
+            FORCE_FLAG="--force-download"
+          fi
+
+          mkdir -p data
+
+          if [ -n "${{ inputs.pdf_url }}" ]; then
+            echo "Starte Parser für einzelne URL: ${{ inputs.pdf_url }}"
+            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" ${FORCE_FLAG}
+          else
+            if [ ! -f "${{ inputs.list_file }}" ]; then
+              echo "URLs-Liste nicht gefunden: ${{ inputs.list_file }}"
+              exit 1
+            fi
+            echo "Starte Parser für URLs-Liste: ${{ inputs.list_file }}"
+            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" ${FORCE_FLAG}
+          fi
+
+          echo "Parserlauf abgeschlossen. Dateien in data/:"
+          ls -lah data || true
+
+      - name: Upload artifacts (JSON + Layout)
+        uses: actions/upload-artifact@v4
+        with:
+          name: parsed-session
+          path: |
+            data/session_*.json
+            data/session_*.layout.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Create PR with results (optional)
+        if: ${{ inputs.commit_results == true }}
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ inputs.target_branch }}
+          title: "Automated: Parsed Landtag sessions"
+          commit-message: "Add/update parsed session outputs (JSON + layout)"
+          body: |
+            This PR was created automatically by the Parse Landtag PDF workflow.
+            It contains:
+            - session_*.json (speeches, toc_agenda, etc.)
+            - session_*.layout.json (normalized_pages + layout metadata)
+          add-paths: |
+            data/**
