@@ -401,10 +401,11 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
         else:
             if cur:
                 # Interjektionen in Klammern flach entfernen
-                line_clean = re.sub(
-                    r"\(([^()]{0,160}?(?:Beifall|Zuruf|Heiterkeit|Lachen|Unruhe|Zwischenruf|Widerspruch|Glocke|Zurufe)[^()]*)\)",
-                    " ",
-                )
+           line_clean = re.sub(
+    r"\(([^()]{0,160}?(?:Beifall|Zuruf|Heiterkeit|Lachen|Unruhe|Zwischenruf|Widerspruch|Glocke|Zurufe)[^()]*)\)",
+    " ",
+    line
+)
                 buf.append(line_clean(line))
     flush()
     # Re-index
