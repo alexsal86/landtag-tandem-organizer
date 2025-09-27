@@ -46,7 +46,7 @@ import { TRANSFORMERS } from '@lexical/markdown';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import CollaborationStatus from './CollaborationStatus';
 import { YjsProvider, useYjsProvider } from './collaboration/YjsProvider';
-import { ManualYjsCollaborationPlugin } from './collaboration/ManualYjsCollaborationPlugin';
+import { LexicalYjsCollaborationPlugin } from './collaboration/LexicalYjsCollaborationPlugin';
 import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
 import { sanitizeContent, parseContentSafely, createDebouncedContentUpdate, areContentsEquivalent } from '@/utils/contentValidation';
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
@@ -604,8 +604,8 @@ function YjsCollaborationEditor(props: any) {
               <AdvancedCursorPlugin />
             </div>
             
-            <ManualYjsCollaborationPlugin
-              documentId={props.documentId}
+            <LexicalYjsCollaborationPlugin
+              id={props.documentId}
               shouldBootstrap={true}
             />
             

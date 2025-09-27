@@ -223,7 +223,7 @@ function YjsCollaborationEditor(props: any) {
               ErrorBoundary={LexicalErrorBoundary}
             />
             
-            {/* Official Yjs Collaboration Plugin */}
+            {/* Fixed: Improved Yjs Collaboration Plugin for plaintext collaboration */}
             <LexicalYjsCollaborationPlugin
               id={props.documentId}
               shouldBootstrap={true}
