@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (verbessert v1.5.2)
+parse_landtag_pdf.py (verbessert v1.6.0)
 
 Änderungen:
+- Robustes Inhaltsverzeichnis: Nutzung von parser_core.pipeline.split_toc_and_body + parser_core.toc_parser.parse_toc
+  statt heuristischem assemble_toc_from_pages. Ergebnis wird als payload["toc"] abgelegt.
 - Spalten-Trenner: Bei zweispaltigen Seiten wird zwischen linker und rechter Spalte eine leere Zeile eingefügt,
   damit das TOC-Parsing keine Zeilen über den Spaltenumbruch hinweg zusammenführt.
 - SPEAKER_RX behoben (Syntaxfehler entfernt, robustere Erkennung von Partei + Seitenzahlen).
@@ -27,6 +29,11 @@ from pathlib import Path
 
 import pdfplumber
 import requests
+
+# Robustes TOC aus parser_core einbinden
+# Hinweis: Skript sollte aus dem 'scripts/'-Ordner ausgeführt werden, sodass 'parser_core' importierbar ist.
+from parser_core.pipeline import split_toc_and_body
+from parser_core.toc_parser import parse_toc as parse_toc_items
 
 # ------------------------- Downloader -------------------------
 
@@ -188,7 +195,21 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
         norm_pages.append(norm)
     return norm_pages, metas
 
-# ------------------------- TOC parsing -------------------------
+# ------------------------- Hilfen für robustes TOC -------------------------
+
+def pages_to_flat_lines(pages_lines: List[List[str]]) -> List[Dict[str, Any]]:
+    """
+    Baut flache Zeilenobjekte für parser_core.pipeline:
+    [{ "page": int, "line_index": int, "text": str }, ...]
+    Leere Zeilen werden beibehalten (wichtig für TOC-Abschluss).
+    """
+    flat: List[Dict[str, Any]] = []
+    for p_idx, lines in enumerate(pages_lines, start=1):
+        for i, t in enumerate(lines):
+            flat.append({"page": p_idx, "line_index": i, "text": t})
+    return flat
+
+# ------------------------- TOC parsing (Legacy – nicht mehr verwendet, belassen für Referenz) -------------------------
 
 TOC_HEADER_RX = re.compile(r"^\s*(I\s*N\s*H\s*A\s*L\s*T|INHALT)\s*$", re.IGNORECASE)
 PAGE_ONLY_RX = re.compile(r"^\s*\d{3,5}\s*$")
@@ -213,6 +234,7 @@ def strip_trailing_pages_and_dots(s: str) -> str:
     return re.sub(r"\s{2,}", " ", s).strip()
 
 def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -> List[Dict[str, Any]]:
+    # Legacy: belassen, aber nicht mehr verwendet
     if not pages_lines:
         return []
     first_pages: List[str] = []
@@ -460,10 +482,17 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     meta = parse_session_info(all_text)
     meta["source_pdf_url"] = url
     meta["extracted_at"] = dt.datetime.utcnow().isoformat() + "Z"
-    # TOC agenda (aus den ersten Seiten)
-    toc_agenda = assemble_toc_from_pages(pages, look_pages=3)
-    # Speeches
+
+    # Robustes TOC via parser_core
+    flat = pages_to_flat_lines(pages)
+    toc_lines, body_lines, _ = split_toc_and_body(flat, stop_at_first_body_header=True)
+    toc = {"items": []}
+    if toc_lines:
+        toc = parse_toc_items(toc_lines)
+
+    # Speeches (bewährte Segmentierung beibehalten)
     speeches = segment_speeches_from_pages(pages)
+
     payload: Dict[str, Any] = {
         "session": {
             "number": meta.get("number"),
@@ -485,7 +514,9 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
             "applied": True,
             "reason": "auto-detected-columns"
         },
-        "toc_agenda": toc_agenda,
+        # Neuer, robuster TOC
+        "toc": toc,
+        # Legacy-Feld (nicht mehr befüllt): "toc_agenda": [],
         "speeches": speeches
     }
     # Sidecar (layout + normalized_pages)
@@ -521,7 +552,7 @@ def write_outputs(payload: Dict[str, Any], out_dir: Path) -> Tuple[Path, Optiona
 # ------------------------- CLI -------------------------
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Minimaler Parser: TOC + Speeches (von Null).")
+    p = argparse.ArgumentParser(description="Minimaler Parser: TOC + Speeches (robuster TOC aus parser_core).")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--single-url", help="PDF-URL oder lokaler Pfad")
     g.add_argument("--list-file", help="Datei mit Zeilenweise URLs")
