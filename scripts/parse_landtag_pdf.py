@@ -1,24 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (neu, minimal, eigenständig)
+parse_landtag_pdf.py (verbessert)
 
-Ziele:
-- Minimaler, robuster Parser ohne Abhängigkeit auf bestehende parser_core-Module.
-- Zwei-Spalten-Erkennung direkt aus pdfplumber-Wortkoordinaten.
-- TOC (INHALT) als einfache Agenda mit Titeln und Sprecherlisten, ohne Seitenzahlen/Leader-Dots.
-- Rede-Segmentierung im Body (Header mit "Rolle Name [Partei]:"), alles vor "Präsident(in) ...:" wird entfernt.
-- Layout-Sidecar mit normalized_pages + Spalten-Metadaten.
-
-Ergebnis-Payload (ohne schwere Annotationen):
-{
-  "session": {...},
-  "sitting": {...},
-  "stats": {...},
-  "layout": {...},
-  "toc_agenda": [ { number, title, docket, speakers[] } ... ],
-  "speeches": [ { index, speaker, role, party, start_page, text } ... ]
-}
+Verbesserungen:
+- Besseres TOC-Parsing für multilinige Titel und Sprecher.
+- Dynamische Spalten-Erkennung (1 oder 2 Spalten).
+- Befüllen von agenda_items aus TOC.
+- Extraktion von Start- und Endzeit.
+- Normalisierung von Speaker-Namen und erweiterte Interjektions-Entfernung.
+- Fehlerbehandlung für Download und Parsing.
+- Footer-Entfernung in Normalization.
+- Schema-Version auf 1.1-improved gesetzt.
 """
 from __future__ import annotations
 
@@ -39,18 +32,21 @@ import requests
 # ------------------------- Downloader -------------------------
 
 def download_pdf(url_or_path: str, cache_dir: str = ".cache/pdfs", force: bool = False) -> Path:
-    p = Path(url_or_path)
-    if p.exists():
-        return p
-    Path(cache_dir).mkdir(parents=True, exist_ok=True)
-    h = hashlib.sha256(url_or_path.encode("utf-8")).hexdigest()[:16]
-    out = Path(cache_dir) / f"{h}.pdf"
-    if out.exists() and not force:
+    try:
+        p = Path(url_or_path)
+        if p.exists():
+            return p
+        Path(cache_dir).mkdir(parents=True, exist_ok=True)
+        h = hashlib.sha256(url_or_path.encode("utf-8")).hexdigest()[:16]
+        out = Path(cache_dir) / f"{h}.pdf"
+        if out.exists() and not force:
+            return out
+        r = requests.get(url_or_path, timeout=60)
+        r.raise_for_status()
+        out.write_bytes(r.content)
         return out
-    r = requests.get(url_or_path, timeout=60)
-    r.raise_for_status()
-    out.write_bytes(r.content)
-    return out
+    except Exception as e:
+        raise ValueError(f"Fehler beim Download: {e}")
 
 # ------------------------- Layout extraction -------------------------
 
@@ -124,51 +120,76 @@ def _words_to_lines_text(words: List[dict]) -> List[str]:
         out.append(" ".join(w["text"] for w in line))
     return out
 
-def extract_two_column_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
+def detect_columns(words: List[dict], page_width: float) -> int:
+    mids = [(w["x0"] + w["x1"]) / 2.0 for w in words]
+    split_x = _histogram_split_x(mids, page_width)
+    if split_x is None:
+        return 1
+    left_count = sum(1 for m in mids if m < split_x)
+    right_count = len(mids) - left_count
+    if min(left_count, right_count) / len(mids) < 0.3:
+        return 1  # Zu ungleich, wahrscheinlich eine Spalte
+    return 2
+
+def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
     pages_text: List[List[str]] = []
     metas: List[PageMeta] = []
-    with pdfplumber.open(str(pdf_path)) as pdf:
-        for page in pdf.pages:
-            pw = float(page.width or 0.0)
-            words = page.extract_words(use_text_flow=False, keep_blank_chars=False) or []
-            if not words:
-                pages_text.append([])
-                metas.append(PageMeta(page.page_number, "empty", 0.0, 1, 0.0, 0.0, 0, pw))
-                continue
-            mids = [ (w["x0"] + w["x1"]) / 2.0 for w in words ]
-            split_x = _histogram_split_x(mids, pw) or (pw * 0.5)
-            left_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) < split_x]
-            right_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) >= split_x]
-            total = max(1, len(words))
-            left_frac = len(left_words) / total
-            right_frac = len(right_words) / total
-            # Zeilen: erst links top→bottom, dann rechts
-            left_lines = _words_to_lines_text(left_words)
-            right_lines = _words_to_lines_text(right_words)
-            lines = [l for l in left_lines + right_lines if l.strip()]
-            pages_text.append(lines)
-            metas.append(PageMeta(
-                page=page.page_number,
-                method="two-column",
-                split_x=round(split_x, 2),
-                columns=2,
-                left_fraction=round(left_frac, 3),
-                right_fraction=round(right_frac, 3),
-                words=len(words),
-                page_width=round(pw, 2)
-            ))
-    # Normalize lines (collapse spaces)
-    norm_pages = []
-    for lines in pages_text:
-        norm = []
-        for l in lines:
-            l = l.replace(ELLIPSIS, ".")
-            l = DOT_LEADERS.sub(" ", l)
-            l = re.sub(r"\s+", " ", l).strip()
-            if l:
-                norm.append(l)
-        norm_pages.append(norm)
-    return norm_pages, metas
+    try:
+        with pdfplumber.open(str(pdf_path)) as pdf:
+            for page in pdf.pages:
+                pw = float(page.width or 0.0)
+                words = page.extract_words(use_text_flow=False, keep_blank_chars=False) or []
+                if not words:
+                    pages_text.append([])
+                    metas.append(PageMeta(page.page_number, "empty", 0.0, 1, 0.0, 0.0, 0, pw))
+                    continue
+                mids = [(w["x0"] + w["x1"]) / 2.0 for w in words]
+                columns = detect_columns(words, pw)
+                if columns == 1:
+                    split_x = 0.0
+                    left_words = words
+                    right_words = []
+                    left_frac = 1.0
+                    right_frac = 0.0
+                    method = "one-column"
+                else:
+                    split_x = _histogram_split_x(mids, pw) or (pw * 0.5)
+                    left_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) < split_x]
+                    right_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) >= split_x]
+                    total = max(1, len(words))
+                    left_frac = len(left_words) / total
+                    right_frac = len(right_words) / total
+                    method = "two-column"
+                # Zeilen: erst links top→bottom, dann rechts
+                left_lines = _words_to_lines_text(left_words)
+                right_lines = _words_to_lines_text(right_words)
+                lines = [l for l in left_lines + right_lines if l.strip()]
+                pages_text.append(lines)
+                metas.append(PageMeta(
+                    page=page.page_number,
+                    method=method,
+                    split_x=round(split_x, 2),
+                    columns=columns,
+                    left_fraction=round(left_frac, 3),
+                    right_fraction=round(right_frac, 3),
+                    words=len(words),
+                    page_width=round(pw, 2)
+                ))
+        # Normalize lines (collapse spaces, remove footers)
+        norm_pages = []
+        for lines in pages_text:
+            norm = []
+            for l in lines:
+                l = l.replace(ELLIPSIS, ".")
+                l = DOT_LEADERS.sub(" ", l)
+                l = re.sub(r"Landtag von Baden-Württemberg – .*", "", l)  # Footer-Entfernung
+                l = re.sub(r"\s+", " ", l).strip()
+                if l:
+                    norm.append(l)
+            norm_pages.append(norm)
+        return norm_pages, metas
+    except Exception as e:
+        raise ValueError(f"Fehler beim PDF-Parsing: {e}")
 
 # ------------------------- TOC parsing -------------------------
 
@@ -189,9 +210,9 @@ def strip_trailing_pages_and_dots(s: str) -> str:
     s = re.sub(r"[ .–-]+$", "", s)
     return re.sub(r"\s{2,}", " ", s).strip()
 
-def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 2) -> List[Dict[str, Any]]:
+def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 3) -> List[Dict[str, Any]]:
     """
-    Baut Agenda aus den ersten Seiten (typisch 1–2) auf.
+    Baut Agenda aus den ersten Seiten (typisch 1–3) auf.
     """
     if not pages:
         return []
@@ -207,18 +228,26 @@ def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 2) -> List
     lines = first_pages[start:] if start < len(first_pages) else first_pages
     items: List[Dict[str, Any]] = []
     cur: Optional[Dict[str, Any]] = None
+    cur_title_lines: List[str] = []  # Sammle Titel-Teile
 
     def finalize():
-        nonlocal cur, items
+        nonlocal cur, items, cur_title_lines
         if cur:
-            # Cleanup title
-            cur["title"] = strip_trailing_pages_and_dots(cur["title"])
+            title = " ".join(cur_title_lines).strip()
+            if title.endswith('-'):
+                title = title[:-1]  # Entferne trailing Bindestrich
+            cur["title"] = strip_trailing_pages_and_dots(title)
             # cleanup speakers
             cur["speakers"] = [strip_trailing_pages_and_dots(s) for s in cur["speakers"]]
             # remove empty
             cur["speakers"] = [s for s in cur["speakers"] if s]
+            # Inline-Docket extrahieren
+            drs = DRS_RX.findall(cur["title"])
+            if drs:
+                cur["docket"] = drs[-1]
             items.append(cur)
             cur = None
+            cur_title_lines = []
 
     i = 0
     while i < len(lines):
@@ -229,47 +258,40 @@ def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 2) -> List
         if PAGE_ONLY_RX.match(ln):
             i += 1
             continue
-
         # Neuer nummerierter TOP?
         mnum = AGENDA_NUM_RX.match(ln)
         is_agenda_keyword = bool(AGENDA_KEYWORDS_RX.search(ln))
         has_drs_inline = bool(DRS_RX.search(ln))
         looks_new = bool(mnum) or is_agenda_keyword or ("Drucksache" in ln and DOT_LEADERS.search(ln))
-
+        is_speaker = bool(SPEAKER_RX.match(strip_trailing_pages_and_dots(ln)))
         if looks_new:
             finalize()
             if mnum:
                 num = int(mnum.group(1))
                 rest = strip_trailing_pages_and_dots(mnum.group(2))
                 cur = {"number": num, "title": rest, "docket": None, "speakers": []}
+                cur_title_lines = [rest]
             else:
                 cur = {"number": None, "title": strip_trailing_pages_and_dots(ln), "docket": None, "speakers": []}
-
+                cur_title_lines = [strip_trailing_pages_and_dots(ln)]
             # Docket von nächster kurzer Zeile anhängen, falls geteilt
             if "Drucksache" in ln and "/" not in ln and i + 1 < len(lines):
                 nxt = lines[i + 1].strip()
                 if re.match(r"^\d+/\d+$", nxt) or re.match(r"^\d{3,5}$", nxt):
-                    cur["title"] = strip_trailing_pages_and_dots(cur["title"] + " " + nxt)
+                    cur_title_lines.append(nxt)
                     i += 1
-            # Inline-Docket extrahieren
-            drs = DRS_RX.findall(cur["title"])
-            if drs:
-                cur["docket"] = drs[-1]
             i += 1
             continue
-
         # Sprecherzeile?
-        if cur and SPEAKER_RX.match(strip_trailing_pages_and_dots(ln)):
+        if cur and is_speaker:
             cur["speakers"].append(strip_trailing_pages_and_dots(ln))
             i += 1
             continue
-
         # Fortsetzungszeilen zum Titel
         if cur:
-            joiner = " " if not cur["title"].endswith("-") else ""
-            cur["title"] = (cur["title"].rstrip("-") + joiner + strip_trailing_pages_and_dots(ln)).strip()
+            joiner = " " if not cur_title_lines[-1].endswith("-") else ""
+            cur_title_lines[-1] = (cur_title_lines[-1].rstrip("-") + joiner + strip_trailing_pages_and_dots(ln)).strip()
         i += 1
-
     finalize()
     # Deduplizieren (gleiche Titel nacheinander)
     dedup: List[Dict[str, Any]] = []
@@ -300,6 +322,9 @@ HEADER_RX = re.compile(
     re.IGNORECASE
 )
 
+def normalize_speaker(name: str) -> str:
+    return " ".join(word.capitalize() for word in name.strip().split())
+
 def find_first_body_header(lines: List[str]) -> int:
     for i, l in enumerate(lines):
         if HEADER_RX.match(l):
@@ -317,7 +342,6 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
         for l in lines:
             if l.strip():
                 flat.append((p_idx, l))
-
     # Body-Beginn: suche erste Header-Zeile "Rolle Name ...:"
     start_idx = 0
     for i, (_p, t) in enumerate(flat):
@@ -328,11 +352,9 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
             if start_idx == 0:
                 start_idx = i
     body = flat[start_idx:] if start_idx < len(flat) else []
-
     speeches: List[Dict[str, Any]] = []
     cur: Optional[Dict[str, Any]] = None
     buf: List[str] = []
-
     def flush():
         nonlocal cur, buf
         if cur:
@@ -343,13 +365,12 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
             speeches.append(cur)
             cur = None
             buf = []
-
     for p, line in body:
         m = HEADER_RX.match(line)
         if m:
             flush()
             role = m.group("role")
-            name = m.group("name").strip()
+            name = normalize_speaker(m.group("name"))
             party = m.group("party")
             cur = {
                 "index": len(speeches),
@@ -361,8 +382,9 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
             }
         else:
             if cur:
-                # Interjektionen in Klammern flach entfernen
-                line_clean = re.sub(r"\(([^()]{0,160}?(?:Beifall|Zuruf|Heiterkeit|Lachen|Unruhe|Zwischenruf|Widerspruch|Glocke|Zurufe)[^()]*)\)", " ", line)
+                # Interjektionen in Klammern flach entfernen (erweitert)
+                line_clean = re.sub(r"\([^()]*?(Beifall|Zuruf|Heiterkeit|Lachen|Unruhe|Zwischenruf|Widerspruch|Glocke|Zurufe)[^()]*?\)", " ", line, flags=re.IGNORECASE | re.DOTALL)
+                line_clean = re.sub(r"\s+", " ", line_clean).strip()
                 buf.append(line_clean)
     flush()
     # Re-index
@@ -388,10 +410,16 @@ def parse_session_info(all_text: str) -> Dict[str, Any]:
         day = int(m3.group(1)); mon = m3.group(2).lower().replace("ä","ae").replace("ö","oe").replace("ü","ue").replace("ß","ss")
         year = int(m3.group(3)); mm = MONTHS.get(mon)
         if mm: date = f"{year:04d}-{mm:02d}-{day:02d}"
+    start_time_match = re.search(r"Beginn:\s*(\d{1,2}:\d{2})\s*Uhr", all_text)
+    start_time = start_time_match.group(1) if start_time_match else None
+    end_time_match = re.search(r"Schluss:\s*(\d{1,2}:\d{2})\s*Uhr", all_text)
+    end_time = end_time_match.group(1) if end_time_match else None
     return {
         "number": number,
         "legislative_period": leg,
-        "date": date
+        "date": date,
+        "start_time": start_time,
+        "end_time": end_time
     }
 
 # ------------------------- Main pipeline -------------------------
@@ -413,20 +441,26 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
 
 def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     pdf_path = download_pdf(url, force=force_download)
-    pages, metas = extract_two_column_lines(pdf_path)
-
+    pages, metas = extract_lines(pdf_path)
     # All text for metadata
     all_text = "\n".join("\n".join(p) for p in pages)
     meta = parse_session_info(all_text)
     meta["source_pdf_url"] = url
     meta["extracted_at"] = dt.datetime.utcnow().isoformat() + "Z"
-
     # TOC agenda (aus den ersten Seiten)
-    toc_agenda = assemble_toc_from_pages(pages, look_pages=2)
-
+    toc_agenda = assemble_toc_from_pages(pages, look_pages=3)
     # Speeches
     speeches = segment_speeches_from_pages(pages)
-
+    # Agenda items aus TOC befüllen
+    agenda_items = []
+    for item in toc_agenda:
+        agenda_items.append({
+            "code": f"Punkt {item['number']}" if item['number'] else None,
+            "title": item['title'],
+            "docket": item['docket'],
+            "speakers": item['speakers'],
+            "start_page": None  # Optional: Parse aus TOC-Seitenzahlen
+        })
     payload: Dict[str, Any] = {
         "session": {
             "number": meta.get("number"),
@@ -436,8 +470,8 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
             "extracted_at": meta.get("extracted_at")
         },
         "sitting": {
-            "start_time": None,
-            "end_time": None,
+            "start_time": meta.get("start_time"),
+            "end_time": meta.get("end_time"),
             "location": None
         },
         "stats": {
@@ -449,9 +483,9 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
             "reason": "two-column-by-words"
         },
         "toc_agenda": toc_agenda,
+        "agenda_items": agenda_items,
         "speeches": speeches
     }
-
     # Sidecar (layout + normalized_pages)
     payload["_layout_debug_internal"] = {
         "layout_metadata": [m.__dict__ for m in metas],
@@ -466,21 +500,18 @@ def write_outputs(payload: Dict[str, Any], out_dir: Path) -> Tuple[Path, Optiona
     base = build_session_filename(payload)
     session_path = out_dir / base
     layout_file = base.replace(".json", ".layout.json")
-
     # move sidecar out
     sidecar = payload.pop("_layout_debug_internal", None)
-    payload["schema_version"] = "1.0-minimal"
-
+    payload["schema_version"] = "1.1-improved"
     with session_path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
-
     sidecar_path = None
     if sidecar is not None:
         sidecar_path = session_path.parent / layout_file
         with sidecar_path.open("w", encoding="utf-8") as f:
             json.dump({
                 "session_ref": session_path.name,
-                "schema_version": "1.0-layout-debug",
+                "schema_version": "1.1-layout-debug",
                 "layout_debug": sidecar
             }, f, ensure_ascii=False, indent=2)
     return session_path, sidecar_path
@@ -488,7 +519,7 @@ def write_outputs(payload: Dict[str, Any], out_dir: Path) -> Tuple[Path, Optiona
 # ------------------------- CLI -------------------------
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Minimaler Parser: TOC + Speeches (von Null).")
+    p = argparse.ArgumentParser(description="Verbesserter Parser: TOC + Speeches.")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--single-url", help="PDF-URL oder lokaler Pfad")
     g.add_argument("--list-file", help="Datei mit Zeilenweise URLs")
@@ -513,9 +544,12 @@ def main() -> int:
     out_dir = Path("data")
     for url in urls:
         print(f"[INFO] Verarbeite {url}")
-        payload = process_pdf(url, force_download=args.force_download)
-        sp, lp = write_outputs(payload, out_dir)
-        print(f"[INFO] geschrieben: {sp.name} {'+' if lp else ''} {lp.name if lp else ''}")
+        try:
+            payload = process_pdf(url, force_download=args.force_download)
+            sp, lp = write_outputs(payload, out_dir)
+            print(f"[INFO] geschrieben: {sp.name} {'+' if lp else ''} {lp.name if lp else ''}")
+        except ValueError as e:
+            print(f"[ERROR] Bei {url}: {e}")
     return 0
 
 if __name__ == "__main__":
