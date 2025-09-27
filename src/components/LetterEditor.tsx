@@ -147,9 +147,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [showPagination, setShowPagination] = useState(true);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
-  const channelRef = useRef<any>(null);
-  const broadcastTimeoutRef = useRef<NodeJS.Timeout>();
   const isUpdatingFromRemoteRef = useRef(false);
+  const latestContentRef = useRef<{content: string, contentNodes?: any}>({ content: '' });
 
   const statusLabels = {
     draft: 'Entwurf',
@@ -342,65 +341,20 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     };
   }, [editedLetter, canEdit, letter?.id, showPagination]); // WICHTIG: showPagination als Dependency hinzugefügt
 
-  // Real-time collaboration setup
+  // Real-time collaboration status (now handled by Yjs)
   useEffect(() => {
     if (!isOpen || !user || !letter?.id) return;
 
-    const channel = supabase.channel(`letter-${letter.id}`)
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const users = Object.keys(state).map(key => {
-          const presence = (state[key][0] as any);
-          return presence?.user_id;
-        }).filter(u => u && u !== user.id);
-        
-        setActiveUsers(users);
-      })
-      .on('broadcast', { event: 'content_change' }, (payload) => {
-        const { user_id, field, value } = payload.payload;
-        if (user_id !== user.id) {
-          isUpdatingFromRemoteRef.current = true;
-          
-          if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
-          }
-          
-          setEditedLetter(prev => ({
-            ...prev,
-            [field]: value
-          }));
-          
-          setTimeout(() => {
-            isUpdatingFromRemoteRef.current = false;
-          }, 500);
-          
-          toast({
-            title: "Live-Update",
-            description: `Ein anderer Benutzer bearbeitet gerade...`,
-            duration: 1500,
-          });
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('user_id', user.id)
-            .single();
-          
-          await channel.track({
-            user_id: user.id,
-            user_name: profile?.display_name || 'Unbekannt',
-            online_at: new Date().toISOString()
-          });
-        }
-      });
-
-    channelRef.current = channel;
+    // Set collaboration as connected since Yjs handles real-time sync
+    setCollaborationStatus('connected');
+    
+    // Clear active users since Yjs awareness will handle this
+    setActiveUsers([]);
+    
+    console.log('[LetterEditor] Yjs collaboration mode - Supabase Realtime disabled');
 
     return () => {
-      supabase.removeChannel(channel);
+      setCollaborationStatus('disconnected');
     };
   }, [isOpen, user, letter?.id]);
 
@@ -941,48 +895,19 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   };
 
   const broadcastContentChange = (field: string, value: string, htmlValue?: string) => {
-    if (!channelRef.current || !user) return;
-    
-    if (broadcastTimeoutRef.current) {
-      clearTimeout(broadcastTimeoutRef.current);
-    }
-    
-    broadcastTimeoutRef.current = setTimeout(() => {
-      const payload: any = {
-        type: 'content_change',
-        field,
-        value,
-        user_id: user.id,
-        user_name: user.user_metadata?.display_name || 'Unbekannt',
-        timestamp: new Date().toISOString()
-      };
-
-      if (htmlValue && field === 'content') {
-        payload.content_html = htmlValue;
-      }
-      
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'content_change',
-        payload
-      });
-    }, 1000); // Increased from 500ms to 1000ms for better performance
+    // Deactivated: Yjs collaboration handles all real-time synchronization
+    console.log('[LetterEditor] Supabase broadcast disabled - using Yjs for:', field);
+    return;
   };
 
   // Removed old toolbar handlers - EnhancedLexicalEditor handles formatting internally
 
-  // Ref to store latest content for immediate saving
-  const latestContentRef = useRef<{ content: string; contentNodes: string | null }>({
-    content: editedLetter.content,
-    contentNodes: editedLetter.content_nodes
-  });
-
   const handleAutoSave = async (immediateContent?: string, immediateContentNodes?: string) => {
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
     
-    // Use immediate parameters if provided, otherwise use current state
-    const contentToSave = immediateContent !== undefined ? immediateContent : editedLetter.content;
-    const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : editedLetter.content_nodes;
+    // Use immediate parameters if provided, otherwise use latest ref values, fallback to state
+    const contentToSave = immediateContent !== undefined ? immediateContent : latestContentRef.current.content || editedLetter.content;
+    const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : latestContentRef.current.contentNodes || editedLetter.content_nodes;
     
     console.log('=== AUTO-SAVE STARTED ===');
     console.log('Current showPagination value:', showPagination);  
@@ -1803,8 +1728,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   onChange={(e) => {
                     const value = e.target.value;
                     setEditedLetter(prev => ({ ...prev, title: value, subject: value }));
-                    broadcastContentChange('title', value);
-                    broadcastContentChange('subject', value);
+                    // Broadcasting disabled - Yjs handles synchronization
                   }}
                   disabled={!canEdit}
                   className="text-2xl font-bold border-none px-0 focus-visible:ring-0 bg-transparent"
@@ -1860,7 +1784,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                        }
                      }, 300); // Shorter delay for content changes
                     
-                    broadcastContentChange('content', content?.trim() || '');
+                    // Content synchronization handled by Yjs collaboration
                    }}
                   placeholder="Hier können Sie Ihren Brief verfassen..."
                   documentId={letter?.id}
@@ -1922,7 +1846,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           const newStatus = 'review';
           setEditedLetter(prev => ({ ...prev, status: newStatus as any }));
           setIsProofreadingMode(true);
-          broadcastContentChange('status', newStatus);
+          // Broadcasting disabled - Yjs handles synchronization
           
           setSaving(true);
           try {
@@ -1959,7 +1883,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
           const newStatus = 'approved';
           setEditedLetter(prev => ({ ...prev, status: newStatus as any }));
           setIsProofreadingMode(false);
-          broadcastContentChange('status', newStatus);
+          // Broadcasting disabled - Yjs handles synchronization
           
           setSaving(true);
           try {
