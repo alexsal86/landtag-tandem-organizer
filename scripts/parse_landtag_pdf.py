@@ -3,13 +3,13 @@
 """
 parse_landtag_pdf.py (verbessert v1.4)
 
-Verbesserungen basierend auf TOC-Struktur-Analyse:
-- Separate Handhabung von Hauptpunkten, Unterpunkten (Beschlussempfehlung, Drucksache).
-- Bessere Multiline-Titel-Merging und Trennung durch Absätze.
-- Beschluss als separates Feld.
-- Sprecher-Liste pro Punkt, mit Seitenzahlen.
-- Verbesserte Regex für Sprecher und Beschluss.
-- Hierarchische Subitems für vertiefende Infos.
+Verbesserungen basierend auf TOC-Struktur aus Screenshots:
+- Erkennung von Hauptpunkten (nummeriert oder Keywords wie 'Aktuelle Debatte').
+- Multiline-Titel-Merging bis zum nächsten Punkt oder Sprecher.
+- Sprecher-Listen unter Titeln sammeln, bis neuer Punkt (größerer Absatz simuliert durch leere Lines oder new Punkt).
+- Beschluss als separater Eintrag oder Feld.
+- Vertiefende Infos (Drucksache, beantragt von) als Sub-Title.
+- Keine strikte Spaltenannahme; Fluss-Parsing mit Indentation-Simulation via Regex.
 """
 from __future__ import annotations
 
@@ -21,8 +21,9 @@ import os
 import re
 import sys
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 
 import pdfplumber
 import requests
@@ -87,6 +88,8 @@ def _histogram_split_x(word_centers: List[float], page_width: float, bins: int =
         return None
     peaks.sort(reverse=True)
     (c1, i1), (c2, i2) = sorted(peaks[:2], key=lambda x: x[1])
+    center1 = (edges[i1][0] + edges[i1][1]) / 2.0
+    center2 = (edges[i2][0] + edges[i2][1]) / 2.0
     # tal finden
     valley = None
     valley_i = None
@@ -138,7 +141,7 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
                 pages_text.append([])
                 metas.append(PageMeta(page.page_number, "empty", 0.0, 1, 0.0, 0.0, 0, pw))
                 continue
-            mids = [ (w["x0"] + w["x1"]) / 2.0 for w in words ]
+            mids = [(w["x0"] + w["x1"]) / 2.0 for w in words ]
             split_x = _histogram_split_x(mids, pw) or (pw * 0.5)
             left_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) < split_x]
             right_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) >= split_x]
@@ -170,6 +173,8 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
             l = re.sub(r"\s+", " ", l).strip()
             if l:
                 norm.append(l)
+            else:
+                norm.append("")  # Behalte leere Lines für Absatz-Erkennung
         norm_pages.append(norm)
     return norm_pages, metas
 
@@ -181,9 +186,10 @@ AGENDA_NUM_RX = re.compile(r"^\s*(\d+)\.\s+(.*)$")
 AGENDA_KEYWORDS_RX = re.compile(r"\b(Beschluss|Beschlussempfehlung|Zweite Beratung|Aktuelle Debatte|Erste Beratung|Dritte Beratung)\b", re.IGNORECASE)
 DRS_RX = re.compile(r"(?:Drucksache|Drs\.)\s*(\d+/\d+)", re.IGNORECASE)
 SPEAKER_RX = re.compile(
-    r"^\s*(Abg\.|Präsidentin|Präsident|Vizepräsidentin|Vizepräsident|Minister(?:in)?|Staatssekretär(?:in)?)\s+(.{1,120}?)(?:\s+(AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN))?\s*$",
+    r"^\s*(Abg\.|Präsidentin|Präsident|Vizepräsidentin|Vizepräsident|Minister(?:in)?|Staatssekretär(?:in)?)\s+(.{1,120}?)(?:\s+(AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN))?\s*(?:\.{2,}\s*(\d{4}(?:,\s*\d{4})*))?$",
     re.IGNORECASE
 )
+BESCHLUSS_RX = re.compile(r"Beschluss\s*\.{2,}\s*(\d{4})", re.IGNORECASE)
 
 def strip_trailing_pages_and_dots(s: str) -> str:
     s = DOT_LEADERS.sub(" ", s.replace(ELLIPSIS, " "))
@@ -192,90 +198,102 @@ def strip_trailing_pages_and_dots(s: str) -> str:
     return re.sub(r"\s{2,}", " ", s).strip()
 
 def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 3) -> List[Dict[str, Any]]:
-    """
-    Baut Agenda aus den ersten Seiten (typisch 1–3) auf.
-    """
     if not pages:
         return []
     first_pages = []
     for lines in pages[:look_pages]:
         first_pages.extend(lines)
-    # finde "INHALT"
     start = 0
     for i, l in enumerate(first_pages):
         if TOC_HEADER_RX.match(l):
             start = i + 1
             break
-    lines = first_pages[start:] if start < len(first_pages) else first_pages
+    lines = first_pages[start:]
     items: List[Dict[str, Any]] = []
-    cur: Optional[Dict[str, Any]] = None
-    cur_title_lines: List[str] = []
-    def finalize():
-        nonlocal cur, items, cur_title_lines
-        if cur:
-            title = " ".join(cur_title_lines).strip()
-            cur["title"] = strip_trailing_pages_and_dots(title)
-            cur["speakers"] = [strip_trailing_pages_and_dots(s) for s in cur["speakers"] if s]
-            items.append(cur)
-            cur = None
-            cur_title_lines = []
-    i = 0
-    while i < len(lines):
-        ln = lines[i].strip()
-        if not ln:
-            i += 1
+    cur_item = None
+    cur_title = []
+    cur_subtitle = []
+    cur_speakers = []
+    cur_beschluss = None
+    in_subtitle = False
+    for ln in lines:
+        if not ln.strip():
+            # Größerer Absatz: Neuer Punkt
+            if cur_item:
+                cur_item["title"] = strip_trailing_pages_and_dots(" ".join(cur_title))
+                cur_item["subtitle"] = strip_trailing_pages_and_dots(" ".join(cur_subtitle)) if cur_subtitle else None
+                cur_item["speakers"] = cur_speakers
+                cur_item["beschluss"] = cur_beschluss
+                drs = DRS_RX.findall(cur_item["title"] or "") + DRS_RX.findall(cur_item["subtitle"] or "")
+                if drs:
+                    cur_item["docket"] = drs[-1]
+                items.append(cur_item)
+                cur_item = None
+                cur_title = []
+                cur_subtitle = []
+                cur_speakers = []
+                cur_beschluss = None
+                in_subtitle = False
             continue
-        if PAGE_ONLY_RX.match(ln):
-            i += 1
-            continue
-        # Neuer nummerierter TOP?
         mnum = AGENDA_NUM_RX.match(ln)
-        is_agenda_keyword = bool(AGENDA_KEYWORDS_RX.search(ln))
-        has_drs_inline = bool(DRS_RX.search(ln))
-        looks_new = bool(mnum) or is_agenda_keyword or ("Drucksache" in ln and DOT_LEADERS.search(ln))
-        if looks_new:
-            finalize()
-            if mnum:
-                num = int(mnum.group(1))
-                rest = strip_trailing_pages_and_dots(mnum.group(2))
-                cur = {"number": num, "title": rest, "docket": None, "speakers": []}
+        is_keyword = bool(AGENDA_KEYWORDS_RX.search(ln))
+        m_speaker = SPEAKER_RX.match(ln)
+        m_beschluss = BESCHLUSS_RX.match(ln)
+        if mnum or is_keyword:
+            if cur_item:
+                # Finalize previous
+                cur_item["title"] = strip_trailing_pages_and_dots(" ".join(cur_title))
+                cur_item["subtitle"] = strip_trailing_pages_and_dots(" ".join(cur_subtitle)) if cur_subtitle else None
+                cur_item["speakers"] = cur_speakers
+                cur_item["beschluss"] = cur_beschluss
+                drs = DRS_RX.findall(cur_item["title"] or "") + DRS_RX.findall(cur_item["subtitle"] or "")
+                if drs:
+                    cur_item["docket"] = drs[-1]
+                items.append(cur_item)
+            cur_item = {"number": int(mnum.group(1)) if mnum else None, "title": "", "subtitle": None, "docket": None, "speakers": [], "beschluss": None}
+            cur_title = [mnum.group(2) if mnum else ln]
+            in_subtitle = False
+        elif m_speaker:
+            role = m_speaker.group(1)
+            name = m_speaker.group(2).strip()
+            party = m_speaker.group(3)
+            pages = m_speaker.group(4)
+            cur_speakers.append({"role": role, "name": name, "party": party, "pages": pages})
+        elif m_beschluss:
+            cur_beschluss = m_beschluss.group(1)
+        else:
+            if "Drucksache" in ln or "beantragt von" in ln:
+                in_subtitle = True
+            if in_subtitle:
+                joiner = " " if not cur_subtitle or not cur_subtitle[-1].endswith("-") else ""
+                if cur_subtitle:
+                    cur_subtitle[-1] = (cur_subtitle[-1].rstrip("-") + joiner + strip_trailing_pages_and_dots(ln)).strip()
+                else:
+                    cur_subtitle = [strip_trailing_pages_and_dots(ln)]
             else:
-                cur = {"number": None, "title": strip_trailing_pages_and_dots(ln), "docket": None, "speakers": []}
-            # Docket von nächster kurzer Zeile anhängen, falls geteilt
-            if "Drucksache" in ln and "/" not in ln and i + 1 < len(lines):
-                nxt = lines[i + 1].strip()
-                if re.match(r"^\d+/\d+$", nxt) or re.match(r"^\d{3,5}$", nxt):
-                    cur["title"] = strip_trailing_pages_and_dots(cur["title"] + " " + nxt)
-                    i += 1
-            # Inline-Docket extrahieren
-            drs = DRS_RX.findall(cur["title"])
-            if drs:
-                cur["docket"] = drs[-1]
-            i += 1
-            continue
-        # Sprecherzeile?
-        if cur and SPEAKER_RX.match(strip_trailing_pages_and_dots(ln)):
-            cur["speakers"].append(strip_trailing_pages_and_dots(ln))
-            i += 1
-            continue
-        # Fortsetzungszeilen zum Titel
-        if cur:
-            joiner = " " if not cur["title"].endswith("-") else ""
-            cur["title"] = (cur["title"].rstrip("-") + joiner + strip_trailing_pages_and_dots(ln)).strip()
-        i += 1
-    finalize()
-    # Deduplizieren (gleiche Titel nacheinander)
-    dedup: List[Dict[str, Any]] = []
+                joiner = " " if not cur_title or not cur_title[-1].endswith("-") else ""
+                if cur_title:
+                    cur_title[-1] = (cur_title[-1].rstrip("-") + joiner + strip_trailing_pages_and_dots(ln)).strip()
+                else:
+                    cur_title = [strip_trailing_pages_and_dots(ln)]
+    if cur_item:
+        cur_item["title"] = strip_trailing_pages_and_dots(" ".join(cur_title))
+        cur_item["subtitle"] = strip_trailing_pages_and_dots(" ".join(cur_subtitle)) if cur_subtitle else None
+        cur_item["speakers"] = cur_speakers
+        cur_item["beschluss"] = cur_beschluss
+        drs = DRS_RX.findall(cur_item["title"] or "") + DRS_RX.findall(cur_item["subtitle"] or "")
+        if drs:
+            cur_item["docket"] = drs[-1]
+        items.append(cur_item)
+    # Dedup
+    dedup = []
     seen = set()
     for it in items:
         key = (it.get("number"), it["title"].lower())
         if key in seen:
-            # merge speakers
             if dedup:
                 last = dedup[-1]
-                for s in it["speakers"]:
-                    if s not in last["speakers"]:
-                        last["speakers"].append(s)
+                last["speakers"].extend([s for s in it["speakers"] if s not in last["speakers"]])
             continue
         seen.add(key)
         dedup.append(it)
