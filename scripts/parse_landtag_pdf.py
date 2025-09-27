@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (verbessert v1.4)
+parse_landtag_pdf.py (verbessert v1.5)
 
 Verbesserungen basierend auf TOC-Struktur aus Screenshots:
 - Erkennung von Hauptpunkten (nummeriert oder Keywords wie 'Aktuelle Debatte').
@@ -10,6 +10,13 @@ Verbesserungen basierend auf TOC-Struktur aus Screenshots:
 - Beschluss als separater Eintrag oder Feld.
 - Vertiefende Infos (Drucksache, beantragt von) als Sub-Title.
 - Keine strikte Spaltenannahme; Fluss-Parsing mit Indentation-Simulation via Regex.
+
+Änderungen in v1.5:
+- SPEAKER_RX behoben (Syntaxfehler entfernt, robustere Erkennung von Partei + Seitenzahlen).
+- 'pages'-Namenskonflikt in assemble_toc_from_pages beseitigt.
+- detect_columns wird in extract_lines tatsächlich genutzt (1- vs 2-spaltig).
+- Leere Zeilen werden erhalten (keine Vorab-Filterung).
+- Konsistente Layout-Metadaten (method/columns/set fractions abhängig vom Ergebnis).
 """
 from __future__ import annotations
 
@@ -21,7 +28,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from pathlib import Path
 
@@ -141,40 +148,52 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
                 pages_text.append([])
                 metas.append(PageMeta(page.page_number, "empty", 0.0, 1, 0.0, 0.0, 0, pw))
                 continue
+
+            columns = detect_columns(words, pw)
             mids = [(w["x0"] + w["x1"]) / 2.0 for w in words ]
             split_x = _histogram_split_x(mids, pw) or (pw * 0.5)
-            left_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) < split_x]
-            right_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) >= split_x]
-            total = max(1, len(words))
-            left_frac = len(left_words) / total
-            right_frac = len(right_words) / total
-            # Zeilen: erst links top→bottom, dann rechts
-            left_lines = _words_to_lines_text(left_words)
-            right_lines = _words_to_lines_text(right_words)
-            lines = [l for l in left_lines + right_lines if l.strip()]
+
+            if columns == 1:
+                lines = _words_to_lines_text(words)
+                left_frac = 1.0
+                right_frac = 0.0
+                method = "single-column"
+                split_val = 0.0
+            else:
+                left_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) < split_x]
+                right_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) >= split_x]
+                total = max(1, len(words))
+                left_frac = len(left_words) / total
+                right_frac = len(right_words) / total
+                left_lines = _words_to_lines_text(left_words)
+                right_lines = _words_to_lines_text(right_words)
+                # WICHTIG: leere Zeilen NICHT vorher verwerfen (Absatz-Erkennung)
+                lines = left_lines + right_lines
+                method = "two-column"
+                split_val = round(split_x, 2)
+
             pages_text.append(lines)
             metas.append(PageMeta(
                 page=page.page_number,
-                method="two-column",
-                split_x=round(split_x, 2),
-                columns=2,
+                method=method,
+                split_x=split_val,
+                columns=columns,
                 left_fraction=round(left_frac, 3),
                 right_fraction=round(right_frac, 3),
                 words=len(words),
                 page_width=round(pw, 2)
             ))
-    # Normalize lines (collapse spaces)
-    norm_pages = []
+
+    # Normalize lines (Punkte, Ellipsen, Whitespace), leere Zeilen erhalten
+    norm_pages: List[List[str]] = []
     for lines in pages_text:
-        norm = []
+        norm: List[str] = []
         for l in lines:
             l = l.replace(ELLIPSIS, ".")
             l = DOT_LEADERS.sub(" ", l)
             l = re.sub(r"\s+", " ", l).strip()
-            if l:
-                norm.append(l)
-            else:
-                norm.append("")  # Behalte leere Lines für Absatz-Erkennung
+            # Leere Zeilen erhalten (als echte Leerzeile)
+            norm.append(l)
         norm_pages.append(norm)
     return norm_pages, metas
 
@@ -185,8 +204,13 @@ PAGE_ONLY_RX = re.compile(r"^\s*\d{3,5}\s*$")
 AGENDA_NUM_RX = re.compile(r"^\s*(\d+)\.\s+(.*)$")
 AGENDA_KEYWORDS_RX = re.compile(r"\b(Beschluss|Beschlussempfehlung|Zweite Beratung|Aktuelle Debatte|Erste Beratung|Dritte Beratung)\b", re.IGNORECASE)
 DRS_RX = re.compile(r"(?:Drucksache|Drs\.)\s*(\d+/\d+)", re.IGNORECASE)
+
+# Sprecherzeilen im TOC (mit optionaler Partei und Seitenangabe am Ende)
 SPEAKER_RX = re.compile(
-    r"^\s*(Abg\.|Präsidentin|Präsident|Vizepräsidentin|Vizepräsident|Minister(?:in)?|Staatssekretär(?:in)?)\s+(.{1,120}?)(?:\s+(AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN))?\s*(?:\.{2,}\s*(\d{4}(?:,\s*\d{4})*))?$",
+    r"^\s*(Abg\.|Präsidentin|Präsident|Vizepräsidentin|Vizepräsident|Minister(?:in)?|Staatssekretär(?:in)?)\s+"
+    r"(.{1,120}?)"
+    r"(?:\s+\(?(AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN)\)?)?"
+    r"\s*(?:\.{2,}|\s+)\s*(\d{1,4}(?:\s*,\s*\d{1,4})*)\s*$",
     re.IGNORECASE
 )
 BESCHLUSS_RX = re.compile(r"Beschluss\s*\.{2,}\s*(\d{4})", re.IGNORECASE)
@@ -197,11 +221,11 @@ def strip_trailing_pages_and_dots(s: str) -> str:
     s = re.sub(r"[ .–-]+$", "", s)
     return re.sub(r"\s{2,}", " ", s).strip()
 
-def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 3) -> List[Dict[str, Any]]:
-    if not pages:
+def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -> List[Dict[str, Any]]:
+    if not pages_lines:
         return []
-    first_pages = []
-    for lines in pages[:look_pages]:
+    first_pages: List[str] = []
+    for lines in pages_lines[:look_pages]:
         first_pages.extend(lines)
     start = 0
     for i, l in enumerate(first_pages):
@@ -210,12 +234,13 @@ def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 3) -> List
             break
     lines = first_pages[start:]
     items: List[Dict[str, Any]] = []
-    cur_item = None
-    cur_title = []
-    cur_subtitle = []
-    cur_speakers = []
-    cur_beschluss = None
+    cur_item: Optional[Dict[str, Any]] = None
+    cur_title: List[str] = []
+    cur_subtitle: List[str] = []
+    cur_speakers: List[Dict[str, Any]] = []
+    cur_beschluss: Optional[str] = None
     in_subtitle = False
+
     for ln in lines:
         if not ln.strip():
             # Größerer Absatz: Neuer Punkt
@@ -235,10 +260,12 @@ def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 3) -> List
                 cur_beschluss = None
                 in_subtitle = False
             continue
+
         mnum = AGENDA_NUM_RX.match(ln)
         is_keyword = bool(AGENDA_KEYWORDS_RX.search(ln))
         m_speaker = SPEAKER_RX.match(ln)
         m_beschluss = BESCHLUSS_RX.match(ln)
+
         if mnum or is_keyword:
             if cur_item:
                 # Finalize previous
@@ -252,17 +279,23 @@ def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 3) -> List
                 items.append(cur_item)
             cur_item = {"number": int(mnum.group(1)) if mnum else None, "title": "", "subtitle": None, "docket": None, "speakers": [], "beschluss": None}
             cur_title = [mnum.group(2) if mnum else ln]
+            cur_subtitle = []
+            cur_speakers = []
+            cur_beschluss = None
             in_subtitle = False
+
         elif m_speaker:
             role = m_speaker.group(1)
             name = m_speaker.group(2).strip()
             party = m_speaker.group(3)
-            pages = m_speaker.group(4)
-            cur_speakers.append({"role": role, "name": name, "party": party, "pages": pages})
+            pages_str = m_speaker.group(4)
+            cur_speakers.append({"role": role, "name": name, "party": party, "pages": pages_str})
+
         elif m_beschluss:
             cur_beschluss = m_beschluss.group(1)
+
         else:
-            if "Drucksache" in ln or "beantragt von" in ln:
+            if "Drucksache" in ln or "Drs." in ln or "beantragt von" in ln:
                 in_subtitle = True
             if in_subtitle:
                 joiner = " " if not cur_subtitle or not cur_subtitle[-1].endswith("-") else ""
@@ -276,6 +309,7 @@ def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 3) -> List
                     cur_title[-1] = (cur_title[-1].rstrip("-") + joiner + strip_trailing_pages_and_dots(ln)).strip()
                 else:
                     cur_title = [strip_trailing_pages_and_dots(ln)]
+
     if cur_item:
         cur_item["title"] = strip_trailing_pages_and_dots(" ".join(cur_title))
         cur_item["subtitle"] = strip_trailing_pages_and_dots(" ".join(cur_subtitle)) if cur_subtitle else None
@@ -285,15 +319,16 @@ def assemble_toc_from_pages(pages: List[List[str]], look_pages: int = 3) -> List
         if drs:
             cur_item["docket"] = drs[-1]
         items.append(cur_item)
+
     # Dedup
-    dedup = []
+    dedup: List[Dict[str, Any]] = []
     seen = set()
     for it in items:
-        key = (it.get("number"), it["title"].lower())
+        key = (it.get("number"), (it["title"] or "").lower())
         if key in seen:
             if dedup:
                 last = dedup[-1]
-                last["speakers"].extend([s for s in it["speakers"] if s not in last["speakers"]])
+                last["speakers"].extend([s for s in it.get("speakers", []) if s not in last.get("speakers", [])])
             continue
         seen.add(key)
         dedup.append(it)
@@ -314,10 +349,8 @@ HEADER_RX = re.compile(
 def find_first_body_header(lines: List[str]) -> int:
     for i, l in enumerate(lines):
         if HEADER_RX.match(l):
-            # erste echte Rede meist Präsident(in) ...
             if re.match(r"^\s*Präsident", l, re.IGNORECASE):
                 return i
-            # falls keine Präsident(in) vorher, nimm erste Header-Zeile
             return i
     return 0
 
@@ -345,7 +378,6 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
         nonlocal cur, buf
         if cur:
             text = "\n".join(buf).strip()
-            # einfacher Reflow: Doppel-Leerzeilen vermeiden
             text = re.sub(r"\n{3,}", "\n\n", text)
             cur["text"] = text
             speeches.append(cur)
@@ -369,8 +401,11 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
         else:
             if cur:
                 # Interjektionen in Klammern flach entfernen
-                line_clean = re.sub(r"\(([^()]{0,160}?(?:Beifall|Zuruf|Heiterkeit|Lachen|Unruhe|Zwischenruf|Widerspruch|Glocke|Zurufe)[^()]*)\)", " ", line)
-                buf.append(line_clean)
+                line_clean = re.sub(
+                    r"\(([^()]{0,160}?(?:Beifall|Zuruf|Heiterkeit|Lachen|Unruhe|Zwischenruf|Widerspruch|Glocke|Zurufe)[^()]*)\)",
+                    " ",
+                )
+                buf.append(line_clean(line))
     flush()
     # Re-index
     for i, sp in enumerate(speeches):
@@ -449,7 +484,7 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
         },
         "layout": {
             "applied": True,
-            "reason": "two-column-by-words"
+            "reason": "auto-detected-columns"
         },
         "toc_agenda": toc_agenda,
         "speeches": speeches
