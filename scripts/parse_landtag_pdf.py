@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (verbessert v1.6.0)
+parse_landtag_pdf.py (robuster TOC-Parser integriert, v2.0.0)
 
-Änderungen:
-- Robustes Inhaltsverzeichnis: Nutzung von parser_core.pipeline.split_toc_and_body + parser_core.toc_parser.parse_toc
-  statt heuristischem assemble_toc_from_pages. Ergebnis wird als payload["toc"] abgelegt.
+Änderungen in dieser Version:
+- Robustes Inhaltsverzeichnis direkt in dieser Datei implementiert (keine Imports anderer Scripts).
+  - TOC/Body-Trennung: looks_like_inhalt_heading + is_body_start_line + split_toc_and_body
+  - TOC-Parsing: parse_toc(flat_lines) erzeugt strukturierte Items mit Nummer, Titel, Subentries, Rednern, Drs.
 - Spalten-Trenner: Bei zweispaltigen Seiten wird zwischen linker und rechter Spalte eine leere Zeile eingefügt,
   damit das TOC-Parsing keine Zeilen über den Spaltenumbruch hinweg zusammenführt.
-- SPEAKER_RX behoben (Syntaxfehler entfernt, robustere Erkennung von Partei + Seitenzahlen).
-- 'pages'-Namenskonflikt in assemble_toc_from_pages beseitigt.
-- detect_columns wird in extract_lines tatsächlich genutzt (1- vs 2-spaltig).
 - Leere Zeilen werden erhalten (keine Vorab-Filterung).
-- Konsistente Layout-Metadaten.
-- FIX: korrekter re.sub-Aufruf in segment_speeches_from_pages, konsistente Einrückung.
+- Bestehende Rede-Segmentierung beibehalten.
+- Ergebnis-JSON: neues Feld "toc" (statt "toc_agenda"). Legacy-Funktion assemble_toc_from_pages bleibt als Referenz enthalten, wird aber nicht mehr genutzt.
 """
 from __future__ import annotations
 
@@ -23,17 +21,13 @@ import hashlib
 import json
 import re
 import sys
+import unicodedata
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 
 import pdfplumber
 import requests
-
-# Robustes TOC aus parser_core einbinden
-# Hinweis: Skript sollte aus dem 'scripts/'-Ordner ausgeführt werden, sodass 'parser_core' importierbar ist.
-from parser_core.pipeline import split_toc_and_body
-from parser_core.toc_parser import parse_toc as parse_toc_items
 
 # ------------------------- Downloader -------------------------
 
@@ -195,12 +189,371 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
         norm_pages.append(norm)
     return norm_pages, metas
 
-# ------------------------- Hilfen für robustes TOC -------------------------
+# ------------------------- Robust TOC splitter & parser (inline) -------------------------
+
+def _nfkc(s: str) -> str:
+    return unicodedata.normalize("NFKC", s or "")
+
+# Header-Erkennung (Body-Start)
+ROLE_TOKENS = [
+    r"Abg\.", r"Präsidentin", r"Präsident", r"Vizepräsidentin", r"Vizepräsident",
+    r"Ministerpräsident(?:in)?", r"Minister(?:in)?", r"Staatssekretär(?:in)?"
+]
+PARTY_TOKENS = r"(AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN)"
+HEADER_LINE_RE = re.compile(
+    rf"^\s*(?P<role>{'|'.join(ROLE_TOKENS)})\s+[^\n:]+:\s*$",
+    re.IGNORECASE
+)
+
+# "INHALT" auch gesperrt (I N H A L T)
+INHALT_HEADING_RE = re.compile(r"^\s*I\s*N\s*H\s*A\s*L\s*T\s*$", re.IGNORECASE)
+PROTOKOLL_HEADING_RE = re.compile(r"^\s*Protokoll(\b|$)", re.IGNORECASE)
+
+def looks_like_inhalt_heading(line: str) -> bool:
+    t = _nfkc(line).strip()
+    if INHALT_HEADING_RE.match(t):
+        return True
+    return t.upper() == "INHALT"
+
+def is_body_start_line(line: str) -> bool:
+    t = _nfkc(line).rstrip()
+    if PROTOKOLL_HEADING_RE.match(t):
+        return True
+    if HEADER_LINE_RE.match(t):
+        return True
+    return False
+
+def split_toc_and_body(
+    flat_lines: List[Dict[str, Any]],
+    stop_at_first_body_header: bool = True
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
+    """
+    Trennt TOC-Zeilen und Body-Zeilen (Protokoll).
+    Rückgabe: (toc_lines, body_lines, meta)
+    meta = { "inhalt_found": bool, "body_start_index": int|None, "body_start_reason": "protokoll"|"role_header"|None }
+    """
+    toc_lines: List[Dict[str, Any]] = []
+    body_lines: List[Dict[str, Any]] = []
+    in_toc = False
+    body_start_idx: Optional[int] = None
+    body_start_reason: Optional[str] = None
+
+    for idx, obj in enumerate(flat_lines):
+        text = _nfkc(obj.get("text") or "")
+        # leere Zeilen behalten wir im aktuellen Modus
+        if not text.strip():
+            if in_toc:
+                toc_lines.append(obj)
+            else:
+                body_lines.append(obj)
+            continue
+
+        if not in_toc:
+            if looks_like_inhalt_heading(text):
+                in_toc = True
+                toc_lines.append(obj)
+                continue
+            if is_body_start_line(text):
+                body_start_idx = idx
+                body_start_reason = "protokoll" if PROTOKOLL_HEADING_RE.match(text) else "role_header"
+                body_lines.extend(flat_lines[idx:])
+                break
+            # Kopfbereich ignorieren
+            continue
+
+        # Wir sind im TOC-Bereich
+        if PROTOKOLL_HEADING_RE.match(text):
+            body_start_idx = idx
+            body_start_reason = "protokoll"
+            body_lines.extend(flat_lines[idx:])
+            break
+
+        if stop_at_first_body_header and HEADER_LINE_RE.match(text):
+            body_start_idx = idx
+            body_start_reason = "role_header"
+            body_lines.extend(flat_lines[idx:])
+            break
+
+        toc_lines.append(obj)
+
+    # Falls wir bis zum Ende im TOC waren und keinen Body-Start fanden: body bleibt leer
+    if not in_toc and not body_lines:
+        # Kein TOC gefunden -> gesamter Input ist Body
+        body_lines = list(flat_lines)
+
+    meta = {
+        "inhalt_found": in_toc,
+        "body_start_index": body_start_idx,
+        "body_start_reason": body_start_reason
+    }
+    return toc_lines, body_lines, meta
+
+# TOC-Parsing (strukturierte Punkte)
+
+DASH_SPLIT_RE = re.compile(r"\s*[–—-]\s*")
+DRS_RE = re.compile(r"(?:Drucksache|Drs\.)\s*(\d+/\d+)", re.IGNORECASE)
+PARTY_PATTERN = r"(?:AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN)"
+ROLE_PATTERN = r"(?:Abg\.|Präsident(?:in)?|Vizepräsident(?:in)?|Ministerpräsident(?:in)?|Minister(?:in)?|Staatssekretär(?:in)?)"
+
+# Nummerierter Header-Beginn: "1. <Text>"
+NUMBERED_START_RE = re.compile(r"^\s*(?P<num>\d{1,3})\.\s+(?P<body>.+)$")
+# Unnummerierte Header-Hinweise
+UNNUMBERED_HEADER_HINT_RE = re.compile(
+    r"^(Aktuelle\s+Debatte|Fragestunde|Eröffnung|Bekanntgabe|Tagesordnung|Anträge|Antrag|Bericht|Wahl)\b",
+    re.IGNORECASE
+)
+# Sprecher-Zeilen (Redereihenfolge) im TOC
+SPEAKER_LINE_RE = re.compile(
+    rf"^\s*(?P<role>{ROLE_PATTERN})\s+(?P<name>[^.,\d][^.\d]*?)(?:\s+(?P<party>{PARTY_PATTERN}))?\s*(?:[.\s]{{2,}}\d+(?:\s*,\s*\d+)*)?\s*$",
+    re.IGNORECASE
+)
+# Subentry "Beschlussempfehlung..." / "Bericht..." / "Beschluss" optional mit DS
+SUBENTRY_WITH_DRS_RE = re.compile(
+    rf"^(?P<text>Beschlussempfehlung.+?|Bericht.+?|Beschluss)\s*(?:{DASH_SPLIT_RE.pattern}(?:Drucksache|Drs\.)\s*(?P<ds>\d+/\d+))?$",
+    re.IGNORECASE
+)
+# Seitenzahlen am Ende entfernen
+TRAILING_PAGES_RE = re.compile(r"\s+\d{3,5}(?:\s*,\s*\d{3,5})*\s*$")
+
+def _cleanup_line(s: str) -> str:
+    s = _nfkc(s)
+    s = s.replace(ELLIPSIS, ".")
+    s = DOT_LEADERS.sub(" ", s)
+    s = re.sub(r"\s+", " ", s)
+    return s.strip()
+
+def _strip_trailing_pages(s: str) -> str:
+    return TRAILING_PAGES_RE.sub("", s).strip(" –—- ").strip()
+
+def _normalize_party(p: Optional[str]) -> Optional[str]:
+    if not p:
+        return p
+    p = p.replace("GRUENE", "GRÜNE")
+    p = re.sub(r"\s+", " ", p).strip()
+    return p
+
+def _find_all_drs(text: str) -> List[str]:
+    return list(dict.fromkeys(DRS_RE.findall(text)))  # de-dupe, preserve order
+
+def _looks_like_subentry(text: str) -> bool:
+    return bool(SUBENTRY_WITH_DRS_RE.match(text))
+
+def _parse_subentry(text: str) -> Tuple[str, List[str]]:
+    m = SUBENTRY_WITH_DRS_RE.match(text)
+    if not m:
+        return text, []
+    sub_text = m.group("text") or text
+    ds = []
+    if m.group("ds"):
+        ds = [m.group("ds")]
+    more = _find_all_drs(text)
+    for d in more:
+        if d not in ds:
+            ds.append(d)
+    return sub_text.strip(), ds
+
+def _looks_like_speaker(text: str) -> bool:
+    return bool(SPEAKER_LINE_RE.match(text))
+
+def _parse_speaker_line(text: str) -> Optional[Dict[str, Any]]:
+    m = SPEAKER_LINE_RE.match(text)
+    if not m:
+        return None
+    return {
+        "role": m.group("role"),
+        "name": (m.group("name") or "").strip(),
+        "party": _normalize_party(m.group("party"))
+    }
+
+def _parse_header(header_text: str) -> Tuple[Optional[str], str, Optional[str], List[str]]:
+    """
+    Versucht, 'kind' (z. B. 'Aktuelle Debatte') zu erkennen.
+    Gibt (kind, title, extra, drs_list) zurück.
+    """
+    text = header_text
+    ds_list = _find_all_drs(text)
+    if ds_list:
+        text = DRS_RE.sub("", text).strip(" –—-")
+
+    # heuristische Erkennung des "Kind"
+    kind_patterns = [
+        r"Aktuelle Debatte", r"Erste Beratung", r"Zweite Beratung", r"Dritte Beratung",
+        r"Fragestunde", r"Regierungserklärung", r"Wahl", r"Antrag", r"Bericht", r"Tagesordnung"
+    ]
+    kind = None
+    for pat in kind_patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            kind = m.group(0)
+            # Titel = Rest ohne das erkannte "Kind" und evtl. Trennstrich
+            rest = text[:m.start()] + text[m.end():]
+            # Trennstriche entfernen
+            rest = DASH_SPLIT_RE.sub(" ", rest).strip(" –—- ")
+            title = rest if rest else text
+            return kind, title.strip(), None, ds_list
+
+    # kein Kind erkannt
+    return None, text.strip(), None, ds_list
+
+def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Parst die übergebenen TOC-Zeilen in strukturierte Tagesordnung.
+    Erwartet nur die TOC-Seiten (oder einen entsprechend herausgefilterten Ausschnitt).
+    Ausgabeformat:
+      { "items": [ { number, kind, title, drucksachen, extra, subentries: [{text, drucksachen}], speakers: [{role,name,party}], raw_header, raw_lines } ] }
+    """
+    items: List[Dict[str, Any]] = []
+    i = 0
+    n = len(flat_lines)
+    current: Optional[Dict[str, Any]] = None
+
+    while i < n:
+        raw = (flat_lines[i].get("text") or "")
+        raw = _nfkc(raw)
+        text = _cleanup_line(raw)
+        if not text:
+            i += 1
+            continue
+
+        # 1) Neuer nummerierter TOP?
+        m_num = NUMBERED_START_RE.match(text)
+        if m_num:
+            # Vorherigen abschließen
+            if current:
+                items.append(current)
+                current = None
+
+            num = int(m_num.group("num"))
+            body_first = m_num.group("body").strip()
+            header_lines = [body_first]
+
+            # Mehrzeilige Header fortsetzen, bis Subentry/Sprecher/neuer TOP
+            j = i + 1
+            while j < n:
+                nxt_raw = _nfkc(flat_lines[j].get("text") or "")
+                nxt = _cleanup_line(nxt_raw)
+                if not nxt:
+                    break
+                if NUMBERED_START_RE.match(nxt):
+                    break
+                if _looks_like_subentry(nxt) or _looks_like_speaker(nxt):
+                    break
+                header_lines.append(nxt)
+                j += 1
+
+            header_text = " ".join(header_lines).strip()
+            header_text = _strip_trailing_pages(header_text)
+            kind, title, extra, drs_list = _parse_header(header_text)
+
+            current = {
+                "number": num,
+                "kind": kind,
+                "title": title,
+                "drucksachen": drs_list,
+                "extra": extra,
+                "subentries": [],
+                "speakers": [],
+                "raw_header": header_text,
+                "raw_lines": [text] + header_lines[1:]
+            }
+            i = j
+            continue
+
+        # 2) Unnummerierter Einzelpunkt-Header?
+        if current is None and UNNUMBERED_HEADER_HINT_RE.match(text) and not _looks_like_subentry(text) and not _looks_like_speaker(text):
+            header_lines = [text]
+            j = i + 1
+            while j < n:
+                nxt_raw = _nfkc(flat_lines[j].get("text") or "")
+                nxt = _cleanup_line(nxt_raw)
+                if not nxt:
+                    break
+                if NUMBERED_START_RE.match(nxt):
+                    break
+                if _looks_like_subentry(nxt) or _looks_like_speaker(nxt):
+                    break
+                header_lines.append(nxt)
+                j += 1
+
+            header_text = " ".join(header_lines).strip()
+            header_text = _strip_trailing_pages(header_text)
+            kind, title, extra, drs_list = _parse_header(header_text)
+
+            current = {
+                "number": None,
+                "kind": kind,
+                "title": title,
+                "drucksachen": drs_list,
+                "extra": extra,
+                "subentries": [],
+                "speakers": [],
+                "raw_header": header_text,
+                "raw_lines": header_lines[:]
+            }
+            i = j
+            continue
+
+        # Ab hier müssen wir innerhalb eines laufenden Items sein, sonst ignorieren
+        if current is None:
+            i += 1
+            continue
+
+        # 3) Subentry (Beschlussempfehlung / Bericht / Beschluss)
+        if _looks_like_subentry(text):
+            sub_text, ds = _parse_subentry(text)
+            current["subentries"].append({
+                "text": sub_text,
+                "drucksachen": ds
+            })
+            current["raw_lines"].append(text)
+            i += 1
+            continue
+
+        # 4) Sprecherzeile (Redereihenfolge)
+        if _looks_like_speaker(text):
+            sp = _parse_speaker_line(text)
+            if sp:
+                current["speakers"].append(sp)
+                current["raw_lines"].append(text)
+            i += 1
+            continue
+
+        # 5) Anderes: ggf. als 'extra' anhängen und DS extrahieren
+        if text and text not in current["raw_lines"]:
+            ds_more = _find_all_drs(text)
+            if ds_more:
+                for d in ds_more:
+                    if d not in current["drucksachen"]:
+                        current["drucksachen"].append(d)
+                text_wo_drs = DRS_RE.sub("", text).strip(" –—-")
+                if text_wo_drs:
+                    current["extra"] = (current.get("extra") + " " + text_wo_drs).strip() if current.get("extra") else text_wo_drs
+            else:
+                current["extra"] = (current.get("extra") + " " + text).strip() if current.get("extra") else text
+            current["raw_lines"].append(text)
+        i += 1
+
+    # Finalisieren
+    if current:
+        items.append(current)
+
+    # Normalisierung: Partei-Namen und leere Strings säubern
+    for it in items:
+        if it.get("extra"):
+            it["extra"] = it["extra"].strip(" –—-")
+        if not it.get("extra"):
+            it["extra"] = None
+        for sp in it.get("speakers", []):
+            sp["party"] = _normalize_party(sp.get("party"))
+
+    return { "items": items }
+
+# ------------------------- Hilfen: Pages -> flat_lines -------------------------
 
 def pages_to_flat_lines(pages_lines: List[List[str]]) -> List[Dict[str, Any]]:
     """
-    Baut flache Zeilenobjekte für parser_core.pipeline:
-    [{ "page": int, "line_index": int, "text": str }, ...]
+    Baut flache Zeilenobjekte:
+      [{ "page": int, "line_index": int, "text": str }, ...]
     Leere Zeilen werden beibehalten (wichtig für TOC-Abschluss).
     """
     flat: List[Dict[str, Any]] = []
@@ -209,16 +562,15 @@ def pages_to_flat_lines(pages_lines: List[List[str]]) -> List[Dict[str, Any]]:
             flat.append({"page": p_idx, "line_index": i, "text": t})
     return flat
 
-# ------------------------- TOC parsing (Legacy – nicht mehr verwendet, belassen für Referenz) -------------------------
+# ------------------------- Legacy TOC (nur Referenz, nicht genutzt) -------------------------
 
 TOC_HEADER_RX = re.compile(r"^\s*(I\s*N\s*H\s*A\s*L\s*T|INHALT)\s*$", re.IGNORECASE)
 PAGE_ONLY_RX = re.compile(r"^\s*\d{3,5}\s*$")
 AGENDA_NUM_RX = re.compile(r"^\s*(\d+)\.\s+(.*)$")
 AGENDA_KEYWORDS_RX = re.compile(r"\b(Beschluss|Beschlussempfehlung|Zweite Beratung|Aktuelle Debatte|Erste Beratung|Dritte Beratung)\b", re.IGNORECASE)
-DRS_RX = re.compile(r"(?:Drucksache|Drs\.)\s*(\d+/\d+)", re.IGNORECASE)
+DRS_RX_LEGACY = re.compile(r"(?:Drucksache|Drs\.)\s*(\d+/\d+)", re.IGNORECASE)
 
-# Sprecherzeilen im TOC (mit optionaler Partei und Seitenangabe am Ende)
-SPEAKER_RX = re.compile(
+SPEAKER_RX_LEGACY = re.compile(
     r"^\s*(Abg\.|Präsidentin|Präsident|Vizepräsidentin|Vizepräsident|Minister(?:in)?|Staatssekretär(?:in)?)\s+"
     r"(.{1,120}?)"
     r"(?:\s+\(?(AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN)\)?)?"
@@ -234,7 +586,7 @@ def strip_trailing_pages_and_dots(s: str) -> str:
     return re.sub(r"\s{2,}", " ", s).strip()
 
 def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -> List[Dict[str, Any]]:
-    # Legacy: belassen, aber nicht mehr verwendet
+    # Legacy-Funktion – belassen zur Referenz, aber nicht mehr genutzt.
     if not pages_lines:
         return []
     first_pages: List[str] = []
@@ -256,13 +608,12 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
 
     for ln in lines:
         if not ln.strip():
-            # Absatz-/Spaltenwechsel: Neuer Punkt
             if cur_item:
                 cur_item["title"] = strip_trailing_pages_and_dots(" ".join(cur_title))
                 cur_item["subtitle"] = strip_trailing_pages_and_dots(" ".join(cur_subtitle)) if cur_subtitle else None
                 cur_item["speakers"] = cur_speakers
                 cur_item["beschluss"] = cur_beschluss
-                drs = DRS_RX.findall(cur_item["title"] or "") + DRS_RX.findall(cur_item["subtitle"] or "")
+                drs = DRS_RX_LEGACY.findall(cur_item["title"] or "") + DRS_RX_LEGACY.findall(cur_item["subtitle"] or "")
                 if drs:
                     cur_item["docket"] = drs[-1]
                 items.append(cur_item)
@@ -276,7 +627,7 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
 
         mnum = AGENDA_NUM_RX.match(ln)
         is_keyword = bool(AGENDA_KEYWORDS_RX.search(ln))
-        m_speaker = SPEAKER_RX.match(ln)
+        m_speaker = SPEAKER_RX_LEGACY.match(ln)
         m_beschluss = BESCHLUSS_RX.match(ln)
 
         if mnum or is_keyword:
@@ -285,7 +636,7 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
                 cur_item["subtitle"] = strip_trailing_pages_and_dots(" ".join(cur_subtitle)) if cur_subtitle else None
                 cur_item["speakers"] = cur_speakers
                 cur_item["beschluss"] = cur_beschluss
-                drs = DRS_RX.findall(cur_item["title"] or "") + DRS_RX.findall(cur_item["subtitle"] or "")
+                drs = DRS_RX_LEGACY.findall(cur_item["title"] or "") + DRS_RX_LEGACY.findall(cur_item["subtitle"] or "")
                 if drs:
                     cur_item["docket"] = drs[-1]
                 items.append(cur_item)
@@ -327,7 +678,7 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
         cur_item["subtitle"] = strip_trailing_pages_and_dots(" ".join(cur_subtitle)) if cur_subtitle else None
         cur_item["speakers"] = cur_speakers
         cur_item["beschluss"] = cur_beschluss
-        drs = DRS_RX.findall(cur_item["title"] or "") + DRS_RX.findall(cur_item["subtitle"] or "")
+        drs = DRS_RX_LEGACY.findall(cur_item["title"] or "") + DRS_RX_LEGACY.findall(cur_item["subtitle"] or "")
         if drs:
             cur_item["docket"] = drs[-1]
         items.append(cur_item)
@@ -348,11 +699,6 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
 
 # ------------------------- Speeches (Body) -------------------------
 
-ROLE_TOKENS = [
-    r"Abg\.", r"Präsidentin", r"Präsident", r"Vizepräsidentin", r"Vizepräsident",
-    r"Minister(?:in)?", r"Staatssekretär(?:in)?"
-]
-PARTY_TOKENS = r"(AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN)"
 HEADER_RX = re.compile(
     rf"^\s*(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+(?P<party>{PARTY_TOKENS}))?\s*:\s*$",
     re.IGNORECASE
@@ -483,12 +829,12 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     meta["source_pdf_url"] = url
     meta["extracted_at"] = dt.datetime.utcnow().isoformat() + "Z"
 
-    # Robustes TOC via parser_core
+    # Robustes TOC: flat_lines -> split -> parse
     flat = pages_to_flat_lines(pages)
-    toc_lines, body_lines, _ = split_toc_and_body(flat, stop_at_first_body_header=True)
+    toc_lines, body_lines, _meta = split_toc_and_body(flat, stop_at_first_body_header=True)
     toc = {"items": []}
     if toc_lines:
-        toc = parse_toc_items(toc_lines)
+        toc = parse_toc(toc_lines)
 
     # Speeches (bewährte Segmentierung beibehalten)
     speeches = segment_speeches_from_pages(pages)
@@ -552,7 +898,7 @@ def write_outputs(payload: Dict[str, Any], out_dir: Path) -> Tuple[Path, Optiona
 # ------------------------- CLI -------------------------
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Minimaler Parser: TOC + Speeches (robuster TOC aus parser_core).")
+    p = argparse.ArgumentParser(description="Parser: Robustes TOC + Speeches (inline, ohne Imports).")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--single-url", help="PDF-URL oder lokaler Pfad")
     g.add_argument("--list-file", help="Datei mit Zeilenweise URLs")
