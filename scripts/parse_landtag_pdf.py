@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (verbessert v1.5)
+parse_landtag_pdf.py (verbessert v1.5.1)
 
 Verbesserungen basierend auf TOC-Struktur aus Screenshots:
 - Erkennung von Hauptpunkten (nummeriert oder Keywords wie 'Aktuelle Debatte').
@@ -11,12 +11,13 @@ Verbesserungen basierend auf TOC-Struktur aus Screenshots:
 - Vertiefende Infos (Drucksache, beantragt von) als Sub-Title.
 - Keine strikte Spaltenannahme; Fluss-Parsing mit Indentation-Simulation via Regex.
 
-Änderungen in v1.5:
+Änderungen in v1.5.x:
 - SPEAKER_RX behoben (Syntaxfehler entfernt, robustere Erkennung von Partei + Seitenzahlen).
 - 'pages'-Namenskonflikt in assemble_toc_from_pages beseitigt.
 - detect_columns wird in extract_lines tatsächlich genutzt (1- vs 2-spaltig).
 - Leere Zeilen werden erhalten (keine Vorab-Filterung).
 - Konsistente Layout-Metadaten (method/columns/set fractions abhängig vom Ergebnis).
+- FIX: korrekter re.sub-Aufruf in segment_speeches_from_pages (kein TypeError mehr), konsistente Einrückung.
 """
 from __future__ import annotations
 
@@ -24,12 +25,10 @@ import argparse
 import datetime as dt
 import hashlib
 import json
-import os
 import re
 import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
-
 from pathlib import Path
 
 import pdfplumber
@@ -94,16 +93,15 @@ def _histogram_split_x(word_centers: List[float], page_width: float, bins: int =
     if len(peaks) < 2:
         return None
     peaks.sort(reverse=True)
-    (c1, i1), (c2, i2) = sorted(peaks[:2], key=lambda x: x[1])
-    center1 = (edges[i1][0] + edges[i1][1]) / 2.0
-    center2 = (edges[i2][0] + edges[i2][1]) / 2.0
+    (_c1, i1), (_c2, i2) = sorted(peaks[:2], key=lambda x: x[1])
     # tal finden
     valley = None
     valley_i = None
     for j in range(i1 + 1, i2):
         v = counts[j]
         if valley is None or v < valley:
-            valley = v; valley_i = j
+            valley = v
+            valley_i = j
     if valley is None:
         return None
     return (edges[valley_i][0] + edges[valley_i][1]) / 2.0
@@ -150,7 +148,7 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
                 continue
 
             columns = detect_columns(words, pw)
-            mids = [(w["x0"] + w["x1"]) / 2.0 for w in words ]
+            mids = [(w["x0"] + w["x1"]) / 2.0 for w in words]
             split_x = _histogram_split_x(mids, pw) or (pw * 0.5)
 
             if columns == 1:
@@ -374,6 +372,7 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
     speeches: List[Dict[str, Any]] = []
     cur: Optional[Dict[str, Any]] = None
     buf: List[str] = []
+
     def flush():
         nonlocal cur, buf
         if cur:
@@ -383,6 +382,7 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
             speeches.append(cur)
             cur = None
             buf = []
+
     for p, line in body:
         m = HEADER_RX.match(line)
         if m:
@@ -401,12 +401,12 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
         else:
             if cur:
                 # Interjektionen in Klammern flach entfernen
-           line_clean = re.sub(
-                r"\(([^()]{0,160}?(?:Beifall|Zuruf|Heiterkeit|Lachen|Unruhe|Zwischenruf|Widerspruch|Glocke|Zurufe)[^()]*)\)",
-                " ",
-                line
-                            )
-                buf.append(line_clean(line))
+                line_clean = re.sub(
+                    r"\(([^()]{0,160}?(?:Beifall|Zuruf|Heiterkeit|Lachen|Unruhe|Zwischenruf|Widerspruch|Glocke|Zurufe)[^()]*)\)",
+                    " ",
+                    line,
+                )
+                buf.append(line_clean)
     flush()
     # Re-index
     for i, sp in enumerate(speeches):
@@ -418,19 +418,25 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
 def parse_session_info(all_text: str) -> Dict[str, Any]:
     number = None
     m1 = re.search(r"(\d{1,3})\.\s*Sitzung", all_text)
-    if m1: number = int(m1.group(1))
+    if m1:
+        number = int(m1.group(1))
     leg = None
     m2 = re.search(r"(\d{1,2})\.\s*Wahlperiode", all_text)
-    if m2: leg = int(m2.group(1))
+    if m2:
+        leg = int(m2.group(1))
     date = None
     m3 = re.search(r"(\d{1,2})\.\s*([A-Za-zÄÖÜäöüß]+)\s+(\d{4})", all_text)
     MONTHS = {
-        "januar":1,"februar":2,"märz":3,"maerz":3,"april":4,"mai":5,"juni":6,"juli":7,"august":8,"september":9,"oktober":10,"november":11,"dezember":12
+        "januar": 1, "februar": 2, "märz": 3, "maerz": 3, "april": 4, "mai": 5, "juni": 6, "juli": 7,
+        "august": 8, "september": 9, "oktober": 10, "november": 11, "dezember": 12
     }
     if m3:
-        day = int(m3.group(1)); mon = m3.group(2).lower().replace("ä","ae").replace("ö","oe").replace("ü","ue").replace("ß","ss")
-        year = int(m3.group(3)); mm = MONTHS.get(mon)
-        if mm: date = f"{year:04d}-{mm:02d}-{day:02d}"
+        day = int(m3.group(1))
+        mon = m3.group(2).lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+        year = int(m3.group(3))
+        mm = MONTHS.get(mon)
+        if mm:
+            date = f"{year:04d}-{mm:02d}-{day:02d}"
     return {
         "number": number,
         "legislative_period": leg,
