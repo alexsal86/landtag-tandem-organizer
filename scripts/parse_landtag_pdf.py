@@ -1,23 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (verbessert v1.5.1)
+parse_landtag_pdf.py (verbessert v1.5.2)
 
-Verbesserungen basierend auf TOC-Struktur aus Screenshots:
-- Erkennung von Hauptpunkten (nummeriert oder Keywords wie 'Aktuelle Debatte').
-- Multiline-Titel-Merging bis zum nächsten Punkt oder Sprecher.
-- Sprecher-Listen unter Titeln sammeln, bis neuer Punkt (größerer Absatz simuliert durch leere Lines oder new Punkt).
-- Beschluss als separater Eintrag oder Feld.
-- Vertiefende Infos (Drucksache, beantragt von) als Sub-Title.
-- Keine strikte Spaltenannahme; Fluss-Parsing mit Indentation-Simulation via Regex.
-
-Änderungen in v1.5.x:
+Änderungen:
+- Spalten-Trenner: Bei zweispaltigen Seiten wird zwischen linker und rechter Spalte eine leere Zeile eingefügt,
+  damit das TOC-Parsing keine Zeilen über den Spaltenumbruch hinweg zusammenführt.
 - SPEAKER_RX behoben (Syntaxfehler entfernt, robustere Erkennung von Partei + Seitenzahlen).
 - 'pages'-Namenskonflikt in assemble_toc_from_pages beseitigt.
 - detect_columns wird in extract_lines tatsächlich genutzt (1- vs 2-spaltig).
 - Leere Zeilen werden erhalten (keine Vorab-Filterung).
-- Konsistente Layout-Metadaten (method/columns/set fractions abhängig vom Ergebnis).
-- FIX: korrekter re.sub-Aufruf in segment_speeches_from_pages (kein TypeError mehr), konsistente Einrückung.
+- Konsistente Layout-Metadaten.
+- FIX: korrekter re.sub-Aufruf in segment_speeches_from_pages, konsistente Einrückung.
 """
 from __future__ import annotations
 
@@ -165,8 +159,8 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
                 right_frac = len(right_words) / total
                 left_lines = _words_to_lines_text(left_words)
                 right_lines = _words_to_lines_text(right_words)
-                # WICHTIG: leere Zeilen NICHT vorher verwerfen (Absatz-Erkennung)
-                lines = left_lines + right_lines
+                # WICHTIG: Spalten-Trenner einfügen, damit TOC nicht über Spalten hinweg merged
+                lines = left_lines + [""] + right_lines
                 method = "two-column"
                 split_val = round(split_x, 2)
 
@@ -190,8 +184,7 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
             l = l.replace(ELLIPSIS, ".")
             l = DOT_LEADERS.sub(" ", l)
             l = re.sub(r"\s+", " ", l).strip()
-            # Leere Zeilen erhalten (als echte Leerzeile)
-            norm.append(l)
+            norm.append(l)  # leere Zeilen bleiben leere Strings
         norm_pages.append(norm)
     return norm_pages, metas
 
@@ -241,7 +234,7 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
 
     for ln in lines:
         if not ln.strip():
-            # Größerer Absatz: Neuer Punkt
+            # Absatz-/Spaltenwechsel: Neuer Punkt
             if cur_item:
                 cur_item["title"] = strip_trailing_pages_and_dots(" ".join(cur_title))
                 cur_item["subtitle"] = strip_trailing_pages_and_dots(" ".join(cur_subtitle)) if cur_subtitle else None
@@ -266,7 +259,6 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
 
         if mnum or is_keyword:
             if cur_item:
-                # Finalize previous
                 cur_item["title"] = strip_trailing_pages_and_dots(" ".join(cur_title))
                 cur_item["subtitle"] = strip_trailing_pages_and_dots(" ".join(cur_subtitle)) if cur_subtitle else None
                 cur_item["speakers"] = cur_speakers
