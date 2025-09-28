@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
-import { Vote, Mail } from "lucide-react";
+import { Vote, Mail, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,6 +28,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
   const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [sendByEmail, setSendByEmail] = useState(false);
+  const [sendViaMatrix, setSendViaMatrix] = useState(false);
   const { toast } = useToast();
 
   const loadProfiles = async () => {
@@ -158,6 +159,58 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
         }
       }
 
+      // Send Matrix notifications if requested
+      if (sendViaMatrix) {
+        try {
+          toast({
+            title: "Matrix-Nachrichten werden versendet...",
+            description: "Die Matrix-Entscheidungsanfragen werden an die ausgewählten Teilnehmer gesendet.",
+          });
+
+          const { data: matrixResult, error: matrixError } = await supabase.functions.invoke('matrix-bot-handler', {
+            body: {
+              type: 'decision',
+              decisionId: decision.id,
+              participantIds: selectedUsers,
+              decisionTitle: title.trim(),
+              decisionDescription: description.trim() || null,
+            },
+          });
+
+          if (matrixError) {
+            console.error('Error sending Matrix decisions:', matrixError);
+            toast({
+              title: "Matrix-Fehler",
+              description: `Matrix-Nachrichten konnten nicht versendet werden: ${matrixError.message}`,
+              variant: "destructive",
+            });
+          } else if (matrixResult) {
+            const successCount = matrixResult.sent || 0;
+            const totalCount = matrixResult.total_participants || selectedUsers.length;
+            
+            if (successCount > 0) {
+              toast({
+                title: "Matrix-Nachrichten versendet",
+                description: `${successCount}/${totalCount} Matrix-Entscheidungen erfolgreich versendet.`,
+              });
+            } else {
+              toast({
+                title: "Matrix-Warnung",
+                description: "Keine Matrix-Nachrichten konnten versendet werden. Überprüfen Sie die Matrix-Konfiguration.",
+                variant: "destructive",
+              });
+            }
+          }
+        } catch (matrixError: any) {
+          console.error('Error sending Matrix decisions:', matrixError);
+          toast({
+            title: "Matrix-Fehler",
+            description: `Unerwarteter Fehler beim Matrix-Versand: ${matrixError.message}`,
+            variant: "destructive",
+          });
+        }
+      }
+
       // Send email invitations if requested
       if (sendByEmail) {
         try {
@@ -212,8 +265,8 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
 
       toast({
         title: "Erfolgreich",
-        description: sendByEmail 
-          ? "Entscheidungsanfrage wurde erstellt und E-Mail-Versand wird geprüft."
+        description: sendByEmail || sendViaMatrix
+          ? "Entscheidungsanfrage wurde erstellt und Versand wird geprüft."
           : "Entscheidungsanfrage wurde erstellt.",
       });
 
@@ -222,6 +275,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
       setDescription("");
       setSelectedUsers([]);
       setSendByEmail(false);
+      setSendViaMatrix(false);
       setIsOpen(false);
       onDecisionCreated();
     } catch (error) {
@@ -294,16 +348,30 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
             )}
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="send-by-email"
-              checked={sendByEmail}
-              onCheckedChange={(checked) => setSendByEmail(checked === true)}
-            />
-            <label htmlFor="send-by-email" className="text-sm font-medium flex items-center">
-              <Mail className="h-4 w-4 mr-1" />
-              Auch per E-Mail versenden
-            </label>
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="send-by-email"
+                checked={sendByEmail}
+                onCheckedChange={(checked) => setSendByEmail(checked === true)}
+              />
+              <label htmlFor="send-by-email" className="text-sm font-medium flex items-center">
+                <Mail className="h-4 w-4 mr-1" />
+                Auch per E-Mail versenden
+              </label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="send-via-matrix"
+                checked={sendViaMatrix}
+                onCheckedChange={(checked) => setSendViaMatrix(checked === true)}
+              />
+              <label htmlFor="send-via-matrix" className="text-sm font-medium flex items-center">
+                <MessageSquare className="h-4 w-4 mr-1" />
+                Auch via Matrix versenden
+              </label>
+            </div>
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">

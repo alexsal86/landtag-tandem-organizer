@@ -1254,6 +1254,54 @@ export type Database = {
         }
         Relationships: []
       }
+      decision_matrix_messages: {
+        Row: {
+          created_at: string | null
+          decision_id: string | null
+          id: string
+          matrix_event_id: string
+          matrix_room_id: string
+          participant_id: string | null
+          responded_via_matrix: boolean | null
+          sent_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          decision_id?: string | null
+          id?: string
+          matrix_event_id: string
+          matrix_room_id: string
+          participant_id?: string | null
+          responded_via_matrix?: boolean | null
+          sent_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          decision_id?: string | null
+          id?: string
+          matrix_event_id?: string
+          matrix_room_id?: string
+          participant_id?: string | null
+          responded_via_matrix?: boolean | null
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_matrix_messages_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_matrix_messages_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "task_decision_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       default_appointment_guests: {
         Row: {
           created_at: string

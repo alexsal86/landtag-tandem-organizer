@@ -13,6 +13,19 @@ interface MatrixMessage {
   body: string;
   format?: string;
   formatted_body?: string;
+  decision_metadata?: {
+    decision_id: string;
+    participant_token: string;
+    expires_at: string;
+  };
+}
+
+interface DecisionMatrixMessage extends MatrixMessage {
+  decision_metadata: {
+    decision_id: string;
+    participant_token: string;
+    expires_at: string;
+  };
 }
 
 serve(async (req) => {
@@ -216,6 +229,12 @@ serve(async (req) => {
       }
     }
 
+    // Handle decision message sending
+    if (body.type === 'decision') {
+      console.log('🗳️ Processing Matrix decision message request');
+      return await sendDecisionMessages(body, supabaseAdmin, matrixToken, matrixHomeserver);
+    }
+
     // Handle real Matrix message sending
     console.log('📤 Processing real Matrix message request');
     
@@ -380,3 +399,176 @@ serve(async (req) => {
     });
   }
 });
+
+async function sendDecisionMessages(
+  body: any,
+  supabaseAdmin: any,
+  matrixToken: string,
+  matrixHomeserver: string
+) {
+  try {
+    console.log('🗳️ Sending decision messages via Matrix');
+    
+    const { decisionId, participantIds, decisionTitle, decisionDescription } = body;
+    
+    if (!decisionId || !participantIds || !Array.isArray(participantIds)) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Missing required fields: decisionId, participantIds'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    let sentCount = 0;
+    let failedCount = 0;
+    const results = [];
+
+    // Process each participant
+    for (const participantId of participantIds) {
+      try {
+        console.log(`📤 Processing Matrix decision for participant: ${participantId}`);
+
+        // Get participant token
+        const { data: participant, error: participantError } = await supabaseAdmin
+          .from('task_decision_participants')
+          .select('id, token, user_id')
+          .eq('decision_id', decisionId)
+          .eq('user_id', participantId)
+          .maybeSingle();
+
+        if (participantError || !participant) {
+          console.error('❌ Participant not found:', participantId);
+          failedCount++;
+          results.push({ participantId, success: false, error: 'Participant not found' });
+          continue;
+        }
+
+        // Get user's Matrix subscription
+        const { data: matrixSub, error: matrixError } = await supabaseAdmin
+          .from('matrix_subscriptions')
+          .select('room_id, user_id')
+          .eq('user_id', participantId)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (matrixError || !matrixSub) {
+          console.log(`ℹ️ No Matrix subscription for user ${participantId}, skipping Matrix send`);
+          results.push({ participantId, success: false, error: 'No Matrix subscription' });
+          failedCount++;
+          continue;
+        }
+
+        // Create decision message with commands
+        const token = participant.token;
+        const expireDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+        
+        const decisionMessage: DecisionMatrixMessage = {
+          msgtype: "m.text",
+          body: `🗳️ ENTSCHEIDUNGSANFRAGE: ${decisionTitle}\n\n` +
+                `${decisionDescription || ''}\n\n` +
+                `📋 Antwortmöglichkeiten:\n` +
+                `✅ /decision-yes ${token}\n` +
+                `❌ /decision-no ${token}\n` +
+                `❓ /decision-question ${token} [Ihre Frage]\n` +
+                `📊 /decision-status ${token}\n\n` +
+                `⏰ Antworten bis: ${expireDate.toLocaleDateString('de-DE')}`,
+          format: "org.matrix.custom.html",
+          formatted_body: `<h3>🗳️ ENTSCHEIDUNGSANFRAGE: ${decisionTitle}</h3>` +
+                          `${decisionDescription ? `<p><em>${decisionDescription}</em></p>` : ''}` +
+                          `<h4>📋 Antwortmöglichkeiten:</h4>` +
+                          `<ul>` +
+                          `<li>✅ <code>/decision-yes ${token}</code></li>` +
+                          `<li>❌ <code>/decision-no ${token}</code></li>` +
+                          `<li>❓ <code>/decision-question ${token} [Ihre Frage]</code></li>` +
+                          `<li>📊 <code>/decision-status ${token}</code></li>` +
+                          `</ul>` +
+                          `<p><small>⏰ Antworten bis: ${expireDate.toLocaleDateString('de-DE')}</small></p>`,
+          decision_metadata: {
+            decision_id: decisionId,
+            participant_token: token,
+            expires_at: expireDate.toISOString()
+          }
+        };
+
+        // Send Matrix message
+        const txnId = `decision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const matrixUrl = `${matrixHomeserver}/_matrix/client/r0/rooms/${matrixSub.room_id}/send/m.room.message/${txnId}`;
+        
+        console.log(`🔗 Sending decision to Matrix room: ${matrixSub.room_id}`);
+        
+        const response = await fetch(matrixUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${matrixToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(decisionMessage)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ Matrix API error for user ${participantId}:`, response.status, errorText);
+          failedCount++;
+          results.push({ participantId, success: false, error: `Matrix API error: ${response.status}` });
+        } else {
+          const result = await response.json();
+          console.log(`✅ Decision message sent via Matrix to user ${participantId}`);
+          sentCount++;
+          
+          // Track the Matrix message
+          await supabaseAdmin
+            .from('decision_matrix_messages')
+            .insert({
+              decision_id: decisionId,
+              participant_id: participant.id,
+              matrix_room_id: matrixSub.room_id,
+              matrix_event_id: result.event_id,
+              sent_at: new Date().toISOString()
+            });
+
+          results.push({ 
+            participantId, 
+            success: true, 
+            matrixEventId: result.event_id,
+            roomId: matrixSub.room_id 
+          });
+        }
+
+      } catch (error) {
+        console.error(`❌ Error sending Matrix decision to ${participantId}:`, error);
+        failedCount++;
+        results.push({ 
+          participantId, 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        });
+      }
+    }
+
+    console.log(`📊 Matrix decision results: ${sentCount} sent, ${failedCount} failed`);
+
+    return new Response(JSON.stringify({
+      success: sentCount > 0,
+      sent: sentCount,
+      failed: failedCount,
+      total_participants: participantIds.length,
+      message: `Matrix-Entscheidungen versendet! ${sentCount} erfolgreich, ${failedCount} fehlgeschlagen.`,
+      results: results
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Error in sendDecisionMessages:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Error sending Matrix decisions: ' + (error instanceof Error ? error.message : String(error))
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+}
