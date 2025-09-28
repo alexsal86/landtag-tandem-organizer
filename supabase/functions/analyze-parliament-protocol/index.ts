@@ -171,7 +171,7 @@ serve(async (req) => {
           .from('parliament_protocols')
           .update({
             processing_status: 'error',
-            processing_error_message: error.message,
+            processing_error_message: error instanceof Error ? error.message : String(error),
             updated_at: new Date().toISOString()
           })
           .eq('id', protocolIdFromError);
@@ -184,7 +184,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         protocolId: protocolIdFromError,
         timestamp: new Date().toISOString()
       }),

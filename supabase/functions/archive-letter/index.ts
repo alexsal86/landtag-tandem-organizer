@@ -87,7 +87,7 @@ serve(async (req) => {
     }
 
     // Generate PDF using LetterPDFExport logic
-    const pdfBuffer = await generateDIN5008PDF(letter, template, senderInfo, informationBlock, attachments);
+    const pdfBuffer = await generateDIN5008PDF(letter, template, senderInfo, informationBlock, attachments || []);
     
     // Create document file name
     const documentFileName = `letter_${letter.title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
@@ -256,7 +256,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in archive-letter function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

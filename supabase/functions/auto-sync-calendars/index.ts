@@ -77,7 +77,7 @@ serve(async (req) => {
           calendar_id: calendar.id,
           calendar_name: calendar.name,
           status: 'error',
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
@@ -96,7 +96,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in auto-sync:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

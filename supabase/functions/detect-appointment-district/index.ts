@@ -294,7 +294,7 @@ serve(async (req) => {
           if (!supportError && supportAssignments && supportAssignments.length > 0) {
             const supportAssignment = supportAssignments[0];
             supportDistrict = supportAssignment.election_districts;
-            console.log('Found support district:', supportDistrict.district_name);
+            console.log('Found support district:', supportDistrict[0]?.district_name);
             
             // Fetch Green representative from support district
             const { data: supportReps, error: supportRepError } = await supabase
@@ -337,7 +337,7 @@ serve(async (req) => {
         address: matchedPartyAssociation.full_address || `${matchedPartyAssociation.address_street || ''} ${matchedPartyAssociation.address_number || ''} ${matchedPartyAssociation.address_city || ''}`.trim(),
         website: matchedPartyAssociation.website
       } : undefined,
-      representatives
+      representatives: representatives || undefined
     };
 
     console.log('Detection result:', result);
@@ -349,7 +349,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in detect-appointment-district function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       coordinates: null,
       district: null,
       partyAssociation: null

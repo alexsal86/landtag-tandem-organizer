@@ -63,7 +63,7 @@ async function parseRSSFeed(url: string, source: string, category: string) {
         items.push({
           id: `${source}-${Date.now()}-${Math.random()}`,
           title: cleanText(title),
-          description: cleanText(description) || '',
+          description: cleanText(description || '') || '',
           link: link.trim(),
           pub_date: parsePubDate(pubDate),
           source,
