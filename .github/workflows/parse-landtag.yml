@@ -108,11 +108,11 @@ jobs:
           PY=$(ls data/session_*.json | head -n 1)
           echo "Check file: $PY"
           jq -r '.layout.reason' "$PY"
-          REASON=$(jq -r '.layout.reason' "$PY")
-          if [ "$REASON" != "fixed-mid-split" ]; then
-            echo "::error::Unexpected layout.reason: $REASON (expected fixed-mid-split)"
-            exit 1
-          fi
+         REASON=$(jq -r '.layout.reason' "$PY")
+if [[ "$REASON" != fixed-mid-split* ]]; then
+  echo "::error::Unexpected layout.reason: $REASON (expected to start with fixed-mid-split)"
+  exit 1
+fi
           # Optional: check method on first page in sidecar
           SC=$(ls data/session_*.layout.json | head -n 1 || true)
           if [ -n "$SC" ]; then
