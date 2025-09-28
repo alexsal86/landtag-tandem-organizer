@@ -74,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: existingResponse, error: existingError } = await supabase
       .from('task_decision_responses')
       .select('id')
-      .eq('decision_id', participant.task_decisions.id)
+      .eq('decision_id', participant.task_decisions?.[0]?.id)
       .eq('participant_id', participantId)
       .maybeSingle();
 
@@ -115,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { error: insertError } = await supabase
         .from('task_decision_responses')
         .insert({
-          decision_id: participant.task_decisions.id,
+          decision_id: participant.task_decisions?.[0]?.id,
           participant_id: participantId,
           response_type: responseType,
           comment: comment || null
@@ -137,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: allParticipants, error: allParticipantsError } = await supabase
       .from('task_decision_participants')
       .select('id')
-      .eq('decision_id', participant.task_decisions.id);
+      .eq('decision_id', participant.task_decisions?.[0]?.id);
 
     if (allParticipantsError) {
       console.error("Error getting all participants:", allParticipantsError);
@@ -145,7 +145,7 @@ const handler = async (req: Request): Promise<Response> => {
       const { data: allResponses, error: allResponsesError } = await supabase
         .from('task_decision_responses')
         .select('participant_id')
-        .eq('decision_id', participant.task_decisions.id);
+        .eq('decision_id', participant.task_decisions?.[0]?.id);
 
       if (!allResponsesError && allParticipants && allResponses) {
         const allResponded = allParticipants.length === allResponses.length;
@@ -154,14 +154,14 @@ const handler = async (req: Request): Promise<Response> => {
           // Notify the decision creator that all participants have responded
           try {
             await supabase.rpc('create_notification', {
-              user_id_param: participant.task_decisions.created_by,
+              user_id_param: participant.task_decisions?.[0]?.created_by,
               type_name: 'task_decision_complete',
               title_param: 'Entscheidungsanfrage abgeschlossen',
-              message_param: `Alle Teilnehmer haben zu "${participant.task_decisions.title}" geantwortet.`,
+              message_param: `Alle Teilnehmer haben zu "${participant.task_decisions?.[0]?.title}" geantwortet.`,
               data_param: {
-                decision_id: participant.task_decisions.id,
-                task_id: participant.task_decisions.task_id,
-                decision_title: participant.task_decisions.title
+                decision_id: participant.task_decisions?.[0]?.id,
+                task_id: participant.task_decisions?.[0]?.task_id,
+                decision_title: participant.task_decisions?.[0]?.title
               },
               priority_param: 'medium'
             });
@@ -186,7 +186,7 @@ const handler = async (req: Request): Promise<Response> => {
         success: true,
         message: "Antwort erfolgreich gespeichert",
         participantName,
-        decisionTitle: participant.task_decisions.title,
+        decisionTitle: participant.task_decisions?.[0]?.title,
         responseType
       }),
       {

@@ -129,7 +129,7 @@ serve(async (req) => {
         console.error('❌ Database connection error:', dbError);
         return new Response(JSON.stringify({
           success: false,
-          error: 'Database connection failed: ' + dbError.message
+          error: 'Database connection failed: ' + (dbError instanceof Error ? dbError.message : String(dbError))
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -267,7 +267,7 @@ serve(async (req) => {
             room_id: subscription.room_id,
             message: body.message || 'Test message',
             success: false,
-            error_message: sendError.message,
+            error_message: sendError instanceof Error ? sendError.message : String(sendError),
             timestamp: new Date().toISOString()
           });
       }
@@ -291,7 +291,7 @@ serve(async (req) => {
     console.error('❌ Matrix function error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: 'Function error: ' + error.message,
+      error: 'Function error: ' + (error instanceof Error ? error.message : String(error)),
       sent: 0,
       failed: 1,
       total_subscriptions: 0

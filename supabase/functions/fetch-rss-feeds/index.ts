@@ -65,7 +65,7 @@ async function parseRSSFeed(url: string, source: string, category: string) {
           title: cleanText(title),
           description: cleanText(description || '') || '',
           link: link.trim(),
-          pub_date: parsePubDate(pubDate),
+          pub_date: parsePubDate(pubDate || ''),
           source,
           category,
           image_url: extractTag(itemContent, 'enclosure url') || null
@@ -164,7 +164,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Failed to fetch RSS feeds',
-        details: error.message 
+        details: error instanceof Error ? error.message : String(error) 
       }),
       {
         status: 500,

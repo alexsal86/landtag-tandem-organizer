@@ -265,7 +265,7 @@ serve(async (req) => {
     console.error('Error importing representatives:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: String(error?.message ?? error)
+      error: error instanceof Error ? error.message : String(error)
     }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
