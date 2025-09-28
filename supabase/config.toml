@@ -87,3 +87,6 @@ verify_jwt = true
 
 [functions.fetch-rss-feeds]
 verify_jwt = true
+
+[functions.matrix-bot-handler]
+verify_jwt = true

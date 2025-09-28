@@ -325,12 +325,36 @@ serve(async (req) => {
         const totalSubscriptions = subscriptions.length;
         console.log(`📊 Push notification results: ${sentCount} sent, ${failedCount} failed out of ${totalSubscriptions} total`);
         
+        // Also try to send Matrix notifications if enabled
+        let matrixResult = { sent: 0, failed: 0, total_subscriptions: 0 };
+        try {
+          console.log('🤖 Attempting to send Matrix notifications...');
+          const matrixResponse = await supabaseAdmin.functions.invoke('matrix-bot-handler', {
+            body: {
+              title: body.title,
+              message: body.message,
+              data: body.data,
+              priority: body.priority
+            }
+          });
+          
+          if (matrixResponse.data) {
+            matrixResult = matrixResponse.data;
+            console.log('🤖 Matrix notifications result:', matrixResult);
+          }
+        } catch (matrixError) {
+          console.error('❌ Matrix notification error (non-blocking):', matrixError);
+        }
+        
         return new Response(JSON.stringify({
           success: true,
           sent: sentCount,
           failed: failedCount,
           total_subscriptions: totalSubscriptions,
-          message: `Browser-Push erfolgreich! ${sentCount} Benachrichtigung(en) gesendet, ${failedCount} fehlgeschlagen.`
+          matrix_sent: matrixResult.sent,
+          matrix_failed: matrixResult.failed,
+          matrix_total: matrixResult.total_subscriptions,
+          message: `Browser-Push erfolgreich! ${sentCount} Benachrichtigung(en) gesendet, ${failedCount} fehlgeschlagen.${matrixResult.sent > 0 ? ` Matrix: ${matrixResult.sent} gesendet.` : ''}`
         }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

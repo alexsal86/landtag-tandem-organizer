@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PushNotificationTest } from './PushNotificationTest';
 import { VapidKeyTest } from './VapidKeyTest';
 import { DirectPushTest } from './DirectPushTest';
+import { MatrixSettings } from './MatrixSettings';
 
 interface NotificationTypeSettings {
   id: string;
@@ -387,6 +388,9 @@ export const NotificationSettings: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Matrix Settings */}
+      <MatrixSettings />
     </div>
   );
 };
