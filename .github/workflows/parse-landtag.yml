@@ -32,9 +32,15 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: parse-landtag
+  cancel-in-progress: false
+
 jobs:
   parse:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,36 +50,63 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
 
       - name: Install dependencies
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install -U pip
-          pip install pdfplumber requests jsonschema
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install pdfplumber requests jsonschema
+          fi
+          python --version
+          python -c "import pdfplumber, requests; print('pdfplumber', pdfplumber.__version__); print('requests', requests.__version__)"
 
       - name: Clean outputs and cache
+        shell: bash
         run: |
-          rm -rf data out .cache/pdfs || true
+          set -euo pipefail
+          rm -rf data out || true
           mkdir -p data
+          # PDF-Cache nur löschen, wenn force_download=true
+          if [ "${{ inputs.force_download }}" = "true" ]; then
+            rm -rf .cache/pdfs || true
+          fi
 
       - name: Detect parser script path
         id: detect
         shell: bash
         run: |
+          set -euo pipefail
+          detected=""
           if [ -f "parse_landtag_pdf (2).py" ]; then
-            echo "script=parse_landtag_pdf (2).py" >> "$GITHUB_OUTPUT"
+            detected="parse_landtag_pdf (2).py"
           elif [ -f "scripts/parse_landtag_pdf.py" ]; then
-            echo "script=scripts/parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
+            detected="scripts/parse_landtag_pdf.py"
           elif [ -f "parse_landtag_pdf.py" ]; then
-            echo "script=parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
+            detected="parse_landtag_pdf.py"
           else
             echo "::error::Parser-Skript nicht gefunden. Lege es unter scripts/parse_landtag_pdf.py an."
             exit 1
           fi
-          echo "Detected script: ${SCRIPT}"
+          echo "script=${detected}" >> "$GITHUB_OUTPUT"
+          echo "Detected script: ${detected}"
 
       - name: Sanity print files
+        shell: bash
         run: |
+          set -euo pipefail
           echo "CWD: $(pwd)"
           ls -la
           ls -la scripts || true
@@ -102,25 +135,8 @@ jobs:
           echo "Parserlauf abgeschlossen. Dateien in data/:"
           ls -lah data || true
 
-      - name: Assert fixed-mid-split was applied
-        run: |
-          set -e
-          PY=$(ls data/session_*.json | head -n 1)
-          echo "Check file: $PY"
-          jq -r '.layout.reason' "$PY"
-         REASON=$(jq -r '.layout.reason' "$PY")
-          if [[ "$REASON" != fixed-mid-split* ]]; then
-          echo "::error::Unexpected layout.reason: $REASON (expected to start with fixed-mid-split)"
-          exit 1
-          fi
-          # Optional: check method on first page in sidecar
-          SC=$(ls data/session_*.layout.json | head -n 1 || true)
-          if [ -n "$SC" ]; then
-            METHOD=$(jq -r '.layout_debug.layout_metadata[0].method' "$SC")
-            echo "First page method: $METHOD"
-          fi
-
       - name: Upload artifacts (JSON + Layout)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: parsed-session-${{ github.run_id }}
@@ -129,6 +145,32 @@ jobs:
             data/session_*.layout.json
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Assert fixed-mid-split was applied
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=$(ls -1 data/session_*.json 2>/dev/null | head -n 1 || true)
+          if [ -z "$PY" ]; then
+            echo "::error::Keine Session-JSON erzeugt."
+            exit 1
+          fi
+          REASON=$(jq -r '.layout.reason // empty' "$PY")
+          echo "layout.reason: $REASON"
+          if [[ -z "$REASON" || "$REASON" != fixed-mid-split* ]]; then
+            echo "::error::Unexpected layout.reason: ${REASON:-<leer>} (expected to start with fixed-mid-split)"
+            echo "First 120 lines of JSON for debugging:"
+            jq '.' "$PY" | sed -n '1,120p' || true
+            exit 1
+          fi
+          # Optional: check method on first page in sidecar
+          SC=$(ls -1 data/session_*.layout.json 2>/dev/null | head -n 1 || true)
+          if [ -n "$SC" ]; then
+            METHOD=$(jq -r '.layout_debug.layout_metadata[0].method // empty' "$SC")
+            echo "First page method: $METHOD"
+          else
+            echo "No sidecar layout file found."
+          fi
 
       - name: Create PR with results (optional)
         if: ${{ inputs.commit_results == true }}
