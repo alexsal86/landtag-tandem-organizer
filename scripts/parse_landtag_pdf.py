@@ -834,12 +834,63 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
     short = hashlib.sha256(url).hexdigest()[:8] if url else "na"
     return f"session_unknown_{short}.json"
 
+def extract_lines_fixed_mid(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
+    pages_text: List[List[str]] = []
+    metas: List[PageMeta] = []
+    with pdfplumber.open(str(pdf_path)) as pdf:
+        for page in pdf.pages:
+            pw = float(page.width or 0.0)
+            words = page.extract_words(use_text_flow=False, keep_blank_chars=False) or []
+            if not words:
+                pages_text.append([])
+                metas.append(PageMeta(page.page_number, "empty", 0.0, 2, 0.0, 0.0, 0, pw))
+                continue
+
+            # Fester Split exakt in der Mitte
+            split_x = pw * 0.5
+
+            # Linke/rechte Spalte strikt nach Mitte
+            mids = [((float(w.get("x0", 0.0)) + float(w.get("x1", 0.0))) / 2.0) for w in words]
+            left_words = [w for w, m in zip(words, mids) if m < split_x]
+            right_words = [w for w, m in zip(words, mids) if m >= split_x]
+
+            # Zeilenbildung pro Spalte
+            left_lines = _words_to_lines_text(left_words)
+            right_lines = _words_to_lines_text(right_words)
+
+            # Zusammenbau: erst links, dann Leerzeile, dann rechts
+            lines = left_lines + [""] + right_lines
+
+            # Normalisierung (Ellipsen, Punkte, Whitespaces) – leere Zeilen beibehalten
+            norm: List[str] = []
+            for l in lines:
+                if l == "":
+                    norm.append("")
+                    continue
+                l2 = l.replace(ELLIPSIS, ".")
+                l2 = DOT_LEADERS.sub(" ", l2)
+                l2 = re.sub(r"\s+", " ", l2).strip()
+                norm.append(l2)
+            pages_text.append(norm)
+
+            total = max(1, len(words))
+            metas.append(PageMeta(
+                page=page.page_number,
+                method="two-column-fixed-mid",
+                split_x=float(round(split_x, 2)),
+                columns=2,
+                left_fraction=float(round(len(left_words) / total, 3)),
+                right_fraction=float(round(len(right_words) / total, 3)),
+                words=len(words),
+                page_width=float(round(pw, 2))
+            ))
+    return pages_text, metas
+
 def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     pdf_path = download_pdf(url, force=force_download)
-    pages, metas = extract_lines(pdf_path)
 
-    # Kopf-/Fußzeilen global filtern
-    pages, hf_debug = filter_repeating_headers_footers(pages)
+    # NEU: feste 50:50-Extraktion
+    pages, metas = extract_lines_fixed_mid(pdf_path)
 
     # All text for metadata
     all_text = "\n".join("\n".join(p) for p in pages)
@@ -847,14 +898,12 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     meta["source_pdf_url"] = url
     meta["extracted_at"] = dt.datetime.utcnow().isoformat() + "Z"
 
-    # Robustes TOC: flat_lines -> split -> parse
+    # TOC/Speeches wie gehabt …
     flat = pages_to_flat_lines(pages)
     toc_lines, body_lines, _meta = split_toc_and_body(flat, stop_at_first_body_header=True)
     toc = {"items": []}
     if toc_lines:
         toc = parse_toc(toc_lines)
-
-    # Speeches (bewährte Segmentierung beibehalten)
     speeches = segment_speeches_from_pages(pages)
 
     payload: Dict[str, Any] = {
@@ -865,27 +914,18 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
             "source_pdf_url": url,
             "extracted_at": meta.get("extracted_at")
         },
-        "sitting": {
-            "start_time": None,
-            "end_time": None,
-            "location": None
-        },
-        "stats": {
-            "pages": len(pages),
-            "speeches": len(speeches)
-        },
+        "sitting": {"start_time": None, "end_time": None, "location": None},
+        "stats": {"pages": len(pages), "speeches": len(speeches)},
         "layout": {
             "applied": True,
-            "reason": "fixed-mid-split"
+            "reason": "fixed-mid-split"  # NEU
         },
         "toc": toc,
         "speeches": speeches
     }
-    # Sidecar (layout + normalized_pages + header/footer debug)
     payload["_layout_debug_internal"] = {
         "layout_metadata": [m.__dict__ for m in metas],
-        "normalized_pages": pages,
-        "header_footer": hf_debug
+        "normalized_pages": pages
     }
     return payload
 
