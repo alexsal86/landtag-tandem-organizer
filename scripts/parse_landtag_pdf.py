@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.1.0)
+parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.1.1)
 
 Änderungen in dieser Version:
 - Spalten-Serialisierung immer mit fester Split-Position genau in der Seitenmitte (split_x = page_width / 2).
 - Keine dynamische Spaltenerkennung mehr; jede Seite wird als Zweispalter behandelt.
 - Robust: Vollbreiten-Blöcke (Überschriften etc.) werden erkannt und an passender Y-Position eingefügt.
 - Kopf-/Fußzeilen-Filter und Hyphenation-Reparatur bleiben erhalten.
-- Robuster TOC-Parser bleibt integriert; Speeches-Segmentierung unverändert.
+- Robuster TOC-Parser bleibt integriert; Speeches-Segmentierung toleranter.
+- NEU (v3.1.1):
+  - TOC-Start-Heuristik: beginne TOC auch dann, wenn nummerierte TOP-Zeilen mit Seitenzahlen bereits vor der Überschrift „INHALT“ (z. B. linke Spalte) erscheinen.
+  - Reden-Header: Erlaube Text nach dem Doppelpunkt (z. B. „Präsidentin …: Guten Morgen, …“), damit Reden korrekt erkannt werden.
 """
 from __future__ import annotations
 
@@ -332,8 +335,9 @@ ROLE_TOKENS = [
     r"Ministerpräsident(?:in)?", r"Minister(?:in)?", r"Staatssekretär(?:in)?"
 ]
 PARTY_TOKENS = r"(AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN)"
+# Toleranter: erlaubt Text nach dem Doppelpunkt
 HEADER_LINE_RE = re.compile(
-    rf"^\s*(?P<role>{'|'.join(ROLE_TOKENS)})\s+[^\n:]+:\s*$",
+    rf"^\s*(?P<role>{'|'.join(ROLE_TOKENS)})\s+[^\n:]+:\s*(?:\S.*)?$",
     re.IGNORECASE
 )
 
@@ -380,10 +384,21 @@ def split_toc_and_body(
             continue
 
         if not in_toc:
+            # 1) Standard: explizite Überschrift "INHALT" (auch gesperrt) startet den TOC
             if looks_like_inhalt_heading(text):
                 in_toc = True
                 toc_lines.append(obj)
                 continue
+
+            # 2) Heuristik: Falls "INHALT" (noch) fehlt, aber sehr früh (Seite 1–2)
+            # schon eine nummerierte TOP-Zeile mit Seitenzahl(en) am Ende steht,
+            # beginne TOC trotzdem (Layout: linke Spalte mit 1., 2., 3., Überschrift kommt rechts/weiter unten).
+            if obj.get("page", 9999) <= 2:
+                if NUMBERED_START_RE.match(text) and re.search(r"\d{3,5}\s*(?:,\s*\d{3,5})*\s*$", text):
+                    in_toc = True
+                    toc_lines.append(obj)
+                    continue
+
             if is_body_start_line(text):
                 body_start_idx = idx
                 body_start_reason = "protokoll" if PROTOKOLL_HEADING_RE.match(text) else "role_header"
@@ -472,6 +487,7 @@ def _infer_kind_from_header(header_text: str) -> Tuple[Optional[str], str, List[
     title = _strip_trailing_pages(text)
     return kind, title, ds_list
 
+# Reden-Header: Erlaube Text nach dem Doppelpunkt (nicht nur Zeilenende)
 SPEAKER_LINE_RE = re.compile(
     rf"^\s*(?P<role>{ROLE_PATTERN})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+\(?(?P<party>{PARTY_PATTERN})\)?)?\s*(?::|\.\.\.|\.{{2,}})?\s*(?P<pages>\d{{1,4}}(?:\s*,\s*\d{{1,4}})*)?\s*$",
     re.IGNORECASE
@@ -712,8 +728,9 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
 
 # ------------------------- Speeches (Body) -------------------------
 
+# Toleranter: erlaubt Text nach dem Doppelpunkt
 HEADER_RX = re.compile(
-    rf"^\s*(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+(?P<party>{PARTY_TOKENS}))?\s*:\s*$",
+    rf"^\s*(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+(?P<party>{PARTY_TOKENS}))?\s*:\s*(?:\S.*)?$",
     re.IGNORECASE
 )
 
