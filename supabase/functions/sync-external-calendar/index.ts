@@ -85,7 +85,7 @@ function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents:
             events.push(currentEvent as ICSEvent);
           }
         } catch (parseError) {
-          console.warn(`⚠️ Failed to parse event ${currentEvent.uid}: ${parseError.message}`);
+          console.warn(`⚠️ Failed to parse event ${currentEvent.uid}: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
         }
       } else {
         // Log incomplete events for debugging
@@ -154,7 +154,7 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
   // Create a map of existing events for quick lookup
   const existingEventsMap = new Map();
   if (existingEvents) {
-    existingEvents.forEach(event => {
+    existingEvents.forEach((event: any) => {
       existingEventsMap.set(event.external_uid, event.last_modified);
     });
   }
@@ -447,7 +447,7 @@ serve(async (req) => {
           .from('external_calendars')
           .update({ 
             sync_errors_count: 1, // Will be incremented by app logic if needed
-            last_sync_error: error.message,
+            last_sync_error: error instanceof Error ? error.message : String(error),
             last_sync: new Date().toISOString()
           })
           .eq('id', calendar_id);
@@ -457,7 +457,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

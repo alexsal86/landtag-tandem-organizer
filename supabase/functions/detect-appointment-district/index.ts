@@ -337,7 +337,12 @@ serve(async (req) => {
         address: matchedPartyAssociation.full_address || `${matchedPartyAssociation.address_street || ''} ${matchedPartyAssociation.address_number || ''} ${matchedPartyAssociation.address_city || ''}`.trim(),
         website: matchedPartyAssociation.website
       } : undefined,
-      representatives: representatives || undefined
+      representatives: representatives ? {
+        ...representatives,
+        support_district: Array.isArray(representatives.support_district) 
+          ? representatives.support_district[0] 
+          : representatives.support_district
+      } : undefined
     };
 
     console.log('Detection result:', result);

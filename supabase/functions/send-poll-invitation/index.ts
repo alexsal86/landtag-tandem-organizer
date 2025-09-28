@@ -153,7 +153,7 @@ const handler = async (req: Request): Promise<Response> => {
       } catch (emailError) {
         console.error("Error sending email to", email, ":", emailError);
         console.error("Error details:", JSON.stringify(emailError, null, 2));
-        emailResults.push({ email, success: false, error: emailError.message || "Unknown error" });
+        emailResults.push({ email, success: false, error: emailError instanceof Error ? emailError.message : "Unknown error" });
       }
     }
 

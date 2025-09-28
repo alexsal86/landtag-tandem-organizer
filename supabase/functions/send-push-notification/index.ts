@@ -140,7 +140,7 @@ serve(async (req) => {
         console.error('❌ Database connection error:', dbError);
         return new Response(JSON.stringify({
           success: false,
-          error: 'Database connection failed: ' + dbError.message
+          error: 'Database connection failed: ' + (dbError instanceof Error ? dbError.message : String(dbError))
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -184,7 +184,7 @@ serve(async (req) => {
         console.error('❌ VAPID configuration failed:', vapidError);
         return new Response(JSON.stringify({
           success: false,
-          error: 'VAPID configuration failed: ' + vapidError.message
+          error: 'VAPID configuration failed: ' + (vapidError instanceof Error ? vapidError.message : String(vapidError))
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -293,11 +293,11 @@ serve(async (req) => {
           } catch (pushError) {
             console.error(`❌ Failed to send push to user ${subscription.user_id}:`, pushError);
             console.error('❌ Push error details:', {
-              message: pushError.message,
-              statusCode: pushError.statusCode,
-              headers: pushError.headers,
-              body: pushError.body,
-              stack: pushError.stack
+              message: pushError instanceof Error ? pushError.message : String(pushError),
+              statusCode: (pushError as any)?.statusCode,
+              headers: (pushError as any)?.headers,
+              body: (pushError as any)?.body,
+              stack: (pushError as any)?.stack
             });
             failedCount++;
             
@@ -312,8 +312,8 @@ serve(async (req) => {
             });
             
             // If the subscription is invalid, mark it as inactive
-            if (pushError.statusCode === 410 || pushError.statusCode === 404 || pushError.statusCode === 400) {
-              console.log(`🗑️ Marking invalid subscription as inactive for user ${subscription.user_id} (status: ${pushError.statusCode})`);
+            if ((pushError as any)?.statusCode === 410 || (pushError as any)?.statusCode === 404 || (pushError as any)?.statusCode === 400) {
+              console.log(`🗑️ Marking invalid subscription as inactive for user ${subscription.user_id} (status: ${(pushError as any)?.statusCode})`);
               await supabaseAdmin
                 .from('push_subscriptions')
                 .update({ is_active: false })
@@ -364,7 +364,7 @@ serve(async (req) => {
         console.error('❌ Database connection error:', dbError);
         return new Response(JSON.stringify({
           success: false,
-          error: 'Database connection failed: ' + dbError.message
+          error: 'Database connection failed: ' + (dbError instanceof Error ? dbError.message : String(dbError))
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -374,10 +374,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Function error:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack available');
     return new Response(JSON.stringify({
       success: false,
-      error: 'Function error: ' + error.message,
+      error: 'Function error: ' + (error instanceof Error ? error.message : String(error)),
       sent: 0,
       failed: 1,
       total_subscriptions: 0

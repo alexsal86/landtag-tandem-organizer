@@ -60,7 +60,9 @@ const handler = async (req: Request): Promise<Response> => {
       throw creatorError;
     }
 
-    const creatorName = creator.profiles?.display_name || 'Unbekannt';
+    const creatorName = Array.isArray(creator.profiles) 
+      ? (creator.profiles[0] as any)?.display_name || 'Unbekannt'
+      : (creator.profiles as any)?.display_name || 'Unbekannt';
 
     let emailSubject = '';
     let emailHtml = '';
@@ -140,7 +142,7 @@ const handler = async (req: Request): Promise<Response> => {
         return { email, success: true, response: emailResponse };
       } catch (error) {
         console.error(`Error sending email to ${email}:`, error);
-        return { email, success: false, error: error.message };
+        return { email, success: false, error: error instanceof Error ? error.message : String(error) };
       }
     });
 

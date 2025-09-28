@@ -219,7 +219,7 @@ const handler = async (req: Request): Promise<Response> => {
         // Convert ICS content to base64 using Deno's built-in encoding
         const encoder = new TextEncoder();
         const data = encoder.encode(icsContent);
-        const icsBase64 = encode(data);
+        const icsBase64 = encode(data.buffer);
         
         console.log("Base64 encoded ICS length:", icsBase64.length);
 
@@ -287,7 +287,7 @@ const handler = async (req: Request): Promise<Response> => {
             {
               filename: "termin.ics",
               content: icsBase64,
-              type: "text/calendar",
+              contentType: "text/calendar",
             }
           ]
         });
