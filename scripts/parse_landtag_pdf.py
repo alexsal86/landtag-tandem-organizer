@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (robuster TOC-Parser + stabile Zweispalten-Serialisierung, v3.0.0)
+parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.1.0)
 
 Änderungen in dieser Version:
-- Stabile Spalten-Serialisierung für Zweispalter:
-  - Token-Zuordnung zu linker/rechter Spalte und Vollbreite (full-width) basierend auf split_x ± Margin.
-  - Lese-Reihenfolge: Vollbreite (oberhalb), linke Spalte, Vollbreite (zwischen), rechte Spalte, Vollbreite (unterhalb).
-  - Garantierter Spaltentrenner (Leerzeile) zwischen linker und rechter Spalte.
-- Kopf-/Fußzeilen-Filter:
-  - Wiederkehrende Kopf-/Fußzeilen (≥60% der Seiten) werden automatisch erkannt und gefiltert.
-- Hyphenation-Reparatur:
-  - Zeilen, die mit "-" enden, werden sinnvoll mit der Folgezeile zusammengeführt; Soft-Hyphen werden entfernt.
-- Robuster TOC-Parser bleibt integriert; nutzt nun die verbesserte Zeilenreihenfolge.
-- Bestehende Rede-Segmentierung beibehalten; profitiert von korrekter Reihenfolge.
-- Sidecar-Debug enthält Layout-Metadaten sowie ermittelte Kopf-/Fußzeilen.
+- Spalten-Serialisierung immer mit fester Split-Position genau in der Seitenmitte (split_x = page_width / 2).
+- Keine dynamische Spaltenerkennung mehr; jede Seite wird als Zweispalter behandelt.
+- Robust: Vollbreiten-Blöcke (Überschriften etc.) werden erkannt und an passender Y-Position eingefügt.
+- Kopf-/Fußzeilen-Filter und Hyphenation-Reparatur bleiben erhalten.
+- Robuster TOC-Parser bleibt integriert; Speeches-Segmentierung unverändert.
 """
 from __future__ import annotations
 
@@ -70,39 +64,9 @@ ELLIPSIS = "…"
 
 def _histogram_split_x(word_centers: List[float], page_width: float, bins: int = 70) -> Optional[float]:
     """
-    Sucht ein Minimum in der x-Histogramm-Verteilung der Wort-Zentren (Heuristik für Spaltentrenner).
-    Gibt None zurück, wenn keine sinnvolle Zweiteilung erkennbar ist.
+    (Nicht mehr genutzt) Ehemalige Heuristik zur Spaltenerkennung.
     """
-    if not word_centers or page_width <= 0:
-        return None
-    try:
-        bin_w = max(page_width / max(5, bins), 1.0)
-        bins_n = max(10, bins)
-        hist = [0] * bins_n
-        for c in word_centers:
-            idx = int(c / bin_w)
-            if 0 <= idx < bins_n:
-                hist[idx] += 1
-        # Glättung (gleitendes Fenster)
-        smooth = [0] * bins_n
-        for i in range(bins_n):
-            smooth[i] = hist[i]
-            if i > 0:
-                smooth[i] += hist[i - 1]
-            if i + 1 < bins_n:
-                smooth[i] += hist[i + 1]
-        lo = int(bins_n * 0.25)
-        hi = int(bins_n * 0.75)
-        if hi <= lo:
-            lo, hi = 1, bins_n - 2
-        min_i = min(range(lo, hi), key=lambda i: smooth[i])
-        left = sum(hist[:min_i])
-        right = sum(hist[min_i + 1:])
-        if left == 0 or right == 0:
-            return None
-        return (min_i + 0.5) * bin_w
-    except Exception:
-        return None
+    return None
 
 def _group_lines_by_y(words: List[dict], y_quant: float = 3.0) -> List[List[dict]]:
     buckets: Dict[int, List[dict]] = {}
@@ -122,22 +86,9 @@ def _words_to_lines_text(words: List[dict]) -> List[str]:
         out.append(" ".join((w.get("text") or "").strip() for w in line if (w.get("text") or "").strip()))
     return out
 
-def detect_columns(words: List[dict], page_width: float) -> int:
-    mids = [(float(w.get("x0", 0.0)) + float(w.get("x1", 0.0))) / 2.0 for w in words]
-    split_x = _histogram_split_x(mids, page_width)
-    if split_x is None:
-        return 1
-    left_count = sum(1 for m in mids if m < split_x)
-    right_count = len(mids) - left_count
-    if len(mids) == 0:
-        return 1
-    if min(left_count, right_count) / len(mids) < 0.3:
-        return 1
-    return 2
+# ------------------------- Feste Mittel-Splittung (Zweispalten-Serialisierung) -------------------------
 
-# ------------------------- Neue Helfer für stabile Zweispalten-Serialisierung -------------------------
-
-COLUMN_MARGIN_PTS = 12.0
+COLUMN_MARGIN_PTS = 12.0  # Sicherheitsmarge um split_x für Vollbreiten-Erkennung
 HF_TOP_N = 3
 HF_BOTTOM_N = 3
 HF_MIN_SHARE = 0.6
@@ -146,6 +97,10 @@ def _sort_words_reading_order(words: List[dict]) -> List[dict]:
     return sorted(words, key=lambda w: (float(w.get("top", 0.0)), float(w.get("x0", 0.0))))
 
 def _assign_columns(words: List[dict], split_x: float, margin: float = COLUMN_MARGIN_PTS) -> Tuple[List[dict], List[dict], List[dict]]:
+    """
+    Teilt Wörter in linke/rechte Spalte sowie Vollbreite (full) ein.
+    full: Wörter, die die Mitte (±margin) überdecken.
+    """
     left: List[dict] = []
     right: List[dict] = []
     full: List[dict] = []
@@ -183,6 +138,10 @@ def _lines_only_text(lines_with_y: List[Tuple[float, str]]) -> List[str]:
     return [t for _, t in lines_with_y]
 
 def _merge_hyphenation(lines: List[str]) -> List[str]:
+    """
+    Führt Zeilen zusammen, wenn die vorherige auf '-' endet und die nächste mit Kleinbuchstabe beginnt.
+    Entfernt Soft-Hyphen (U+00AD).
+    """
     out: List[str] = []
     for line in lines:
         if line is None:
@@ -201,6 +160,11 @@ def _inject_fullwidth_blocks(
     right_lines_y: List[Tuple[float, str]],
     full_lines_y: List[Tuple[float, str]]
 ) -> List[str]:
+    """
+    Vollbreiten-Zeilen werden anhand ihrer Y-Position in den Lesefluss einsortiert:
+    - oberhalb der Spalten, zwischen den Spalten, unterhalb der Spalten.
+    Reihenfolge: above, left, between, right, below. Zwischen Blöcken Leerzeilen.
+    """
     def first_y(lines): return lines[0][0] if lines else math.inf
     def last_y(lines): return lines[-1][0] if lines else -math.inf
 
@@ -234,7 +198,7 @@ def _inject_fullwidth_blocks(
         result.extend(_lines_only_text(below))
     return result
 
-# ------------------------- extract_lines (mit Neuerungen) -------------------------
+# ------------------------- extract_lines (mit fester Mittel-Splittung) -------------------------
 
 def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
     pages_text: List[List[str]] = []
@@ -245,37 +209,25 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
             words = page.extract_words(use_text_flow=False, keep_blank_chars=False) or []
             if not words:
                 pages_text.append([])
-                metas.append(PageMeta(page.page_number, "empty", 0.0, 1, 0.0, 0.0, 0, pw))
+                metas.append(PageMeta(page.page_number, "empty", 0.0, 2, 0.0, 0.0, 0, pw))
                 continue
 
-            columns = detect_columns(words, pw)
-            mids = [(float(w.get("x0", 0.0)) + float(w.get("x1", 0.0))) / 2.0 for w in words]
-            split_x = _histogram_split_x(mids, pw) or (pw * 0.5)
+            # Fester Split exakt in der Mitte
+            split_x = pw * 0.5
+            # Immer als Zweispalter behandeln
+            lw, rw, fw = _assign_columns(words, split_x, COLUMN_MARGIN_PTS)
+            lw = _sort_words_reading_order(lw)
+            rw = _sort_words_reading_order(rw)
+            fw = _sort_words_reading_order(fw)
 
-            if columns == 1:
-                lines = _words_to_lines_text(words)
-                method = "single-column"
-                left_frac = 1.0
-                right_frac = 0.0
-            else:
-                lw, rw, fw = _assign_columns(words, split_x, COLUMN_MARGIN_PTS)
-                lw = _sort_words_reading_order(lw)
-                rw = _sort_words_reading_order(rw)
-                fw = _sort_words_reading_order(fw)
+            left_lines_y = _words_to_lines_with_y(lw)
+            right_lines_y = _words_to_lines_with_y(rw)
+            full_lines_y = _words_to_lines_with_y(fw)
 
-                left_lines_y = _words_to_lines_with_y(lw)
-                right_lines_y = _words_to_lines_with_y(rw)
-                full_lines_y = _words_to_lines_with_y(fw)
-
-                lines = _inject_fullwidth_blocks(left_lines_y, right_lines_y, full_lines_y)
-                # Fester Spaltentrenner (zusätzlich)
-                if not (lines and lines[-1] == ""):
-                    lines.append("")
-
-                method = "two-column"
-                total = max(1, len(words))
-                left_frac = len(lw) / total
-                right_frac = len(rw) / total
+            lines = _inject_fullwidth_blocks(left_lines_y, right_lines_y, full_lines_y)
+            # Fester Spaltentrenner (zusätzlich)
+            if not (lines and lines[-1] == ""):
+                lines.append("")
 
             # Hyphenation-Reparatur
             lines = _merge_hyphenation(lines)
@@ -291,13 +243,14 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
                 norm.append(l2)
             pages_text.append(norm)
 
+            total = max(1, len(words))
             metas.append(PageMeta(
                 page=page.page_number,
-                method=method,
+                method="two-column",
                 split_x=float(round(split_x, 2)),
-                columns=columns,
-                left_fraction=float(round(left_frac, 3)),
-                right_fraction=float(round(right_frac, 3)),
+                columns=2,
+                left_fraction=float(round(len(lw) / total, 3)),
+                right_fraction=float(round(len(rw) / total, 3)),
                 words=len(words),
                 page_width=float(round(pw, 2))
             ))
@@ -546,7 +499,6 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
         # Neuer nummerierter TOP?
         m_num = NUMBERED_START_RE.match(text)
         if m_num:
-            # finalize vorherigen
             if current:
                 items.append(current)
             num = int(m_num.group(1))
@@ -601,7 +553,6 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
         if current:
             ds_more = _find_all_drs(text)
             if ds_more:
-                # dedupe in current["drucksachen"]
                 for d in ds_more:
                     if d not in current["drucksachen"]:
                         current["drucksachen"].append(d)
@@ -712,9 +663,9 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
         elif m_speaker:
             role = m_speaker.group(1)
             name = m_speaker.group(2).strip()
-            party = m_speaker.group(3)
+            party = _normalize_party(m_speaker.group(3))
             pages_str = m_speaker.group(4)
-            cur_speakers.append({"role": role, "name": name, "party": _normalize_party(party), "pages": pages_str})
+            cur_speakers.append({"role": role, "name": name, "party": party, "pages": pages_str})
 
         elif m_beschluss:
             cur_beschluss = m_beschluss.group(1)
@@ -925,7 +876,7 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
         },
         "layout": {
             "applied": True,
-            "reason": "auto-detected-columns"
+            "reason": "fixed-mid-split"
         },
         "toc": toc,
         "speeches": speeches
@@ -964,7 +915,7 @@ def write_outputs(payload: Dict[str, Any], out_dir: Path) -> Tuple[Path, Optiona
 # ------------------------- CLI -------------------------
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Parser: Robustes TOC + Speeches (stabile Zweispalten-Serialisierung, Header/Footer-Filter).")
+    p = argparse.ArgumentParser(description="Parser: Feste Mittel-Splittung (Zweispalter), robuster TOC + Speeches, Header/Footer-Filter.")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--single-url", help="PDF-URL oder lokaler Pfad")
     g.add_argument("--list-file", help="Datei mit Zeilenweise URLs")
