@@ -3115,6 +3115,92 @@ export type Database = {
           },
         ]
       }
+      matrix_bot_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          message_content: string | null
+          metadata: Json | null
+          response_content: string | null
+          room_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          message_content?: string | null
+          metadata?: Json | null
+          response_content?: string | null
+          room_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          message_content?: string | null
+          metadata?: Json | null
+          response_content?: string | null
+          room_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      matrix_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          matrix_username: string
+          notification_types: string[] | null
+          room_id: string
+          room_name: string | null
+          tenant_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          matrix_username: string
+          notification_types?: string[] | null
+          room_id: string
+          room_name?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          matrix_username?: string
+          notification_types?: string[] | null
+          room_id?: string
+          room_name?: string | null
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matrix_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_agenda_documents: {
         Row: {
           created_at: string
@@ -5269,6 +5355,7 @@ export type Database = {
           email_enabled: boolean
           id: string
           is_enabled: boolean
+          matrix_enabled: boolean | null
           notification_type_id: string
           push_enabled: boolean
           quiet_hours_end: string | null
@@ -5281,6 +5368,7 @@ export type Database = {
           email_enabled?: boolean
           id?: string
           is_enabled?: boolean
+          matrix_enabled?: boolean | null
           notification_type_id: string
           push_enabled?: boolean
           quiet_hours_end?: string | null
@@ -5293,6 +5381,7 @@ export type Database = {
           email_enabled?: boolean
           id?: string
           is_enabled?: boolean
+          matrix_enabled?: boolean | null
           notification_type_id?: string
           push_enabled?: boolean
           quiet_hours_end?: string | null
