@@ -51,11 +51,18 @@ jobs:
           python -m pip install -U pip
           pip install pdfplumber requests jsonschema
 
+      - name: Clean outputs and cache
+        run: |
+          rm -rf data out .cache/pdfs || true
+          mkdir -p data
+
       - name: Detect parser script path
         id: detect
         shell: bash
         run: |
-          if [ -f "scripts/parse_landtag_pdf.py" ]; then
+          if [ -f "parse_landtag_pdf (2).py" ]; then
+            echo "script=parse_landtag_pdf (2).py" >> "$GITHUB_OUTPUT"
+          elif [ -f "scripts/parse_landtag_pdf.py" ]; then
             echo "script=scripts/parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
           elif [ -f "parse_landtag_pdf.py" ]; then
             echo "script=parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
@@ -63,6 +70,13 @@ jobs:
             echo "::error::Parser-Skript nicht gefunden. Lege es unter scripts/parse_landtag_pdf.py an."
             exit 1
           fi
+          echo "Detected script: ${SCRIPT}"
+
+      - name: Sanity print files
+        run: |
+          echo "CWD: $(pwd)"
+          ls -la
+          ls -la scripts || true
 
       - name: Run parser
         env:
@@ -74,23 +88,37 @@ jobs:
           if [ "${{ inputs.force_download }}" = "true" ]; then
             FORCE_FLAG="--force-download"
           fi
-
-          mkdir -p data
-
           if [ -n "${{ inputs.pdf_url }}" ]; then
             echo "Starte Parser für einzelne URL: ${{ inputs.pdf_url }}"
-            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" ${FORCE_FLAG}
+            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out-dir data ${FORCE_FLAG}
           else
             if [ ! -f "${{ inputs.list_file }}" ]; then
               echo "::error::URLs-Liste nicht gefunden: ${{ inputs.list_file }}"
               exit 1
             fi
             echo "Starte Parser für URLs-Liste: ${{ inputs.list_file }}"
-            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" ${FORCE_FLAG}
+            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out-dir data ${FORCE_FLAG}
           fi
-
           echo "Parserlauf abgeschlossen. Dateien in data/:"
           ls -lah data || true
+
+      - name: Assert fixed-mid-split was applied
+        run: |
+          set -e
+          PY=$(ls data/session_*.json | head -n 1)
+          echo "Check file: $PY"
+          jq -r '.layout.reason' "$PY"
+          REASON=$(jq -r '.layout.reason' "$PY")
+          if [ "$REASON" != "fixed-mid-split" ]; then
+            echo "::error::Unexpected layout.reason: $REASON (expected fixed-mid-split)"
+            exit 1
+          fi
+          # Optional: check method on first page in sidecar
+          SC=$(ls data/session_*.layout.json | head -n 1 || true)
+          if [ -n "$SC" ]; then
+            METHOD=$(jq -r '.layout_debug.layout_metadata[0].method' "$SC")
+            echo "First page method: $METHOD"
+          fi
 
       - name: Upload artifacts (JSON + Layout)
         uses: actions/upload-artifact@v4
@@ -112,7 +140,7 @@ jobs:
           body: |
             Automated run of Parse Landtag PDF.
             Includes:
-            - data/session_*.json (speeches, toc_agenda, etc.)
+            - data/session_*.json (speeches, toc)
             - data/session_*.layout.json (normalized_pages + layout metadata)
           add-paths: |
             data/**
