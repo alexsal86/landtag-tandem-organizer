@@ -49,9 +49,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Handle test requests
+    // Handle test requests - now sends REAL Matrix messages for testing
     if (body.test || body.type === 'test') {
-      console.log('🧪 Processing Matrix test request');
+      console.log('🧪 Processing Matrix test request - sending REAL messages');
       
       try {
         // Get Matrix subscriptions for testing
@@ -86,40 +86,119 @@ serve(async (req) => {
           });
         }
 
-        // Create test notifications in database
         let sentCount = 0;
+        let failedCount = 0;
+
+        // Send REAL Matrix test messages
         for (const subscription of subscriptions) {
-          if (subscription.user_id) {
-            try {
-              const { error: notificationError } = await supabaseAdmin
-                .from('notifications')
+          try {
+            console.log(`🧪 Sending TEST Matrix message to room ${subscription.room_id}`);
+            
+            const testMessage: MatrixMessage = {
+              msgtype: "m.text",
+              body: body.message || 'Dies ist eine Test-Nachricht aus der Matrix-Integration! 🤖',
+              format: "org.matrix.custom.html",
+              formatted_body: `<strong>🧪 ${body.title || 'Matrix-Test'}</strong><br/>${body.message || 'Dies ist eine Test-Nachricht aus der Matrix-Integration!'}`
+            };
+
+            // Generate transaction ID
+            const txnId = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // Send message to Matrix room via API
+            const matrixUrl = `${matrixHomeserver}/_matrix/client/r0/rooms/${subscription.room_id}/send/m.room.message/${txnId}`;
+            
+            console.log(`🔗 Matrix API URL: ${matrixUrl}`);
+            console.log(`🔑 Using homeserver: ${matrixHomeserver}`);
+            
+            const response = await fetch(matrixUrl, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${matrixToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(testMessage)
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`❌ Matrix API error for room ${subscription.room_id}:`, response.status, errorText);
+              failedCount++;
+              
+              // Log the failed attempt
+              await supabaseAdmin
+                .from('matrix_bot_logs')
                 .insert({
                   user_id: subscription.user_id,
-                  notification_type_id: '380fab61-2f1a-40d1-bed8-d34925544397',
-                  title: 'Matrix-Test erfolgreich! 🤖',
-                  message: 'Dies ist eine Test-Matrix-Benachrichtigung.',
-                  data: { test: true, matrix_room: subscription.room_id, timestamp: new Date().toISOString() },
-                  priority: 'high'
+                  room_id: subscription.room_id,
+                  message: testMessage.body,
+                  success: false,
+                  error_message: `HTTP ${response.status}: ${errorText}`,
+                  timestamp: new Date().toISOString()
                 });
-                
-              if (notificationError) {
-                console.error('❌ Error creating notification:', notificationError);
-              } else {
-                sentCount++;
-                console.log('✅ Test Matrix notification created for user:', subscription.user_id);
+            } else {
+              const result = await response.json();
+              console.log(`✅ TEST Matrix message sent successfully to room ${subscription.room_id}:`, result);
+              sentCount++;
+              
+              // Log the successful attempt
+              await supabaseAdmin
+                .from('matrix_bot_logs')
+                .insert({
+                  user_id: subscription.user_id,
+                  room_id: subscription.room_id,
+                  message: testMessage.body,
+                  success: true,
+                  event_id: result.event_id,
+                  timestamp: new Date().toISOString()
+                });
+
+              // Also create a database notification
+              if (subscription.user_id) {
+                await supabaseAdmin
+                  .from('notifications')
+                  .insert({
+                    user_id: subscription.user_id,
+                    notification_type_id: '380fab61-2f1a-40d1-bed8-d34925544397',
+                    title: '🧪 Matrix-Test erfolgreich!',
+                    message: 'Test-Nachricht wurde erfolgreich an Matrix gesendet.',
+                    data: { 
+                      test: true, 
+                      matrix_sent: true,
+                      room_id: subscription.room_id,
+                      event_id: result.event_id,
+                      timestamp: new Date().toISOString() 
+                    },
+                    priority: 'high'
+                  });
               }
-            } catch (e) {
-              console.error('❌ Error processing subscription:', e);
             }
+            
+          } catch (sendError) {
+            console.error(`❌ Failed to send TEST Matrix message to room ${subscription.room_id}:`, sendError);
+            failedCount++;
+            
+            // Log the failed attempt
+            await supabaseAdmin
+              .from('matrix_bot_logs')
+              .insert({
+                user_id: subscription.user_id,
+                room_id: subscription.room_id,
+                message: body.message || 'Test message',
+                success: false,
+                error_message: sendError instanceof Error ? sendError.message : String(sendError),
+                timestamp: new Date().toISOString()
+              });
           }
         }
 
         return new Response(JSON.stringify({
-          success: true,
+          success: sentCount > 0,
           sent: sentCount,
-          failed: subscriptions.length - sentCount,
+          failed: failedCount,
           total_subscriptions: subscriptions.length,
-          message: `Matrix-Test erfolgreich - ${sentCount} Benachrichtigung(en) simuliert!`
+          message: sentCount > 0 
+            ? `✅ Matrix-Test erfolgreich! ${sentCount} echte Nachrichten gesendet, ${failedCount} fehlgeschlagen.`
+            : `❌ Matrix-Test fehlgeschlagen. ${failedCount} Nachrichten konnten nicht gesendet werden.`
         }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
