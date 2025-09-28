@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.1.1)
+parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.2.0)
 
 Änderungen in dieser Version:
 - Spalten-Serialisierung immer mit fester Split-Position genau in der Seitenmitte (split_x = page_width / 2).
@@ -9,9 +9,13 @@ parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.1.1)
 - Robust: Vollbreiten-Blöcke (Überschriften etc.) werden erkannt und an passender Y-Position eingefügt.
 - Kopf-/Fußzeilen-Filter und Hyphenation-Reparatur bleiben erhalten.
 - Robuster TOC-Parser bleibt integriert; Speeches-Segmentierung toleranter.
-- NEU (v3.1.1):
-  - TOC-Start-Heuristik: beginne TOC auch dann, wenn nummerierte TOP-Zeilen mit Seitenzahlen bereits vor der Überschrift „INHALT“ (z. B. linke Spalte) erscheinen.
-  - Reden-Header: Erlaube Text nach dem Doppelpunkt (z. B. „Präsidentin …: Guten Morgen, …“), damit Reden korrekt erkannt werden.
+
+NEU (v3.2.0):
+- Header/Footer-Filter wird vor TOC/Speeches angewendet (finale Texte bereinigt, Debug zeigt Erkennung).
+- Sitzungszeiten (Beginn/Schluss) und Ort (z. B. „Stuttgart“) werden aus dem Header extrahiert.
+- TOC-Titel werden zeilenübergreifend zusammengeführt; Drs.-Angaben werden strukturiert angereichert.
+- Parteienangaben in TOC-Speakern werden aus den Reden (Body) nachträglich ergänzt, wenn fehlend.
+- Layout-Reason: "fixed-mid-split + header/footer-filter".
 """
 from __future__ import annotations
 
@@ -259,7 +263,61 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
             ))
     return pages_text, metas
 
-# ------------------------- Header/Footer-Filter (neu) -------------------------
+# ------------------------- extract_lines_fixed_mid (einfachere 50:50) -------------------------
+
+def extract_lines_fixed_mid(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
+    pages_text: List[List[str]] = []
+    metas: List[PageMeta] = []
+    with pdfplumber.open(str(pdf_path)) as pdf:
+        for page in pdf.pages:
+            pw = float(page.width or 0.0)
+            words = page.extract_words(use_text_flow=False, keep_blank_chars=False) or []
+            if not words:
+                pages_text.append([])
+                metas.append(PageMeta(page.page_number, "empty", 0.0, 2, 0.0, 0.0, 0, pw))
+                continue
+
+            # Fester Split exakt in der Mitte
+            split_x = pw * 0.5
+
+            # Linke/rechte Spalte strikt nach Mitte
+            mids = [((float(w.get("x0", 0.0)) + float(w.get("x1", 0.0))) / 2.0) for w in words]
+            left_words = [w for w, m in zip(words, mids) if m < split_x]
+            right_words = [w for w, m in zip(words, mids) if m >= split_x]
+
+            # Zeilenbildung pro Spalte
+            left_lines = _words_to_lines_text(left_words)
+            right_lines = _words_to_lines_text(right_words)
+
+            # Zusammenbau: erst links, dann Leerzeile, dann rechts
+            lines = left_lines + [""] + right_lines
+
+            # Normalisierung (Ellipsen, Punkte, Whitespaces) – leere Zeilen beibehalten
+            norm: List[str] = []
+            for l in lines:
+                if l == "":
+                    norm.append("")
+                    continue
+                l2 = l.replace(ELLIPSIS, ".")
+                l2 = DOT_LEADERS.sub(" ", l2)
+                l2 = re.sub(r"\s+", " ", l2).strip()
+                norm.append(l2)
+            pages_text.append(norm)
+
+            total = max(1, len(words))
+            metas.append(PageMeta(
+                page=page.page_number,
+                method="two-column-fixed-mid",
+                split_x=float(round(split_x, 2)),
+                columns=2,
+                left_fraction=float(round(len(left_words) / total, 3)),
+                right_fraction=float(round(len(right_words) / total, 3)),
+                words=len(words),
+                page_width=float(round(pw, 2))
+            ))
+    return pages_text, metas
+
+# ------------------------- Header/Footer-Filter -------------------------
 
 _HF_SANITIZE_NUMBERS = re.compile(r"\b\d{1,5}\b")
 
@@ -493,6 +551,23 @@ SPEAKER_LINE_RE = re.compile(
     re.IGNORECASE
 )
 
+def _join_title_parts(parts: List[str]) -> str:
+    """
+    Führt Titelteile zusammen (entfernt Seitenzahlen am Ende, repariert Silbentrennung).
+    """
+    res = ""
+    for part in parts:
+        p = _strip_trailing_pages(part or "").strip()
+        if not p:
+            continue
+        if res.endswith("-") and p[:1].islower():
+            res = res.rstrip("-") + p
+        else:
+            res = (res + " " + p).strip()
+    # Nochmals säubern
+    res = re.sub(r"\s{2,}", " ", res).strip()
+    return res
+
 def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Parst die übergebenen TOC-Zeilen in strukturierte Tagesordnung.
@@ -516,6 +591,11 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
         m_num = NUMBERED_START_RE.match(text)
         if m_num:
             if current:
+                # finalize previous item
+                if current.get("_title_parts"):
+                    current["title"] = _join_title_parts(current["_title_parts"])
+                current.pop("_title_parts", None)
+                current.pop("_in_header", None)
                 items.append(current)
             num = int(m_num.group(1))
             rest = m_num.group(2).strip()
@@ -529,7 +609,9 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "subentries": [],
                 "speakers": [],
                 "raw_header": text,
-                "raw_lines": []
+                "raw_lines": [],
+                "_title_parts": [title] if title else [],
+                "_in_header": True
             }
             i += 1
             continue
@@ -544,6 +626,7 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
                 se["drucksachen"] = [ds]
             current["subentries"].append(se)
             current["raw_lines"].append(text)
+            current["_in_header"] = False
             i += 1
             continue
 
@@ -562,25 +645,43 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
                     "pages": pages_str if pages_str else None
                 })
                 current["raw_lines"].append(text)
+                current["_in_header"] = False
                 i += 1
                 continue
 
-        # Zusätzliche Zeilen: Drs. anhängen oder als 'extra' sammeln
+        # Zusätzliche Zeilen:
         if current:
-            ds_more = _find_all_drs(text)
-            if ds_more:
+            # Wenn wir noch im Headerblock sind (vor Subentries/Speakern), erweitern wir den Titel
+            if current.get("_in_header"):
+                ds_more = _find_all_drs(text)
                 for d in ds_more:
                     if d not in current["drucksachen"]:
                         current["drucksachen"].append(d)
                 text_wo_drs = DRS_RE.sub("", text).strip(" –—-")
                 if text_wo_drs:
-                    current["extra"] = (current.get("extra") + " " + text_wo_drs).strip() if current.get("extra") else text_wo_drs
+                    current["_title_parts"].append(text_wo_drs)
+                    current["title"] = _join_title_parts(current["_title_parts"])
+                current["raw_lines"].append(text)
             else:
-                current["extra"] = (current.get("extra") + " " + text).strip() if current.get("extra") else text
-            current["raw_lines"].append(text)
+                # nach Headerblock: in 'extra' sammeln (als einfacher Fließtext)
+                ds_more = _find_all_drs(text)
+                if ds_more:
+                    for d in ds_more:
+                        if d not in current["drucksachen"]:
+                            current["drucksachen"].append(d)
+                    text_wo_drs = DRS_RE.sub("", text).strip(" –—-")
+                    if text_wo_drs:
+                        current["extra"] = (current.get("extra") + " " + text_wo_drs).strip() if current.get("extra") else text_wo_drs
+                else:
+                    current["extra"] = (current.get("extra") + " " + text).strip() if current.get("extra") else text
+                current["raw_lines"].append(text)
         i += 1
 
     if current:
+        if current.get("_title_parts"):
+            current["title"] = _join_title_parts(current["_title_parts"])
+        current.pop("_title_parts", None)
+        current.pop("_in_header", None)
         items.append(current)
 
     # Normalisierung: Partei-Namen säubern, leere Strings entfernen
@@ -797,6 +898,9 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
 
 # ------------------------- Metadata helpers -------------------------
 
+BEGINN_RE = re.compile(r"Beginn\s+(\d{1,2})[:.]?(\d{2})\s*Uhr", re.IGNORECASE)
+SCHLUSS_RE = re.compile(r"Schluss\s+(\d{1,2})[:.]?(\d{2})\s*Uhr", re.IGNORECASE)
+
 def parse_session_info(all_text: str) -> Dict[str, Any]:
     number = None
     m1 = re.search(r"(\d{1,3})\.\s*Sitzung", all_text)
@@ -819,10 +923,30 @@ def parse_session_info(all_text: str) -> Dict[str, Any]:
         mm = MONTHS.get(mon)
         if mm:
             date = f"{year:04d}-{mm:02d}-{day:02d}"
+    # Beginn/Schluss
+    start_time = None
+    end_time = None
+    m_beg = BEGINN_RE.search(all_text)
+    if m_beg:
+        hh, mm = int(m_beg.group(1)), int(m_beg.group(2))
+        start_time = f"{hh:02d}:{mm:02d}"
+    m_end = SCHLUSS_RE.search(all_text)
+    if m_end:
+        hh, mm = int(m_end.group(1)), int(m_end.group(2))
+        end_time = f"{hh:02d}:{mm:02d}"
+    # Ort (einfach: Stuttgart, falls vorhanden)
+    location = None
+    m_loc = re.search(r"\bStuttgart\b", all_text)
+    if m_loc:
+        location = "Stuttgart"
+
     return {
         "number": number,
         "legislative_period": leg,
-        "date": date
+        "date": date,
+        "start_time": start_time,
+        "end_time": end_time,
+        "location": location
     }
 
 # ------------------------- Flat-lines helper -------------------------
@@ -833,6 +957,30 @@ def pages_to_flat_lines(pages: List[List[str]]) -> List[Dict[str, Any]]:
         for li, t in enumerate(lines):
             flat.append({"page": pi, "line_index": li, "text": t})
     return flat
+
+# ------------------------- Party enrichment -------------------------
+
+def _normalize_person_name(n: Optional[str]) -> Optional[str]:
+    if not n:
+        return n
+    n2 = unicodedata.normalize("NFKC", n)
+    n2 = re.sub(r"\s+", " ", n2).strip()
+    return n2
+
+def enrich_toc_parties_from_speeches(toc: Dict[str, Any], speeches: List[Dict[str, Any]]) -> None:
+    # Index: Name -> Party (erste gefundene Party gewinnt)
+    idx: Dict[str, str] = {}
+    for sp in speeches:
+        name = _normalize_person_name(sp.get("speaker"))
+        party = _normalize_party(sp.get("party"))
+        if name and party and name not in idx:
+            idx[name] = party
+    for item in toc.get("items", []):
+        for s in item.get("speakers", []):
+            if not s.get("party"):
+                n = _normalize_person_name(s.get("name"))
+                if n and n in idx:
+                    s["party"] = idx[n]
 
 # ------------------------- Main pipeline -------------------------
 
@@ -851,77 +999,31 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
     short = hashlib.sha256(url).hexdigest()[:8] if url else "na"
     return f"session_unknown_{short}.json"
 
-def extract_lines_fixed_mid(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
-    pages_text: List[List[str]] = []
-    metas: List[PageMeta] = []
-    with pdfplumber.open(str(pdf_path)) as pdf:
-        for page in pdf.pages:
-            pw = float(page.width or 0.0)
-            words = page.extract_words(use_text_flow=False, keep_blank_chars=False) or []
-            if not words:
-                pages_text.append([])
-                metas.append(PageMeta(page.page_number, "empty", 0.0, 2, 0.0, 0.0, 0, pw))
-                continue
-
-            # Fester Split exakt in der Mitte
-            split_x = pw * 0.5
-
-            # Linke/rechte Spalte strikt nach Mitte
-            mids = [((float(w.get("x0", 0.0)) + float(w.get("x1", 0.0))) / 2.0) for w in words]
-            left_words = [w for w, m in zip(words, mids) if m < split_x]
-            right_words = [w for w, m in zip(words, mids) if m >= split_x]
-
-            # Zeilenbildung pro Spalte
-            left_lines = _words_to_lines_text(left_words)
-            right_lines = _words_to_lines_text(right_words)
-
-            # Zusammenbau: erst links, dann Leerzeile, dann rechts
-            lines = left_lines + [""] + right_lines
-
-            # Normalisierung (Ellipsen, Punkte, Whitespaces) – leere Zeilen beibehalten
-            norm: List[str] = []
-            for l in lines:
-                if l == "":
-                    norm.append("")
-                    continue
-                l2 = l.replace(ELLIPSIS, ".")
-                l2 = DOT_LEADERS.sub(" ", l2)
-                l2 = re.sub(r"\s+", " ", l2).strip()
-                norm.append(l2)
-            pages_text.append(norm)
-
-            total = max(1, len(words))
-            metas.append(PageMeta(
-                page=page.page_number,
-                method="two-column-fixed-mid",
-                split_x=float(round(split_x, 2)),
-                columns=2,
-                left_fraction=float(round(len(left_words) / total, 3)),
-                right_fraction=float(round(len(right_words) / total, 3)),
-                words=len(words),
-                page_width=float(round(pw, 2))
-            ))
-    return pages_text, metas
-
 def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     pdf_path = download_pdf(url, force=force_download)
 
     # NEU: feste 50:50-Extraktion
-    pages, metas = extract_lines_fixed_mid(pdf_path)
+    pages_raw, metas = extract_lines_fixed_mid(pdf_path)
 
-    # All text for metadata
-    all_text = "\n".join("\n".join(p) for p in pages)
+    # Header/Footer-Filter vor Parsing anwenden
+    pages_filtered, hf_debug = filter_repeating_headers_footers(pages_raw, top_n=HF_TOP_N, bottom_n=HF_BOTTOM_N, min_share=HF_MIN_SHARE)
+
+    # All text for metadata (bereinigt)
+    all_text = "\n".join("\n".join(p) for p in pages_filtered)
     meta = parse_session_info(all_text)
     meta["source_pdf_url"] = url
     meta["extracted_at"] = dt.datetime.utcnow().isoformat() + "Z"
 
-    # TOC/Speeches wie gehabt …
-    flat = pages_to_flat_lines(pages)
+    # TOC/Speeches auf den bereinigten Seiten
+    flat = pages_to_flat_lines(pages_filtered)
     toc_lines, body_lines, _meta = split_toc_and_body(flat, stop_at_first_body_header=True)
     toc = {"items": []}
     if toc_lines:
         toc = parse_toc(toc_lines)
-    speeches = segment_speeches_from_pages(pages)
+    speeches = segment_speeches_from_pages(pages_filtered)
+
+    # Parteien in TOC aus den Reden nachpflegen (falls fehlend)
+    enrich_toc_parties_from_speeches(toc, speeches)
 
     payload: Dict[str, Any] = {
         "session": {
@@ -931,18 +1033,24 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
             "source_pdf_url": url,
             "extracted_at": meta.get("extracted_at")
         },
-        "sitting": {"start_time": None, "end_time": None, "location": None},
-        "stats": {"pages": len(pages), "speeches": len(speeches)},
+        "sitting": {
+            "start_time": meta.get("start_time"),
+            "end_time": meta.get("end_time"),
+            "location": meta.get("location")
+        },
+        "stats": {"pages": len(pages_filtered), "speeches": len(speeches)},
         "layout": {
             "applied": True,
-            "reason": "fixed-mid-split"  # NEU
+            "reason": "fixed-mid-split + header/footer-filter"
         },
         "toc": toc,
         "speeches": speeches
     }
     payload["_layout_debug_internal"] = {
         "layout_metadata": [m.__dict__ for m in metas],
-        "normalized_pages": pages
+        "normalized_pages": pages_raw,
+        "filtered_pages": pages_filtered,
+        "header_footer_filter": hf_debug
     }
     return payload
 
