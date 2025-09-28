@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (robuster TOC-Parser integriert, v2.0.0)
+parse_landtag_pdf.py (robuster TOC-Parser + stabile Zweispalten-Serialisierung, v3.0.0)
 
 Änderungen in dieser Version:
-- Robustes Inhaltsverzeichnis direkt in dieser Datei implementiert (keine Imports anderer Scripts).
-  - TOC/Body-Trennung: looks_like_inhalt_heading + is_body_start_line + split_toc_and_body
-  - TOC-Parsing: parse_toc(flat_lines) erzeugt strukturierte Items mit Nummer, Titel, Subentries, Rednern, Drs.
-- Spalten-Trenner: Bei zweispaltigen Seiten wird zwischen linker und rechter Spalte eine leere Zeile eingefügt,
-  damit das TOC-Parsing keine Zeilen über den Spaltenumbruch hinweg zusammenführt.
-- Leere Zeilen werden erhalten (keine Vorab-Filterung).
-- Bestehende Rede-Segmentierung beibehalten.
-- Ergebnis-JSON: neues Feld "toc" (statt "toc_agenda"). Legacy-Funktion assemble_toc_from_pages bleibt als Referenz enthalten, wird aber nicht mehr genutzt.
+- Stabile Spalten-Serialisierung für Zweispalter:
+  - Token-Zuordnung zu linker/rechter Spalte und Vollbreite (full-width) basierend auf split_x ± Margin.
+  - Lese-Reihenfolge: Vollbreite (oberhalb), linke Spalte, Vollbreite (zwischen), rechte Spalte, Vollbreite (unterhalb).
+  - Garantierter Spaltentrenner (Leerzeile) zwischen linker und rechter Spalte.
+- Kopf-/Fußzeilen-Filter:
+  - Wiederkehrende Kopf-/Fußzeilen (≥60% der Seiten) werden automatisch erkannt und gefiltert.
+- Hyphenation-Reparatur:
+  - Zeilen, die mit "-" enden, werden sinnvoll mit der Folgezeile zusammengeführt; Soft-Hyphen werden entfernt.
+- Robuster TOC-Parser bleibt integriert; nutzt nun die verbesserte Zeilenreihenfolge.
+- Bestehende Rede-Segmentierung beibehalten; profitiert von korrekter Reihenfolge.
+- Sidecar-Debug enthält Layout-Metadaten sowie ermittelte Kopf-/Fußzeilen.
 """
 from __future__ import annotations
 
@@ -19,6 +22,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import math
 import re
 import sys
 import unicodedata
@@ -65,50 +69,49 @@ DOT_LEADERS = re.compile(r"\.{2,}")
 ELLIPSIS = "…"
 
 def _histogram_split_x(word_centers: List[float], page_width: float, bins: int = 70) -> Optional[float]:
+    """
+    Sucht ein Minimum in der x-Histogramm-Verteilung der Wort-Zentren (Heuristik für Spaltentrenner).
+    Gibt None zurück, wenn keine sinnvolle Zweiteilung erkennbar ist.
+    """
     if not word_centers or page_width <= 0:
         return None
-    lo = min(word_centers)
-    hi = max(word_centers)
-    if hi - lo < page_width * 0.30:
+    try:
+        bin_w = max(page_width / max(5, bins), 1.0)
+        bins_n = max(10, bins)
+        hist = [0] * bins_n
+        for c in word_centers:
+            idx = int(c / bin_w)
+            if 0 <= idx < bins_n:
+                hist[idx] += 1
+        # Glättung (gleitendes Fenster)
+        smooth = [0] * bins_n
+        for i in range(bins_n):
+            smooth[i] = hist[i]
+            if i > 0:
+                smooth[i] += hist[i - 1]
+            if i + 1 < bins_n:
+                smooth[i] += hist[i + 1]
+        lo = int(bins_n * 0.25)
+        hi = int(bins_n * 0.75)
+        if hi <= lo:
+            lo, hi = 1, bins_n - 2
+        min_i = min(range(lo, hi), key=lambda i: smooth[i])
+        left = sum(hist[:min_i])
+        right = sum(hist[min_i + 1:])
+        if left == 0 or right == 0:
+            return None
+        return (min_i + 0.5) * bin_w
+    except Exception:
         return None
-    bin_w = (hi - lo) / bins if bins > 0 else (hi - lo)
-    counts = []
-    edges = []
-    for i in range(bins):
-        start = lo + i * bin_w
-        end = start + bin_w
-        edges.append((start, end))
-        cnt = sum(1 for c in word_centers if start <= c < end)
-        counts.append(cnt)
-    # grob zwei Peaks suchen
-    peaks = []
-    for i in range(1, bins - 1):
-        if counts[i] > counts[i - 1] and counts[i] > counts[i + 1]:
-            peaks.append((counts[i], i))
-    if len(peaks) < 2:
-        return None
-    peaks.sort(reverse=True)
-    (_c1, i1), (_c2, i2) = sorted(peaks[:2], key=lambda x: x[1])
-    # tal finden
-    valley = None
-    valley_i = None
-    for j in range(i1 + 1, i2):
-        v = counts[j]
-        if valley is None or v < valley:
-            valley = v
-            valley_i = j
-    if valley is None:
-        return None
-    return (edges[valley_i][0] + edges[valley_i][1]) / 2.0
 
 def _group_lines_by_y(words: List[dict], y_quant: float = 3.0) -> List[List[dict]]:
     buckets: Dict[int, List[dict]] = {}
     for w in words:
-        yk = int(round(w["top"] / y_quant))
+        yk = int(round(float(w.get("top", 0.0)) / y_quant))
         buckets.setdefault(yk, []).append(w)
     lines = []
     for yk in sorted(buckets.keys()):
-        line = sorted(buckets[yk], key=lambda w: w["x0"])
+        line = sorted(buckets[yk], key=lambda w: float(w.get("x0", 0.0)))
         lines.append(line)
     return lines
 
@@ -116,19 +119,122 @@ def _words_to_lines_text(words: List[dict]) -> List[str]:
     lines = _group_lines_by_y(words)
     out = []
     for line in lines:
-        out.append(" ".join(w["text"] for w in line))
+        out.append(" ".join((w.get("text") or "").strip() for w in line if (w.get("text") or "").strip()))
     return out
 
 def detect_columns(words: List[dict], page_width: float) -> int:
-    mids = [(w["x0"] + w["x1"]) / 2.0 for w in words]
+    mids = [(float(w.get("x0", 0.0)) + float(w.get("x1", 0.0))) / 2.0 for w in words]
     split_x = _histogram_split_x(mids, page_width)
     if split_x is None:
         return 1
     left_count = sum(1 for m in mids if m < split_x)
     right_count = len(mids) - left_count
+    if len(mids) == 0:
+        return 1
     if min(left_count, right_count) / len(mids) < 0.3:
         return 1
     return 2
+
+# ------------------------- Neue Helfer für stabile Zweispalten-Serialisierung -------------------------
+
+COLUMN_MARGIN_PTS = 12.0
+HF_TOP_N = 3
+HF_BOTTOM_N = 3
+HF_MIN_SHARE = 0.6
+
+def _sort_words_reading_order(words: List[dict]) -> List[dict]:
+    return sorted(words, key=lambda w: (float(w.get("top", 0.0)), float(w.get("x0", 0.0))))
+
+def _assign_columns(words: List[dict], split_x: float, margin: float = COLUMN_MARGIN_PTS) -> Tuple[List[dict], List[dict], List[dict]]:
+    left: List[dict] = []
+    right: List[dict] = []
+    full: List[dict] = []
+    left_boundary = split_x - margin
+    right_boundary = split_x + margin
+    for w in words:
+        x0 = float(w.get("x0", 0.0))
+        x1 = float(w.get("x1", 0.0))
+        mid = (x0 + x1) * 0.5
+        if x0 < left_boundary and x1 > right_boundary:
+            full.append(w)
+        elif mid < split_x - 0.5:
+            left.append(w)
+        elif mid > split_x + 0.5:
+            right.append(w)
+        else:
+            full.append(w)
+    return left, right, full
+
+def _words_to_lines_with_y(words: List[dict], y_quant: float = 3.0) -> List[Tuple[float, str]]:
+    if not words:
+        return []
+    groups = _group_lines_by_y(words, y_quant=y_quant)
+    lines_with_y: List[Tuple[float, str]] = []
+    for g in groups:
+        g_sorted = sorted(g, key=lambda w: float(w.get("x0", 0.0)))
+        y = float(min(float(w.get("top", 0.0)) for w in g_sorted))
+        text = " ".join((w.get("text") or "").strip() for w in g_sorted if (w.get("text") or "").strip())
+        if text:
+            lines_with_y.append((y, text))
+    lines_with_y.sort(key=lambda t: t[0])
+    return lines_with_y
+
+def _lines_only_text(lines_with_y: List[Tuple[float, str]]) -> List[str]:
+    return [t for _, t in lines_with_y]
+
+def _merge_hyphenation(lines: List[str]) -> List[str]:
+    out: List[str] = []
+    for line in lines:
+        if line is None:
+            continue
+        s = line.replace("\u00AD", "")
+        if out:
+            prev = out[-1]
+            if prev.rstrip().endswith("-") and s and s[:1].islower():
+                out[-1] = prev.rstrip().rstrip("-") + s.lstrip()
+                continue
+        out.append(s)
+    return out
+
+def _inject_fullwidth_blocks(
+    left_lines_y: List[Tuple[float, str]],
+    right_lines_y: List[Tuple[float, str]],
+    full_lines_y: List[Tuple[float, str]]
+) -> List[str]:
+    def first_y(lines): return lines[0][0] if lines else math.inf
+    def last_y(lines): return lines[-1][0] if lines else -math.inf
+
+    l_first, r_first = first_y(left_lines_y), first_y(right_lines_y)
+    l_last, r_last = last_y(left_lines_y), last_y(right_lines_y)
+    col_first = min(l_first, r_first)
+    col_last = max(l_last, r_last)
+
+    above = [(y, t) for (y, t) in full_lines_y if y < col_first]
+    between = [(y, t) for (y, t) in full_lines_y if col_first <= y <= col_last]
+    below = [(y, t) for (y, t) in full_lines_y if y > col_last]
+
+    above.sort(key=lambda x: x[0])
+    between.sort(key=lambda x: x[0])
+    below.sort(key=lambda x: x[0])
+
+    result: List[str] = []
+    if above:
+        result.extend(_lines_only_text(above))
+        result.append("")
+    result.extend(_lines_only_text(left_lines_y))
+    if left_lines_y:
+        result.append("")
+    if between:
+        result.extend(_lines_only_text(between))
+        result.append("")
+    result.extend(_lines_only_text(right_lines_y))
+    if right_lines_y:
+        result.append("")
+    if below:
+        result.extend(_lines_only_text(below))
+    return result
+
+# ------------------------- extract_lines (mit Neuerungen) -------------------------
 
 def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
     pages_text: List[List[str]] = []
@@ -143,56 +249,129 @@ def extract_lines(pdf_path: Path) -> Tuple[List[List[str]], List[PageMeta]]:
                 continue
 
             columns = detect_columns(words, pw)
-            mids = [(w["x0"] + w["x1"]) / 2.0 for w in words]
+            mids = [(float(w.get("x0", 0.0)) + float(w.get("x1", 0.0))) / 2.0 for w in words]
             split_x = _histogram_split_x(mids, pw) or (pw * 0.5)
 
             if columns == 1:
                 lines = _words_to_lines_text(words)
+                method = "single-column"
                 left_frac = 1.0
                 right_frac = 0.0
-                method = "single-column"
-                split_val = 0.0
             else:
-                left_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) < split_x]
-                right_words = [w for w in words if ((w["x0"] + w["x1"]) / 2.0) >= split_x]
-                total = max(1, len(words))
-                left_frac = len(left_words) / total
-                right_frac = len(right_words) / total
-                left_lines = _words_to_lines_text(left_words)
-                right_lines = _words_to_lines_text(right_words)
-                # WICHTIG: Spalten-Trenner einfügen, damit TOC nicht über Spalten hinweg merged
-                lines = left_lines + [""] + right_lines
-                method = "two-column"
-                split_val = round(split_x, 2)
+                lw, rw, fw = _assign_columns(words, split_x, COLUMN_MARGIN_PTS)
+                lw = _sort_words_reading_order(lw)
+                rw = _sort_words_reading_order(rw)
+                fw = _sort_words_reading_order(fw)
 
-            pages_text.append(lines)
+                left_lines_y = _words_to_lines_with_y(lw)
+                right_lines_y = _words_to_lines_with_y(rw)
+                full_lines_y = _words_to_lines_with_y(fw)
+
+                lines = _inject_fullwidth_blocks(left_lines_y, right_lines_y, full_lines_y)
+                # Fester Spaltentrenner (zusätzlich)
+                if not (lines and lines[-1] == ""):
+                    lines.append("")
+
+                method = "two-column"
+                total = max(1, len(words))
+                left_frac = len(lw) / total
+                right_frac = len(rw) / total
+
+            # Hyphenation-Reparatur
+            lines = _merge_hyphenation(lines)
+            # Normalisierung (Punkte, Ellipsen, Whitespace) – leere Zeilen erhalten
+            norm: List[str] = []
+            for l in lines:
+                if l == "":
+                    norm.append("")
+                    continue
+                l2 = l.replace(ELLIPSIS, ".")
+                l2 = DOT_LEADERS.sub(" ", l2)
+                l2 = re.sub(r"\s+", " ", l2).strip()
+                norm.append(l2)
+            pages_text.append(norm)
+
             metas.append(PageMeta(
                 page=page.page_number,
                 method=method,
-                split_x=split_val,
+                split_x=float(round(split_x, 2)),
                 columns=columns,
-                left_fraction=round(left_frac, 3),
-                right_fraction=round(right_frac, 3),
+                left_fraction=float(round(left_frac, 3)),
+                right_fraction=float(round(right_frac, 3)),
                 words=len(words),
-                page_width=round(pw, 2)
+                page_width=float(round(pw, 2))
             ))
+    return pages_text, metas
 
-    # Normalize lines (Punkte, Ellipsen, Whitespace), leere Zeilen erhalten
-    norm_pages: List[List[str]] = []
-    for lines in pages_text:
-        norm: List[str] = []
-        for l in lines:
-            l = l.replace(ELLIPSIS, ".")
-            l = DOT_LEADERS.sub(" ", l)
-            l = re.sub(r"\s+", " ", l).strip()
-            norm.append(l)  # leere Zeilen bleiben leere Strings
-        norm_pages.append(norm)
-    return norm_pages, metas
+# ------------------------- Header/Footer-Filter (neu) -------------------------
 
-# ------------------------- Robust TOC splitter & parser (inline) -------------------------
+_HF_SANITIZE_NUMBERS = re.compile(r"\b\d{1,5}\b")
 
 def _nfkc(s: str) -> str:
     return unicodedata.normalize("NFKC", s or "")
+
+def _normalize_for_header_footer(s: str) -> str:
+    s = _nfkc(s)
+    s = re.sub(r"\s+", " ", s).strip()
+    s = _HF_SANITIZE_NUMBERS.sub("", s)
+    s = s.strip(" –—-•,.;:")
+    return s
+
+def filter_repeating_headers_footers(
+    pages_lines: List[List[str]],
+    top_n: int = HF_TOP_N,
+    bottom_n: int = HF_BOTTOM_N,
+    min_share: float = HF_MIN_SHARE
+) -> Tuple[List[List[str]], Dict[str, Any]]:
+    if not pages_lines:
+        return pages_lines, {"headers": [], "footers": []}
+
+    total_pages = len(pages_lines)
+    top_counts: Dict[str, int] = {}
+    bottom_counts: Dict[str, int] = {}
+    raw_examples_top: Dict[str, str] = {}
+    raw_examples_bottom: Dict[str, str] = {}
+
+    for lines in pages_lines:
+        tops = [ln for ln in lines[:top_n] if ln.strip()]
+        bots = [ln for ln in lines[-bottom_n:] if ln.strip()]
+        for ln in tops:
+            key = _normalize_for_header_footer(ln)
+            if not key:
+                continue
+            top_counts[key] = top_counts.get(key, 0) + 1
+            raw_examples_top.setdefault(key, ln)
+        for ln in bots:
+            key = _normalize_for_header_footer(ln)
+            if not key:
+                continue
+            bottom_counts[key] = bottom_counts.get(key, 0) + 1
+            raw_examples_bottom.setdefault(key, ln)
+
+    header_keys = {k for k, c in top_counts.items() if c / total_pages >= min_share}
+    footer_keys = {k for k, c in bottom_counts.items() if c / total_pages >= min_share}
+
+    filtered: List[List[str]] = []
+    for lines in pages_lines:
+        new_lines: List[str] = []
+        for idx, ln in enumerate(lines):
+            key = _normalize_for_header_footer(ln)
+            is_top_region = idx < top_n
+            is_bottom_region = idx >= max(0, len(lines) - bottom_n)
+            if is_top_region and key in header_keys:
+                continue
+            if is_bottom_region and key in footer_keys:
+                continue
+            new_lines.append(ln)
+        filtered.append(new_lines)
+
+    debug = {
+        "headers": [raw_examples_top[k] for k in header_keys],
+        "footers": [raw_examples_bottom[k] for k in footer_keys],
+    }
+    return filtered, debug
+
+# ------------------------- Robust TOC splitter & parser (inline) -------------------------
 
 # Header-Erkennung (Body-Start)
 ROLE_TOKENS = [
@@ -240,7 +419,6 @@ def split_toc_and_body(
 
     for idx, obj in enumerate(flat_lines):
         text = _nfkc(obj.get("text") or "")
-        # leere Zeilen behalten wir im aktuellen Modus
         if not text.strip():
             if in_toc:
                 toc_lines.append(obj)
@@ -258,10 +436,9 @@ def split_toc_and_body(
                 body_start_reason = "protokoll" if PROTOKOLL_HEADING_RE.match(text) else "role_header"
                 body_lines.extend(flat_lines[idx:])
                 break
-            # Kopfbereich ignorieren
             continue
 
-        # Wir sind im TOC-Bereich
+        # im TOC-Bereich
         if PROTOKOLL_HEADING_RE.match(text):
             body_start_idx = idx
             body_start_reason = "protokoll"
@@ -276,7 +453,6 @@ def split_toc_and_body(
 
         toc_lines.append(obj)
 
-    # Falls wir bis zum Ende im TOC waren und keinen Body-Start fanden: body bleibt leer
     if not in_toc and not body_lines:
         # Kein TOC gefunden -> gesamter Input ist Body
         body_lines = list(flat_lines)
@@ -294,26 +470,13 @@ DASH_SPLIT_RE = re.compile(r"\s*[–—-]\s*")
 DRS_RE = re.compile(r"(?:Drucksache|Drs\.)\s*(\d+/\d+)", re.IGNORECASE)
 PARTY_PATTERN = r"(?:AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN)"
 ROLE_PATTERN = r"(?:Abg\.|Präsident(?:in)?|Vizepräsident(?:in)?|Ministerpräsident(?:in)?|Minister(?:in)?|Staatssekretär(?:in)?)"
-
-# Nummerierter Header-Beginn: "1. <Text>"
-NUMBERED_START_RE = re.compile(r"^\s*(?P<num>\d{1,3})\.\s+(?P<body>.+)$")
-# Unnummerierte Header-Hinweise
-UNNUMBERED_HEADER_HINT_RE = re.compile(
-    r"^(Aktuelle\s+Debatte|Fragestunde|Eröffnung|Bekanntgabe|Tagesordnung|Anträge|Antrag|Bericht|Wahl)\b",
-    re.IGNORECASE
-)
-# Sprecher-Zeilen (Redereihenfolge) im TOC
-SPEAKER_LINE_RE = re.compile(
-    rf"^\s*(?P<role>{ROLE_PATTERN})\s+(?P<name>[^.,\d][^.\d]*?)(?:\s+(?P<party>{PARTY_PATTERN}))?\s*(?:[.\s]{{2,}}\d+(?:\s*,\s*\d+)*)?\s*$",
-    re.IGNORECASE
-)
-# Subentry "Beschlussempfehlung..." / "Bericht..." / "Beschluss" optional mit DS
+NUMBERED_START_RE = re.compile(r"^\s*(\d+)\.\s+(.*)$")
 SUBENTRY_WITH_DRS_RE = re.compile(
     rf"^(?P<text>Beschlussempfehlung.+?|Bericht.+?|Beschluss)\s*(?:{DASH_SPLIT_RE.pattern}(?:Drucksache|Drs\.)\s*(?P<ds>\d+/\d+))?$",
     re.IGNORECASE
 )
-# Seitenzahlen am Ende entfernen
 TRAILING_PAGES_RE = re.compile(r"\s+\d{3,5}(?:\s*,\s*\d{3,5})*\s*$")
+TOC_HEADER_RX = re.compile(r"^\s*(Inhalt|I\s*N\s*H\s*A\s*L\s*T)\s*$", re.IGNORECASE)
 
 def _cleanup_line(s: str) -> str:
     s = _nfkc(s)
@@ -335,47 +498,14 @@ def _normalize_party(p: Optional[str]) -> Optional[str]:
 def _find_all_drs(text: str) -> List[str]:
     return list(dict.fromkeys(DRS_RE.findall(text)))  # de-dupe, preserve order
 
-def _looks_like_subentry(text: str) -> bool:
-    return bool(SUBENTRY_WITH_DRS_RE.match(text))
-
-def _parse_subentry(text: str) -> Tuple[str, List[str]]:
-    m = SUBENTRY_WITH_DRS_RE.match(text)
-    if not m:
-        return text, []
-    sub_text = m.group("text") or text
-    ds = []
-    if m.group("ds"):
-        ds = [m.group("ds")]
-    more = _find_all_drs(text)
-    for d in more:
-        if d not in ds:
-            ds.append(d)
-    return sub_text.strip(), ds
-
-def _looks_like_speaker(text: str) -> bool:
-    return bool(SPEAKER_LINE_RE.match(text))
-
-def _parse_speaker_line(text: str) -> Optional[Dict[str, Any]]:
-    m = SPEAKER_LINE_RE.match(text)
-    if not m:
-        return None
-    return {
-        "role": m.group("role"),
-        "name": (m.group("name") or "").strip(),
-        "party": _normalize_party(m.group("party"))
-    }
-
-def _parse_header(header_text: str) -> Tuple[Optional[str], str, Optional[str], List[str]]:
+def _infer_kind_from_header(header_text: str) -> Tuple[Optional[str], str, List[str]]:
     """
-    Versucht, 'kind' (z. B. 'Aktuelle Debatte') zu erkennen.
-    Gibt (kind, title, extra, drs_list) zurück.
+    Entfernt Drs.-Angaben aus header_text, heuristisch 'kind' erkennen und Drs-Liste zurückliefern.
     """
     text = header_text
     ds_list = _find_all_drs(text)
     if ds_list:
         text = DRS_RE.sub("", text).strip(" –—-")
-
-    # heuristische Erkennung des "Kind"
     kind_patterns = [
         r"Aktuelle Debatte", r"Erste Beratung", r"Zweite Beratung", r"Dritte Beratung",
         r"Fragestunde", r"Regierungserklärung", r"Wahl", r"Antrag", r"Bericht", r"Tagesordnung"
@@ -385,22 +515,21 @@ def _parse_header(header_text: str) -> Tuple[Optional[str], str, Optional[str], 
         m = re.search(pat, text, re.IGNORECASE)
         if m:
             kind = m.group(0)
-            # Titel = Rest ohne das erkannte "Kind" und evtl. Trennstrich
-            rest = text[:m.start()] + text[m.end():]
-            # Trennstriche entfernen
-            rest = DASH_SPLIT_RE.sub(" ", rest).strip(" –—- ")
-            title = rest if rest else text
-            return kind, title.strip(), None, ds_list
+            break
+    title = _strip_trailing_pages(text)
+    return kind, title, ds_list
 
-    # kein Kind erkannt
-    return None, text.strip(), None, ds_list
+SPEAKER_LINE_RE = re.compile(
+    rf"^\s*(?P<role>{ROLE_PATTERN})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+\(?(?P<party>{PARTY_PATTERN})\)?)?\s*(?::|\.\.\.|\.{{2,}})?\s*(?P<pages>\d{{1,4}}(?:\s*,\s*\d{{1,4}})*)?\s*$",
+    re.IGNORECASE
+)
 
 def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Parst die übergebenen TOC-Zeilen in strukturierte Tagesordnung.
     Erwartet nur die TOC-Seiten (oder einen entsprechend herausgefilterten Ausschnitt).
     Ausgabeformat:
-      { "items": [ { number, kind, title, drucksachen, extra, subentries: [{text, drucksachen}], speakers: [{role,name,party}], raw_header, raw_lines } ] }
+      { "items": [ { number, kind, title, drucksachen, extra, subentries: [{text, drucksachen}], speakers: [{role,name,party,pages?}], raw_header, raw_lines } ] }
     """
     items: List[Dict[str, Any]] = []
     i = 0
@@ -408,120 +537,71 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
     current: Optional[Dict[str, Any]] = None
 
     while i < n:
-        raw = (flat_lines[i].get("text") or "")
-        raw = _nfkc(raw)
+        raw = _nfkc(flat_lines[i].get("text") or "")
         text = _cleanup_line(raw)
         if not text:
             i += 1
             continue
 
-        # 1) Neuer nummerierter TOP?
+        # Neuer nummerierter TOP?
         m_num = NUMBERED_START_RE.match(text)
         if m_num:
-            # Vorherigen abschließen
+            # finalize vorherigen
             if current:
                 items.append(current)
-                current = None
-
-            num = int(m_num.group("num"))
-            body_first = m_num.group("body").strip()
-            header_lines = [body_first]
-
-            # Mehrzeilige Header fortsetzen, bis Subentry/Sprecher/neuer TOP
-            j = i + 1
-            while j < n:
-                nxt_raw = _nfkc(flat_lines[j].get("text") or "")
-                nxt = _cleanup_line(nxt_raw)
-                if not nxt:
-                    break
-                if NUMBERED_START_RE.match(nxt):
-                    break
-                if _looks_like_subentry(nxt) or _looks_like_speaker(nxt):
-                    break
-                header_lines.append(nxt)
-                j += 1
-
-            header_text = " ".join(header_lines).strip()
-            header_text = _strip_trailing_pages(header_text)
-            kind, title, extra, drs_list = _parse_header(header_text)
-
+            num = int(m_num.group(1))
+            rest = m_num.group(2).strip()
+            kind, title, ds_list = _infer_kind_from_header(rest)
             current = {
                 "number": num,
                 "kind": kind,
                 "title": title,
-                "drucksachen": drs_list,
-                "extra": extra,
+                "drucksachen": ds_list or [],
+                "extra": None,
                 "subentries": [],
                 "speakers": [],
-                "raw_header": header_text,
-                "raw_lines": [text] + header_lines[1:]
+                "raw_header": text,
+                "raw_lines": []
             }
-            i = j
-            continue
-
-        # 2) Unnummerierter Einzelpunkt-Header?
-        if current is None and UNNUMBERED_HEADER_HINT_RE.match(text) and not _looks_like_subentry(text) and not _looks_like_speaker(text):
-            header_lines = [text]
-            j = i + 1
-            while j < n:
-                nxt_raw = _nfkc(flat_lines[j].get("text") or "")
-                nxt = _cleanup_line(nxt_raw)
-                if not nxt:
-                    break
-                if NUMBERED_START_RE.match(nxt):
-                    break
-                if _looks_like_subentry(nxt) or _looks_like_speaker(nxt):
-                    break
-                header_lines.append(nxt)
-                j += 1
-
-            header_text = " ".join(header_lines).strip()
-            header_text = _strip_trailing_pages(header_text)
-            kind, title, extra, drs_list = _parse_header(header_text)
-
-            current = {
-                "number": None,
-                "kind": kind,
-                "title": title,
-                "drucksachen": drs_list,
-                "extra": extra,
-                "subentries": [],
-                "speakers": [],
-                "raw_header": header_text,
-                "raw_lines": header_lines[:]
-            }
-            i = j
-            continue
-
-        # Ab hier müssen wir innerhalb eines laufenden Items sein, sonst ignorieren
-        if current is None:
             i += 1
             continue
 
-        # 3) Subentry (Beschlussempfehlung / Bericht / Beschluss)
-        if _looks_like_subentry(text):
-            sub_text, ds = _parse_subentry(text)
-            current["subentries"].append({
-                "text": sub_text,
-                "drucksachen": ds
-            })
+        # Subentry mit optionaler Drs.
+        if current and SUBENTRY_WITH_DRS_RE.match(text):
+            m = SUBENTRY_WITH_DRS_RE.match(text)
+            sub_text = _strip_trailing_pages(m.group("text") or "").strip(" –—-")
+            ds = m.group("ds")
+            se = {"text": sub_text}
+            if ds:
+                se["drucksachen"] = [ds]
+            current["subentries"].append(se)
             current["raw_lines"].append(text)
             i += 1
             continue
 
-        # 4) Sprecherzeile (Redereihenfolge)
-        if _looks_like_speaker(text):
-            sp = _parse_speaker_line(text)
-            if sp:
-                current["speakers"].append(sp)
+        # Speaker-Zeile (Rolle Name (Partei) ... Seiten)
+        if current:
+            msp = SPEAKER_LINE_RE.match(text)
+            if msp:
+                role = msp.group("role")
+                name = (msp.group("name") or "").strip()
+                party = _normalize_party(msp.group("party"))
+                pages_str = (msp.group("pages") or "").strip()
+                current["speakers"].append({
+                    "role": role,
+                    "name": name,
+                    "party": party,
+                    "pages": pages_str if pages_str else None
+                })
                 current["raw_lines"].append(text)
-            i += 1
-            continue
+                i += 1
+                continue
 
-        # 5) Anderes: ggf. als 'extra' anhängen und DS extrahieren
-        if text and text not in current["raw_lines"]:
+        # Zusätzliche Zeilen: Drs. anhängen oder als 'extra' sammeln
+        if current:
             ds_more = _find_all_drs(text)
             if ds_more:
+                # dedupe in current["drucksachen"]
                 for d in ds_more:
                     if d not in current["drucksachen"]:
                         current["drucksachen"].append(d)
@@ -533,43 +613,25 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
             current["raw_lines"].append(text)
         i += 1
 
-    # Finalisieren
     if current:
         items.append(current)
 
-    # Normalisierung: Partei-Namen und leere Strings säubern
+    # Normalisierung: Partei-Namen säubern, leere Strings entfernen
     for it in items:
         if it.get("extra"):
             it["extra"] = it["extra"].strip(" –—-")
-        if not it.get("extra"):
+        else:
             it["extra"] = None
         for sp in it.get("speakers", []):
             sp["party"] = _normalize_party(sp.get("party"))
 
-    return { "items": items }
+    return {"items": items}
 
-# ------------------------- Hilfen: Pages -> flat_lines -------------------------
+# ------------------------- Legacy-TOC (Referenz, nicht genutzt) -------------------------
 
-def pages_to_flat_lines(pages_lines: List[List[str]]) -> List[Dict[str, Any]]:
-    """
-    Baut flache Zeilenobjekte:
-      [{ "page": int, "line_index": int, "text": str }, ...]
-    Leere Zeilen werden beibehalten (wichtig für TOC-Abschluss).
-    """
-    flat: List[Dict[str, Any]] = []
-    for p_idx, lines in enumerate(pages_lines, start=1):
-        for i, t in enumerate(lines):
-            flat.append({"page": p_idx, "line_index": i, "text": t})
-    return flat
-
-# ------------------------- Legacy TOC (nur Referenz, nicht genutzt) -------------------------
-
-TOC_HEADER_RX = re.compile(r"^\s*(I\s*N\s*H\s*A\s*L\s*T|INHALT)\s*$", re.IGNORECASE)
-PAGE_ONLY_RX = re.compile(r"^\s*\d{3,5}\s*$")
 AGENDA_NUM_RX = re.compile(r"^\s*(\d+)\.\s+(.*)$")
 AGENDA_KEYWORDS_RX = re.compile(r"\b(Beschluss|Beschlussempfehlung|Zweite Beratung|Aktuelle Debatte|Erste Beratung|Dritte Beratung)\b", re.IGNORECASE)
 DRS_RX_LEGACY = re.compile(r"(?:Drucksache|Drs\.)\s*(\d+/\d+)", re.IGNORECASE)
-
 SPEAKER_RX_LEGACY = re.compile(
     r"^\s*(Abg\.|Präsidentin|Präsident|Vizepräsidentin|Vizepräsident|Minister(?:in)?|Staatssekretär(?:in)?)\s+"
     r"(.{1,120}?)"
@@ -652,7 +714,7 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
             name = m_speaker.group(2).strip()
             party = m_speaker.group(3)
             pages_str = m_speaker.group(4)
-            cur_speakers.append({"role": role, "name": name, "party": party, "pages": pages_str})
+            cur_speakers.append({"role": role, "name": name, "party": _normalize_party(party), "pages": pages_str})
 
         elif m_beschluss:
             cur_beschluss = m_beschluss.group(1)
@@ -683,11 +745,11 @@ def assemble_toc_from_pages(pages_lines: List[List[str]], look_pages: int = 3) -
             cur_item["docket"] = drs[-1]
         items.append(cur_item)
 
-    # Dedup
+    # Dedup by (number, title)
     dedup: List[Dict[str, Any]] = []
     seen = set()
     for it in items:
-        key = (it.get("number"), (it["title"] or "").lower())
+        key = (it.get("number"), (it.get("title") or "").lower())
         if key in seen:
             if dedup:
                 last = dedup[-1]
@@ -703,14 +765,6 @@ HEADER_RX = re.compile(
     rf"^\s*(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+(?P<party>{PARTY_TOKENS}))?\s*:\s*$",
     re.IGNORECASE
 )
-
-def find_first_body_header(lines: List[str]) -> int:
-    for i, l in enumerate(lines):
-        if HEADER_RX.match(l):
-            if re.match(r"^\s*Präsident", l, re.IGNORECASE):
-                return i
-            return i
-    return 0
 
 def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
     # Flatten mit Seitenindex
@@ -803,6 +857,15 @@ def parse_session_info(all_text: str) -> Dict[str, Any]:
         "date": date
     }
 
+# ------------------------- Flat-lines helper -------------------------
+
+def pages_to_flat_lines(pages: List[List[str]]) -> List[Dict[str, Any]]:
+    flat: List[Dict[str, Any]] = []
+    for pi, lines in enumerate(pages, start=1):
+        for li, t in enumerate(lines):
+            flat.append({"page": pi, "line_index": li, "text": t})
+    return flat
+
 # ------------------------- Main pipeline -------------------------
 
 def build_session_filename(payload: Dict[str, Any]) -> str:
@@ -823,6 +886,10 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
 def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     pdf_path = download_pdf(url, force=force_download)
     pages, metas = extract_lines(pdf_path)
+
+    # Kopf-/Fußzeilen global filtern
+    pages, hf_debug = filter_repeating_headers_footers(pages)
+
     # All text for metadata
     all_text = "\n".join("\n".join(p) for p in pages)
     meta = parse_session_info(all_text)
@@ -860,15 +927,14 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
             "applied": True,
             "reason": "auto-detected-columns"
         },
-        # Neuer, robuster TOC
         "toc": toc,
-        # Legacy-Feld (nicht mehr befüllt): "toc_agenda": [],
         "speeches": speeches
     }
-    # Sidecar (layout + normalized_pages)
+    # Sidecar (layout + normalized_pages + header/footer debug)
     payload["_layout_debug_internal"] = {
         "layout_metadata": [m.__dict__ for m in metas],
-        "normalized_pages": pages
+        "normalized_pages": pages,
+        "header_footer": hf_debug
     }
     return payload
 
@@ -898,35 +964,36 @@ def write_outputs(payload: Dict[str, Any], out_dir: Path) -> Tuple[Path, Optiona
 # ------------------------- CLI -------------------------
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Parser: Robustes TOC + Speeches (inline, ohne Imports).")
+    p = argparse.ArgumentParser(description="Parser: Robustes TOC + Speeches (stabile Zweispalten-Serialisierung, Header/Footer-Filter).")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--single-url", help="PDF-URL oder lokaler Pfad")
     g.add_argument("--list-file", help="Datei mit Zeilenweise URLs")
     p.add_argument("--force-download", action="store_true")
+    p.add_argument("--out-dir", default="out", help="Ausgabeverzeichnis (Default: out)")
     return p.parse_args()
 
 def gather_urls(args) -> List[str]:
     if args.single_url:
         return [args.single_url.strip()]
     urls: List[str] = []
-    for line in Path(args.list_file).read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            urls.append(line)
-    if not urls:
-        raise SystemExit("Keine URLs gefunden.")
+    with open(args.list_file, "r", encoding="utf-8") as f:
+        for line in f:
+            u = line.strip()
+            if u and not u.startswith("#"):
+                urls.append(u)
     return urls
 
-def main() -> int:
+def main():
     args = parse_args()
+    out_dir = Path(args.out_dir)
     urls = gather_urls(args)
-    out_dir = Path("data")
     for url in urls:
-        print(f"[INFO] Verarbeite {url}")
-        payload = process_pdf(url, force_download=args.force_download)
-        sp, lp = write_outputs(payload, out_dir)
-        print(f"[INFO] geschrieben: {sp.name} {'+' if lp else ''} {lp.name if lp else ''}")
-    return 0
+        try:
+            payload = process_pdf(url, args.force_download)
+            session_path, sidecar_path = write_outputs(payload, out_dir)
+            print(f"[OK] {url} -> {session_path.name}" + (f" (+ {sidecar_path.name})" if sidecar_path else ""))
+        except Exception as e:
+            print(f"[ERROR] {url}: {e}", file=sys.stderr)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
