@@ -18,7 +18,9 @@ import {
   Download,
   FileText,
   Search,
-  BarChart3
+  BarChart3,
+  MapPin,
+  Clock
 } from 'lucide-react';
 import { ProtocolSearch } from './ProtocolSearch';
 import { ProtocolExport } from './ProtocolExport';
@@ -38,12 +40,26 @@ interface TOCAgendaItem {
   number?: number;
   title: string;
   kind?: string;
+  drucksachen?: string[];
+  extra?: string | null;
+  subentries?: Array<{
+    type: string;
+    text: string;
+    pages?: number[];
+  }>;
   speakers?: Array<{
     name: string;
     role?: string;
     party?: string;
     pages?: number[];
   }>;
+  raw_header?: string;
+  raw_lines?: string[];
+}
+
+interface SpeechEvent {
+  type: string;
+  text: string;
 }
 
 interface Speech {
@@ -54,6 +70,7 @@ interface Speech {
   text: string;
   start_page?: number;
   agenda_item_number?: number;
+  events?: SpeechEvent[];
 }
 
 interface ProtocolViewerProps {
@@ -68,7 +85,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
 
   // Extract data from structured_data JSONB
   const tocAgenda: TOCAgendaItem[] = useMemo(() => {
-    return protocol.structured_data?.toc_agenda || protocol.structured_data?.toc?.items || [];
+    return protocol.structured_data?.toc?.items || [];
   }, [protocol.structured_data]);
 
   const allSpeeches: Speech[] = useMemo(() => {
@@ -79,6 +96,10 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
     return protocol.structured_data?.stats || {};
   }, [protocol.structured_data]);
 
+  const sessionData = protocol.structured_data?.session || {};
+  const sittingData = protocol.structured_data?.sitting || {};
+  const qaData = protocol.structured_data?._qa || {};
+
   // Get unique parties
   const parties = useMemo(() => {
     const partySet = new Set<string>();
@@ -88,14 +109,12 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
     return Array.from(partySet).sort();
   }, [allSpeeches]);
 
-  // Group speeches by TOP based on speaker names
+  // Group speeches by TOP using agenda_item_number
   const groupedData = useMemo(() => {
     return tocAgenda.map(item => {
-      const speakerNames = item.speakers?.map(s => s.name) || [];
       const matchedSpeeches = allSpeeches.filter(speech => 
-        speakerNames.some(name => speech.speaker?.toLowerCase().includes(name.toLowerCase()))
+        speech.agenda_item_number === item.number
       );
-      
       return {
         ...item,
         matchedSpeeches
@@ -130,11 +149,38 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
       'GRÜNE': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
       'CDU': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
       'SPD': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      'FDP': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'FDP/DVP': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
       'AfD': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       'DIE LINKE': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
     };
     return colors[party || ''] || 'bg-muted text-muted-foreground';
+  };
+
+  // Get event class for styling
+  const getEventClass = (type: string) => {
+    if (type === 'Beifall') return 'text-green-600 font-semibold';
+    if (type === 'Zuruf') return 'text-red-600 italic';
+    if (type === 'Heiterkeit') return 'text-yellow-600';
+    return 'text-blue-600'; // Default
+  };
+
+  // Render text with inline events
+  const renderTextWithEvents = (text: string, events?: SpeechEvent[]) => {
+    if (!events || events.length === 0) {
+      return <p className="text-sm whitespace-pre-wrap leading-relaxed">{text}</p>;
+    }
+
+    let enhancedText = text;
+    events.forEach(event => {
+      const regex = new RegExp(escapeRegExp(event.text), 'g');
+      enhancedText = enhancedText.replace(regex, `<span class="${getEventClass(event.type)}">${event.text}</span>`);
+    });
+
+    return <p dangerouslySetInnerHTML={{ __html: enhancedText }} className="text-sm whitespace-pre-wrap leading-relaxed" />;
+  };
+
+  const escapeRegExp = (string: string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   };
 
   return (
@@ -149,10 +195,14 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
             </Button>
             
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                PDF
-              </Button>
+              {sessionData.source_pdf_url && (
+                <a href={sessionData.source_pdf_url} download>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    PDF
+                  </Button>
+                </a>
+              )}
               <ProtocolExport 
                 protocolId={protocol.id} 
                 protocolTitle={protocol.original_filename}
@@ -171,6 +221,20 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
                 </div>
                 <div>Sitzung {protocol.session_number}</div>
                 <div>Wahlperiode {protocol.legislature_period}</div>
+              </div>
+              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                {sittingData.location && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    {sittingData.location}
+                  </div>
+                )}
+                {sittingData.start_time && sittingData.end_time && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    {sittingData.start_time} - {sittingData.end_time}
+                  </div>
+                )}
               </div>
             </div>
             
@@ -293,6 +357,23 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
                           <p className="text-sm font-medium line-clamp-2">
                             {item.title}
                           </p>
+                          {item.drucksachen && item.drucksachen.length > 0 && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Drucksachen: {item.drucksachen.join(', ')}
+                            </div>
+                          )}
+                          {item.extra && (
+                            <div className="text-xs italic text-muted-foreground mt-1">
+                              {item.extra}
+                            </div>
+                          )}
+                          {item.subentries && item.subentries.length > 0 && (
+                            <ul className="text-xs text-muted-foreground mt-1 list-disc pl-4">
+                              {item.subentries.map((sub, i) => (
+                                <li key={i}>{sub.text} ({sub.type})</li>
+                              ))}
+                            </ul>
+                          )}
                           {item.speakers && item.speakers.length > 0 && (
                             <div className="flex items-center gap-1 mt-1">
                               <Users className="h-3 w-3 text-muted-foreground" />
@@ -340,6 +421,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
                     <Badge key={idx} variant="secondary" className={getPartyColor(speaker.party)}>
                       {speaker.name}
                       {speaker.party && ` (${speaker.party})`}
+                      {speaker.pages && speaker.pages.length > 0 && ` (S. ${speaker.pages.join(', ')})`}
                     </Badge>
                   ))}
                 </div>
@@ -388,9 +470,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
                       <AccordionContent className="px-4 pt-0 pb-4">
                         <Separator className="mb-4" />
                         <div className="prose prose-sm max-w-none dark:prose-invert">
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                            {speech.text}
-                          </p>
+                          {renderTextWithEvents(speech.text, speech.events)}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
