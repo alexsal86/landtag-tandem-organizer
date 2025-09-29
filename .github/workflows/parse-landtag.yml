@@ -46,6 +46,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -68,10 +69,14 @@ jobs:
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           else
-            pip install pdfplumber requests jsonschema
+            pip install pdfplumber requests jsonschema jq
           fi
           python --version
-          python -c "import pdfplumber, requests; print('pdfplumber', pdfplumber.__version__); print('requests', requests.__version__)"
+          python - <<'PY'
+          import pdfplumber, requests
+          print("pdfplumber", pdfplumber.__version__)
+          print("requests", requests.__version__)
+          PY
 
       - name: Clean outputs and cache
         shell: bash
@@ -145,6 +150,25 @@ jobs:
             data/session_*.layout.json
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Quick sanity: next_meeting and events_flat
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=$(ls -1 data/session_*.json 2>/dev/null | head -n 1 || true)
+          if [ -z "$PY" ]; then
+            echo "::warning::Kein Session-JSON gefunden, überspringe Sanity."
+            exit 0
+          fi
+          echo "Sanity auf: $PY"
+          echo "next_meeting:"
+          jq -r '.session.next_meeting // "<none>"' "$PY"
+          echo "events_flat vorhanden? (mindestens eine Rede):"
+          if jq -e '(.speeches // []) | map(has("events_flat")) | any' "$PY" >/dev/null; then
+            echo "OK: events_flat vorhanden."
+          else
+            echo "::warning::events_flat nicht gefunden."
+          fi
 
       - name: Assert fixed-mid-split was applied
         shell: bash
