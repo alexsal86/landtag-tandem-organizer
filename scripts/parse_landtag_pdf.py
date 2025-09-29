@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.3.1)
+parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.3.2)
 
-Hotfixes (v3.3.1):
-- Dehyphenation konservativ (nur Zeilenumbruch-Trennung), keine Intra-Wort-Zusammenziehungen mehr.
-- Datumserkennung: numerisches Format dd.mm.yyyy zusätzlich.
-- Agenda-Mapping robust gegenüber fehlenden Leerzeichen in „Ich rufe …“.
-- TOC-Normalisierung: filtert Sitzungskopf/„INHALT“; Titel-Noise (URLs, Datum, „Baden-Württemberg“) wird entfernt.
-- Events: Nur echte Beifall/Zuruf/Heiterkeit/Unruhe/Glocke/Zwischenruf extrahieren, sonst im Text belassen.
-- Redetext: Entfernt typische Inline-Header („Landtag von Baden-Württemberg …“, „Wahlperiode“, „… Sitzung …“).
+Neu in v3.3.2:
+- TOC-Fallback für spaltenübergreifende (links→rechts) Einträge:
+  Interleaving nach Y-Position nur für TOC-Seiten, damit Rednerlisten (rechte Spalte)
+  korrekt dem linken Header zugeordnet werden (fix für TOP 3).
+- Titel-Noise robuster entfernen: „D rucksachen und Plenarprotokolle …“, „Recyclingpapier/Blauer Engel“.
+- Redensegmentierung: Keine neuen Reden, wenn eine (Abg. …)-Zeile in Klammern steht.
+- Leere Präsidiumseinträge entfernen.
+- Kleinere Säuberungen bei Dot-Leadern und Events beibehalten.
+
+Hinweis: v3.3.1-Hotfixes (konservative Dehyphenation, Datumsregex, Agenda-Erkennung, TOC-Filter) bleiben erhalten.
 """
 from __future__ import annotations
 
@@ -81,9 +84,42 @@ def _words_to_lines_text(words: List[dict]) -> List[str]:
         out.append(" ".join((w.get("text") or "").strip() for w in line if (w.get("text") or "").strip()))
     return out
 
+def _words_to_lines_with_y(words: List[dict], y_quant: float = 3.0) -> List[Tuple[float, str]]:
+    if not words:
+        return []
+    groups = _group_lines_by_y(words, y_quant=y_quant)
+    lines_with_y: List[Tuple[float, str]] = []
+    for g in groups:
+        g_sorted = sorted(g, key=lambda w: float(w.get("x0", 0.0)))
+        y = float(min(float(w.get("top", 0.0)) for w in g_sorted))
+        text = " ".join((w.get("text") or "").strip() for w in g_sorted if (w.get("text") or "").strip())
+        if text:
+            lines_with_y.append((y, text))
+    lines_with_y.sort(key=lambda t: t[0])
+    return lines_with_y
+
+def _words_to_lines_with_xy(words: List[dict], y_quant: float = 3.0) -> List[Tuple[float, float, str]]:
+    """Gruppiert Wörter zu Zeilen und gibt (y_min, x_min, text) zurück, sortiert nach (y,x)."""
+    if not words:
+        return []
+    groups = _group_lines_by_y(words, y_quant=y_quant)
+    out: List[Tuple[float, float, str]] = []
+    for g in groups:
+        g_sorted = sorted(g, key=lambda w: float(w.get("x0", 0.0)))
+        y = float(min(float(w.get("top", 0.0)) for w in g_sorted))
+        x = float(min(float(w.get("x0", 0.0)) for w in g_sorted))
+        text = " ".join((w.get("text") or "").strip() for w in g_sorted if (w.get("text") or "").strip())
+        text = text.replace(ELLIPSIS, ".")
+        text = DOT_LEADERS.sub(" ", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        if text:
+            out.append((y, x, text))
+    out.sort(key=lambda t: (t[0], t[1]))
+    return out
+
 # ------------------------- Feste Mittel-Splittung (Zweispalten-Serialisierung) -------------------------
 
-COLUMN_MARGIN_PTS = 12.0  # Sicherheitsmarge um split_x für Vollbreiten-Erkennung
+COLUMN_MARGIN_PTS = 12.0
 HF_TOP_N = 3
 HF_BOTTOM_N = 3
 HF_MIN_SHARE = 0.6
@@ -111,20 +147,6 @@ def _assign_columns(words: List[dict], split_x: float, margin: float = COLUMN_MA
             full.append(w)
     return left, right, full
 
-def _words_to_lines_with_y(words: List[dict], y_quant: float = 3.0) -> List[Tuple[float, str]]:
-    if not words:
-        return []
-    groups = _group_lines_by_y(words, y_quant=y_quant)
-    lines_with_y: List[Tuple[float, str]] = []
-    for g in groups:
-        g_sorted = sorted(g, key=lambda w: float(w.get("x0", 0.0)))
-        y = float(min(float(w.get("top", 0.0)) for w in g_sorted))
-        text = " ".join((w.get("text") or "").strip() for w in g_sorted if (w.get("text") or "").strip())
-        if text:
-            lines_with_y.append((y, text))
-    lines_with_y.sort(key=lambda t: t[0])
-    return lines_with_y
-
 def _lines_only_text(lines_with_y: List[Tuple[float, str]]) -> List[str]:
     return [t for _, t in lines_with_y]
 
@@ -145,44 +167,6 @@ def _merge_hyphenation(lines: List[str]) -> List[str]:
                 continue
         out.append(s)
     return out
-
-def _inject_fullwidth_blocks(
-    left_lines_y: List[Tuple[float, str]],
-    right_lines_y: List[Tuple[float, str]],
-    full_lines_y: List[Tuple[float, str]]
-) -> List[str]:
-    def first_y(lines): return lines[0][0] if lines else math.inf
-    def last_y(lines): return lines[-1][0] if lines else -math.inf
-
-    l_first, r_first = first_y(left_lines_y), first_y(right_lines_y)
-    l_last, r_last = last_y(left_lines_y), last_y(right_lines_y)
-    col_first = min(l_first, r_first)
-    col_last = max(l_last, r_last)
-
-    above = [(y, t) for (y, t) in full_lines_y if y < col_first]
-    between = [(y, t) for (y, t) in full_lines_y if col_first <= y <= col_last]
-    below = [(y, t) for (y, t) in full_lines_y if y > col_last]
-
-    above.sort(key=lambda x: x[0])
-    between.sort(key=lambda x: x[0])
-    below.sort(key=lambda x: x[0])
-
-    result: List[str] = []
-    if above:
-        result.extend(_lines_only_text(above))
-        result.append("")
-    result.extend(_lines_only_text(left_lines_y))
-    if left_lines_y:
-        result.append("")
-    if between:
-        result.extend(_lines_only_text(between))
-        result.append("")
-    result.extend(_lines_only_text(right_lines_y))
-    if right_lines_y:
-        result.append("")
-    if below:
-        result.extend(_lines_only_text(below))
-    return result
 
 # ------------------------- extract_lines_fixed_mid -------------------------
 
@@ -248,9 +232,9 @@ def _normalize_for_header_footer(s: str) -> str:
 
 def filter_repeating_headers_footers(
     pages_lines: List[List[str]],
-    top_n: int = HF_TOP_N,
-    bottom_n: int = HF_BOTTOM_N,
-    min_share: float = HF_MIN_SHARE,
+    top_n: int = 3,
+    bottom_n: int = 3,
+    min_share: float = 0.6,
     skip_first_n_pages: int = 0
 ) -> Tuple[List[List[str]], Dict[str, Any]]:
     if not pages_lines:
@@ -318,7 +302,6 @@ POST_HF_PATTERNS = [
 ]
 
 def dehyphenate_block(lines: List[str]) -> List[str]:
-    """Nur Zeilentrennungs-Dehyphenation, keine Intra-Wort-Zusammenziehungen."""
     return _merge_hyphenation(lines)
 
 def post_cleanup_headers_footers(pages_lines: List[List[str]]) -> List[List[str]]:
@@ -340,7 +323,7 @@ def _secondary_pipeline_after_layout(pages_lines: List[List[str]]) -> List[List[
     pages = post_cleanup_headers_footers(pages)
     return pages
 
-# ------------------------- Robust TOC splitter & parser -------------------------
+# ------------------------- TOC splitter & parser -------------------------
 
 ROLE_TOKENS = [
     r"Abg\.", r"Präsidentin", r"Präsident", r"Vizepräsidentin", r"Vizepräsident",
@@ -369,6 +352,8 @@ def is_body_start_line(line: str) -> bool:
     if HEADER_LINE_RE.match(t):
         return True
     return False
+
+NUMBERED_START_RE = re.compile(r"^\s*(\d+)\.\s+(.*)$")
 
 def split_toc_and_body(
     flat_lines: List[Dict[str, Any]],
@@ -441,13 +426,12 @@ def split_toc_and_body(
     }
     return toc_lines, body_lines, meta
 
-# TOC Parsing
+# ------------------------- TOC Parsing -------------------------
 
 DASH_SPLIT_RE = re.compile(r"\s*[–—-]\s*")
 DRS_RE = re.compile(r"(?:Drucksache|Drs\.)\s*(\d+/\d+)", re.IGNORECASE)
 PARTY_PATTERN = r"(?:AfD|CDU|SPD|GRÜNE|GRUENE|FDP/DVP|FDP|BÜNDNIS\s+90/DIE\s+GRÜNEN)"
 ROLE_PATTERN = r"(?:Abg\.|Präsident(?:in)?|Vizepräsident(?:in)?|Ministerpräsident(?:in)?|Minister(?:in)?|Staatssekretär(?:in)?)"
-NUMBERED_START_RE = re.compile(r"^\s*(\d+)\.\s+(.*)$")
 SUBENTRY_WITH_DRS_RE = re.compile(
     rf"^(?P<text>Beschlussempfehlung.+?|Bericht.+?|Beschluss)\s*(?:{DASH_SPLIT_RE.pattern}(?:Drucksache|Drs\.)\s*(?P<ds>\d+/\d+))?$",
     re.IGNORECASE
@@ -571,11 +555,16 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
                 name = (msp.group("name") or "").strip()
                 party = _normalize_party(msp.group("party"))
                 pages_str = (msp.group("pages") or "").strip()
+                pages = []
+                if pages_str:
+                    for p in re.split(r"[,\s]+", pages_str):
+                        if p.isdigit():
+                            pages.append(int(p))
                 current["speakers"].append({
                     "role": role,
                     "name": name,
                     "party": party,
-                    "pages": pages_str if pages_str else None
+                    "pages": pages if pages else None
                 })
                 current["raw_lines"].append(text)
                 current["_in_header"] = False
@@ -615,10 +604,7 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
         items.append(current)
 
     for it in items:
-        if it.get("extra"):
-            it["extra"] = it["extra"].strip(" –—-")
-        else:
-            it["extra"] = None
+        it["extra"] = it.get("extra", None)
         for sp in it.get("speakers", []):
             sp["party"] = _normalize_party(sp.get("party"))
 
@@ -667,6 +653,11 @@ def extract_drucksachen_from_raw_lines(raw_lines: List[str]) -> List[str]:
 def _cleanup_toc_title_noise(title: str) -> str:
     s = RE_URL.sub("", title)
     s = RE_NUMERIC_DATE.sub("", s)
+    # Flexibel „D rucksachen … Plenarprotokolle …“ entfernen
+    s = re.sub(r"D\s*r\s*u\s*c\s*k\s*s\s*a\s*c\s*h\s*e\s*n\s*und\s*Plenarprotokolle.*?$", "", s, flags=re.IGNORECASE)
+    # Recyclingpapier/Blauer Engel-Hinweis entfernen
+    s = re.sub(r"Der\s+Landtag\s+druckt\s+auf\s+Recyclingpapier.*?$", "", s, flags=re.IGNORECASE)
+    # Baden-Württemberg-Meta entfernen
     s = re.sub(r"\bBaden[- ]Württemberg\b", "", s, flags=re.IGNORECASE)
     s = re.sub(r"\bDrucksachen?\s*und\s*Plenarprotokolle?.*?$", "", s, flags=re.IGNORECASE)
     s = re.sub(r"\s{2,}", " ", s).strip(" –—- ")
@@ -696,7 +687,6 @@ def normalize_toc_items(toc: Dict[str, Any]) -> Dict[str, Any]:
         title_in = it.get("title") or ""
         raw_lines = it.get("raw_lines") or []
 
-        # Titel-Noise entfernen, bevor wir filtern
         title = _cleanup_toc_title_noise(remove_fill_dots(_nfkc(title_in)))
 
         if not looks_like_real_toc_entry(raw_header, title, raw_lines):
@@ -710,7 +700,6 @@ def normalize_toc_items(toc: Dict[str, Any]) -> Dict[str, Any]:
             continue
         last_valid_num = num
 
-        # Subentries extrahieren (einfach: Bezeichner + optionale Seiten)
         subentries = it.get("subentries") or []
         extra = it.get("extra") or ""
         extra_all = " ".join([extra] + [se.get("text", "") for se in subentries])
@@ -793,7 +782,6 @@ INLINE_HEADER_NOISE = [
 EVENT_KEYWORDS = ["Beifall", "Zuruf", "Heiterkeit", "Lachen", "Unruhe", "Zwischenruf", "Glocke"]
 
 def _strip_inline_headers_from_text(text: str) -> str:
-    # Entferne Zeilen, die nur aus bekannten Kopfzeilen bestehen oder diese enthalten.
     lines = text.splitlines()
     out = []
     for ln in lines:
@@ -801,8 +789,6 @@ def _strip_inline_headers_from_text(text: str) -> str:
         if not t:
             continue
         if any(rx.search(t) for rx in INLINE_HEADER_NOISE):
-            # Wenn die Zeile fast nur aus Noise besteht, überspringen
-            # Falls der Noise nur Teil ist, entferne ihn
             for rx in INLINE_HEADER_NOISE:
                 t = rx.sub("", t)
             t = re.sub(r"\s{2,}", " ", t).strip(" –—- ")
@@ -841,7 +827,11 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
             buf = []
 
     for p, line in body:
-        m = HEADER_RX.match(line)
+        # Neue Rede nur, wenn Zeile NICHT mit '(' beginnt (verhindert Klammer-Zwischenrufe wie „(Abg. …:)“)
+        if not line.lstrip().startswith("("):
+            m = HEADER_RX.match(line)
+        else:
+            m = None
         if m:
             flush()
             role = m.group("role")
@@ -863,10 +853,7 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
         sp["index"] = i
     return speeches
 
-# ------------------------- Speech normalization -------------------------
-
 def normalize_speech_text(text: str) -> str:
-    # Keine Intra-Wort-Zusammenziehungen mehr; nur Füllpunkte und Mehrfach-Whitespace entschärfen
     t = remove_fill_dots(_nfkc(text))
     t = _strip_inline_headers_from_text(t)
     t = re.sub(r"[ \t]+", " ", t)
@@ -874,10 +861,6 @@ def normalize_speech_text(text: str) -> str:
     return t.strip()
 
 def cleanup_speech_events_in_text(sp: Dict[str, Any]) -> None:
-    """
-    Extrahiere nur echte Event-Zeilen (enthält Schlüsselwörter),
-    sonst bleiben Klammern im Text.
-    """
     text = sp.get("text") or ""
     lines = text.splitlines()
     body_lines: List[str] = []
@@ -892,7 +875,7 @@ def cleanup_speech_events_in_text(sp: Dict[str, Any]) -> None:
                         label = kw
                         break
                 events.append({"type": label, "text": ln_stripped})
-                continue  # nicht in body
+                continue
         body_lines.append(ln)
     sp["text"] = "\n".join(body_lines).strip()
     if events:
@@ -903,6 +886,12 @@ def _normalize_speeches(speeches: List[Dict[str, Any]]) -> None:
         sp["text"] = normalize_speech_text(sp.get("text") or "")
         cleanup_speech_events_in_text(sp)
     attach_agenda_numbers(speeches)
+
+def prune_empty_speeches(speeches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    pruned = [sp for sp in speeches if (sp.get("text") or "").strip()]
+    for i, sp in enumerate(pruned):
+        sp["index"] = i
+    return pruned
 
 # ------------------------- Metadata helpers -------------------------
 
@@ -919,7 +908,6 @@ def parse_session_info(all_text: str) -> Dict[str, Any]:
     if m2:
         leg = int(m2.group(1))
     date = None
-    # Variante mit Monatsname
     m3 = re.search(r"(\d{1,2})\.\s*([A-Za-zÄÖÜäöüß]+)\s+(\d{4})", all_text)
     MONTHS = {
         "januar": 1, "februar": 2, "märz": 3, "maerz": 3, "april": 4, "mai": 5, "juni": 6, "juli": 7,
@@ -932,12 +920,10 @@ def parse_session_info(all_text: str) -> Dict[str, Any]:
         mm = MONTHS.get(mon)
         if mm:
             date = f"{year:04d}-{mm:02d}-{day:02d}"
-    # Numerische Variante dd.mm.yyyy
     if not date:
         m4 = re.search(r"\b(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\b", all_text)
         if m4:
             d, m, y = int(m4.group(1)), int(m4.group(2)), int(m4.group(3))
-            # simple sanity
             if 1 <= m <= 12 and 1 <= d <= 31:
                 date = f"{y:04d}-{m:02d}-{d:02d}"
     start_time = None
@@ -996,6 +982,37 @@ def enrich_toc_parties_from_speeches(toc: Dict[str, Any], speeches: List[Dict[st
                 if n and n in idx:
                     s["party"] = idx[n]
 
+# ------------------------- TOC Interleave Fallback -------------------------
+
+def extract_toc_interleaved_flat_lines(pdf_path: Path, first_page: int = 1, last_page: int = 3) -> List[Dict[str, Any]]:
+    """Extrahiert die ersten Seiten spaltenübergreifend in (y,x)-Lesereihenfolge für robustes TOC-Parsen."""
+    flat: List[Dict[str, Any]] = []
+    with pdfplumber.open(str(pdf_path)) as pdf:
+        last = min(len(pdf.pages), max(1, last_page))
+        first = max(1, min(first_page, last))
+        for pidx in range(first, last + 1):
+            page = pdf.pages[pidx - 1]
+            pw = float(page.width or 0.0)
+            split_x = pw * 0.5
+            words = page.extract_words(use_text_flow=False, keep_blank_chars=False) or []
+            if not words:
+                continue
+            left, right, full = _assign_columns(words, split_x=split_x, margin=COLUMN_MARGIN_PTS)
+            # Kombiniere alle Worte; sortiere Zeilen nach (y,x)
+            lines_xy = _words_to_lines_with_xy(full + left + right)
+            for li, (_y, _x, text) in enumerate(lines_xy):
+                if text.strip():
+                    flat.append({"page": pidx, "line_index": li, "text": text})
+    return flat
+
+def pick_better_toc(primary: Dict[str, Any], fallback: Dict[str, Any]) -> Dict[str, Any]:
+    def score(t: Dict[str, Any]) -> Tuple[int, int]:
+        items = t.get("items", [])
+        total_speakers = sum(len(it.get("speakers") or []) for it in items)
+        with_title = sum(1 for it in items if (it.get("title") or "").strip())
+        return (total_speakers, with_title)
+    return fallback if score(fallback) > score(primary) else primary
+
 # ------------------------- Main pipeline -------------------------
 
 def build_session_filename(payload: Dict[str, Any]) -> str:
@@ -1030,14 +1047,37 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     meta["extracted_at"] = dt.datetime.utcnow().isoformat() + "Z"
 
     flat = pages_to_flat_lines(pages_prepped)
-    toc_lines, body_lines, _meta = split_toc_and_body(flat, stop_at_first_body_header=True)
+    toc_lines, _body_lines, meta_split = split_toc_and_body(flat, stop_at_first_body_header=True)
+
+    # Erstes TOC-Parsen auf Basis der Standard-Serialisierung
     toc = {"items": []}
     if toc_lines:
         toc = parse_toc(toc_lines)
         toc = normalize_toc_items(toc)
-    speeches = segment_speeches_from_pages(pages_prepped)
 
+    # Fallback: Interleaving nur für TOC-Seiten (z. B. 1..3) wenn Items ohne Redner existieren
+    needs_fallback = any((len(it.get("speakers") or []) == 0) for it in toc.get("items", []))
+    if needs_fallback:
+        try:
+            # Ermittele TOC-Seitenbereich aus toc_lines, fallback auf 1..3
+            if toc_lines:
+                pmin = min(obj.get("page", 9999) for obj in toc_lines)
+                pmax = max(obj.get("page", 0) for obj in toc_lines)
+                pmin = max(1, pmin)
+                pmax = max(pmin, min(3, pmax))
+            else:
+                pmin, pmax = 1, 3
+            inter_flat = extract_toc_interleaved_flat_lines(pdf_path, first_page=pmin, last_page=pmax)
+            if inter_flat:
+                toc2 = parse_toc(inter_flat)
+                toc2 = normalize_toc_items(toc2)
+                toc = pick_better_toc(toc, toc2)
+        except Exception:
+            pass
+
+    speeches = segment_speeches_from_pages(pages_prepped)
     _normalize_speeches(speeches)
+    speeches = prune_empty_speeches(speeches)
     enrich_toc_parties_from_speeches(toc, speeches)
 
     payload: Dict[str, Any] = {
@@ -1056,7 +1096,7 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
         "stats": {"pages": len(pages_prepped), "speeches": len(speeches)},
         "layout": {
             "applied": True,
-            "reason": "fixed-mid-split + header/footer-filter + post-cleanup"
+            "reason": "fixed-mid-split + header/footer-filter + post-cleanup (+ TOC interleave fallback)"
         },
         "toc": toc,
         "speeches": speeches
@@ -1066,7 +1106,8 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
         "normalized_pages": pages_raw,
         "filtered_pages": pages_filtered,
         "post_cleaned_pages": pages_prepped,
-        "header_footer_filter": hf_debug
+        "header_footer_filter": hf_debug,
+        "toc_fallback_used": needs_fallback
     }
 
     try:
@@ -1075,6 +1116,7 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
             "toc_items": len(toc.get("items", [])),
             "toc_max_number": expected_toc,
             "speeches_with_agenda": sum(1 for s in speeches if "agenda_item_number" in s),
+            "toc_total_speakers": sum(len(it.get("speakers") or []) for it in toc.get("items", []))
         }
     except Exception:
         pass
