@@ -7,9 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileText, X, CheckCircle, AlertCircle, Zap } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Upload, FileText, X, CheckCircle, AlertCircle, Zap, FileJson } from 'lucide-react';
 import { toast } from 'sonner';
 import { parsePDFFile, analyzeProtocolStructure } from '@/utils/pdfParser';
+import { validateJSONProtocol, parseJSONProtocol, getJSONProtocolPreview } from '@/utils/jsonProtocolParser';
 
 interface DrucksachenUploadProps {
   onUploadSuccess: (protocol: any) => void;
@@ -22,6 +24,8 @@ interface UploadFile {
   status: 'pending' | 'uploading' | 'processing' | 'completed' | 'error';
   error?: string;
   protocolId?: string;
+  fileType: 'pdf' | 'json';
+  preview?: any;
 }
 
 export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: DrucksachenUploadProps) {
@@ -32,19 +36,51 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle file selection
-  const handleFileSelect = (files: FileList | null) => {
+  const handleFileSelect = async (files: FileList | null, fileType: 'pdf' | 'json' = 'pdf') => {
     if (!files) return;
 
-    const newFiles: UploadFile[] = Array.from(files)
-      .filter(file => file.type === 'application/pdf')
-      .map(file => ({
+    const allowedType = fileType === 'pdf' ? 'application/pdf' : 'application/json';
+    const allowedExtension = fileType === 'pdf' ? '.pdf' : '.json';
+    
+    const fileArray = Array.from(files).filter(file => {
+      const matchesType = file.type === allowedType || file.name.toLowerCase().endsWith(allowedExtension);
+      return matchesType;
+    });
+
+    if (fileArray.length !== files.length) {
+      const fileTypeLabel = fileType === 'pdf' ? 'PDF' : 'JSON';
+      toast.error(`Nur ${fileTypeLabel}-Dateien sind erlaubt`);
+    }
+
+    // Process files
+    const newFiles: UploadFile[] = [];
+    
+    for (const file of fileArray) {
+      const uploadFile: UploadFile = {
         file,
         progress: 0,
-        status: 'pending'
-      }));
+        status: 'pending',
+        fileType
+      };
 
-    if (newFiles.length !== files.length) {
-      toast.error('Nur PDF-Dateien sind erlaubt');
+      // For JSON files, validate and create preview
+      if (fileType === 'json') {
+        try {
+          const text = await file.text();
+          const jsonData = JSON.parse(text);
+          
+          if (!validateJSONProtocol(jsonData)) {
+            throw new Error('Ungültiges JSON-Protokoll-Format');
+          }
+          
+          uploadFile.preview = getJSONProtocolPreview(jsonData);
+        } catch (error) {
+          uploadFile.status = 'error';
+          uploadFile.error = error instanceof Error ? error.message : 'JSON-Validierung fehlgeschlagen';
+        }
+      }
+
+      newFiles.push(uploadFile);
     }
 
     setUploadFiles(prev => [...prev, ...newFiles]);
@@ -105,6 +141,11 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
   // Upload a single file
   const uploadFile = async (fileData: UploadFile, index: number) => {
     if (!currentTenant || !user) return;
+
+    // Handle JSON files differently - direct database insertion without storage
+    if (fileData.fileType === 'json') {
+      return await uploadJSONFile(fileData, index);
+    }
 
     let uploadedFilePath: string | null = null;
     let protocolId: string | null = null;
@@ -271,6 +312,116 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
     }
   };
 
+  // Upload JSON file (direct database insertion)
+  const uploadJSONFile = async (fileData: UploadFile, index: number) => {
+    if (!currentTenant || !user) return;
+
+    try {
+      // Update status to processing
+      setUploadFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, status: 'processing', progress: 25 } : f
+      ));
+
+      // Parse JSON file
+      const text = await fileData.file.text();
+      const jsonData = JSON.parse(text);
+      
+      // Validate again (safety check)
+      if (!validateJSONProtocol(jsonData)) {
+        throw new Error('Ungültiges JSON-Protokoll-Format');
+      }
+
+      // Parse to our internal structure
+      const parsedProtocol = parseJSONProtocol(jsonData);
+      
+      setUploadFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, progress: 50 } : f
+      ));
+
+      // Check for duplicates in database
+      const { data: existingProtocols } = await supabase
+        .from('parliament_protocols')
+        .select('id')
+        .eq('tenant_id', currentTenant.id)
+        .eq('session_number', parsedProtocol.metadata.session_number)
+        .eq('legislature_period', parsedProtocol.metadata.legislature_period)
+        .eq('protocol_date', parsedProtocol.metadata.protocol_date);
+
+      if (existingProtocols && existingProtocols.length > 0) {
+        throw new Error('Protokoll bereits in der Datenbank vorhanden');
+      }
+
+      setUploadFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, progress: 75 } : f
+      ));
+
+      // Insert protocol record
+      const { data: protocolData, error: dbError } = await supabase
+        .from('parliament_protocols')
+        .insert({
+          tenant_id: currentTenant.id,
+          uploaded_by: user.id,
+          original_filename: fileData.file.name,
+          file_path: `json-import/${fileData.file.name}`, // Virtual path for JSON imports
+          file_size: fileData.file.size,
+          processing_status: 'completed', // JSON is already processed
+          session_number: parsedProtocol.metadata.session_number,
+          legislature_period: parsedProtocol.metadata.legislature_period,
+          protocol_date: parsedProtocol.metadata.protocol_date,
+          structured_data: parsedProtocol.structured_data,
+          raw_text: JSON.stringify(jsonData, null, 2).slice(0, 50000) // Store JSON as raw text
+        })
+        .select()
+        .single();
+
+      if (dbError) {
+        console.error('Database insertion failed:', dbError);
+        throw new Error(`Datenbankfehler: ${dbError.message}`);
+      }
+
+      setUploadFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, progress: 90 } : f
+      ));
+
+      // Call edge function to insert structured data into related tables
+      try {
+        const { data: analysisResult, error: analysisError } = await supabase.functions.invoke('analyze-parliament-protocol', {
+          body: { 
+            protocolId: protocolData.id,
+            structuredData: parsedProtocol.structured_data
+          }
+        });
+        
+        if (analysisError) {
+          console.warn('Related data insertion error:', analysisError);
+          toast.warning('JSON importiert, aber Fehler bei der Datenverteilung');
+        }
+      } catch (error) {
+        console.warn('Analysis function error:', error);
+      }
+
+      // Update status to completed
+      setUploadFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, status: 'completed', protocolId: protocolData.id, progress: 100 } : f
+      ));
+
+      toast.success(`JSON-Protokoll erfolgreich importiert: ${parsedProtocol.structured_data.speeches.length} Reden`);
+      onUploadSuccess(protocolData);
+      onProtocolsRefresh();
+      
+    } catch (error) {
+      console.error('JSON upload error:', error);
+      setUploadFiles(prev => prev.map((f, i) => 
+        i === index ? { 
+          ...f, 
+          status: 'error', 
+          error: error instanceof Error ? error.message : 'Unbekannter Fehler'
+        } : f
+      ));
+      toast.error(`Fehler beim JSON-Import: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+    }
+  };
+
   // Upload all pending files
   const uploadAllFiles = async () => {
     const pendingFiles = uploadFiles
@@ -299,7 +450,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
     handleFileSelect(e.dataTransfer.files);
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string, fileType?: 'pdf' | 'json') => {
     switch (status) {
       case 'completed':
         return <CheckCircle className="h-4 w-4 text-green-600" />;
@@ -309,7 +460,9 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       case 'uploading':
         return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />;
       default:
-        return <FileText className="h-4 w-4 text-muted-foreground" />;
+        return fileType === 'json' ? 
+          <FileJson className="h-4 w-4 text-muted-foreground" /> : 
+          <FileText className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -359,7 +512,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
             <div>
               <CardTitle>Protokoll hochladen</CardTitle>
               <CardDescription>
-                Laden Sie PDF-Protokolle des Landtags Baden-Württemberg zur Analyse hoch
+                Laden Sie Landtagsprotokolle als PDF oder strukturierte JSON-Daten hoch
               </CardDescription>
             </div>
             <Button
@@ -373,41 +526,84 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Drag and Drop Area */}
-          <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              isDragOver 
-                ? 'border-primary bg-primary/5' 
-                : 'border-muted-foreground/25 hover:border-primary/50'
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <div className="space-y-2">
-              <p className="text-lg font-medium">
-                PDF-Dateien hier ablegen oder auswählen
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Unterstützte Formate: PDF (max. 50 MB)
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
+          <Tabs defaultValue="pdf" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="pdf" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                PDF-Upload
+              </TabsTrigger>
+              <TabsTrigger value="json" className="flex items-center gap-2">
+                <FileJson className="h-4 w-4" />
+                JSON-Import
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="pdf" className="space-y-4 mt-4">
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  isDragOver 
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-muted-foreground/25 hover:border-primary/50'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => {
+                  handleDragLeave(e);
+                  handleFileSelect(e.dataTransfer.files, 'pdf');
+                }}
               >
-                Dateien auswählen
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".pdf"
-                className="hidden"
-                onChange={(e) => handleFileSelect(e.target.files)}
-              />
-            </div>
-          </div>
+                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <div className="space-y-2">
+                  <p className="text-lg font-medium">
+                    PDF-Dateien hier ablegen oder auswählen
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Unterstützte Formate: PDF (max. 50 MB)
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.multiple = true;
+                      input.accept = '.pdf';
+                      input.onchange = (e) => handleFileSelect((e.target as HTMLInputElement).files, 'pdf');
+                      input.click();
+                    }}
+                  >
+                    PDF-Dateien auswählen
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="json" className="space-y-4 mt-4">
+              <div className="border-2 border-dashed rounded-lg p-8 text-center transition-colors border-muted-foreground/25 hover:border-primary/50">
+                <FileJson className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <div className="space-y-2">
+                  <p className="text-lg font-medium">
+                    JSON-Protokolldaten importieren
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Bereits strukturierte Landtagsprotokolle als JSON-Datei
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.multiple = true;
+                      input.accept = '.json';
+                      input.onchange = (e) => handleFileSelect((e.target as HTMLInputElement).files, 'json');
+                      input.click();
+                    }}
+                  >
+                    JSON-Dateien auswählen
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {/* File List */}
           {uploadFiles.length > 0 && (
@@ -427,14 +623,29 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
                   <Card key={index} className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 flex-1">
-                        {getStatusIcon(fileData.status)}
+                        {getStatusIcon(fileData.status, fileData.fileType)}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {fileData.file.name}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium truncate">
+                              {fileData.file.name}
+                            </p>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              fileData.fileType === 'json' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {fileData.fileType.toUpperCase()}
+                            </span>
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {(fileData.file.size / 1024 / 1024).toFixed(2)} MB
                           </p>
+                          {fileData.preview && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {fileData.preview.sessionInfo} • {fileData.preview.speechCount} Reden
+                              {fileData.preview.agendaCount > 0 && ` • ${fileData.preview.agendaCount} TOP`}
+                            </div>
+                          )}
                           {fileData.status === 'error' && fileData.error && (
                             <p className="text-xs text-red-600">{fileData.error}</p>
                           )}
