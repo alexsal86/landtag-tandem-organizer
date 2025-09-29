@@ -1,21 +1,31 @@
-name: Update Landtag Sessions
+name: Parse Landtag PDF
 
 on:
-  schedule:
-    - cron: "0 5 * * *"
   workflow_dispatch:
-
-permissions:
-  contents: write
-  pull-requests: read
+    inputs:
+      pdf_url:
+        description: "PDF-URL (leer lassen, wenn URLs-Liste genutzt wird)"
+        required: false
+        type: string
+      list_file:
+        description: "Pfad zur URLs-Liste im Repo (eine URL pro Zeile)"
+        required: false
+        default: "scripts/urls.txt"
+        type: string
+      force_download:
+        description: "PDF(s) immer neu laden"
+        required: false
+        default: true
+        type: boolean
 
 concurrency:
-  group: parser-update
+  group: parse-landtag
   cancel-in-progress: false
 
 jobs:
-  parse-and-commit:
+  parse:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -26,7 +36,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -36,52 +46,121 @@ jobs:
           restore-keys: |
             pip-${{ runner.os }}-
 
-      - name: Install Python deps
+      - name: Install dependencies
+        shell: bash
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Determine Parser Input Mode
-        id: mode
-        run: |
-          if [ -f scripts/urls.txt ]; then
-            echo "mode=list" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq
+          python -m pip install -U pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
           else
-            echo "mode=single" >> $GITHUB_OUTPUT
+            pip install pdfplumber requests jsonschema
+          fi
+          python --version
+
+      - name: Prepare output dir
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf data || true
+          mkdir -p data
+          # PDF-Cache nur löschen, wenn force_download=true
+          if [ "${{ inputs.force_download }}" = "true" ]; then
+            rm -rf .cache/pdfs || true
           fi
 
-      - name: Run Parser (list mode)
-        if: steps.mode.outputs.mode == 'list'
+      - name: Detect parser script path
+        id: detect
+        shell: bash
         run: |
-          python scripts/parse_landtag_pdf.py --list-file scripts/urls.txt
-      - name: Run Parser (single default)
-        if: steps.mode.outputs.mode == 'single'
-        run: |
-          python scripts/parse_landtag_pdf.py
-
-      - name: Stage data changes
-        id: diff
-        run: |
-          git add data/
-          if git diff --cached --quiet; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "Keine Änderungen in data/."
+          set -euo pipefail
+          detected=""
+          if [ -f "parse_landtag_pdf (2).py" ]; then
+            detected="parse_landtag_pdf (2).py"
+          elif [ -f "scripts/parse_landtag_pdf.py" ]; then
+            detected="scripts/parse_landtag_pdf.py"
+          elif [ -f "parse_landtag_pdf.py" ]; then
+            detected="parse_landtag_pdf.py"
           else
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "::error::Parser-Skript nicht gefunden. Lege es unter scripts/parse_landtag_pdf.py an."
+            exit 1
           fi
+          echo "script=${detected}" >> "$GITHUB_OUTPUT"
+          echo "Detected script: ${detected}"
 
-      - name: Commit & Push
-        if: steps.diff.outputs.changed == 'true'
+      - name: Show parser CLI help (for logs)
+        shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore(parser): update Landtag session data [auto]"
-          git push
+          set -euo pipefail
+          python "${{ steps.detect.outputs.script }}" -h || true
 
-      - name: Summary
+      - name: Run parser (always to data/)
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/scripts:${{ github.workspace }}/parser_core
+        shell: bash
         run: |
-          if [ "${{ steps.diff.outputs.changed }}" = "true" ]; then
-            echo "Neue oder geänderte JSONs wurden committet." >> $GITHUB_STEP_SUMMARY
+          set -euo pipefail
+          FORCE_FLAG=""
+          if [ "${{ inputs.force_download }}" = "true" ]; then
+            FORCE_FLAG="--force-download"
+          fi
+          if [ -n "${{ inputs.pdf_url }}" ]; then
+            echo "Parse single URL -> data/: ${{ inputs.pdf_url }}"
+            # Falls das Skript --out-dir NICHT kennt, wird es ignoriert; Fallback-Step kommt danach.
+            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out-dir data ${FORCE_FLAG} || \
+            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out data ${FORCE_FLAG}
           else
-            echo "Keine Änderungen erkannt." >> $GITHUB_STEP_SUMMARY
+            if [ ! -f "${{ inputs.list_file }}" ]; then
+              echo "::error::URLs-Liste nicht gefunden: ${{ inputs.list_file }}"
+              exit 1
+            fi
+            echo "Parse list file -> data/: ${{ inputs.list_file }}"
+            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out-dir data ${FORCE_FLAG} || \
+            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out data ${FORCE_FLAG}
           fi
+          echo "Parserlauf abgeschlossen. Dateien in data/:"
+          ls -lah data || true
+
+      - name: Fallback: copy any session outputs to data/
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Wenn in data/ nichts liegt, suche überall und kopiere nach data/
+          if ! ls -1 data/session_*.json >/dev/null 2>&1; then
+            echo "No session_*.json in data/; scanning repo for outputs as fallback..."
+            FOUND_JSON=$(find . -type f -name 'session_*.json' ! -path './data/*' | wc -l | tr -d ' ')
+            FOUND_LAYOUT=$(find . -type f -name 'session_*.layout.json' ! -path './data/*' | wc -l | tr -d ' ')
+            if [ "$FOUND_JSON" != "0" ] || [ "$FOUND_LAYOUT" != "0" ]; then
+              find . -type f -name 'session_*.json' ! -path './data/*' -exec cp -v {} data/ \; || true
+              find . -type f -name 'session_*.layout.json' ! -path './data/*' -exec cp -v {} data/ \; || true
+            else
+              echo "No session outputs found anywhere."
+            fi
+          fi
+          echo "Final content of data/:"
+          ls -lah data || true
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parsed-session-${{ github.run_id }}
+          path: |
+            data/session_*.json
+            data/session_*.layout.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: "Quick sanity: writes to data/"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ls -1 data/session_*.json >/dev/null 2>&1; then
+            echo "OK: JSON in data/ vorhanden."
+          else
+            echo "::error::Keine Session-JSON in data/ gefunden."
+            echo "Suche kurz überall als Hinweis:"
+            find . -type f -name 'session_*.json' -o -name 'session_*.layout.json' | sed 's/^/  - /'
+            exit 1
