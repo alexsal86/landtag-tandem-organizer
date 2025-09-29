@@ -6,24 +6,38 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface TasksSummaryProps {
   onCountChange?: (count: number) => void;
+  onCompletedCountChange?: (count: number) => void;
 }
 
-export const TasksSummary = ({ onCountChange }: TasksSummaryProps) => {
+export const TasksSummary = ({ onCountChange, onCompletedCountChange }: TasksSummaryProps) => {
   const [tasksCount, setTasksCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     const fetchTasksCount = async () => {
       try {
-        const { count, error } = await supabase
+        const { count: openCount, error: openError } = await supabase
           .from('tasks')
           .select('*', { count: 'exact', head: true })
           .neq('status', 'completed');
         
-        if (!error && count !== null) {
-          setTasksCount(count);
+        const { count: completedTasksCount, error: completedError } = await supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'completed');
+        
+        if (!openError && openCount !== null) {
+          setTasksCount(openCount);
           if (onCountChange) {
-            onCountChange(count);
+            onCountChange(openCount);
+          }
+        }
+        
+        if (!completedError && completedTasksCount !== null) {
+          setCompletedCount(completedTasksCount);
+          if (onCompletedCountChange) {
+            onCompletedCountChange(completedTasksCount);
           }
         }
       } catch (error) {
@@ -34,7 +48,7 @@ export const TasksSummary = ({ onCountChange }: TasksSummaryProps) => {
     };
     
     fetchTasksCount();
-  }, []);
+  }, [onCountChange, onCompletedCountChange]);
   
   if (loading) {
     return null;

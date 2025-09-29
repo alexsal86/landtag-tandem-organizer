@@ -72,6 +72,7 @@ export const CustomizableDashboard: React.FC = () => {
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('classic');
   const [appointmentsCount, setAppointmentsCount] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
+  const [completedTasksCount, setCompletedTasksCount] = useState(0);
 
   // Convert our widget format to react-grid-layout format
   const gridLayouts = useMemo(() => {
@@ -246,6 +247,7 @@ export const CustomizableDashboard: React.FC = () => {
         <DynamicGreeting 
           appointmentsCount={appointmentsCount}
           tasksCount={tasksCount}
+          completedTasksCount={completedTasksCount}
         />
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -254,7 +256,10 @@ export const CustomizableDashboard: React.FC = () => {
           </div>
           <div className="space-y-4">
             <TodaySchedule onCountChange={setAppointmentsCount} />
-            <TasksSummary onCountChange={setTasksCount} />
+            <TasksSummary 
+              onCountChange={setTasksCount}
+              onCompletedCountChange={setCompletedTasksCount}
+            />
           </div>
         </div>
       </div>
