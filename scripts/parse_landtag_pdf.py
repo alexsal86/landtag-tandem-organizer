@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.3.3)
+parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.4.0)
 
-Neu in v3.3.3:
-- TOC-Backfill: Fehlende Redner pro TOP werden aus den tatsächlichen Reden
-  (agenda_item_number) zurückgeschrieben (fix u. a. für TOP 3).
-- Titel-Noise justiert: „Baden-Württemberg“ wird NICHT mehr entfernt; Sitzungs-Metadaten
-  („127. Sitzung – Mittwoch, …“) werden verlässlich aus TOC-Titeln entfernt.
-- Event-Erkennung erweitert: Zeilen, die mit „– Zuruf/Beifall/…“ beginnen (ohne Klammern),
-  werden als Events klassifiziert und nicht als neuer Rede-Header interpretiert.
-- Segmentierung: Zeilen, die mit „– “ beginnen, starten keine neue Rede.
-
-Hinweis: v3.3.1/2-Hotfixes (konservative Dehyphenation, Datumsregex, Agenda-Erkennung,
-TOC-Interleave-Fallback, Header/Footer-Filter) bleiben erhalten.
+Neu in v3.4.0:
+- TOC-Titel: „– Drucksache/Drs.“-Tokens und reine Drucksachennummern werden beim
+  Titelaufbau konsequent ausgeschlossen; Drs.-IDs werden separat gesammelt.
+- Titel-Noise: Entfernt nun auch Inline-Vorkommen wie „– Drucksache 17/xxxx“ aus Titeln.
+- Subentries: „Beschlussempfehlung und Bericht des <Ausschuss> – Drucksache <ID> [Seite]“
+  wird als EIN Eintrag mit committee, drucksachen und pages erkannt.
+- Beschluss: Seitenangaben („Beschluss … 7656“) werden zuverlässig erfasst.
+- Reden: Text nach dem Doppelpunkt in der Sprecherzeile gehört direkt zur Rede (gleiche Zeile).
+- Events: Ereignisse in Reden behalten einen line_index als Positionsanker innerhalb der Rede.
+- Sitzungspausen: Erkennung von „Mittagspause/Unterbrechung“ inkl. optionaler Zeiten
+  und Ablage in session.sitting.breaks.
+- Vorversion v3.3.x: Dash-Zwischenrufe („– Zuruf/Beifall …“) werden als Events erkannt
+  und starten keine neue Rede. Klammer-Zwischenrufe erzeugen Events, nicht neue Reden.
 """
 from __future__ import annotations
 
@@ -437,6 +439,12 @@ SUBENTRY_WITH_DRS_RE = re.compile(
     rf"^(?P<text>Beschlussempfehlung.+?|Bericht.+?|Beschluss)\s*(?:{DASH_SPLIT_RE.pattern}(?:Drucksache|Drs\.)\s*(?P<ds>\d+/\d+))?$",
     re.IGNORECASE
 )
+# Kombi "Beschlussempfehlung und Bericht" inkl. Ausschuss, Drs., optional Seiten
+COMBINED_BRB_RE = re.compile(
+    r"^Beschlussempfehlung\s+und\s+Bericht\s+des\s+(?P<committee>.+?)\s*(?:–|-)\s*(?:Drucksache|Drs\.)\s*(?P<ds>\d+/\d+)(?:.*?\b(?P<page>\d{3,5}))?\s*$",
+    re.IGNORECASE
+)
+BESCHLUSS_LINE_RE = re.compile(r"^Beschluss(?:\s+.+?)?\s+(?P<page>\d{3,5})\s*$", re.IGNORECASE)
 TRAILING_PAGES_RE = re.compile(r"\s+\d{3,5}(?:\s*,\s*\d{3,5})*\s*$")
 TOC_HEADER_RX = re.compile(r"^\s*(Inhalt|I\s*N\s*H\s*A\s*L\s*T)\s*$", re.IGNORECASE)
 
@@ -496,6 +504,12 @@ def _join_title_parts(parts: List[str]) -> str:
     res = re.sub(r"\s{2,}", " ", res).strip()
     return res
 
+def is_pure_drs_id(s: str) -> bool:
+    return bool(re.fullmatch(r"\s*\d{2}/\d{4,}\s*", s or ""))
+
+def is_pure_drucksache_token(s: str) -> bool:
+    return bool(re.fullmatch(r"\s*(?:–|—|-)?\s*(?:Drucksache|Drs\.)\s*", s or "", flags=re.IGNORECASE))
+
 def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
     items: List[Dict[str, Any]] = []
     i = 0
@@ -536,6 +550,34 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
             i += 1
             continue
 
+        if current and COMBINED_BRB_RE.match(text):
+            m = COMBINED_BRB_RE.match(text)
+            committee = (m.group("committee") or "").strip()
+            ds = m.group("ds")
+            page = m.group("page")
+            se = {
+                "type": "Beschlussempfehlung und Bericht",
+                "text": f"Beschlussempfehlung und Bericht des {committee}".strip(),
+                "committee": committee if committee else None,
+                "drucksachen": [ds] if ds else [],
+                "pages": [int(page)] if page and page.isdigit() else []
+            }
+            current["subentries"].append(se)
+            current["raw_lines"].append(text)
+            current["_in_header"] = False
+            i += 1
+            continue
+
+        if current and BESCHLUSS_LINE_RE.match(text):
+            m = BESCHLUSS_LINE_RE.match(text)
+            page = m.group("page")
+            se = {"type": "Beschluss", "text": "Beschluss", "pages": [int(page)] if page and page.isdigit() else []}
+            current["subentries"].append(se)
+            current["raw_lines"].append(text)
+            current["_in_header"] = False
+            i += 1
+            continue
+
         if current and SUBENTRY_WITH_DRS_RE.match(text):
             m = SUBENTRY_WITH_DRS_RE.match(text)
             sub_text = _strip_trailing_pages(m.group("text") or "").strip(" –—-")
@@ -543,6 +585,13 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
             se = {"text": sub_text}
             if ds:
                 se["drucksachen"] = [ds]
+            # Typheuristik
+            if re.search(r"\bBeschluss\b", sub_text, re.IGNORECASE):
+                se["type"] = "Beschluss"
+            elif re.search(r"\bBeschlussempfehlung\b", sub_text, re.IGNORECASE):
+                se["type"] = "Beschlussempfehlung"
+            elif re.search(r"\bBericht\b", sub_text, re.IGNORECASE):
+                se["type"] = "Bericht"
             current["subentries"].append(se)
             current["raw_lines"].append(text)
             current["_in_header"] = False
@@ -550,6 +599,7 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
             continue
 
         if current:
+            # Sprecherzeile
             msp = SPEAKER_LINE_RE.match(text)
             if msp:
                 role = msp.group("role")
@@ -573,7 +623,22 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
                 continue
 
         if current:
+            # Header-Aufbau: Drs.-Tokens abfangen
+            t = text.strip()
             if current.get("_in_header"):
+                # reine Drs.-ID nur sammeln
+                if is_pure_drs_id(t):
+                    if t not in current["drucksachen"]:
+                        current["drucksachen"].append(t)
+                    current["raw_lines"].append(text)
+                    i += 1
+                    continue
+                # „(–) Drucksache/Drs.“-Token überspringen
+                if is_pure_drucksache_token(t):
+                    current["raw_lines"].append(text)
+                    i += 1
+                    continue
+
                 ds_more = _find_all_drs(text)
                 for d in ds_more:
                     if d not in current["drucksachen"]:
@@ -584,6 +649,7 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
                     current["title"] = _join_title_parts(current["_title_parts"])
                 current["raw_lines"].append(text)
             else:
+                # Nachlaufenden Text an extra anhängen; Drs. mitnehmen
                 ds_more = _find_all_drs(text)
                 if ds_more:
                     for d in ds_more:
@@ -662,6 +728,8 @@ def _cleanup_toc_title_noise(title: str) -> str:
     s = re.sub(r"\b\d{1,3}\.\s*Sitzung\b.*?$", "", s, flags=re.IGNORECASE)
     # Generischer Hinweis auf „Drucksachen und Plenarprotokolle“
     s = re.sub(r"\bDrucksachen?\s*und\s*Plenarprotokolle?.*?$", "", s, flags=re.IGNORECASE)
+    # Inline „– Drucksache/Drs. <ID>“ entfernen
+    s = re.sub(r"(?:–|—|-)?\s*(?:Drucksache|Drs\.)\s*\d{2}/\d{4,}\b", "", s, flags=re.IGNORECASE)
     # Aufräumen
     s = re.sub(r"\s{2,}", " ", s).strip(" –—- ")
     return s.strip()
@@ -703,25 +771,37 @@ def normalize_toc_items(toc: Dict[str, Any]) -> Dict[str, Any]:
             continue
         last_valid_num = num
 
-        subentries = it.get("subentries") or []
-        extra = it.get("extra") or ""
-        extra_all = " ".join([extra] + [se.get("text", "") for se in subentries])
-        extra_all = remove_fill_dots(_nfkc(extra_all))
-        new_subentries: List[Dict[str, Any]] = []
-        for label in ["Beschluss", "Beschlussempfehlung", "Bericht"]:
-            for m2 in re.finditer(rf"\b{label}\b.*?(\d{{3,5}})?", extra_all):
-                pages = []
-                if m2.group(1):
-                    try:
-                        pages = [int(m2.group(1))]
-                    except ValueError:
-                        pages = []
-                new_subentries.append({"type": label, "text": m2.group(0).strip(), "pages": pages})
+        # Subentries: Bestehende übernehmen, ggf. ergänzen
+        subentries_in = it.get("subentries") or []
+        subentries: List[Dict[str, Any]] = []
 
+        # Deduplicate while preserving order
+        seen_sub = set()
+        def _sub_key(se: Dict[str, Any]) -> Tuple:
+            return (se.get("type"), se.get("text"), tuple(sorted((se.get("drucksachen") or []))), tuple(se.get("pages") or []))
+
+        for se in subentries_in:
+            k = _sub_key(se)
+            if k not in seen_sub:
+                seen_sub.add(k)
+                subentries.append(se)
+
+        # Beschluss-Seite aus raw_lines ergänzen, falls fehlend
+        if not any((se.get("type") == "Beschluss" and se.get("pages")) for se in subentries):
+            for ln in raw_lines:
+                mb = BESCHLUSS_LINE_RE.match(_cleanup_line(ln))
+                if mb:
+                    pg = mb.group("page")
+                    if pg and pg.isdigit():
+                        subentries.append({"type": "Beschluss", "text": "Beschluss", "pages": [int(pg)]})
+                        break
+
+        # Drucksachen: union aus it und raw_lines
         drs = it.get("drucksachen") or []
         drs2 = extract_drucksachen_from_raw_lines(raw_lines)
         drucksachen = list(dict.fromkeys(drs + drs2))
 
+        # Sprecher normalisieren
         speakers = []
         for sp in it.get("speakers") or []:
             role = sp.get("role")
@@ -749,7 +829,7 @@ def normalize_toc_items(toc: Dict[str, Any]) -> Dict[str, Any]:
             "number": num,
             "title": title,
             "drucksachen": drucksachen,
-            "subentries": new_subentries or subentries,
+            "subentries": subentries,
             "speakers": speakers,
         })
 
@@ -770,8 +850,9 @@ def attach_agenda_numbers(speeches: List[Dict[str, Any]]) -> None:
 
 # ------------------------- Speeches (Body) -------------------------
 
+# Erweitert um 'after' zum Einfangen des Textes nach dem Doppelpunkt
 HEADER_RX = re.compile(
-    rf"^\s*(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+(?P<party>{PARTY_TOKENS}))?\s*:\s*(?:\S.*)?$",
+    rf"^\s*(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+(?P<party>{PARTY_TOKENS}))?\s*:\s*(?P<after>.*)$",
     re.IGNORECASE
 )
 
@@ -840,8 +921,9 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
         if m:
             flush()
             role = m.group("role")
-            name = m.group("name").strip()
+            name = (m.group("name") or "").strip()
             party = m.group("party")
+            after = (m.group("after") or "").strip()
             cur = {
                 "index": len(speeches),
                 "start_page": p,
@@ -850,6 +932,8 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
                 "party": (party or "").replace("GRUENE", "GRÜNE") if party else None,
                 "text": ""
             }
+            if after:
+                buf.append(after)
         else:
             if cur:
                 buf.append(line)
@@ -871,7 +955,7 @@ def cleanup_speech_events_in_text(sp: Dict[str, Any]) -> None:
     body_lines: List[str] = []
     events: List[Dict[str, Any]] = []
 
-    def _push_event(label: str, raw_text: str):
+    def _push_event(label: str, raw_text: str, idx: int):
         canonical = {
             "beifall": "Beifall",
             "zuruf": "Zuruf",
@@ -881,9 +965,9 @@ def cleanup_speech_events_in_text(sp: Dict[str, Any]) -> None:
             "zwischenruf": "Zwischenruf",
             "glocke": "Glocke"
         }.get(label.lower(), "Event")
-        events.append({"type": canonical, "text": raw_text})
+        events.append({"type": canonical, "text": raw_text, "line_index": idx})
 
-    for ln in lines:
+    for i, ln in enumerate(lines):
         ln_stripped = ln.strip()
         # Klammer-Events: (Beifall …)
         if ln_stripped.startswith("(") and ln_stripped.endswith(")"):
@@ -894,12 +978,12 @@ def cleanup_speech_events_in_text(sp: Dict[str, Any]) -> None:
                     if kw.lower() in ln_stripped.lower():
                         label = kw
                         break
-                _push_event(label, ln_stripped)
+                _push_event(label, ln_stripped, i)
                 continue
         # Dash-Events: – Zuruf … / – Beifall …
         m = DASH_EVENT_RE.match(ln_stripped)
         if m:
-            _push_event(m.group(1), ln_stripped)
+            _push_event(m.group(1), ln_stripped, i)
             continue
         body_lines.append(ln)
     sp["text"] = "\n".join(body_lines).strip()
@@ -922,6 +1006,10 @@ def prune_empty_speeches(speeches: List[Dict[str, Any]]) -> List[Dict[str, Any]]
 
 BEGINN_RE = re.compile(r"Beginn\s*:?\s*(\d{1,2})[:.]?(\d{2})\s*Uhr", re.IGNORECASE)
 SCHLUSS_RE = re.compile(r"Schluss\s*:?\s*(\d{1,2})[:.]?(\d{2})\s*Uhr", re.IGNORECASE)
+PAUSE_RE = re.compile(
+    r"\b(Mittagspause|Unterbrechung)\b(?:.*?\bvon\s+(\d{1,2})[:.]?(\d{2})\s*Uhr?)?(?:.*?\bbis\s+(\d{1,2})[:.]?(\d{2})\s*Uhr?)?",
+    re.IGNORECASE
+)
 
 def parse_session_info(all_text: str) -> Dict[str, Any]:
     number = None
@@ -974,6 +1062,22 @@ def parse_session_info(all_text: str) -> Dict[str, Any]:
         "end_time": end_time,
         "location": location
     }
+
+def parse_breaks(all_text: str) -> List[Dict[str, Any]]:
+    """Erkennt Pausen (z. B. Mittagspause) inkl. optionaler Zeiten und gibt strukturierte Einträge zurück."""
+    breaks: List[Dict[str, Any]] = []
+    for m in PAUSE_RE.finditer(all_text):
+        label = m.group(1)
+        sh, sm, eh, em = m.group(2), m.group(3), m.group(4), m.group(5)
+        entry: Dict[str, Any] = {"type": label}
+        if sh is not None and sm is not None:
+            entry["start_time"] = f"{int(sh):02d}:{int(sm):02d}"
+        if eh is not None and em is not None:
+            entry["end_time"] = f"{int(eh):02d}:{int(em):02d}"
+        # dedupe: avoid duplicates (simple)
+        if entry not in breaks:
+            breaks.append(entry)
+    return breaks
 
 # ------------------------- Flat-lines helper -------------------------
 
@@ -1145,6 +1249,9 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     # Fehlende Redner im TOC aus Reden befüllen
     backfill_toc_speakers_from_speeches(toc, speeches)
 
+    # Pausen (z. B. Mittagspause)
+    breaks = parse_breaks(all_text)
+
     payload: Dict[str, Any] = {
         "session": {
             "number": meta.get("number"),
@@ -1156,7 +1263,8 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
         "sitting": {
             "start_time": meta.get("start_time"),
             "end_time": meta.get("end_time"),
-            "location": meta.get("location")
+            "location": meta.get("location"),
+            "breaks": breaks or None
         },
         "stats": {"pages": len(pages_prepped), "speeches": len(speeches)},
         "layout": {
