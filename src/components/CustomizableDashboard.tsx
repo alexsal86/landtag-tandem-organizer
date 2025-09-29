@@ -15,6 +15,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useDashboardLayout, type WidgetSize } from '@/hooks/useDashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardWidget } from './DashboardWidget';
+import { DynamicGreeting } from './dashboard/DynamicGreeting';
+import { WeatherWidget } from './dashboard/WeatherWidget';
+import { TodaySchedule } from './dashboard/TodaySchedule';
+import { TasksSummary } from './dashboard/TasksSummary';
 import { toast } from 'sonner';
 import {
   Settings,
@@ -66,6 +70,8 @@ export const CustomizableDashboard: React.FC = () => {
   const [newLayoutName, setNewLayoutName] = useState('');
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('classic');
+  const [appointmentsCount, setAppointmentsCount] = useState(0);
+  const [tasksCount, setTasksCount] = useState(0);
 
   // Convert our widget format to react-grid-layout format
   const gridLayouts = useMemo(() => {
@@ -235,14 +241,34 @@ export const CustomizableDashboard: React.FC = () => {
   // Classic dashboard mode
   return (
     <div className="min-h-screen bg-background p-6">
+      {/* Dynamic Greeting Section */}
+      <div className="mb-8 space-y-4">
+        <DynamicGreeting 
+          appointmentsCount={appointmentsCount}
+          tasksCount={tasksCount}
+        />
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <WeatherWidget />
+          </div>
+          <div className="space-y-4">
+            <TodaySchedule onCountChange={setAppointmentsCount} />
+            <TasksSummary onCountChange={setTasksCount} />
+          </div>
+        </div>
+      </div>
+
+      <Separator className="my-8" />
+
       {/* Dashboard Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Dashboard
+            Widgets
           </h1>
           <p className="text-muted-foreground">
-            {currentLayout?.name || 'Standard Layout'} - Willkommen zurück!
+            {currentLayout?.name || 'Standard Layout'}
           </p>
         </div>
 
