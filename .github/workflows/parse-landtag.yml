@@ -90,6 +90,12 @@ jobs:
           echo "script=${detected}" >> "$GITHUB_OUTPUT"
           echo "Detected script: ${detected}"
 
+      - name: Show parser CLI help (for logs)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "${{ steps.detect.outputs.script }}" -h || true
+
       - name: Run parser (always to data/)
         env:
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/scripts:${{ github.workspace }}/parser_core
@@ -102,16 +108,38 @@ jobs:
           fi
           if [ -n "${{ inputs.pdf_url }}" ]; then
             echo "Parse single URL -> data/: ${{ inputs.pdf_url }}"
-            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out-dir data ${FORCE_FLAG}
+            # Falls das Skript --out-dir NICHT kennt, wird es ignoriert; Fallback-Step kommt danach.
+            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out-dir data ${FORCE_FLAG} || \
+            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out data ${FORCE_FLAG}
           else
             if [ ! -f "${{ inputs.list_file }}" ]; then
               echo "::error::URLs-Liste nicht gefunden: ${{ inputs.list_file }}"
               exit 1
             fi
             echo "Parse list file -> data/: ${{ inputs.list_file }}"
-            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out-dir data ${FORCE_FLAG}
+            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out-dir data ${FORCE_FLAG} || \
+            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out data ${FORCE_FLAG}
           fi
-          echo "Fertig. Dateien in data/:"
+          echo "Parserlauf abgeschlossen. Dateien in data/:"
+          ls -lah data || true
+
+      - name: Fallback: copy any session outputs to data/
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Wenn in data/ nichts liegt, suche überall und kopiere nach data/
+          if ! ls -1 data/session_*.json >/dev/null 2>&1; then
+            echo "No session_*.json in data/; scanning repo for outputs as fallback..."
+            FOUND_JSON=$(find . -type f -name 'session_*.json' ! -path './data/*' | wc -l | tr -d ' ')
+            FOUND_LAYOUT=$(find . -type f -name 'session_*.layout.json' ! -path './data/*' | wc -l | tr -d ' ')
+            if [ "$FOUND_JSON" != "0" ] || [ "$FOUND_LAYOUT" != "0" ]; then
+              find . -type f -name 'session_*.json' ! -path './data/*' -exec cp -v {} data/ \; || true
+              find . -type f -name 'session_*.layout.json' ! -path './data/*' -exec cp -v {} data/ \; || true
+            else
+              echo "No session outputs found anywhere."
+            fi
+          fi
+          echo "Final content of data/:"
           ls -lah data || true
 
       - name: Upload artifacts
@@ -133,5 +161,6 @@ jobs:
             echo "OK: JSON in data/ vorhanden."
           else
             echo "::error::Keine Session-JSON in data/ gefunden."
+            echo "Suche kurz überall als Hinweis:"
+            find . -type f -name 'session_*.json' -o -name 'session_*.layout.json' | sed 's/^/  - /'
             exit 1
-          fi
