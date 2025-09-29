@@ -66,7 +66,6 @@ jobs:
           set -euo pipefail
           rm -rf data || true
           mkdir -p data
-          # PDF-Cache nur löschen, wenn force_download=true
           if [ "${{ inputs.force_download }}" = "true" ]; then
             rm -rf .cache/pdfs || true
           fi
@@ -76,27 +75,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          detected=""
           if [ -f "parse_landtag_pdf (2).py" ]; then
-            detected="parse_landtag_pdf (2).py"
+            echo "script=parse_landtag_pdf (2).py" >> "$GITHUB_OUTPUT"
           elif [ -f "scripts/parse_landtag_pdf.py" ]; then
-            detected="scripts/parse_landtag_pdf.py"
+            echo "script=scripts/parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
           elif [ -f "parse_landtag_pdf.py" ]; then
-            detected="parse_landtag_pdf.py"
+            echo "script=parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
           else
             echo "::error::Parser-Skript nicht gefunden. Lege es unter scripts/parse_landtag_pdf.py an."
             exit 1
           fi
-          echo "script=${detected}" >> "$GITHUB_OUTPUT"
-          echo "Detected script: ${detected}"
 
-      - name: Show parser CLI help (for logs)
+      - name: Show parser help
         shell: bash
         run: |
           set -euo pipefail
           python "${{ steps.detect.outputs.script }}" -h || true
 
-      - name: Run parser (always to data/)
+      - name: Run parser (write to data)
         env:
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/scripts:${{ github.workspace }}/parser_core
         shell: bash
@@ -108,38 +104,31 @@ jobs:
           fi
           if [ -n "${{ inputs.pdf_url }}" ]; then
             echo "Parse single URL -> data/: ${{ inputs.pdf_url }}"
-            # Falls das Skript --out-dir NICHT kennt, wird es ignoriert; Fallback-Step kommt danach.
-            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out-dir data ${FORCE_FLAG} || \
-            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out data ${FORCE_FLAG}
+            # Versuche --out-dir, fallback auf --out
+            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out-dir data ${FORCE_FLAG} \
+            || python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out data ${FORCE_FLAG}
           else
             if [ ! -f "${{ inputs.list_file }}" ]; then
               echo "::error::URLs-Liste nicht gefunden: ${{ inputs.list_file }}"
               exit 1
             fi
             echo "Parse list file -> data/: ${{ inputs.list_file }}"
-            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out-dir data ${FORCE_FLAG} || \
-            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out data ${FORCE_FLAG}
+            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out-dir data ${FORCE_FLAG} \
+            || python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out data ${FORCE_FLAG}
           fi
-          echo "Parserlauf abgeschlossen. Dateien in data/:"
+          echo "Inhalt von data/:"
           ls -lah data || true
 
-      - name: Fallback: copy any session outputs to data/
+      - name: Fallback copy to data
         shell: bash
         run: |
           set -euo pipefail
-          # Wenn in data/ nichts liegt, suche überall und kopiere nach data/
           if ! ls -1 data/session_*.json >/dev/null 2>&1; then
-            echo "No session_*.json in data/; scanning repo for outputs as fallback..."
-            FOUND_JSON=$(find . -type f -name 'session_*.json' ! -path './data/*' | wc -l | tr -d ' ')
-            FOUND_LAYOUT=$(find . -type f -name 'session_*.layout.json' ! -path './data/*' | wc -l | tr -d ' ')
-            if [ "$FOUND_JSON" != "0" ] || [ "$FOUND_LAYOUT" != "0" ]; then
-              find . -type f -name 'session_*.json' ! -path './data/*' -exec cp -v {} data/ \; || true
-              find . -type f -name 'session_*.layout.json' ! -path './data/*' -exec cp -v {} data/ \; || true
-            else
-              echo "No session outputs found anywhere."
-            fi
+            echo "Keine session_*.json in data/ gefunden. Suche im Repo und kopiere nach data/..."
+            find . -type f -name 'session_*.json' ! -path './data/*' -exec cp -v {} data/ \; || true
+            find . -type f -name 'session_*.layout.json' ! -path './data/*' -exec cp -v {} data/ \; || true
           fi
-          echo "Final content of data/:"
+          echo "Finaler Inhalt von data/:"
           ls -lah data || true
 
       - name: Upload artifacts
@@ -153,7 +142,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: "Quick sanity: writes to data/"
+      - name: "Sanity check output directory"
         shell: bash
         run: |
           set -euo pipefail
@@ -161,6 +150,5 @@ jobs:
             echo "OK: JSON in data/ vorhanden."
           else
             echo "::error::Keine Session-JSON in data/ gefunden."
-            echo "Suche kurz überall als Hinweis:"
-            find . -type f -name 'session_*.json' -o -name 'session_*.layout.json' | sed 's/^/  - /'
+            find . -type f -name 'session_*.json' -o -name 'session_*.layout.json' | sed 's/^/  - /' || true
             exit 1
