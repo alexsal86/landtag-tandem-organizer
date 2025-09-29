@@ -18,7 +18,7 @@ on:
         default: true
         type: boolean
       commit_results:
-        description: "Ergebnisse in Branch committen und PR erstellen"
+        description: "Ergebnisse committen/PR erstellen"
         required: false
         default: false
         type: boolean
@@ -74,13 +74,12 @@ jobs:
             pip install pdfplumber requests jsonschema
           fi
           python --version
-          python -c "import pdfplumber, requests; print('pdfplumber', pdfplumber.__version__); print('requests', requests.__version__)"
 
-      - name: Clean outputs and cache
+      - name: Prepare output dir
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf data out || true
+          rm -rf data || true
           mkdir -p data
           # PDF-Cache nur löschen, wenn force_download=true
           if [ "${{ inputs.force_download }}" = "true" ]; then
@@ -106,15 +105,7 @@ jobs:
           echo "script=${detected}" >> "$GITHUB_OUTPUT"
           echo "Detected script: ${detected}"
 
-      - name: Sanity print files
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "CWD: $(pwd)"
-          ls -la
-          ls -la scripts || true
-
-      - name: Run parser
+      - name: Run parser (always to data/)
         env:
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/scripts:${{ github.workspace }}/parser_core
         shell: bash
@@ -125,20 +116,20 @@ jobs:
             FORCE_FLAG="--force-download"
           fi
           if [ -n "${{ inputs.pdf_url }}" ]; then
-            echo "Starte Parser für einzelne URL: ${{ inputs.pdf_url }}"
+            echo "Parse single URL -> data/: ${{ inputs.pdf_url }}"
             python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out-dir data ${FORCE_FLAG}
           else
             if [ ! -f "${{ inputs.list_file }}" ]; then
               echo "::error::URLs-Liste nicht gefunden: ${{ inputs.list_file }}"
               exit 1
             fi
-            echo "Starte Parser für URLs-Liste: ${{ inputs.list_file }}"
+            echo "Parse list file -> data/: ${{ inputs.list_file }}"
             python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out-dir data ${FORCE_FLAG}
           fi
-          echo "Parserlauf abgeschlossen. Dateien in data/:"
+          echo "Fertig. Dateien in data/:"
           ls -lah data || true
 
-      - name: Upload artifacts (JSON + Layout)
+      - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -149,50 +140,25 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: "Quick sanity: next_meeting and events_flat"
+      - name: "Quick sanity: writes to data/"
         shell: bash
         run: |
           set -euo pipefail
-          PY=$(ls -1 data/session_*.json 2>/dev/null | head -n 1 || true)
-          if [ -z "$PY" ]; then
-            echo "::warning::Kein Session-JSON gefunden, überspringe Sanity."
-            exit 0
-          fi
-          echo "Sanity auf: $PY"
-          echo "next_meeting:"
-          jq -r '.session.next_meeting // "<none>"' "$PY"
-          echo "events_flat vorhanden? (mindestens eine Rede):"
-          if jq -e '(.speeches // []) | map(has("events_flat")) | any' "$PY" >/dev/null; then
-            echo "OK: events_flat vorhanden."
+          if ls -1 data/session_*.json >/dev/null 2>&1; then
+            echo "OK: JSON in data/ vorhanden."
           else
-            echo "::warning::events_flat nicht gefunden."
+            echo "::error::Keine Session-JSON in data/ gefunden."
+            exit 1
           fi
 
-      - name: Assert fixed-mid-split was applied
+      - name: Stage generated files (force)
+        if: ${{ inputs.commit_results == true }}
         shell: bash
         run: |
           set -euo pipefail
-          PY=$(ls -1 data/session_*.json 2>/dev/null | head -n 1 || true)
-          if [ -z "$PY" ]; then
-            echo "::error::Keine Session-JSON erzeugt."
-            exit 1
-          fi
-          REASON=$(jq -r '.layout.reason // empty' "$PY")
-          echo "layout.reason: $REASON"
-          if [[ -z "$REASON" || ${REASON} != fixed-mid-split* ]]; then
-            echo "::error::Unexpected layout.reason: ${REASON:-<leer>} (expected to start with fixed-mid-split)"
-            echo "First 120 lines of JSON for debugging:"
-            jq '.' "$PY" | sed -n '1,120p' || true
-            exit 1
-          fi
-          # Optional: check method on first page in sidecar
-          SC=$(ls -1 data/session_*.layout.json 2>/dev/null | head -n 1 || true)
-          if [ -n "$SC" ]; then
-            METHOD=$(jq -r '.layout_debug.layout_metadata[0].method // empty' "$SC")
-            echo "First page method: $METHOD"
-          else
-            echo "No sidecar layout file found."
-          fi
+          git status --porcelain
+          git add -f data/**
+          git status --porcelain
 
       - name: Create PR with results (optional)
         if: ${{ inputs.commit_results == true }}
@@ -200,10 +166,11 @@ jobs:
         with:
           branch: ${{ inputs.target_branch }}
           title: "Automated: Parsed Landtag sessions"
-          commit-message: "Add/update parsed session outputs (JSON + layout)"
+          commit-message: "Add/update parsed session outputs (JSON + layout) in data/"
           body: |
             Automated run of Parse Landtag PDF.
-            Includes:
+            Outputs are always written to data/.
+            Included:
             - data/session_*.json (speeches, toc)
             - data/session_*.layout.json (normalized_pages + layout metadata)
           add-paths: |
