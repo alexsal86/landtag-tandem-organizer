@@ -335,7 +335,8 @@ def filter_repeating_headers_footers(
     pages_lines: List[List[str]],
     top_n: int = HF_TOP_N,
     bottom_n: int = HF_BOTTOM_N,
-    min_share: float = HF_MIN_SHARE
+    min_share: float = HF_MIN_SHARE,
+    skip_first_n_pages: int = 0  # <-- neu
 ) -> Tuple[List[List[str]], Dict[str, Any]]:
     if not pages_lines:
         return pages_lines, {"headers": [], "footers": []}
@@ -346,7 +347,10 @@ def filter_repeating_headers_footers(
     raw_examples_top: Dict[str, str] = {}
     raw_examples_bottom: Dict[str, str] = {}
 
-    for lines in pages_lines:
+    # Zähle Header/Footers erst ab Seite 'skip_first_n_pages'
+    for pi, lines in enumerate(pages_lines, start=1):
+        if pi <= skip_first_n_pages:
+            continue
         tops = [ln for ln in lines[:top_n] if ln.strip()]
         bots = [ln for ln in lines[-bottom_n:] if ln.strip()]
         for ln in tops:
@@ -362,11 +366,15 @@ def filter_repeating_headers_footers(
             bottom_counts[key] = bottom_counts.get(key, 0) + 1
             raw_examples_bottom.setdefault(key, ln)
 
-    header_keys = {k for k, c in top_counts.items() if c / total_pages >= min_share}
-    footer_keys = {k for k, c in bottom_counts.items() if c / total_pages >= min_share}
+    header_keys = {k for k, c in top_counts.items() if c / max(1, total_pages - skip_first_n_pages) >= min_share}
+    footer_keys = {k for k, c in bottom_counts.items() if c / max(1, total_pages - skip_first_n_pages) >= min_share}
 
     filtered: List[List[str]] = []
-    for lines in pages_lines:
+    for pi, lines in enumerate(pages_lines, start=1):
+        # Erste Seiten unberührt lassen (z. B. TOC-Überschrift erhalten)
+        if pi <= skip_first_n_pages:
+            filtered.append(list(lines))
+            continue
         new_lines: List[str] = []
         for idx, ln in enumerate(lines):
             key = _normalize_for_header_footer(ln)
@@ -421,42 +429,48 @@ def split_toc_and_body(
     flat_lines: List[Dict[str, Any]],
     stop_at_first_body_header: bool = True
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
-    """
-    Trennt TOC-Zeilen und Body-Zeilen (Protokoll).
-    Rückgabe: (toc_lines, body_lines, meta)
-    meta = { "inhalt_found": bool, "body_start_index": int|None, "body_start_reason": "protokoll"|"role_header"|None }
-    """
     toc_lines: List[Dict[str, Any]] = []
     body_lines: List[Dict[str, Any]] = []
     in_toc = False
     body_start_idx: Optional[int] = None
     body_start_reason: Optional[str] = None
 
+    def _lookahead_numbered(idx: int, max_ahead: int = 6, page_limit: int = 3) -> int:
+        cnt = 0
+        for j in range(1, max_ahead + 1):
+            k = idx + j
+            if k >= len(flat_lines):
+                break
+            obj2 = flat_lines[k]
+            if obj2.get("page", 9999) > page_limit:
+                break
+            t2 = _nfkc(obj2.get("text") or "")
+            if NUMBERED_START_RE.match(t2):
+                cnt += 1
+        return cnt
+
     for idx, obj in enumerate(flat_lines):
         text = _nfkc(obj.get("text") or "")
         if not text.strip():
-            if in_toc:
-                toc_lines.append(obj)
-            else:
-                body_lines.append(obj)
+            (toc_lines if in_toc else body_lines).append(obj)
             continue
 
         if not in_toc:
-            # 1) Standard: explizite Überschrift "INHALT" (auch gesperrt) startet den TOC
+            # 1) Sicherer Start an „INHALT“ (wenn nicht weggefiltert)
             if looks_like_inhalt_heading(text):
                 in_toc = True
                 toc_lines.append(obj)
                 continue
 
-            # 2) Heuristik: Falls "INHALT" (noch) fehlt, aber sehr früh (Seite 1–2)
-            # schon eine nummerierte TOP-Zeile mit Seitenzahl(en) am Ende steht,
-            # beginne TOC trotzdem (Layout: linke Spalte mit 1., 2., 3., Überschrift kommt rechts/weiter unten).
-            if obj.get("page", 9999) <= 2:
-                if NUMBERED_START_RE.match(text) and re.search(r"\d{3,5}\s*(?:,\s*\d{3,5})*\s*$", text):
+            # 2) NEU: Wenn sehr früh (<= Seite 3) mehrere nummerierte TOP-Zeilen dicht hintereinander
+            #    auftreten, beginne TOC auch ohne sichtbare Seitenzahlen am Zeilenende.
+            if obj.get("page", 9999) <= 3 and NUMBERED_START_RE.match(text):
+                if _lookahead_numbered(idx, max_ahead=6, page_limit=3) >= 1:
                     in_toc = True
                     toc_lines.append(obj)
                     continue
 
+            # 3) Fallback: Beginn des Protokolls / erste Redezeile beendet die TOC-Suche
             if is_body_start_line(text):
                 body_start_idx = idx
                 body_start_reason = "protokoll" if PROTOKOLL_HEADING_RE.match(text) else "role_header"
@@ -464,7 +478,7 @@ def split_toc_and_body(
                 break
             continue
 
-        # im TOC-Bereich
+        # Bereits im TOC-Bereich
         if PROTOKOLL_HEADING_RE.match(text):
             body_start_idx = idx
             body_start_reason = "protokoll"
@@ -480,7 +494,6 @@ def split_toc_and_body(
         toc_lines.append(obj)
 
     if not in_toc and not body_lines:
-        # Kein TOC gefunden -> gesamter Input ist Body
         body_lines = list(flat_lines)
 
     meta = {
@@ -1002,19 +1015,19 @@ def build_session_filename(payload: Dict[str, Any]) -> str:
 def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     pdf_path = download_pdf(url, force=force_download)
 
-    # NEU: feste 50:50-Extraktion
     pages_raw, metas = extract_lines_fixed_mid(pdf_path)
 
-    # Header/Footer-Filter vor Parsing anwenden
-    pages_filtered, hf_debug = filter_repeating_headers_footers(pages_raw, top_n=HF_TOP_N, bottom_n=HF_BOTTOM_N, min_share=HF_MIN_SHARE)
+    # WICHTIG: Erste 3 Seiten (TOC-Bereich) nicht header/footer-filtern,
+    # damit „INHALT“ & frühe linke Spalte sicher sichtbar bleiben.
+    pages_filtered, hf_debug = filter_repeating_headers_footers(
+        pages_raw, top_n=HF_TOP_N, bottom_n=HF_BOTTOM_N, min_share=HF_MIN_SHARE, skip_first_n_pages=3
+    )
 
-    # All text for metadata (bereinigt)
     all_text = "\n".join("\n".join(p) for p in pages_filtered)
     meta = parse_session_info(all_text)
     meta["source_pdf_url"] = url
     meta["extracted_at"] = dt.datetime.utcnow().isoformat() + "Z"
 
-    # TOC/Speeches auf den bereinigten Seiten
     flat = pages_to_flat_lines(pages_filtered)
     toc_lines, body_lines, _meta = split_toc_and_body(flat, stop_at_first_body_header=True)
     toc = {"items": []}
@@ -1022,7 +1035,6 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
         toc = parse_toc(toc_lines)
     speeches = segment_speeches_from_pages(pages_filtered)
 
-    # Parteien in TOC aus den Reden nachpflegen (falls fehlend)
     enrich_toc_parties_from_speeches(toc, speeches)
 
     payload: Dict[str, Any] = {
