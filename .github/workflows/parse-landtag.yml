@@ -65,18 +65,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq
           python -m pip install -U pip
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           else
-            pip install pdfplumber requests jsonschema jq
+            pip install pdfplumber requests jsonschema
           fi
           python --version
-          python - <<'PY'
-          import pdfplumber, requests
-          print("pdfplumber", pdfplumber.__version__)
-          print("requests", requests.__version__)
-          PY
+          python -c "import pdfplumber, requests; print('pdfplumber', pdfplumber.__version__); print('requests', requests.__version__)"
 
       - name: Clean outputs and cache
         shell: bash
@@ -181,7 +179,7 @@ jobs:
           fi
           REASON=$(jq -r '.layout.reason // empty' "$PY")
           echo "layout.reason: $REASON"
-          if [[ -z "$REASON" || "$REASON" != fixed-mid-split* ]]; then
+          if [[ -z "$REASON" || ${REASON} != fixed-mid-split* ]]; then
             echo "::error::Unexpected layout.reason: ${REASON:-<leer>} (expected to start with fixed-mid-split)"
             echo "First 120 lines of JSON for debugging:"
             jq '.' "$PY" | sed -n '1,120p' || true
