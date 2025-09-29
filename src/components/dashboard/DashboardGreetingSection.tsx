@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Card } from '@/components/ui/card';
 import { TypewriterText } from './TypewriterText';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,6 +13,7 @@ interface AppointmentData {
   id: string;
   title: string;
   start_time: string;
+  is_all_day: boolean;
 }
 
 export const DashboardGreetingSection = () => {
@@ -82,7 +82,7 @@ export const DashboardGreetingSection = () => {
       
       const { data } = await supabase
         .from('appointments')
-        .select('id, title, start_time')
+        .select('id, title, start_time, is_all_day')
         .eq('tenant_id', currentTenant.id)
         .gte('start_time', today.toISOString())
         .lt('start_time', tomorrow.toISOString())
@@ -143,7 +143,7 @@ export const DashboardGreetingSection = () => {
 
   // Build complete text
   const fullText = useMemo(() => {
-    if (isLoading) return 'Dashboard wird geladen...';
+    if (isLoading) return '';
     
     const timeSlot = getCurrentTimeSlot();
     const greeting = getGreeting(timeSlot);
@@ -185,10 +185,12 @@ export const DashboardGreetingSection = () => {
     if (appointments.length === 0) {
       text += 'Keine Termine heute.\n';
     } else {
-      appointments.forEach(apt => {
-        const time = format(new Date(apt.start_time), 'HH:mm', { locale: de });
-        text += `${time} - ${apt.title}\n`;
-      });
+    appointments.forEach(apt => {
+      const time = apt.is_all_day 
+        ? 'Ganztägig' 
+        : format(new Date(apt.start_time), 'HH:mm', { locale: de });
+      text += `${time} - ${apt.title}\n`;
+    });
     }
     
     // Tasks section
@@ -198,12 +200,12 @@ export const DashboardGreetingSection = () => {
   }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments, openTasksCount, completedTasksCount]);
 
   return (
-    <Card className="p-6 bg-card border-border">
+    <div className="mb-6">
       <TypewriterText 
         text={fullText}
         speed={20}
         className="text-lg leading-relaxed text-foreground whitespace-pre-wrap"
       />
-    </Card>
+    </div>
   );
 };
