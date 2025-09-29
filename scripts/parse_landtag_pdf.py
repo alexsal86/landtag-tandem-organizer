@@ -1494,7 +1494,8 @@ def parse_args():
     g.add_argument("--single-url", help="PDF-URL oder lokaler Pfad")
     g.add_argument("--list-file", help="Datei mit Zeilenweise URLs")
     p.add_argument("--force-download", action="store_true")
-    p.add_argument("--out-dir", default="out", help="Ausgabeverzeichnis (Default: out)")
+    p.add_argument("--out-dir", default="data", help="Ausgabeverzeichnis (Default: data)")
+
     return p.parse_args()
 
 def gather_urls(args) -> List[str]:
