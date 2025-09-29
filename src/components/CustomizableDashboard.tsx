@@ -15,10 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useDashboardLayout, type WidgetSize } from '@/hooks/useDashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardWidget } from './DashboardWidget';
-import { DynamicGreeting } from './dashboard/DynamicGreeting';
-import { WeatherWidget } from './dashboard/WeatherWidget';
-import { TodaySchedule } from './dashboard/TodaySchedule';
-import { TasksSummary } from './dashboard/TasksSummary';
+import { DashboardGreetingSection } from './dashboard/DashboardGreetingSection';
 import { toast } from 'sonner';
 import {
   Settings,
@@ -70,9 +67,6 @@ export const CustomizableDashboard: React.FC = () => {
   const [newLayoutName, setNewLayoutName] = useState('');
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('classic');
-  const [appointmentsCount, setAppointmentsCount] = useState(0);
-  const [tasksCount, setTasksCount] = useState(0);
-  const [completedTasksCount, setCompletedTasksCount] = useState(0);
 
   // Convert our widget format to react-grid-layout format
   const gridLayouts = useMemo(() => {
@@ -243,25 +237,8 @@ export const CustomizableDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       {/* Dynamic Greeting Section */}
-      <div className="mb-8 space-y-4">
-        <DynamicGreeting 
-          appointmentsCount={appointmentsCount}
-          tasksCount={tasksCount}
-          completedTasksCount={completedTasksCount}
-        />
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
-            <WeatherWidget />
-          </div>
-          <div className="space-y-4">
-            <TodaySchedule onCountChange={setAppointmentsCount} />
-            <TasksSummary 
-              onCountChange={setTasksCount}
-              onCompletedCountChange={setCompletedTasksCount}
-            />
-          </div>
-        </div>
+      <div className="mb-8">
+        <DashboardGreetingSection />
       </div>
 
       <Separator className="my-8" />
