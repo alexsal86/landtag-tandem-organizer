@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.3.2)
+parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.3.3)
 
-Neu in v3.3.2:
-- TOC-Fallback für spaltenübergreifende (links→rechts) Einträge:
-  Interleaving nach Y-Position nur für TOC-Seiten, damit Rednerlisten (rechte Spalte)
-  korrekt dem linken Header zugeordnet werden (fix für TOP 3).
-- Titel-Noise robuster entfernen: „D rucksachen und Plenarprotokolle …“, „Recyclingpapier/Blauer Engel“.
-- Redensegmentierung: Keine neuen Reden, wenn eine (Abg. …)-Zeile in Klammern steht.
-- Leere Präsidiumseinträge entfernen.
-- Kleinere Säuberungen bei Dot-Leadern und Events beibehalten.
+Neu in v3.3.3:
+- TOC-Backfill: Fehlende Redner pro TOP werden aus den tatsächlichen Reden
+  (agenda_item_number) zurückgeschrieben (fix u. a. für TOP 3).
+- Titel-Noise justiert: „Baden-Württemberg“ wird NICHT mehr entfernt; Sitzungs-Metadaten
+  („127. Sitzung – Mittwoch, …“) werden verlässlich aus TOC-Titeln entfernt.
+- Event-Erkennung erweitert: Zeilen, die mit „– Zuruf/Beifall/…“ beginnen (ohne Klammern),
+  werden als Events klassifiziert und nicht als neuer Rede-Header interpretiert.
+- Segmentierung: Zeilen, die mit „– “ beginnen, starten keine neue Rede.
 
-Hinweis: v3.3.1-Hotfixes (konservative Dehyphenation, Datumsregex, Agenda-Erkennung, TOC-Filter) bleiben erhalten.
+Hinweis: v3.3.1/2-Hotfixes (konservative Dehyphenation, Datumsregex, Agenda-Erkennung,
+TOC-Interleave-Fallback, Header/Footer-Filter) bleiben erhalten.
 """
 from __future__ import annotations
 
@@ -657,9 +658,11 @@ def _cleanup_toc_title_noise(title: str) -> str:
     s = re.sub(r"D\s*r\s*u\s*c\s*k\s*s\s*a\s*c\s*h\s*e\s*n\s*und\s*Plenarprotokolle.*?$", "", s, flags=re.IGNORECASE)
     # Recyclingpapier/Blauer Engel-Hinweis entfernen
     s = re.sub(r"Der\s+Landtag\s+druckt\s+auf\s+Recyclingpapier.*?$", "", s, flags=re.IGNORECASE)
-    # Baden-Württemberg-Meta entfernen
-    s = re.sub(r"\bBaden[- ]Württemberg\b", "", s, flags=re.IGNORECASE)
+    # Sitzungs-Meta („127. Sitzung – …“) am Ende entfernen
+    s = re.sub(r"\b\d{1,3}\.\s*Sitzung\b.*?$", "", s, flags=re.IGNORECASE)
+    # Generischer Hinweis auf „Drucksachen und Plenarprotokolle“
     s = re.sub(r"\bDrucksachen?\s*und\s*Plenarprotokolle?.*?$", "", s, flags=re.IGNORECASE)
+    # Aufräumen
     s = re.sub(r"\s{2,}", " ", s).strip(" –—- ")
     return s.strip()
 
@@ -780,6 +783,7 @@ INLINE_HEADER_NOISE = [
 ]
 
 EVENT_KEYWORDS = ["Beifall", "Zuruf", "Heiterkeit", "Lachen", "Unruhe", "Zwischenruf", "Glocke"]
+DASH_EVENT_RE = re.compile(r"^[–-]\s*(Beifall|Zuruf|Heiterkeit|Lachen|Unruhe|Zwischenruf|Glocke)\b.*", re.IGNORECASE)
 
 def _strip_inline_headers_from_text(text: str) -> str:
     lines = text.splitlines()
@@ -827,8 +831,9 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
             buf = []
 
     for p, line in body:
-        # Neue Rede nur, wenn Zeile NICHT mit '(' beginnt (verhindert Klammer-Zwischenrufe wie „(Abg. …:)“)
-        if not line.lstrip().startswith("("):
+        lstripped = line.lstrip()
+        # Neue Rede nur, wenn Zeile nicht mit '(' oder '–'/'-' beginnt (verhindert Klammer-/Dash-Zwischenrufe)
+        if not (lstripped.startswith("(") or lstripped.startswith("–") or lstripped.startswith("-")):
             m = HEADER_RX.match(line)
         else:
             m = None
@@ -865,17 +870,37 @@ def cleanup_speech_events_in_text(sp: Dict[str, Any]) -> None:
     lines = text.splitlines()
     body_lines: List[str] = []
     events: List[Dict[str, Any]] = []
+
+    def _push_event(label: str, raw_text: str):
+        canonical = {
+            "beifall": "Beifall",
+            "zuruf": "Zuruf",
+            "heiterkeit": "Heiterkeit",
+            "lachen": "Lachen",
+            "unruhe": "Unruhe",
+            "zwischenruf": "Zwischenruf",
+            "glocke": "Glocke"
+        }.get(label.lower(), "Event")
+        events.append({"type": canonical, "text": raw_text})
+
     for ln in lines:
         ln_stripped = ln.strip()
+        # Klammer-Events: (Beifall …)
         if ln_stripped.startswith("(") and ln_stripped.endswith(")"):
             if any(kw.lower() in ln_stripped.lower() for kw in EVENT_KEYWORDS):
+                # Label heuristisch bestimmen
                 label = "Event"
                 for kw in EVENT_KEYWORDS:
                     if kw.lower() in ln_stripped.lower():
                         label = kw
                         break
-                events.append({"type": label, "text": ln_stripped})
+                _push_event(label, ln_stripped)
                 continue
+        # Dash-Events: – Zuruf … / – Beifall …
+        m = DASH_EVENT_RE.match(ln_stripped)
+        if m:
+            _push_event(m.group(1), ln_stripped)
+            continue
         body_lines.append(ln)
     sp["text"] = "\n".join(body_lines).strip()
     if events:
@@ -959,7 +984,7 @@ def pages_to_flat_lines(pages: List[List[str]]) -> List[Dict[str, Any]]:
             flat.append({"page": pi, "line_index": li, "text": t})
     return flat
 
-# ------------------------- Party enrichment -------------------------
+# ------------------------- Party enrichment & TOC backfill -------------------------
 
 def _normalize_person_name(n: Optional[str]) -> Optional[str]:
     if not n:
@@ -981,6 +1006,42 @@ def enrich_toc_parties_from_speeches(toc: Dict[str, Any], speeches: List[Dict[st
                 n = _normalize_person_name(s.get("name"))
                 if n and n in idx:
                     s["party"] = idx[n]
+
+def backfill_toc_speakers_from_speeches(toc: Dict[str, Any], speeches: List[Dict[str, Any]]) -> None:
+    """
+    Falls ein TOC-Item keine Redner aus dem Inhaltsverzeichnis enthält,
+    fülle es aus den tatsächlichen Reden (Agenda-Nummer).
+    Reihenfolge: erste Vorkommen in der Debatte, einzigartig pro Sprecher.
+    """
+    # Baue Index: agenda_num -> Liste eindeutiger (role, name, party) in Reihenfolge
+    by_agenda: Dict[int, List[Tuple[Optional[str], str, Optional[str]]]] = {}
+    seen_per_agenda: Dict[int, set] = {}
+    for sp in speeches:
+        num = sp.get("agenda_item_number")
+        if not isinstance(num, int):
+            continue
+        name = _normalize_person_name(sp.get("speaker")) or ""
+        role = sp.get("role")
+        party = _normalize_party(sp.get("party"))
+        key = (role or "", name or "", party or "")
+        if num not in by_agenda:
+            by_agenda[num] = []
+            seen_per_agenda[num] = set()
+        if key not in seen_per_agenda[num]:
+            seen_per_agenda[num].add(key)
+            by_agenda[num].append((role, name, party))
+
+    # Backfill nur wenn speakers leer sind
+    for item in toc.get("items", []):
+        if (item.get("speakers") or []):
+            continue
+        num = item.get("number")
+        if not isinstance(num, int):
+            continue
+        seq = by_agenda.get(num) or []
+        if not seq:
+            continue
+        item["speakers"] = [{"role": r, "name": n, "party": p, "pages": None} for (r, n, p) in seq]
 
 # ------------------------- TOC Interleave Fallback -------------------------
 
@@ -1078,7 +1139,11 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
     speeches = segment_speeches_from_pages(pages_prepped)
     _normalize_speeches(speeches)
     speeches = prune_empty_speeches(speeches)
+
+    # Parteien aus Reden übernehmen
     enrich_toc_parties_from_speeches(toc, speeches)
+    # Fehlende Redner im TOC aus Reden befüllen
+    backfill_toc_speakers_from_speeches(toc, speeches)
 
     payload: Dict[str, Any] = {
         "session": {
