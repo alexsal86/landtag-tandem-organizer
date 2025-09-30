@@ -18,6 +18,9 @@ on:
         default: true
         type: boolean
 
+permissions:
+  contents: write
+
 concurrency:
   group: parse-landtag
   cancel-in-progress: false
@@ -32,6 +35,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -53,7 +57,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
           python -m pip install -U pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install pdfplumber requests jsonschema; fi
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install pdfplumber requests jsonschema
+          fi
           python --version
 
       - name: Prepare output dir
@@ -62,30 +70,25 @@ jobs:
           set -eo pipefail
           rm -rf data || true
           mkdir -p data
-          if [ "${{ inputs.force_download }}" = "true" ]; then rm -rf .cache/pdfs || true; fi
+          if [ "${{ inputs.force_download }}" = "true" ]; then
+            rm -rf .cache/pdfs || true
+          fi
 
       - name: Detect parser script path
         id: detect
         shell: bash
         run: |
           set -eo pipefail
-          if [ -f "parse_landtag_pdf (2).py" ]; then
-            echo "script=parse_landtag_pdf (2).py" >> "$GITHUB_OUTPUT"
-          elif [ -f "scripts/parse_landtag_pdf.py" ]; then
+          if [ -f "scripts/parse_landtag_pdf.py" ]; then
             echo "script=scripts/parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
           elif [ -f "parse_landtag_pdf.py" ]; then
             echo "script=parse_landtag_pdf.py" >> "$GITHUB_OUTPUT"
+          elif [ -f "parse_landtag_pdf (2).py" ]; then
+            echo "script=parse_landtag_pdf (2).py" >> "$GITHUB_OUTPUT"
           else
             echo "::error::Parser-Skript nicht gefunden (scripts/parse_landtag_pdf.py)."
             exit 1
           fi
-          echo "Using parser: ${{ steps.detect.outputs.script }}"
-
-      - name: Show parser help
-        shell: bash
-        run: |
-          set -eo pipefail
-          python "${{ steps.detect.outputs.script }}" -h || true
 
       - name: Run parser (write to data)
         env:
@@ -95,33 +98,19 @@ jobs:
           set -eo pipefail
           FORCE_FLAG=""
           if [ "${{ inputs.force_download }}" = "true" ]; then FORCE_FLAG="--force-download"; fi
-
           if [ -n "${{ inputs.pdf_url }}" ]; then
             echo "Parse single URL -> data/: ${{ inputs.pdf_url }}"
-            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out-dir data ${FORCE_FLAG} || true
+            python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out-dir data ${FORCE_FLAG}
           else
             if [ ! -f "${{ inputs.list_file }}" ]; then
               echo "::error::URLs-Liste nicht gefunden: ${{ inputs.list_file }}"
               exit 1
             fi
             echo "Parse list file -> data/: ${{ inputs.list_file }}"
-            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out-dir data ${FORCE_FLAG} || true
+            python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out-dir data ${FORCE_FLAG}
           fi
-
-          echo "Nach erster Ausführung, Inhalt von data/:"
+          echo "Inhalt von data/:"
           ls -lah data || true
-
-          # Fallback: Falls Skript --out-dir nicht kennt und woanders geschrieben hat, probiere --out
-          if ! ls -1 data/session_*.json >/dev/null 2>&1; then
-            echo "Keine session_*.json in data/ gefunden. Fallback: verwende --out anstelle --out-dir."
-            if [ -n "${{ inputs.pdf_url }}" ]; then
-              python "${{ steps.detect.outputs.script }}" --single-url "${{ inputs.pdf_url }}" --out data ${FORCE_FLAG} || true
-            else
-              python "${{ steps.detect.outputs.script }}" --list-file "${{ inputs.list_file }}" --out data ${FORCE_FLAG} || true
-            fi
-            echo "Nach Fallback, Inhalt von data/:"
-            ls -lah data || true
-          fi
 
       - name: Upload artifacts
         if: always()
@@ -134,14 +123,16 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Sanity check output directory
+      - name: Commit data to repository
         shell: bash
         run: |
           set -eo pipefail
           if ls -1 data/session_*.json >/dev/null 2>&1; then
-            echo "OK: JSON in data/ vorhanden."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A data
+            git commit -m "chore(data): update parsed sessions" || echo "Nothing to commit"
+            git push
           else
-            echo "::error::Keine Session-JSON in data/ gefunden."
-            echo "Hinweis: vorhandene Outputs im Repo:"
-            find . -type f -name 'session_*.json' -o -name 'session_*.layout.json' | sed 's/^/  - /' || true
-            exit 1
+            echo "::warning::Keine Session-JSON in data/ gefunden. Nichts zu committen."
+          fi
