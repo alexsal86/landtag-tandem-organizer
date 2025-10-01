@@ -7,7 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
-import { Check, X, MessageCircle, Send, Vote, CheckSquare } from "lucide-react";
+import { DecisionEditDialog } from "./DecisionEditDialog";
+import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -20,12 +23,14 @@ interface DecisionRequest {
   created_at: string;
   created_by: string;
   participant_id: string | null;
+  visible_to_all?: boolean;
   task: {
     title: string;
   } | null;
   hasResponded: boolean;
   isParticipant?: boolean;
   isStandalone: boolean;
+  isCreator: boolean;
   participants?: Array<{
     id: string;
     user_id: string;
@@ -51,21 +56,16 @@ export const DecisionOverview = () => {
   const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
-
-  console.log('DecisionOverview component rendered - user from useAuth:', user?.id);
+  const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
+  const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('DecisionOverview useEffect triggered - user from hook:', user?.id);
     if (user?.id) {
       loadDecisionRequests(user.id);
-    } else {
-      console.log('No user yet, skipping loadDecisionRequests');
     }
   }, [user?.id]);
 
   const loadDecisionRequests = async (currentUserId: string) => {
-    console.log('Loading decision requests for user:', currentUserId);
-
     try {
       // Load decisions where user is a participant
       const { data: participantDecisions, error: participantError } = await supabase
@@ -81,6 +81,7 @@ export const DecisionOverview = () => {
             created_at,
             created_by,
             status,
+            visible_to_all,
             tasks (
               title
             )
@@ -92,11 +93,9 @@ export const DecisionOverview = () => {
         .eq('user_id', currentUserId)
         .eq('task_decisions.status', 'active');
 
-      console.log('Participant decisions query result:', { participantDecisions, participantError });
-
       if (participantError) throw participantError;
 
-      // Load all decisions created by or assigned to user
+      // Load all decisions created by user, assigned to user, or visible to all
       const { data: allDecisions, error: allError } = await supabase
         .from('task_decisions')
         .select(`
@@ -107,6 +106,7 @@ export const DecisionOverview = () => {
           created_at,
           created_by,
           status,
+          visible_to_all,
           tasks (
             title,
             assigned_to
@@ -121,8 +121,6 @@ export const DecisionOverview = () => {
         `)
         .eq('status', 'active');
 
-      console.log('All decisions query result:', { allDecisions, allError });
-
       if (allError) throw allError;
 
       // Format participant decisions
@@ -133,6 +131,7 @@ export const DecisionOverview = () => {
         description: item.task_decisions.description,
         created_at: item.task_decisions.created_at,
         created_by: item.task_decisions.created_by,
+        visible_to_all: item.task_decisions.visible_to_all,
         participant_id: item.id,
         task: item.task_decisions.tasks ? {
           title: item.task_decisions.tasks.title,
@@ -140,19 +139,20 @@ export const DecisionOverview = () => {
         hasResponded: item.task_decision_responses.length > 0,
         isParticipant: true,
         isStandalone: !item.task_decisions.task_id,
+        isCreator: item.task_decisions.created_by === currentUserId,
       })) || [];
 
       // Format all decisions - filter for relevant ones
       const formattedAllData = allDecisions
         ?.filter(item => {
-          // Include if user is creator, participant, or assigned to task
+          // Include if user is creator, participant, assigned to task, or visible_to_all
           const isCreator = item.created_by === currentUserId;
           const isParticipant = item.task_decision_participants.some(p => p.user_id === currentUserId);
           const assignedTo = item.tasks?.assigned_to;
           const isAssigned = assignedTo ? assignedTo.includes(currentUserId) : false;
-          const shouldInclude = isCreator || isParticipant || isAssigned;
+          const isVisibleToAll = item.visible_to_all === true;
+          const shouldInclude = isCreator || isParticipant || isAssigned || isVisibleToAll;
           
-          console.log('Decision:', item.title, 'isCreator:', isCreator, 'isParticipant:', isParticipant, 'isAssigned:', isAssigned, 'shouldInclude:', shouldInclude);
           return shouldInclude;
         })
         ?.map(item => {
@@ -164,6 +164,7 @@ export const DecisionOverview = () => {
             description: item.description,
             created_at: item.created_at,
             created_by: item.created_by,
+            visible_to_all: item.visible_to_all,
             participant_id: userParticipant?.id || null,
             task: item.tasks ? {
               title: item.tasks.title,
@@ -171,10 +172,9 @@ export const DecisionOverview = () => {
             hasResponded: userParticipant ? userParticipant.task_decision_responses.length > 0 : false,
             isParticipant: !!userParticipant,
             isStandalone: !item.task_id,
+            isCreator: item.created_by === currentUserId,
           };
         }) || [];
-
-      console.log('Formatted all data after filtering:', formattedAllData);
 
       // Combine and deduplicate (prefer participant data when available)
       const allDecisionsList = [...formattedParticipantData];
@@ -247,9 +247,6 @@ export const DecisionOverview = () => {
       // Sort by creation date
       allDecisionsList.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      console.log('Final decisions list:', allDecisionsList);
-      console.log('Total decisions found:', allDecisionsList.length);
-
       setDecisions(allDecisionsList);
     } catch (error) {
       console.error('Error loading decision requests:', error);
@@ -258,26 +255,17 @@ export const DecisionOverview = () => {
 
   const sendCreatorResponse = async (responseId: string) => {
     const responseText = creatorResponses[responseId];
-    console.log('sendCreatorResponse called with:', { responseId, responseText, creatorResponses });
     
     if (!responseText?.trim()) return;
 
     setIsLoading(true);
     try {
-      console.log('Updating task_decision_responses with:', { responseId, responseText });
-      
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('task_decision_responses')
         .update({ creator_response: responseText })
-        .eq('id', responseId)
-        .select('*');
+        .eq('id', responseId);
 
-      if (error) {
-        console.error('Error updating creator response:', error);
-        throw error;
-      }
-
-      console.log('Updated response data:', data);
+      if (error) throw error;
 
       toast({
         title: "Erfolgreich",
@@ -289,7 +277,6 @@ export const DecisionOverview = () => {
       
       // Then reload decisions
       if (user?.id) {
-        console.log('Reloading decisions after creator response');
         await loadDecisionRequests(user.id);
       }
     } catch (error) {
@@ -325,6 +312,36 @@ export const DecisionOverview = () => {
       loadDecisionRequests(user.id);
     }
     handleCloseDetails();
+  };
+
+  const handleDeleteDecision = async () => {
+    if (!deletingDecisionId) return;
+
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ status: 'archived' })
+        .eq('id', deletingDecisionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Erfolgreich",
+        description: "Entscheidung wurde gelöscht.",
+      });
+
+      setDeletingDecisionId(null);
+      if (user?.id) {
+        loadDecisionRequests(user.id);
+      }
+    } catch (error) {
+      console.error('Error deleting decision:', error);
+      toast({
+        title: "Fehler",
+        description: "Entscheidung konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getResponseSummary = (participants: DecisionRequest['participants'] = []) => {
@@ -363,9 +380,11 @@ export const DecisionOverview = () => {
       case "task-based":
         return !decision.isStandalone;
       case "my-requests":
-        return decision.created_by === user?.id;
+        return decision.isCreator;
       case "to-respond":
         return decision.isParticipant && !decision.hasResponded;
+      case "public":
+        return decision.visible_to_all === true;
       default:
         return true;
     }
@@ -377,13 +396,31 @@ export const DecisionOverview = () => {
     return (
       <Card 
         key={decision.id} 
-        className={`border-l-4 ${getBorderColor(summary)} cursor-pointer hover:bg-muted/50 transition-colors`}
-        onClick={() => handleOpenDetails(decision.id)}
+        className={`border-l-4 ${getBorderColor(summary)} hover:bg-muted/50 transition-colors`}
       >
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-sm font-medium">{decision.title}</CardTitle>
+            <div className="flex-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+              <div className="flex items-center gap-2 mb-1">
+                <CardTitle className="text-sm font-medium">{decision.title}</CardTitle>
+                {decision.visible_to_all && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Globe className="h-3 w-3 mr-1" />
+                    Öffentlich
+                  </Badge>
+                )}
+                {decision.isStandalone ? (
+                  <Badge variant="secondary">
+                    <Vote className="h-3 w-3 mr-1" />
+                    Eigenständig
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive">
+                    <CheckSquare className="h-3 w-3 mr-1" />
+                    Task-bezogen
+                  </Badge>
+                )}
+              </div>
               {decision.task ? (
                 <p className="text-xs text-muted-foreground">
                   Aufgabe: {decision.task.title}
@@ -393,24 +430,34 @@ export const DecisionOverview = () => {
                   Eigenständige Entscheidung
                 </p>
               )}
-            </div>
-            <div className="flex items-center space-x-2">
-              {decision.isStandalone ? (
-                <Badge variant="secondary">
-                  <Vote className="h-3 w-3 mr-1" />
-                  Eigenständig
-                </Badge>
-              ) : (
-                <Badge variant="destructive">
-                  <CheckSquare className="h-3 w-3 mr-1" />
-                  Task-bezogen
-                </Badge>
+              {decision.description && (
+                <p className="text-xs text-muted-foreground mt-1">{decision.description}</p>
               )}
             </div>
+            
+            {decision.isCreator && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingDecisionId(decision.id); }}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Bearbeiten
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={(e) => { e.stopPropagation(); setDeletingDecisionId(decision.id); }}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Löschen
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
-          {decision.description && (
-            <p className="text-xs text-muted-foreground mt-1">{decision.description}</p>
-          )}
         </CardHeader>
         <CardContent className="pt-0">
           <div className="space-y-2">
@@ -473,10 +520,7 @@ export const DecisionOverview = () => {
                           />
                           <Button
                             size="sm"
-                            onClick={() => {
-                              console.log('Sending creator response for responseId:', latestResponse.id, 'Text:', creatorResponses[latestResponse.id]);
-                              sendCreatorResponse(latestResponse.id);
-                            }}
+                            onClick={() => sendCreatorResponse(latestResponse.id)}
                             disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}
                           >
                             <Send className="h-3 w-3" />
@@ -513,12 +557,13 @@ export const DecisionOverview = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="all">Alle ({decisions.length})</TabsTrigger>
           <TabsTrigger value="standalone">Eigenständig ({decisions.filter(d => d.isStandalone).length})</TabsTrigger>
           <TabsTrigger value="task-based">Task-bezogen ({decisions.filter(d => !d.isStandalone).length})</TabsTrigger>
-          <TabsTrigger value="my-requests">Meine Anfragen ({decisions.filter(d => d.created_by === user?.id).length})</TabsTrigger>
+          <TabsTrigger value="my-requests">Meine Anfragen ({decisions.filter(d => d.isCreator).length})</TabsTrigger>
           <TabsTrigger value="to-respond">Zu beantworten ({decisions.filter(d => d.isParticipant && !d.hasResponded).length})</TabsTrigger>
+          <TabsTrigger value="public">Öffentlich ({decisions.filter(d => d.visible_to_all).length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">
@@ -529,6 +574,7 @@ export const DecisionOverview = () => {
               {activeTab === "task-based" && "Keine task-bezogenen Entscheidungen vorhanden."}
               {activeTab === "my-requests" && "Sie haben noch keine Entscheidungsanfragen erstellt."}
               {activeTab === "to-respond" && "Keine offenen Entscheidungen zu beantworten."}
+              {activeTab === "public" && "Keine öffentlichen Entscheidungen vorhanden."}
             </div>
           ) : (
             <div className="space-y-3">
@@ -546,6 +592,37 @@ export const DecisionOverview = () => {
           onArchived={handleDecisionArchived}
         />
       )}
+
+      {editingDecisionId && (
+        <DecisionEditDialog
+          decisionId={editingDecisionId}
+          isOpen={true}
+          onClose={() => setEditingDecisionId(null)}
+          onUpdated={() => {
+            setEditingDecisionId(null);
+            if (user?.id) {
+              loadDecisionRequests(user.id);
+            }
+          }}
+        />
+      )}
+
+      <AlertDialog open={!!deletingDecisionId} onOpenChange={() => setDeletingDecisionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Entscheidung löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchten Sie diese Entscheidung wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteDecision} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

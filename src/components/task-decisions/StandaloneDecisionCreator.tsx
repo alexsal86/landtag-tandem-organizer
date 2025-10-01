@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
-import { Vote, Mail, Plus, MessageSquare } from "lucide-react";
+import { Vote, Mail, Plus, MessageSquare, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -29,6 +29,7 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
   const [isLoading, setIsLoading] = useState(false);
   const [sendByEmail, setSendByEmail] = useState(false);
   const [sendViaMatrix, setSendViaMatrix] = useState(false);
+  const [visibleToAll, setVisibleToAll] = useState(false);
   const { toast } = useToast();
 
   const loadProfiles = async () => {
@@ -48,10 +49,19 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
   };
 
   const handleSubmit = async () => {
-    if (!title.trim() || selectedUsers.length === 0) {
+    if (!title.trim()) {
       toast({
         title: "Fehler",
-        description: "Bitte geben Sie einen Titel ein und wählen Sie mindestens einen Benutzer aus.",
+        description: "Bitte geben Sie einen Titel ein.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!visibleToAll && selectedUsers.length === 0) {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie mindestens einen Benutzer aus oder aktivieren Sie 'Für alle sichtbar'.",
         variant: "destructive",
       });
       return;
@@ -94,6 +104,7 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
         description: description.trim() || null,
         created_by: userData.user.id,
         tenant_id: tenantData.tenant_id,
+        visible_to_all: visibleToAll,
       };
       
       console.log('Creating standalone decision with data:', insertData);
@@ -267,6 +278,7 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
       setSelectedUsers([]);
       setSendByEmail(false);
       setSendViaMatrix(false);
+      setVisibleToAll(false);
       setIsOpen(false);
       onDecisionCreated();
     } catch (error) {
@@ -335,21 +347,35 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
               rows={3}
             />
           </div>
-          <div>
-            <label className="text-sm font-medium">Benutzer auswählen</label>
-            {profilesLoaded ? (
-              <MultiSelect
-                options={userOptions}
-                selected={selectedUsers}
-                onChange={setSelectedUsers}
-                placeholder="Benutzer auswählen"
-              />
-            ) : (
-              <div className="w-full h-10 bg-muted rounded-md flex items-center px-3 text-muted-foreground">
-                Lade Benutzer...
-              </div>
-            )}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="visible-to-all"
+              checked={visibleToAll}
+              onCheckedChange={(checked) => setVisibleToAll(checked === true)}
+            />
+            <label htmlFor="visible-to-all" className="text-sm font-medium flex items-center">
+              <Globe className="h-4 w-4 mr-1" />
+              Für alle sichtbar
+            </label>
           </div>
+
+          {!visibleToAll && (
+            <div>
+              <label className="text-sm font-medium">Benutzer auswählen</label>
+              {profilesLoaded ? (
+                <MultiSelect
+                  options={userOptions}
+                  selected={selectedUsers}
+                  onChange={setSelectedUsers}
+                  placeholder="Benutzer auswählen"
+                />
+              ) : (
+                <div className="w-full h-10 bg-muted rounded-md flex items-center px-3 text-muted-foreground">
+                  Lade Benutzer...
+                </div>
+              )}
+            </div>
+          )}
           
           <div className="space-y-3">
             <div className="flex items-center space-x-2">

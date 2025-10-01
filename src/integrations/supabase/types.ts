@@ -4876,6 +4876,7 @@ export type Database = {
           tenant_id: string | null
           title: string
           updated_at: string
+          visible_to_all: boolean
         }
         Insert: {
           archived_at?: string | null
@@ -4890,6 +4891,7 @@ export type Database = {
           tenant_id?: string | null
           title: string
           updated_at?: string
+          visible_to_all?: boolean
         }
         Update: {
           archived_at?: string | null
@@ -4904,6 +4906,7 @@ export type Database = {
           tenant_id?: string | null
           title?: string
           updated_at?: string
+          visible_to_all?: boolean
         }
         Relationships: [
           {
