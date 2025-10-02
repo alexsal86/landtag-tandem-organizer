@@ -1433,7 +1433,8 @@ def process_pdf(url: str, force_download: bool) -> Dict[str, Any]:
         except Exception:
             pass
 
-    speeches = segment_speeches_from_pages(pages_prepped)
+    full_text = "\n".join("\n".join(p) for p in pages_prepped)
+    speeches = segment_speeches_from_text(full_text)
     _normalize_speeches(speeches)
     speeches = prune_empty_speeches(speeches)
 
