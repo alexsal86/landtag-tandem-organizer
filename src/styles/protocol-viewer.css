@@ -1,0 +1,172 @@
+/* Protocol Viewer Styling - Inspired by frontend/styles.css */
+
+.protocol-viewer {
+  --protocol-bg: hsl(var(--background));
+  --protocol-fg: hsl(var(--foreground));
+  --protocol-accent: hsl(var(--primary));
+  --protocol-muted: hsl(var(--muted));
+  --protocol-border: hsl(var(--border));
+}
+
+/* Party Colors */
+.party-gruene {
+  background: rgba(70, 180, 70, 0.15);
+  color: hsl(120, 60%, 35%);
+  border-color: hsl(120, 60%, 35%);
+}
+
+.dark .party-gruene {
+  background: rgba(70, 180, 70, 0.25);
+  color: hsl(120, 60%, 65%);
+}
+
+.party-cdu {
+  background: rgba(100, 100, 100, 0.15);
+  color: hsl(0, 0%, 35%);
+  border-color: hsl(0, 0%, 35%);
+}
+
+.dark .party-cdu {
+  background: rgba(100, 100, 100, 0.25);
+  color: hsl(0, 0%, 65%);
+}
+
+.party-spd {
+  background: rgba(230, 50, 50, 0.15);
+  color: hsl(0, 70%, 40%);
+  border-color: hsl(0, 70%, 40%);
+}
+
+.dark .party-spd {
+  background: rgba(230, 50, 50, 0.25);
+  color: hsl(0, 70%, 65%);
+}
+
+.party-fdp {
+  background: rgba(255, 200, 0, 0.15);
+  color: hsl(45, 100%, 35%);
+  border-color: hsl(45, 100%, 35%);
+}
+
+.dark .party-fdp {
+  background: rgba(255, 200, 0, 0.25);
+  color: hsl(45, 100%, 60%);
+}
+
+.party-afd {
+  background: rgba(0, 120, 200, 0.15);
+  color: hsl(205, 100%, 35%);
+  border-color: hsl(205, 100%, 35%);
+}
+
+.dark .party-afd {
+  background: rgba(0, 120, 200, 0.25);
+  color: hsl(205, 100%, 65%);
+}
+
+.party-linke {
+  background: rgba(150, 50, 150, 0.15);
+  color: hsl(300, 50%, 35%);
+  border-color: hsl(300, 50%, 35%);
+}
+
+.dark .party-linke {
+  background: rgba(150, 50, 150, 0.25);
+  color: hsl(300, 50%, 65%);
+}
+
+/* Speech Events */
+.event-beifall {
+  color: hsl(120, 60%, 45%);
+  font-weight: 600;
+}
+
+.event-zuruf {
+  color: hsl(0, 70%, 50%);
+  font-style: italic;
+}
+
+.event-heiterkeit {
+  color: hsl(45, 100%, 45%);
+}
+
+.event-default {
+  color: hsl(205, 100%, 45%);
+}
+
+/* Monospace for codes */
+.protocol-code {
+  font-family: 'Courier New', monospace;
+  background: hsl(var(--muted));
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+/* Sticky headers */
+.protocol-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: hsl(var(--background));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 1rem;
+}
+
+/* JSON Preview */
+.protocol-json-preview {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  background: hsl(var(--muted));
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.5;
+}
+
+.protocol-json-key {
+  color: hsl(205, 80%, 50%);
+}
+
+.protocol-json-string {
+  color: hsl(120, 60%, 45%);
+}
+
+.protocol-json-number {
+  color: hsl(30, 100%, 50%);
+}
+
+.protocol-json-boolean {
+  color: hsl(270, 60%, 55%);
+}
+
+/* Agenda tree structure */
+.protocol-agenda-tree {
+  border-left: 2px solid hsl(var(--border));
+  padding-left: 1rem;
+  margin-left: 0.5rem;
+}
+
+.protocol-agenda-item {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.protocol-agenda-item:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+
+/* Typography improvements */
+.protocol-text {
+  line-height: 1.8;
+  text-align: justify;
+  hyphens: auto;
+}
+
+.protocol-heading {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}

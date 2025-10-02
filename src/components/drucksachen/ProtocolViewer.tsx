@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Accordion,
   AccordionContent,
@@ -20,10 +21,16 @@ import {
   Search,
   BarChart3,
   MapPin,
-  Clock
+  Clock,
+  List,
+  Code
 } from 'lucide-react';
 import { ProtocolSearch } from './ProtocolSearch';
 import { ProtocolExport } from './ProtocolExport';
+import { ProtocolOverview } from './ProtocolOverview';
+import { ProtocolAgenda } from './ProtocolAgenda';
+import { ProtocolRawData } from './ProtocolRawData';
+import '@/styles/protocol-viewer.css';
 
 interface Protocol {
   id: string;
@@ -79,6 +86,7 @@ interface ProtocolViewerProps {
 }
 
 export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
+  const [activeTab, setActiveTab] = useState('overview');
   const [selectedTOPIndex, setSelectedTOPIndex] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [partyFilter, setPartyFilter] = useState<string | null>(null);
@@ -98,6 +106,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
 
   const sessionData = protocol.structured_data?.session || {};
   const sittingData = protocol.structured_data?.sitting || {};
+  const layoutData = protocol.structured_data?.layout || {};
   const qaData = protocol.structured_data?._qa || {};
 
   // Get unique parties
@@ -184,7 +193,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 protocol-viewer">
       {/* Header */}
       <Card>
         <CardHeader>
@@ -211,295 +220,277 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
           </div>
         </CardHeader>
         <CardContent>
+          <div>
+            <h1 className="text-2xl font-bold protocol-heading">{protocol.original_filename}</h1>
+            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {formatDate(protocol.protocol_date)}
+              </div>
+              <div>Sitzung {protocol.session_number}</div>
+              <div>Wahlperiode {protocol.legislature_period}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tabs Navigation */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Übersicht</span>
+          </TabsTrigger>
+          <TabsTrigger value="agenda" className="flex items-center gap-2">
+            <List className="h-4 w-4" />
+            <span className="hidden sm:inline">Tagesordnung</span>
+          </TabsTrigger>
+          <TabsTrigger value="speeches" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            <span className="hidden sm:inline">Reden</span>
+          </TabsTrigger>
+          <TabsTrigger value="raw" className="flex items-center gap-2">
+            <Code className="h-4 w-4" />
+            <span className="hidden sm:inline">Rohdaten</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="mt-6">
+          <ProtocolOverview
+            sessionData={sessionData}
+            sittingData={sittingData}
+            stats={stats}
+            layoutData={layoutData}
+            tocAgenda={tocAgenda}
+            allSpeeches={allSpeeches}
+            parties={parties}
+          />
+        </TabsContent>
+
+        {/* Agenda Tab */}
+        <TabsContent value="agenda" className="mt-6">
+          <ProtocolAgenda tocAgenda={tocAgenda} />
+        </TabsContent>
+
+        {/* Speeches Tab */}
+        <TabsContent value="speeches" className="mt-6">
           <div className="space-y-4">
-            <div>
-              <h1 className="text-2xl font-bold">{protocol.original_filename}</h1>
-              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {formatDate(protocol.protocol_date)}
-                </div>
-                <div>Sitzung {protocol.session_number}</div>
-                <div>Wahlperiode {protocol.legislature_period}</div>
-              </div>
-              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                {sittingData.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {sittingData.location}
+            {/* Filter Bar */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="flex-1 relative w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Suche in Reden..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 rounded-md border bg-background text-sm"
+                    />
                   </div>
-                )}
-                {sittingData.start_time && sittingData.end_time && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {sittingData.start_time} - {sittingData.end_time}
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Statistics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Card className="p-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <div className="text-xl font-bold">{tocAgenda.length}</div>
-                    <div className="text-xs text-muted-foreground">TOPs</div>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-3">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <div className="text-xl font-bold">{allSpeeches.length}</div>
-                    <div className="text-xs text-muted-foreground">Reden</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-muted-foreground">Filter:</span>
+                    {parties.map(party => (
+                      <Badge
+                        key={party}
+                        variant={partyFilter === party ? 'default' : 'outline'}
+                        className={`cursor-pointer ${partyFilter === party ? getPartyColor(party) : ''}`}
+                        onClick={() => setPartyFilter(partyFilter === party ? null : party)}
+                      >
+                        {party}
+                      </Badge>
+                    ))}
+                    {partyFilter && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPartyFilter(null)}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Alle
+                      </Button>
+                    )}
                   </div>
                 </div>
-              </Card>
-              <Card className="p-3">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <div className="text-xl font-bold">
-                      {new Set(allSpeeches.map(s => s.speaker)).size}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Redner</div>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-3">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <div className="text-xl font-bold">{parties.length}</div>
-                    <div className="text-xs text-muted-foreground">Parteien</div>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
 
-      {/* Filter Bar */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Suche in Reden..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-md border bg-background text-sm"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Filter:</span>
-              {parties.map(party => (
-                <Badge
-                  key={party}
-                  variant={partyFilter === party ? 'default' : 'outline'}
-                  className={`cursor-pointer ${partyFilter === party ? getPartyColor(party) : ''}`}
-                  onClick={() => setPartyFilter(partyFilter === party ? null : party)}
-                >
-                  {party}
-                </Badge>
-              ))}
-              {partyFilter && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPartyFilter(null)}
-                  className="h-6 px-2 text-xs"
-                >
-                  Alle
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Content: Split View */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Left Sidebar: TOC Navigation */}
-        <Card className="lg:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Tagesordnung</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[600px]">
-              <div className="space-y-1 p-4 pt-0">
-                {tocAgenda.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    Keine Tagesordnung verfügbar
-                  </p>
-                ) : (
-                  tocAgenda.map((item, index) => (
-                    <div
-                      key={index}
-                      onClick={() => setSelectedTOPIndex(index)}
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                        selectedTOPIndex === index
-                          ? 'bg-primary/10 border border-primary'
-                          : 'hover:bg-muted/50'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        <Badge variant="outline" className="shrink-0 mt-0.5">
-                          {item.number || index + 1}
-                        </Badge>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium line-clamp-2">
-                            {item.title}
-                          </p>
-                          {item.drucksachen && item.drucksachen.length > 0 && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              Drucksachen: {item.drucksachen.join(', ')}
+            {/* Main Content: Split View */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              {/* Left Sidebar: TOC Navigation */}
+              <Card className="lg:col-span-1">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Tagesordnung</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[600px]">
+                    <div className="space-y-1 p-4 pt-0">
+                      {tocAgenda.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                          Keine Tagesordnung verfügbar
+                        </p>
+                      ) : (
+                        tocAgenda.map((item, index) => (
+                          <div
+                            key={index}
+                            onClick={() => setSelectedTOPIndex(index)}
+                            className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                              selectedTOPIndex === index
+                                ? 'bg-primary/10 border border-primary'
+                                : 'hover:bg-muted/50'
+                            }`}
+                          >
+                            <div className="flex items-start gap-2">
+                              <Badge variant="outline" className="shrink-0 mt-0.5">
+                                {item.number || index + 1}
+                              </Badge>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium line-clamp-2">
+                                  {item.title}
+                                </p>
+                                {item.drucksachen && item.drucksachen.length > 0 && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    Drucksachen: {item.drucksachen.join(', ')}
+                                  </div>
+                                )}
+                                {item.extra && (
+                                  <div className="text-xs italic text-muted-foreground mt-1">
+                                    {item.extra}
+                                  </div>
+                                )}
+                                {item.subentries && item.subentries.length > 0 && (
+                                  <ul className="text-xs text-muted-foreground mt-1 list-disc pl-4">
+                                    {item.subentries.map((sub, i) => (
+                                      <li key={i}>{sub.text} ({sub.type})</li>
+                                    ))}
+                                  </ul>
+                                )}
+                                {item.speakers && item.speakers.length > 0 && (
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <Users className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground">
+                                      {item.speakers.length} Redner
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          )}
-                          {item.extra && (
-                            <div className="text-xs italic text-muted-foreground mt-1">
-                              {item.extra}
-                            </div>
-                          )}
-                          {item.subentries && item.subentries.length > 0 && (
-                            <ul className="text-xs text-muted-foreground mt-1 list-disc pl-4">
-                              {item.subentries.map((sub, i) => (
-                                <li key={i}>{sub.text} ({sub.type})</li>
-                              ))}
-                            </ul>
-                          )}
-                          {item.speakers && item.speakers.length > 0 && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Users className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">
-                                {item.speakers.length} Redner
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* Right Content: TOP Details with Speeches */}
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="default">
-                    TOP {groupedData[selectedTOPIndex]?.number || selectedTOPIndex + 1}
-                  </Badge>
-                  {groupedData[selectedTOPIndex]?.kind && (
-                    <Badge variant="outline">
-                      {groupedData[selectedTOPIndex].kind}
-                    </Badge>
-                  )}
-                </div>
-                <CardTitle className="text-xl">
-                  {groupedData[selectedTOPIndex]?.title || 'Kein Titel'}
-                </CardTitle>
-              </div>
-            </div>
-            {groupedData[selectedTOPIndex]?.speakers && 
-             groupedData[selectedTOPIndex].speakers!.length > 0 && (
-              <CardDescription className="mt-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">Redner:</span>
-                  {groupedData[selectedTOPIndex].speakers!.map((speaker, idx) => (
-                    <Badge key={idx} variant="secondary" className={getPartyColor(speaker.party)}>
-                      {speaker.name}
-                      {speaker.party && ` (${speaker.party})`}
-                      {speaker.pages && speaker.pages.length > 0 && ` (S. ${speaker.pages.join(', ')})`}
-                    </Badge>
-                  ))}
-                </div>
-              </CardDescription>
-            )}
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[600px]">
-              {groupedData[selectedTOPIndex]?.matchedSpeeches &&
-               filteredSpeeches(groupedData[selectedTOPIndex].matchedSpeeches).length > 0 ? (
-                <Accordion type="single" collapsible className="space-y-3">
-                  {filteredSpeeches(groupedData[selectedTOPIndex].matchedSpeeches).map((speech, idx) => (
-                    <AccordionItem
-                      key={idx}
-                      value={`speech-${idx}`}
-                      className="border rounded-lg"
-                    >
-                      <AccordionTrigger className="px-4 hover:no-underline">
-                        <div className="flex items-center gap-3 flex-1 text-left">
-                          <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium">{speech.speaker}</span>
-                              {speech.party && (
-                                <Badge variant="secondary" className={getPartyColor(speech.party)}>
-                                  {speech.party}
-                                </Badge>
-                              )}
-                              {speech.role && (
-                                <span className="text-sm text-muted-foreground">
-                                  {speech.role}
-                                </span>
-                              )}
-                              {speech.start_page && (
-                                <Badge variant="outline" className="text-xs">
-                                  S. {speech.start_page}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
-                              {speech.text.substring(0, 100)}...
-                            </p>
                           </div>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pt-0 pb-4">
-                        <Separator className="mb-4" />
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
-                          {renderTextWithEvents(speech.text, speech.events)}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              ) : (
-                <div className="text-center py-12">
-                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">
-                    {searchQuery || partyFilter
-                      ? 'Keine Reden mit den aktuellen Filtern gefunden'
-                      : 'Keine Reden zu diesem Tagesordnungspunkt'}
-                  </p>
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
 
-      {/* Search Component (hidden by default, could be shown in a modal) */}
-      <div className="hidden">
-        <ProtocolSearch
-          protocolId={protocol.id}
-          onResultSelect={(result) => {
-            console.log('Selected result:', result);
-          }}
-        />
-      </div>
+              {/* Right Content: TOP Details with Speeches */}
+              <Card className="lg:col-span-3">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="default">
+                          TOP {groupedData[selectedTOPIndex]?.number || selectedTOPIndex + 1}
+                        </Badge>
+                        {groupedData[selectedTOPIndex]?.kind && (
+                          <Badge variant="outline">
+                            {groupedData[selectedTOPIndex].kind}
+                          </Badge>
+                        )}
+                      </div>
+                      <CardTitle className="text-xl">
+                        {groupedData[selectedTOPIndex]?.title || 'Kein Titel'}
+                      </CardTitle>
+                    </div>
+                  </div>
+                  {groupedData[selectedTOPIndex]?.speakers && 
+                   groupedData[selectedTOPIndex].speakers!.length > 0 && (
+                    <CardDescription className="mt-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium">Redner:</span>
+                        {groupedData[selectedTOPIndex].speakers!.map((speaker, idx) => (
+                          <Badge key={idx} variant="secondary" className={getPartyColor(speaker.party)}>
+                            {speaker.name}
+                            {speaker.party && ` (${speaker.party})`}
+                            {speaker.pages && speaker.pages.length > 0 && ` (S. ${speaker.pages.join(', ')})`}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[600px]">
+                    {groupedData[selectedTOPIndex]?.matchedSpeeches &&
+                     filteredSpeeches(groupedData[selectedTOPIndex].matchedSpeeches).length > 0 ? (
+                      <Accordion type="single" collapsible className="space-y-3">
+                        {filteredSpeeches(groupedData[selectedTOPIndex].matchedSpeeches).map((speech, idx) => (
+                          <AccordionItem
+                            key={idx}
+                            value={`speech-${idx}`}
+                            className="border rounded-lg"
+                          >
+                            <AccordionTrigger className="px-4 hover:no-underline">
+                              <div className="flex items-center gap-3 flex-1 text-left">
+                                <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium">{speech.speaker}</span>
+                                    {speech.party && (
+                                      <Badge variant="secondary" className={getPartyColor(speech.party)}>
+                                        {speech.party}
+                                      </Badge>
+                                    )}
+                                    {speech.role && (
+                                      <span className="text-sm text-muted-foreground">
+                                        {speech.role}
+                                      </span>
+                                    )}
+                                    {speech.start_page && (
+                                      <Badge variant="outline" className="text-xs">
+                                        S. {speech.start_page}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
+                                    {speech.text.substring(0, 100)}...
+                                  </p>
+                                </div>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-4 pt-0 pb-4">
+                              <Separator className="mb-4" />
+                              <div className="prose prose-sm max-w-none dark:prose-invert protocol-text">
+                                {renderTextWithEvents(speech.text, speech.events)}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    ) : (
+                      <div className="text-center py-12">
+                        <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground">
+                          {searchQuery || partyFilter
+                            ? 'Keine Reden mit den aktuellen Filtern gefunden'
+                            : 'Keine Reden zu diesem Tagesordnungspunkt'}
+                        </p>
+                      </div>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Raw Data Tab */}
+        <TabsContent value="raw" className="mt-6">
+          <ProtocolRawData structuredData={protocol.structured_data} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
