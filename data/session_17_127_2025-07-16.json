@@ -4,7 +4,7 @@
     "legislative_period": 17,
     "date": "2025-07-16",
     "source_pdf_url": "https://www.landtag-bw.de/resource/blob/584334/59a6c5950d692e7ba8a2e8d8be879b26/17_0127_16072025.pdf",
-    "extracted_at": "2025-09-30T00:05:32.521432Z",
+    "extracted_at": "2025-10-02T18:08:25.825610Z",
     "next_meeting": {
       "raw": "Nächste Sitzung . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7680 über die 127. Sitzung Beginn:"
     }
@@ -21,7 +21,7 @@
   },
   "stats": {
     "pages": 44,
-    "speeches": 115
+    "speeches": 118
   },
   "layout": {
     "applied": true,
@@ -229,6 +229,12 @@
           {
             "role": "Abg.",
             "name": "Daniel Lindenschmid",
+            "party": "AfD",
+            "pages": null
+          },
+          {
+            "role": "Abg.",
+            "name": "Rüdiger Klos",
             "party": "AfD",
             "pages": null
           },
@@ -9512,7 +9518,7 @@
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
-      "text": "Ich erteile jetzt\nHerrn Innenminister Thomas Strobl für die Landesregierung\ndas Wort.\nMinister des Inneren, für Digitalisierung und Kommunen\nThomas Strobl: Vielen Dank. – Herr Präsident, meine sehr\ngeehrten Damen und Herren Abgeordneten! Die heutige zweite Lesung des Gesetzentwurfs der AfD-Fraktion bietet die\nMöglichkeit, Ihnen die Sicht- und Herangehensweise der Landesregierung bei dem wichtigen Thema Verwaltungsdigitalisierung darzustellen und deutlich zu machen. Denn zu den offensichtlichen Mängeln des Gesetzentwurfs der AfD und dessen kontraproduktiven Wirkungen wurden ja bereits in der ersten Lesung und während der Ausschussberatung hinreichend\nAusführungen gemacht.\nDer Gesetzentwurf der AfD ist einfach schlecht gemacht,\nhandwerklich mangelhaft und deswegen abzulehnen.\nDie Landesregierung freilich setzt bei der Verwaltungsdigitalisierung auf solide Grundlagen. Diese Regierung, diese Koalition handelt Stück für Stück. Unser Entwurf zur Änderung\ndes E-Government-Gesetzes befindet sich derzeit in der Anhörung. Wie ich hier vor diesem Hohen Haus im Rahmen der\nErsten Beratung ausgeführt habe, hat das Innenministerium\ndiesen Gesetzentwurf am 8. Juli dem Ministerrat vorgelegt\nund am 9. Juli umgehend das Anhörungsverfahren eingeleitet.\nHerr Abg. Lindenschmid, wenn Sie jetzt sagen: „AfD wirkt“,\nwir hätten das wegen der AfD gemacht, muss ich sagen: Einen gewissen Humor kann man Ihnen nicht absprechen.\nSo bedeutend sind Sie nun wirklich nicht.\nUnser Gesetzentwurf schafft für wesentliche Themen gute Regelungen, die den Beteiligten wirklich nützen. So sollen – das\nist angesprochen worden – durch die dort vorgesehene Verankerung des Once-Only-Prinzips die Bürgerinnen und Bürger\nund Unternehmen ihre Daten nur ein Mal der Verwaltung ge-\nben müssen. Bei Inanspruchnahme digitalisierter Verwaltungsleistungen sollen diese automatisiert aus den Datenbeständen\nder Verwaltung abgerufen werden. Die rechtlichen Grundlagen werden wir dafür nun legen.\nDie technische Umsetzung erfolgt dann über das National-\nOnce-Only-Technical-System, kurz NOOTS, die zentrale Infrastrukturkomponente von Bund und Ländern. Der Gesetzentwurf für die Zustimmung zum NOOTS-Staatsvertrag wurde gestern vom Ministerrat beschlossen. Und entsprechend\ndem Kabinettsbeschluss wird das Ganze nun in den Landtag\neingebracht.\nSie sehen: Wir gehen Schritt für Schritt voran, ein Rädchen\ngreift in das andere, und wir bringen die Dinge zielgerichtet\nvoran.\nDie Landesregierung hat die Verwaltungsdigitalisierung gesamthaft im Blick und gibt mit durchdachten Gesetzen den\nentsprechenden Rahmen vor. Andere, wie etwa die AfD, verlieren sich dagegen in Sprechblasen und Worthülsen, die dann\nzusammenhanglos in Gesetzesform gegossen werden. So macht\nman keine Politik, so funktioniert kein Staat.\nMeine Damen und Herren von der AfD, darin mögen sich\nauch unsere Haltungen unterscheiden: Die AfD hat kein Interesse an einem funktionierenden Staat.\nDenn Sie verachten diesen Staat. Deswegen beschäftigt sich\nauch der Verfassungsschutz mit Ihnen.",
+      "text": "Ich erteile jetzt\nHerrn Innenminister Thomas Strobl für die Landesregierung\ndas Wort.\nMinister des Inneren, für Digitalisierung und Kommunen\nThomas Strobl: Vielen Dank. – Herr Präsident, meine sehr\ngeehrten Damen und Herren Abgeordneten! Die heutige zweite Lesung des Gesetzentwurfs der AfD-Fraktion bietet die\nMöglichkeit, Ihnen die Sicht- und Herangehensweise der Landesregierung bei dem wichtigen Thema Verwaltungsdigitalisierung darzustellen und deutlich zu machen. Denn zu den offensichtlichen Mängeln des Gesetzentwurfs der AfD und dessen kontraproduktiven Wirkungen wurden ja bereits in der ersten Lesung und während der Ausschussberatung hinreichend\nAusführungen gemacht.\nDer Gesetzentwurf der AfD ist einfach schlecht gemacht,\nhandwerklich mangelhaft und deswegen abzulehnen.\nDie Landesregierung freilich setzt bei der Verwaltungsdigitalisierung auf solide Grundlagen. Diese Regierung, diese Koalition handelt Stück für Stück. Unser Entwurf zur Änderung\ndes E-Government-Gesetzes befindet sich derzeit in der Anhörung. Wie ich hier vor diesem Hohen Haus im Rahmen der\nErsten Beratung ausgeführt habe, hat das Innenministerium\ndiesen Gesetzentwurf am 8. Juli dem Ministerrat vorgelegt\nund am 9. Juli umgehend das Anhörungsverfahren eingeleitet.\nHerr Abg. Lindenschmid, wenn Sie jetzt sagen: „AfD wirkt“,\nwir hätten das wegen der AfD gemacht, muss ich sagen: Einen gewissen Humor kann man Ihnen nicht absprechen.",
       "events": [
         {
           "type": "CompositeEvent",
@@ -9564,119 +9570,19 @@
         },
         {
           "type": "CompositeEvent",
-          "text": "(Beifall bei Abgeordneten der Grünen und der CDU – Abg. Rüdiger Klos AfD: Das ist doch schön! – Abg. Anton Baron AfD: Wir müssen Sie halt treiben!)",
+          "text": "(Beifall bei Abgeordneten der Grünen und der CDU",
           "line_index": 21,
           "span": {
             "start_line_index": 21,
-            "end_line_index": 23
+            "end_line_index": 21
           },
           "parts": [
             {
               "type": "Beifall",
               "text": "Beifall bei Abgeordneten der Grünen und der CDU"
-            },
-            {
-              "type": "Zwischenruf",
-              "speaker": "Rüdiger Klos",
-              "role": "Abg.",
-              "party": "AfD",
-              "message": "Das ist doch schön!",
-              "text": "Abg. Rüdiger Klos AfD: Das ist doch schön!"
-            },
-            {
-              "type": "Zwischenruf",
-              "speaker": "Anton Baron",
-              "role": "Abg.",
-              "party": "AfD",
-              "message": "Wir müssen Sie halt treiben!",
-              "text": "Abg. Anton Baron AfD: Wir müssen Sie halt treiben!"
             }
           ],
           "group_id": "pevt_21"
-        },
-        {
-          "type": "CompositeEvent",
-          "text": "(Zurufe der Abg. Anton Baron und Carola Wolle AfD)",
-          "line_index": 25,
-          "span": {
-            "start_line_index": 25,
-            "end_line_index": 25
-          },
-          "parts": [
-            {
-              "type": "Event",
-              "text": "Zurufe der Abg. Anton Baron und Carola Wolle AfD"
-            }
-          ],
-          "group_id": "pevt_25"
-        },
-        {
-          "type": "CompositeEvent",
-          "text": "(Abg. Anton Baron AfD: Ach!)",
-          "line_index": 42,
-          "span": {
-            "start_line_index": 42,
-            "end_line_index": 42
-          },
-          "parts": [
-            {
-              "type": "Zwischenruf",
-              "speaker": "Anton Baron",
-              "role": "Abg.",
-              "party": "AfD",
-              "message": "Ach!",
-              "text": "Abg. Anton Baron AfD: Ach!"
-            }
-          ],
-          "group_id": "pevt_42"
-        },
-        {
-          "type": "CompositeEvent",
-          "text": "(Abg. Anton Baron AfD: Ach!)",
-          "line_index": 45,
-          "span": {
-            "start_line_index": 45,
-            "end_line_index": 45
-          },
-          "parts": [
-            {
-              "type": "Zwischenruf",
-              "speaker": "Anton Baron",
-              "role": "Abg.",
-              "party": "AfD",
-              "message": "Ach!",
-              "text": "Abg. Anton Baron AfD: Ach!"
-            }
-          ],
-          "group_id": "pevt_45"
-        },
-        {
-          "type": "CompositeEvent",
-          "text": "(Beifall bei Abgeordneten der Grünen und der CDU – Abg. Daniel Lindenschmid AfD: Und das kommt vom zuständigen Minister! – Glocke des Präsidenten)",
-          "line_index": 48,
-          "span": {
-            "start_line_index": 48,
-            "end_line_index": 50
-          },
-          "parts": [
-            {
-              "type": "Beifall",
-              "text": "Beifall bei Abgeordneten der Grünen und der CDU"
-            },
-            {
-              "type": "Zwischenruf",
-              "speaker": "Daniel Lindenschmid",
-              "role": "Abg.",
-              "party": "AfD",
-              "message": "Und das kommt vom zuständigen Minister!",
-              "text": "Abg. Daniel Lindenschmid AfD: Und das kommt vom zuständigen Minister!"
-            },
-            {
-              "type": "Glocke",
-              "text": "Glocke des Präsidenten"
-            }
-          ],
-          "group_id": "pevt_48"
         }
       ],
       "events_flat": [
@@ -9717,80 +9623,138 @@
           "text": "Beifall bei Abgeordneten der Grünen und der CDU",
           "group_ref": "pevt_21",
           "line_index": 21
-        },
-        {
-          "type": "Zwischenruf",
-          "speaker": "Rüdiger Klos",
-          "role": "Abg.",
-          "party": "AfD",
-          "message": "Das ist doch schön!",
-          "text": "Abg. Rüdiger Klos AfD: Das ist doch schön!",
-          "group_ref": "pevt_21",
-          "line_index": 21
-        },
-        {
-          "type": "Zwischenruf",
-          "speaker": "Anton Baron",
-          "role": "Abg.",
-          "party": "AfD",
-          "message": "Wir müssen Sie halt treiben!",
-          "text": "Abg. Anton Baron AfD: Wir müssen Sie halt treiben!",
-          "group_ref": "pevt_21",
-          "line_index": 21
-        },
-        {
-          "type": "Event",
-          "text": "Zurufe der Abg. Anton Baron und Carola Wolle AfD",
-          "group_ref": "pevt_25",
-          "line_index": 25
-        },
-        {
-          "type": "Zwischenruf",
-          "speaker": "Anton Baron",
-          "role": "Abg.",
-          "party": "AfD",
-          "message": "Ach!",
-          "text": "Abg. Anton Baron AfD: Ach!",
-          "group_ref": "pevt_42",
-          "line_index": 42
-        },
-        {
-          "type": "Zwischenruf",
-          "speaker": "Anton Baron",
-          "role": "Abg.",
-          "party": "AfD",
-          "message": "Ach!",
-          "text": "Abg. Anton Baron AfD: Ach!",
-          "group_ref": "pevt_45",
-          "line_index": 45
-        },
-        {
-          "type": "Beifall",
-          "text": "Beifall bei Abgeordneten der Grünen und der CDU",
-          "group_ref": "pevt_48",
-          "line_index": 48
-        },
-        {
-          "type": "Zwischenruf",
-          "speaker": "Daniel Lindenschmid",
-          "role": "Abg.",
-          "party": "AfD",
-          "message": "Und das kommt vom zuständigen Minister!",
-          "text": "Abg. Daniel Lindenschmid AfD: Und das kommt vom zuständigen Minister!",
-          "group_ref": "pevt_48",
-          "line_index": 48
-        },
-        {
-          "type": "Glocke",
-          "text": "Glocke des Präsidenten",
-          "group_ref": "pevt_48",
-          "line_index": 48
         }
       ],
       "agenda_item_number": 3
     },
     {
       "index": 59,
+      "start_page": 27,
+      "speaker": "Rüdiger Klos",
+      "role": "Abg.",
+      "party": "AfD",
+      "text": "Das ist doch schön! – Abg.\nAnton Baron AfD: Wir müssen Sie halt treiben!)\nSo bedeutend sind Sie nun wirklich nicht.\nUnser Gesetzentwurf schafft für wesentliche Themen gute Regelungen, die den Beteiligten wirklich nützen. So sollen – das\nist angesprochen worden – durch die dort vorgesehene Verankerung des Once-Only-Prinzips die Bürgerinnen und Bürger\nund Unternehmen ihre Daten nur ein Mal der Verwaltung ge-\nben müssen. Bei Inanspruchnahme digitalisierter Verwaltungsleistungen sollen diese automatisiert aus den Datenbeständen\nder Verwaltung abgerufen werden. Die rechtlichen Grundlagen werden wir dafür nun legen.\nDie technische Umsetzung erfolgt dann über das National-\nOnce-Only-Technical-System, kurz NOOTS, die zentrale Infrastrukturkomponente von Bund und Ländern. Der Gesetzentwurf für die Zustimmung zum NOOTS-Staatsvertrag wurde gestern vom Ministerrat beschlossen. Und entsprechend\ndem Kabinettsbeschluss wird das Ganze nun in den Landtag\neingebracht.\nSie sehen: Wir gehen Schritt für Schritt voran, ein Rädchen\ngreift in das andere, und wir bringen die Dinge zielgerichtet\nvoran.\nDie Landesregierung hat die Verwaltungsdigitalisierung gesamthaft im Blick und gibt mit durchdachten Gesetzen den\nentsprechenden Rahmen vor. Andere, wie etwa die AfD, verlieren sich dagegen in Sprechblasen und Worthülsen, die dann\nzusammenhanglos in Gesetzesform gegossen werden. So macht\nman keine Politik, so funktioniert kein Staat.\nMeine Damen und Herren von der AfD, darin mögen sich\nauch unsere Haltungen unterscheiden: Die AfD hat kein Interesse an einem funktionierenden Staat.\nDenn Sie verachten diesen Staat. Deswegen beschäftigt sich\nauch der Verfassungsschutz mit Ihnen.",
+      "events": [
+        {
+          "type": "CompositeEvent",
+          "text": "(Zurufe der Abg. Anton Baron und Carola Wolle AfD)",
+          "line_index": 3,
+          "span": {
+            "start_line_index": 3,
+            "end_line_index": 3
+          },
+          "parts": [
+            {
+              "type": "Event",
+              "text": "Zurufe der Abg. Anton Baron und Carola Wolle AfD"
+            }
+          ],
+          "group_id": "pevt_3"
+        },
+        {
+          "type": "CompositeEvent",
+          "text": "(Abg. Anton Baron AfD: Ach!)",
+          "line_index": 20,
+          "span": {
+            "start_line_index": 20,
+            "end_line_index": 20
+          },
+          "parts": [
+            {
+              "type": "Zwischenruf",
+              "speaker": "Anton Baron",
+              "role": "Abg.",
+              "party": "AfD",
+              "message": "Ach!",
+              "text": "Abg. Anton Baron AfD: Ach!"
+            }
+          ],
+          "group_id": "pevt_20"
+        },
+        {
+          "type": "CompositeEvent",
+          "text": "(Abg. Anton Baron AfD: Ach!)",
+          "line_index": 23,
+          "span": {
+            "start_line_index": 23,
+            "end_line_index": 23
+          },
+          "parts": [
+            {
+              "type": "Zwischenruf",
+              "speaker": "Anton Baron",
+              "role": "Abg.",
+              "party": "AfD",
+              "message": "Ach!",
+              "text": "Abg. Anton Baron AfD: Ach!"
+            }
+          ],
+          "group_id": "pevt_23"
+        },
+        {
+          "type": "CompositeEvent",
+          "text": "(Beifall bei Abgeordneten der Grünen und der CDU",
+          "line_index": 26,
+          "span": {
+            "start_line_index": 26,
+            "end_line_index": 26
+          },
+          "parts": [
+            {
+              "type": "Beifall",
+              "text": "Beifall bei Abgeordneten der Grünen und der CDU"
+            }
+          ],
+          "group_id": "pevt_26"
+        }
+      ],
+      "events_flat": [
+        {
+          "type": "Event",
+          "text": "Zurufe der Abg. Anton Baron und Carola Wolle AfD",
+          "group_ref": "pevt_3",
+          "line_index": 3
+        },
+        {
+          "type": "Zwischenruf",
+          "speaker": "Anton Baron",
+          "role": "Abg.",
+          "party": "AfD",
+          "message": "Ach!",
+          "text": "Abg. Anton Baron AfD: Ach!",
+          "group_ref": "pevt_20",
+          "line_index": 20
+        },
+        {
+          "type": "Zwischenruf",
+          "speaker": "Anton Baron",
+          "role": "Abg.",
+          "party": "AfD",
+          "message": "Ach!",
+          "text": "Abg. Anton Baron AfD: Ach!",
+          "group_ref": "pevt_23",
+          "line_index": 23
+        },
+        {
+          "type": "Beifall",
+          "text": "Beifall bei Abgeordneten der Grünen und der CDU",
+          "group_ref": "pevt_26",
+          "line_index": 26
+        }
+      ],
+      "agenda_item_number": 3
+    },
+    {
+      "index": 60,
+      "start_page": 27,
+      "speaker": "Daniel Lindenschmid",
+      "role": "Abg.",
+      "party": "AfD",
+      "text": "Und das kommt\nvom zuständigen Minister! – Glocke des Präsidenten)",
+      "agenda_item_number": 3
+    },
+    {
+      "index": 61,
       "start_page": 27,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
@@ -10037,7 +10001,7 @@
       "agenda_item_number": 3
     },
     {
-      "index": 60,
+      "index": 62,
       "start_page": 28,
       "speaker": "Anton Baron",
       "role": "Abg.",
@@ -10132,7 +10096,7 @@
       "agenda_item_number": 3
     },
     {
-      "index": 61,
+      "index": 63,
       "start_page": 28,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
@@ -10175,7 +10139,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 62,
+      "index": 64,
       "start_page": 28,
       "speaker": "Swantje Sperling",
       "role": "Abg.",
@@ -10342,7 +10306,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 63,
+      "index": 65,
       "start_page": 29,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -10351,7 +10315,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 64,
+      "index": 66,
       "start_page": 29,
       "speaker": "Ulli Hockenberger",
       "role": "Abg.",
@@ -10558,7 +10522,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 65,
+      "index": 67,
       "start_page": 30,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -10567,7 +10531,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 66,
+      "index": 68,
       "start_page": 31,
       "speaker": "Klaus Ranger",
       "role": "Abg.",
@@ -10698,7 +10662,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 67,
+      "index": 69,
       "start_page": 31,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -10707,7 +10671,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 68,
+      "index": 70,
       "start_page": 31,
       "speaker": "Julia Goll",
       "role": "Abg.",
@@ -10886,7 +10850,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 69,
+      "index": 71,
       "start_page": 32,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -10895,7 +10859,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 70,
+      "index": 72,
       "start_page": 32,
       "speaker": "Sandro Scheer",
       "role": "Abg.",
@@ -11194,7 +11158,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 71,
+      "index": 73,
       "start_page": 33,
       "speaker": "Sandro Scheer",
       "role": "Abg.",
@@ -11229,7 +11193,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 72,
+      "index": 74,
       "start_page": 33,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -11348,7 +11312,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 73,
+      "index": 75,
       "start_page": 33,
       "speaker": "Andreas Schwarz",
       "role": "Abg.",
@@ -11689,7 +11653,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 74,
+      "index": 76,
       "start_page": 35,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -11746,7 +11710,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 75,
+      "index": 77,
       "start_page": 35,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -11755,7 +11719,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 76,
+      "index": 78,
       "start_page": 35,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -11790,7 +11754,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 77,
+      "index": 79,
       "start_page": 35,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -11879,7 +11843,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 78,
+      "index": 80,
       "start_page": 37,
       "speaker": "Nikolai Reith",
       "role": "Abg.",
@@ -12030,7 +11994,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 79,
+      "index": 81,
       "start_page": 37,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -12039,7 +12003,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 80,
+      "index": 82,
       "start_page": 37,
       "speaker": "Nikolai Reith",
       "role": "Abg.",
@@ -12048,7 +12012,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 81,
+      "index": 83,
       "start_page": 37,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -12057,7 +12021,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 82,
+      "index": 84,
       "start_page": 37,
       "speaker": "Nikolai Reith",
       "role": "Abg.",
@@ -12144,7 +12108,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 83,
+      "index": 85,
       "start_page": 38,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -12281,7 +12245,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 84,
+      "index": 86,
       "start_page": 38,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -12290,7 +12254,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 85,
+      "index": 87,
       "start_page": 38,
       "speaker": "Peter Seimer",
       "role": "Abg.",
@@ -12407,7 +12371,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 86,
+      "index": 88,
       "start_page": 39,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -12416,7 +12380,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 87,
+      "index": 89,
       "start_page": 39,
       "speaker": "Peter Seimer",
       "role": "Abg.",
@@ -12425,7 +12389,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 88,
+      "index": 90,
       "start_page": 39,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -12434,7 +12398,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 89,
+      "index": 91,
       "start_page": 39,
       "speaker": "Peter Seimer",
       "role": "Abg.",
@@ -12443,7 +12407,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 90,
+      "index": 92,
       "start_page": 39,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -12452,7 +12416,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 91,
+      "index": 93,
       "start_page": 39,
       "speaker": "Peter Seimer",
       "role": "Abg.",
@@ -12505,7 +12469,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 92,
+      "index": 94,
       "start_page": 39,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -12514,7 +12478,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 93,
+      "index": 95,
       "start_page": 39,
       "speaker": "Dr. Albrecht Schütte",
       "role": "Abg.",
@@ -12789,7 +12753,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 94,
+      "index": 96,
       "start_page": 40,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -12832,7 +12796,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 95,
+      "index": 97,
       "start_page": 40,
       "speaker": "Nicolas Fink",
       "role": "Abg.",
@@ -13023,7 +12987,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 96,
+      "index": 98,
       "start_page": 41,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -13032,7 +12996,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 97,
+      "index": 99,
       "start_page": 41,
       "speaker": "Nicolas Fink",
       "role": "Abg.",
@@ -13041,7 +13005,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 98,
+      "index": 100,
       "start_page": 41,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -13050,7 +13014,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 99,
+      "index": 101,
       "start_page": 41,
       "speaker": "Dr. Albrecht Schütte",
       "role": "Abg.",
@@ -13093,44 +13057,55 @@
       "agenda_item_number": 4
     },
     {
-      "index": 100,
+      "index": 102,
       "start_page": 41,
       "speaker": "Nicolas Fink",
       "role": "Abg.",
       "party": "SPD",
-      "text": "Lieber Kollege Schütte, nein, ich bin\nmit dieser Interpretation nicht einverstanden. Ich möchte aus\ndieser Anfrage einen einzigen Satz zitieren, der uns beispielhaft aufzeigt, was da für ein Spiel gespielt wird. In der Antwort der Landesregierung steht: 700 Millionen € dieser Rücklage sind verplant. Punkt. Ohne irgendeine Konkretisierung!\nNiemand hier in diesem Haus weiß, was das bedeutet. Wenn\nSie nur hineinschreiben, 700 Millionen € seien verplant, dann\nist das gegenüber diesem Parlament unanständig, und wir zeigen Ihnen, wofür man dieses Geld, das vorhanden ist, wirklich nutzen könnte.\nWir werden – Kollege Schütte, Sie haben es indirekt angedeutet – nach dem 8. März etwas Zauberhaftes erleben, was in\ndiesem Land plötzlich alles möglich sein wird.\nIch rate Ihnen allen: Schauen Sie vor dem 8. März, wer sich\nwirklich darum kümmert, dass wir nicht nur beim Thema Förderung in diesem Land gemeinsam vorankommen, liebe Kolleginnen und Kollegen. Denn was hat der Ministerpräsident\nin dieser Woche zu diesem Thema gesagt? Es gebe so viele\nFördermöglichkeiten, dass kein Mensch dies mehr blicken\nwürde. Ich schränke ein: Ich denke, es gibt vor allem Ministerialdirigenten in Ihrem Haus, Frau Staatssekretärin, die das\nwirklich blicken – daran habe ich gar keinen Zweifel –, aber\ndiejenigen, die davon profitieren sollen – die Kommunen, die\nAntragsteller –, werden in diesem Dschungel alleingelassen,\nund es ist gar nicht schwer, es besser zu machen – schauen Sie\neinmal, was der Bund macht – mit den Mitteln, die vom Bund\nkommen.\nDiese Mittel gibt es pauschal, und es gibt sie zusätzlich. Und\ndas hilft. Das ist eine einfache Antwort auf eine gar nicht so\nschwierige Frage, liebe Kolleginnen und Kollegen.\nUnd nun noch ein abschließender Appell, insbesondere an die\nmit der kommunalen DNA. Lieber Kollege Hockenberger,\nnutzen Sie nicht nur Ihre Sach- und Fachkenntnisse, sondern\nnutzen Sie auch Ihren Einfluss auf Ihre Fraktion, um zu einem\nvernünftigen Weg zu kommen und das Gesprächsangebot, das\nAndreas Stoch den demokratischen Fraktionen, der Landesregierung und den kommunalen Verbänden gemacht hat, anzunehmen, um sich jetzt auf den Weg zu machen, gemeinsam\nund verlässlich zu planen, wie wir die Fördermöglichkeiten,\ndie wir in den nächsten Jahren haben werden, in Baden-Württemberg sinnvoll nutzen können. Das hilft den Kommunen,\nund nicht das Klein-Klein, das wir heute Vormittag hier erlebt\nhaben.\nHerzlichen Dank.",
+      "text": "Lieber Kollege Schütte, nein, ich bin\nmit dieser Interpretation nicht einverstanden. Ich möchte aus\ndieser Anfrage einen einzigen Satz zitieren, der uns beispielhaft aufzeigt, was da für ein Spiel gespielt wird. In der Antwort der Landesregierung steht: 700 Millionen € dieser Rücklage sind verplant. Punkt. Ohne irgendeine Konkretisierung!\nNiemand hier in diesem Haus weiß, was das bedeutet. Wenn\nSie nur hineinschreiben, 700 Millionen € seien verplant, dann\nist das gegenüber diesem Parlament unanständig, und wir zeigen Ihnen, wofür man dieses Geld, das vorhanden ist, wirklich nutzen könnte.",
       "events": [
         {
           "type": "CompositeEvent",
-          "text": "(Beifall bei der SPD und Abgeordneten der FDP/DVP – Abg. Dr. Albrecht Schütte CDU: Sie haben die Frage nicht beantwortet!)",
+          "text": "(Beifall bei der SPD und Abgeordneten der FDP/DVP",
           "line_index": 6,
           "span": {
             "start_line_index": 6,
-            "end_line_index": 7
+            "end_line_index": 6
           },
           "parts": [
             {
               "type": "Beifall",
               "text": "Beifall bei der SPD und Abgeordneten der FDP/DVP"
-            },
-            {
-              "type": "Zwischenruf",
-              "speaker": "Dr. Albrecht Schütte",
-              "role": "Abg.",
-              "party": "CDU",
-              "message": "Sie haben die Frage nicht beantwortet!",
-              "text": "Abg. Dr. Albrecht Schütte CDU: Sie haben die Frage nicht beantwortet!"
             }
           ],
           "group_id": "pevt_6"
-        },
+        }
+      ],
+      "events_flat": [
+        {
+          "type": "Beifall",
+          "text": "Beifall bei der SPD und Abgeordneten der FDP/DVP",
+          "group_ref": "pevt_6",
+          "line_index": 6
+        }
+      ],
+      "agenda_item_number": 4
+    },
+    {
+      "index": 103,
+      "start_page": 41,
+      "speaker": "Dr. Albrecht Schütte",
+      "role": "Abg.",
+      "party": "CDU",
+      "text": "Sie haben die Frage nicht beantwortet!)\nWir werden – Kollege Schütte, Sie haben es indirekt angedeutet – nach dem 8. März etwas Zauberhaftes erleben, was in\ndiesem Land plötzlich alles möglich sein wird.\nIch rate Ihnen allen: Schauen Sie vor dem 8. März, wer sich\nwirklich darum kümmert, dass wir nicht nur beim Thema Förderung in diesem Land gemeinsam vorankommen, liebe Kolleginnen und Kollegen. Denn was hat der Ministerpräsident\nin dieser Woche zu diesem Thema gesagt? Es gebe so viele\nFördermöglichkeiten, dass kein Mensch dies mehr blicken\nwürde. Ich schränke ein: Ich denke, es gibt vor allem Ministerialdirigenten in Ihrem Haus, Frau Staatssekretärin, die das\nwirklich blicken – daran habe ich gar keinen Zweifel –, aber\ndiejenigen, die davon profitieren sollen – die Kommunen, die\nAntragsteller –, werden in diesem Dschungel alleingelassen,\nund es ist gar nicht schwer, es besser zu machen – schauen Sie\neinmal, was der Bund macht – mit den Mitteln, die vom Bund\nkommen.\nDiese Mittel gibt es pauschal, und es gibt sie zusätzlich. Und\ndas hilft. Das ist eine einfache Antwort auf eine gar nicht so\nschwierige Frage, liebe Kolleginnen und Kollegen.\nUnd nun noch ein abschließender Appell, insbesondere an die\nmit der kommunalen DNA. Lieber Kollege Hockenberger,\nnutzen Sie nicht nur Ihre Sach- und Fachkenntnisse, sondern\nnutzen Sie auch Ihren Einfluss auf Ihre Fraktion, um zu einem\nvernünftigen Weg zu kommen und das Gesprächsangebot, das\nAndreas Stoch den demokratischen Fraktionen, der Landesregierung und den kommunalen Verbänden gemacht hat, anzunehmen, um sich jetzt auf den Weg zu machen, gemeinsam\nund verlässlich zu planen, wie wir die Fördermöglichkeiten,\ndie wir in den nächsten Jahren haben werden, in Baden-Württemberg sinnvoll nutzen können. Das hilft den Kommunen,\nund nicht das Klein-Klein, das wir heute Vormittag hier erlebt\nhaben.\nHerzlichen Dank.",
+      "events": [
         {
           "type": "CompositeEvent",
           "text": "(Zuruf von der AfD: Eine starke AfD!)",
-          "line_index": 10,
+          "line_index": 3,
           "span": {
-            "start_line_index": 10,
-            "end_line_index": 10
+            "start_line_index": 3,
+            "end_line_index": 3
           },
           "parts": [
             {
@@ -13142,15 +13117,15 @@
               "text": "Zuruf von der AfD: Eine starke AfD!"
             }
           ],
-          "group_id": "pevt_10"
+          "group_id": "pevt_3"
         },
         {
           "type": "CompositeEvent",
           "text": "(Abg. Dr. Uwe Hellstern AfD: Darlehen für Krankenkassen! – Abg. Dr. Albrecht Schütte CDU: Es gibt sie gar nicht!)",
-          "line_index": 22,
+          "line_index": 15,
           "span": {
-            "start_line_index": 22,
-            "end_line_index": 23
+            "start_line_index": 15,
+            "end_line_index": 16
           },
           "parts": [
             {
@@ -13170,15 +13145,15 @@
               "text": "Abg. Dr. Albrecht Schütte CDU: Es gibt sie gar nicht!"
             }
           ],
-          "group_id": "pevt_22"
+          "group_id": "pevt_15"
         },
         {
           "type": "CompositeEvent",
           "text": "(Beifall bei der SPD – Abg. Daniel Lede Abal GRÜNE: Wie kommen wir an das Geld ran? Wo liegt denn das Geld? Ist es schon da?)",
-          "line_index": 27,
+          "line_index": 20,
           "span": {
-            "start_line_index": 27,
-            "end_line_index": 29
+            "start_line_index": 20,
+            "end_line_index": 22
           },
           "parts": [
             {
@@ -13194,15 +13169,15 @@
               "text": "Abg. Daniel Lede Abal GRÜNE: Wie kommen wir an das Geld ran? Wo liegt denn das Geld? Ist es schon da?"
             }
           ],
-          "group_id": "pevt_27"
+          "group_id": "pevt_20"
         },
         {
           "type": "CompositeEvent",
           "text": "(Beifall bei der SPD und des Abg. Nikolai Reith FDP/ DVP)",
-          "line_index": 41,
+          "line_index": 34,
           "span": {
-            "start_line_index": 41,
-            "end_line_index": 42
+            "start_line_index": 34,
+            "end_line_index": 35
           },
           "parts": [
             {
@@ -13210,26 +13185,10 @@
               "text": "Beifall bei der SPD und des Abg. Nikolai Reith FDP/ DVP"
             }
           ],
-          "group_id": "pevt_41"
+          "group_id": "pevt_34"
         }
       ],
       "events_flat": [
-        {
-          "type": "Beifall",
-          "text": "Beifall bei der SPD und Abgeordneten der FDP/DVP",
-          "group_ref": "pevt_6",
-          "line_index": 6
-        },
-        {
-          "type": "Zwischenruf",
-          "speaker": "Dr. Albrecht Schütte",
-          "role": "Abg.",
-          "party": "CDU",
-          "message": "Sie haben die Frage nicht beantwortet!",
-          "text": "Abg. Dr. Albrecht Schütte CDU: Sie haben die Frage nicht beantwortet!",
-          "group_ref": "pevt_6",
-          "line_index": 6
-        },
         {
           "type": "Zwischenruf",
           "speaker": "Zuruf von der",
@@ -13237,8 +13196,8 @@
           "party": "AfD",
           "message": "Eine starke AfD!",
           "text": "Zuruf von der AfD: Eine starke AfD!",
-          "group_ref": "pevt_10",
-          "line_index": 10
+          "group_ref": "pevt_3",
+          "line_index": 3
         },
         {
           "type": "Zwischenruf",
@@ -13247,8 +13206,8 @@
           "party": "AfD",
           "message": "Darlehen für Krankenkassen!",
           "text": "Abg. Dr. Uwe Hellstern AfD: Darlehen für Krankenkassen!",
-          "group_ref": "pevt_22",
-          "line_index": 22
+          "group_ref": "pevt_15",
+          "line_index": 15
         },
         {
           "type": "Zwischenruf",
@@ -13257,14 +13216,14 @@
           "party": "CDU",
           "message": "Es gibt sie gar nicht!",
           "text": "Abg. Dr. Albrecht Schütte CDU: Es gibt sie gar nicht!",
-          "group_ref": "pevt_22",
-          "line_index": 22
+          "group_ref": "pevt_15",
+          "line_index": 15
         },
         {
           "type": "Beifall",
           "text": "Beifall bei der SPD",
-          "group_ref": "pevt_27",
-          "line_index": 27
+          "group_ref": "pevt_20",
+          "line_index": 20
         },
         {
           "type": "Zwischenruf",
@@ -13273,20 +13232,20 @@
           "party": "GRÜNE",
           "message": "Wie kommen wir an das Geld ran? Wo liegt denn das Geld? Ist es schon da?",
           "text": "Abg. Daniel Lede Abal GRÜNE: Wie kommen wir an das Geld ran? Wo liegt denn das Geld? Ist es schon da?",
-          "group_ref": "pevt_27",
-          "line_index": 27
+          "group_ref": "pevt_20",
+          "line_index": 20
         },
         {
           "type": "Beifall",
           "text": "Beifall bei der SPD und des Abg. Nikolai Reith FDP/ DVP",
-          "group_ref": "pevt_41",
-          "line_index": 41
+          "group_ref": "pevt_34",
+          "line_index": 34
         }
       ],
       "agenda_item_number": 4
     },
     {
-      "index": 101,
+      "index": 104,
       "start_page": 42,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -13295,7 +13254,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 102,
+      "index": 105,
       "start_page": 42,
       "speaker": "Emil Sänze",
       "role": "Abg.",
@@ -13410,7 +13369,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 103,
+      "index": 106,
       "start_page": 42,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -13419,7 +13378,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 104,
+      "index": 107,
       "start_page": 42,
       "speaker": "Dr. Gisela Splett",
       "role": "Staatssekretärin",
@@ -13526,7 +13485,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 105,
+      "index": 108,
       "start_page": 43,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -13535,7 +13494,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 106,
+      "index": 109,
       "start_page": 43,
       "speaker": "Dr. Gisela Splett",
       "role": "Staatssekretärin",
@@ -13544,7 +13503,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 107,
+      "index": 110,
       "start_page": 43,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -13597,7 +13556,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 108,
+      "index": 111,
       "start_page": 43,
       "speaker": "Dr. Gisela Splett",
       "role": "Staatssekretärin",
@@ -13606,7 +13565,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 109,
+      "index": 112,
       "start_page": 43,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -13615,7 +13574,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 110,
+      "index": 113,
       "start_page": 43,
       "speaker": "Dr. Gisela Splett",
       "role": "Staatssekretärin",
@@ -13672,7 +13631,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 111,
+      "index": 114,
       "start_page": 44,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -13681,7 +13640,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 112,
+      "index": 115,
       "start_page": 44,
       "speaker": "Dr. Erik Schweickert",
       "role": "Abg.",
@@ -13690,7 +13649,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 113,
+      "index": 116,
       "start_page": 44,
       "speaker": "Dr. Gisela Splett",
       "role": "Staatssekretärin",
@@ -13735,7 +13694,7 @@
       "agenda_item_number": 4
     },
     {
-      "index": 114,
+      "index": 117,
       "start_page": 44,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
@@ -13809,8 +13768,8 @@
   "_qa": {
     "toc_items": 6,
     "toc_max_number": 6,
-    "speeches_with_agenda": 115,
-    "toc_total_speakers": 31
+    "speeches_with_agenda": 118,
+    "toc_total_speakers": 32
   },
   "schema_version": "1.0-minimal"
 }
