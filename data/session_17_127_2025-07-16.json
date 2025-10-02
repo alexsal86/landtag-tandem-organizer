@@ -4,7 +4,7 @@
     "legislative_period": 17,
     "date": "2025-07-16",
     "source_pdf_url": "https://www.landtag-bw.de/resource/blob/584334/59a6c5950d692e7ba8a2e8d8be879b26/17_0127_16072025.pdf",
-    "extracted_at": "2025-10-02T18:39:40.019241Z",
+    "extracted_at": "2025-10-02T18:48:26.984064Z",
     "next_meeting": {
       "raw": "Nächste Sitzung . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7680 über die 127. Sitzung Beginn:"
     }
@@ -474,7 +474,6 @@
   "speeches": [
     {
       "index": 0,
-      "start_page": 3,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -483,7 +482,6 @@
     },
     {
       "index": 1,
-      "start_page": 3,
       "speaker": "Dr. Rainer Balzer",
       "role": "Abg.",
       "party": "AfD",
@@ -918,7 +916,6 @@
     },
     {
       "index": 2,
-      "start_page": 4,
       "speaker": "Dr. Timm Kern",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -993,7 +990,6 @@
     },
     {
       "index": 3,
-      "start_page": 4,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -1036,7 +1032,6 @@
     },
     {
       "index": 4,
-      "start_page": 4,
       "speaker": "Dr. Rainer Balzer",
       "role": "Abg.",
       "party": "AfD",
@@ -1221,7 +1216,6 @@
     },
     {
       "index": 5,
-      "start_page": 5,
       "speaker": "Dr. Timm Kern",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -1230,7 +1224,6 @@
     },
     {
       "index": 6,
-      "start_page": 5,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -1239,7 +1232,6 @@
     },
     {
       "index": 7,
-      "start_page": 5,
       "speaker": "Dr. Marilena Geugjes",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -2182,7 +2174,6 @@
     },
     {
       "index": 8,
-      "start_page": 7,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -2191,7 +2182,6 @@
     },
     {
       "index": 9,
-      "start_page": 7,
       "speaker": "Andreas Sturm",
       "role": "Abg.",
       "party": "CDU",
@@ -2310,7 +2300,6 @@
     },
     {
       "index": 10,
-      "start_page": 7,
       "speaker": "Andreas Schwarz",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -2389,7 +2378,6 @@
     },
     {
       "index": 11,
-      "start_page": 7,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -2398,7 +2386,6 @@
     },
     {
       "index": 12,
-      "start_page": 7,
       "speaker": "Andreas Sturm",
       "role": "Abg.",
       "party": "CDU",
@@ -2407,7 +2394,6 @@
     },
     {
       "index": 13,
-      "start_page": 8,
       "speaker": "Sandro Scheer",
       "role": "Abg.",
       "party": "AfD",
@@ -2416,7 +2402,6 @@
     },
     {
       "index": 14,
-      "start_page": 8,
       "speaker": "Andreas Sturm",
       "role": "Abg.",
       "party": "CDU",
@@ -2727,7 +2712,6 @@
     },
     {
       "index": 15,
-      "start_page": 8,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -2736,7 +2720,6 @@
     },
     {
       "index": 16,
-      "start_page": 8,
       "speaker": "Dr. Stefan Fulst-Blei",
       "role": "Abg.",
       "party": "SPD",
@@ -2901,7 +2884,6 @@
     },
     {
       "index": 17,
-      "start_page": 9,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -2954,7 +2936,6 @@
     },
     {
       "index": 18,
-      "start_page": 9,
       "speaker": "Dr. Stefan Fulst-Blei",
       "role": "Abg.",
       "party": "SPD",
@@ -3289,7 +3270,6 @@
     },
     {
       "index": 19,
-      "start_page": 9,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -3702,7 +3682,6 @@
     },
     {
       "index": 20,
-      "start_page": 10,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -3711,7 +3690,6 @@
     },
     {
       "index": 21,
-      "start_page": 10,
       "speaker": "Alena Fink-Trauschel",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -4896,7 +4874,6 @@
     },
     {
       "index": 22,
-      "start_page": 12,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -4905,7 +4882,6 @@
     },
     {
       "index": 23,
-      "start_page": 12,
       "speaker": "Sandra Boser",
       "role": "Staatssekretärin",
       "party": null,
@@ -5126,7 +5102,6 @@
     },
     {
       "index": 24,
-      "start_page": 12,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -5135,7 +5110,6 @@
     },
     {
       "index": 25,
-      "start_page": 12,
       "speaker": "Sandra Boser",
       "role": "Staatssekretärin",
       "party": null,
@@ -5588,7 +5562,6 @@
     },
     {
       "index": 26,
-      "start_page": 14,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -5849,7 +5822,6 @@
     },
     {
       "index": 27,
-      "start_page": 14,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -5884,7 +5856,6 @@
     },
     {
       "index": 28,
-      "start_page": 14,
       "speaker": "Dr. Rainer Balzer",
       "role": "Abg.",
       "party": "AfD",
@@ -5959,7 +5930,6 @@
     },
     {
       "index": 29,
-      "start_page": 14,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -6024,7 +5994,6 @@
     },
     {
       "index": 30,
-      "start_page": 14,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -6033,7 +6002,6 @@
     },
     {
       "index": 31,
-      "start_page": 14,
       "speaker": "Dr. Marilena Geugjes",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -6206,7 +6174,6 @@
     },
     {
       "index": 32,
-      "start_page": 15,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -6215,7 +6182,6 @@
     },
     {
       "index": 33,
-      "start_page": 15,
       "speaker": "Alena Fink-Trauschel",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -6346,7 +6312,6 @@
     },
     {
       "index": 34,
-      "start_page": 15,
       "speaker": "Muhterem Aras",
       "role": "Präsidentin",
       "party": null,
@@ -6381,7 +6346,6 @@
     },
     {
       "index": 35,
-      "start_page": 15,
       "speaker": "Stefanie Seemann",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -6492,7 +6456,6 @@
     },
     {
       "index": 36,
-      "start_page": 16,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -6641,7 +6604,6 @@
     },
     {
       "index": 37,
-      "start_page": 16,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -6924,7 +6886,6 @@
     },
     {
       "index": 38,
-      "start_page": 17,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -6933,7 +6894,6 @@
     },
     {
       "index": 39,
-      "start_page": 17,
       "speaker": "Stephen Brauer",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -6990,7 +6950,6 @@
     },
     {
       "index": 40,
-      "start_page": 18,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -6999,7 +6958,6 @@
     },
     {
       "index": 41,
-      "start_page": 18,
       "speaker": "Alfred Bamberger",
       "role": "Abg.",
       "party": "AfD",
@@ -7516,7 +7474,6 @@
     },
     {
       "index": 42,
-      "start_page": 19,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -7559,7 +7516,6 @@
     },
     {
       "index": 43,
-      "start_page": 19,
       "speaker": "Arne Braun",
       "role": "Staatssekretär",
       "party": null,
@@ -7704,7 +7660,6 @@
     },
     {
       "index": 44,
-      "start_page": 20,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -7769,7 +7724,6 @@
     },
     {
       "index": 45,
-      "start_page": 21,
       "speaker": "Peter Seimer",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -7958,7 +7912,6 @@
     },
     {
       "index": 46,
-      "start_page": 22,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -7967,7 +7920,6 @@
     },
     {
       "index": 47,
-      "start_page": 22,
       "speaker": "Peter Seimer",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -8042,7 +7994,6 @@
     },
     {
       "index": 48,
-      "start_page": 22,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -8051,7 +8002,6 @@
     },
     {
       "index": 49,
-      "start_page": 22,
       "speaker": "Isabell Huber",
       "role": "Abg.",
       "party": "CDU",
@@ -8296,7 +8246,6 @@
     },
     {
       "index": 50,
-      "start_page": 23,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -8305,7 +8254,6 @@
     },
     {
       "index": 51,
-      "start_page": 23,
       "speaker": "Jonas Hoffmann",
       "role": "Abg.",
       "party": "SPD",
@@ -8686,7 +8634,6 @@
     },
     {
       "index": 52,
-      "start_page": 24,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -8695,7 +8642,6 @@
     },
     {
       "index": 53,
-      "start_page": 24,
       "speaker": "Daniel Karrais",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -8950,7 +8896,6 @@
     },
     {
       "index": 54,
-      "start_page": 25,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -9003,7 +8948,6 @@
     },
     {
       "index": 55,
-      "start_page": 25,
       "speaker": "Daniel Lindenschmid",
       "role": "Abg.",
       "party": "AfD",
@@ -9234,7 +9178,6 @@
     },
     {
       "index": 56,
-      "start_page": 26,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -9243,7 +9186,6 @@
     },
     {
       "index": 57,
-      "start_page": 26,
       "speaker": "Daniel Lindenschmid",
       "role": "Abg.",
       "party": "AfD",
@@ -9514,7 +9456,6 @@
     },
     {
       "index": 58,
-      "start_page": 27,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -9629,7 +9570,6 @@
     },
     {
       "index": 59,
-      "start_page": 27,
       "speaker": "Rüdiger Klos",
       "role": "Abg.",
       "party": "AfD",
@@ -9746,7 +9686,6 @@
     },
     {
       "index": 60,
-      "start_page": 27,
       "speaker": "Daniel Lindenschmid",
       "role": "Abg.",
       "party": "AfD",
@@ -9755,7 +9694,6 @@
     },
     {
       "index": 61,
-      "start_page": 27,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -10002,7 +9940,6 @@
     },
     {
       "index": 62,
-      "start_page": 28,
       "speaker": "Anton Baron",
       "role": "Abg.",
       "party": "AfD",
@@ -10097,7 +10034,6 @@
     },
     {
       "index": 63,
-      "start_page": 28,
       "speaker": "Dr. Wolfgang Reinhart",
       "role": "Stellv. Präsident",
       "party": null,
@@ -10140,7 +10076,6 @@
     },
     {
       "index": 64,
-      "start_page": 28,
       "speaker": "Swantje Sperling",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -10307,7 +10242,6 @@
     },
     {
       "index": 65,
-      "start_page": 29,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -10316,7 +10250,6 @@
     },
     {
       "index": 66,
-      "start_page": 29,
       "speaker": "Ulli Hockenberger",
       "role": "Abg.",
       "party": "CDU",
@@ -10523,7 +10456,6 @@
     },
     {
       "index": 67,
-      "start_page": 30,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -10532,7 +10464,6 @@
     },
     {
       "index": 68,
-      "start_page": 31,
       "speaker": "Klaus Ranger",
       "role": "Abg.",
       "party": "SPD",
@@ -10663,7 +10594,6 @@
     },
     {
       "index": 69,
-      "start_page": 31,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -10672,7 +10602,6 @@
     },
     {
       "index": 70,
-      "start_page": 31,
       "speaker": "Julia Goll",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -10851,7 +10780,6 @@
     },
     {
       "index": 71,
-      "start_page": 32,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -10860,7 +10788,6 @@
     },
     {
       "index": 72,
-      "start_page": 32,
       "speaker": "Sandro Scheer",
       "role": "Abg.",
       "party": "AfD",
@@ -11159,11 +11086,10 @@
     },
     {
       "index": 73,
-      "start_page": 33,
-      "speaker": "Sandro Scheer",
-      "role": "Abg.",
-      "party": "AfD",
-      "text": "Stimmen Sie bitte unserem Änderungsantrag zu.\nDanke für Ihre Aufmerksamkeit.",
+      "speaker": "Daniel Born",
+      "role": "Stellv. Präsident",
+      "party": null,
+      "text": "Abg. Sandro Scheer AfD: Stimmen Sie bitte unserem Änderungsantrag zu.\nDanke für Ihre Aufmerksamkeit.",
       "events": [
         {
           "type": "CompositeEvent",
@@ -11194,7 +11120,6 @@
     },
     {
       "index": 74,
-      "start_page": 33,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -11313,7 +11238,6 @@
     },
     {
       "index": 75,
-      "start_page": 33,
       "speaker": "Andreas Schwarz",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -11654,7 +11578,6 @@
     },
     {
       "index": 76,
-      "start_page": 35,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -11711,7 +11634,6 @@
     },
     {
       "index": 77,
-      "start_page": 35,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -11720,7 +11642,6 @@
     },
     {
       "index": 78,
-      "start_page": 35,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -11755,7 +11676,6 @@
     },
     {
       "index": 79,
-      "start_page": 35,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -11844,7 +11764,6 @@
     },
     {
       "index": 80,
-      "start_page": 37,
       "speaker": "Nikolai Reith",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -11995,7 +11914,6 @@
     },
     {
       "index": 81,
-      "start_page": 37,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -12004,7 +11922,6 @@
     },
     {
       "index": 82,
-      "start_page": 37,
       "speaker": "Nikolai Reith",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -12013,7 +11930,6 @@
     },
     {
       "index": 83,
-      "start_page": 37,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -12022,7 +11938,6 @@
     },
     {
       "index": 84,
-      "start_page": 37,
       "speaker": "Nikolai Reith",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -12109,7 +12024,6 @@
     },
     {
       "index": 85,
-      "start_page": 38,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -12246,7 +12160,6 @@
     },
     {
       "index": 86,
-      "start_page": 38,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -12255,7 +12168,6 @@
     },
     {
       "index": 87,
-      "start_page": 38,
       "speaker": "Peter Seimer",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -12372,7 +12284,6 @@
     },
     {
       "index": 88,
-      "start_page": 39,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -12381,7 +12292,6 @@
     },
     {
       "index": 89,
-      "start_page": 39,
       "speaker": "Peter Seimer",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -12390,7 +12300,6 @@
     },
     {
       "index": 90,
-      "start_page": 39,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -12399,7 +12308,6 @@
     },
     {
       "index": 91,
-      "start_page": 39,
       "speaker": "Peter Seimer",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -12408,7 +12316,6 @@
     },
     {
       "index": 92,
-      "start_page": 39,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -12417,7 +12324,6 @@
     },
     {
       "index": 93,
-      "start_page": 39,
       "speaker": "Peter Seimer",
       "role": "Abg.",
       "party": "GRÜNE",
@@ -12470,7 +12376,6 @@
     },
     {
       "index": 94,
-      "start_page": 39,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -12479,7 +12384,6 @@
     },
     {
       "index": 95,
-      "start_page": 39,
       "speaker": "Dr. Albrecht Schütte",
       "role": "Abg.",
       "party": "CDU",
@@ -12754,7 +12658,6 @@
     },
     {
       "index": 96,
-      "start_page": 40,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -12797,7 +12700,6 @@
     },
     {
       "index": 97,
-      "start_page": 40,
       "speaker": "Nicolas Fink",
       "role": "Abg.",
       "party": "SPD",
@@ -12988,7 +12890,6 @@
     },
     {
       "index": 98,
-      "start_page": 41,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -12997,7 +12898,6 @@
     },
     {
       "index": 99,
-      "start_page": 41,
       "speaker": "Nicolas Fink",
       "role": "Abg.",
       "party": "SPD",
@@ -13006,7 +12906,6 @@
     },
     {
       "index": 100,
-      "start_page": 41,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -13015,7 +12914,6 @@
     },
     {
       "index": 101,
-      "start_page": 41,
       "speaker": "Dr. Albrecht Schütte",
       "role": "Abg.",
       "party": "CDU",
@@ -13058,7 +12956,6 @@
     },
     {
       "index": 102,
-      "start_page": 41,
       "speaker": "Nicolas Fink",
       "role": "Abg.",
       "party": "SPD",
@@ -13093,7 +12990,6 @@
     },
     {
       "index": 103,
-      "start_page": 41,
       "speaker": "Dr. Albrecht Schütte",
       "role": "Abg.",
       "party": "CDU",
@@ -13246,7 +13142,6 @@
     },
     {
       "index": 104,
-      "start_page": 42,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -13255,7 +13150,6 @@
     },
     {
       "index": 105,
-      "start_page": 42,
       "speaker": "Emil Sänze",
       "role": "Abg.",
       "party": "AfD",
@@ -13370,7 +13264,6 @@
     },
     {
       "index": 106,
-      "start_page": 42,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -13379,7 +13272,6 @@
     },
     {
       "index": 107,
-      "start_page": 42,
       "speaker": "Dr. Gisela Splett",
       "role": "Staatssekretärin",
       "party": null,
@@ -13486,7 +13378,6 @@
     },
     {
       "index": 108,
-      "start_page": 43,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -13495,7 +13386,6 @@
     },
     {
       "index": 109,
-      "start_page": 43,
       "speaker": "Dr. Gisela Splett",
       "role": "Staatssekretärin",
       "party": null,
@@ -13504,7 +13394,6 @@
     },
     {
       "index": 110,
-      "start_page": 43,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -13557,7 +13446,6 @@
     },
     {
       "index": 111,
-      "start_page": 43,
       "speaker": "Dr. Gisela Splett",
       "role": "Staatssekretärin",
       "party": null,
@@ -13566,7 +13454,6 @@
     },
     {
       "index": 112,
-      "start_page": 43,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -13575,7 +13462,6 @@
     },
     {
       "index": 113,
-      "start_page": 43,
       "speaker": "Dr. Gisela Splett",
       "role": "Staatssekretärin",
       "party": null,
@@ -13632,7 +13518,6 @@
     },
     {
       "index": 114,
-      "start_page": 44,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
@@ -13641,7 +13526,6 @@
     },
     {
       "index": 115,
-      "start_page": 44,
       "speaker": "Dr. Erik Schweickert",
       "role": "Abg.",
       "party": "FDP/DVP",
@@ -13650,7 +13534,6 @@
     },
     {
       "index": 116,
-      "start_page": 44,
       "speaker": "Dr. Gisela Splett",
       "role": "Staatssekretärin",
       "party": null,
@@ -13695,7 +13578,6 @@
     },
     {
       "index": 117,
-      "start_page": 44,
       "speaker": "Daniel Born",
       "role": "Stellv. Präsident",
       "party": null,
