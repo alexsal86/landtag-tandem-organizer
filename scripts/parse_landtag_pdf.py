@@ -899,6 +899,12 @@ def _strip_inline_headers_from_text(text: str) -> str:
         out.append(t)
     return "\n".join(out).strip()
 
+def mask_parenthetical_events(text: str) -> str:
+    # Ersetzt alles, was in Klammern steht, durch ein Platzhalter-Token (gleiche Länge, damit Indizes bleiben)
+    def repl(m):
+        return '(' + '-' * (len(m.group(0))-2) + ')'
+    return re.sub(r'\([^)]*\)', repl, text, flags=re.DOTALL)
+
 def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
     """
     Segmentiert Reden ausschließlich anhand von Header-Zeilen im festen Format:
@@ -966,21 +972,23 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
     return speeches
 
 def segment_speeches_from_text(full_text: str) -> List[Dict[str, Any]]:
+    # Maskiere Klammer-Events
+    masked_text = mask_parenthetical_events(full_text)
+
     speeches = []
-    HEADER_RX = re.compile(
-        rf"(?:^|\n)\s*(?:[–-]\s*)?(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+\(?(?P<party>{PARTY_TOKENS})\)?)?\s*:\s*(?P<after>.*)",
-        re.IGNORECASE
-    )
-    matches = list(HEADER_RX.finditer(full_text))
+    matches = list(HEADER_RX.finditer(masked_text))
     for i, m in enumerate(matches):
         start = m.end()
-        end = matches[i+1].start() if i+1 < len(matches) else len(full_text)
+        end = matches[i+1].start() if i+1 < len(matches) else len(masked_text)
+        # Hole den echten Textausschnitt aus dem Original-Text, nicht dem maskierten
+        orig_start = m.end()
+        orig_end = matches[i+1].start() if i+1 < len(matches) else len(full_text)
         speeches.append({
             "index": i,
             "speaker": m.group("name"),
             "role": m.group("role"),
             "party": m.group("party"),
-            "text": m.group("after") + full_text[start:end]
+            "text": m.group("after") + full_text[orig_start:orig_end]
         })
     return speeches
 
@@ -1066,7 +1074,7 @@ def _flatten_events(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         else:
             flat.append(ev)
     return flat
-
+  
 def cleanup_speech_events_in_text(sp: Dict[str, Any]) -> None:
     """
     - Entfernt Event-Zeilen aus dem Redetext
