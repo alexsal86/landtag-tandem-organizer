@@ -608,6 +608,7 @@ def parse_toc(flat_lines: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         if current:
             # Sprecherzeile aus dem TOC
+          
             msp = SPEAKER_LINE_RE.match(text)
             if msp:
                 role = msp.group("role")
@@ -844,7 +845,7 @@ def attach_agenda_numbers(speeches: List[Dict[str, Any]]) -> None:
             except ValueError:
                 pass
         if current is not None:
-            sp["agenda_item_number"] = currentm
+            sp["agenda_item_number"] = current
 
 # ------------------------- Speeches (Body) -------------------------
 
