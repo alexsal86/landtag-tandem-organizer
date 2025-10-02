@@ -850,9 +850,10 @@ def attach_agenda_numbers(speeches: List[Dict[str, Any]]) -> None:
 
 # Erweitert um 'after' zum Einfangen des Textes nach dem Doppelpunkt
 HEADER_RX = re.compile(
-    rf"^\s*(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+(?P<party>{PARTY_TOKENS}))?\s*:\s*(?P<after>.*)$",
+    rf"^\s*(?:[–-]\s*)?(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+\(?(?P<party>{PARTY_TOKENS})\)?)?\s*:\s*(?P<after>.*)$",
     re.IGNORECASE
 )
+
 
 INLINE_HEADER_NOISE = [
     re.compile(r"Landtag\s*von\s*Baden[- ]Württemberg", re.IGNORECASE),
@@ -899,19 +900,24 @@ def _strip_inline_headers_from_text(text: str) -> str:
     return "\n".join(out).strip()
 
 def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
+    """
+    Segmentiert Reden ausschließlich anhand von Header-Zeilen im festen Format:
+    [optional „– “] ROLE NAME (PARTEI optional): TEXT
+    Keine weiteren Heuristiken (keine Worterteilungs-Hinweise).
+    """
     flat: List[Tuple[int, str]] = []
     for p_idx, lines in enumerate(pages, start=1):
         for l in lines:
             if l.strip():
                 flat.append((p_idx, l))
+
+    # Finde ersten Header als Body-Start
     start_idx = 0
     for i, (_p, t) in enumerate(flat):
         if HEADER_RX.match(t):
-            if re.match(r"^\s*Präsident", t, re.IGNORECASE) or re.match(r"^\s*Stellv\.", t, re.IGNORECASE):
-                start_idx = i
-                break
-            if start_idx == 0:
-                start_idx = i
+            start_idx = i
+            break
+
     body = flat[start_idx:] if start_idx < len(flat) else []
     speeches: List[Dict[str, Any]] = []
     cur: Optional[Dict[str, Any]] = None
@@ -924,35 +930,36 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
             text = re.sub(r"\n{3,}", "\n\n", text)
             cur["text"] = text
             speeches.append(cur)
-            cur = None
-            buf = []
+        cur = None
+        buf = []
 
     for p, line in body:
-        lstripped = line.lstrip()
-        # Neue Rede nur, wenn Zeile nicht mit '(' oder '–'/'-' beginnt (verhindert Klammer-/Dash-Zwischenrufe)
-        if not (lstripped.startswith("(") or lstripped.startswith("–") or lstripped.startswith("-")):
-            m = HEADER_RX.match(line)
-        else:
-            m = None
+        lstrip = line.lstrip()
+
+        # Nur Header mit Doppelpunkt starten eine neue Rede.
+        # Zeilen, die mit '(' (Klammer-Events) beginnen, sind nie Header.
+        m = HEADER_RX.match(line) if not lstrip.startswith("(") else None
         if m:
             flush()
-            role = m.group("role")
+            role = (m.group("role") or "").strip()
             name = (m.group("name") or "").strip()
-            party = m.group("party")
+            party = _normalize_party(m.group("party"))
             after = (m.group("after") or "").strip()
             cur = {
-                "index": len(speeches),
+                "index": -1,            # wird nachträglich gesetzt
                 "start_page": p,
-                "speaker": f"{name}",
+                "speaker": name,
                 "role": role,
-                "party": (party or "").replace("GRUENE", "GRÜNE") if party else None,
+                "party": party,
                 "text": ""
             }
             if after:
                 buf.append(after)
-        else:
-            if cur:
-                buf.append(line)
+            continue
+
+        if cur:
+            buf.append(line)
+
     flush()
     for i, sp in enumerate(speeches):
         sp["index"] = i
