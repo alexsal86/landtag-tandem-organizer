@@ -80,16 +80,38 @@ export const DashboardGreetingSection = () => {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       
-      const { data } = await supabase
+      // Erweiterte Zeitfenster für Ganztagstermine (UTC-Probleme)
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const dayAfterTomorrow = new Date(today);
+      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+      
+      // Normale Termine
+      const { data: normalAppointments } = await supabase
         .from('appointments')
         .select('id, title, start_time, is_all_day')
         .eq('tenant_id', currentTenant.id)
+        .eq('is_all_day', false)
         .gte('start_time', today.toISOString())
         .lt('start_time', tomorrow.toISOString())
-        .order('start_time', { ascending: true })
-        .limit(2);
+        .order('start_time', { ascending: true });
       
-      setAppointments(data || []);
+      // Ganztagstermine (größeres Zeitfenster wegen UTC)
+      const { data: allDayAppointments } = await supabase
+        .from('appointments')
+        .select('id, title, start_time, is_all_day')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_all_day', true)
+        .gte('start_time', yesterday.toISOString())
+        .lt('start_time', dayAfterTomorrow.toISOString())
+        .order('start_time', { ascending: true });
+      
+      // Kombinieren und max 2 Termine
+      const combined = [...(normalAppointments || []), ...(allDayAppointments || [])]
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+        .slice(0, 2);
+      
+      setAppointments(combined);
     };
     
     loadAppointments();
