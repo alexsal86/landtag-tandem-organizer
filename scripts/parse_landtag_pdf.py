@@ -844,16 +844,15 @@ def attach_agenda_numbers(speeches: List[Dict[str, Any]]) -> None:
             except ValueError:
                 pass
         if current is not None:
-            sp["agenda_item_number"] = current
+            sp["agenda_item_number"] = currentm
 
 # ------------------------- Speeches (Body) -------------------------
 
 # Erweitert um 'after' zum Einfangen des Textes nach dem Doppelpunkt
 HEADER_RX = re.compile(
-    rf"^\s*(?:[–-]\s*)?(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+\(?(?P<party>{PARTY_TOKENS})\)?)?\s*:\s*(?P<after>.*)$",
+    rf"(?:^|\n)\s*(?:[–-]\s*)?(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+\(?(?P<party>{PARTY_TOKENS})\)?)?\s*:\s*(?P<after>.*)",
     re.IGNORECASE
 )
-
 
 INLINE_HEADER_NOISE = [
     re.compile(r"Landtag\s*von\s*Baden[- ]Württemberg", re.IGNORECASE),
@@ -963,6 +962,25 @@ def segment_speeches_from_pages(pages: List[List[str]]) -> List[Dict[str, Any]]:
     flush()
     for i, sp in enumerate(speeches):
         sp["index"] = i
+    return speeches
+
+def segment_speeches_from_text(full_text: str) -> List[Dict[str, Any]]:
+    speeches = []
+    HEADER_RX = re.compile(
+        rf"(?:^|\n)\s*(?:[–-]\s*)?(?P<role>{'|'.join(ROLE_TOKENS)})\s+(?P<name>[^:\n]{{1,160}}?)(?:\s+\(?(?P<party>{PARTY_TOKENS})\)?)?\s*:\s*(?P<after>.*)",
+        re.IGNORECASE
+    )
+    matches = list(HEADER_RX.finditer(full_text))
+    for i, m in enumerate(matches):
+        start = m.end()
+        end = matches[i+1].start() if i+1 < len(matches) else len(full_text)
+        speeches.append({
+            "index": i,
+            "speaker": m.group("name"),
+            "role": m.group("role"),
+            "party": m.group("party"),
+            "text": m.group("after") + full_text[start:end]
+        })
     return speeches
 
 def normalize_speech_text(text: str) -> str:
