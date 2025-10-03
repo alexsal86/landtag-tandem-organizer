@@ -190,14 +190,14 @@ export const DashboardGreetingSection = () => {
     if (weatherKarlsruhe) {
       const translatedCondition = translateCondition(weatherKarlsruhe.condition);
       const hint = getWeatherHint(weatherKarlsruhe.condition, weatherKarlsruhe.temp);
-      text += `${weatherKarlsruhe.icon} Karlsruhe: ${Math.round(weatherKarlsruhe.temp)}°C, ${translatedCondition}`;
+      text += `${getWeatherIcon(weatherKarlsruhe.icon)} Karlsruhe: ${Math.round(weatherKarlsruhe.temp)}°C, ${translatedCondition}`;
       if (hint) text += ` ${hint}`;
       text += '\n';
     }
     if (weatherStuttgart) {
       const translatedCondition = translateCondition(weatherStuttgart.condition);
       const hint = getWeatherHint(weatherStuttgart.condition, weatherStuttgart.temp);
-      text += `${weatherStuttgart.icon} Stuttgart: ${Math.round(weatherStuttgart.temp)}°C, ${translatedCondition}`;
+      text += `${getWeatherIcon(weatherStuttgart.icon)} Stuttgart: ${Math.round(weatherStuttgart.temp)}°C, ${translatedCondition}`;
       if (hint) text += ` ${hint}`;
       text += '\n';
     }
