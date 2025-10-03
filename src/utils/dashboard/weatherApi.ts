@@ -76,13 +76,13 @@ export const getWeatherIcon = (condition: string): string => {
 
 export const translateCondition = (condition: string): string => {
   const translations: Record<string, string> = {
-    // Icon-based conditions
+    // Icon-based conditions (from icon field)
     'clear-day': 'Sonnig',
     'clear-night': 'Klar',
     'partly-cloudy-day': 'Teilweise bewölkt',
     'partly-cloudy-night': 'Teilweise bewölkt',
     'cloudy': 'Bewölkt',
-    // DWD Bright Sky API conditions
+    // DWD Bright Sky API conditions (from condition field)
     'dry': 'Trocken',
     'fog': 'Nebel',
     'wind': 'Windig',
@@ -91,7 +91,17 @@ export const translateCondition = (condition: string): string => {
     'snow': 'Schnee',
     'hail': 'Hagel',
     'thunderstorm': 'Gewitter',
+    // Additional common weather states
+    'mist': 'Nebel',
+    'drizzle': 'Nieselregen',
+    'showers': 'Schauer',
+    'heavy-rain': 'Starkregen',
+    'freezing-rain': 'Gefrierender Regen',
+    'light-snow': 'Leichter Schneefall',
+    'heavy-snow': 'Starker Schneefall',
+    'blizzard': 'Schneesturm',
   };
   
-  return translations[condition.toLowerCase()] || condition;
+  const normalizedCondition = condition.toLowerCase().trim();
+  return translations[normalizedCondition] || 'Unbekannt';
 };

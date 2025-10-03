@@ -60,7 +60,7 @@ const WeatherCard = ({ location }: WeatherCardProps) => {
               {weather.temperature}°C
             </div>
             <div className="text-sm text-muted-foreground">
-              {translateCondition(weather.condition)}
+              {translateCondition(weather.icon)}
             </div>
           </div>
         </div>
