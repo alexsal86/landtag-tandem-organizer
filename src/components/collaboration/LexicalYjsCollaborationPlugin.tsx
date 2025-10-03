@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
 import { useYjsProvider } from './YjsProvider';
@@ -28,7 +28,7 @@ export function LexicalYjsCollaborationPlugin({
     // Use a consistent Yjs key name
     const sharedText = doc.getText('content');
 
-    const applyYjsToLexical = useCallback((origin?: any, transactionOrigin?: string) => {
+    const applyYjsToLexical = (origin?: any, transactionOrigin?: string) => {
       // Prevent echo: skip if this update originated from our own Lexical editor
       const isOwnUpdate = origin === 'lexical' || transactionOrigin === clientId.current;
       
@@ -84,7 +84,7 @@ export function LexicalYjsCollaborationPlugin({
         // Reset flag immediately after update completes
         isApplyingYjsUpdateRef.current = false;
       }
-    }, [editor, sharedText]);
+    };
 
     // Observe remote Yjs changes with improved error handling
     const yObserver = (event: any, transaction: any) => {
