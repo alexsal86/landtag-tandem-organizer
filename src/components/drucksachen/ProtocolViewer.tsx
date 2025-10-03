@@ -93,7 +93,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
 
   // Extract data from structured_data JSONB
   const tocAgenda: TOCAgendaItem[] = useMemo(() => {
-    return protocol.structured_data?.toc?.items || [];
+    return protocol.structured_data?.toc_agenda || [];
   }, [protocol.structured_data]);
 
   const allSpeeches: Speech[] = useMemo(() => {
