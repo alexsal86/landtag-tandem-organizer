@@ -40,11 +40,15 @@ export const getWeather = async (lat: number, lon: number): Promise<WeatherData 
     
     const data: BrightSkyResponse = await response.json();
     
+    console.log('🌤️ Weather API Response:', data.weather);
+    
     const weatherData: WeatherData = {
       temperature: Math.round(data.weather.temperature),
       condition: data.weather.condition,
       icon: data.weather.icon
     };
+    
+    console.log('🌤️ Weather Data prepared:', weatherData);
     
     weatherCache.set(cacheKey, { data: weatherData, timestamp: Date.now() });
     
@@ -75,6 +79,8 @@ export const getWeatherIcon = (condition: string): string => {
 };
 
 export const translateCondition = (condition: string): string => {
+  console.log('🌤️ Translating condition:', condition);
+  
   const translations: Record<string, string> = {
     // Icon-based conditions (from icon field)
     'clear-day': 'Sonnig',
@@ -103,5 +109,9 @@ export const translateCondition = (condition: string): string => {
   };
   
   const normalizedCondition = condition.toLowerCase().trim();
-  return translations[normalizedCondition] || 'Unbekannt';
+  const translated = translations[normalizedCondition] || 'Unbekannt';
+  
+  console.log('🌤️ Normalized:', normalizedCondition, '→ Translated:', translated);
+  
+  return translated;
 };
