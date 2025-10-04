@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { TypewriterText } from './TypewriterText';
 import { supabase } from '@/integrations/supabase/client';
 import { WidgetQuickAccess } from './WidgetQuickAccess';
-import { WidgetDrawer } from './WidgetDrawer';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
@@ -28,8 +27,6 @@ export const DashboardGreetingSection = () => {
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [completedTasksCount, setCompletedTasksCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeWidget, setActiveWidget] = useState<'calllog' | 'pomodoro' | 'quicknotes' | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Load user name
   useEffect(() => {
@@ -225,36 +222,18 @@ export const DashboardGreetingSection = () => {
     return text;
   }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments, openTasksCount, completedTasksCount]);
 
-  const handleWidgetSelect = (widget: 'calllog' | 'pomodoro' | 'quicknotes') => {
-    setActiveWidget(widget);
-    setIsDrawerOpen(true);
-  };
-
-  const handleDrawerClose = () => {
-    setIsDrawerOpen(false);
-    setActiveWidget(null);
-  };
-
   return (
-    <>
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <TypewriterText 
-            text={fullText}
-            speed={20}
-            className="text-lg leading-relaxed text-foreground whitespace-pre-wrap"
-          />
-        </div>
-        <div className="hidden lg:block flex-shrink-0">
-          <WidgetQuickAccess onWidgetSelect={handleWidgetSelect} />
-        </div>
+    <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="flex-1 min-w-0">
+        <TypewriterText 
+          text={fullText}
+          speed={20}
+          className="text-lg leading-relaxed text-foreground whitespace-pre-wrap"
+        />
       </div>
-      
-      <WidgetDrawer 
-        isOpen={isDrawerOpen} 
-        onClose={handleDrawerClose} 
-        activeWidget={activeWidget}
-      />
-    </>
+      <div className="hidden lg:block flex-shrink-0">
+        <WidgetQuickAccess />
+      </div>
+    </div>
   );
 };
