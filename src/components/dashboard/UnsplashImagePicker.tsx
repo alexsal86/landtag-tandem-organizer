@@ -47,21 +47,19 @@ export function UnsplashImagePicker({
 
     setIsSearching(true);
     try {
-      const response = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=12&orientation=landscape`,
-        {
-          headers: {
-            Authorization: `Client-ID ${import.meta.env.VITE_UNSPLASH_ACCESS_KEY || ""}`,
-          },
-        }
-      );
+      const { data, error } = await supabase.functions.invoke("search-unsplash", {
+        body: { query: searchQuery },
+      });
 
-      if (!response.ok) {
-        throw new Error("Unsplash API error");
+      if (error) {
+        throw error;
       }
 
-      const data = await response.json();
-      setImages(data.results || []);
+      if (!data || !data.results) {
+        throw new Error("Invalid response from Unsplash");
+      }
+
+      setImages(data.results);
     } catch (error) {
       console.error("Error searching Unsplash:", error);
       toast({
