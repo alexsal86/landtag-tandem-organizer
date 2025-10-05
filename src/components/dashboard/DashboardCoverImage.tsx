@@ -135,13 +135,13 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
 
   if (isLoading) {
     return (
-      <div className="w-full h-[10vh] md:h-[12vh] lg:h-[15vh] bg-muted animate-pulse" />
+      <div className="w-full h-[20vh] bg-muted animate-pulse" />
     );
   }
 
   return (
     <>
-      <div className="relative w-full h-[10vh] md:h-[12vh] lg:h-[15vh] overflow-hidden group">
+      <div className="relative w-full h-[20vh] overflow-hidden group">
         {coverUrl ? (
           <img
             src={coverUrl}
@@ -178,7 +178,7 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
         )}
 
         {/* Hover Overlay */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-start justify-end p-4">
           <Button
             variant="secondary"
             size="sm"
