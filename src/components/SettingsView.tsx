@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar } from "lucide-react";
 import { NotificationSettings } from "./NotificationSettings";
 import { ExternalCalendarSettings } from "./ExternalCalendarSettings";
+import { DashboardDefaultCover } from "./administration/DashboardDefaultCover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -11,11 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 export function SettingsView() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const [notifications, setNotifications] = useState(true);
   const [emailAlerts, setEmailAlerts] = useState(false);
@@ -23,6 +27,16 @@ export function SettingsView() {
   const [autoSave, setAutoSave] = useState(true);
   const [language, setLanguage] = useState("de");
   const [timezone, setTimezone] = useState("Europe/Berlin");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const checkAdmin = async () => {
+      const { data } = await supabase.rpc("is_admin", { _user_id: user.id });
+      setIsAdmin(!!data);
+    };
+    checkAdmin();
+  }, [user]);
 
   const handleSaveSettings = () => {
     toast({
@@ -251,6 +265,13 @@ export function SettingsView() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Dashboard Default Cover - Admin Only */}
+        {isAdmin && (
+          <div className="mt-6">
+            <DashboardDefaultCover />
+          </div>
+        )}
 
         {/* Save Button */}
         <div className="mt-8 flex justify-end">
