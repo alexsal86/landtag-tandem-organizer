@@ -16,6 +16,7 @@ import { useDashboardLayout, type WidgetSize } from '@/hooks/useDashboardLayout'
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardWidget } from './DashboardWidget';
 import { DashboardGreetingSection } from './dashboard/DashboardGreetingSection';
+import { DashboardCoverImage } from './dashboard/DashboardCoverImage';
 import { toast } from 'sonner';
 import {
   Settings,
@@ -235,11 +236,16 @@ export const CustomizableDashboard: React.FC = () => {
 
   // Classic dashboard mode
   return (
-    <div className="min-h-screen bg-background p-6">
-      {/* Dynamic Greeting Section */}
-      <div className="mb-8">
-        <DashboardGreetingSection />
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* Cover Image */}
+      {user?.id && <DashboardCoverImage userId={user.id} />}
+      
+      {/* Content Container */}
+      <div className="p-6">
+        {/* Dynamic Greeting Section */}
+        <div className="mb-8">
+          <DashboardGreetingSection />
+        </div>
 
       <Separator className="my-8" />
 
@@ -400,6 +406,7 @@ export const CustomizableDashboard: React.FC = () => {
             </div>
           ))}
         </ResponsiveGridLayout>
+      </div>
       </div>
     </div>
   );
