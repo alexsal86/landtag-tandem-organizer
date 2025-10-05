@@ -4229,6 +4229,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          dashboard_cover_image_attribution: Json | null
           dashboard_cover_image_position: string | null
           dashboard_cover_image_url: string | null
           display_name: string | null
@@ -4241,6 +4242,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          dashboard_cover_image_attribution?: Json | null
           dashboard_cover_image_position?: string | null
           dashboard_cover_image_url?: string | null
           display_name?: string | null
@@ -4253,6 +4255,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          dashboard_cover_image_attribution?: Json | null
           dashboard_cover_image_position?: string | null
           dashboard_cover_image_url?: string | null
           display_name?: string | null

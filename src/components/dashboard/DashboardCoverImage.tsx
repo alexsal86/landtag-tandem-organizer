@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
-import { UnsplashImagePicker } from "./UnsplashImagePicker";
+import { UnsplashImagePicker, UnsplashAttribution } from "./UnsplashImagePicker";
 import { useToast } from "@/hooks/use-toast";
 
 interface DashboardCoverImageProps {
@@ -11,6 +11,7 @@ interface DashboardCoverImageProps {
 
 export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [attribution, setAttribution] = useState<UnsplashAttribution | null>(null);
   const [position, setPosition] = useState<"center" | "top" | "bottom">("center");
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,7 +28,7 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
       // 1. Try to load user's own cover image
       const { data: profile } = await supabase
         .from("profiles")
-        .select("dashboard_cover_image_url, dashboard_cover_image_position")
+        .select("dashboard_cover_image_url, dashboard_cover_image_position, dashboard_cover_image_attribution")
         .eq("user_id", userId)
         .single();
 
@@ -35,6 +36,7 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
         setCoverUrl(profile.dashboard_cover_image_url);
         const pos = profile.dashboard_cover_image_position as "center" | "top" | "bottom";
         setPosition(pos || "center");
+        setAttribution((profile.dashboard_cover_image_attribution as unknown as UnsplashAttribution) || null);
         setIsLoading(false);
         return;
       }
@@ -48,6 +50,7 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
 
       if (settings?.setting_value) {
         setCoverUrl(settings.setting_value);
+        
         const { data: posSettings } = await supabase
           .from("app_settings")
           .select("setting_value")
@@ -55,6 +58,14 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
           .single();
         const pos = posSettings?.setting_value as "center" | "top" | "bottom";
         setPosition(pos || "center");
+        
+        const { data: attrSettings } = await supabase
+          .from("app_settings")
+          .select("setting_value")
+          .eq("setting_key", "default_dashboard_cover_attribution")
+          .single();
+        setAttribution(attrSettings?.setting_value ? JSON.parse(attrSettings.setting_value) : null);
+        
         setIsLoading(false);
         return;
       }
@@ -80,13 +91,18 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
     return `https://source.unsplash.com/1600x400/?${randomTopic}`;
   };
 
-  const handleSaveCover = async (imageUrl: string, imagePosition: "center" | "top" | "bottom") => {
+  const handleSaveCover = async (
+    imageUrl: string, 
+    imagePosition: "center" | "top" | "bottom",
+    imageAttribution?: UnsplashAttribution
+  ) => {
     try {
       const { error } = await supabase
         .from("profiles")
         .update({
           dashboard_cover_image_url: imageUrl,
           dashboard_cover_image_position: imagePosition,
+          dashboard_cover_image_attribution: imageAttribution ? (imageAttribution as any) : null,
         })
         .eq("user_id", userId);
 
@@ -94,6 +110,7 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
 
       setCoverUrl(imageUrl);
       setPosition(imagePosition);
+      setAttribution(imageAttribution || null);
       setIsPickerOpen(false);
 
       toast({
@@ -134,6 +151,30 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-background" />
+        )}
+
+        {/* Attribution Overlay */}
+        {attribution && (
+          <div className="absolute bottom-0 right-0 text-xs text-white/80 bg-black/40 px-2 py-1 backdrop-blur-sm">
+            Photo by{" "}
+            <a
+              href={attribution.photographer_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-white"
+            >
+              {attribution.photographer}
+            </a>
+            {" "}on{" "}
+            <a
+              href={attribution.unsplash_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-white"
+            >
+              Unsplash
+            </a>
+          </div>
         )}
 
         {/* Hover Overlay */}

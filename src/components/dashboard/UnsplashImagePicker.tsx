@@ -8,10 +8,16 @@ import { Search, Upload, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+export interface UnsplashAttribution {
+  photographer: string;
+  photographer_url: string;
+  unsplash_url: string;
+}
+
 interface UnsplashImagePickerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (imageUrl: string, position: "center" | "top" | "bottom") => void;
+  onSave: (imageUrl: string, position: "center" | "top" | "bottom", attribution?: UnsplashAttribution) => void;
   currentUrl?: string;
   currentPosition: "center" | "top" | "bottom";
 }
@@ -24,6 +30,12 @@ interface UnsplashImage {
   };
   user: {
     name: string;
+    links: {
+      html: string;
+    };
+  };
+  links: {
+    html: string;
   };
 }
 
@@ -38,6 +50,7 @@ export function UnsplashImagePicker({
   const [images, setImages] = useState<UnsplashImage[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(currentUrl || null);
+  const [selectedAttribution, setSelectedAttribution] = useState<UnsplashAttribution | null>(null);
   const [position, setPosition] = useState<"center" | "top" | "bottom">(currentPosition);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
@@ -118,6 +131,7 @@ export function UnsplashImagePicker({
         .getPublicUrl(fileName);
 
       setSelectedImage(publicUrl);
+      setSelectedAttribution(null); // Uploaded images have no Unsplash attribution
       toast({
         title: "Upload erfolgreich",
         description: "Dein Bild wurde hochgeladen.",
@@ -134,6 +148,15 @@ export function UnsplashImagePicker({
     }
   };
 
+  const handleSelectUnsplashImage = (img: UnsplashImage) => {
+    setSelectedImage(img.urls.regular);
+    setSelectedAttribution({
+      photographer: img.user.name,
+      photographer_url: img.user.links.html,
+      unsplash_url: img.links.html,
+    });
+  };
+
   const handleSave = () => {
     if (!selectedImage) {
       toast({
@@ -144,7 +167,7 @@ export function UnsplashImagePicker({
       return;
     }
 
-    onSave(selectedImage, position);
+    onSave(selectedImage, position, selectedAttribution || undefined);
   };
 
   return (
@@ -185,13 +208,16 @@ export function UnsplashImagePicker({
                     className={`cursor-pointer rounded-lg overflow-hidden transition-all hover:scale-105 ${
                       selectedImage === img.urls.regular ? "ring-2 ring-primary" : ""
                     }`}
-                    onClick={() => setSelectedImage(img.urls.regular)}
+                    onClick={() => handleSelectUnsplashImage(img)}
                   >
                     <img
                       src={img.urls.small}
                       alt={`Photo by ${img.user.name}`}
                       className="w-full h-32 object-cover"
                     />
+                    <div className="text-xs text-muted-foreground p-1 bg-muted/80">
+                      {img.user.name}
+                    </div>
                   </div>
                 ))}
               </div>

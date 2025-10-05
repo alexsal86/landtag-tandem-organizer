@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { ImageIcon, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { UnsplashImagePicker } from "@/components/dashboard/UnsplashImagePicker";
+import { UnsplashImagePicker, UnsplashAttribution } from "@/components/dashboard/UnsplashImagePicker";
 
 export const DashboardDefaultCover = () => {
   const [defaultCoverUrl, setDefaultCoverUrl] = useState<string | null>(null);
+  const [defaultCoverAttribution, setDefaultCoverAttribution] = useState<UnsplashAttribution | null>(null);
   const [defaultCoverPosition, setDefaultCoverPosition] = useState<"top" | "bottom" | "center">("center");
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,8 +32,17 @@ export const DashboardDefaultCover = () => {
         .eq("setting_key", "default_dashboard_cover_position")
         .maybeSingle();
 
+      const { data: attributionData } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "default_dashboard_cover_attribution")
+        .maybeSingle();
+
       setDefaultCoverUrl(urlData?.setting_value || null);
       setDefaultCoverPosition((positionData?.setting_value as "top" | "bottom" | "center") || "center");
+      setDefaultCoverAttribution(
+        attributionData?.setting_value ? JSON.parse(attributionData.setting_value) : null
+      );
     } catch (error) {
       console.error("Error loading default cover:", error);
       toast({
@@ -45,7 +55,11 @@ export const DashboardDefaultCover = () => {
     }
   };
 
-  const saveDefaultCover = async (url: string, position: string) => {
+  const saveDefaultCover = async (
+    url: string, 
+    position: string, 
+    attribution?: UnsplashAttribution
+  ) => {
     try {
       const { error: urlError } = await supabase
         .from("app_settings")
@@ -61,12 +75,23 @@ export const DashboardDefaultCover = () => {
           { onConflict: "setting_key" }
         );
 
-      if (urlError || positionError) {
-        throw urlError || positionError;
+      const { error: attributionError } = await supabase
+        .from("app_settings")
+        .upsert(
+          { 
+            setting_key: "default_dashboard_cover_attribution", 
+            setting_value: attribution ? JSON.stringify(attribution) : null 
+          },
+          { onConflict: "setting_key" }
+        );
+
+      if (urlError || positionError || attributionError) {
+        throw urlError || positionError || attributionError;
       }
 
       setDefaultCoverUrl(url);
       setDefaultCoverPosition(position as "top" | "bottom" | "center");
+      setDefaultCoverAttribution(attribution || null);
       setIsPickerOpen(false);
 
       toast({
@@ -139,6 +164,28 @@ export const DashboardDefaultCover = () => {
                   objectPosition: defaultCoverPosition,
                 }}
               />
+              {defaultCoverAttribution && (
+                <div className="absolute bottom-0 right-0 text-xs text-white/80 bg-black/40 px-2 py-1 backdrop-blur-sm">
+                  Photo by{" "}
+                  <a
+                    href={defaultCoverAttribution.photographer_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-white"
+                  >
+                    {defaultCoverAttribution.photographer}
+                  </a>
+                  {" "}on{" "}
+                  <a
+                    href={defaultCoverAttribution.unsplash_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-white"
+                  >
+                    Unsplash
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
