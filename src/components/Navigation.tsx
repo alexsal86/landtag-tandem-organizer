@@ -1,4 +1,4 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, Coffee, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { NavigationBadge } from "./NavigationBadge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
@@ -87,7 +87,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "contacts", label: "Kontakte", icon: Contact },
     { id: "tasks", label: "Aufgaben", icon: CheckSquare },
     { id: "decisions", label: "Entscheidungen", icon: Vote },
-    { id: "meetings", label: "Jour fixe", icon: Coffee },
+    { id: "meetings", label: "Jour fixe", icon: MessageSquare },
     { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
     { id: "wahlkreise", label: "Wahlkreise", icon: MapPin },
     { id: "documents", label: "Dokumente", icon: FileText },
@@ -203,39 +203,39 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       <SidebarHeader className="border-b">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center gap-2 w-full">
-              <SidebarMenuButton
-                onClick={() => onSectionChange("dashboard")}
-                size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground flex-1"
-              >
-                {appSettings.app_logo_url ? (
-                  <img 
-                    src={appSettings.app_logo_url} 
-                    alt="App Logo" 
-                    className="size-8 object-contain"
-                  />
-                ) : (
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <FileText className="size-4" />
-                  </div>
-                )}
-                {!isCollapsed && (
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{appSettings.app_name}</span>
-                    <span className="truncate text-xs">{appSettings.app_subtitle}</span>
-                  </div>
-                )}
-              </SidebarMenuButton>
-              <SidebarTrigger className="mr-2" />
-            </div>
+            <SidebarMenuButton
+              onClick={() => onSectionChange("dashboard")}
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground w-full justify-center"
+            >
+              {appSettings.app_logo_url ? (
+                <img 
+                  src={appSettings.app_logo_url} 
+                  alt="App Logo" 
+                  className="size-8 object-contain"
+                />
+              ) : (
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <FileText className="size-4" />
+                </div>
+              )}
+              {!isCollapsed && (
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">{appSettings.app_name}</span>
+                  <span className="truncate text-xs">{appSettings.app_subtitle}</span>
+                </div>
+              )}
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <div className="flex items-center justify-between px-2">
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarTrigger />
+          </div>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.filter(item => 
