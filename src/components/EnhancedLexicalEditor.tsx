@@ -491,64 +491,84 @@ function YjsContentSyncPlugin({
   const [editor] = useLexicalComposerContext();
   const yjsProvider = useYjsProvider();
   const lastSyncedContentRef = useRef<string>('');
-  const syncIntervalRef = useRef<NodeJS.Timeout>();
+  const [hasInitialized, setHasInitialized] = useState(false);
 
+  // Load initial content into Yjs when connected and synced
   useEffect(() => {
-    if (yjsProvider?.isSynced && (initialContentNodes || initialContent) && initialContent !== lastSyncedContentRef.current) {
-      console.log('🔄 [Hybrid] Syncing initial Supabase content to Yjs:', initialContent);
+    if (!yjsProvider?.isSynced || !yjsProvider?.isConnected || hasInitialized) return;
+    
+    const sharedRoot = yjsProvider.sharedType;
+    if (!sharedRoot) return;
+
+    // Only load initial content if Yjs document is empty
+    const yjsContent = sharedRoot.toString();
+    if (!yjsContent && (initialContent || initialContentNodes)) {
+      console.log(`[YjsContentSync] Loading initial content into Yjs document: ${documentId}`);
       
       editor.update(() => {
         const root = $getRoot();
         root.clear();
         
         if (initialContentNodes) {
-          // Try to deserialize JSON nodes first using official Lexical method
           try {
             const editorState = editor.parseEditorState(initialContentNodes);
             editor.setEditorState(editorState);
-            console.log('🎯 [Hybrid] Loaded content from JSON nodes');
+            console.log('[YjsContentSync] Initial content nodes loaded successfully');
             lastSyncedContentRef.current = initialContent;
-            return;
           } catch (error) {
-            console.warn('Failed to deserialize initial JSON nodes, falling back to plain text:', error);
+            console.warn('[YjsContentSync] Failed to parse content nodes, using plain text:', error);
+            if (initialContent && initialContent.trim()) {
+              const paragraph = $createParagraphNode();
+              paragraph.append($createTextNode(initialContent));
+              root.append(paragraph);
+            }
+            lastSyncedContentRef.current = initialContent;
           }
-        }
-        
-        if (initialContent && initialContent.trim()) {
+        } else if (initialContent && initialContent.trim()) {
           const paragraph = $createParagraphNode();
           paragraph.append($createTextNode(initialContent));
           root.append(paragraph);
+          console.log('[YjsContentSync] Initial plain text content loaded');
+          lastSyncedContentRef.current = initialContent;
         }
-        
-        lastSyncedContentRef.current = initialContent;
       });
+      
+      setHasInitialized(true);
+    } else if (yjsContent) {
+      console.log('[YjsContentSync] Yjs document already has content, skipping initial load');
+      setHasInitialized(true);
+      lastSyncedContentRef.current = yjsContent;
     }
-  }, [yjsProvider?.isSynced, initialContent, initialContentNodes, editor]);
+  }, [yjsProvider?.isSynced, yjsProvider?.isConnected, editor, initialContent, initialContentNodes, hasInitialized, documentId]);
 
+  // Debounced sync to parent component (for auto-save)
   useEffect(() => {
-    if (yjsProvider?.isSynced) {
-      syncIntervalRef.current = setInterval(() => {
-        editor.getEditorState().read(() => {
+    if (!yjsProvider?.isSynced || !onContentSync) return;
+
+    let timeoutId: NodeJS.Timeout;
+    
+    const unregister = editor.registerUpdateListener(({ editorState }) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        editorState.read(() => {
           const root = $getRoot();
           const currentContent = root.getTextContent();
-          const currentEditorState = editor.getEditorState();
-          const jsonContent = JSON.stringify(currentEditorState.toJSON());
+          const jsonContent = JSON.stringify(editorState.toJSON());
           
           if (currentContent !== lastSyncedContentRef.current) {
-            console.log('💾 [Hybrid] Syncing Yjs content back to Supabase:', currentContent);
+            console.log(`[YjsContentSync] Syncing content to parent (debounced): ${documentId}`);
             lastSyncedContentRef.current = currentContent;
             onContentSync(currentContent, jsonContent);
           }
         });
-      }, 2000);
-    }
+      }, 1000); // Debounce 1 second
+    });
 
     return () => {
-      if (syncIntervalRef.current) {
-        clearInterval(syncIntervalRef.current);
-      }
+      clearTimeout(timeoutId);
+      unregister();
     };
-  }, [yjsProvider?.isSynced, editor, onContentSync]);
+  }, [yjsProvider?.isSynced, editor, onContentSync, documentId]);
 
   return null;
 }

@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as Y from "https://esm.sh/yjs@13.6.18";
+import * as Y from "https://esm.sh/yjs@13.6.27";
 import * as syncProtocol from "https://esm.sh/y-protocols@1.0.6/sync";
 import * as awarenessProtocol from "https://esm.sh/y-protocols@1.0.6/awareness";
-import * as encoding from "https://esm.sh/lib0@0.2.98/encoding";
-import * as decoding from "https://esm.sh/lib0@0.2.98/decoding";
+import * as encoding from "https://esm.sh/lib0@0.2.97/encoding";
+import * as decoding from "https://esm.sh/lib0@0.2.97/decoding";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -120,11 +120,19 @@ serve(async (req) => {
             const responseEncoder = encoding.createEncoder();
             encoding.writeVarUint(responseEncoder, 0);
             syncProtocol.writeSyncStep2(responseEncoder, doc);
-            socket.send(encoding.toUint8Array(responseEncoder));
-          } else if (syncMessageType === syncProtocol.messageYjsSyncStep2 || 
-                     syncMessageType === syncProtocol.messageYjsUpdate) {
+            const syncResponse = encoding.toUint8Array(responseEncoder);
+            socket.send(syncResponse);
+            // Broadcast sync step 2 to all other clients
+            broadcastMessage(documentId, syncResponse, socket);
+            console.log(`[YJS] Sent and broadcast SyncStep2 for document ${documentId}`);
+          } else if (syncMessageType === syncProtocol.messageYjsSyncStep2) {
+            // Broadcast sync step 2 response to other clients
+            broadcastMessage(documentId, message, socket);
+            console.log(`[YJS] Broadcast SyncStep2 response for document ${documentId}`);
+          } else if (syncMessageType === syncProtocol.messageYjsUpdate) {
             // Broadcast update to other clients
             broadcastMessage(documentId, message, socket);
+            console.log(`[YJS] Broadcast update for document ${documentId}`);
           }
           break;
 
