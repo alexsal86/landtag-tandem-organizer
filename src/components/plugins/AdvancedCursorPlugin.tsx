@@ -15,9 +15,12 @@ interface CursorIndicator {
 
 export function AdvancedCursorPlugin() {
   const [editor] = useLexicalComposerContext();
-  const { provider } = useYjsProvider();
+  const yjsContext = useYjsProvider();
   const [cursors, setCursors] = useState<CursorIndicator[]>([]);
   const editorRef = useRef<HTMLDivElement | null>(null);
+
+  // Early return if context not available
+  const provider = yjsContext?.provider;
 
   useEffect(() => {
     if (!provider) return;
