@@ -133,6 +133,17 @@ function CollaborationPlugin({
 function YjsCollaborationEditor(props: any) {
   const yjsProvider = useYjsProvider();
   
+  // Handle local content changes for parent component
+  const handleYjsContentChange = useCallback((editorState: EditorState) => {
+    editorState.read(() => {
+      const root = $getRoot();
+      const textContent = root.getTextContent();
+      if (props.onContentSync) {
+        props.onContentSync(textContent);
+      }
+    });
+  }, [props]);
+  
   return (
     <div className="relative min-h-[200px] border rounded-md">
       <LexicalComposer 
@@ -159,6 +170,9 @@ function YjsCollaborationEditor(props: any) {
             id={props.documentId}
             shouldBootstrap={true}
           />
+          
+          {/* OnChangePlugin to capture local changes */}
+          <OnChangePlugin onChange={handleYjsContentChange} />
           
           {/* Comment Plugin for collaborative annotations */}
           <CommentPlugin documentId={props.documentId} />

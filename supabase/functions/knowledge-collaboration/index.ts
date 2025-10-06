@@ -111,6 +111,7 @@ serve(async (req) => {
 
       switch (messageType) {
         case 0: // sync
+          const encoder = encoding.createEncoder();
           encoding.writeVarUint(encoder, 0);
           const syncMessageType = syncProtocol.readSyncMessage(decoder, encoder, doc, null);
           
