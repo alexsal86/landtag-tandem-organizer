@@ -16,29 +16,14 @@ export function LexicalYjsCollaborationPlugin({
   shouldBootstrap = true 
 }: LexicalYjsCollaborationPluginProps) {
   const [editor] = useLexicalComposerContext();
-  const { doc, isSynced, provider, collaborators, currentUser } = useYjsProvider();
+  const { doc, isSynced, provider, collaborators, currentUser, clientId } = useYjsProvider();
   const { user } = useAuth();
   const lastContentRef = useRef<string>('');
   const isApplyingYjsUpdateRef = useRef<boolean>(false);
   const isApplyingLexicalUpdateRef = useRef<boolean>(false);
   const hasBootstrapped = useRef<boolean>(false);
   
-  // Use stable clientId from localStorage (initialized once per document+id)
-  const clientId = useRef<string>('');
-  
-  // Initialize stable clientId once
-  React.useEffect(() => {
-    if (!clientId.current) {
-      const storageKey = `yjs-lexical-client-${id}`;
-      let storedClientId = localStorage.getItem(storageKey);
-      if (!storedClientId) {
-        storedClientId = `lexical-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        localStorage.setItem(storageKey, storedClientId);
-      }
-      clientId.current = storedClientId;
-      console.log('[LexicalYjsCollaboration] Using stable clientId:', clientId.current);
-    }
-  }, [id]);
+  console.log('[LexicalYjsCollaboration] Using clientId from Provider:', clientId);
 
   useEffect(() => {
     if (!doc || !editor || !isSynced) return;
@@ -49,23 +34,15 @@ export function LexicalYjsCollaborationPlugin({
     const sharedText = doc.getText('content');
 
     const applyYjsToLexical = (origin?: any, transactionOrigin?: string) => {
-      // Prevent echo: skip if this update originated from our own Lexical editor or from network with our clientId
-      const isOwnUpdate = origin === clientId.current || transactionOrigin === clientId.current;
-      
-      if (isOwnUpdate) {
-        console.log(`[LexicalYjsCollaboration:${clientId.current}] Skipping echo - origin:`, origin, 'transaction:', transactionOrigin);
-        return;
-      }
-      
       const content = sharedText.toString();
       
       // Skip if we're already applying a Yjs update or content hasn't changed
       if (isApplyingYjsUpdateRef.current || content === lastContentRef.current) {
-        console.log(`[LexicalYjsCollaboration:${clientId.current}] Skipping - applying:${isApplyingYjsUpdateRef.current}, unchanged:${content === lastContentRef.current}`);
+        console.log(`[LexicalYjsCollaboration:${clientId}] Skipping - applying:${isApplyingYjsUpdateRef.current}, unchanged:${content === lastContentRef.current}`);
         return;
       }
 
-      console.log(`[LexicalYjsCollaboration:${clientId.current}] Applying Yjs content to Lexical:`, {
+      console.log(`[LexicalYjsCollaboration:${clientId}] Applying Yjs content to Lexical:`, {
         origin,
         transactionOrigin,
         contentLength: content.length,
@@ -99,7 +76,7 @@ export function LexicalYjsCollaborationPlugin({
           lastContentRef.current = content;
         });
       } catch (error) {
-        console.error(`[LexicalYjsCollaboration:${clientId.current}] Error applying Yjs content:`, error);
+        console.error(`[LexicalYjsCollaboration:${clientId}] Error applying Yjs content:`, error);
       } finally {
         // Reset flag immediately after update completes
         isApplyingYjsUpdateRef.current = false;
@@ -109,14 +86,14 @@ export function LexicalYjsCollaborationPlugin({
     // Observe remote Yjs changes with improved error handling
     const yObserver = (event: any, transaction: any) => {
       try {
-        console.log(`[LexicalYjsCollaboration:${clientId.current}] Yjs change detected:`, {
+        console.log(`[LexicalYjsCollaboration:${clientId}] Yjs change detected:`, {
           origin: transaction?.origin,
-          clientId: clientId.current,
+          clientId: clientId,
           isLocal: transaction?.local
         });
         applyYjsToLexical(transaction?.origin, transaction?.origin);
       } catch (error) {
-        console.error(`[LexicalYjsCollaboration:${clientId.current}] Error in Yjs observer:`, error);
+        console.error(`[LexicalYjsCollaboration:${clientId}] Error in Yjs observer:`, error);
       }
     };
     
@@ -124,7 +101,7 @@ export function LexicalYjsCollaborationPlugin({
 
     // Initial bootstrap from Yjs (only once after sync)
     if (shouldBootstrap && !hasBootstrapped.current) {
-      console.log(`[LexicalYjsCollaboration:${clientId.current}] Bootstrapping from existing Yjs content`);
+      console.log(`[LexicalYjsCollaboration:${clientId}] Bootstrapping from existing Yjs content`);
       applyYjsToLexical('bootstrap', 'bootstrap');
       hasBootstrapped.current = true;
     }
@@ -133,7 +110,7 @@ export function LexicalYjsCollaborationPlugin({
     const unregister = editor.registerUpdateListener(({ editorState, dirtyElements, dirtyLeaves }) => {
       // Skip if we're currently applying Yjs or Lexical updates
       if (isApplyingYjsUpdateRef.current || isApplyingLexicalUpdateRef.current) {
-        console.log(`[LexicalYjsCollaboration:${clientId.current}] Skipping update - applying updates (Yjs:${isApplyingYjsUpdateRef.current}, Lexical:${isApplyingLexicalUpdateRef.current})`);
+        console.log(`[LexicalYjsCollaboration:${clientId}] Skipping update - applying updates (Yjs:${isApplyingYjsUpdateRef.current}, Lexical:${isApplyingLexicalUpdateRef.current})`);
         return;
       }
       
@@ -143,10 +120,10 @@ export function LexicalYjsCollaborationPlugin({
           
           // Only update if text actually changed from what we last saw
           if (text !== lastContentRef.current) {
-            console.log(`[LexicalYjsCollaboration:${clientId.current}] Pushing Lexical content to Yjs:`, {
+            console.log(`[LexicalYjsCollaboration:${clientId}] Pushing Lexical content to Yjs:`, {
               textLength: text.length,
               preview: text.slice(0, 50),
-              clientId: clientId.current
+              clientId: clientId
             });
             
             isApplyingLexicalUpdateRef.current = true;
@@ -187,32 +164,32 @@ export function LexicalYjsCollaborationPlugin({
                 sharedText.insert(deleteStart, insertText);
               }
               
-              console.log(`[LexicalYjsCollaboration:${clientId.current}] Granular update applied:`, {
+              console.log(`[LexicalYjsCollaboration:${clientId}] Granular update applied:`, {
                 deleteStart,
                 deleteLength,
                 insertLength: insertText.length
               });
-            }, clientId.current); // Pass clientId as transaction origin
+            }, clientId); // Pass clientId as transaction origin
             
             isApplyingLexicalUpdateRef.current = false;
           }
         });
       } catch (error) {
-        console.error(`[LexicalYjsCollaboration:${clientId.current}] Error pushing to Yjs:`, error);
+        console.error(`[LexicalYjsCollaboration:${clientId}] Error pushing to Yjs:`, error);
         isApplyingLexicalUpdateRef.current = false;
       }
     });
 
     return () => {
-      console.log(`[LexicalYjsCollaboration:${clientId.current}] Cleaning up Yjs text binding`);
+      console.log(`[LexicalYjsCollaboration:${clientId}] Cleaning up Yjs text binding`);
       try {
         sharedText.unobserveDeep(yObserver);
         unregister();
       } catch (error) {
-        console.error(`[LexicalYjsCollaboration:${clientId.current}] Error during cleanup:`, error);
+        console.error(`[LexicalYjsCollaboration:${clientId}] Error during cleanup:`, error);
       }
     };
-  }, [doc, editor, id, isSynced, shouldBootstrap]);
+  }, [doc, editor, id, isSynced, shouldBootstrap, clientId]);
 
   // Render collaboration UI with cursor information
   if (!collaborators || collaborators.length === 0) {

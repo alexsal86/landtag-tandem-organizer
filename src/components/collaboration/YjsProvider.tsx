@@ -116,11 +116,13 @@ class SupabaseYjsProvider {
 
     // Listen to local Yjs updates to broadcast via Supabase with throttling
     this.doc.on('update', (update: Uint8Array, origin: any) => {
-      // Don't broadcast if update originated from network or from this client
-      if (origin !== 'network' && origin !== this.clientId && this.channel) {
-        console.log(`[SupabaseYjsProvider] Throttled broadcast from client: ${this.clientId}, origin: ${origin}`);
+      // Only broadcast if update did NOT originate from network or this client
+      const isOwnUpdate = origin === 'network' || origin === this.clientId;
+      
+      if (!isOwnUpdate && this.channel) {
+        console.log(`[SupabaseYjsProvider] Broadcasting update - origin: ${origin}, clientId: ${this.clientId}`);
         throttledBroadcast(update);
-      } else if (origin === this.clientId || origin === 'network') {
+      } else {
         console.log(`[SupabaseYjsProvider] Skipping broadcast - origin: ${origin}, clientId: ${this.clientId}`);
       }
     });
@@ -212,6 +214,7 @@ class SupabaseYjsProvider {
 export interface YjsProviderContextValue {
   doc: Y.Doc | null;
   provider: SupabaseYjsProvider | null;
+  clientId: string;
   isConnected: boolean;
   isSynced: boolean;
   collaborators: any[];
@@ -221,6 +224,7 @@ export interface YjsProviderContextValue {
 export const YjsProviderContext = React.createContext<YjsProviderContextValue>({
   doc: null,
   provider: null,
+  clientId: '',
   isConnected: false,
   isSynced: false,
   collaborators: [],
@@ -355,6 +359,7 @@ export function YjsProvider({
   const contextValue: YjsProviderContextValue = {
     doc: docRef.current,
     provider: providerRef.current,
+    clientId: providerRef.current?.['clientId'] || '',
     isConnected,
     isSynced,
     collaborators,
