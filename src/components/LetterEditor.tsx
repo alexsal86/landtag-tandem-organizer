@@ -312,14 +312,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   }, [isOpen, currentTenant, editedLetter?.template_id, letter?.template_id, letter?.id, senderInfos.length, informationBlocks.length]);
 
-  // Auto-save functionality with improved performance - INCLUDES PAGINATION
+  // Auto-save functionality with optimized performance
   useEffect(() => {
-    console.log('=== AUTO-SAVE EFFECT TRIGGERED ===');
-    console.log('canEdit:', canEdit);
-    console.log('isUpdatingFromRemoteRef.current:', isUpdatingFromRemoteRef.current);
-    console.log('letter?.id:', letter?.id);
-    console.log('showPagination (for auto-save):', showPagination);
-    
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
 
     if (saveTimeoutRef.current) {
@@ -328,18 +322,33 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
     saveTimeoutRef.current = setTimeout(() => {
       if (!isUpdatingFromRemoteRef.current && letter?.id) {
-        console.log('=== TRIGGERING AUTO-SAVE WITH PAGINATION ===');
-        console.log('showPagination at auto-save time:', showPagination);
         handleAutoSave();
       }
-    }, 500); // Reduced from 3000ms to 500ms for faster responsiveness
+    }, 2000); // Increased to 2000ms to prevent focus disruption
 
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [editedLetter, canEdit, letter?.id, showPagination]); // WICHTIG: showPagination als Dependency hinzugefügt
+  }, [
+    // Only track specific fields instead of entire editedLetter object
+    editedLetter.title,
+    editedLetter.content,
+    editedLetter.content_html,
+    editedLetter.content_nodes,
+    editedLetter.recipient_name,
+    editedLetter.recipient_address,
+    editedLetter.subject,
+    editedLetter.reference_number,
+    editedLetter.sender_info_id,
+    editedLetter.information_block_ids,
+    editedLetter.template_id,
+    editedLetter.letter_date,
+    showPagination,
+    canEdit,
+    letter?.id
+  ]);
 
   // Real-time collaboration status (now handled by Yjs)
   useEffect(() => {

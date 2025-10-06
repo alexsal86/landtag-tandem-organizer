@@ -95,10 +95,12 @@ class SupabaseYjsProvider {
       });
 
     // Listen to local Yjs updates to broadcast via Supabase
-    this.doc.on('update', (update: Uint8Array, origin: any) => {
-      // Don't broadcast if update originated from network or from this client
-      if (origin !== 'network' && origin !== this.clientId && this.channel) {
-        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update from client: ${this.clientId}, origin: ${origin}`);
+    // Throttled broadcast for performance
+    let broadcastTimeout: ReturnType<typeof setTimeout> | null = null;
+    const throttledBroadcast = (update: Uint8Array) => {
+      if (broadcastTimeout) return;
+      
+      broadcastTimeout = setTimeout(() => {
         this.channel.send({
           type: 'broadcast',
           event: 'yjs-update',
@@ -108,6 +110,16 @@ class SupabaseYjsProvider {
             update: Array.from(update)
           }
         });
+        broadcastTimeout = null;
+      }, 50); // Max 20 updates/second
+    };
+
+    // Listen to local Yjs updates to broadcast via Supabase with throttling
+    this.doc.on('update', (update: Uint8Array, origin: any) => {
+      // Don't broadcast if update originated from network or from this client
+      if (origin !== 'network' && origin !== this.clientId && this.channel) {
+        console.log(`[SupabaseYjsProvider] Throttled broadcast from client: ${this.clientId}, origin: ${origin}`);
+        throttledBroadcast(update);
       } else if (origin === this.clientId || origin === 'network') {
         console.log(`[SupabaseYjsProvider] Skipping broadcast - origin: ${origin}, clientId: ${this.clientId}`);
       }
