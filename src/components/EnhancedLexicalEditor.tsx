@@ -81,6 +81,7 @@ interface EnhancedLexicalEditorProps {
   enableCollaboration?: boolean;
   useYjsCollaboration?: boolean;
   showToolbar?: boolean;
+  readOnly?: boolean;
   onConnectionChange?: (connected: boolean) => void;
 }
 
@@ -673,6 +674,7 @@ export default function EnhancedLexicalEditor({
   enableCollaboration = false,
   useYjsCollaboration = ENABLE_YJS_COLLABORATION,
   showToolbar = true,
+  readOnly = false,
   onConnectionChange
 }: EnhancedLexicalEditorProps) {
   const [localContent, setLocalContent] = useState(content);
@@ -704,6 +706,7 @@ export default function EnhancedLexicalEditor({
 
   const initialConfig = useMemo(() => ({
     namespace: 'EnhancedEditor',
+    editable: !readOnly, // Add readOnly support
     theme: {
       text: {
         bold: 'font-bold',
@@ -747,7 +750,7 @@ export default function EnhancedLexicalEditor({
     onError: (error: Error) => {
       console.error('Lexical error:', error);
     }
-  }), []);
+  }), [readOnly]);
 
   const handleContentChange = useCallback((newContent: string, newContentNodes?: string) => {
     setLocalContent(newContent);
@@ -778,6 +781,7 @@ export default function EnhancedLexicalEditor({
           placeholder={placeholder}
           documentId={documentId}
           showToolbar={showToolbar}
+          readOnly={readOnly}
           initialContent={content}
           initialContentNodes={contentNodes}
           onContentSync={handleYjsContentSync}

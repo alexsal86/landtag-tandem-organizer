@@ -21,6 +21,7 @@ import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
 import { ContactSelector } from './ContactSelector';
+import { YjsProvider } from '@/components/collaboration/YjsProvider';
 
 interface Letter {
   id: string;
@@ -1747,60 +1748,84 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
               {/* Enhanced Lexical Editor with Collaboration */}
               <div className="relative">
-                <EnhancedLexicalEditor
-                  content={editedLetter.content || ''}
-                  contentNodes={editedLetter.content_nodes}
-                   onChange={(content, contentNodes) => {
-                     if (isUpdatingFromRemoteRef.current || !canEdit) return;
-                     
-                     console.log('📝 [LetterEditor] Content changed:', { 
-                       plainTextLength: content?.length, 
-                       hasJsonContent: !!contentNodes,
-                       jsonLength: contentNodes?.length,
-                       contentPreview: content?.slice(0, 50),
-                       jsonPreview: contentNodes?.slice(0, 100) || 'null'
-                     });
-                     
-                     // Validate content before processing to prevent corruption
-                     if (content && content.includes('{"root":{"children"') && content.split('{"root":{"children"').length > 2) {
-                       console.error('🚨 Rejected corrupted content in onChange handler');
-                       return;
-                     }
-                     
-                     const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
-                     
-                     // Update the ref with latest content for immediate access
-                     latestContentRef.current = {
-                       content: content?.trim() || '',
-                       contentNodes: processedContentNodes
-                     };
-                     
-                     setEditedLetter(prev => ({
-                       ...prev,
-                       content: content?.trim() || '',
-                       content_nodes: processedContentNodes
-                     }));
-                    
-                     // Trigger immediate auto-save with new content to avoid timing issues
-                     if (saveTimeoutRef.current) {
-                       clearTimeout(saveTimeoutRef.current);
-                     }
-                     
-                     saveTimeoutRef.current = setTimeout(() => {
-                       if (!isUpdatingFromRemoteRef.current && letter?.id) {
-                         console.log('=== IMMEDIATE AUTO-SAVE AFTER CONTENT CHANGE ===');
-                         handleAutoSave(content?.trim() || '', processedContentNodes);
-                       }
-                     }, 300); // Shorter delay for content changes
-                    
-                    // Content synchronization handled by Yjs collaboration
-                   }}
-                  placeholder="Hier können Sie Ihren Brief verfassen..."
-                  documentId={letter?.id}
-                  enableCollaboration={!!letter?.id}
-                  useYjsCollaboration={true}
-                  showToolbar={true}
-                />
+                {letter?.id ? (
+                  <YjsProvider documentId={letter.id}>
+                    <EnhancedLexicalEditor
+                      content={editedLetter.content || ''}
+                      contentNodes={editedLetter.content_nodes}
+                      onChange={(content, contentNodes) => {
+                        if (isUpdatingFromRemoteRef.current || !canEdit) return;
+                        
+                        console.log('📝 [LetterEditor] Content changed:', { 
+                          plainTextLength: content?.length, 
+                          hasJsonContent: !!contentNodes,
+                          jsonLength: contentNodes?.length,
+                          contentPreview: content?.slice(0, 50),
+                          jsonPreview: contentNodes?.slice(0, 100) || 'null'
+                        });
+                        
+                        // Validate content before processing to prevent corruption
+                        if (content && content.includes('{"root":{"children"') && content.split('{"root":{"children"').length > 2) {
+                          console.error('🚨 Rejected corrupted content in onChange handler');
+                          return;
+                        }
+                        
+                        const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
+                        
+                        // Update the ref with latest content for immediate access
+                        latestContentRef.current = {
+                          content: content?.trim() || '',
+                          contentNodes: processedContentNodes
+                        };
+                        
+                        setEditedLetter(prev => ({
+                          ...prev,
+                          content: content?.trim() || '',
+                          content_nodes: processedContentNodes
+                        }));
+                       
+                        // Trigger immediate auto-save with new content to avoid timing issues
+                        if (saveTimeoutRef.current) {
+                          clearTimeout(saveTimeoutRef.current);
+                        }
+                        
+                        saveTimeoutRef.current = setTimeout(() => {
+                          if (!isUpdatingFromRemoteRef.current && letter?.id) {
+                            console.log('=== IMMEDIATE AUTO-SAVE AFTER CONTENT CHANGE ===');
+                            handleAutoSave(content?.trim() || '', processedContentNodes);
+                          }
+                        }, 300); // Shorter delay for content changes
+                       
+                        // Content synchronization handled by Yjs collaboration
+                      }}
+                      placeholder="Hier können Sie Ihren Brief verfassen..."
+                      documentId={letter.id}
+                      enableCollaboration={true}
+                      useYjsCollaboration={true}
+                      showToolbar={true}
+                      readOnly={!canEdit}
+                    />
+                  </YjsProvider>
+                ) : (
+                  <EnhancedLexicalEditor
+                    content={editedLetter.content || ''}
+                    contentNodes={editedLetter.content_nodes}
+                    onChange={(content, contentNodes) => {
+                      if (isUpdatingFromRemoteRef.current || !canEdit) return;
+                      
+                      const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
+                      
+                      setEditedLetter(prev => ({
+                        ...prev,
+                        content: content?.trim() || '',
+                        content_nodes: processedContentNodes
+                      }));
+                    }}
+                    placeholder="Hier können Sie Ihren Brief verfassen..."
+                    showToolbar={true}
+                    readOnly={!canEdit}
+                  />
+                )}
               </div>
 
             </div>
