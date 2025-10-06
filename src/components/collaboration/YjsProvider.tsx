@@ -93,12 +93,11 @@ export function YjsProvider({
     // Create WebSocket provider
     const provider = new WebsocketProvider(
       wsUrl,
-      documentId,
+      documentId, // y-websocket appends this to the URL path
       doc,
       {
         params: {
-          documentId,
-          userId: user.id
+          userId: user.id // Only userId as query parameter
         }
       }
     );

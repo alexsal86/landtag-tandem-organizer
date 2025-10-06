@@ -74,7 +74,9 @@ Deno.serve(async (req) => {
   }
 
   const url = new URL(req.url);
-  const documentId = url.searchParams.get("documentId") || "default";
+  // Extract documentId from URL path (last segment)
+  const pathParts = url.pathname.split('/').filter(Boolean);
+  const documentId = pathParts[pathParts.length - 1] || "default";
   const userId = url.searchParams.get("userId") || "anonymous";
 
   console.log(`[Relay] WebSocket upgrade - Document: ${documentId}, User: ${userId}`);
