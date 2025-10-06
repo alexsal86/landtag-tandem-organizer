@@ -72,11 +72,11 @@ class SupabaseYjsProvider {
             return;
           }
           
-          console.log(`[SupabaseYjsProvider] Received remote Yjs update from client: ${payload.clientId}`);
+          console.log(`[SupabaseYjsProvider] 📥 Received remote Yjs update from client: ${payload.clientId}`);
           try {
             const update = new Uint8Array(payload.update);
-            // Apply with 'network' origin to prevent re-broadcasting
-            Y.applyUpdate(this.doc, update, 'network');
+            // Apply with sender's clientId as origin for echo-prevention in plugin
+            Y.applyUpdate(this.doc, update, payload.clientId);
           } catch (e) {
             console.warn('[SupabaseYjsProvider] Failed to apply remote update:', e);
           }

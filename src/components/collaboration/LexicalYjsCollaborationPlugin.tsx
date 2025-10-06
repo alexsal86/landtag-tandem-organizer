@@ -126,7 +126,7 @@ export function LexicalYjsCollaborationPlugin({
           
           // Only update if text actually changed from what we last saw
           if (text !== lastContentRef.current) {
-            console.log(`[LexicalYjsCollaboration:${clientId}] Pushing Lexical content to Yjs:`, {
+            console.log(`[LexicalYjsCollaboration:${clientId}] 📝 Lexical update detected, pushing to Yjs:`, {
               textLength: text.length,
               preview: text.slice(0, 50),
               clientId: clientId
@@ -134,11 +134,9 @@ export function LexicalYjsCollaborationPlugin({
             
             isApplyingLexicalUpdateRef.current = true;
             
-            // Update reference BEFORE sending to Yjs to prevent race conditions
-            lastContentRef.current = text;
-            
-            // Use granular diff-based updates instead of delete-all-then-insert
-            doc.transact(() => {
+            try {
+              // Use granular diff-based updates instead of delete-all-then-insert
+              doc.transact(() => {
               const currentText = sharedText.toString();
               
               // Calculate common prefix
@@ -170,19 +168,23 @@ export function LexicalYjsCollaborationPlugin({
                 sharedText.insert(deleteStart, insertText);
               }
               
-              console.log(`[LexicalYjsCollaboration:${clientId}] Granular update applied:`, {
+              console.log(`[LexicalYjsCollaboration:${clientId}] ✅ Granular update applied:`, {
                 deleteStart,
                 deleteLength,
                 insertLength: insertText.length
               });
             }, clientId); // Pass clientId as transaction origin
             
-            isApplyingLexicalUpdateRef.current = false;
+              // Update reference AFTER transaction completes
+              lastContentRef.current = text;
+            } finally {
+              // Always reset flag, even on error
+              isApplyingLexicalUpdateRef.current = false;
+            }
           }
         });
       } catch (error) {
-        console.error(`[LexicalYjsCollaboration:${clientId}] Error pushing to Yjs:`, error);
-        isApplyingLexicalUpdateRef.current = false;
+        console.error(`[LexicalYjsCollaboration:${clientId}] ❌ Error pushing to Yjs:`, error);
       }
     });
 
