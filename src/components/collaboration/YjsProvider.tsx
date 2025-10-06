@@ -116,14 +116,14 @@ class SupabaseYjsProvider {
 
     // Listen to local Yjs updates to broadcast via Supabase with throttling
     this.doc.on('update', (update: Uint8Array, origin: any) => {
-      // Only broadcast if update did NOT originate from network or this client
-      const isOwnUpdate = origin === 'network' || origin === this.clientId;
+      // Only skip updates that came FROM the network (already received from remote)
+      const isNetworkUpdate = origin === 'network';
       
-      if (!isOwnUpdate && this.channel) {
-        console.log(`[SupabaseYjsProvider] Broadcasting update - origin: ${origin}, clientId: ${this.clientId}`);
+      if (!isNetworkUpdate && this.channel) {
+        console.log(`[SupabaseYjsProvider] 📤 Broadcasting update - origin: ${origin}, clientId: ${this.clientId}`);
         throttledBroadcast(update);
       } else {
-        console.log(`[SupabaseYjsProvider] Skipping broadcast - origin: ${origin}, clientId: ${this.clientId}`);
+        console.log(`[SupabaseYjsProvider] ⏭️  Skipping broadcast (network update) - origin: ${origin}`);
       }
     });
 

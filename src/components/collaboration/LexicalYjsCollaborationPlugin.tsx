@@ -86,7 +86,13 @@ export function LexicalYjsCollaborationPlugin({
     // Observe remote Yjs changes with improved error handling
     const yObserver = (event: any, transaction: any) => {
       try {
-        console.log(`[LexicalYjsCollaboration:${clientId}] Yjs change detected:`, {
+        // Echo-prevention: Skip updates that originated from this client
+        if (transaction?.origin === clientId) {
+          console.log(`[LexicalYjsCollaboration:${clientId}] ⏭️  Skipping own update (echo prevention)`);
+          return;
+        }
+        
+        console.log(`[LexicalYjsCollaboration:${clientId}] 📥 Receiving remote Yjs change:`, {
           origin: transaction?.origin,
           clientId: clientId,
           isLocal: transaction?.local

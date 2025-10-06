@@ -13,7 +13,7 @@ import CollaborationStatus from './CollaborationStatus';
 import { YjsProvider, useYjsProvider } from './collaboration/YjsProvider';
 import { LexicalYjsCollaborationPlugin } from './collaboration/LexicalYjsCollaborationPlugin';
 import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
-import { CommentMarkNode } from './plugins/CommentPlugin';
+import { CommentMarkNode, CommentPlugin } from './plugins/CommentPlugin';
 import { MarkNode } from '@lexical/mark';
 import { sanitizeContent, parseContentSafely, areContentsEquivalent } from '@/utils/contentValidation';
 
@@ -168,6 +168,9 @@ function YjsCollaborationEditor(props: any) {
               id={props.documentId}
               shouldBootstrap={true}
             />
+            
+            {/* Comment Plugin for collaborative annotations */}
+            <CommentPlugin documentId={props.documentId} />
             
             <HistoryPlugin />
           </div>
@@ -386,6 +389,9 @@ export default function SimpleLexicalEditor({
             )}
             
             <HistoryPlugin />
+            
+            {/* Comment Plugin for annotations */}
+            {documentId && <CommentPlugin documentId={documentId} />}
             
             {!enableCollaboration && (
               <ContentPlugin content={localContent} />
