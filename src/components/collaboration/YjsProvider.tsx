@@ -40,6 +40,18 @@ export function YjsProvider({
   const [isConnected, setIsConnected] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
   const [collaborators, setCollaborators] = useState<any[]>([]);
+  
+  // Store callbacks in refs to prevent re-rendering
+  const onConnectedRef = useRef(onConnected);
+  const onDisconnectedRef = useRef(onDisconnected);
+  const onCollaboratorsChangeRef = useRef(onCollaboratorsChange);
+  
+  // Update refs when callbacks change
+  useEffect(() => {
+    onConnectedRef.current = onConnected;
+    onDisconnectedRef.current = onDisconnected;
+    onCollaboratorsChangeRef.current = onCollaboratorsChange;
+  }, [onConnected, onDisconnected, onCollaboratorsChange]);
 
   // Get current user
   const currentUser = user ? {
@@ -99,10 +111,10 @@ export function YjsProvider({
       setIsConnected(connected);
       
       if (connected) {
-        onConnected?.();
+        onConnectedRef.current?.();
         toast.success('Mit Collaboration-Server verbunden');
       } else if (status === 'disconnected') {
-        onDisconnected?.();
+        onDisconnectedRef.current?.();
         toast.error('Verbindung zum Collaboration-Server verloren');
       }
     });
@@ -129,7 +141,7 @@ export function YjsProvider({
       
       console.log('[YjsProvider] Collaborators changed:', states.length);
       setCollaborators(states);
-      onCollaboratorsChange?.(states);
+      onCollaboratorsChangeRef.current?.(states);
     };
 
     provider.awareness.on('change', updateCollaborators);
@@ -155,7 +167,7 @@ export function YjsProvider({
       providerRef.current = null;
       persistenceRef.current = null;
     };
-  }, [documentId, user?.id, onConnected, onDisconnected, onCollaboratorsChange]);
+  }, [documentId, user?.id]); // Only re-run when document or user changes
 
   // Always render children, context will be available once connected
   const contextValue: YjsProviderContextValue | null = 
