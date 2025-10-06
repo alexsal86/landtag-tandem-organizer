@@ -74,8 +74,8 @@ export function YjsProvider({
       setIsSynced(true);
     });
 
-    // Build WebSocket URL for Supabase Edge Function
-    const wsUrl = `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/knowledge-collaboration`;
+    // Build WebSocket URL for Supabase Edge Function - LETTER COLLABORATION
+    const wsUrl = `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/letter-collaboration`;
     console.log('[YjsProvider] Connecting to WebSocket:', wsUrl);
 
     // Create WebSocket provider
@@ -157,21 +157,20 @@ export function YjsProvider({
     };
   }, [documentId, user?.id, onConnected, onDisconnected, onCollaboratorsChange]);
 
-  // Only provide context once we have doc and provider initialized
-  if (!docRef.current || !providerRef.current) {
-    return null;
-  }
-
-  const contextValue: YjsProviderContextValue = {
-    doc: docRef.current,
-    provider: providerRef.current,
-    sharedType: docRef.current.getText('lexical'),
-    clientId: providerRef.current.awareness.clientID.toString(),
-    isConnected,
-    isSynced,
-    collaborators,
-    currentUser,
-  };
+  // Always render children, context will be available once connected
+  const contextValue: YjsProviderContextValue | null = 
+    (docRef.current && providerRef.current) 
+      ? {
+          doc: docRef.current,
+          provider: providerRef.current,
+          sharedType: docRef.current.getText('lexical'),
+          clientId: providerRef.current.awareness.clientID.toString(),
+          isConnected,
+          isSynced,
+          collaborators,
+          currentUser,
+        }
+      : null;
 
   return (
     <YjsProviderContext.Provider value={contextValue}>
@@ -182,8 +181,6 @@ export function YjsProvider({
 
 export function useYjsProvider() {
   const context = useContext(YjsProviderContext);
-  if (!context) {
-    throw new Error('useYjsProvider must be used within a YjsProvider');
-  }
+  // Return null if not yet available, don't throw error
   return context;
 }

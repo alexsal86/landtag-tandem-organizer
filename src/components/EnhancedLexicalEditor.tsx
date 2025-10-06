@@ -626,6 +626,9 @@ function YjsCollaborationEditor(props: any) {
             
             <OfficialLexicalYjsPlugin
               id={props.documentId}
+              provider={yjsProvider?.provider}
+              doc={yjsProvider?.doc}
+              sharedType={yjsProvider?.sharedType}
               shouldBootstrap={true}
             />
             

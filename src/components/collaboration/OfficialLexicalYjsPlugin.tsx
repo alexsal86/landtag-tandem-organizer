@@ -7,6 +7,9 @@ import { Loader2 } from "lucide-react";
 
 interface OfficialLexicalYjsPluginProps {
   id: string;
+  provider?: any;
+  doc?: any;
+  sharedType?: any;
   shouldBootstrap?: boolean;
 }
 
@@ -16,14 +19,22 @@ interface OfficialLexicalYjsPluginProps {
  */
 export function OfficialLexicalYjsPlugin({
   id,
+  provider,
+  doc,
+  sharedType,
   shouldBootstrap = true,
 }: OfficialLexicalYjsPluginProps) {
   const [editor] = useLexicalComposerContext();
   const yjsContext = useYjsProvider();
   const bindingRef = useRef<Binding | null>(null);
 
+  // Use provided props or fallback to context
+  const finalProvider = provider || yjsContext?.provider;
+  const finalDoc = doc || yjsContext?.doc;
+  const finalSharedType = sharedType || yjsContext?.sharedType;
+
   useEffect(() => {
-    if (!yjsContext?.isConnected || !yjsContext?.isSynced || !yjsContext?.sharedType) {
+    if (!yjsContext?.isConnected || !yjsContext?.isSynced || !finalSharedType) {
       return;
     }
 
@@ -33,17 +44,17 @@ export function OfficialLexicalYjsPlugin({
 
     console.log("[OfficialLexicalYjsPlugin] Creating binding...", {
       id,
-      docId: yjsContext.doc.guid,
+      docId: finalDoc?.guid,
     });
 
     // Create the binding between Lexical editor and Yjs
     // WebsocketProvider needs type assertion as it implements Provider-like interface
     const binding = createBinding(
       editor,
-      yjsContext.provider as any,
+      finalProvider as any,
       id,
-      yjsContext.doc,
-      new Map([[id, yjsContext.doc]]) // Map of document ID to Y.Doc
+      finalDoc,
+      new Map([[id, finalDoc]]) // Map of document ID to Y.Doc
     );
 
     bindingRef.current = binding;
@@ -57,7 +68,7 @@ export function OfficialLexicalYjsPlugin({
         bindingRef.current = null;
       }
     };
-  }, [editor, yjsContext, id]);
+  }, [editor, yjsContext, id, finalProvider, finalDoc, finalSharedType]);
 
   // Show loading state while connecting/syncing
   if (!yjsContext?.isConnected || !yjsContext?.isSynced) {
