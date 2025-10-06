@@ -578,6 +578,14 @@ function YjsContentSyncPlugin({
 function YjsCollaborationEditor(props: any) {
   const yjsProvider = useYjsProvider();
   const [showCollabDashboard, setShowCollabDashboard] = React.useState(false);
+  const [editor] = useLexicalComposerContext();
+  
+  // Update editor editable state when readOnly prop changes
+  React.useEffect(() => {
+    if (editor) {
+      editor.setEditable(!props.readOnly);
+    }
+  }, [editor, props.readOnly]);
   
   return (
     <div className="relative min-h-[200px] border rounded-md overflow-hidden">
@@ -585,7 +593,7 @@ function YjsCollaborationEditor(props: any) {
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="text-sm text-muted-foreground flex items-center gap-2">
             <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            {!yjsProvider?.isConnected ? 'Connecting...' : 'Synchronizing...'}
+            {!yjsProvider?.isConnected ? 'Verbindung wird hergestellt...' : 'Synchronisierung läuft...'}
           </div>
         </div>
       )}
@@ -598,68 +606,65 @@ function YjsCollaborationEditor(props: any) {
       />
       
       <YjsSyncStatus>
-        <LexicalComposer 
-          initialConfig={props.initialConfig}
-          key={`yjs-editor-${props.documentId}`}
-        >
-          <div className="editor-inner relative">
-            {props.showToolbar && <EnhancedLexicalToolbar documentId={props.documentId} />}
-            
-            <div className="relative">
-              <RichTextPlugin
-                contentEditable={
-                  <ContentEditable 
-                    className="editor-input min-h-[300px] p-4 focus:outline-none resize-none prose prose-sm max-w-none" 
-                  />
-                }
-                placeholder={
-                  <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
-                    {props.placeholder}
-                  </div>
-                }
-                ErrorBoundary={LexicalErrorBoundary}
-              />
-              <FloatingTextFormatToolbar />
-              
-              {/* Advanced Collaboration Features */}
-              <AdvancedCursorPlugin />
-            </div>
-            
-            <OfficialLexicalYjsPlugin
-              id={props.documentId}
-              provider={yjsProvider?.provider}
-              doc={yjsProvider?.doc}
-              sharedType={yjsProvider?.sharedType}
-              shouldBootstrap={true}
+        <div className="editor-inner relative">
+          {props.showToolbar && <EnhancedLexicalToolbar documentId={props.documentId} />}
+          
+          <div className="relative">
+            <RichTextPlugin
+              contentEditable={
+                <ContentEditable 
+                  className={`editor-input min-h-[300px] p-4 focus:outline-none resize-none prose prose-sm max-w-none ${
+                    props.readOnly ? 'cursor-not-allowed opacity-75' : ''
+                  }`}
+                />
+              }
+              placeholder={
+                <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
+                  {props.placeholder}
+                </div>
+              }
+              ErrorBoundary={LexicalErrorBoundary}
             />
+            <FloatingTextFormatToolbar />
             
-            <YjsContentSyncPlugin
-              initialContent={props.initialContent}
-              initialContentNodes={props.initialContentNodes}
-              onContentSync={props.onContentSync}
-              documentId={props.documentId}
-            />
-            
-            {/* Enhanced Plugins */}
-            <FixedTablePlugin />
-            <EnhancedTablePlugin />
-            <EnhancedLinkPlugin />
-            <DraggableBlocksPlugin />
-            <MentionsPlugin />
-            <CheckListPlugin />
-            <ImagePlugin />
-            <FileAttachmentPlugin />
-            <CommentPlugin documentId={props.documentId} />
-            <VersionHistoryPlugin documentId={props.documentId} />
-            
-            <HistoryPlugin />
-            <ListPlugin />
-            <LinkPlugin />
-            <KeyboardShortcutsPlugin />
-            <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-            <TabIndentationPlugin />
+            {/* Advanced Collaboration Features */}
+            <AdvancedCursorPlugin />
           </div>
-        </LexicalComposer>
+          
+          <OfficialLexicalYjsPlugin
+            id={props.documentId}
+            provider={yjsProvider?.provider}
+            doc={yjsProvider?.doc}
+            sharedType={yjsProvider?.sharedType}
+            shouldBootstrap={true}
+          />
+          
+          <YjsContentSyncPlugin
+            initialContent={props.initialContent}
+            initialContentNodes={props.initialContentNodes}
+            onContentSync={props.onContentSync}
+            documentId={props.documentId}
+          />
+          
+          {/* Enhanced Plugins */}
+          <FixedTablePlugin />
+          <EnhancedTablePlugin />
+          <EnhancedLinkPlugin />
+          <DraggableBlocksPlugin />
+          <MentionsPlugin />
+          <CheckListPlugin />
+          <ImagePlugin />
+          <FileAttachmentPlugin />
+          <CommentPlugin documentId={props.documentId} />
+          <VersionHistoryPlugin documentId={props.documentId} />
+          
+          <HistoryPlugin />
+          <ListPlugin />
+          <LinkPlugin />
+          <KeyboardShortcutsPlugin />
+          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+          <TabIndentationPlugin />
+        </div>
       </YjsSyncStatus>
     </div>
   );
@@ -773,19 +778,30 @@ export default function EnhancedLexicalEditor({
     return (
       <YjsProvider 
         documentId={documentId}
-        onConnected={() => console.log('[YjsEditor] Connected to collaboration')}
-        onDisconnected={() => console.log('[YjsEditor] Disconnected from collaboration')}
+        onConnected={() => {
+          console.log('[YjsEditor] Connected to collaboration');
+          onConnectionChange?.(true);
+        }}
+        onDisconnected={() => {
+          console.log('[YjsEditor] Disconnected from collaboration');
+          onConnectionChange?.(false);
+        }}
       >
-        <YjsCollaborationEditor
+        <LexicalComposer 
           initialConfig={initialConfig}
-          placeholder={placeholder}
-          documentId={documentId}
-          showToolbar={showToolbar}
-          readOnly={readOnly}
-          initialContent={content}
-          initialContentNodes={contentNodes}
-          onContentSync={handleYjsContentSync}
-        />
+          key={`yjs-editor-${documentId}`}
+        >
+          <YjsCollaborationEditor
+            initialConfig={initialConfig}
+            placeholder={placeholder}
+            documentId={documentId}
+            showToolbar={showToolbar}
+            readOnly={readOnly}
+            initialContent={content}
+            initialContentNodes={contentNodes}
+            onContentSync={handleYjsContentSync}
+          />
+        </LexicalComposer>
       </YjsProvider>
     );
   }
