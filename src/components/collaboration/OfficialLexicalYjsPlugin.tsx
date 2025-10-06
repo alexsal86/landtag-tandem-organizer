@@ -37,9 +37,10 @@ export function OfficialLexicalYjsPlugin({
     });
 
     // Create the binding between Lexical editor and Yjs
+    // WebsocketProvider needs type assertion as it implements Provider-like interface
     const binding = createBinding(
       editor,
-      yjsContext.provider as any, // Type assertion needed for custom provider
+      yjsContext.provider as any,
       id,
       yjsContext.doc,
       new Map([[id, yjsContext.doc]]) // Map of document ID to Y.Doc

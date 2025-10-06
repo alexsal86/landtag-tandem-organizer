@@ -1,11 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import * as Y from 'yjs';
-import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate } from 'y-protocols/awareness';
 import { IndexeddbPersistence } from 'y-indexeddb';
-import { supabase } from '@/integrations/supabase/client';
+import { WebsocketProvider } from 'y-websocket';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
-interface YjsProviderProps {
+export interface YjsProviderProps {
   documentId: string;
   children: React.ReactNode;
   onConnected?: () => void;
@@ -13,209 +13,9 @@ interface YjsProviderProps {
   onCollaboratorsChange?: (collaborators: any[]) => void;
 }
 
-// Custom Provider implementation for Yjs with Supabase transport
-class SupabaseYjsProvider {
-  public awareness: Awareness;
-  public doc: Y.Doc; // Expose doc as public property for CollaborationPlugin
-  private channel: any = null;
-  private persistence: any = null;
-  private userId: string;
-  private clientId: string;
-  private isConnectedState: boolean = false;
-  private eventListeners: Map<string, Set<Function>> = new Map();
-
-  constructor(doc: Y.Doc, documentId: string, userId: string) {
-    this.doc = doc;
-    this.userId = userId;
-    
-    // Generate or retrieve stable clientId from localStorage
-    const storageKey = `yjs-client-${documentId}-${userId}`;
-    let storedClientId = localStorage.getItem(storageKey);
-    if (!storedClientId) {
-      storedClientId = `client-${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem(storageKey, storedClientId);
-    }
-    this.clientId = storedClientId;
-    console.log('[SupabaseYjsProvider] Using stable clientId:', this.clientId);
-    
-    this.awareness = new Awareness(doc);
-    
-    // Set up initial awareness state to match Lexical-Yjs requirements
-    this.awareness.setLocalStateField('user', {
-      name: userId,
-      color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
-      colorLight: `#${Math.floor(Math.random()*16777215).toString(16)}`
-    });
-    
-    console.log(`[SupabaseYjsProvider] Created with clientId: ${this.clientId}`);
-    this.initializePersistence(documentId);
-    this.initializeSupabaseTransport(documentId);
-  }
-
-  private initializePersistence(documentId: string) {
-    // IndexedDB persistence is now handled by YjsProvider
-    console.log('[SupabaseYjsProvider] IndexedDB persistence handled externally');
-  }
-
-  private initializeSupabaseTransport(documentId: string) {
-    const channelName = `yjs_document_${documentId}`;
-    console.log(`[SupabaseYjsProvider] Initializing transport for channel: ${channelName}, clientId: ${this.clientId}`);
-    this.channel = supabase.channel(channelName);
-
-    // Listen for Yjs updates via Supabase
-    this.channel
-      .on('broadcast', { event: 'yjs-update' }, ({ payload }: any) => {
-        if (payload && payload.update) {
-          // Ignore updates from this client to prevent echo
-          if (payload.clientId === this.clientId) {
-            console.log(`[SupabaseYjsProvider] Ignoring own update (clientId: ${this.clientId})`);
-            return;
-          }
-          
-          console.log(`[SupabaseYjsProvider] 📥 Received remote Yjs update from client: ${payload.clientId}`);
-          try {
-            const update = new Uint8Array(payload.update);
-            // Apply with sender's clientId as origin for echo-prevention in plugin
-            Y.applyUpdate(this.doc, update, payload.clientId);
-          } catch (e) {
-            console.warn('[SupabaseYjsProvider] Failed to apply remote update:', e);
-          }
-        }
-      })
-      .on('broadcast', { event: 'awareness-update' }, ({ payload }: any) => {
-        if (payload && payload.clientId !== this.clientId && payload.awarenessUpdate) {
-          console.log(`[SupabaseYjsProvider] Received awareness update from client: ${payload.clientId}`);
-          try {
-            const awarenessUpdate = new Uint8Array(payload.awarenessUpdate);
-            applyAwarenessUpdate(this.awareness, awarenessUpdate, 'remote');
-          } catch (e) {
-            console.warn('[SupabaseYjsProvider] Failed to apply awareness update:', e);
-          }
-        }
-      });
-
-    // Listen to local Yjs updates to broadcast via Supabase
-    // Throttled broadcast for performance
-    let broadcastTimeout: ReturnType<typeof setTimeout> | null = null;
-    const throttledBroadcast = (update: Uint8Array) => {
-      if (broadcastTimeout) return;
-      
-      broadcastTimeout = setTimeout(() => {
-        this.channel.send({
-          type: 'broadcast',
-          event: 'yjs-update',
-          payload: {
-            clientId: this.clientId,
-            userId: this.userId,
-            update: Array.from(update)
-          }
-        });
-        broadcastTimeout = null;
-      }, 50); // Max 20 updates/second
-    };
-
-    // Note: @lexical/yjs CollaborationPlugin handles all Yjs <-> Lexical synchronization
-    // This provider only manages the Supabase transport layer for broadcasting updates
-    this.doc.on('update', (update: Uint8Array, origin: any) => {
-      // Skip if this update came from the network (already received from remote)
-      if (origin && typeof origin === 'string' && origin !== this.clientId) {
-        console.log(`[SupabaseYjsProvider] ⏭️  Skipping broadcast - origin is remote: ${origin}`);
-        return;
-      }
-      
-      if (this.channel) {
-        console.log(`[SupabaseYjsProvider] 📤 Broadcasting update from clientId: ${this.clientId}`);
-        throttledBroadcast(update);
-      }
-    });
-
-    // Listen to awareness updates
-    this.awareness.on('update', ({ added, updated, removed }: any, origin: any) => {
-      if (origin !== 'remote' && this.channel) {
-        const changedClients = added.concat(updated).concat(removed);
-        const awarenessUpdate = encodeAwarenessUpdate(this.awareness, changedClients);
-        console.log(`[SupabaseYjsProvider] Broadcasting awareness update from client: ${this.clientId}`);
-        this.channel.send({
-          type: 'broadcast',
-          event: 'awareness-update',
-          payload: {
-            clientId: this.clientId,
-            userId: this.userId,
-            awarenessUpdate: Array.from(awarenessUpdate)
-          }
-        });
-      }
-    });
-  }
-
-  connect() {
-    if (this.channel && !this.isConnectedState) {
-      console.log('[SupabaseYjsProvider] Connecting to Supabase transport');
-      this.channel.subscribe(async (status: string) => {
-        const wasConnected = this.isConnectedState;
-        this.isConnectedState = status === 'SUBSCRIBED';
-        
-        if (this.isConnectedState && !wasConnected) {
-          console.log('[SupabaseYjsProvider] Connected to Supabase transport');
-          this.emit('connect');
-        } else if (!this.isConnectedState && wasConnected) {
-          console.log('[SupabaseYjsProvider] Disconnected from Supabase transport');
-          this.emit('disconnect');
-        }
-      });
-    }
-  }
-
-  disconnect() {
-    if (this.channel) {
-      console.log('[SupabaseYjsProvider] Disconnecting from Supabase transport');
-      supabase.removeChannel(this.channel);
-      this.channel = null;
-      this.isConnectedState = false;
-      this.emit('disconnect');
-    }
-  }
-
-  isConnected() {
-    return this.isConnectedState;
-  }
-
-  on(event: string, callback: Function) {
-    if (!this.eventListeners.has(event)) {
-      this.eventListeners.set(event, new Set());
-    }
-    this.eventListeners.get(event)!.add(callback);
-  }
-
-  off(event: string, callback: Function) {
-    const listeners = this.eventListeners.get(event);
-    if (listeners) {
-      listeners.delete(callback);
-    }
-  }
-
-  private emit(event: string, ...args: any[]) {
-    const listeners = this.eventListeners.get(event);
-    if (listeners) {
-      listeners.forEach(callback => callback(...args));
-    }
-  }
-
-  destroy() {
-    this.disconnect();
-    try {
-      this.persistence?.destroy?.();
-    } catch (e) {
-      console.warn('[SupabaseYjsProvider] Error destroying IndexedDB persistence:', e);
-    }
-    this.awareness.destroy();
-    this.eventListeners.clear();
-  }
-}
-
 export interface YjsProviderContextValue {
   doc: Y.Doc;
-  provider: SupabaseYjsProvider;
+  provider: WebsocketProvider;
   sharedType: Y.Text;
   clientId: string;
   isConnected: boolean;
@@ -224,7 +24,7 @@ export interface YjsProviderContextValue {
   currentUser: any;
 }
 
-export const YjsProviderContext = React.createContext<YjsProviderContextValue | null>(null);
+export const YjsProviderContext = createContext<YjsProviderContextValue | null>(null);
 
 export function YjsProvider({ 
   documentId, 
@@ -235,54 +35,28 @@ export function YjsProvider({
 }: YjsProviderProps) {
   const { user } = useAuth();
   const docRef = useRef<Y.Doc | null>(null);
-  const providerRef = useRef<SupabaseYjsProvider | null>(null);
-  const persistenceRef = useRef<any>(null);
-  const [isConnected, setIsConnected] = React.useState(false);
-  const [isSynced, setIsSynced] = React.useState(false);
-  const [collaborators, setCollaborators] = React.useState<any[]>([]);
-  const [currentUserProfile, setCurrentUserProfile] = React.useState<any>(null);
-  
-  const onConnectedRef = useRef(onConnected);
-  const onDisconnectedRef = useRef(onDisconnected);
-  const onCollaboratorsChangeRef = useRef(onCollaboratorsChange);
-  
-  // Keep callback refs stable
-  useEffect(() => {
-    onConnectedRef.current = onConnected;
-    onDisconnectedRef.current = onDisconnected;
-    onCollaboratorsChangeRef.current = onCollaboratorsChange;
-  }, [onConnected, onDisconnected, onCollaboratorsChange]);
+  const providerRef = useRef<WebsocketProvider | null>(null);
+  const persistenceRef = useRef<IndexeddbPersistence | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isSynced, setIsSynced] = useState(false);
+  const [collaborators, setCollaborators] = useState<any[]>([]);
 
-  // Load user profile separately
-  useEffect(() => {
-    const loadUserProfile = async () => {
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name, avatar_url')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        setCurrentUserProfile(profile);
-      }
-    };
-    
-    loadUserProfile();
-  }, [user?.id]);
-
-  // Update awareness when profile loads
-  useEffect(() => {
-    if (providerRef.current && user) {
-      providerRef.current.awareness.setLocalStateField('userId', user.id);
-      providerRef.current.awareness.setLocalStateField('displayName', currentUserProfile?.display_name || user?.user_metadata?.display_name || user?.email?.split('@')[0]);
-      providerRef.current.awareness.setLocalStateField('avatarUrl', currentUserProfile?.avatar_url || user?.user_metadata?.avatar_url);
+  // Get current user
+  const currentUser = user ? {
+    user_id: user.id,
+    profiles: {
+      display_name: user.user_metadata?.display_name || 'Unknown User',
+      avatar_url: user.user_metadata?.avatar_url
     }
-  }, [currentUserProfile, user]);
+  } : null;
 
   useEffect(() => {
-    if (!documentId) return;
+    if (!documentId || !user?.id) {
+      console.log('[YjsProvider] Missing documentId or user, skipping initialization');
+      return;
+    }
 
-    console.log('[YjsProvider] Initializing Yjs provider for document:', documentId);
+    console.log('[YjsProvider] Initializing Yjs WebSocket collaboration for document:', documentId);
 
     // Create Yjs document
     const doc = new Y.Doc();
@@ -294,54 +68,85 @@ export function YjsProvider({
     // Create IndexedDB persistence
     const persistence = new IndexeddbPersistence(`yjs_${documentId}`, doc);
     persistenceRef.current = persistence;
-    
+
     persistence.on('synced', () => {
-      console.log('[YjsProvider] IndexedDB synced');
+      console.log('[YjsProvider] IndexedDB persistence synced');
       setIsSynced(true);
     });
 
-    // Create custom provider
-    const provider = new SupabaseYjsProvider(doc, documentId, user?.id || 'anonymous');
+    // Build WebSocket URL for Supabase Edge Function
+    const wsUrl = `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/knowledge-collaboration`;
+    console.log('[YjsProvider] Connecting to WebSocket:', wsUrl);
+
+    // Create WebSocket provider
+    const provider = new WebsocketProvider(
+      wsUrl,
+      documentId,
+      doc,
+      {
+        params: {
+          documentId,
+          userId: user.id
+        }
+      }
+    );
     providerRef.current = provider;
 
-    // Set up event listeners
-    provider.on('connect', () => {
-      setIsConnected(true);
-      onConnectedRef.current?.();
+    // Handle connection status
+    provider.on('status', ({ status }: { status: string }) => {
+      console.log('[YjsProvider] Connection status:', status);
+      const connected = status === 'connected';
+      setIsConnected(connected);
+      
+      if (connected) {
+        onConnected?.();
+        toast.success('Mit Collaboration-Server verbunden');
+      } else if (status === 'disconnected') {
+        onDisconnected?.();
+        toast.error('Verbindung zum Collaboration-Server verloren');
+      }
     });
 
-    provider.on('disconnect', () => {
-      setIsConnected(false);
-      onDisconnectedRef.current?.();
+    // Handle sync status
+    provider.on('sync', (synced: boolean) => {
+      console.log('[YjsProvider] Sync status:', synced);
+      setIsSynced(synced);
     });
 
-    // Track awareness changes for collaborators
+    // Handle collaborators changes via awareness
     const updateCollaborators = () => {
-      const awarenessStates = Array.from(provider.awareness.getStates().entries());
-      const collaboratorsList = awarenessStates
-        .filter(([clientId]) => clientId !== provider.awareness.clientID)
+      const states = Array.from(provider.awareness.getStates().entries())
+        .filter(([clientId]: [number, any]) => clientId !== provider.awareness.clientID)
         .map(([clientId, state]: [number, any]) => ({
-          user_id: state.userId || `client-${clientId}`,
-          user_color: `hsl(${(clientId * 137.508) % 360}, 70%, 50%)`,
-          profiles: {
-            display_name: state.displayName || state.name || 'Unknown User',
-            avatar_url: state.avatarUrl
+          clientId: clientId.toString(),
+          user_id: state.user_id || `client-${clientId}`,
+          user_color: state.user_color || `hsl(${(clientId * 137.508) % 360}, 70%, 50%)`,
+          profiles: state.profiles || {
+            display_name: 'Unknown User',
+            avatar_url: null
           }
         }));
       
-      setCollaborators(collaboratorsList);
-      onCollaboratorsChangeRef.current?.(collaboratorsList);
+      console.log('[YjsProvider] Collaborators changed:', states.length);
+      setCollaborators(states);
+      onCollaboratorsChange?.(states);
     };
 
-    provider.awareness.on('update', updateCollaborators);
+    provider.awareness.on('change', updateCollaborators);
 
-    // Connect the provider
-    provider.connect();
+    // Set local awareness state
+    provider.awareness.setLocalStateField('user_id', user.id);
+    provider.awareness.setLocalStateField('profiles', {
+      display_name: user.user_metadata?.display_name || 'Unknown User',
+      avatar_url: user.user_metadata?.avatar_url
+    });
+    provider.awareness.setLocalStateField('user_color', `#${Math.floor(Math.random()*16777215).toString(16)}`);
 
-    // Cleanup function
+    console.log('[YjsProvider] WebSocket provider initialized and connecting');
+
     return () => {
-      console.log('[YjsProvider] Cleaning up Yjs provider for document:', documentId);
-      
+      console.log('[YjsProvider] Cleaning up Yjs collaboration');
+      provider.disconnect();
       provider.destroy();
       persistence.destroy();
       doc.destroy();
@@ -349,10 +154,8 @@ export function YjsProvider({
       docRef.current = null;
       providerRef.current = null;
       persistenceRef.current = null;
-      setIsConnected(false);
-      setIsSynced(false);
     };
-  }, [documentId, user?.id]);
+  }, [documentId, user?.id, onConnected, onDisconnected, onCollaboratorsChange]);
 
   // Only provide context once we have doc and provider initialized
   if (!docRef.current || !providerRef.current) {
@@ -363,11 +166,11 @@ export function YjsProvider({
     doc: docRef.current,
     provider: providerRef.current,
     sharedType: docRef.current.getText('lexical'),
-    clientId: providerRef.current['clientId'] || '',
+    clientId: providerRef.current.awareness.clientID.toString(),
     isConnected,
     isSynced,
     collaborators,
-    currentUser: { ...user, profile: currentUserProfile },
+    currentUser,
   };
 
   return (
@@ -378,7 +181,7 @@ export function YjsProvider({
 }
 
 export function useYjsProvider() {
-  const context = React.useContext(YjsProviderContext);
+  const context = useContext(YjsProviderContext);
   if (!context) {
     throw new Error('useYjsProvider must be used within a YjsProvider');
   }
