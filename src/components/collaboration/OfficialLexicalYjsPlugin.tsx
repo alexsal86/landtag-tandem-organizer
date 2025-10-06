@@ -1,7 +1,7 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useYjsProvider } from "./YjsProvider";
-import { CollaborationPlugin } from "@lexical/react/LexicalCollaborationPlugin";
+import { createBinding, type Binding } from "@lexical/yjs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2 } from "lucide-react";
 
@@ -12,7 +12,7 @@ interface OfficialLexicalYjsPluginProps {
 
 /**
  * Official Lexical Yjs Integration using @lexical/yjs
- * Uses CollaborationPlugin for robust, battle-tested synchronization
+ * Uses createBinding for direct, robust synchronization
  */
 export function OfficialLexicalYjsPlugin({
   id,
@@ -20,35 +20,59 @@ export function OfficialLexicalYjsPlugin({
 }: OfficialLexicalYjsPluginProps) {
   const [editor] = useLexicalComposerContext();
   const yjsContext = useYjsProvider();
+  const bindingRef = useRef<Binding | null>(null);
+
+  useEffect(() => {
+    if (!yjsContext?.isConnected || !yjsContext?.isSynced || !yjsContext?.sharedType) {
+      return;
+    }
+
+    if (bindingRef.current) {
+      return;
+    }
+
+    console.log("[OfficialLexicalYjsPlugin] Creating binding...", {
+      id,
+      docId: yjsContext.doc.guid,
+    });
+
+    // Create the binding between Lexical editor and Yjs
+    const binding = createBinding(
+      editor,
+      yjsContext.provider as any, // Type assertion needed for custom provider
+      id,
+      yjsContext.doc,
+      new Map([[id, yjsContext.doc]]) // Map of document ID to Y.Doc
+    );
+
+    bindingRef.current = binding;
+
+    console.log("[OfficialLexicalYjsPlugin] Binding created successfully");
+
+    return () => {
+      console.log("[OfficialLexicalYjsPlugin] Cleaning up binding");
+      if (bindingRef.current) {
+        // The binding object doesn't have a destroy method, just clean up reference
+        bindingRef.current = null;
+      }
+    };
+  }, [editor, yjsContext, id]);
 
   // Show loading state while connecting/syncing
-  if (!yjsContext.isConnected || !yjsContext.isSynced) {
+  if (!yjsContext?.isConnected || !yjsContext?.isSynced) {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">
-            {!yjsContext.isConnected ? "Verbinde..." : "Synchronisiere..."}
+            {!yjsContext?.isConnected ? "Verbinde..." : "Synchronisiere..."}
           </p>
         </div>
       </div>
     );
   }
 
-  return (
-    <>
-      <CollaborationPlugin
-        id={id}
-        providerFactory={(id, yjsDocMap) => {
-          // Return our custom Supabase provider which implements the Provider interface
-          // The CollaborationPlugin will use this to sync Lexical <-> Yjs
-          return yjsContext.provider as any;
-        }}
-        shouldBootstrap={shouldBootstrap}
-      />
-      <YjsCollaboratorsList />
-    </>
-  );
+  return <YjsCollaboratorsList />;
 }
 
 /**

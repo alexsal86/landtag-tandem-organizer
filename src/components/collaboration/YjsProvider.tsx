@@ -214,8 +214,9 @@ class SupabaseYjsProvider {
 }
 
 export interface YjsProviderContextValue {
-  doc: Y.Doc | null;
-  provider: SupabaseYjsProvider | null;
+  doc: Y.Doc;
+  provider: SupabaseYjsProvider;
+  sharedType: Y.Text;
   clientId: string;
   isConnected: boolean;
   isSynced: boolean;
@@ -223,15 +224,7 @@ export interface YjsProviderContextValue {
   currentUser: any;
 }
 
-export const YjsProviderContext = React.createContext<YjsProviderContextValue>({
-  doc: null,
-  provider: null,
-  clientId: '',
-  isConnected: false,
-  isSynced: false,
-  collaborators: [],
-  currentUser: null,
-});
+export const YjsProviderContext = React.createContext<YjsProviderContextValue | null>(null);
 
 export function YjsProvider({ 
   documentId, 
@@ -294,6 +287,9 @@ export function YjsProvider({
     // Create Yjs document
     const doc = new Y.Doc();
     docRef.current = doc;
+    
+    // Create shared text type for Lexical
+    const sharedType = doc.getText('lexical');
 
     // Create IndexedDB persistence
     const persistence = new IndexeddbPersistence(`yjs_${documentId}`, doc);
@@ -358,10 +354,16 @@ export function YjsProvider({
     };
   }, [documentId, user?.id]);
 
+  // Only provide context once we have doc and provider initialized
+  if (!docRef.current || !providerRef.current) {
+    return null;
+  }
+
   const contextValue: YjsProviderContextValue = {
     doc: docRef.current,
     provider: providerRef.current,
-    clientId: providerRef.current?.['clientId'] || '',
+    sharedType: docRef.current.getText('lexical'),
+    clientId: providerRef.current['clientId'] || '',
     isConnected,
     isSynced,
     collaborators,
