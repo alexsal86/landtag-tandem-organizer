@@ -1,70 +1,192 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
-import { Provider } from '@lexical/yjs';
 import { useYjsProvider } from './YjsProvider';
 import * as Y from 'yjs';
+import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
 
 interface OfficialLexicalYjsPluginProps {
   id: string;
-  providerFactory?: (id: string, yjsDocMap: Map<string, Y.Doc>) => Provider;
   shouldBootstrap?: boolean;
-  username?: string;
-  cursorColor?: string;
 }
 
 /**
- * Official Lexical Yjs Collaboration Plugin
- * Uses @lexical/yjs CollaborationPlugin for reliable sync
+ * Simplified Lexical Yjs Plugin
+ * Manually syncs between Lexical and Yjs using granular text operations
+ * Avoids focus loss by using character-level diffs instead of clearing
  */
 export function OfficialLexicalYjsPlugin({
   id,
-  providerFactory,
   shouldBootstrap = true,
-  username,
-  cursorColor,
 }: OfficialLexicalYjsPluginProps) {
   const [editor] = useLexicalComposerContext();
   const yjsContext = useYjsProvider();
-  const [isReady, setIsReady] = useState(false);
+  const isApplyingYjsUpdateRef = useRef(false);
+  const isApplyingLexicalUpdateRef = useRef(false);
+  const lastContentRef = useRef('');
 
-  // Wait for provider to be ready
   useEffect(() => {
-    if (yjsContext.doc && yjsContext.provider && yjsContext.isConnected) {
-      setIsReady(true);
-      console.log('[OfficialLexicalYjs] Provider ready, enabling collaboration');
-    } else {
-      setIsReady(false);
+    // Wait for Yjs provider to be ready
+    if (!yjsContext.doc || !yjsContext.provider || !yjsContext.isSynced) {
+      return;
     }
-  }, [yjsContext.doc, yjsContext.provider, yjsContext.isConnected]);
 
-  if (!isReady || !yjsContext.doc || !yjsContext.provider) {
+    const doc = yjsContext.doc;
+    const sharedText = doc.getText('lexical-content');
+    const clientId = yjsContext.clientId;
+
+    console.log('[OfficialLexicalYjs] Initializing with clientId:', clientId);
+
+    // Bootstrap initial content from Yjs
+    if (shouldBootstrap && sharedText.length > 0) {
+      const initialText = sharedText.toString();
+      console.log('[OfficialLexicalYjs] Bootstrapping from Yjs:', initialText.slice(0, 100));
+      
+      editor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        if (initialText) {
+          const paragraph = $createParagraphNode();
+          paragraph.append($createTextNode(initialText));
+          root.append(paragraph);
+        }
+        lastContentRef.current = initialText;
+      });
+    }
+
+    // Listen to Yjs changes (from remote)
+    const yjsObserver = (event: Y.YTextEvent, transaction: Y.Transaction) => {
+      // Skip if this is our own update (echo prevention)
+      if (transaction.origin === clientId) {
+        console.log(`[OfficialLexicalYjs:${clientId}] ⏭️  Skipping own Yjs update`);
+        return;
+      }
+
+      // Skip if we're currently applying a Lexical update
+      if (isApplyingLexicalUpdateRef.current) {
+        console.log(`[OfficialLexicalYjs:${clientId}] ⏭️  Skipping (Lexical update in progress)`);
+        return;
+      }
+
+      const newText = sharedText.toString();
+      
+      // Only apply if content actually changed
+      if (newText === lastContentRef.current) {
+        return;
+      }
+
+      console.log(`[OfficialLexicalYjs:${clientId}] 📥 Applying remote Yjs change`);
+      
+      isApplyingYjsUpdateRef.current = true;
+      
+      try {
+        editor.update(() => {
+          const root = $getRoot();
+          const currentText = root.getTextContent();
+          
+          // Only update if different
+          if (currentText !== newText) {
+            root.clear();
+            if (newText) {
+              const paragraph = $createParagraphNode();
+              paragraph.append($createTextNode(newText));
+              root.append(paragraph);
+            }
+            lastContentRef.current = newText;
+          }
+        });
+      } finally {
+        isApplyingYjsUpdateRef.current = false;
+      }
+    };
+
+    sharedText.observe(yjsObserver);
+
+    // Listen to Lexical changes (local)
+    const unregisterUpdateListener = editor.registerUpdateListener(({ editorState }) => {
+      // Skip if we're applying a Yjs update
+      if (isApplyingYjsUpdateRef.current) {
+        return;
+      }
+
+      // Skip if we're already applying a Lexical update
+      if (isApplyingLexicalUpdateRef.current) {
+        return;
+      }
+
+      editorState.read(() => {
+        const root = $getRoot();
+        const text = root.getTextContent();
+
+        // Only push if content changed
+        if (text !== lastContentRef.current) {
+          console.log(`[OfficialLexicalYjs:${clientId}] 📝 Lexical changed, pushing to Yjs`);
+          
+          isApplyingLexicalUpdateRef.current = true;
+          
+          try {
+            doc.transact(() => {
+              const currentYjsText = sharedText.toString();
+              
+              // Calculate diff for granular updates
+              let deleteStart = 0;
+              const minLength = Math.min(text.length, currentYjsText.length);
+              
+              // Find common prefix
+              while (deleteStart < minLength && text[deleteStart] === currentYjsText[deleteStart]) {
+                deleteStart++;
+              }
+              
+              // Find common suffix
+              let textEnd = text.length;
+              let yjsEnd = currentYjsText.length;
+              while (textEnd > deleteStart && yjsEnd > deleteStart && text[textEnd - 1] === currentYjsText[yjsEnd - 1]) {
+                textEnd--;
+                yjsEnd--;
+              }
+              
+              const deleteLength = yjsEnd - deleteStart;
+              const insertText = text.slice(deleteStart, textEnd);
+              
+              // Apply granular changes
+              if (deleteLength > 0) {
+                sharedText.delete(deleteStart, deleteLength);
+              }
+              if (insertText.length > 0) {
+                sharedText.insert(deleteStart, insertText);
+              }
+              
+              console.log(`[OfficialLexicalYjs:${clientId}] ✅ Granular update: delete ${deleteLength}, insert ${insertText.length} at ${deleteStart}`);
+            }, clientId); // Use clientId as transaction origin for echo prevention
+            
+            lastContentRef.current = text;
+          } finally {
+            isApplyingLexicalUpdateRef.current = false;
+          }
+        }
+      });
+    });
+
+    // Cleanup
+    return () => {
+      console.log('[OfficialLexicalYjs] Cleaning up');
+      sharedText.unobserve(yjsObserver);
+      unregisterUpdateListener();
+    };
+  }, [editor, yjsContext.doc, yjsContext.provider, yjsContext.isSynced, yjsContext.clientId, shouldBootstrap]);
+
+  // Show loading overlay while not synced
+  if (!yjsContext.isSynced || !yjsContext.isConnected) {
     return (
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center pointer-events-none">
         <div className="text-sm text-muted-foreground flex items-center gap-2">
           <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          Connecting to collaboration...
+          {!yjsContext.isConnected ? 'Connecting...' : 'Syncing...'}
         </div>
       </div>
     );
   }
 
-  // Use custom provider factory or create default one
-  const createProvider = providerFactory || ((id: string, yjsDocMap: Map<string, Y.Doc>) => {
-    // Return our custom Supabase-backed provider
-    return yjsContext.provider as unknown as Provider;
-  });
-
-  return (
-    <CollaborationPlugin
-      id={id}
-      providerFactory={createProvider}
-      shouldBootstrap={shouldBootstrap}
-      username={username || yjsContext.currentUser?.user_metadata?.display_name || 'Anonymous'}
-      cursorColor={cursorColor}
-      initialEditorState={null}
-    />
-  );
+  return null;
 }
 
 /**
