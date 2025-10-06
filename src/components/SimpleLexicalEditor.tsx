@@ -11,7 +11,7 @@ import { $createParagraphNode, $createTextNode } from 'lexical';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import CollaborationStatus from './CollaborationStatus';
 import { YjsProvider, useYjsProvider } from './collaboration/YjsProvider';
-import { LexicalYjsCollaborationPlugin } from './collaboration/LexicalYjsCollaborationPlugin';
+import { OfficialLexicalYjsPlugin, YjsCollaboratorsList } from './collaboration/OfficialLexicalYjsPlugin';
 import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
 import { CommentMarkNode, CommentPlugin } from './plugins/CommentPlugin';
 import { MarkNode } from '@lexical/mark';
@@ -129,53 +129,48 @@ function CollaborationPlugin({
 
 // Removed YjsContentSyncPlugin - no longer needed as LexicalYjsCollaborationPlugin handles all sync
 
-// Yjs Collaboration Editor component
+// Yjs Collaboration Editor component using official @lexical/yjs
 function YjsCollaborationEditor(props: any) {
   const yjsProvider = useYjsProvider();
   
   return (
     <div className="relative min-h-[200px] border rounded-md">
-      {(!yjsProvider?.isSynced || !yjsProvider?.isConnected) && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
-          <div className="text-sm text-muted-foreground flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            {!yjsProvider?.isConnected ? 'Connecting...' : 'Synchronizing...'}
-          </div>
+      <LexicalComposer 
+        initialConfig={props.initialConfig}
+        key={`yjs-editor-${props.documentId}`}
+      >
+        <div className="editor-inner relative">
+          <PlainTextPlugin
+            contentEditable={
+              <ContentEditable 
+                className="editor-input min-h-[300px] p-4 focus:outline-none resize-none" 
+              />
+            }
+            placeholder={
+              <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
+                {props.placeholder}
+              </div>
+            }
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          
+          {/* Official Lexical Yjs Collaboration Plugin - handles all sync */}
+          <OfficialLexicalYjsPlugin
+            id={props.documentId}
+            shouldBootstrap={true}
+          />
+          
+          {/* Comment Plugin for collaborative annotations */}
+          <CommentPlugin documentId={props.documentId} />
+          
+          <HistoryPlugin />
         </div>
-      )}
-      <YjsSyncStatus>
-        <LexicalComposer 
-          initialConfig={props.initialConfig}
-          key={`yjs-editor-${props.documentId}`}
-        >
-          <div className="editor-inner relative">
-            <PlainTextPlugin
-              contentEditable={
-                <ContentEditable 
-                  className="editor-input min-h-[300px] p-4 focus:outline-none resize-none" 
-                />
-              }
-              placeholder={
-                <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
-                  {props.placeholder}
-                </div>
-              }
-              ErrorBoundary={LexicalErrorBoundary}
-            />
-            
-            {/* Yjs Collaboration Plugin handles all synchronization */}
-            <LexicalYjsCollaborationPlugin
-              id={props.documentId}
-              shouldBootstrap={true}
-            />
-            
-            {/* Comment Plugin for collaborative annotations */}
-            <CommentPlugin documentId={props.documentId} />
-            
-            <HistoryPlugin />
-          </div>
-        </LexicalComposer>
-      </YjsSyncStatus>
+      </LexicalComposer>
+      
+      {/* Show collaborators list */}
+      <div className="p-2 border-t">
+        <YjsCollaboratorsList />
+      </div>
     </div>
   );
 }

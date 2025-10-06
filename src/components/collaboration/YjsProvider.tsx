@@ -114,16 +114,18 @@ class SupabaseYjsProvider {
       }, 50); // Max 20 updates/second
     };
 
-    // Listen to local Yjs updates to broadcast via Supabase with throttling
+    // Listen to local Yjs updates to broadcast via Supabase
+    // Note: @lexical/yjs handles the actual binding, we only transport updates
     this.doc.on('update', (update: Uint8Array, origin: any) => {
-      // Only skip updates that came FROM the network (already received from remote)
-      const isNetworkUpdate = origin === 'network';
+      // Skip if this update came from the network (already received from remote)
+      if (origin && typeof origin === 'string' && origin !== this.clientId) {
+        console.log(`[SupabaseYjsProvider] ⏭️  Skipping broadcast - origin is remote: ${origin}`);
+        return;
+      }
       
-      if (!isNetworkUpdate && this.channel) {
-        console.log(`[SupabaseYjsProvider] 📤 Broadcasting update - origin: ${origin}, clientId: ${this.clientId}`);
+      if (this.channel) {
+        console.log(`[SupabaseYjsProvider] 📤 Broadcasting update from clientId: ${this.clientId}`);
         throttledBroadcast(update);
-      } else {
-        console.log(`[SupabaseYjsProvider] ⏭️  Skipping broadcast (network update) - origin: ${origin}`);
       }
     });
 
