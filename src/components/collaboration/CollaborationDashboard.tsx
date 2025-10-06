@@ -35,9 +35,16 @@ export function CollaborationDashboard({
   isVisible = false, 
   onToggle 
 }: CollaborationDashboardProps) {
-  const { collaborators, currentUser, isConnected, isSynced } = useYjsProvider();
+  const yjsContext = useYjsProvider();
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
   const [showOfflineUsers, setShowOfflineUsers] = useState(false);
+
+  // Early return if context not available
+  if (!yjsContext) {
+    return null;
+  }
+
+  const { collaborators, currentUser, isConnected, isSynced } = yjsContext;
 
   // Mock activity feed - in real implementation, this would come from Supabase
   useEffect(() => {

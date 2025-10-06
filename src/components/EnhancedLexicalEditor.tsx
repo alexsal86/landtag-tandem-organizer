@@ -578,14 +578,6 @@ function YjsContentSyncPlugin({
 function YjsCollaborationEditor(props: any) {
   const yjsProvider = useYjsProvider();
   const [showCollabDashboard, setShowCollabDashboard] = React.useState(false);
-  const [editor] = useLexicalComposerContext();
-  
-  // Update editor editable state when readOnly prop changes
-  React.useEffect(() => {
-    if (editor) {
-      editor.setEditable(!props.readOnly);
-    }
-  }, [editor, props.readOnly]);
   
   return (
     <div className="relative min-h-[200px] border rounded-md overflow-hidden">
@@ -631,6 +623,9 @@ function YjsCollaborationEditor(props: any) {
             <AdvancedCursorPlugin />
           </div>
           
+          {/* ReadOnly Plugin */}
+          <ReadOnlyPlugin readOnly={props.readOnly} />
+          
           <OfficialLexicalYjsPlugin
             id={props.documentId}
             provider={yjsProvider?.provider}
@@ -668,6 +663,17 @@ function YjsCollaborationEditor(props: any) {
       </YjsSyncStatus>
     </div>
   );
+}
+
+// ReadOnly Plugin to control editor state
+function ReadOnlyPlugin({ readOnly }: { readOnly?: boolean }) {
+  const [editor] = useLexicalComposerContext();
+  
+  React.useEffect(() => {
+    editor.setEditable(!readOnly);
+  }, [editor, readOnly]);
+  
+  return null;
 }
 
 export default function EnhancedLexicalEditor({
