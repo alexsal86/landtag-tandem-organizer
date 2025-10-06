@@ -18,7 +18,23 @@ export function LexicalYjsCollaborationPlugin({
   const isApplyingYjsUpdateRef = useRef<boolean>(false);
   const isApplyingLexicalUpdateRef = useRef<boolean>(false);
   const hasBootstrapped = useRef<boolean>(false);
-  const clientId = useRef<string>(`client-${Math.random().toString(36).substr(2, 9)}`);
+  
+  // Use stable clientId from localStorage (initialized once per document+id)
+  const clientId = useRef<string>('');
+  
+  // Initialize stable clientId once
+  React.useEffect(() => {
+    if (!clientId.current) {
+      const storageKey = `yjs-lexical-client-${id}`;
+      let storedClientId = localStorage.getItem(storageKey);
+      if (!storedClientId) {
+        storedClientId = `lexical-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem(storageKey, storedClientId);
+      }
+      clientId.current = storedClientId;
+      console.log('[LexicalYjsCollaboration] Using stable clientId:', clientId.current);
+    }
+  }, [id]);
 
   useEffect(() => {
     if (!doc || !editor || !isSynced) return;
@@ -29,8 +45,8 @@ export function LexicalYjsCollaborationPlugin({
     const sharedText = doc.getText('content');
 
     const applyYjsToLexical = (origin?: any, transactionOrigin?: string) => {
-      // Prevent echo: skip if this update originated from our own Lexical editor
-      const isOwnUpdate = origin === 'lexical' || transactionOrigin === clientId.current;
+      // Prevent echo: skip if this update originated from our own Lexical editor or from network with our clientId
+      const isOwnUpdate = origin === clientId.current || transactionOrigin === clientId.current;
       
       if (isOwnUpdate) {
         console.log(`[LexicalYjsCollaboration:${clientId.current}] Skipping echo - origin:`, origin, 'transaction:', transactionOrigin);
@@ -134,7 +150,7 @@ export function LexicalYjsCollaborationPlugin({
             // Update reference BEFORE sending to Yjs to prevent race conditions
             lastContentRef.current = text;
             
-            // Use transaction with client ID to prevent echo
+            // Use transaction with clientId as origin to prevent echo
             doc.transact(() => {
               const currentLength = sharedText.toString().length;
               if (currentLength > 0) {
@@ -143,7 +159,7 @@ export function LexicalYjsCollaborationPlugin({
               if (text) {
                 sharedText.insert(0, text);
               }
-            }, clientId.current);
+            }, clientId.current); // Pass clientId as transaction origin
             
             isApplyingLexicalUpdateRef.current = false;
           }

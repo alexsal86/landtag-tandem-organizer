@@ -27,7 +27,17 @@ class SupabaseYjsProvider {
   constructor(doc: Y.Doc, documentId: string, userId: string) {
     this.doc = doc;
     this.userId = userId;
-    this.clientId = `${userId}-${doc.clientID}-${crypto.randomUUID().slice(0, 8)}`;
+    
+    // Generate or retrieve stable clientId from localStorage
+    const storageKey = `yjs-client-${documentId}-${userId}`;
+    let storedClientId = localStorage.getItem(storageKey);
+    if (!storedClientId) {
+      storedClientId = `client-${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem(storageKey, storedClientId);
+    }
+    this.clientId = storedClientId;
+    console.log('[SupabaseYjsProvider] Using stable clientId:', this.clientId);
+    
     this.awareness = new Awareness(doc);
     
     // Set up initial awareness state to match Lexical-Yjs requirements
@@ -55,11 +65,18 @@ class SupabaseYjsProvider {
     // Listen for Yjs updates via Supabase
     this.channel
       .on('broadcast', { event: 'yjs-update' }, ({ payload }: any) => {
-        if (payload && payload.clientId !== this.clientId && payload.update) {
+        if (payload && payload.update) {
+          // Ignore updates from this client to prevent echo
+          if (payload.clientId === this.clientId) {
+            console.log(`[SupabaseYjsProvider] Ignoring own update (clientId: ${this.clientId})`);
+            return;
+          }
+          
           console.log(`[SupabaseYjsProvider] Received remote Yjs update from client: ${payload.clientId}`);
           try {
             const update = new Uint8Array(payload.update);
-            Y.applyUpdate(this.doc, update, 'remote');
+            // Apply with 'network' origin to prevent re-broadcasting
+            Y.applyUpdate(this.doc, update, 'network');
           } catch (e) {
             console.warn('[SupabaseYjsProvider] Failed to apply remote update:', e);
           }
@@ -79,8 +96,9 @@ class SupabaseYjsProvider {
 
     // Listen to local Yjs updates to broadcast via Supabase
     this.doc.on('update', (update: Uint8Array, origin: any) => {
-      if (origin !== 'remote' && this.channel) {
-        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update from client: ${this.clientId}`);
+      // Don't broadcast if update originated from network or from this client
+      if (origin !== 'network' && origin !== this.clientId && this.channel) {
+        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update from client: ${this.clientId}, origin: ${origin}`);
         this.channel.send({
           type: 'broadcast',
           event: 'yjs-update',
@@ -90,6 +108,8 @@ class SupabaseYjsProvider {
             update: Array.from(update)
           }
         });
+      } else if (origin === this.clientId || origin === 'network') {
+        console.log(`[SupabaseYjsProvider] Skipping broadcast - origin: ${origin}, clientId: ${this.clientId}`);
       }
     });
 
