@@ -16,7 +16,7 @@ interface YjsProviderProps {
 // Custom Provider implementation for Yjs with Supabase transport
 class SupabaseYjsProvider {
   public awareness: Awareness;
-  private doc: Y.Doc;
+  public doc: Y.Doc; // Expose doc as public property for CollaborationPlugin
   private channel: any = null;
   private persistence: any = null;
   private userId: string;
@@ -114,8 +114,8 @@ class SupabaseYjsProvider {
       }, 50); // Max 20 updates/second
     };
 
-    // Listen to local Yjs updates to broadcast via Supabase
-    // Note: @lexical/yjs handles the actual binding, we only transport updates
+    // Note: @lexical/yjs CollaborationPlugin handles all Yjs <-> Lexical synchronization
+    // This provider only manages the Supabase transport layer for broadcasting updates
     this.doc.on('update', (update: Uint8Array, origin: any) => {
       // Skip if this update came from the network (already received from remote)
       if (origin && typeof origin === 'string' && origin !== this.clientId) {
