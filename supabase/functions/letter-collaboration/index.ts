@@ -1,147 +1,62 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import * as Y from "npm:yjs@13.6.27";
-import * as syncProtocol from "npm:y-protocols@1.0.6/sync";
-import * as awarenessProtocol from "npm:y-protocols@1.0.6/awareness";
-import * as encoding from "npm:lib0@0.2.97/encoding";
-import * as decoding from "npm:lib0@0.2.97/decoding";
 
-console.log("[YJS] Letter Collaboration WebSocket Server starting...");
-console.log("[YJS] Using npm:yjs@13.6.27 for compatibility");
+console.log("[WebSocket Relay] Letter Collaboration Server starting...");
+console.log("[WebSocket Relay] Acting as pure message relay - no Yjs logic");
 
-// Store Y.Doc instances per document ID
-const documents = new Map<string, Y.Doc>();
-
-// Store WebSocket connections per document
-const connections = new Map<string, Set<WebSocket>>();
+// Store active WebSocket connections per document
+const rooms = new Map<string, Set<WebSocket>>();
 
 /**
- * Get or create Y.Doc for a document
+ * Broadcast a message to all clients in a room except the sender
  */
-function getOrCreateDoc(documentId: string): Y.Doc {
-  if (!documents.has(documentId)) {
-    console.log(`[YJS] Creating new Y.Doc for document: ${documentId}`);
-    const doc = new Y.Doc();
-    documents.set(documentId, doc);
-    
-    // Update handler to broadcast changes
-    doc.on("update", (update: Uint8Array) => {
-      const encoder = encoding.createEncoder();
-      encoding.writeVarUint(encoder, syncProtocol.messageYjsUpdate);
-      encoding.writeVarUint8Array(encoder, update);
-      broadcastMessage(documentId, encoding.toUint8Array(encoder), null);
-    });
-  }
-  return documents.get(documentId)!;
-}
-
-/**
- * Broadcast message to all connected clients except sender
- */
-function broadcastMessage(
+function broadcastToRoom(
   documentId: string,
-  message: Uint8Array,
-  excludeSocket: WebSocket | null
+  message: ArrayBuffer | string,
+  sender: WebSocket
 ) {
-  const conns = connections.get(documentId);
-  if (!conns) return;
+  const clients = rooms.get(documentId);
+  if (!clients) {
+    console.log(`[Relay] No clients in room ${documentId}`);
+    return;
+  }
 
-  conns.forEach((socket) => {
-    if (socket !== excludeSocket && socket.readyState === WebSocket.OPEN) {
-      socket.send(message);
+  let broadcastCount = 0;
+  clients.forEach((client) => {
+    if (client !== sender && client.readyState === WebSocket.OPEN) {
+      client.send(message);
+      broadcastCount++;
     }
   });
+
+  console.log(`[Relay] Broadcasted message to ${broadcastCount} clients in room ${documentId}`);
 }
 
 /**
- * Handle incoming messages from clients
+ * Add a client to a room
  */
-function handleMessage(
-  documentId: string,
-  userId: string,
-  message: Uint8Array,
-  socket: WebSocket
-) {
-  try {
-    const decoder = decoding.createDecoder(message);
-    const messageType = decoding.readVarUint(decoder);
-    const messageSize = message.length;
+function addToRoom(documentId: string, socket: WebSocket) {
+  if (!rooms.has(documentId)) {
+    rooms.set(documentId, new Set());
+    console.log(`[Relay] Created new room: ${documentId}`);
+  }
+  rooms.get(documentId)!.add(socket);
+  console.log(`[Relay] Room ${documentId} now has ${rooms.get(documentId)!.size} clients`);
+}
 
-    console.log(`[YJS] Processing message - Type: ${messageType}, Size: ${messageSize} bytes, User: ${userId}, Doc: ${documentId}`);
+/**
+ * Remove a client from a room
+ */
+function removeFromRoom(documentId: string, socket: WebSocket) {
+  const clients = rooms.get(documentId);
+  if (!clients) return;
 
-    switch (messageType) {
-      case syncProtocol.messageYjsSyncStep1: {
-        try {
-          console.log(`[YJS] Received SyncStep1 from user ${userId}`);
-          const doc = getOrCreateDoc(documentId);
-          const encoder = encoding.createEncoder();
-          encoding.writeVarUint(encoder, syncProtocol.messageYjsSyncStep2);
-          syncProtocol.writeSyncStep2(decoder, encoder, doc);
-          const syncResponse = encoding.toUint8Array(encoder);
-          
-          // Send to requesting client
-          socket.send(syncResponse);
-          
-          // Broadcast to all other clients
-          console.log(`[YJS] Broadcasting SyncStep2 to other clients for document ${documentId}`);
-          broadcastMessage(documentId, syncResponse, socket);
-        } catch (error) {
-          console.error(`[YJS] Error in SyncStep1 handler:`, error);
-          console.error(`[YJS] Stack:`, error.stack);
-        }
-        break;
-      }
+  clients.delete(socket);
+  console.log(`[Relay] Room ${documentId} now has ${clients.size} clients`);
 
-      case syncProtocol.messageYjsSyncStep2: {
-        try {
-          console.log(`[YJS] Received SyncStep2 from user ${userId}`);
-          const doc = getOrCreateDoc(documentId);
-          syncProtocol.readSyncStep2(decoder, doc, null);
-          
-          // Broadcast SyncStep2 to all other clients
-          console.log(`[YJS] Broadcasting SyncStep2 for document ${documentId}`);
-          broadcastMessage(documentId, message, socket);
-        } catch (error) {
-          console.error(`[YJS] Error in SyncStep2 handler:`, error);
-          console.error(`[YJS] Stack:`, error.stack);
-        }
-        break;
-      }
-
-      case syncProtocol.messageYjsUpdate: {
-        try {
-          console.log(`[YJS] Received UPDATE from user ${userId}, broadcasting...`);
-          const doc = getOrCreateDoc(documentId);
-          syncProtocol.readUpdate(decoder, doc, null);
-          
-          // Broadcast update to all other clients
-          broadcastMessage(documentId, message, socket);
-          console.log(`[YJS] UPDATE broadcast complete for document ${documentId}`);
-        } catch (error) {
-          console.error(`[YJS] Error in UPDATE handler:`, error);
-          console.error(`[YJS] Stack:`, error.stack);
-        }
-        break;
-      }
-
-      case awarenessProtocol.messageAwareness: {
-        try {
-          console.log(`[YJS] Received AWARENESS from user ${userId}`);
-          // Just broadcast awareness updates
-          broadcastMessage(documentId, message, socket);
-        } catch (error) {
-          console.error(`[YJS] Error in AWARENESS handler:`, error);
-          console.error(`[YJS] Stack:`, error.stack);
-        }
-        break;
-      }
-
-      default:
-        console.warn(`[YJS] Unknown message type: ${messageType}`);
-    }
-  } catch (error) {
-    console.error(`[YJS] Critical error handling message from user ${userId}:`, error);
-    console.error(`[YJS] Message size: ${message.length} bytes`);
-    console.error(`[YJS] Stack:`, error.stack);
+  // Clean up empty rooms
+  if (clients.size === 0) {
+    rooms.delete(documentId);
+    console.log(`[Relay] Deleted empty room: ${documentId}`);
   }
 }
 
@@ -149,7 +64,7 @@ function handleMessage(
  * Main Deno serve handler
  */
 Deno.serve(async (req) => {
-  console.log("[YJS] New request received");
+  console.log("[Relay] New request received");
   
   const { headers } = req;
   const upgrade = headers.get("upgrade") || "";
@@ -162,61 +77,32 @@ Deno.serve(async (req) => {
   const documentId = url.searchParams.get("documentId") || "default";
   const userId = url.searchParams.get("userId") || "anonymous";
 
-  console.log(`[YJS] WebSocket upgrade - Document: ${documentId}, User: ${userId}`);
+  console.log(`[Relay] WebSocket upgrade - Document: ${documentId}, User: ${userId}`);
 
   const { socket, response } = Deno.upgradeWebSocket(req);
 
-  // Initialize document
-  getOrCreateDoc(documentId);
-
-  // Add connection to document's connection set
-  if (!connections.has(documentId)) {
-    connections.set(documentId, new Set());
-  }
-  connections.get(documentId)!.add(socket);
-
   socket.onopen = () => {
-    console.log(`[YJS] WebSocket opened for user ${userId} on document ${documentId}`);
-    
-    // Send SyncStep1 to initialize sync
-    const doc = getOrCreateDoc(documentId);
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, syncProtocol.messageYjsSyncStep1);
-    syncProtocol.writeSyncStep1(encoder, doc);
-    socket.send(encoding.toUint8Array(encoder));
+    console.log(`[Relay] WebSocket opened - User: ${userId}, Document: ${documentId}`);
+    addToRoom(documentId, socket);
   };
 
   socket.onmessage = (event) => {
-    try {
-      const message = new Uint8Array(event.data);
-      handleMessage(documentId, userId, message, socket);
-    } catch (error) {
-      console.error(`[YJS] Error handling message from user ${userId}:`, error);
-    }
+    // Simply forward the message to all other clients in the same room
+    // NO Yjs parsing or interpretation - pure relay!
+    const messageSize = event.data?.byteLength || event.data?.length || 0;
+    console.log(`[Relay] Message received from ${userId} in ${documentId} (${messageSize} bytes)`);
+    
+    broadcastToRoom(documentId, event.data, socket);
   };
 
   socket.onclose = () => {
-    console.log(`[YJS] WebSocket closed for user ${userId}`);
-    
-    const conns = connections.get(documentId);
-    if (conns) {
-      conns.delete(socket);
-      
-      // Clean up if no more connections
-      if (conns.size === 0) {
-        console.log(`[YJS] No more connections for document ${documentId}, cleaning up`);
-        connections.delete(documentId);
-        const doc = documents.get(documentId);
-        if (doc) {
-          doc.destroy();
-          documents.delete(documentId);
-        }
-      }
-    }
+    console.log(`[Relay] WebSocket closed - User: ${userId}`);
+    removeFromRoom(documentId, socket);
   };
 
   socket.onerror = (error) => {
-    console.error(`[YJS] WebSocket error for user ${userId}:`, error);
+    console.error(`[Relay] WebSocket error - User: ${userId}:`, error);
+    removeFromRoom(documentId, socket);
   };
 
   return response;
