@@ -39,13 +39,6 @@ export function CollaborationDashboard({
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
   const [showOfflineUsers, setShowOfflineUsers] = useState(false);
 
-  // Early return if context not available
-  if (!yjsContext) {
-    return null;
-  }
-
-  const { collaborators, currentUser, isConnected, isSynced } = yjsContext;
-
   // Mock activity feed - in real implementation, this would come from Supabase
   useEffect(() => {
     const mockActivities: ActivityItem[] = [
@@ -76,6 +69,13 @@ export function CollaborationDashboard({
     ];
     setActivityFeed(mockActivities);
   }, [documentId]);
+
+  // Early return AFTER all hooks
+  if (!yjsContext) {
+    return null;
+  }
+
+  const { collaborators, currentUser, isConnected, isSynced } = yjsContext;
 
   const getActivityIcon = (type: ActivityItem['type']) => {
     switch (type) {
