@@ -127,67 +127,7 @@ function CollaborationPlugin({
   return <OnChangePlugin onChange={handleLocalContentChange} />;
 }
 
-// Content Sync Plugin to handle Yjs to Supabase synchronization
-function YjsContentSyncPlugin({ 
-  initialContent, 
-  onContentSync,
-  documentId 
-}: { 
-  initialContent: string;
-  onContentSync: (content: string) => void;
-  documentId: string;
-}) {
-  const [editor] = useLexicalComposerContext();
-  const yjsProvider = useYjsProvider();
-  const lastSyncedContentRef = useRef<string>('');
-  const syncIntervalRef = useRef<NodeJS.Timeout>();
-
-  // Initial sync: Load Supabase content into Yjs when connected
-  useEffect(() => {
-    if (yjsProvider?.isSynced && initialContent && initialContent !== lastSyncedContentRef.current) {
-      console.log('🔄 [Hybrid] Syncing initial Supabase content to Yjs:', initialContent);
-      
-      editor.update(() => {
-        const root = $getRoot();
-        root.clear();
-        
-        if (initialContent.trim()) {
-          const paragraph = $createParagraphNode();
-          paragraph.append($createTextNode(initialContent));
-          root.append(paragraph);
-        }
-        
-        lastSyncedContentRef.current = initialContent;
-      });
-    }
-  }, [yjsProvider?.isSynced, initialContent, editor]);
-
-  // Periodic sync: Save Yjs content back to Supabase
-  useEffect(() => {
-    if (yjsProvider?.isSynced) {
-      syncIntervalRef.current = setInterval(() => {
-        editor.getEditorState().read(() => {
-          const root = $getRoot();
-          const currentContent = root.getTextContent();
-          
-          if (currentContent !== lastSyncedContentRef.current) {
-            console.log('💾 [Hybrid] Syncing Yjs content back to Supabase:', currentContent);
-            lastSyncedContentRef.current = currentContent;
-            onContentSync(currentContent);
-          }
-        });
-      }, 2000); // Sync every 2 seconds
-    }
-
-    return () => {
-      if (syncIntervalRef.current) {
-        clearInterval(syncIntervalRef.current);
-      }
-    };
-  }, [yjsProvider?.isSynced, editor, onContentSync]);
-
-  return null;
-}
+// Removed YjsContentSyncPlugin - no longer needed as LexicalYjsCollaborationPlugin handles all sync
 
 // Yjs Collaboration Editor component
 function YjsCollaborationEditor(props: any) {
@@ -223,17 +163,10 @@ function YjsCollaborationEditor(props: any) {
               ErrorBoundary={LexicalErrorBoundary}
             />
             
-            {/* Fixed: Improved Yjs Collaboration Plugin for plaintext collaboration */}
+            {/* Yjs Collaboration Plugin handles all synchronization */}
             <LexicalYjsCollaborationPlugin
               id={props.documentId}
               shouldBootstrap={true}
-            />
-            
-            {/* Content Synchronization Plugin */}
-            <YjsContentSyncPlugin
-              initialContent={props.initialContent}
-              onContentSync={props.onContentSync}
-              documentId={props.documentId}
             />
             
             <HistoryPlugin />
