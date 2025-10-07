@@ -484,7 +484,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         </div>
 
         {/* Notes List */}
-        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+        <div className="space-y-2">
           {loading ? (
             <div className="text-center text-sm text-muted-foreground py-4">
               Laden...
