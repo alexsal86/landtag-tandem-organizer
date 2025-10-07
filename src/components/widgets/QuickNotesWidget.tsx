@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/hooks/useTenant';
 
 interface QuickNote {
   id: string;
@@ -40,6 +41,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   configuration = {} 
 }) => {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [notes, setNotes] = useState<QuickNote[]>([]);
   const [newNote, setNewNote] = useState('');
   const [newTitle, setNewTitle] = useState('');
@@ -286,20 +288,28 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   };
 
   const createTaskFromNote = async (note: QuickNote) => {
-    if (!user) return;
+    if (!user) {
+      toast.error('Nicht angemeldet');
+      return;
+    }
+
+    if (!currentTenant) {
+      toast.error('Kein Tenant ausgewählt');
+      return;
+    }
 
     try {
       const { data: task, error: taskError } = await supabase
         .from('tasks')
         .insert({
           user_id: user.id,
+          tenant_id: currentTenant.id,
           title: note.title || note.content.substring(0, 50) + (note.content.length > 50 ? '...' : ''),
           description: note.content,
           category: 'personal',
           priority: 'medium',
           status: 'todo',
-          due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-          tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+          due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         })
         .select()
         .single();
