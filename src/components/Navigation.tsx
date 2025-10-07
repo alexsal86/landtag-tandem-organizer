@@ -468,24 +468,12 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer flex-1"
                 >
-                  <div className="relative">
-                    <Avatar className="h-8 w-8 ring-4 ring-offset-2 ring-offset-background">
-                      <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
-                      <AvatarFallback>
-                        {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    {/* Status Ring Overlay */}
-                    <div className={cn(
-                      "absolute inset-0 rounded-full ring-4 ring-offset-2 ring-offset-background pointer-events-none",
-                      (currentStatus?.status_type === 'online' || currentStatus?.status_type === 'custom') && 'ring-green-500',
-                      currentStatus?.status_type === 'meeting' && 'ring-blue-500',
-                      currentStatus?.status_type === 'away' && 'ring-yellow-500',
-                      currentStatus?.status_type === 'break' && 'ring-orange-500',
-                      currentStatus?.status_type === 'offline' && 'ring-gray-500',
-                      !currentStatus?.status_type && 'ring-gray-500'
-                    )} />
-                  </div>
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
+                    <AvatarFallback>
+                      {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">
                       {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
