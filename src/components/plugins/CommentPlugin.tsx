@@ -73,12 +73,6 @@ class CommentMarkNode extends MarkNode {
     const element = document.createElement('mark');
     element.className = `comment-highlight comment-${this.__commentId}`;
     element.setAttribute('data-comment-id', this.__commentId);
-    element.style.backgroundColor = 'hsl(45 95% 70% / 0.4)';
-    element.style.borderRadius = '2px';
-    element.style.padding = '1px 2px';
-    element.style.cursor = 'pointer';
-    element.style.transition = 'all 0.2s ease';
-    element.style.border = '1px solid hsl(45 95% 60% / 0.3)';
     
     element.addEventListener('click', (e) => {
       e.preventDefault();
@@ -87,16 +81,6 @@ class CommentMarkNode extends MarkNode {
       window.dispatchEvent(new CustomEvent('comment-highlight-click', {
         detail: { commentId: this.__commentId }
       }));
-    });
-    
-    element.addEventListener('mouseenter', () => {
-      element.style.backgroundColor = 'hsl(45 95% 60% / 0.6)';
-      element.style.transform = 'scale(1.02)';
-    });
-    
-    element.addEventListener('mouseleave', () => {
-      element.style.backgroundColor = 'hsl(45 95% 70% / 0.4)';
-      element.style.transform = 'scale(1)';
     });
     
     return element;
@@ -455,6 +439,47 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       window.removeEventListener('comment-highlight-click', handleCommentHighlightClick as EventListener);
     };
   }, [documentId]);
+
+  // Auto-delete comments when marked text is removed
+  useEffect(() => {
+    if (!editor) return;
+
+    const editorRoot = editor.getRootElement();
+    if (!editorRoot) return;
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.removedNodes.forEach((node) => {
+          if (node instanceof HTMLElement) {
+            const commentId = node.getAttribute('data-comment-id');
+            if (commentId && node.classList.contains('comment-highlight')) {
+              // Comment mark was removed from editor - delete from database
+              console.log('[CommentPlugin] Deleting orphaned comment:', commentId);
+              supabase
+                .from('letter_comments')
+                .delete()
+                .eq('id', commentId)
+                .then(({ error }) => {
+                  if (error) {
+                    console.error('[CommentPlugin] Error deleting orphaned comment:', error);
+                  } else {
+                    // Refresh comments list
+                    loadComments();
+                  }
+                });
+            }
+          }
+        });
+      });
+    });
+
+    observer.observe(editorRoot, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => observer.disconnect();
+  }, [editor, loadComments]);
 
   const handleAddComment = () => {
     editor.getEditorState().read(() => {
