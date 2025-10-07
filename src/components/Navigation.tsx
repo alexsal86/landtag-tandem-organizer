@@ -424,7 +424,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                     >
                       <div className="relative p-1">
                         <Avatar className={cn(
-                          "ring-4 ring-offset-2 ring-offset-background",
+                          "ring-4",
                           isCollapsed ? "h-6 w-6" : "h-8 w-8"
                         )}>
                           <AvatarImage src={onlineUser.avatar_url || ""} alt={onlineUser.display_name || 'User'} />
