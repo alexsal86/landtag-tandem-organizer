@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical';
+import * as Y from 'yjs';
 import { useYjsProvider } from './YjsProvider';
 
 interface LexicalYjsCollaborationPluginProps {
@@ -23,61 +24,67 @@ export function LexicalYjsCollaborationPlugin({
   useEffect(() => {
     if (!doc || !editor || !isSynced) return;
 
-    console.log('[LexicalYjsCollaboration] Setting up improved plaintext Yjs binding for:', id);
+    console.log('[LexicalYjsCollaboration] Setting up structured Lexical Yjs binding for:', id);
 
-    // Use a consistent Yjs key name
-    const sharedText = doc.getText('content');
+    // Use Y.XmlFragment for structured rich text instead of plain text
+    const sharedXml = doc.getXmlFragment('content');
 
     const applyYjsToLexical = (origin?: any, transactionOrigin?: string) => {
       // Prevent echo: skip if this update originated from our own Lexical editor
-      const isOwnUpdate = origin === 'lexical' || transactionOrigin === clientId.current;
+      const isOwnUpdate = origin === 'supabase' || transactionOrigin === clientId.current;
       
       if (isOwnUpdate) {
         console.log(`[LexicalYjsCollaboration:${clientId.current}] Skipping echo - origin:`, origin, 'transaction:', transactionOrigin);
         return;
       }
       
-      const content = sharedText.toString();
+      // Get serialized state from Y.XmlFragment
+      const serializedState = sharedXml.toString();
       
       // Skip if we're already applying a Yjs update or content hasn't changed
-      if (isApplyingYjsUpdateRef.current || content === lastContentRef.current) {
-        console.log(`[LexicalYjsCollaboration:${clientId.current}] Skipping - applying:${isApplyingYjsUpdateRef.current}, unchanged:${content === lastContentRef.current}`);
+      if (isApplyingYjsUpdateRef.current || serializedState === lastContentRef.current) {
+        console.log(`[LexicalYjsCollaboration:${clientId.current}] Skipping - applying:${isApplyingYjsUpdateRef.current}, unchanged:${serializedState === lastContentRef.current}`);
         return;
       }
 
       console.log(`[LexicalYjsCollaboration:${clientId.current}] Applying Yjs content to Lexical:`, {
         origin,
         transactionOrigin,
-        contentLength: content.length,
-        preview: content.slice(0, 50)
+        contentLength: serializedState.length,
+        preview: serializedState.slice(0, 100)
       });
       
       isApplyingYjsUpdateRef.current = true;
       
       try {
-        editor.update(() => {
-          const root = $getRoot();
-          root.clear();
-          
-          if (content.trim()) {
-            // Split content by newlines and create paragraphs
-            const lines = content.split('\n');
-            lines.forEach((line, index) => {
+        if (serializedState.trim()) {
+          // Parse structured EditorState from Yjs
+          try {
+            const editorState = editor.parseEditorState(serializedState);
+            editor.setEditorState(editorState);
+            lastContentRef.current = serializedState;
+          } catch (parseError) {
+            console.error(`[LexicalYjsCollaboration:${clientId.current}] Failed to parse EditorState, falling back to plain text:`, parseError);
+            // Fallback: treat as plain text
+            editor.update(() => {
+              const root = $getRoot();
+              root.clear();
               const p = $createParagraphNode();
-              if (line.trim()) {
-                p.append($createTextNode(line));
-              }
+              p.append($createTextNode(serializedState));
               root.append(p);
             });
-          } else {
-            // Empty content - add single empty paragraph
+            lastContentRef.current = serializedState;
+          }
+        } else {
+          // Empty content - add single empty paragraph
+          editor.update(() => {
+            const root = $getRoot();
+            root.clear();
             const p = $createParagraphNode();
             root.append(p);
-          }
-          
-          // Update ref synchronously within the update
-          lastContentRef.current = content;
-        });
+          });
+          lastContentRef.current = serializedState;
+        }
       } catch (error) {
         console.error(`[LexicalYjsCollaboration:${clientId.current}] Error applying Yjs content:`, error);
       } finally {
@@ -100,7 +107,7 @@ export function LexicalYjsCollaborationPlugin({
       }
     };
     
-    sharedText.observeDeep(yObserver);
+    sharedXml.observeDeep(yObserver);
 
     // Initial bootstrap from Yjs (only once after sync)
     if (shouldBootstrap && !hasBootstrapped.current) {
@@ -118,36 +125,39 @@ export function LexicalYjsCollaborationPlugin({
       }
       
       try {
-        editorState.read(() => {
-          const text = $getRoot().getTextContent();
+        // Serialize the entire EditorState as JSON for structured data
+        const serializedState = JSON.stringify(editorState.toJSON());
+        
+        // Only update if state actually changed
+        if (serializedState !== lastContentRef.current) {
+          console.log(`[LexicalYjsCollaboration:${clientId.current}] Pushing Lexical EditorState to Yjs:`, {
+            stateLength: serializedState.length,
+            preview: serializedState.slice(0, 100),
+            clientId: clientId.current
+          });
           
-          // Only update if text actually changed from what we last saw
-          if (text !== lastContentRef.current) {
-            console.log(`[LexicalYjsCollaboration:${clientId.current}] Pushing Lexical content to Yjs:`, {
-              textLength: text.length,
-              preview: text.slice(0, 50),
-              clientId: clientId.current
-            });
-            
-            isApplyingLexicalUpdateRef.current = true;
-            
-            // Update reference BEFORE sending to Yjs to prevent race conditions
-            lastContentRef.current = text;
-            
-            // Use transaction with client ID to prevent echo
-            doc.transact(() => {
-              const currentLength = sharedText.toString().length;
-              if (currentLength > 0) {
-                sharedText.delete(0, currentLength);
-              }
-              if (text) {
-                sharedText.insert(0, text);
-              }
-            }, clientId.current);
-            
-            isApplyingLexicalUpdateRef.current = false;
-          }
-        });
+          isApplyingLexicalUpdateRef.current = true;
+          
+          // Update reference BEFORE sending to Yjs to prevent race conditions
+          lastContentRef.current = serializedState;
+          
+          // Use transaction with client ID to prevent echo
+          doc.transact(() => {
+            // Clear existing content
+            const currentLength = sharedXml.length;
+            if (currentLength > 0) {
+              sharedXml.delete(0, currentLength);
+            }
+            // Insert new serialized state as XmlText
+            if (serializedState) {
+              const xmlText = new Y.XmlText();
+              xmlText.insert(0, serializedState);
+              sharedXml.insert(0, [xmlText]);
+            }
+          }, clientId.current);
+          
+          isApplyingLexicalUpdateRef.current = false;
+        }
       } catch (error) {
         console.error(`[LexicalYjsCollaboration:${clientId.current}] Error pushing to Yjs:`, error);
         isApplyingLexicalUpdateRef.current = false;
@@ -155,9 +165,9 @@ export function LexicalYjsCollaborationPlugin({
     });
 
     return () => {
-      console.log(`[LexicalYjsCollaboration:${clientId.current}] Cleaning up Yjs text binding`);
+      console.log(`[LexicalYjsCollaboration:${clientId.current}] Cleaning up Yjs xml binding`);
       try {
-        sharedText.unobserveDeep(yObserver);
+        sharedXml.unobserveDeep(yObserver);
         unregister();
       } catch (error) {
         console.error(`[LexicalYjsCollaboration:${clientId.current}] Error during cleanup:`, error);

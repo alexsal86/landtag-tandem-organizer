@@ -55,10 +55,12 @@ class SupabaseYjsProvider {
     // Listen for Yjs updates via Supabase
     this.channel
       .on('broadcast', { event: 'yjs-update' }, ({ payload }: any) => {
+        // Double echo prevention: check both clientId and avoid self-broadcasts
         if (payload && payload.clientId !== this.clientId && payload.update) {
-          console.log(`[SupabaseYjsProvider] Received remote Yjs update from client: ${payload.clientId}`);
+          console.log(`[SupabaseYjsProvider] Received remote Yjs update from client: ${payload.clientId}, origin: ${payload.origin}`);
           try {
             const update = new Uint8Array(payload.update);
+            // Mark update as 'remote' to prevent echo
             Y.applyUpdate(this.doc, update, 'remote');
           } catch (e) {
             console.warn('[SupabaseYjsProvider] Failed to apply remote update:', e);
@@ -79,15 +81,17 @@ class SupabaseYjsProvider {
 
     // Listen to local Yjs updates to broadcast via Supabase
     this.doc.on('update', (update: Uint8Array, origin: any) => {
-      if (origin !== 'remote' && this.channel) {
-        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update from client: ${this.clientId}`);
+      // Only broadcast if NOT from remote AND NOT from our own client
+      if (origin !== 'remote' && origin !== this.clientId && this.channel) {
+        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update from client: ${this.clientId}, origin: ${origin}`);
         this.channel.send({
           type: 'broadcast',
           event: 'yjs-update',
           payload: {
             clientId: this.clientId,
             userId: this.userId,
-            update: Array.from(update)
+            update: Array.from(update),
+            origin: 'supabase' // Explicit origin tag
           }
         });
       }

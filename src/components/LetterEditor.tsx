@@ -312,13 +312,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   }, [isOpen, currentTenant, editedLetter?.template_id, letter?.template_id, letter?.id, senderInfos.length, informationBlocks.length]);
 
-  // Auto-save functionality with improved performance - INCLUDES PAGINATION
+  // Auto-save functionality - DECOUPLED from Yjs collaboration
+  // Yjs = Single Source of Truth for active sessions
+  // DB Auto-save = Backup/persistence only
   useEffect(() => {
     console.log('=== AUTO-SAVE EFFECT TRIGGERED ===');
     console.log('canEdit:', canEdit);
     console.log('isUpdatingFromRemoteRef.current:', isUpdatingFromRemoteRef.current);
     console.log('letter?.id:', letter?.id);
     console.log('showPagination (for auto-save):', showPagination);
+    console.log('useYjsCollaboration: true (always enabled)');
     
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
 
@@ -326,13 +329,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       clearTimeout(saveTimeoutRef.current);
     }
 
+    // Auto-save to DB for persistence (backup)
+    // Yjs handles real-time sync between clients
+    // DB saves every 3 seconds as backup
     saveTimeoutRef.current = setTimeout(() => {
       if (!isUpdatingFromRemoteRef.current && letter?.id) {
-        console.log('=== TRIGGERING AUTO-SAVE WITH PAGINATION ===');
+        console.log('=== BACKGROUND AUTO-SAVE (Yjs is primary sync) ===');
         console.log('showPagination at auto-save time:', showPagination);
         handleAutoSave();
       }
-    }, 500); // Reduced from 3000ms to 500ms for faster responsiveness
+    }, 3000); // 3 seconds for DB backup (Yjs syncs immediately)
 
     return () => {
       if (saveTimeoutRef.current) {
@@ -1771,20 +1777,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                        content: content?.trim() || '',
                        content_nodes: processedContentNodes
                      }));
-                    
-                     // Trigger immediate auto-save with new content to avoid timing issues
-                     if (saveTimeoutRef.current) {
-                       clearTimeout(saveTimeoutRef.current);
-                     }
                      
-                     saveTimeoutRef.current = setTimeout(() => {
-                       if (!isUpdatingFromRemoteRef.current && letter?.id) {
-                         console.log('=== IMMEDIATE AUTO-SAVE AFTER CONTENT CHANGE ===');
-                         handleAutoSave(content?.trim() || '', processedContentNodes);
-                       }
-                     }, 300); // Shorter delay for content changes
-                    
-                    // Content synchronization handled by Yjs collaboration
+                      // NOTE: Content synchronization is handled by Yjs in real-time
+                      // Auto-save to DB happens in background (every 3s) as backup
+                      // No need for immediate DB save here - Yjs is the primary sync mechanism
                    }}
                   placeholder="Hier können Sie Ihren Brief verfassen..."
                   documentId={letter?.id}
