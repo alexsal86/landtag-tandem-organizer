@@ -16,7 +16,13 @@ export function LexicalYjsCollaborationPlugin({
   shouldBootstrap = true 
 }: LexicalYjsCollaborationPluginProps) {
   const [editor] = useLexicalComposerContext();
-  const { doc, isSynced, provider, collaborators, currentUser, clientId } = useYjsProvider();
+  const yjsContext = useYjsProvider();
+  
+  if (!yjsContext) {
+    return null;
+  }
+  
+  const { doc, isSynced, collaborators, clientId } = yjsContext;
   const { user } = useAuth();
   const lastContentRef = useRef<string>('');
   const isApplyingYjsUpdateRef = useRef<boolean>(false);

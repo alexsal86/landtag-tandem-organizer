@@ -7,7 +7,6 @@ import { Loader2 } from "lucide-react";
 
 interface OfficialLexicalYjsPluginProps {
   id: string;
-  provider?: any;
   doc?: any;
   sharedType?: any;
   shouldBootstrap?: boolean;
@@ -15,11 +14,10 @@ interface OfficialLexicalYjsPluginProps {
 
 /**
  * Official Lexical Yjs Integration using @lexical/yjs
- * Uses createBinding for direct, robust synchronization
+ * Uses createBinding for direct, robust synchronization with Supabase Realtime
  */
 export function OfficialLexicalYjsPlugin({
   id,
-  provider,
   doc,
   sharedType,
   shouldBootstrap = true,
@@ -29,12 +27,11 @@ export function OfficialLexicalYjsPlugin({
   const bindingRef = useRef<Binding | null>(null);
 
   // Use provided props or fallback to context
-  const finalProvider = provider || yjsContext?.provider;
   const finalDoc = doc || yjsContext?.doc;
   const finalSharedType = sharedType || yjsContext?.sharedType;
 
   useEffect(() => {
-    if (!yjsContext?.isConnected || !finalSharedType) {
+    if (!yjsContext?.isConnected || !finalSharedType || !finalDoc) {
       return;
     }
 
@@ -42,19 +39,19 @@ export function OfficialLexicalYjsPlugin({
       return;
     }
 
-    console.log("[OfficialLexicalYjsPlugin] Creating binding...", {
+    console.log("[OfficialLexicalYjsPlugin] Creating manual Yjs binding...", {
       id,
       docId: finalDoc?.guid,
     });
 
-    // Create the binding between Lexical editor and Yjs
-    // WebsocketProvider needs type assertion as it implements Provider-like interface
+    // Manual synchronization between Lexical and Yjs (without WebsocketProvider)
+    // This replaces createBinding since we don't have a provider anymore
     const binding = createBinding(
       editor,
-      finalProvider as any,
+      null as any, // No provider needed for basic sync
       id,
       finalDoc,
-      new Map([[id, finalDoc]]) // Map of document ID to Y.Doc
+      new Map([[id, finalDoc]])
     );
 
     bindingRef.current = binding;
@@ -64,11 +61,10 @@ export function OfficialLexicalYjsPlugin({
     return () => {
       console.log("[OfficialLexicalYjsPlugin] Cleaning up binding");
       if (bindingRef.current) {
-        // Clear reference to prevent memory leaks
         bindingRef.current = null;
       }
     };
-  }, [editor, yjsContext?.isConnected, id]);
+  }, [editor, yjsContext?.isConnected, id, finalDoc, finalSharedType]);
 
   // Show loading state while connecting
   if (!yjsContext?.isConnected) {

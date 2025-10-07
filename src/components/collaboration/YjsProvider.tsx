@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
-import { WebsocketProvider } from 'y-websocket';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface YjsProviderProps {
   documentId: string;
@@ -15,7 +16,7 @@ export interface YjsProviderProps {
 
 export interface YjsProviderContextValue {
   doc: Y.Doc;
-  provider: WebsocketProvider;
+  channel: RealtimeChannel | null;
   sharedType: Y.Text;
   clientId: string;
   isConnected: boolean;
@@ -35,7 +36,7 @@ export function YjsProvider({
 }: YjsProviderProps) {
   const { user } = useAuth();
   const docRef = useRef<Y.Doc | null>(null);
-  const providerRef = useRef<WebsocketProvider | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const persistenceRef = useRef<IndexeddbPersistence | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
@@ -78,13 +79,13 @@ export function YjsProvider({
     }
     
     // Check if already initialized
-    if (providerRef.current && docRef.current) {
+    if (channelRef.current && docRef.current) {
       console.log('[YjsProvider] Already initialized for document:', documentId);
       return;
     }
     
-    isInitializingRef.current = true; // Set flag IMMEDIATELY before any async operations
-    console.log('[YjsProvider] Initializing Yjs WebSocket collaboration for document:', documentId);
+    isInitializingRef.current = true;
+    console.log('[YjsProvider] Initializing Yjs Supabase Realtime collaboration for document:', documentId);
 
     // Create Yjs document
     const doc = new Y.Doc();
@@ -102,100 +103,128 @@ export function YjsProvider({
       setIsSynced(true);
     });
 
-    // Build WebSocket URL for Supabase Edge Function - LETTER COLLABORATION
-    // Base URL without documentId - y-websocket will append documentId as room name
-    const wsUrl = `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/letter-collaboration`;
-    console.log('[YjsProvider] Connecting to WebSocket:', wsUrl, 'Room:', documentId);
-
-    // Create WebSocket provider
-    // y-websocket will automatically append documentId to create: wsUrl/documentId?userId=...
-    const provider = new WebsocketProvider(
-      wsUrl,  // Base-URL OHNE documentId
-      documentId,  // y-websocket fügt dies automatisch an
-      doc,
-      {
-        params: {
-          userId: user.id  // Query-Parameter für userId
-        }
-      }
-    );
-    providerRef.current = provider;
-
-    // Handle connection status
-    provider.on('status', ({ status }: { status: string }) => {
-      console.log('[YjsProvider] Connection status:', status);
-      const connected = status === 'connected';
-      setIsConnected(connected);
-      
-      if (connected) {
-        onConnectedRef.current?.();
-        toast.success('Mit Collaboration-Server verbunden');
-      } else if (status === 'disconnected') {
-        onDisconnectedRef.current?.();
-        toast.error('Verbindung zum Collaboration-Server verloren');
+    // Create Supabase Realtime channel for this document
+    const channelName = `document:${documentId}`;
+    const channel = supabase.channel(channelName, {
+      config: {
+        broadcast: { self: false }, // Don't receive our own broadcasts
+        presence: { key: user.id }
       }
     });
+    channelRef.current = channel;
 
-    // Handle sync status
-    provider.on('sync', (synced: boolean) => {
-      console.log('[YjsProvider] Sync status:', synced);
-      setIsSynced(synced);
-    });
-
-    // Handle collaborators changes via awareness
-    const updateCollaborators = () => {
-      const states = Array.from(provider.awareness.getStates().entries())
-        .filter(([clientId]: [number, any]) => clientId !== provider.awareness.clientID)
-        .map(([clientId, state]: [number, any]) => ({
-          clientId: clientId.toString(),
-          user_id: state.user_id || `client-${clientId}`,
-          user_color: state.user_color || `hsl(${(clientId * 137.508) % 360}, 70%, 50%)`,
-          profiles: state.profiles || {
-            display_name: 'Unknown User',
-            avatar_url: null
-          }
-        }));
-      
-      console.log('[YjsProvider] Collaborators changed:', states.length);
-      setCollaborators(states);
-      onCollaboratorsChangeRef.current?.(states);
+    // Handle Yjs updates - send to other clients
+    const updateHandler = (update: Uint8Array, origin: any) => {
+      // Don't broadcast updates from remote (would cause loops)
+      if (origin !== 'remote') {
+        channel.send({
+          type: 'broadcast',
+          event: 'yjs-update',
+          payload: { update: Array.from(update) }
+        });
+      }
     };
+    doc.on('update', updateHandler);
 
-    provider.awareness.on('change', updateCollaborators);
-
-    // Set local awareness state
-    provider.awareness.setLocalStateField('user_id', user.id);
-    provider.awareness.setLocalStateField('profiles', {
-      display_name: user.user_metadata?.display_name || 'Unknown User',
-      avatar_url: user.user_metadata?.avatar_url
+    // Handle Yjs updates - receive from other clients
+    channel.on('broadcast', { event: 'yjs-update' }, ({ payload }) => {
+      try {
+        Y.applyUpdate(doc, new Uint8Array(payload.update), 'remote');
+      } catch (error) {
+        console.error('[YjsProvider] Error applying update:', error);
+      }
     });
-    provider.awareness.setLocalStateField('user_color', `#${Math.floor(Math.random()*16777215).toString(16)}`);
 
-    console.log('[YjsProvider] WebSocket provider initialized and connecting');
+    // Handle presence for collaborators tracking
+    channel.on('presence', { event: 'sync' }, () => {
+      const presenceState = channel.presenceState();
+      const collaboratorsList = Object.entries(presenceState)
+        .filter(([key]) => key !== user.id)
+        .map(([key, data]: [string, any]) => {
+          const presence = Array.isArray(data) ? data[0] : data;
+          return {
+            clientId: key,
+            user_id: presence.user_id || key,
+            user_color: presence.user_color || `hsl(${Math.abs(hashCode(key)) % 360}, 70%, 50%)`,
+            profiles: presence.profiles || {
+              display_name: 'Unknown User',
+              avatar_url: null
+            }
+          };
+        });
+      
+      console.log('[YjsProvider] Collaborators changed:', collaboratorsList.length);
+      setCollaborators(collaboratorsList);
+      onCollaboratorsChangeRef.current?.(collaboratorsList);
+    });
+
+    channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
+      console.log('[YjsProvider] User joined:', key);
+    });
+
+    channel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+      console.log('[YjsProvider] User left:', key);
+    });
+
+    // Subscribe to channel
+    channel.subscribe(async (status) => {
+      console.log('[YjsProvider] Channel status:', status);
+      
+      if (status === 'SUBSCRIBED') {
+        setIsConnected(true);
+        
+        // Track presence with user info
+        await channel.track({
+          user_id: user.id,
+          profiles: {
+            display_name: user.user_metadata?.display_name || 'Unknown User',
+            avatar_url: user.user_metadata?.avatar_url
+          },
+          user_color: `hsl(${Math.abs(hashCode(user.id)) % 360}, 70%, 50%)`,
+          online_at: new Date().toISOString()
+        });
+        
+        onConnectedRef.current?.();
+        toast.success('Echtzeit-Collaboration aktiv');
+      } else if (status === 'CHANNEL_ERROR') {
+        setIsConnected(false);
+        onDisconnectedRef.current?.();
+        toast.error('Verbindungsfehler zur Collaboration');
+      } else if (status === 'TIMED_OUT') {
+        setIsConnected(false);
+        toast.error('Verbindung zur Collaboration unterbrochen');
+      }
+    });
+
+    console.log('[YjsProvider] Supabase Realtime channel initialized');
 
     return () => {
       console.log('[YjsProvider] Cleaning up Yjs collaboration');
-      isInitializingRef.current = false; // Reset flag on cleanup
+      isInitializingRef.current = false;
       
-      provider.disconnect();
-      provider.destroy();
+      // Unsubscribe from channel
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+      
+      // Cleanup persistence and document
       persistence.destroy();
       doc.destroy();
       
       docRef.current = null;
-      providerRef.current = null;
+      channelRef.current = null;
       persistenceRef.current = null;
     };
   }, [documentId, user?.id]); // Only re-run when document or user changes
 
   // Always render children, context will be available once connected
   const contextValue: YjsProviderContextValue | null = 
-    (docRef.current && providerRef.current) 
+    (docRef.current && channelRef.current) 
       ? {
           doc: docRef.current,
-          provider: providerRef.current,
+          channel: channelRef.current,
           sharedType: docRef.current.getText('lexical'),
-          clientId: providerRef.current.awareness.clientID.toString(),
+          clientId: user?.id || 'anonymous',
           isConnected,
           isSynced,
           collaborators,
@@ -214,4 +243,15 @@ export function useYjsProvider() {
   const context = useContext(YjsProviderContext);
   // Return null if not yet available, don't throw error
   return context;
+}
+
+// Simple hash function for consistent colors
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash;
 }
