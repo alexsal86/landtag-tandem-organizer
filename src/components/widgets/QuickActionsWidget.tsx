@@ -21,7 +21,7 @@ interface QuickAction {
   label: string;
   icon: string;
   link: string;
-  iconSize: 'sm' | 'md' | 'lg';
+  iconSize: 'sm' | 'md' | 'lg' | 'xl';
   color?: string;
   description?: string;
 }
@@ -34,8 +34,8 @@ interface QuickActionsWidgetProps {
     actions?: QuickAction[];
     columns?: number | string;
     theme?: string;
-    buttonSize?: 'sm' | 'md' | 'lg';
-    globalIconSize?: 'sm' | 'md' | 'lg';
+    buttonSize?: 'sm' | 'md' | 'lg' | 'xl';
+    globalIconSize?: 'sm' | 'md' | 'lg' | 'xl';
   };
 }
 
@@ -173,8 +173,8 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
   const [localConfig, setLocalConfig] = useState(configuration);
   const [actions, setActions] = useState<QuickAction[]>(configuration.actions || defaultActions);
   const [editingAction, setEditingAction] = useState<QuickAction | null>(null);
-  const [tempButtonSize, setTempButtonSize] = useState<'sm' | 'md' | 'lg'>(configuration.buttonSize || 'md');
-  const [tempGlobalIconSize, setTempGlobalIconSize] = useState<'sm' | 'md' | 'lg'>(configuration.globalIconSize || 'md');
+  const [tempButtonSize, setTempButtonSize] = useState<'sm' | 'md' | 'lg' | 'xl'>(configuration.buttonSize || 'md');
+  const [tempGlobalIconSize, setTempGlobalIconSize] = useState<'sm' | 'md' | 'lg' | 'xl'>(configuration.globalIconSize || 'md');
   const [newAction, setNewAction] = useState<Partial<QuickAction>>({
     label: '',
     icon: 'Plus',
@@ -211,7 +211,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
     return 4;
   };
 
-  const getIconSize = (size: 'sm' | 'md' | 'lg') => {
+  const getIconSize = (size: 'sm' | 'md' | 'lg' | 'xl') => {
     // In edit mode, use temporary settings; otherwise use configured settings
     const effectiveGlobalSize = isEditMode ? tempGlobalIconSize : localConfig.globalIconSize;
     const effectiveSize = effectiveGlobalSize || size;
@@ -219,6 +219,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
       case 'sm': return 'h-4 w-4';
       case 'md': return 'h-5 w-5';
       case 'lg': return 'h-6 w-6';
+      case 'xl': return 'h-8 w-8';
       default: return 'h-5 w-5';
     }
   };
@@ -228,6 +229,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
     const effectiveButtonSize = isEditMode ? tempButtonSize : (localConfig.buttonSize || 'md');
     
     if (effectiveButtonSize) {
+      if (effectiveButtonSize === 'xl') return 'lg'; // Map xl to lg for button component
       return effectiveButtonSize === 'md' ? 'default' : effectiveButtonSize;
     }
     
@@ -346,15 +348,17 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                 variant="outline"
                 size={getActionButtonSize()}
                 className={`flex-shrink-0 h-auto min-w-[100px] flex flex-col items-center hover:bg-accent ${
-                  getActionButtonSize() === 'sm' ? 'p-2 gap-1' : 
-                  getActionButtonSize() === 'lg' ? 'p-4 gap-2.5' : 'p-3 gap-1.5'
+                  tempButtonSize === 'sm' ? 'p-2 gap-1' : 
+                  tempButtonSize === 'lg' ? 'p-4 gap-2.5' : 
+                  tempButtonSize === 'xl' ? 'p-6 gap-3' : 'p-3 gap-1.5'
                 }`}
               >
                 <Link to={action.link}>
                   {renderIcon(action.icon, getIconSize(action.iconSize))}
                   <span className={`text-center leading-tight whitespace-nowrap ${
-                    getActionButtonSize() === 'sm' ? 'text-xs' : 
-                    getActionButtonSize() === 'lg' ? 'text-sm font-medium' : 'text-xs'
+                    tempButtonSize === 'sm' ? 'text-xs' : 
+                    tempButtonSize === 'lg' ? 'text-sm font-medium' : 
+                    tempButtonSize === 'xl' ? 'text-base font-semibold' : 'text-xs'
                   }`}>
                     {action.label}
                   </span>
@@ -396,7 +400,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                     <Label className="text-xs text-muted-foreground">Button-Größe</Label>
                     <Select 
                       value={tempButtonSize} 
-                      onValueChange={(value: 'sm' | 'md' | 'lg') => {
+                      onValueChange={(value: 'sm' | 'md' | 'lg' | 'xl') => {
                         setTempButtonSize(value);
                       }}
                     >
@@ -407,6 +411,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                         <SelectItem value="sm">Klein</SelectItem>
                         <SelectItem value="md">Mittel</SelectItem>
                         <SelectItem value="lg">Groß</SelectItem>
+                        <SelectItem value="xl">Sehr groß</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -414,7 +419,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                     <Label className="text-xs text-muted-foreground">Icon-Größe (alle)</Label>
                     <Select 
                       value={tempGlobalIconSize} 
-                      onValueChange={(value: 'sm' | 'md' | 'lg') => {
+                      onValueChange={(value: 'sm' | 'md' | 'lg' | 'xl') => {
                         setTempGlobalIconSize(value);
                       }}
                     >
@@ -425,6 +430,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                         <SelectItem value="sm">Klein</SelectItem>
                         <SelectItem value="md">Mittel</SelectItem>
                         <SelectItem value="lg">Groß</SelectItem>
+                        <SelectItem value="xl">Sehr groß</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
