@@ -422,26 +422,21 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         isCollapsed ? "justify-center px-1 py-1" : "gap-3 px-2 py-1.5"
                       )}
                     >
-                      <div className="relative p-1">
-                        <Avatar className={cn(
-                          isCollapsed ? "h-6 w-6" : "h-8 w-8"
-                        )}>
-                          <AvatarImage src={onlineUser.avatar_url || ""} alt={onlineUser.display_name || 'User'} />
-                          <AvatarFallback className="text-xs">
-                            {onlineUser.display_name?.substring(0, 2).toUpperCase() || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        {/* Status Ring Overlay */}
-                        <div className={cn(
-                          "absolute inset-0 rounded-full ring-4 ring-offset-2 ring-offset-background pointer-events-none",
-                          (onlineUser.status?.status_type === 'online' || onlineUser.status?.status_type === 'custom') && 'ring-green-500',
-                          onlineUser.status?.status_type === 'meeting' && 'ring-blue-500',
-                          onlineUser.status?.status_type === 'away' && 'ring-yellow-500',
-                          onlineUser.status?.status_type === 'break' && 'ring-orange-500',
-                          onlineUser.status?.status_type === 'offline' && 'ring-gray-500',
-                          !onlineUser.status?.status_type && 'ring-gray-500'
-                        )} />
-                      </div>
+                      <Avatar className={cn(
+                        "ring-2",
+                        isCollapsed ? "h-6 w-6" : "h-8 w-8",
+                        (onlineUser.status?.status_type === 'online' || onlineUser.status?.status_type === 'custom') && 'ring-green-500',
+                        onlineUser.status?.status_type === 'meeting' && 'ring-blue-500',
+                        onlineUser.status?.status_type === 'away' && 'ring-yellow-500',
+                        onlineUser.status?.status_type === 'break' && 'ring-orange-500',
+                        onlineUser.status?.status_type === 'offline' && 'ring-gray-500',
+                        !onlineUser.status?.status_type && 'ring-gray-500'
+                      )}>
+                        <AvatarImage src={onlineUser.avatar_url || ""} alt={onlineUser.display_name || 'User'} />
+                        <AvatarFallback className="text-xs">
+                          {onlineUser.display_name?.substring(0, 2).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
                       {!isCollapsed && (
                         <span className="text-muted-foreground truncate flex-1">
                           {onlineUser.display_name || 'Unbekannt'}
