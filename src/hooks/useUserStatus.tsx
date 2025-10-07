@@ -140,6 +140,30 @@ export const useUserStatus = () => {
     };
 
     loadCurrentStatus();
+
+    // Set up realtime subscription for status changes
+    const statusSubscription = supabase
+      .channel(`user_status:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_status',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Status changed:', payload);
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            setCurrentStatus(payload.new as UserStatus);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      statusSubscription.unsubscribe();
+    };
   }, [user]);
 
   // Set up presence tracking for online users
