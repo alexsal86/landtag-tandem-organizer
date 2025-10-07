@@ -34,6 +34,7 @@ interface QuickActionsWidgetProps {
     columns?: number;
     theme?: string;
     buttonSize?: 'sm' | 'md' | 'lg';
+    globalIconSize?: 'sm' | 'md' | 'lg';
   };
 }
 
@@ -188,7 +189,9 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
   };
 
   const getIconSize = (size: 'sm' | 'md' | 'lg') => {
-    switch (size) {
+    // Use global icon size if configured, otherwise use individual size
+    const effectiveSize = configuration.globalIconSize || size;
+    switch (effectiveSize) {
       case 'sm': return 'h-4 w-4';
       case 'md': return 'h-5 w-5';
       case 'lg': return 'h-6 w-6';
@@ -307,7 +310,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                 className="flex-shrink-0 h-auto min-w-[100px] p-3 flex flex-col items-center gap-1.5 hover:bg-accent"
               >
                 <Link to={action.link}>
-                  {renderIcon(action.icon, 'h-5 w-5')}
+                  {renderIcon(action.icon, getIconSize(action.iconSize))}
                   <span className="text-xs text-center leading-tight whitespace-nowrap">
                     {action.label}
                   </span>
@@ -540,6 +543,25 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                       value={configuration.buttonSize || 'md'} 
                       onValueChange={(value: 'sm' | 'md' | 'lg') => {
                         const newConfig = { ...configuration, buttonSize: value };
+                        onConfigurationChange?.(newConfig);
+                      }}
+                    >
+                      <SelectTrigger className="text-xs h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sm">Klein</SelectItem>
+                        <SelectItem value="md">Mittel</SelectItem>
+                        <SelectItem value="lg">Groß</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Icon-Größe (alle)</Label>
+                    <Select 
+                      value={configuration.globalIconSize || 'md'} 
+                      onValueChange={(value: 'sm' | 'md' | 'lg') => {
+                        const newConfig = { ...configuration, globalIconSize: value };
                         onConfigurationChange?.(newConfig);
                       }}
                     >
