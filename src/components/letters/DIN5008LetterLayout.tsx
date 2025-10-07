@@ -36,16 +36,25 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     // Handle different address formats
     const parts = [];
     
-    // If address has structured fields
+    // If address has structured fields or simple name+address format
     if (typeof address === 'object' && address.name) {
       if (address.name) parts.push(address.name);
-      if (address.company) parts.push(address.company);
-      if (address.street) parts.push(address.street);
-      if (address.postal_code && address.city) {
-        parts.push(`${address.postal_code} ${address.city}`);
-      }
-      if (address.country && address.country !== 'Deutschland') {
-        parts.push(address.country);
+      
+      // Check if this is the simple {name, address} format
+      if (address.address && typeof address.address === 'string') {
+        // Split address string into lines and add each non-empty line
+        const addressLines = address.address.split('\n').filter(line => line.trim());
+        parts.push(...addressLines);
+      } else {
+        // Otherwise, it's the structured format
+        if (address.company) parts.push(address.company);
+        if (address.street) parts.push(address.street);
+        if (address.postal_code && address.city) {
+          parts.push(`${address.postal_code} ${address.city}`);
+        }
+        if (address.country && address.country !== 'Deutschland') {
+          parts.push(address.country);
+        }
       }
     } 
     // If address is a simple string

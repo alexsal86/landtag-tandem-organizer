@@ -1718,8 +1718,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     subject={editedLetter.subject}
                     letterDate={editedLetter.letter_date}
                     referenceNumber={editedLetter.reference_number}
-                    content={editedLetter.content_html || editedLetter.content || ''}
+                    content={editedLetter.content || ''}
                     attachments={attachments}
+                    showPagination={showPagination}
                   />
                 </div>
               </div>
