@@ -158,7 +158,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         className="flex" 
         style={{ 
           position: 'absolute',
-          bottom: '25mm', // 272mm from top = 25mm from bottom (297-272)
+          top: '272mm', // DIN 5008 footer position (exact as PDF)
           left: '25mm',
           right: '20mm',
           height: '18mm', // Footer area height
@@ -294,23 +294,15 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         </div>
       )}
 
-      {/* Letter Content Area - DIN 5008 konform */}
-      <div style={{ 
-        position: 'relative',
-        paddingTop: '60mm', // Start after header area (45mm + 15mm margin)
-        paddingLeft: '25mm', // DIN 5008 left margin
-        paddingRight: '20mm', // DIN 5008 right margin
-        paddingBottom: '16.9mm' // Bottom margin
+      {/* All elements positioned absolutely to page - exactly like PDF */}
+      
+      {/* Main Address and Info Block Container - positioned at 50mm from top (same as PDF) */}
+      <div className="flex" style={{ 
+        position: 'absolute',
+        top: '50mm', // DIN 5008 position from page top
+        left: '25mm',
+        right: '20mm'
       }}>
-        
-        {/* Main Address and Info Block Container - positioned at 50mm from top (corrected from 46mm) */}
-        <div className="flex" style={{ 
-          position: 'absolute',
-          top: '50mm', // Correct DIN 5008 position (same as PDF)
-          left: '25mm',
-          right: '20mm',
-          marginBottom: '8.46mm'
-        }}>
           
           {/* Recipient Address Field - DIN 5008 exact dimensions */}
           <div style={{ 
@@ -370,96 +362,94 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           </div>
         </div>
 
-        {/* Subject Line - positioned below 98.46mm line */}
-        {subject && (
-          <div style={{ 
-            position: 'absolute',
-            top: 'calc(98.46mm + 3mm)', // Betreff beginnt unter der Linie
-            left: '25mm',
-            right: '20mm',
-            marginBottom: '8.46mm',
-            fontWeight: 'bold',
-            fontSize: '11pt',
-            backgroundColor: debugMode ? 'rgba(0,255,0,0.05)' : 'transparent'
-          }}>
-            {subject}
+      {/* Subject Line - positioned at 98.46mm + 3mm from page top (same as PDF) */}
+      {subject && (
+        <div style={{ 
+          position: 'absolute',
+          top: 'calc(98.46mm + 3mm)', // Betreff beginnt unter der Linie
+          left: '25mm',
+          right: '20mm',
+          fontWeight: 'bold',
+          fontSize: '11pt',
+          backgroundColor: debugMode ? 'rgba(0,255,0,0.05)' : 'transparent'
+        }}>
+          {subject}
+        </div>
+      )}
+
+      {/* Letter Content - starts after subject line (same as PDF) */}
+      <div 
+        style={{ 
+          position: 'absolute',
+          top: subject ? 'calc(98.46mm + 11mm)' : 'calc(98.46mm + 3mm)', // Start below subject or below content line
+          left: '25mm',
+          right: '20mm',
+          maxHeight: '161mm', // Until footer starts at 272mm
+          fontSize: '11pt',
+          lineHeight: '1.2',
+          backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
+          overflow: 'hidden'
+        }}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+
+      {/* Attachments - positioned after content */}
+      {attachments && attachments.length > 0 && (
+        <div style={{ 
+          position: 'absolute',
+          top: '230mm', // Below main content area
+          left: '25mm',
+          right: '20mm',
+          backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent'
+        }}>
+          <div className="font-medium" style={{ marginBottom: '2mm', fontSize: '10pt' }}>
+            Anlagen:
           </div>
-        )}
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '10pt' }}>
+            {attachments.map((attachment, index) => (
+              <li key={index} style={{ marginBottom: '1mm' }}>
+                - {typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-        {/* Letter Content - starts after subject line */}
-        <div 
-          style={{ 
-            position: 'absolute',
-            top: subject ? 'calc(98.46mm + 11mm)' : 'calc(98.46mm + 3mm)', // Start below subject or below content line
-            left: '25mm',
-            right: '20mm',
-            minHeight: '100mm',
-            fontSize: '11pt',
-            lineHeight: '1.2',
-            backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent'
-          }}
-          dangerouslySetInnerHTML={{ __html: content }}
-        />
+      {/* Template Footer Blocks - matches PDF exactly */}
+      {renderFooterBlocks()}
 
-        {/* Attachments - positioned after content */}
-        {attachments && attachments.length > 0 && (
-          <div style={{ 
-            position: 'absolute',
-            top: '230mm', // Below main content area
-            left: '25mm',
-            right: '20mm',
-            marginTop: '8.46mm',
-            backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent'
-          }}>
-            <div className="font-medium" style={{ marginBottom: '2mm', fontSize: '10pt' }}>
-              Anlagen:
-            </div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '10pt' }}>
-              {attachments.map((attachment, index) => (
-                <li key={index} style={{ marginBottom: '1mm' }}>
-                  - {typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name)}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+      {/* Fallback Sender Address Block - only if no template footer */}
+      {!template?.footer_blocks && senderInfo && (
+        <div style={{ 
+          position: 'absolute',
+          top: '272mm', // DIN 5008 footer position (same as template footer)
+          left: '25mm',
+          right: '20mm',
+          fontSize: '8pt',
+          color: '#666',
+          backgroundColor: debugMode ? 'rgba(255,165,0,0.05)' : 'transparent',
+          padding: debugMode ? '2mm' : '0'
+        }}>
+          {formatSenderAddress(senderInfo)}
+          {senderInfo.phone && <div>Tel: {senderInfo.phone}</div>}
+          {senderInfo.email && <div>E-Mail: {senderInfo.email}</div>}
+          {senderInfo.website && <div>Web: {senderInfo.website}</div>}
+        </div>
+      )}
 
-        {/* Template Footer Blocks - matches PDF exactly */}
-        {renderFooterBlocks()}
-
-        {/* Fallback Sender Address Block - only if no template footer */}
-        {!template?.footer_blocks && senderInfo && (
-          <div style={{ 
-            position: 'absolute',
-            bottom: '25mm', // DIN 5008 footer position (same as template footer)
-            left: '25mm',
-            right: '20mm',
-            fontSize: '8pt',
-            color: '#666',
-            backgroundColor: debugMode ? 'rgba(255,165,0,0.05)' : 'transparent',
-            padding: debugMode ? '2mm' : '0'
-          }}>
-            {formatSenderAddress(senderInfo)}
-            {senderInfo.phone && <div>Tel: {senderInfo.phone}</div>}
-            {senderInfo.email && <div>E-Mail: {senderInfo.email}</div>}
-            {senderInfo.website && <div>Web: {senderInfo.website}</div>}
-          </div>
-        )}
-
-        {/* Pagination Footer */}
-        {showPagination && (
-          <div style={{
-            position: 'absolute',
-            bottom: '15.85mm', // 4.23mm from footer (20.08mm - 4.23mm)
-            right: '20mm',
-            fontSize: '8pt',
-            color: '#666',
-            fontFamily: 'Arial, sans-serif'
-          }}>
-            Seite 1 von 1
-          </div>
-        )}
-      </div>
+      {/* Pagination Footer */}
+      {showPagination && (
+        <div style={{
+          position: 'absolute',
+          top: '281.15mm', // 297mm - 15.85mm from bottom
+          right: '20mm',
+          fontSize: '8pt',
+          color: '#666',
+          fontFamily: 'Arial, sans-serif'
+        }}>
+          Seite 1 von 1
+        </div>
+      )}
 
       {/* Custom CSS from template */}
       {template?.letterhead_css && (
