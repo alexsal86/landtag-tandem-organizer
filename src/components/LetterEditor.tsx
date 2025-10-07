@@ -1136,7 +1136,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               onClick={() => setShowDINPreview(!showDINPreview)}
             >
               <Layout className="h-4 w-4 mr-2" />
-              DIN 5008 Vorschau
+              Vorschau Brief
             </Button>
 
             {/* Proofreading Mode Toggle - nur bei draft/review */}
