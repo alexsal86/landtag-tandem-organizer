@@ -3,46 +3,53 @@ import { Button } from "@/components/ui/button";
 import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 import { CallLogWidget } from '@/components/widgets/CallLogWidget';
 import { PomodoroWidget } from '@/components/widgets/PomodoroWidget';
+import { HabitsWidget } from '@/components/widgets/HabitsWidget';
+import { NewsWidget } from '@/components/widgets/NewsWidget';
+import { QuickActionsWidget } from '@/components/widgets/QuickActionsWidget';
+import { ExpenseWidget } from '@/components/widgets/ExpenseWidget';
+import { WeatherWidget } from '@/components/dashboard/WeatherWidget';
+import { TasksSummary } from '@/components/dashboard/TasksSummary';
+import { TodaySchedule } from '@/components/dashboard/TodaySchedule';
+import { CombinedMessagesWidget } from '@/components/CombinedMessagesWidget';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WidgetPalette } from '@/components/dashboard/WidgetPalette';
+import { useState, useEffect } from "react";
 
 interface WidgetQuickAccessProps {
   activeWidget: string;
   onWidgetChange: (widgetId: string) => void;
 }
 
+const WIDGET_REGISTRY = [
+  { id: 'quicknotes', name: 'Notizen', icon: FileText, description: 'Schnelle Notizen erstellen und verwalten' },
+  { id: 'calllog', name: 'Anrufe', icon: Phone, description: 'Anrufprotokolle verwalten' },
+  { id: 'pomodoro', name: 'Timer', icon: Timer, description: 'Pomodoro-Timer für produktives Arbeiten' },
+  { id: 'tasks', name: 'Aufgaben', icon: FileText, description: 'Aufgaben-Übersicht' },
+  { id: 'schedule', name: 'Zeitplan', icon: Timer, description: 'Heutiger Terminplan' },
+  { id: 'messages', name: 'Nachrichten', icon: Phone, description: 'Nachrichten-Widget' },
+  { id: 'weather', name: 'Wetter', icon: Timer, description: 'Wetter-Informationen' },
+  { id: 'habits', name: 'Gewohnheiten', icon: FileText, description: 'Gewohnheiten tracken' },
+  { id: 'news', name: 'News', icon: FileText, description: 'Aktuelle Nachrichten' },
+  { id: 'quickactions', name: 'Schnellaktionen', icon: Plus, description: 'Schnelle Aktionen' },
+  { id: 'expenses', name: 'Ausgaben', icon: FileText, description: 'Ausgaben-Übersicht' },
+];
+
 export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickAccessProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  
-  const allAvailableWidgets = [
-    {
-      id: 'quicknotes',
-      name: 'Notizen',
-      icon: FileText,
-      description: 'Schnelle Notizen erstellen und verwalten',
-    },
-    {
-      id: 'calllog',
-      name: 'Anrufe',
-      icon: Phone,
-      description: 'Anrufprotokolle verwalten',
-    },
-    {
-      id: 'pomodoro',
-      name: 'Timer',
-      icon: Timer,
-      description: 'Pomodoro-Timer für produktives Arbeiten',
-    },
-  ];
+  const [activeWidgets, setActiveWidgets] = useState<string[]>(() => {
+    const saved = localStorage.getItem('widgetQuickAccess');
+    return saved ? JSON.parse(saved) : ['quicknotes', 'calllog', 'pomodoro'];
+  });
 
-  const [activeWidgets, setActiveWidgets] = useState<string[]>(['quicknotes', 'calllog', 'pomodoro']);
+  useEffect(() => {
+    localStorage.setItem('widgetQuickAccess', JSON.stringify(activeWidgets));
+  }, [activeWidgets]);
 
   const toggleWidget = (widgetId: string) => {
     setActiveWidgets(prev => {
       if (prev.includes(widgetId)) {
-        // Mindestens ein Widget muss aktiv bleiben
         if (prev.length === 1) return prev;
-        // Wenn das aktuelle aktive Widget entfernt wird, zum ersten wechseln
         if (activeWidget === widgetId) {
           const remaining = prev.filter(id => id !== widgetId);
           onWidgetChange(remaining[0]);
@@ -54,7 +61,15 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
     });
   };
 
-  const activeWidgetsList = allAvailableWidgets.filter(w => activeWidgets.includes(w.id));
+  const handleAddWidget = (widgetType: string) => {
+    if (!activeWidgets.includes(widgetType)) {
+      setActiveWidgets(prev => [...prev, widgetType]);
+      onWidgetChange(widgetType);
+    }
+    setDialogOpen(false);
+  };
+
+  const activeWidgetsList = WIDGET_REGISTRY.filter(w => activeWidgets.includes(w.id));
 
   return (
     <div className="flex flex-col gap-2">
@@ -84,44 +99,50 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
               <Plus className="h-5 w-5" />
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
             <DialogHeader>
-              <DialogTitle>Widgets verwalten</DialogTitle>
+              <DialogTitle>Widgets</DialogTitle>
             </DialogHeader>
-            <div className="space-y-2 mt-4">
-              {allAvailableWidgets.map((widget) => (
-                <div
-                  key={widget.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <widget.icon className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{widget.name}</p>
-                      <p className="text-sm text-muted-foreground">{widget.description}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant={activeWidgets.includes(widget.id) ? "destructive" : "default"}
-                    size="sm"
-                    onClick={() => toggleWidget(widget.id)}
-                    disabled={activeWidgets.includes(widget.id) && activeWidgets.length === 1}
-                  >
-                    {activeWidgets.includes(widget.id) ? (
-                      <>
+            <Tabs defaultValue="manage" className="flex-1 flex flex-col min-h-0">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="manage">Aktive verwalten</TabsTrigger>
+                <TabsTrigger value="add">Hinzufügen</TabsTrigger>
+              </TabsList>
+              <TabsContent value="manage" className="flex-1 overflow-auto mt-4">
+                <div className="space-y-2">
+                  {activeWidgetsList.map((widget) => (
+                    <div
+                      key={widget.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <widget.icon className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">{widget.name}</p>
+                          <p className="text-sm text-muted-foreground">{widget.description}</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => toggleWidget(widget.id)}
+                        disabled={activeWidgets.length === 1}
+                      >
                         <X className="h-4 w-4 mr-1" />
                         Entfernen
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Hinzufügen
-                      </>
-                    )}
-                  </Button>
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </TabsContent>
+              <TabsContent value="add" className="flex-1 overflow-auto mt-4">
+                <WidgetPalette 
+                  onAddWidget={handleAddWidget}
+                  onClose={() => setDialogOpen(false)}
+                  suggestions={[]}
+                />
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
@@ -131,6 +152,14 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
         {activeWidget === 'quicknotes' && <QuickNotesWidget />}
         {activeWidget === 'calllog' && <CallLogWidget />}
         {activeWidget === 'pomodoro' && <PomodoroWidget />}
+        {activeWidget === 'tasks' && <TasksSummary />}
+        {activeWidget === 'schedule' && <TodaySchedule />}
+        {activeWidget === 'messages' && <CombinedMessagesWidget />}
+        {activeWidget === 'weather' && <WeatherWidget />}
+        {activeWidget === 'habits' && <HabitsWidget />}
+        {activeWidget === 'news' && <NewsWidget />}
+        {activeWidget === 'quickactions' && <QuickActionsWidget />}
+        {activeWidget === 'expenses' && <ExpenseWidget />}
       </div>
     </div>
   );
