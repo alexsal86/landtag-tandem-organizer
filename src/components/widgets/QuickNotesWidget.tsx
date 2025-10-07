@@ -154,9 +154,10 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         
         const { data: subtasksData, error: subtasksError } = await supabase
           .from('subtasks')
-          .select('id, task_id, description, is_completed, due_date')
+          .select('id, task_id, description, is_completed, due_date, assigned_to')
           .in('task_id', taskIds)
           .eq('is_completed', false)
+          .or(`assigned_to.eq.${user.id},assigned_to.is.null`)
           .order('order_index', { ascending: true });
 
         if (subtasksError) throw subtasksError;
