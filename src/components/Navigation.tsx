@@ -406,9 +406,11 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
         {/* Online Users Section */}
         <div className="border-t border-border mt-4 pt-4">
           <SidebarGroup>
-            <SidebarGroupLabel className="text-xs font-medium text-muted-foreground mb-2">
-              Online ({onlineUsers.length})
-            </SidebarGroupLabel>
+            {!isCollapsed && (
+              <SidebarGroupLabel className="text-xs font-medium text-muted-foreground mb-2">
+                Online ({onlineUsers.length})
+              </SidebarGroupLabel>
+            )}
             <SidebarGroupContent>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {onlineUsers.slice(0, 8).map((onlineUser) => {
@@ -416,12 +418,15 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                     <div
                       key={onlineUser.user_id}
                       className={cn(
-                        "flex items-center px-2 py-1.5 rounded-md text-sm hover:bg-accent/50 transition-colors",
-                        isCollapsed ? "justify-center" : "gap-3"
+                        "flex items-center rounded-md text-sm hover:bg-accent/50 transition-colors",
+                        isCollapsed ? "justify-center px-1 py-1" : "gap-3 px-2 py-1.5"
                       )}
                     >
                       <div className="relative">
-                        <Avatar className="h-8 w-8 ring-4 ring-offset-2 ring-offset-background">
+                        <Avatar className={cn(
+                          "ring-4 ring-offset-2 ring-offset-background",
+                          isCollapsed ? "h-6 w-6" : "h-8 w-8"
+                        )}>
                           <AvatarImage src={onlineUser.avatar_url || ""} alt={onlineUser.display_name || 'User'} />
                           <AvatarFallback className="text-xs">
                             {onlineUser.display_name?.substring(0, 2).toUpperCase() || 'U'}
