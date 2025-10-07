@@ -34,7 +34,7 @@ export function OfficialLexicalYjsPlugin({
   const finalSharedType = sharedType || yjsContext?.sharedType;
 
   useEffect(() => {
-    if (!yjsContext?.isConnected || !yjsContext?.isSynced || !finalSharedType) {
+    if (!yjsContext?.isConnected || !finalSharedType) {
       return;
     }
 
@@ -68,16 +68,16 @@ export function OfficialLexicalYjsPlugin({
         bindingRef.current = null;
       }
     };
-  }, [editor, yjsContext?.isConnected, yjsContext?.isSynced, id]);
+  }, [editor, yjsContext?.isConnected, id]);
 
-  // Show loading state while connecting/syncing
-  if (!yjsContext?.isConnected || !yjsContext?.isSynced) {
+  // Show loading state while connecting
+  if (!yjsContext?.isConnected) {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">
-            {!yjsContext?.isConnected ? "Verbinde..." : "Synchronisiere..."}
+            Verbinde mit Collaboration-Server...
           </p>
         </div>
       </div>
