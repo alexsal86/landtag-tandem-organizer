@@ -41,6 +41,9 @@ export function YjsProvider({
   const [isSynced, setIsSynced] = useState(false);
   const [collaborators, setCollaborators] = useState<any[]>([]);
   
+  // Prevent double initialization during React StrictMode or fast re-renders
+  const isInitializingRef = useRef(false);
+  
   // Store callbacks in refs to prevent re-rendering
   const onConnectedRef = useRef(onConnected);
   const onDisconnectedRef = useRef(onDisconnected);
@@ -68,12 +71,19 @@ export function YjsProvider({
       return;
     }
     
-    // Prevent re-initialization if already connected to the same document
+    // Prevent double initialization
+    if (isInitializingRef.current) {
+      console.log('[YjsProvider] Already initializing, skipping...');
+      return;
+    }
+    
+    // Check if already initialized
     if (providerRef.current && docRef.current) {
       console.log('[YjsProvider] Already initialized for document:', documentId);
       return;
     }
-
+    
+    isInitializingRef.current = true; // Set flag IMMEDIATELY before any async operations
     console.log('[YjsProvider] Initializing Yjs WebSocket collaboration for document:', documentId);
 
     // Create Yjs document
@@ -163,6 +173,8 @@ export function YjsProvider({
 
     return () => {
       console.log('[YjsProvider] Cleaning up Yjs collaboration');
+      isInitializingRef.current = false; // Reset flag on cleanup
+      
       provider.disconnect();
       provider.destroy();
       persistence.destroy();
