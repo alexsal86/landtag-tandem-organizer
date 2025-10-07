@@ -283,38 +283,44 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Erhöhter Kontrast für Dark Mode */
+    --background: 222 84% 3%;            /* Noch dunkler */
+    --foreground: 210 40% 98%;           /* Heller für besseren Kontrast */
 
-    --card: 222.2 84% 4.9%;
+    --card: 222 84% 5%;                  /* Leicht aufgehellt */
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 84% 5%;
     --popover-foreground: 210 40% 98%;
 
-    /* Grünen-CI für Dark Mode */
-    --primary: 100 57% 51%;              /* Helleres Grün für Dark Mode */
+    /* Grünen-CI für Dark Mode - optimiert */
+    --primary: 100 57% 55%;              /* Etwas helleres Grün */
     --primary-foreground: 0 0% 13%;
 
-    --secondary: 330 100% 55%;           /* Helleres Magenta */
+    --secondary: 330 100% 60%;           /* Helleres Magenta */
     --secondary-foreground: 0 0% 100%;
 
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted-foreground: 215 20.2% 68%;   /* Mehr Kontrast */
 
-    --accent: 100 57% 61%;
+    --accent: 100 57% 65%;               /* Hellerer Akzent */
     --accent-foreground: 0 0% 13%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 100 57% 51%;
+    --border: 217.2 32.6% 20%;           /* Etwas heller */
+    --input: 217.2 32.6% 20%;
+    --ring: 100 57% 55%;
     
     /* Dark Mode spezifische Grünen-Farben */
     --gruene-green-dark: 100 57% 41%;
     --gruene-green-light: 100 57% 71%;
+    
+    /* Subtilere Schatten mit mehr Kontrast */
+    --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.5);
+    --shadow-elegant: 0 8px 30px -6px rgba(0, 0, 0, 0.7);
+    
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -520,4 +526,106 @@ All colors MUST be HSL.
 
 .editor-paragraph {
   @apply my-2;
+}
+
+/* Phase 2 & 3: Enhanced Utilities and Animations */
+@layer utilities {
+  /* Navigation Styles */
+  .nav-item-active {
+    background: linear-gradient(90deg, 
+      hsl(var(--primary) / 0.15), 
+      transparent);
+    border-left: 3px solid hsl(var(--primary));
+    transition: var(--transition-smooth);
+  }
+
+  .nav-item:hover {
+    background: hsl(var(--accent) / 0.1);
+    transform: translateX(4px);
+    transition: all 0.2s ease;
+  }
+
+  .nav-item:hover .nav-icon {
+    color: hsl(var(--primary));
+    transform: scale(1.1);
+    transition: all 0.2s ease;
+  }
+
+  .nav-badge {
+    animation: pulse-subtle 2s ease-in-out infinite;
+    background: hsl(var(--secondary));
+    color: white;
+    font-weight: 600;
+  }
+
+  .nav-badge.has-new {
+    animation: wiggle 0.5s ease-in-out, pulse-subtle 2s ease-in-out infinite;
+  }
+
+  /* Interactive Cards */
+  .interactive-card {
+    @apply transition-all duration-300 hover:shadow-elegant hover:-translate-y-1 cursor-pointer;
+  }
+
+  .card-gradient-border {
+    position: relative;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent))) border-box;
+    border: 2px solid transparent;
+  }
+
+  .dark .card-gradient-border {
+    background: linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+                linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent))) border-box;
+  }
+
+  /* Focus States */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  /* Button Variants */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground shadow-card 
+           hover:shadow-elegant hover:bg-primary/90
+           transition-all duration-300 
+           hover:scale-105 active:scale-95
+           focus-ring;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground shadow-card
+           hover:shadow-elegant hover:bg-secondary/90
+           transition-all duration-300
+           hover:scale-105 active:scale-95
+           focus-ring;
+  }
+
+  /* Link Styles */
+  .link-primary {
+    @apply text-primary hover:text-primary/80 underline-offset-2 hover:underline transition-colors;
+  }
+
+  /* Icon Hover */
+  .icon-hover {
+    @apply transition-all duration-200 hover:text-primary hover:scale-110;
+  }
+
+  /* Input Focus */
+  .input-focus {
+    @apply focus:ring-2 focus:ring-primary focus:border-primary transition-all;
+  }
+
+  /* Mobile Touch Optimization */
+  @media (max-width: 768px) {
+    .sidebar-menu-button {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 12px;
+    }
+    
+    .nav-item {
+      padding: 16px;
+    }
+  }
 }

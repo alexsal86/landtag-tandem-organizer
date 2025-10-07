@@ -260,16 +260,25 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         }}
                         isActive={activeSection === item.id}
                         tooltip={item.label}
-                        className="flex items-center justify-between w-full"
+                        className={cn(
+                          "nav-item transition-all flex items-center justify-between w-full group",
+                          activeSection === item.id && "nav-item-active"
+                        )}
                       >
                         <div className="flex items-center gap-1">
-                          <item.icon />
+                          <item.icon className="nav-icon transition-all duration-200" />
                           <span>{item.label}</span>
                         </div>
-                        <NavigationBadge 
-                          count={navigationCounts[item.id] || 0}
-                          size="sm"
-                        />
+                        {navigationCounts[item.id] > 0 && (
+                          <NavigationBadge 
+                            count={navigationCounts[item.id]}
+                            size="sm"
+                            className={cn(
+                              "nav-badge",
+                              hasNewSinceLastVisit(item.id) && "has-new"
+                            )}
+                          />
+                        )}
                       </SidebarMenuButton>
                     </HoverCardTrigger>
                     <HoverCardContent side="right" className="w-80">

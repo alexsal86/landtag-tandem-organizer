@@ -168,11 +168,28 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
     return validEvents;
   }, [events]);
 
-  // Event prop getter for custom styling
+  // Event prop getter for custom styling with Grünen-CI colors
   const eventPropGetter = useCallback((event: RBCEvent) => {
     const originalEvent = event.resource as CalendarEvent;
     let className = '';
-    let style: React.CSSProperties = {};
+    let style: React.CSSProperties = {
+      transition: 'all 0.2s ease',
+    };
+
+    // Color coding by type
+    const categoryColors: Record<string, string> = {
+      'meeting': 'hsl(var(--primary))',
+      'deadline': 'hsl(var(--secondary))',
+      'appointment': 'hsl(var(--accent))',
+      'task': 'hsl(var(--gruene-green-light))',
+      'default': 'hsl(var(--primary))'
+    };
+
+    const bgColor = categoryColors[originalEvent?.type || 'default'] || categoryColors.default;
+    
+    style.backgroundColor = bgColor;
+    style.borderLeft = `3px solid ${bgColor}`;
+    style.color = 'white';
 
     if (originalEvent?.type) {
       className = `event-${originalEvent.type}`;
@@ -180,9 +197,13 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
     if (originalEvent?.priority === 'high') {
       style.fontWeight = 'bold';
+      style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
     }
 
-    return { className, style };
+    return { 
+      className, 
+      style 
+    };
   }, []);
 
   // Day prop getter for today highlighting

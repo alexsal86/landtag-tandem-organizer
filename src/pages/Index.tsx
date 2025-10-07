@@ -180,12 +180,20 @@ const Index = () => {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <SidebarProvider>
+        {/* Skip to Content Link for Accessibility */}
+        <a 
+          href="#main-content" 
+          className="absolute -top-10 left-0 bg-primary text-primary-foreground px-4 py-2 z-[100] focus:top-0 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          Zum Hauptinhalt springen
+        </a>
+        
         <div className="flex min-h-screen w-full bg-background">
           <Navigation 
             activeSection={activeSection} 
             onSectionChange={handleSectionChange} 
           />
-          <main className="flex-1">
+          <main id="main-content" className="flex-1" tabIndex={-1}>
             {renderActiveSection()}
           </main>
           

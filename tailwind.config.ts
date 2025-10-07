@@ -130,6 +130,10 @@ export default {
 				'shimmer': {
 					'0%': { backgroundPosition: '-200% 0' },
 					'100%': { backgroundPosition: '200% 0' }
+				},
+				'wiggle': {
+					'0%, 100%': { transform: 'rotate(-3deg)' },
+					'50%': { transform: 'rotate(3deg)' }
 				}
 			},
 			animation: {
@@ -140,7 +144,8 @@ export default {
 				'slide-in-left': 'slide-in-left 0.3s ease-out',
 				'scale-in-bounce': 'scale-in-bounce 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
 				'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite',
-				'shimmer': 'shimmer 2s linear infinite'
+				'shimmer': 'shimmer 2s linear infinite',
+				'wiggle': 'wiggle 0.3s ease-in-out'
 			},
 			backgroundImage: {
 				'gradient-primary': 'var(--gradient-primary)',
