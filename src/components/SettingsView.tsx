@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function SettingsView() {
   const { theme, setTheme } = useTheme();
@@ -28,14 +29,22 @@ export function SettingsView() {
   const [language, setLanguage] = useState("de");
   const [timezone, setTimezone] = useState("Europe/Berlin");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
-    const checkAdmin = async () => {
-      const { data } = await supabase.rpc("is_admin", { _user_id: user.id });
-      setIsAdmin(!!data);
+    const loadUserData = async () => {
+      const { data: adminData } = await supabase.rpc("is_admin", { _user_id: user.id });
+      setIsAdmin(!!adminData);
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      setUserProfile(profile);
     };
-    checkAdmin();
+    loadUserData();
   }, [user]);
 
   const handleSaveSettings = () => {
@@ -164,12 +173,15 @@ export function SettingsView() {
               <div className="space-y-2">
                 <Label>Benutzerprofil</Label>
                 <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                  <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary-foreground" />
-                  </div>
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={userProfile?.avatar_url} />
+                    <AvatarFallback>
+                      {userProfile?.display_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
-                    <p className="font-medium">Max Kellner</p>
-                    <p className="text-sm text-muted-foreground">MdL - Wahlkreis 42</p>
+                    <p className="font-medium">{userProfile?.display_name || user?.email}</p>
+                    <p className="text-sm text-muted-foreground">{userProfile?.role || 'Benutzer'}</p>
                   </div>
                 </div>
               </div>
