@@ -1271,26 +1271,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                       )}
                     </div>
 
-                     {/* Collaboration Status */}
-                     {letter?.id && (
-                       <div className="mb-4 p-3 border rounded-lg bg-muted/30">
-                         <div className="flex items-center justify-between text-sm">
-                           <span className="font-medium">Kollaboration</span>
-                           <Badge 
-                             variant={collaborationStatus === 'connected' ? 'default' : 'outline'} 
-                             className="text-xs"
-                           >
-                             {collaborationStatus === 'connected' ? 'Online' : 'Offline'}
-                           </Badge>
-                         </div>
-                         {activeUsers.length > 0 && (
-                           <div className="mt-2 text-xs text-muted-foreground">
-                             {activeUsers.length} andere Benutzer online
-                           </div>
-                         )}
-                       </div>
-                     )}
-
                      {/* Accordion Groups */}
                     <Accordion type="multiple" defaultValue={["adressat"]} className="w-full">
                       {/* 1. Adressat */}
