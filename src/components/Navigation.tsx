@@ -415,7 +415,10 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                   return (
                     <div
                       key={onlineUser.user_id}
-                      className="flex items-center gap-3 px-2 py-1.5 rounded-md text-sm hover:bg-accent/50 transition-colors"
+                      className={cn(
+                        "flex items-center px-2 py-1.5 rounded-md text-sm hover:bg-accent/50 transition-colors",
+                        isCollapsed ? "justify-center" : "gap-3"
+                      )}
                     >
                       <div className="relative">
                         <Avatar className="h-8 w-8 ring-4 ring-offset-2 ring-offset-background">
