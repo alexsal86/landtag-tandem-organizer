@@ -397,29 +397,53 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {onlineUsers.slice(0, 8).map((onlineUser) => {
                   const statusDisplay = getStatusDisplay(onlineUser.status);
+                  
+                  // Status-Ring Farbe basierend auf Status-Typ
+                  const getStatusRingColor = (status: string) => {
+                    switch (status) {
+                      case 'available':
+                        return 'ring-green-500';
+                      case 'busy':
+                        return 'ring-red-500';
+                      case 'away':
+                        return 'ring-yellow-500';
+                      case 'in_meeting':
+                        return 'ring-blue-500';
+                      default:
+                        return 'ring-muted';
+                    }
+                  };
+                  
                   return (
                     <div
                       key={onlineUser.user_id}
-                      className="flex items-center gap-2 px-2 py-1 rounded-md text-sm hover:bg-accent/50 transition-colors"
+                      className="flex items-center gap-3 px-2 py-1.5 rounded-md text-sm hover:bg-accent/50 transition-colors"
                     >
-                      <span className="text-sm">{statusDisplay.emoji}</span>
-                      <span className="text-muted-foreground truncate flex-1">
-                        {onlineUser.display_name || 'Unbekannt'}
-                      </span>
-                      {onlineUser.status?.custom_message && (
-                        <Badge variant="outline" className="text-xs px-1 py-0 max-w-[60px] truncate">
-                          {onlineUser.status.custom_message}
-                        </Badge>
+                      <div className="relative">
+                        <Avatar className={cn(
+                          "h-8 w-8 ring-2",
+                          getStatusRingColor(onlineUser.status?.status_type || 'available')
+                        )}>
+                          <AvatarImage src={onlineUser.avatar_url || ""} alt={onlineUser.display_name || 'User'} />
+                          <AvatarFallback className="text-xs">
+                            {onlineUser.display_name?.substring(0, 2).toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      {!isCollapsed && (
+                        <span className="text-muted-foreground truncate flex-1">
+                          {onlineUser.display_name || 'Unbekannt'}
+                        </span>
                       )}
                     </div>
                   );
                 })}
-                {onlineUsers.length > 8 && (
+                {onlineUsers.length > 8 && !isCollapsed && (
                   <div className="text-xs text-muted-foreground px-2">
                     +{onlineUsers.length - 8} weitere
                   </div>
                 )}
-                {onlineUsers.length === 0 && (
+                {onlineUsers.length === 0 && !isCollapsed && (
                   <div className="text-xs text-muted-foreground px-2">
                     Niemand online
                   </div>
