@@ -233,8 +233,14 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       <SidebarContent>
         <SidebarGroup>
           <div className="flex items-center justify-between px-2">
-            {!isCollapsed && <SidebarGroupLabel>Navigation</SidebarGroupLabel>}
-            {isCollapsed && <SidebarTrigger className="mx-auto" />}
+            {!isCollapsed ? (
+              <>
+                <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+                <SidebarTrigger />
+              </>
+            ) : (
+              <SidebarTrigger className="mx-auto" />
+            )}
           </div>
           <SidebarGroupContent>
             <SidebarMenu>
