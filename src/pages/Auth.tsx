@@ -114,7 +114,7 @@ const Auth = () => {
         <div 
           className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary/70 to-transparent"
           style={{
-            background: `linear-gradient(135deg, ${customization.primary_color || '#57ab27'}dd, ${customization.primary_color || '#57ab27'}99, transparent)`
+            background: `linear-gradient(135deg, ${customization.primary_color || '#57ab27'}aa, ${customization.primary_color || '#57ab27'}66, transparent)`
           }}
         />
         
