@@ -21,11 +21,14 @@ class SupabaseYjsProvider {
   private persistence: any = null;
   private userId: string;
   public clientId: string;
+  private documentId: string;
   private isConnectedState: boolean = false;
+  private reconnectTimeout: any = null;
   private eventListeners: Map<string, Set<Function>> = new Map();
 
   constructor(doc: Y.Doc, documentId: string, userId: string) {
     this.doc = doc;
+    this.documentId = documentId;
     this.userId = userId;
     this.clientId = `${userId}-${doc.clientID}-${crypto.randomUUID().slice(0, 8)}`;
     this.awareness = new Awareness(doc);
@@ -147,13 +150,20 @@ class SupabaseYjsProvider {
   }
 
   connect() {
-    if (this.channel && !this.isConnectedState) {
-      console.log('[SupabaseYjsProvider] Connecting to Supabase transport');
-      
-      // Cleanup alte Subscription falls vorhanden
-      this.channel.unsubscribe();
-      
-      this.channel.subscribe(async (status: string) => {
+    if (!this.channel) {
+      console.error('[SupabaseYjsProvider] No channel available');
+      return;
+    }
+
+    // Only subscribe if not already connected
+    if (this.isConnectedState) {
+      console.log('[SupabaseYjsProvider] Already connected');
+      return;
+    }
+
+    console.log('[SupabaseYjsProvider] Connecting to Supabase transport');
+    
+    this.channel.subscribe(async (status: string) => {
         const wasConnected = this.isConnectedState;
         this.isConnectedState = status === 'SUBSCRIBED';
         
@@ -176,21 +186,28 @@ class SupabaseYjsProvider {
           console.log('[SupabaseYjsProvider] Connection lost, attempting reconnect...');
           this.emit('disconnect');
           
+          // Clear existing reconnect timeout
+          if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+          }
+          
           // Auto-Reconnect after 2 seconds
-          setTimeout(() => {
+          this.reconnectTimeout = setTimeout(() => {
             if (!this.isConnectedState) {
               console.log('[SupabaseYjsProvider] Reconnecting...');
+              this.disconnect();
+              this.initializeSupabaseTransport(this.documentId);
               this.connect();
             }
           }, 2000);
         }
       });
-    }
   }
 
   disconnect() {
     if (this.channel) {
       console.log('[SupabaseYjsProvider] Disconnecting from Supabase transport');
+      this.channel.unsubscribe();
       supabase.removeChannel(this.channel);
       this.channel = null;
       this.isConnectedState = false;
@@ -224,6 +241,9 @@ class SupabaseYjsProvider {
   }
 
   destroy() {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
     this.disconnect();
     try {
       this.persistence?.destroy?.();
