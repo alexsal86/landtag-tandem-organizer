@@ -1,63 +1,44 @@
-import { useState } from "react";
 import { Phone, Timer, FileText } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CallLogWidget } from "@/components/widgets/CallLogWidget";
-import { PomodoroWidget } from "@/components/widgets/PomodoroWidget";
-import { QuickNotesWidget } from "@/components/widgets/QuickNotesWidget";
+import { Button } from "@/components/ui/button";
 
-export function WidgetQuickAccess() {
-  const [activeWidget, setActiveWidget] = useState<string>('quicknotes');
+interface WidgetQuickAccessProps {
+  activeWidget: string;
+  onWidgetChange: (widgetId: string) => void;
+}
 
+export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickAccessProps) {
   const widgets = [
     {
       id: 'quicknotes',
       name: 'Notizen',
       icon: FileText,
-      component: QuickNotesWidget,
     },
     {
       id: 'calllog',
       name: 'Anrufe',
       icon: Phone,
-      component: CallLogWidget,
     },
     {
       id: 'pomodoro',
       name: 'Timer',
       icon: Timer,
-      component: PomodoroWidget,
     },
   ];
 
   return (
-    <div className="w-full">
-      <Tabs value={activeWidget} onValueChange={setActiveWidget} className="w-full">
-        <TabsList className="w-full grid grid-cols-3 gap-1 bg-muted/50 p-1">
-          {widgets.map((widget) => (
-            <TabsTrigger
-              key={widget.id}
-              value={widget.id}
-              className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-            >
-              <widget.icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{widget.name}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {widgets.map((widget) => {
-          const WidgetComponent = widget.component;
-          return (
-            <TabsContent
-              key={widget.id}
-              value={widget.id}
-              className="mt-4 min-h-[300px] max-h-[500px] overflow-y-auto rounded-lg border bg-card p-4"
-            >
-              <WidgetComponent />
-            </TabsContent>
-          );
-        })}
-      </Tabs>
+    <div className="flex flex-col gap-2">
+      {widgets.map((widget) => (
+        <Button
+          key={widget.id}
+          variant={activeWidget === widget.id ? "default" : "outline"}
+          size="sm"
+          onClick={() => onWidgetChange(widget.id)}
+          className="w-[40px] h-[40px] p-0 flex items-center justify-center transition-colors"
+          aria-label={widget.name}
+        >
+          <widget.icon className="h-5 w-5" />
+        </Button>
+      ))}
     </div>
   );
 }

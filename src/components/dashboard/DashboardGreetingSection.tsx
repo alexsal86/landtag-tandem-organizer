@@ -9,6 +9,9 @@ import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getWeather, translateCondition, getWeatherIcon } from '@/utils/dashboard/weatherApi';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { CallLogWidget } from '@/components/widgets/CallLogWidget';
+import { PomodoroWidget } from '@/components/widgets/PomodoroWidget';
+import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 
 interface AppointmentData {
   id: string;
@@ -27,6 +30,7 @@ export const DashboardGreetingSection = () => {
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [completedTasksCount, setCompletedTasksCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeWidget, setActiveWidget] = useState<string>('quicknotes');
 
   // Load user name
   useEffect(() => {
@@ -223,17 +227,40 @@ export const DashboardGreetingSection = () => {
   }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments, openTasksCount, completedTasksCount]);
 
   return (
-    <div className="mb-6 space-y-6">
-      <div className="w-full">
+    <div className="mb-6 flex items-start gap-4">
+      <div className="flex-1 min-w-0 space-y-4">
         <TypewriterText 
           text={fullText}
           speed={20}
           className="text-lg leading-relaxed text-foreground whitespace-pre-wrap"
         />
+        
+        {/* Widget Content */}
+        <div className="max-w-2xl">
+          {activeWidget === 'quicknotes' && (
+            <div className="rounded-lg border bg-card p-4 max-h-[500px] overflow-y-auto">
+              <QuickNotesWidget />
+            </div>
+          )}
+          {activeWidget === 'calllog' && (
+            <div className="rounded-lg border bg-card p-4 max-h-[500px] overflow-y-auto">
+              <CallLogWidget />
+            </div>
+          )}
+          {activeWidget === 'pomodoro' && (
+            <div className="rounded-lg border bg-card p-4 max-h-[500px] overflow-y-auto">
+              <PomodoroWidget />
+            </div>
+          )}
+        </div>
       </div>
       
-      <div className="w-full lg:max-w-3xl">
-        <WidgetQuickAccess />
+      {/* Widget Buttons (Desktop only) */}
+      <div className="hidden lg:block flex-shrink-0">
+        <WidgetQuickAccess 
+          activeWidget={activeWidget}
+          onWidgetChange={setActiveWidget}
+        />
       </div>
     </div>
   );
