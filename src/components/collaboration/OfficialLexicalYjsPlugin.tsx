@@ -64,11 +64,11 @@ export function OfficialLexicalYjsPlugin({
     return () => {
       console.log("[OfficialLexicalYjsPlugin] Cleaning up binding");
       if (bindingRef.current) {
-        // The binding object doesn't have a destroy method, just clean up reference
+        // Clear reference to prevent memory leaks
         bindingRef.current = null;
       }
     };
-  }, [editor, yjsContext, id, finalProvider, finalDoc, finalSharedType]);
+  }, [editor, yjsContext?.isConnected, yjsContext?.isSynced, id]);
 
   // Show loading state while connecting/syncing
   if (!yjsContext?.isConnected || !yjsContext?.isSynced) {
