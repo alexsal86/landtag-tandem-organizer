@@ -422,7 +422,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         isCollapsed ? "justify-center px-1 py-1" : "gap-3 px-2 py-1.5"
                       )}
                     >
-                      <div className="relative">
+                      <div className="relative p-1">
                         <Avatar className={cn(
                           "ring-4 ring-offset-2 ring-offset-background",
                           isCollapsed ? "h-6 w-6" : "h-8 w-8"
