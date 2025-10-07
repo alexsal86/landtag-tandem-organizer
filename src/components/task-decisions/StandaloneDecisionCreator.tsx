@@ -313,9 +313,9 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
   ) : (
     <Button 
       onClick={loadProfiles}
-      className="w-full"
+      size="sm"
     >
-      <Plus className="h-4 w-4 mr-2" />
+      <Plus className="h-3 w-3 mr-1" />
       Neue Entscheidung
     </Button>
   );
