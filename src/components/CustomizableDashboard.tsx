@@ -18,6 +18,7 @@ import { DashboardWidget } from './DashboardWidget';
 import { DashboardGreetingSection } from './dashboard/DashboardGreetingSection';
 import { DashboardCoverImage } from './dashboard/DashboardCoverImage';
 import { QuickActionsWidget } from './widgets/QuickActionsWidget';
+import { NewsWidget } from './widgets/NewsWidget';
 import { toast } from 'sonner';
 import {
   Settings,
@@ -255,168 +256,180 @@ export const CustomizableDashboard: React.FC = () => {
           />
         </div>
 
+        {/* News Section */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-foreground mb-4">
+            Aktuelle Nachrichten
+          </h2>
+          <NewsWidget />
+        </div>
+
       <Separator className="my-8" />
 
-      {/* Dashboard Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Widgets
-          </h1>
-          <p className="text-muted-foreground">
-            {currentLayout?.name || 'Standard Layout'}
-          </p>
-        </div>
+      {false && ( // Widgets-Sektion vorübergehend ausgeblendet
+        <>
+          {/* Dashboard Header */}
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                Widgets
+              </h1>
+              <p className="text-muted-foreground">
+                {currentLayout?.name || 'Standard Layout'}
+              </p>
+            </div>
 
-        <div className="flex items-center gap-2">
-          {/* Dashboard Mode Selector */}
-          <Select value={dashboardMode} onValueChange={(value: DashboardMode) => setDashboardMode(value)}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="classic">Standard</SelectItem>
-              <SelectItem value="hybrid">Hybrid</SelectItem>
-              <SelectItem value="realtime">Echtzeit</SelectItem>
-            </SelectContent>
-          </Select>
+            <div className="flex items-center gap-2">
+              {/* Dashboard Mode Selector */}
+              <Select value={dashboardMode} onValueChange={(value: DashboardMode) => setDashboardMode(value)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="classic">Standard</SelectItem>
+                  <SelectItem value="hybrid">Hybrid</SelectItem>
+                  <SelectItem value="realtime">Echtzeit</SelectItem>
+                </SelectContent>
+              </Select>
 
-          {/* Layout Management */}
-          {currentLayout && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <LayoutGrid className="h-4 w-4 mr-2" />
-                  Layout
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {layouts.map((layout) => (
-                  <DropdownMenuItem
-                    key={layout.id}
-                    onClick={() => switchLayout(layout.id!)}
-                    className={currentLayout.id === layout.id ? 'bg-accent' : ''}
-                  >
-                    {layout.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              {/* Layout Management */}
+              {currentLayout && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <LayoutGrid className="h-4 w-4 mr-2" />
+                      Layout
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {layouts.map((layout) => (
+                      <DropdownMenuItem
+                        key={layout.id}
+                        onClick={() => switchLayout(layout.id!)}
+                        className={currentLayout.id === layout.id ? 'bg-accent' : ''}
+                      >
+                        {layout.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
 
-          {/* Save Layout */}
-          <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Save className="h-4 w-4 mr-2" />
-                Speichern
+              {/* Save Layout */}
+              <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Save className="h-4 w-4 mr-2" />
+                    Speichern
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Layout speichern</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="layout-name">Layout Name</Label>
+                      <Input
+                        id="layout-name"
+                        value={newLayoutName}
+                        onChange={(e) => setNewLayoutName(e.target.value)}
+                        placeholder="Mein neues Layout"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                      Abbrechen
+                    </Button>
+                    <Button onClick={() => handleSaveLayout()}>
+                      Aktuelles überschreiben
+                    </Button>
+                    <Button onClick={handleSaveAsNew}>
+                      Als neu speichern
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Add Widget Button */}
+              {isEditMode && (
+                <Dialog open={showAddWidgetDialog} onOpenChange={setShowAddWidgetDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Widget hinzufügen
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Widget hinzufügen</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                      {availableWidgets.map((widget) => (
+                        <Card key={widget.type} className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => handleAddWidget(widget.type)}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <widget.icon className="h-5 w-5 mt-1 text-primary" />
+                              <div className="flex-1">
+                                <h4 className="font-medium text-sm">{widget.title}</h4>
+                                <p className="text-xs text-muted-foreground mt-1">{widget.description}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+
+              {/* Edit Mode Toggle */}
+              <Button
+                variant={isEditMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsEditMode(!isEditMode)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                {isEditMode ? 'Fertig' : 'Bearbeiten'}
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Layout speichern</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="layout-name">Layout Name</Label>
-                  <Input
-                    id="layout-name"
-                    value={newLayoutName}
-                    onChange={(e) => setNewLayoutName(e.target.value)}
-                    placeholder="Mein neues Layout"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
-                  Abbrechen
-                </Button>
-                <Button onClick={() => handleSaveLayout()}>
-                  Aktuelles überschreiben
-                </Button>
-                <Button onClick={handleSaveAsNew}>
-                  Als neu speichern
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            </div>
+          </div>
 
-          {/* Add Widget Button */}
-          {isEditMode && (
-            <Dialog open={showAddWidgetDialog} onOpenChange={setShowAddWidgetDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Widget hinzufügen
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Widget hinzufügen</DialogTitle>
-                </DialogHeader>
-                <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                  {availableWidgets.map((widget) => (
-                    <Card key={widget.type} className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => handleAddWidget(widget.type)}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <widget.icon className="h-5 w-5 mt-1 text-primary" />
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm">{widget.title}</h4>
-                            <p className="text-xs text-muted-foreground mt-1">{widget.description}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
-
-          {/* Edit Mode Toggle */}
-          <Button
-            variant={isEditMode ? "default" : "outline"}
-            size="sm"
-            onClick={() => setIsEditMode(!isEditMode)}
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            {isEditMode ? 'Fertig' : 'Bearbeiten'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Dashboard Content with React Grid Layout */}
-      <div className="relative">
-        <ResponsiveGridLayout
-          className="layout"
-          layouts={gridLayouts}
-          onLayoutChange={handleLayoutChange}
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 6, md: 6, sm: 4, xs: 2, xxs: 1 }}
-          rowHeight={180}
-          isDraggable={isEditMode}
-          isResizable={isEditMode}
-          margin={[16, 16]}
-          containerPadding={[0, 0]}
-          useCSSTransforms={true}
-          preventCollision={false}
-          compactType="vertical"
-        >
-          {currentLayout?.widgets
-            .filter(widget => widget.type !== 'quickactions')
-            .map((widget) => (
-              <div key={widget.id} className="grid-item">
-                <DashboardWidget
-                  widget={widget}
-                  isDragging={false}
-                  isEditMode={isEditMode}
-                  onResize={handleWidgetResize}
-                  onDelete={removeWidget}
-                />
-              </div>
-            ))}
-        </ResponsiveGridLayout>
-      </div>
+          {/* Dashboard Content with React Grid Layout */}
+          <div className="relative">
+            <ResponsiveGridLayout
+              className="layout"
+              layouts={gridLayouts}
+              onLayoutChange={handleLayoutChange}
+              breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+              cols={{ lg: 6, md: 6, sm: 4, xs: 2, xxs: 1 }}
+              rowHeight={180}
+              isDraggable={isEditMode}
+              isResizable={isEditMode}
+              margin={[16, 16]}
+              containerPadding={[0, 0]}
+              useCSSTransforms={true}
+              preventCollision={false}
+              compactType="vertical"
+            >
+              {currentLayout?.widgets
+                .filter(widget => widget.type !== 'quickactions')
+                .map((widget) => (
+                  <div key={widget.id} className="grid-item">
+                    <DashboardWidget
+                      widget={widget}
+                      isDragging={false}
+                      isEditMode={isEditMode}
+                      onResize={handleWidgetResize}
+                      onDelete={removeWidget}
+                    />
+                  </div>
+                ))}
+            </ResponsiveGridLayout>
+          </div>
+        </>
+      )}
       </div>
     </div>
   );
