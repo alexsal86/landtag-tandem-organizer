@@ -273,9 +273,9 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                       >
                         <div className="flex items-center gap-1">
                           <item.icon className="nav-icon transition-all duration-200" />
-                          <span>{item.label}</span>
+                          {!isCollapsed && <span>{item.label}</span>}
                         </div>
-                        {navigationCounts[item.id] > 0 && (
+                        {!isCollapsed && navigationCounts[item.id] > 0 && (
                           <NavigationBadge 
                             count={navigationCounts[item.id]}
                             size="sm"
@@ -333,12 +333,14 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                       >
                         <div className="flex items-center gap-1">
                           <Shield />
-                          <span>Administration</span>
+                          {!isCollapsed && <span>Administration</span>}
                         </div>
-                        <NavigationBadge 
-                          count={navigationCounts['administration'] || 0}
-                          size="sm"
-                        />
+                        {!isCollapsed && navigationCounts['administration'] > 0 && (
+                          <NavigationBadge 
+                            count={navigationCounts['administration']}
+                            size="sm"
+                          />
+                        )}
                       </SidebarMenuButton>
                     </HoverCardTrigger>
                     <HoverCardContent side="right" className="w-80">
