@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTypewriter } from '@/hooks/useTypewriter';
 
 interface TypewriterTextProps {
@@ -17,9 +17,21 @@ export const TypewriterText = ({ text, speed = 30, className = '', onComplete }:
     }
   }, [isComplete, onComplete]);
   
+  // Parse text for bold markers (**text**)
+  const parsedContent = useMemo(() => {
+    const parts = displayText.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const boldText = part.slice(2, -2);
+        return <strong key={index} className="font-bold">{boldText}</strong>;
+      }
+      return part;
+    });
+  }, [displayText]);
+  
   return (
     <span className={className}>
-      {displayText}
+      {parsedContent}
       {!isComplete && <span className="animate-pulse">|</span>}
     </span>
   );

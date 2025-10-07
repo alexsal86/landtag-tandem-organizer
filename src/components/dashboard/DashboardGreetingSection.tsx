@@ -165,7 +165,7 @@ export const DashboardGreetingSection = () => {
     let text = `${greeting}, ${userName}!\n\n${message.text}\n\n`;
     
     // Weather section
-    text += '☀️ Das Wetter heute:\n';
+    text += '☀️ **Das Wetter heute:**\n';
     if (weatherKarlsruhe) {
       const translatedCondition = translateCondition(weatherKarlsruhe.condition);
       const hint = getWeatherHint(weatherKarlsruhe.condition, weatherKarlsruhe.temp);
@@ -182,7 +182,7 @@ export const DashboardGreetingSection = () => {
     }
     
     // Appointments section
-    text += '\n📅 Deine Termine heute:\n';
+    text += '\n📅 **Deine Termine heute:**\n';
     if (appointments.length === 0) {
       text += 'Keine Termine heute.\n';
     } else {
