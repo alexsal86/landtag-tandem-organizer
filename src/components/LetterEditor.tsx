@@ -21,7 +21,6 @@ import ReviewAssignmentDialog from './ReviewAssignmentDialog';
 import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
 import { ContactSelector } from './ContactSelector';
-import { YjsProvider } from '@/components/collaboration/YjsProvider';
 
 interface Letter {
   id: string;
@@ -112,16 +111,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
-  
-  // Stable document ID reference to prevent YjsProvider re-initialization
-  const documentIdRef = useRef<string | null>(null);
-  
-  // Initialize documentId only once
-  useEffect(() => {
-    if (letter?.id && !documentIdRef.current) {
-      documentIdRef.current = letter.id;
-    }
-  }, [letter?.id]);
   
   const [editedLetter, setEditedLetter] = useState<Partial<Letter>>({
     title: '',
@@ -323,8 +312,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     }
   }, [isOpen, currentTenant, editedLetter?.template_id, letter?.template_id, letter?.id, senderInfos.length, informationBlocks.length]);
 
-  // Auto-save functionality with optimized performance
+  // Auto-save functionality with improved performance - INCLUDES PAGINATION
   useEffect(() => {
+    console.log('=== AUTO-SAVE EFFECT TRIGGERED ===');
+    console.log('canEdit:', canEdit);
+    console.log('isUpdatingFromRemoteRef.current:', isUpdatingFromRemoteRef.current);
+    console.log('letter?.id:', letter?.id);
+    console.log('showPagination (for auto-save):', showPagination);
+    
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
 
     if (saveTimeoutRef.current) {
@@ -333,33 +328,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
     saveTimeoutRef.current = setTimeout(() => {
       if (!isUpdatingFromRemoteRef.current && letter?.id) {
+        console.log('=== TRIGGERING AUTO-SAVE WITH PAGINATION ===');
+        console.log('showPagination at auto-save time:', showPagination);
         handleAutoSave();
       }
-    }, 2000); // Increased to 2000ms to prevent focus disruption
+    }, 500); // Reduced from 3000ms to 500ms for faster responsiveness
 
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [
-    // Only track specific fields instead of entire editedLetter object
-    editedLetter.title,
-    editedLetter.content,
-    editedLetter.content_html,
-    editedLetter.content_nodes,
-    editedLetter.recipient_name,
-    editedLetter.recipient_address,
-    editedLetter.subject,
-    editedLetter.reference_number,
-    editedLetter.sender_info_id,
-    editedLetter.information_block_ids,
-    editedLetter.template_id,
-    editedLetter.letter_date,
-    showPagination,
-    canEdit,
-    letter?.id
-  ]);
+  }, [editedLetter, canEdit, letter?.id, showPagination]); // WICHTIG: showPagination als Dependency hinzugefügt
 
   // Real-time collaboration status (now handled by Yjs)
   useEffect(() => {
@@ -1758,87 +1738,60 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
               {/* Enhanced Lexical Editor with Collaboration */}
               <div className="relative">
-                {letter?.id && documentIdRef.current ? (
-                  <YjsProvider 
-                    key={`yjs-${documentIdRef.current}`}
-                    documentId={documentIdRef.current}
-                  >
-                    <EnhancedLexicalEditor
-                      content={editedLetter.content || ''}
-                      contentNodes={editedLetter.content_nodes}
-                      onChange={(content, contentNodes) => {
-                        if (isUpdatingFromRemoteRef.current || !canEdit) return;
-                        
-                        console.log('📝 [LetterEditor] Content changed:', { 
-                          plainTextLength: content?.length, 
-                          hasJsonContent: !!contentNodes,
-                          jsonLength: contentNodes?.length,
-                          contentPreview: content?.slice(0, 50),
-                          jsonPreview: contentNodes?.slice(0, 100) || 'null'
-                        });
-                        
-                        // Validate content before processing to prevent corruption
-                        if (content && content.includes('{"root":{"children"') && content.split('{"root":{"children"').length > 2) {
-                          console.error('🚨 Rejected corrupted content in onChange handler');
-                          return;
-                        }
-                        
-                        const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
-                        
-                        // Update the ref with latest content for immediate access
-                        latestContentRef.current = {
-                          content: content?.trim() || '',
-                          contentNodes: processedContentNodes
-                        };
-                        
-                        setEditedLetter(prev => ({
-                          ...prev,
-                          content: content?.trim() || '',
-                          content_nodes: processedContentNodes
-                        }));
-                       
-                        // Trigger immediate auto-save with new content to avoid timing issues
-                        if (saveTimeoutRef.current) {
-                          clearTimeout(saveTimeoutRef.current);
-                        }
-                        
-                        saveTimeoutRef.current = setTimeout(() => {
-                          if (!isUpdatingFromRemoteRef.current && letter?.id) {
-                            console.log('=== IMMEDIATE AUTO-SAVE AFTER CONTENT CHANGE ===');
-                            handleAutoSave(content?.trim() || '', processedContentNodes);
-                          }
-                        }, 300); // Shorter delay for content changes
-                       
-                        // Content synchronization handled by Yjs collaboration
-                      }}
-                      placeholder="Hier können Sie Ihren Brief verfassen..."
-                      documentId={letter.id}
-                      enableCollaboration={true}
-                      useYjsCollaboration={true}
-                      showToolbar={true}
-                      readOnly={!canEdit}
-                    />
-                  </YjsProvider>
-                ) : (
-                  <EnhancedLexicalEditor
-                    content={editedLetter.content || ''}
-                    contentNodes={editedLetter.content_nodes}
-                    onChange={(content, contentNodes) => {
-                      if (isUpdatingFromRemoteRef.current || !canEdit) return;
-                      
-                      const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
-                      
-                      setEditedLetter(prev => ({
-                        ...prev,
-                        content: content?.trim() || '',
-                        content_nodes: processedContentNodes
-                      }));
-                    }}
-                    placeholder="Hier können Sie Ihren Brief verfassen..."
-                    showToolbar={true}
-                    readOnly={!canEdit}
-                  />
-                )}
+                <EnhancedLexicalEditor
+                  content={editedLetter.content || ''}
+                  contentNodes={editedLetter.content_nodes}
+                   onChange={(content, contentNodes) => {
+                     if (isUpdatingFromRemoteRef.current || !canEdit) return;
+                     
+                     console.log('📝 [LetterEditor] Content changed:', { 
+                       plainTextLength: content?.length, 
+                       hasJsonContent: !!contentNodes,
+                       jsonLength: contentNodes?.length,
+                       contentPreview: content?.slice(0, 50),
+                       jsonPreview: contentNodes?.slice(0, 100) || 'null'
+                     });
+                     
+                     // Validate content before processing to prevent corruption
+                     if (content && content.includes('{"root":{"children"') && content.split('{"root":{"children"').length > 2) {
+                       console.error('🚨 Rejected corrupted content in onChange handler');
+                       return;
+                     }
+                     
+                     const processedContentNodes = contentNodes && contentNodes.trim() !== '' ? contentNodes : null;
+                     
+                     // Update the ref with latest content for immediate access
+                     latestContentRef.current = {
+                       content: content?.trim() || '',
+                       contentNodes: processedContentNodes
+                     };
+                     
+                     setEditedLetter(prev => ({
+                       ...prev,
+                       content: content?.trim() || '',
+                       content_nodes: processedContentNodes
+                     }));
+                    
+                     // Trigger immediate auto-save with new content to avoid timing issues
+                     if (saveTimeoutRef.current) {
+                       clearTimeout(saveTimeoutRef.current);
+                     }
+                     
+                     saveTimeoutRef.current = setTimeout(() => {
+                       if (!isUpdatingFromRemoteRef.current && letter?.id) {
+                         console.log('=== IMMEDIATE AUTO-SAVE AFTER CONTENT CHANGE ===');
+                         handleAutoSave(content?.trim() || '', processedContentNodes);
+                       }
+                     }, 300); // Shorter delay for content changes
+                    
+                    // Content synchronization handled by Yjs collaboration
+                   }}
+                  placeholder="Hier können Sie Ihren Brief verfassen..."
+                  documentId={letter?.id}
+                  enableCollaboration={!!letter?.id}
+                  useYjsCollaboration={true}
+                  showToolbar={true}
+                />
               </div>
 
             </div>
@@ -1964,5 +1917,4 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   );
 };
 
-// Wrap with React.memo to prevent unnecessary re-renders
-export default React.memo(LetterEditor);
+export default LetterEditor;

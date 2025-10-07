@@ -79,9 +79,6 @@ verify_jwt = false
 [functions.knowledge-collaboration]
 verify_jwt = false
 
-[functions.letter-collaboration]
-verify_jwt = false
-
 [functions.import-election-districts]
 verify_jwt = true
 

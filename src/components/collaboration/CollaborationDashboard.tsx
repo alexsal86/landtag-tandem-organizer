@@ -35,7 +35,7 @@ export function CollaborationDashboard({
   isVisible = false, 
   onToggle 
 }: CollaborationDashboardProps) {
-  const yjsContext = useYjsProvider();
+  const { collaborators, currentUser, isConnected, isSynced } = useYjsProvider();
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
   const [showOfflineUsers, setShowOfflineUsers] = useState(false);
 
@@ -69,13 +69,6 @@ export function CollaborationDashboard({
     ];
     setActivityFeed(mockActivities);
   }, [documentId]);
-
-  // Early return AFTER all hooks
-  if (!yjsContext) {
-    return null;
-  }
-
-  const { collaborators, currentUser, isConnected, isSynced } = yjsContext;
 
   const getActivityIcon = (type: ActivityItem['type']) => {
     switch (type) {

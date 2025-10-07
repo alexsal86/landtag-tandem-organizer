@@ -1,12 +1,11 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as Y from 'yjs';
+import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate } from 'y-protocols/awareness';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
-import type { RealtimeChannel } from '@supabase/supabase-js';
 
-export interface YjsProviderProps {
+interface YjsProviderProps {
   documentId: string;
   children: React.ReactNode;
   onConnected?: () => void;
@@ -14,18 +13,187 @@ export interface YjsProviderProps {
   onCollaboratorsChange?: (collaborators: any[]) => void;
 }
 
+// Custom Provider implementation for Yjs with Supabase transport
+class SupabaseYjsProvider {
+  public awareness: Awareness;
+  private doc: Y.Doc;
+  private channel: any = null;
+  private persistence: any = null;
+  private userId: string;
+  private clientId: string;
+  private isConnectedState: boolean = false;
+  private eventListeners: Map<string, Set<Function>> = new Map();
+
+  constructor(doc: Y.Doc, documentId: string, userId: string) {
+    this.doc = doc;
+    this.userId = userId;
+    this.clientId = `${userId}-${doc.clientID}-${crypto.randomUUID().slice(0, 8)}`;
+    this.awareness = new Awareness(doc);
+    
+    // Set up initial awareness state to match Lexical-Yjs requirements
+    this.awareness.setLocalStateField('user', {
+      name: userId,
+      color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
+      colorLight: `#${Math.floor(Math.random()*16777215).toString(16)}`
+    });
+    
+    console.log(`[SupabaseYjsProvider] Created with clientId: ${this.clientId}`);
+    this.initializePersistence(documentId);
+    this.initializeSupabaseTransport(documentId);
+  }
+
+  private initializePersistence(documentId: string) {
+    // IndexedDB persistence is now handled by YjsProvider
+    console.log('[SupabaseYjsProvider] IndexedDB persistence handled externally');
+  }
+
+  private initializeSupabaseTransport(documentId: string) {
+    const channelName = `yjs_document_${documentId}`;
+    console.log(`[SupabaseYjsProvider] Initializing transport for channel: ${channelName}, clientId: ${this.clientId}`);
+    this.channel = supabase.channel(channelName);
+
+    // Listen for Yjs updates via Supabase
+    this.channel
+      .on('broadcast', { event: 'yjs-update' }, ({ payload }: any) => {
+        if (payload && payload.clientId !== this.clientId && payload.update) {
+          console.log(`[SupabaseYjsProvider] Received remote Yjs update from client: ${payload.clientId}`);
+          try {
+            const update = new Uint8Array(payload.update);
+            Y.applyUpdate(this.doc, update, 'remote');
+          } catch (e) {
+            console.warn('[SupabaseYjsProvider] Failed to apply remote update:', e);
+          }
+        }
+      })
+      .on('broadcast', { event: 'awareness-update' }, ({ payload }: any) => {
+        if (payload && payload.clientId !== this.clientId && payload.awarenessUpdate) {
+          console.log(`[SupabaseYjsProvider] Received awareness update from client: ${payload.clientId}`);
+          try {
+            const awarenessUpdate = new Uint8Array(payload.awarenessUpdate);
+            applyAwarenessUpdate(this.awareness, awarenessUpdate, 'remote');
+          } catch (e) {
+            console.warn('[SupabaseYjsProvider] Failed to apply awareness update:', e);
+          }
+        }
+      });
+
+    // Listen to local Yjs updates to broadcast via Supabase
+    this.doc.on('update', (update: Uint8Array, origin: any) => {
+      if (origin !== 'remote' && this.channel) {
+        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update from client: ${this.clientId}`);
+        this.channel.send({
+          type: 'broadcast',
+          event: 'yjs-update',
+          payload: {
+            clientId: this.clientId,
+            userId: this.userId,
+            update: Array.from(update)
+          }
+        });
+      }
+    });
+
+    // Listen to awareness updates
+    this.awareness.on('update', ({ added, updated, removed }: any, origin: any) => {
+      if (origin !== 'remote' && this.channel) {
+        const changedClients = added.concat(updated).concat(removed);
+        const awarenessUpdate = encodeAwarenessUpdate(this.awareness, changedClients);
+        console.log(`[SupabaseYjsProvider] Broadcasting awareness update from client: ${this.clientId}`);
+        this.channel.send({
+          type: 'broadcast',
+          event: 'awareness-update',
+          payload: {
+            clientId: this.clientId,
+            userId: this.userId,
+            awarenessUpdate: Array.from(awarenessUpdate)
+          }
+        });
+      }
+    });
+  }
+
+  connect() {
+    if (this.channel && !this.isConnectedState) {
+      console.log('[SupabaseYjsProvider] Connecting to Supabase transport');
+      this.channel.subscribe(async (status: string) => {
+        const wasConnected = this.isConnectedState;
+        this.isConnectedState = status === 'SUBSCRIBED';
+        
+        if (this.isConnectedState && !wasConnected) {
+          console.log('[SupabaseYjsProvider] Connected to Supabase transport');
+          this.emit('connect');
+        } else if (!this.isConnectedState && wasConnected) {
+          console.log('[SupabaseYjsProvider] Disconnected from Supabase transport');
+          this.emit('disconnect');
+        }
+      });
+    }
+  }
+
+  disconnect() {
+    if (this.channel) {
+      console.log('[SupabaseYjsProvider] Disconnecting from Supabase transport');
+      supabase.removeChannel(this.channel);
+      this.channel = null;
+      this.isConnectedState = false;
+      this.emit('disconnect');
+    }
+  }
+
+  isConnected() {
+    return this.isConnectedState;
+  }
+
+  on(event: string, callback: Function) {
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, new Set());
+    }
+    this.eventListeners.get(event)!.add(callback);
+  }
+
+  off(event: string, callback: Function) {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      listeners.delete(callback);
+    }
+  }
+
+  private emit(event: string, ...args: any[]) {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      listeners.forEach(callback => callback(...args));
+    }
+  }
+
+  destroy() {
+    this.disconnect();
+    try {
+      this.persistence?.destroy?.();
+    } catch (e) {
+      console.warn('[SupabaseYjsProvider] Error destroying IndexedDB persistence:', e);
+    }
+    this.awareness.destroy();
+    this.eventListeners.clear();
+  }
+}
+
 export interface YjsProviderContextValue {
-  doc: Y.Doc;
-  channel: RealtimeChannel | null;
-  sharedType: Y.Text;
-  clientId: string;
+  doc: Y.Doc | null;
+  provider: SupabaseYjsProvider | null;
   isConnected: boolean;
   isSynced: boolean;
   collaborators: any[];
   currentUser: any;
 }
 
-export const YjsProviderContext = createContext<YjsProviderContextValue | null>(null);
+export const YjsProviderContext = React.createContext<YjsProviderContextValue>({
+  doc: null,
+  provider: null,
+  isConnected: false,
+  isSynced: false,
+  collaborators: [],
+  currentUser: null,
+});
 
 export function YjsProvider({ 
   documentId, 
@@ -36,201 +204,130 @@ export function YjsProvider({
 }: YjsProviderProps) {
   const { user } = useAuth();
   const docRef = useRef<Y.Doc | null>(null);
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const persistenceRef = useRef<IndexeddbPersistence | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isSynced, setIsSynced] = useState(false);
-  const [collaborators, setCollaborators] = useState<any[]>([]);
+  const providerRef = useRef<SupabaseYjsProvider | null>(null);
+  const persistenceRef = useRef<any>(null);
+  const [isConnected, setIsConnected] = React.useState(false);
+  const [isSynced, setIsSynced] = React.useState(false);
+  const [collaborators, setCollaborators] = React.useState<any[]>([]);
+  const [currentUserProfile, setCurrentUserProfile] = React.useState<any>(null);
   
-  // Prevent double initialization during React StrictMode or fast re-renders
-  const isInitializingRef = useRef(false);
-  
-  // Store callbacks in refs to prevent re-rendering
   const onConnectedRef = useRef(onConnected);
   const onDisconnectedRef = useRef(onDisconnected);
   const onCollaboratorsChangeRef = useRef(onCollaboratorsChange);
   
-  // Update refs when callbacks change
+  // Keep callback refs stable
   useEffect(() => {
     onConnectedRef.current = onConnected;
     onDisconnectedRef.current = onDisconnected;
     onCollaboratorsChangeRef.current = onCollaboratorsChange;
   }, [onConnected, onDisconnected, onCollaboratorsChange]);
 
-  // Get current user
-  const currentUser = user ? {
-    user_id: user.id,
-    profiles: {
-      display_name: user.user_metadata?.display_name || 'Unknown User',
-      avatar_url: user.user_metadata?.avatar_url
+  // Load user profile separately
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, avatar_url')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        setCurrentUserProfile(profile);
+      }
+    };
+    
+    loadUserProfile();
+  }, [user?.id]);
+
+  // Update awareness when profile loads
+  useEffect(() => {
+    if (providerRef.current && user) {
+      providerRef.current.awareness.setLocalStateField('userId', user.id);
+      providerRef.current.awareness.setLocalStateField('displayName', currentUserProfile?.display_name || user?.user_metadata?.display_name || user?.email?.split('@')[0]);
+      providerRef.current.awareness.setLocalStateField('avatarUrl', currentUserProfile?.avatar_url || user?.user_metadata?.avatar_url);
     }
-  } : null;
+  }, [currentUserProfile, user]);
 
   useEffect(() => {
-    if (!documentId || !user?.id) {
-      console.log('[YjsProvider] Missing documentId or user, skipping initialization');
-      return;
-    }
-    
-    // Prevent double initialization
-    if (isInitializingRef.current) {
-      console.log('[YjsProvider] Already initializing, skipping...');
-      return;
-    }
-    
-    // Check if already initialized
-    if (channelRef.current && docRef.current) {
-      console.log('[YjsProvider] Already initialized for document:', documentId);
-      return;
-    }
-    
-    isInitializingRef.current = true;
-    console.log('[YjsProvider] Initializing Yjs Supabase Realtime collaboration for document:', documentId);
+    if (!documentId) return;
+
+    console.log('[YjsProvider] Initializing Yjs provider for document:', documentId);
 
     // Create Yjs document
     const doc = new Y.Doc();
     docRef.current = doc;
-    
-    // Create shared text type for Lexical
-    const sharedType = doc.getText('lexical');
 
     // Create IndexedDB persistence
     const persistence = new IndexeddbPersistence(`yjs_${documentId}`, doc);
     persistenceRef.current = persistence;
-
+    
     persistence.on('synced', () => {
-      console.log('[YjsProvider] IndexedDB persistence synced');
+      console.log('[YjsProvider] IndexedDB synced');
       setIsSynced(true);
     });
 
-    // Create Supabase Realtime channel for this document
-    const channelName = `document:${documentId}`;
-    const channel = supabase.channel(channelName, {
-      config: {
-        broadcast: { self: false }, // Don't receive our own broadcasts
-        presence: { key: user.id }
-      }
-    });
-    channelRef.current = channel;
+    // Create custom provider
+    const provider = new SupabaseYjsProvider(doc, documentId, user?.id || 'anonymous');
+    providerRef.current = provider;
 
-    // Handle Yjs updates - send to other clients
-    const updateHandler = (update: Uint8Array, origin: any) => {
-      // Don't broadcast updates from remote (would cause loops)
-      if (origin !== 'remote') {
-        channel.send({
-          type: 'broadcast',
-          event: 'yjs-update',
-          payload: { update: Array.from(update) }
-        });
-      }
-    };
-    doc.on('update', updateHandler);
-
-    // Handle Yjs updates - receive from other clients
-    channel.on('broadcast', { event: 'yjs-update' }, ({ payload }) => {
-      try {
-        Y.applyUpdate(doc, new Uint8Array(payload.update), 'remote');
-      } catch (error) {
-        console.error('[YjsProvider] Error applying update:', error);
-      }
+    // Set up event listeners
+    provider.on('connect', () => {
+      setIsConnected(true);
+      onConnectedRef.current?.();
     });
 
-    // Handle presence for collaborators tracking
-    channel.on('presence', { event: 'sync' }, () => {
-      const presenceState = channel.presenceState();
-      const collaboratorsList = Object.entries(presenceState)
-        .filter(([key]) => key !== user.id)
-        .map(([key, data]: [string, any]) => {
-          const presence = Array.isArray(data) ? data[0] : data;
-          return {
-            clientId: key,
-            user_id: presence.user_id || key,
-            user_color: presence.user_color || `hsl(${Math.abs(hashCode(key)) % 360}, 70%, 50%)`,
-            profiles: presence.profiles || {
-              display_name: 'Unknown User',
-              avatar_url: null
-            }
-          };
-        });
+    provider.on('disconnect', () => {
+      setIsConnected(false);
+      onDisconnectedRef.current?.();
+    });
+
+    // Track awareness changes for collaborators
+    const updateCollaborators = () => {
+      const awarenessStates = Array.from(provider.awareness.getStates().entries());
+      const collaboratorsList = awarenessStates
+        .filter(([clientId]) => clientId !== provider.awareness.clientID)
+        .map(([clientId, state]: [number, any]) => ({
+          user_id: state.userId || `client-${clientId}`,
+          user_color: `hsl(${(clientId * 137.508) % 360}, 70%, 50%)`,
+          profiles: {
+            display_name: state.displayName || state.name || 'Unknown User',
+            avatar_url: state.avatarUrl
+          }
+        }));
       
-      console.log('[YjsProvider] Collaborators changed:', collaboratorsList.length);
       setCollaborators(collaboratorsList);
       onCollaboratorsChangeRef.current?.(collaboratorsList);
-    });
+    };
 
-    channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
-      console.log('[YjsProvider] User joined:', key);
-    });
+    provider.awareness.on('update', updateCollaborators);
 
-    channel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-      console.log('[YjsProvider] User left:', key);
-    });
+    // Connect the provider
+    provider.connect();
 
-    // Subscribe to channel
-    channel.subscribe(async (status) => {
-      console.log('[YjsProvider] Channel status:', status);
-      
-      if (status === 'SUBSCRIBED') {
-        setIsConnected(true);
-        
-        // Track presence with user info
-        await channel.track({
-          user_id: user.id,
-          profiles: {
-            display_name: user.user_metadata?.display_name || 'Unknown User',
-            avatar_url: user.user_metadata?.avatar_url
-          },
-          user_color: `hsl(${Math.abs(hashCode(user.id)) % 360}, 70%, 50%)`,
-          online_at: new Date().toISOString()
-        });
-        
-        onConnectedRef.current?.();
-        toast.success('Echtzeit-Collaboration aktiv');
-      } else if (status === 'CHANNEL_ERROR') {
-        setIsConnected(false);
-        onDisconnectedRef.current?.();
-        toast.error('Verbindungsfehler zur Collaboration');
-      } else if (status === 'TIMED_OUT') {
-        setIsConnected(false);
-        toast.error('Verbindung zur Collaboration unterbrochen');
-      }
-    });
-
-    console.log('[YjsProvider] Supabase Realtime channel initialized');
-
+    // Cleanup function
     return () => {
-      console.log('[YjsProvider] Cleaning up Yjs collaboration');
-      isInitializingRef.current = false;
+      console.log('[YjsProvider] Cleaning up Yjs provider for document:', documentId);
       
-      // Unsubscribe from channel
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
-      
-      // Cleanup persistence and document
+      provider.destroy();
       persistence.destroy();
       doc.destroy();
       
       docRef.current = null;
-      channelRef.current = null;
+      providerRef.current = null;
       persistenceRef.current = null;
+      setIsConnected(false);
+      setIsSynced(false);
     };
-  }, [documentId, user?.id]); // Only re-run when document or user changes
+  }, [documentId, user?.id]);
 
-  // Always render children, context will be available once connected
-  const contextValue: YjsProviderContextValue | null = 
-    (docRef.current && channelRef.current) 
-      ? {
-          doc: docRef.current,
-          channel: channelRef.current,
-          sharedType: docRef.current.getText('lexical'),
-          clientId: user?.id || 'anonymous',
-          isConnected,
-          isSynced,
-          collaborators,
-          currentUser,
-        }
-      : null;
+  const contextValue: YjsProviderContextValue = {
+    doc: docRef.current,
+    provider: providerRef.current,
+    isConnected,
+    isSynced,
+    collaborators,
+    currentUser: { ...user, profile: currentUserProfile },
+  };
 
   return (
     <YjsProviderContext.Provider value={contextValue}>
@@ -240,18 +337,9 @@ export function YjsProvider({
 }
 
 export function useYjsProvider() {
-  const context = useContext(YjsProviderContext);
-  // Return null if not yet available, don't throw error
-  return context;
-}
-
-// Simple hash function for consistent colors
-function hashCode(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+  const context = React.useContext(YjsProviderContext);
+  if (!context) {
+    throw new Error('useYjsProvider must be used within a YjsProvider');
   }
-  return hash;
+  return context;
 }

@@ -46,7 +46,7 @@ import { TRANSFORMERS } from '@lexical/markdown';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import CollaborationStatus from './CollaborationStatus';
 import { YjsProvider, useYjsProvider } from './collaboration/YjsProvider';
-import { OfficialLexicalYjsPlugin, YjsCollaboratorsList } from './collaboration/OfficialLexicalYjsPlugin';
+import { LexicalYjsCollaborationPlugin } from './collaboration/LexicalYjsCollaborationPlugin';
 import { YjsSyncStatus } from './collaboration/YjsSyncStatus';
 import { sanitizeContent, parseContentSafely, createDebouncedContentUpdate, areContentsEquivalent } from '@/utils/contentValidation';
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
@@ -81,7 +81,6 @@ interface EnhancedLexicalEditorProps {
   enableCollaboration?: boolean;
   useYjsCollaboration?: boolean;
   showToolbar?: boolean;
-  readOnly?: boolean;
   onConnectionChange?: (connected: boolean) => void;
 }
 
@@ -492,84 +491,64 @@ function YjsContentSyncPlugin({
   const [editor] = useLexicalComposerContext();
   const yjsProvider = useYjsProvider();
   const lastSyncedContentRef = useRef<string>('');
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const syncIntervalRef = useRef<NodeJS.Timeout>();
 
-  // Load initial content into Yjs when connected and synced
   useEffect(() => {
-    if (!yjsProvider?.isSynced || !yjsProvider?.isConnected || hasInitialized) return;
-    
-    const sharedRoot = yjsProvider.sharedType;
-    if (!sharedRoot) return;
-
-    // Only load initial content if Yjs document is empty
-    const yjsContent = sharedRoot.toString();
-    if (!yjsContent && (initialContent || initialContentNodes)) {
-      console.log(`[YjsContentSync] Loading initial content into Yjs document: ${documentId}`);
+    if (yjsProvider?.isSynced && (initialContentNodes || initialContent) && initialContent !== lastSyncedContentRef.current) {
+      console.log('🔄 [Hybrid] Syncing initial Supabase content to Yjs:', initialContent);
       
       editor.update(() => {
         const root = $getRoot();
         root.clear();
         
         if (initialContentNodes) {
+          // Try to deserialize JSON nodes first using official Lexical method
           try {
             const editorState = editor.parseEditorState(initialContentNodes);
             editor.setEditorState(editorState);
-            console.log('[YjsContentSync] Initial content nodes loaded successfully');
+            console.log('🎯 [Hybrid] Loaded content from JSON nodes');
             lastSyncedContentRef.current = initialContent;
+            return;
           } catch (error) {
-            console.warn('[YjsContentSync] Failed to parse content nodes, using plain text:', error);
-            if (initialContent && initialContent.trim()) {
-              const paragraph = $createParagraphNode();
-              paragraph.append($createTextNode(initialContent));
-              root.append(paragraph);
-            }
-            lastSyncedContentRef.current = initialContent;
+            console.warn('Failed to deserialize initial JSON nodes, falling back to plain text:', error);
           }
-        } else if (initialContent && initialContent.trim()) {
+        }
+        
+        if (initialContent && initialContent.trim()) {
           const paragraph = $createParagraphNode();
           paragraph.append($createTextNode(initialContent));
           root.append(paragraph);
-          console.log('[YjsContentSync] Initial plain text content loaded');
-          lastSyncedContentRef.current = initialContent;
         }
+        
+        lastSyncedContentRef.current = initialContent;
       });
-      
-      setHasInitialized(true);
-    } else if (yjsContent) {
-      console.log('[YjsContentSync] Yjs document already has content, skipping initial load');
-      setHasInitialized(true);
-      lastSyncedContentRef.current = yjsContent;
     }
-  }, [yjsProvider?.isSynced, yjsProvider?.isConnected, editor, initialContent, initialContentNodes, hasInitialized, documentId]);
+  }, [yjsProvider?.isSynced, initialContent, initialContentNodes, editor]);
 
-  // Debounced sync to parent component (for auto-save)
   useEffect(() => {
-    if (!yjsProvider?.isSynced || !onContentSync) return;
-
-    let timeoutId: NodeJS.Timeout;
-    
-    const unregister = editor.registerUpdateListener(({ editorState }) => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        editorState.read(() => {
+    if (yjsProvider?.isSynced) {
+      syncIntervalRef.current = setInterval(() => {
+        editor.getEditorState().read(() => {
           const root = $getRoot();
           const currentContent = root.getTextContent();
-          const jsonContent = JSON.stringify(editorState.toJSON());
+          const currentEditorState = editor.getEditorState();
+          const jsonContent = JSON.stringify(currentEditorState.toJSON());
           
           if (currentContent !== lastSyncedContentRef.current) {
-            console.log(`[YjsContentSync] Syncing content to parent (debounced): ${documentId}`);
+            console.log('💾 [Hybrid] Syncing Yjs content back to Supabase:', currentContent);
             lastSyncedContentRef.current = currentContent;
             onContentSync(currentContent, jsonContent);
           }
         });
-      }, 1000); // Debounce 1 second
-    });
+      }, 2000);
+    }
 
     return () => {
-      clearTimeout(timeoutId);
-      unregister();
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+      }
     };
-  }, [yjsProvider?.isSynced, editor, onContentSync, documentId]);
+  }, [yjsProvider?.isSynced, editor, onContentSync]);
 
   return null;
 }
@@ -585,7 +564,7 @@ function YjsCollaborationEditor(props: any) {
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="text-sm text-muted-foreground flex items-center gap-2">
             <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            {!yjsProvider?.isConnected ? 'Verbindung wird hergestellt...' : 'Synchronisierung läuft...'}
+            {!yjsProvider?.isConnected ? 'Connecting...' : 'Synchronizing...'}
           </div>
         </div>
       )}
@@ -598,81 +577,68 @@ function YjsCollaborationEditor(props: any) {
       />
       
       <YjsSyncStatus>
-        <div className="editor-inner relative">
-          {props.showToolbar && <EnhancedLexicalToolbar documentId={props.documentId} />}
-          
-          <div className="relative">
-            <RichTextPlugin
-              contentEditable={
-                <ContentEditable 
-                  className={`editor-input min-h-[300px] p-4 focus:outline-none resize-none prose prose-sm max-w-none ${
-                    props.readOnly ? 'cursor-not-allowed opacity-75' : ''
-                  }`}
-                />
-              }
-              placeholder={
-                <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
-                  {props.placeholder}
-                </div>
-              }
-              ErrorBoundary={LexicalErrorBoundary}
-            />
-            <FloatingTextFormatToolbar />
+        <LexicalComposer 
+          initialConfig={props.initialConfig}
+          key={`yjs-editor-${props.documentId}`}
+        >
+          <div className="editor-inner relative">
+            {props.showToolbar && <EnhancedLexicalToolbar documentId={props.documentId} />}
             
-            {/* Advanced Collaboration Features */}
-            <AdvancedCursorPlugin />
+            <div className="relative">
+              <RichTextPlugin
+                contentEditable={
+                  <ContentEditable 
+                    className="editor-input min-h-[300px] p-4 focus:outline-none resize-none prose prose-sm max-w-none" 
+                  />
+                }
+                placeholder={
+                  <div className="editor-placeholder absolute top-4 left-4 text-muted-foreground pointer-events-none">
+                    {props.placeholder}
+                  </div>
+                }
+                ErrorBoundary={LexicalErrorBoundary}
+              />
+              <FloatingTextFormatToolbar />
+              
+              {/* Advanced Collaboration Features */}
+              <AdvancedCursorPlugin />
+            </div>
+            
+            <LexicalYjsCollaborationPlugin
+              id={props.documentId}
+              shouldBootstrap={true}
+            />
+            
+            <YjsContentSyncPlugin
+              initialContent={props.initialContent}
+              initialContentNodes={props.initialContentNodes}
+              onContentSync={props.onContentSync}
+              documentId={props.documentId}
+            />
+            
+            {/* Enhanced Plugins */}
+            <FixedTablePlugin />
+            <EnhancedTablePlugin />
+            <EnhancedLinkPlugin />
+            <DraggableBlocksPlugin />
+            <MentionsPlugin />
+            <CheckListPlugin />
+            <ImagePlugin />
+            <FileAttachmentPlugin />
+            <CommentPlugin documentId={props.documentId} />
+            <VersionHistoryPlugin documentId={props.documentId} />
+            
+            <HistoryPlugin />
+            <ListPlugin />
+            <LinkPlugin />
+            <KeyboardShortcutsPlugin />
+            <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+            <TabIndentationPlugin />
           </div>
-          
-          {/* ReadOnly Plugin */}
-          <ReadOnlyPlugin readOnly={props.readOnly} />
-          
-          <OfficialLexicalYjsPlugin
-            id={props.documentId}
-            doc={yjsProvider?.doc}
-            sharedType={yjsProvider?.sharedType}
-            shouldBootstrap={true}
-          />
-          
-          <YjsContentSyncPlugin
-            initialContent={props.initialContent}
-            initialContentNodes={props.initialContentNodes}
-            onContentSync={props.onContentSync}
-            documentId={props.documentId}
-          />
-          
-          {/* Enhanced Plugins */}
-          <FixedTablePlugin />
-          <EnhancedTablePlugin />
-          <EnhancedLinkPlugin />
-          <DraggableBlocksPlugin />
-          <MentionsPlugin />
-          <CheckListPlugin />
-          <ImagePlugin />
-          <FileAttachmentPlugin />
-          <CommentPlugin documentId={props.documentId} />
-          <VersionHistoryPlugin documentId={props.documentId} />
-          
-          <HistoryPlugin />
-          <ListPlugin />
-          <LinkPlugin />
-          <KeyboardShortcutsPlugin />
-          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-          <TabIndentationPlugin />
-        </div>
+        </LexicalComposer>
       </YjsSyncStatus>
     </div>
   );
-}
-
-// ReadOnly Plugin to control editor state
-function ReadOnlyPlugin({ readOnly }: { readOnly?: boolean }) {
-  const [editor] = useLexicalComposerContext();
-  
-  React.useEffect(() => {
-    editor.setEditable(!readOnly);
-  }, [editor, readOnly]);
-  
-  return null;
 }
 
 export default function EnhancedLexicalEditor({
@@ -684,7 +650,6 @@ export default function EnhancedLexicalEditor({
   enableCollaboration = false,
   useYjsCollaboration = ENABLE_YJS_COLLABORATION,
   showToolbar = true,
-  readOnly = false,
   onConnectionChange
 }: EnhancedLexicalEditorProps) {
   const [localContent, setLocalContent] = useState(content);
@@ -716,7 +681,6 @@ export default function EnhancedLexicalEditor({
 
   const initialConfig = useMemo(() => ({
     namespace: 'EnhancedEditor',
-    editable: !readOnly, // Add readOnly support
     theme: {
       text: {
         bold: 'font-bold',
@@ -760,7 +724,7 @@ export default function EnhancedLexicalEditor({
     onError: (error: Error) => {
       console.error('Lexical error:', error);
     }
-  }), [readOnly]);
+  }), []);
 
   const handleContentChange = useCallback((newContent: string, newContentNodes?: string) => {
     setLocalContent(newContent);
@@ -783,30 +747,18 @@ export default function EnhancedLexicalEditor({
     return (
       <YjsProvider 
         documentId={documentId}
-        onConnected={() => {
-          console.log('[YjsEditor] Connected to collaboration');
-          onConnectionChange?.(true);
-        }}
-        onDisconnected={() => {
-          console.log('[YjsEditor] Disconnected from collaboration');
-          onConnectionChange?.(false);
-        }}
+        onConnected={() => console.log('[YjsEditor] Connected to collaboration')}
+        onDisconnected={() => console.log('[YjsEditor] Disconnected from collaboration')}
       >
-        <LexicalComposer 
+        <YjsCollaborationEditor
           initialConfig={initialConfig}
-          key={`yjs-editor-${documentId}`}
-        >
-          <YjsCollaborationEditor
-            initialConfig={initialConfig}
-            placeholder={placeholder}
-            documentId={documentId}
-            showToolbar={showToolbar}
-            readOnly={readOnly}
-            initialContent={content}
-            initialContentNodes={contentNodes}
-            onContentSync={handleYjsContentSync}
-          />
-        </LexicalComposer>
+          placeholder={placeholder}
+          documentId={documentId}
+          showToolbar={showToolbar}
+          initialContent={content}
+          initialContentNodes={contentNodes}
+          onContentSync={handleYjsContentSync}
+        />
       </YjsProvider>
     );
   }
