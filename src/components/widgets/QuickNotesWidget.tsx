@@ -310,6 +310,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
           priority: 'medium',
           status: 'todo',
           due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          assigned_to: user.id,
         })
         .select()
         .single();
@@ -319,17 +320,21 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
       // Link the note to the task
       await updateNote(note.id, { task_id: task.id });
 
-      toast.success('Aufgabe erstellt und mit Notiz verknüpft');
+      toast.success('Aufgabe erstellt und dir zugewiesen', {
+        description: 'Die Notiz ist jetzt als Aufgabe verfügbar'
+      });
     } catch (error) {
       console.error('Error creating task from note:', error);
       toast.error('Fehler beim Erstellen der Aufgabe');
     }
   };
 
-  const filteredNotes = notes.filter(note =>
-    note.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (note.title && note.title.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredNotes = notes
+    .filter(note => !note.task_id)
+    .filter(note =>
+      note.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (note.title && note.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
   const renderCompactTasks = () => {
     if (tasks.length === 0) return null;
