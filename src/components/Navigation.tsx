@@ -203,40 +203,39 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       <SidebarHeader className="border-b">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center justify-between w-full px-2 py-1">
-              <SidebarMenuButton
-                onClick={() => onSectionChange("dashboard")}
-                size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground flex-1 justify-center"
-              >
-                {appSettings.app_logo_url ? (
-                  <img 
-                    src={appSettings.app_logo_url} 
-                    alt="App Logo" 
-                    className="size-8 object-contain"
-                  />
-                ) : (
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <FileText className="size-4" />
-                  </div>
-                )}
-                {!isCollapsed && (
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{appSettings.app_name}</span>
-                    <span className="truncate text-xs">{appSettings.app_subtitle}</span>
-                  </div>
-                )}
-              </SidebarMenuButton>
-              {/* Trigger bleibt immer sichtbar */}
-              <SidebarTrigger className="shrink-0" />
-            </div>
+            <SidebarMenuButton
+              onClick={() => onSectionChange("dashboard")}
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground w-full justify-center"
+            >
+              {appSettings.app_logo_url ? (
+                <img 
+                  src={appSettings.app_logo_url} 
+                  alt="App Logo" 
+                  className="size-8 object-contain"
+                />
+              ) : (
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <FileText className="size-4" />
+                </div>
+              )}
+              {!isCollapsed && (
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">{appSettings.app_name}</span>
+                  <span className="truncate text-xs">{appSettings.app_subtitle}</span>
+                </div>
+              )}
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="px-2">Navigation</SidebarGroupLabel>
+          <div className="flex items-center justify-between px-2">
+            {!isCollapsed && <SidebarGroupLabel>Navigation</SidebarGroupLabel>}
+            {isCollapsed && <SidebarTrigger className="mx-auto" />}
+          </div>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.filter(item => 
