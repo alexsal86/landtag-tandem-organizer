@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Save, Trash2, Pin, Tag, Palette, Search, CheckSquare, Settings } from 'lucide-react';
+import { Plus, Save, Trash2, Pin, Tag, Palette, Search, CheckSquare, Settings, ListTodo, Square } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +52,20 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const autoSaveRef = useRef<NodeJS.Timeout>();
+  const [tasks, setTasks] = useState<Array<{
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+    due_date?: string;
+  }>>([]);
+  const [subtasks, setSubtasks] = useState<{[taskId: string]: Array<{
+    id: string;
+    task_id: string;
+    description?: string;
+    is_completed: boolean;
+    due_date?: string;
+  }>}>({});
 
   const { autoSave = true, compact = false } = configuration;
 
@@ -63,6 +77,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   useEffect(() => {
     if (user) {
       loadNotes();
+      loadTasks();
       
       // Load settings from localStorage
       const saved = localStorage.getItem(`quicknotes_settings_${user.id}`);
@@ -116,6 +131,48 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
       toast.error('Fehler beim Laden der Notizen');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTasks = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select('id, title, priority, status, due_date')
+        .eq('user_id', user.id)
+        .neq('status', 'completed')
+        .order('due_date', { ascending: true, nullsFirst: false })
+        .limit(10);
+
+      if (tasksError) throw tasksError;
+      setTasks(tasksData || []);
+
+      if (tasksData && tasksData.length > 0) {
+        const taskIds = tasksData.map(t => t.id);
+        
+        const { data: subtasksData, error: subtasksError } = await supabase
+          .from('subtasks')
+          .select('id, task_id, description, is_completed, due_date')
+          .in('task_id', taskIds)
+          .eq('is_completed', false)
+          .order('order_index', { ascending: true });
+
+        if (subtasksError) throw subtasksError;
+
+        const groupedSubtasks: {[taskId: string]: any[]} = {};
+        (subtasksData || []).forEach(subtask => {
+          if (!groupedSubtasks[subtask.task_id]) {
+            groupedSubtasks[subtask.task_id] = [];
+          }
+          groupedSubtasks[subtask.task_id].push(subtask);
+        });
+
+        setSubtasks(groupedSubtasks);
+      }
+    } catch (error) {
+      console.error('Error loading tasks:', error);
     }
   };
 
@@ -262,6 +319,57 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     note.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (note.title && note.title.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const renderCompactTasks = () => {
+    if (tasks.length === 0) return null;
+
+    return (
+      <div className="mt-4 pt-4 border-t">
+        <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+          <ListTodo className="h-3 w-3" />
+          Aufgaben ({tasks.length})
+        </h4>
+        
+        <div className="space-y-1">
+          {tasks.map(task => (
+            <div key={task.id} className="space-y-0.5">
+              <div className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-accent/50 cursor-pointer">
+                <CheckSquare className="h-3 w-3 flex-shrink-0" />
+                <span className="flex-1 truncate">{task.title}</span>
+                {task.priority === 'high' && (
+                  <Badge variant="destructive" className="h-4 text-[10px] px-1">!</Badge>
+                )}
+                {task.due_date && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(task.due_date).toLocaleDateString('de-DE', { 
+                      day: '2-digit', 
+                      month: '2-digit' 
+                    })}
+                  </span>
+                )}
+              </div>
+
+              {subtasks[task.id] && subtasks[task.id].length > 0 && (
+                <div className="ml-5 space-y-0.5">
+                  {subtasks[task.id].map(subtask => (
+                    <div 
+                      key={subtask.id} 
+                      className="flex items-center gap-2 text-[11px] py-0.5 px-1 rounded hover:bg-accent/30 cursor-pointer text-muted-foreground"
+                    >
+                      <Square className="h-2.5 w-2.5 flex-shrink-0" />
+                      <span className="flex-1 truncate">
+                        {subtask.description}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Card className={`h-full flex flex-col ${className}`}>
@@ -451,6 +559,8 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
             ))
           )}
         </div>
+
+        {renderCompactTasks()}
       </CardContent>
 
       {/* Settings Dialog */}
