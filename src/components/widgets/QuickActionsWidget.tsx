@@ -340,7 +340,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
         </CardHeader>
         
         <CardContent className="pb-3 px-4">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+          <div className="flex flex-wrap gap-2 pb-2">
             {actions.map((action) => (
               <Button
                 key={action.id}
