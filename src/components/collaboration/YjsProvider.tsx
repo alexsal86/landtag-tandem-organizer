@@ -67,6 +67,12 @@ export function YjsProvider({
       console.log('[YjsProvider] Missing documentId or user, skipping initialization');
       return;
     }
+    
+    // Prevent re-initialization if already connected to the same document
+    if (providerRef.current && docRef.current) {
+      console.log('[YjsProvider] Already initialized for document:', documentId);
+      return;
+    }
 
     console.log('[YjsProvider] Initializing Yjs WebSocket collaboration for document:', documentId);
 

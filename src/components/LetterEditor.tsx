@@ -113,6 +113,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   
+  // Stable document ID reference to prevent YjsProvider re-initialization
+  const documentIdRef = useRef<string | null>(null);
+  
+  // Initialize documentId only once
+  useEffect(() => {
+    if (letter?.id && !documentIdRef.current) {
+      documentIdRef.current = letter.id;
+    }
+  }, [letter?.id]);
+  
   const [editedLetter, setEditedLetter] = useState<Partial<Letter>>({
     title: '',
     content: '',
@@ -1748,8 +1758,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
               {/* Enhanced Lexical Editor with Collaboration */}
               <div className="relative">
-                {letter?.id ? (
-                  <YjsProvider documentId={letter.id}>
+                {letter?.id && documentIdRef.current ? (
+                  <YjsProvider 
+                    key={`yjs-${documentIdRef.current}`}
+                    documentId={documentIdRef.current}
+                  >
                     <EnhancedLexicalEditor
                       content={editedLetter.content || ''}
                       contentNodes={editedLetter.content_nodes}
@@ -1951,4 +1964,5 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   );
 };
 
-export default LetterEditor;
+// Wrap with React.memo to prevent unnecessary re-renders
+export default React.memo(LetterEditor);
