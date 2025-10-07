@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   Plus, Calendar, CheckSquare, MessageSquare, Users, FileText, 
   Calendar as CalendarIcon, Clock, Settings, Edit3, X, Save,
@@ -31,7 +32,7 @@ interface QuickActionsWidgetProps {
   onConfigurationChange?: (config: any) => void;
   configuration?: {
     actions?: QuickAction[];
-    columns?: number;
+    columns?: number | string;
     theme?: string;
     buttonSize?: 'sm' | 'md' | 'lg';
     globalIconSize?: 'sm' | 'md' | 'lg';
@@ -167,7 +168,9 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
   onConfigurationChange,
   configuration = {}
 }) => {
+  const { user } = useAuth();
   const [isEditMode, setIsEditMode] = useState(false);
+  const [localConfig, setLocalConfig] = useState(configuration);
   const [actions, setActions] = useState<QuickAction[]>(configuration.actions || defaultActions);
   const [editingAction, setEditingAction] = useState<QuickAction | null>(null);
   const [tempButtonSize, setTempButtonSize] = useState<'sm' | 'md' | 'lg'>(configuration.buttonSize || 'md');
@@ -178,6 +181,24 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
     link: '',
     iconSize: 'md'
   });
+
+  // Load configuration from localStorage on mount
+  useEffect(() => {
+    const storageKey = `quickactions-config-${user?.id || 'anonymous'}`;
+    const savedConfig = localStorage.getItem(storageKey);
+    
+    if (savedConfig) {
+      try {
+        const parsed = JSON.parse(savedConfig);
+        setLocalConfig(parsed);
+        setActions(parsed.actions || defaultActions);
+        setTempButtonSize(parsed.buttonSize || 'md');
+        setTempGlobalIconSize(parsed.globalIconSize || 'md');
+      } catch (error) {
+        console.error('Failed to load QuickActions configuration:', error);
+      }
+    }
+  }, [user?.id]);
 
   const getColumns = () => {
     if (widgetSize === 'full-width') return 'auto';
@@ -192,7 +213,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
 
   const getIconSize = (size: 'sm' | 'md' | 'lg') => {
     // In edit mode, use temporary settings; otherwise use configured settings
-    const effectiveGlobalSize = isEditMode ? tempGlobalIconSize : configuration.globalIconSize;
+    const effectiveGlobalSize = isEditMode ? tempGlobalIconSize : localConfig.globalIconSize;
     const effectiveSize = effectiveGlobalSize || size;
     switch (effectiveSize) {
       case 'sm': return 'h-4 w-4';
@@ -204,7 +225,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
 
   const getActionButtonSize = (): "sm" | "lg" | "default" => {
     // In edit mode, use temporary settings
-    const effectiveButtonSize = isEditMode ? tempButtonSize : (configuration.buttonSize || 'md');
+    const effectiveButtonSize = isEditMode ? tempButtonSize : (localConfig.buttonSize || 'md');
     
     if (effectiveButtonSize) {
       return effectiveButtonSize === 'md' ? 'default' : effectiveButtonSize;
@@ -219,13 +240,21 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
 
   const handleSaveConfiguration = () => {
     const newConfig = {
-      ...configuration,
+      ...localConfig,
       actions,
       columns: getColumns(),
       buttonSize: tempButtonSize,
       globalIconSize: tempGlobalIconSize
     };
     
+    // Save to localStorage
+    const storageKey = `quickactions-config-${user?.id || 'anonymous'}`;
+    localStorage.setItem(storageKey, JSON.stringify(newConfig));
+    
+    // Update local state
+    setLocalConfig(newConfig);
+    
+    // Call callback if provided (for future integration)
     onConfigurationChange?.(newConfig);
     setIsEditMode(false);
     toast.success('Konfiguration gespeichert');
@@ -296,8 +325,8 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                 variant="ghost" 
                 size="sm" 
                 onClick={() => {
-                  setTempButtonSize(configuration.buttonSize || 'md');
-                  setTempGlobalIconSize(configuration.globalIconSize || 'md');
+                  setTempButtonSize(localConfig.buttonSize || 'md');
+                  setTempGlobalIconSize(localConfig.globalIconSize || 'md');
                   setIsEditMode(true);
                 }}
                 className="h-7 w-7 p-0"
@@ -567,8 +596,8 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
             size="sm"
             onClick={() => {
               if (!isEditMode) {
-                setTempButtonSize(configuration.buttonSize || 'md');
-                setTempGlobalIconSize(configuration.globalIconSize || 'md');
+                setTempButtonSize(localConfig.buttonSize || 'md');
+                setTempGlobalIconSize(localConfig.globalIconSize || 'md');
               }
               setIsEditMode(!isEditMode);
             }}
