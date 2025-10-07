@@ -465,27 +465,31 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center gap-1">
-              <UserStatusSelector>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer flex-1"
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
-                    <AvatarFallback>
-                      {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">
-                      {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
-                    </span>
-                    <span className="truncate text-xs">{userRole}</span>
-                  </div>
-                </SidebarMenuButton>
-              </UserStatusSelector>
-              <span className="text-muted-foreground">|</span>
-              <CompactStatusSelector />
+              {!isCollapsed && (
+                <>
+                  <UserStatusSelector>
+                    <SidebarMenuButton
+                      size="lg"
+                      className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer flex-1"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
+                        <AvatarFallback>
+                          {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold">
+                          {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
+                        </span>
+                        <span className="truncate text-xs">{userRole}</span>
+                      </div>
+                    </SidebarMenuButton>
+                  </UserStatusSelector>
+                  <span className="text-muted-foreground">|</span>
+                  <CompactStatusSelector />
+                </>
+              )}
               <NotificationBell />
             </div>
           </SidebarMenuItem>
