@@ -427,7 +427,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         {/* Status Ring Overlay */}
                         <div className={cn(
                           "absolute inset-0 rounded-full ring-4 ring-offset-2 ring-offset-background pointer-events-none",
-                          onlineUser.status?.status_type === 'online' && 'ring-green-500',
+                          (onlineUser.status?.status_type === 'online' || onlineUser.status?.status_type === 'custom') && 'ring-green-500',
                           onlineUser.status?.status_type === 'meeting' && 'ring-blue-500',
                           onlineUser.status?.status_type === 'away' && 'ring-yellow-500',
                           onlineUser.status?.status_type === 'break' && 'ring-orange-500',
@@ -478,7 +478,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                     {/* Status Ring Overlay */}
                     <div className={cn(
                       "absolute inset-0 rounded-full ring-4 ring-offset-2 ring-offset-background pointer-events-none",
-                      currentStatus?.status_type === 'online' && 'ring-green-500',
+                      (currentStatus?.status_type === 'online' || currentStatus?.status_type === 'custom') && 'ring-green-500',
                       currentStatus?.status_type === 'meeting' && 'ring-blue-500',
                       currentStatus?.status_type === 'away' && 'ring-yellow-500',
                       currentStatus?.status_type === 'break' && 'ring-orange-500',
