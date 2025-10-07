@@ -426,7 +426,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 space-y-3 overflow-auto">
+      <CardContent className="flex-1 space-y-3 overflow-y-auto pb-4">
         {/* Create/Edit Form */}
         <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
           {!compact && (
