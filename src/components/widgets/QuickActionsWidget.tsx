@@ -170,6 +170,8 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
   const [isEditMode, setIsEditMode] = useState(false);
   const [actions, setActions] = useState<QuickAction[]>(configuration.actions || defaultActions);
   const [editingAction, setEditingAction] = useState<QuickAction | null>(null);
+  const [tempButtonSize, setTempButtonSize] = useState<'sm' | 'md' | 'lg'>(configuration.buttonSize || 'md');
+  const [tempGlobalIconSize, setTempGlobalIconSize] = useState<'sm' | 'md' | 'lg'>(configuration.globalIconSize || 'md');
   const [newAction, setNewAction] = useState<Partial<QuickAction>>({
     label: '',
     icon: 'Plus',
@@ -189,8 +191,9 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
   };
 
   const getIconSize = (size: 'sm' | 'md' | 'lg') => {
-    // Use global icon size if configured, otherwise use individual size
-    const effectiveSize = configuration.globalIconSize || size;
+    // In edit mode, use temporary settings; otherwise use configured settings
+    const effectiveGlobalSize = isEditMode ? tempGlobalIconSize : configuration.globalIconSize;
+    const effectiveSize = effectiveGlobalSize || size;
     switch (effectiveSize) {
       case 'sm': return 'h-4 w-4';
       case 'md': return 'h-5 w-5';
@@ -200,9 +203,11 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
   };
 
   const getActionButtonSize = (): "sm" | "lg" | "default" => {
-    // Use configured button size if available
-    if (configuration.buttonSize) {
-      return configuration.buttonSize === 'md' ? 'default' : configuration.buttonSize;
+    // In edit mode, use temporary settings
+    const effectiveButtonSize = isEditMode ? tempButtonSize : (configuration.buttonSize || 'md');
+    
+    if (effectiveButtonSize) {
+      return effectiveButtonSize === 'md' ? 'default' : effectiveButtonSize;
     }
     
     // Fallback to auto-detection based on widget size
@@ -217,8 +222,8 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
       ...configuration,
       actions,
       columns: getColumns(),
-      buttonSize: configuration.buttonSize || 'md',
-      globalIconSize: configuration.globalIconSize || 'md'
+      buttonSize: tempButtonSize,
+      globalIconSize: tempGlobalIconSize
     };
     
     onConfigurationChange?.(newConfig);
@@ -290,7 +295,11 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => setIsEditMode(true)}
+                onClick={() => {
+                  setTempButtonSize(configuration.buttonSize || 'md');
+                  setTempGlobalIconSize(configuration.globalIconSize || 'md');
+                  setIsEditMode(true);
+                }}
                 className="h-7 w-7 p-0"
               >
                 <Edit3 className="h-3 w-3" />
@@ -357,10 +366,9 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                   <div>
                     <Label className="text-xs text-muted-foreground">Button-Größe</Label>
                     <Select 
-                      value={configuration.buttonSize || 'md'} 
+                      value={tempButtonSize} 
                       onValueChange={(value: 'sm' | 'md' | 'lg') => {
-                        const newConfig = { ...configuration, buttonSize: value };
-                        onConfigurationChange?.(newConfig);
+                        setTempButtonSize(value);
                       }}
                     >
                       <SelectTrigger className="text-xs h-8">
@@ -376,10 +384,9 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                   <div>
                     <Label className="text-xs text-muted-foreground">Icon-Größe (alle)</Label>
                     <Select 
-                      value={configuration.globalIconSize || 'md'} 
+                      value={tempGlobalIconSize} 
                       onValueChange={(value: 'sm' | 'md' | 'lg') => {
-                        const newConfig = { ...configuration, globalIconSize: value };
-                        onConfigurationChange?.(newConfig);
+                        setTempGlobalIconSize(value);
                       }}
                     >
                       <SelectTrigger className="text-xs h-8">
@@ -558,7 +565,13 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsEditMode(!isEditMode)}
+            onClick={() => {
+              if (!isEditMode) {
+                setTempButtonSize(configuration.buttonSize || 'md');
+                setTempGlobalIconSize(configuration.globalIconSize || 'md');
+              }
+              setIsEditMode(!isEditMode);
+            }}
             className="h-7 w-7 p-0"
           >
             <Edit3 className="h-3 w-3" />
