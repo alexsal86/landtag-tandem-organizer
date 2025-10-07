@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Save, Trash2, Pin, Tag, Palette, Search, CheckSquare } from 'lucide-react';
+import { Plus, Save, Trash2, Pin, Tag, Palette, Search, CheckSquare, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -43,6 +47,10 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const autoSaveRef = useRef<NodeJS.Timeout>();
 
   const { autoSave = true, compact = false } = configuration;
@@ -55,6 +63,17 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   useEffect(() => {
     if (user) {
       loadNotes();
+      
+      // Load settings from localStorage
+      const saved = localStorage.getItem(`quicknotes_settings_${user.id}`);
+      if (saved) {
+        try {
+          const settings = JSON.parse(saved);
+          setShowDeleteConfirmation(settings.showDeleteConfirmation ?? true);
+        } catch (error) {
+          console.error('Error loading settings:', error);
+        }
+      }
     }
   }, [user]);
 
@@ -146,7 +165,16 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     }
   };
 
-  const deleteNote = async (id: string) => {
+  const handleDeleteClick = (id: string) => {
+    if (showDeleteConfirmation) {
+      setNoteToDelete(id);
+      setDeleteDialogOpen(true);
+    } else {
+      confirmDelete(id);
+    }
+  };
+
+  const confirmDelete = async (id: string) => {
     try {
       const { error } = await supabase
         .from('quick_notes')
@@ -157,9 +185,22 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
 
       setNotes(prev => prev.filter(note => note.id !== id));
       toast.success('Notiz gelöscht');
+      setDeleteDialogOpen(false);
+      setNoteToDelete(null);
     } catch (error) {
       console.error('Error deleting note:', error);
       toast.error('Fehler beim Löschen der Notiz');
+    }
+  };
+
+  const saveSettings = (newValue: boolean) => {
+    setShowDeleteConfirmation(newValue);
+    if (user) {
+      localStorage.setItem(
+        `quicknotes_settings_${user.id}`,
+        JSON.stringify({ showDeleteConfirmation: newValue })
+      );
+      toast.success('Einstellung gespeichert');
     }
   };
 
@@ -239,6 +280,15 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                 />
               </div>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSettingsOpen(true)}
+              className="h-7 w-7 p-0"
+              title="Einstellungen"
+            >
+              <Settings className="h-3 w-3" />
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -389,7 +439,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        deleteNote(note.id);
+                        handleDeleteClick(note.id);
                       }}
                       className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                     >
@@ -402,6 +452,56 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
           )}
         </div>
       </CardContent>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Quick Notes Einstellungen</DialogTitle>
+            <DialogDescription>
+              Passe das Verhalten der Quick Notes an deine Bedürfnisse an.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="delete-confirmation">Bestätigung vor dem Löschen</Label>
+                <p className="text-sm text-muted-foreground">
+                  Zeigt einen Bestätigungsdialog an, bevor Notizen gelöscht werden
+                </p>
+              </div>
+              <Switch
+                id="delete-confirmation"
+                checked={showDeleteConfirmation}
+                onCheckedChange={saveSettings}
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Notiz wirklich löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Diese Aktion kann nicht rückgängig gemacht werden. Die Notiz wird dauerhaft gelöscht.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setNoteToDelete(null)}>
+              Abbrechen
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => noteToDelete && confirmDelete(noteToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
