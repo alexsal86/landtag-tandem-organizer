@@ -47,7 +47,7 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
       </div>
 
       {/* Widget content below buttons */}
-      <div className="rounded-lg border bg-card shadow-sm max-h-[600px] overflow-hidden">
+      <div className="rounded-lg border bg-card shadow-sm h-[700px] overflow-auto">
         {activeWidget === 'quicknotes' && <QuickNotesWidget />}
         {activeWidget === 'calllog' && <CallLogWidget />}
         {activeWidget === 'pomodoro' && <PomodoroWidget />}
