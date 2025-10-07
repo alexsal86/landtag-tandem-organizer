@@ -700,6 +700,44 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_sync_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_enabled: boolean
+          sync_interval_hours: number
+          sync_time: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean
+          sync_interval_hours?: number
+          sync_time?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean
+          sync_interval_hours?: number
+          sync_time?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_sync_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_logs: {
         Row: {
           call_date: string

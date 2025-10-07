@@ -27,8 +27,6 @@ export const DashboardGreetingSection = () => {
   const [weatherKarlsruhe, setWeatherKarlsruhe] = useState<{ temp: number; condition: string; icon: string } | null>(null);
   const [weatherStuttgart, setWeatherStuttgart] = useState<{ temp: number; condition: string; icon: string } | null>(null);
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
-  const [openTasksCount, setOpenTasksCount] = useState(0);
-  const [completedTasksCount, setCompletedTasksCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeWidget, setActiveWidget] = useState<string>('quicknotes');
 
@@ -117,34 +115,10 @@ export const DashboardGreetingSection = () => {
         .slice(0, 2);
       
       setAppointments(combined);
-    };
-    
-    loadAppointments();
-  }, [user, currentTenant]);
-
-  // Load task counts
-  useEffect(() => {
-    const loadTasks = async () => {
-      if (!user?.id || !currentTenant?.id) return;
-      
-      const { data: openTasks } = await supabase
-        .from('tasks')
-        .select('id', { count: 'exact', head: true })
-        .eq('tenant_id', currentTenant.id)
-        .in('status', ['todo', 'in_progress']);
-      
-      const { data: completedTasks } = await supabase
-        .from('tasks')
-        .select('id', { count: 'exact', head: true })
-        .eq('tenant_id', currentTenant.id)
-        .eq('status', 'done');
-      
-      setOpenTasksCount(openTasks?.length || 0);
-      setCompletedTasksCount(completedTasks?.length || 0);
       setIsLoading(false);
     };
     
-    loadTasks();
+    loadAppointments();
   }, [user, currentTenant]);
 
   // Generate weather hints
@@ -180,8 +154,8 @@ export const DashboardGreetingSection = () => {
       timeSlot,
       dayOfWeek: getCurrentDayOfWeek(),
       appointmentsCount: appointments.length,
-      tasksCount: openTasksCount,
-      completedTasks: completedTasksCount,
+      tasksCount: 0,
+      completedTasks: 0,
       isHoliday: false,
       month: new Date().getMonth() + 1
     };
@@ -220,11 +194,8 @@ export const DashboardGreetingSection = () => {
     });
     }
     
-    // Tasks section
-    text += `\n✅ Deine Aufgaben:\n${openTasksCount} offen, ${completedTasksCount} erledigt`;
-    
     return text;
-  }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments, openTasksCount, completedTasksCount]);
+  }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments]);
 
   return (
     <div className="mb-6 flex items-start gap-4">

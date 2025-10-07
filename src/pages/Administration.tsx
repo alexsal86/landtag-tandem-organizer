@@ -32,6 +32,7 @@ import { PartyAssociationsAdmin } from "@/components/PartyAssociationsAdmin";
 import { TagAdminSettings } from "@/components/TagAdminSettings";
 import { RSSSourceManager } from "@/components/administration/RSSSourceManager";
 import { RSSSettingsManager } from "@/components/administration/RSSSettingsManager";
+import { CalendarSyncSettings } from "@/components/administration/CalendarSyncSettings";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -536,6 +537,10 @@ export default function Administration() {
           <TabsTrigger value="documents" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             Dokumente & Vorlagen
+          </TabsTrigger>
+          <TabsTrigger value="calendar-sync" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Kalender-Sync
           </TabsTrigger>
           <TabsTrigger value="rss" className="flex items-center gap-2">
             <Rss className="h-4 w-4" />
@@ -1488,6 +1493,11 @@ export default function Administration() {
               </Card>
             </TabsContent>
           </Tabs>
+        </TabsContent>
+
+        {/* Kalender-Synchronisation */}
+        <TabsContent value="calendar-sync">
+          <CalendarSyncSettings />
         </TabsContent>
 
         {/* RSS-Quellen & News */}
