@@ -42,9 +42,17 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       
       // Check if this is the simple {name, address} format
       if (address.address && typeof address.address === 'string') {
-        // Split address string into lines and add each non-empty line
+        // Split address string into lines and filter empty lines
         const addressLines = address.address.split('\n').filter(line => line.trim());
-        parts.push(...addressLines);
+        
+        // Prevent duplication: skip first line if it matches the name
+        if (addressLines.length > 0 && addressLines[0].trim() === address.name?.trim()) {
+          // First line is the name, so add remaining lines only
+          parts.push(...addressLines.slice(1));
+        } else {
+          // First line is not the name, add all address lines
+          parts.push(...addressLines);
+        }
       } else {
         // Otherwise, it's the structured format
         if (address.company) parts.push(address.company);
@@ -450,7 +458,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       {showPagination && (
         <div style={{
           position: 'absolute',
-          top: '281.15mm', // 297mm - 15.85mm from bottom
+          top: '267.77mm', // 297mm - 25mm bottom margin - 4.23mm
           right: '20mm',
           fontSize: '8pt',
           color: '#666',
