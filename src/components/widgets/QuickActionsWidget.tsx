@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Plus, Calendar, CheckSquare, MessageSquare, Users, FileText, 
   Calendar as CalendarIcon, Clock, Settings, Edit3, X, Save,
-  GripVertical, Trash2
+  GripVertical, Trash2, Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -143,6 +143,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
   });
 
   const getColumns = () => {
+    if (widgetSize === 'full-width') return 'auto';
     if (configuration.columns) return configuration.columns;
     
     // Auto-determine columns based on widget size
@@ -231,6 +232,185 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
   const buttonSize = getActionButtonSize();
   const columns = getColumns();
 
+  // Full-width layout (horizontal scrollbar)
+  if (widgetSize === 'full-width') {
+    return (
+      <Card className={`w-full ${className}`}>
+        <CardHeader className="pb-2 pt-3 px-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Schnellzugriff
+            </CardTitle>
+            {!isEditMode && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setIsEditMode(true)}
+                className="h-7 w-7 p-0"
+              >
+                <Edit3 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        
+        <CardContent className="pb-3 px-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+            {actions.map((action) => (
+              <Button
+                key={action.id}
+                asChild
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 h-auto min-w-[100px] p-3 flex flex-col items-center gap-1.5 hover:bg-accent"
+              >
+                <Link to={action.link}>
+                  {renderIcon(action.icon, 'h-5 w-5')}
+                  <span className="text-xs text-center leading-tight whitespace-nowrap">
+                    {action.label}
+                  </span>
+                </Link>
+              </Button>
+            ))}
+            
+            {isEditMode && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddAction}
+                className="flex-shrink-0 h-auto min-w-[100px] p-3 flex flex-col items-center gap-1.5 border-dashed"
+              >
+                <Plus className="h-5 w-5" />
+                <span className="text-xs">Hinzufügen</span>
+              </Button>
+            )}
+          </div>
+          
+          {isEditMode && (
+            <div className="mt-3 pt-3 border-t space-y-3">
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={() => setIsEditMode(false)}>
+                  <X className="h-3 w-3 mr-1" />
+                  Schließen
+                </Button>
+                <Button size="sm" onClick={handleSaveConfiguration}>
+                  <Save className="h-3 w-3 mr-1" />
+                  Speichern
+                </Button>
+              </div>
+              
+              {/* Existing Actions List */}
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {actions.map((action) => (
+                  <div key={action.id} className="flex items-center gap-2 p-2 border rounded bg-background">
+                    <div className="flex-1 grid grid-cols-3 gap-2 text-xs">
+                      <span className="truncate">{action.label}</span>
+                      <span className="truncate text-muted-foreground">{action.link}</span>
+                      <div className="flex items-center gap-1">
+                        {renderIcon(action.icon, 'h-3 w-3')}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => handleEditAction(action)} className="h-6 w-6 p-0">
+                        <Edit3 className="h-3 w-3" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteAction(action.id)} className="h-6 w-6 p-0">
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+
+        {/* Edit Action Dialog */}
+        <Dialog open={!!editingAction} onOpenChange={() => setEditingAction(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Aktion bearbeiten</DialogTitle>
+            </DialogHeader>
+            {editingAction && (
+              <div className="space-y-4">
+                <div>
+                  <Label>Label</Label>
+                  <Input
+                    value={editingAction.label}
+                    onChange={(e) => setEditingAction(prev => prev ? { ...prev, label: e.target.value } : null)}
+                  />
+                </div>
+                <div>
+                  <Label>Link</Label>
+                  <Input
+                    value={editingAction.link}
+                    onChange={(e) => setEditingAction(prev => prev ? { ...prev, link: e.target.value } : null)}
+                  />
+                </div>
+                <div>
+                  <Label>Beschreibung</Label>
+                  <Textarea
+                    value={editingAction.description || ''}
+                    onChange={(e) => setEditingAction(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Icon</Label>
+                    <Select 
+                      value={editingAction.icon} 
+                      onValueChange={(value) => setEditingAction(prev => prev ? { ...prev, icon: value } : null)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {iconOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <div className="flex items-center gap-2">
+                              {renderIcon(option.value, 'h-4 w-4')}
+                              {option.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Icon-Größe</Label>
+                    <Select 
+                      value={editingAction.iconSize} 
+                      onValueChange={(value: 'sm' | 'md' | 'lg') => setEditingAction(prev => prev ? { ...prev, iconSize: value } : null)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sm">Klein</SelectItem>
+                        <SelectItem value="md">Mittel</SelectItem>
+                        <SelectItem value="lg">Groß</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditingAction(null)}>
+                    Abbrechen
+                  </Button>
+                  <Button onClick={handleUpdateAction}>
+                    Speichern
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </Card>
+    );
+  }
+
+  // Regular widget layout
   return (
     <Card className={`h-full flex flex-col ${className}`}>
       <CardHeader className="pb-3">

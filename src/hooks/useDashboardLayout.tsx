@@ -95,19 +95,10 @@ export function useDashboardLayout() {
         configuration: { theme: 'default', autoSave: true, compact: false }
       },
       {
-        id: 'quickactions',
-        type: 'quickactions',
-        title: 'Schnellzugriff',
-        position: { x: 5, y: 1 },
-        size: { width: 3, height: 2 },
-        widgetSize: '3x2',
-        configuration: { theme: 'default', columns: 3 }
-      },
-      {
         id: 'habits',
         type: 'habits',
         title: 'Habit Tracker',
-        position: { x: 8, y: 1 },
+        position: { x: 5, y: 1 },
         size: { width: 3, height: 2 },
         widgetSize: '3x2',
         configuration: { theme: 'default', showStreak: true }
@@ -217,10 +208,14 @@ export function useDashboardLayout() {
 
       if (data?.layout_data) {
         console.log('Successfully loaded layout from database');
+        // Filter out quickactions widget from loaded layout
+        const filteredWidgets = ((data.layout_data as any) as DashboardWidget[])
+          .filter((w: DashboardWidget) => w.type !== 'quickactions');
+        
         const layout: DashboardLayout = {
           id: data.id,
           name: data.name,
-          widgets: (data.layout_data as any) as DashboardWidget[],
+          widgets: filteredWidgets,
           isActive: true
         };
         setCurrentLayout(layout);

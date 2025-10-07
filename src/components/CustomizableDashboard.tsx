@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { DashboardWidget } from './DashboardWidget';
 import { DashboardGreetingSection } from './dashboard/DashboardGreetingSection';
 import { DashboardCoverImage } from './dashboard/DashboardCoverImage';
+import { QuickActionsWidget } from './widgets/QuickActionsWidget';
 import { toast } from 'sonner';
 import {
   Settings,
@@ -167,7 +168,6 @@ export const CustomizableDashboard: React.FC = () => {
     { type: 'stats', title: 'Statistiken', icon: CheckSquare, description: 'Zeigt wichtige Statistiken und KPIs' },
     { type: 'tasks', title: 'Aufgaben', icon: CheckSquare, description: 'Zeigt ausstehende Aufgaben' },
     { type: 'schedule', title: 'Terminplan', icon: Calendar, description: 'Zeigt anstehende Termine' },
-    { type: 'quickactions', title: 'Schnellzugriff', icon: Plus, description: 'Schnelle Aktionen und Links' },
     { type: 'messages', title: 'Nachrichten', icon: MessageSquare, description: 'Nachrichtensystem' },
     { type: 'combined-messages', title: 'Chat', icon: MessageSquare, description: 'Kombinierte Nachrichten' },
     { type: 'quicknotes', title: 'Notizen', icon: FileText, description: 'Schnelle Notizen' },
@@ -245,6 +245,14 @@ export const CustomizableDashboard: React.FC = () => {
         {/* Dynamic Greeting Section */}
         <div className="mb-8">
           <DashboardGreetingSection />
+        </div>
+
+        {/* Quick Actions - Full Width Separator */}
+        <div className="mb-6">
+          <QuickActionsWidget 
+            className="shadow-sm"
+            widgetSize="full-width"
+          />
         </div>
 
       <Separator className="my-8" />
@@ -394,17 +402,19 @@ export const CustomizableDashboard: React.FC = () => {
           preventCollision={false}
           compactType="vertical"
         >
-          {currentLayout?.widgets.map((widget) => (
-            <div key={widget.id} className="grid-item">
-              <DashboardWidget
-                widget={widget}
-                isDragging={false}
-                isEditMode={isEditMode}
-                onResize={handleWidgetResize}
-                onDelete={removeWidget}
-              />
-            </div>
-          ))}
+          {currentLayout?.widgets
+            .filter(widget => widget.type !== 'quickactions')
+            .map((widget) => (
+              <div key={widget.id} className="grid-item">
+                <DashboardWidget
+                  widget={widget}
+                  isDragging={false}
+                  isEditMode={isEditMode}
+                  onResize={handleWidgetResize}
+                  onDelete={removeWidget}
+                />
+              </div>
+            ))}
         </ResponsiveGridLayout>
       </div>
       </div>
