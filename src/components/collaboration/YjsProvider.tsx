@@ -20,7 +20,7 @@ class SupabaseYjsProvider {
   private channel: any = null;
   private persistence: any = null;
   private userId: string;
-  private clientId: string;
+  public clientId: string;
   private isConnectedState: boolean = false;
   private eventListeners: Map<string, Set<Function>> = new Map();
 
@@ -110,9 +110,9 @@ class SupabaseYjsProvider {
 
     // Listen to local Yjs updates to broadcast via Supabase
     this.doc.on('update', (update: Uint8Array, origin: any) => {
-      // Only broadcast if NOT from our own client
+      // FIX 2: Refined echo prevention - Only broadcast if NOT from our own client
       if (origin !== this.clientId && this.channel) {
-        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update from client: ${this.clientId}`);
+        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update (origin: ${origin}, own: ${this.clientId})`);
         this.channel.send({
           type: 'broadcast',
           event: 'yjs-update',
@@ -122,6 +122,8 @@ class SupabaseYjsProvider {
             update: Array.from(update)
           }
         });
+      } else {
+        console.log(`[SupabaseYjsProvider] Skipping broadcast (own update, origin: ${origin})`);
       }
     });
 
@@ -147,17 +149,21 @@ class SupabaseYjsProvider {
   connect() {
     if (this.channel && !this.isConnectedState) {
       console.log('[SupabaseYjsProvider] Connecting to Supabase transport');
+      
+      // Cleanup alte Subscription falls vorhanden
+      this.channel.unsubscribe();
+      
       this.channel.subscribe(async (status: string) => {
         const wasConnected = this.isConnectedState;
         this.isConnectedState = status === 'SUBSCRIBED';
         
         if (this.isConnectedState && !wasConnected) {
-          console.log('[SupabaseYjsProvider] Connected to Supabase transport');
+          console.log('[SupabaseYjsProvider] Connected successfully to Supabase transport');
           this.emit('connect');
           
-          // Request initial state from other clients after connection
+          // Request initial state with longer delay for more stable connection
           setTimeout(() => {
-            if (this.channel) {
+            if (this.channel && this.isConnectedState) {
               console.log('[SupabaseYjsProvider] Requesting initial state from collaborators');
               this.channel.send({
                 type: 'broadcast',
@@ -165,10 +171,18 @@ class SupabaseYjsProvider {
                 payload: { requesterId: this.clientId }
               });
             }
-          }, 500);
+          }, 1000); // Extended from 500ms to 1 second
         } else if (!this.isConnectedState && wasConnected) {
-          console.log('[SupabaseYjsProvider] Disconnected from Supabase transport');
+          console.log('[SupabaseYjsProvider] Connection lost, attempting reconnect...');
           this.emit('disconnect');
+          
+          // Auto-Reconnect after 2 seconds
+          setTimeout(() => {
+            if (!this.isConnectedState) {
+              console.log('[SupabaseYjsProvider] Reconnecting...');
+              this.connect();
+            }
+          }, 2000);
         }
       });
     }
@@ -224,6 +238,7 @@ class SupabaseYjsProvider {
 export interface YjsProviderContextValue {
   doc: Y.Doc | null;
   provider: SupabaseYjsProvider | null;
+  clientId: string | null;
   isConnected: boolean;
   isSynced: boolean;
   collaborators: any[];
@@ -233,6 +248,7 @@ export interface YjsProviderContextValue {
 export const YjsProviderContext = React.createContext<YjsProviderContextValue>({
   doc: null,
   provider: null,
+  clientId: null,
   isConnected: false,
   isSynced: false,
   collaborators: [],
@@ -367,6 +383,7 @@ export function YjsProvider({
   const contextValue: YjsProviderContextValue = {
     doc: docRef.current,
     provider: providerRef.current,
+    clientId: providerRef.current?.clientId || null,
     isConnected,
     isSynced,
     collaborators,

@@ -14,15 +14,20 @@ export function LexicalYjsCollaborationPlugin({
   shouldBootstrap = true 
 }: LexicalYjsCollaborationPluginProps) {
   const [editor] = useLexicalComposerContext();
-  const { doc, isSynced, provider } = useYjsProvider();
+  const { doc, isSynced, provider, clientId: providedClientId } = useYjsProvider();
   const lastContentRef = useRef<string>('');
   const isApplyingYjsUpdateRef = useRef<boolean>(false);
   const isApplyingLexicalUpdateRef = useRef<boolean>(false);
   const hasBootstrapped = useRef<boolean>(false);
-  const clientId = useRef<string>(`client-${Math.random().toString(36).substr(2, 9)}`);
+  const clientId = useRef<string>(providedClientId || 'unknown');
 
   useEffect(() => {
     if (!doc || !editor || !isSynced) return;
+
+    // Update clientId reference when providedClientId changes
+    if (providedClientId) {
+      clientId.current = providedClientId;
+    }
 
     console.log('[LexicalYjsCollaboration] Setting up structured Lexical Yjs binding for:', id);
 
@@ -60,20 +65,23 @@ export function LexicalYjsCollaborationPlugin({
         if (serializedState.trim()) {
           // Parse structured EditorState from Yjs
           try {
-            const editorState = editor.parseEditorState(serializedState);
+            // FIX 1: JSON-Parsing - Convert JSON string to object first
+            const stateObject = JSON.parse(serializedState);
+            const editorState = editor.parseEditorState(stateObject);
             editor.setEditorState(editorState);
             lastContentRef.current = serializedState;
           } catch (parseError) {
-            console.error(`[LexicalYjsCollaboration:${clientId.current}] Failed to parse EditorState, falling back to plain text:`, parseError);
-            // Fallback: treat as plain text
+            console.error(`[LexicalYjsCollaboration:${clientId.current}] Failed to parse EditorState:`, parseError);
+            console.error('Problematic content:', serializedState.slice(0, 200));
+            
+            // FIX 3: Improved error handling - Reset to empty state instead of showing JSON
             editor.update(() => {
               const root = $getRoot();
               root.clear();
               const p = $createParagraphNode();
-              p.append($createTextNode(serializedState));
               root.append(p);
             });
-            lastContentRef.current = serializedState;
+            lastContentRef.current = ''; // Clear cache to prevent loops
           }
         } else {
           // Empty content - add single empty paragraph
