@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, CheckSquare, Building, FileText, DollarSign, Users, Shield, Clock, MapPin } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, CheckSquare, Building, FileText, DollarSign, Users, Shield, Clock, MapPin, Rss } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NewUserForm } from "@/components/NewUserForm";
@@ -30,6 +30,8 @@ import { PartyDistrictMappingManager } from "@/components/administration/PartyDi
 import { CalendarSyncDebug } from "@/components/CalendarSyncDebug";
 import { PartyAssociationsAdmin } from "@/components/PartyAssociationsAdmin";
 import { TagAdminSettings } from "@/components/TagAdminSettings";
+import { RSSSourceManager } from "@/components/administration/RSSSourceManager";
+import { RSSSettingsManager } from "@/components/administration/RSSSettingsManager";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -510,7 +512,7 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="system" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             System & Allgemein
@@ -534,6 +536,10 @@ export default function Administration() {
           <TabsTrigger value="documents" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             Dokumente & Vorlagen
+          </TabsTrigger>
+          <TabsTrigger value="rss" className="flex items-center gap-2">
+            <Rss className="h-4 w-4" />
+            RSS-Quellen & News
           </TabsTrigger>
           <TabsTrigger value="admin" className="flex items-center gap-2">
             <DollarSign className="h-4 w-4" />
@@ -1482,6 +1488,19 @@ export default function Administration() {
               </Card>
             </TabsContent>
           </Tabs>
+        </TabsContent>
+
+        {/* RSS-Quellen & News */}
+        <TabsContent value="rss" className="space-y-6">
+          <div>
+            <h3 className="text-lg font-medium mb-4">RSS-Quellen verwalten</h3>
+            <RSSSourceManager />
+          </div>
+          
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-medium mb-4">RSS-Einstellungen</h3>
+            <RSSSettingsManager />
+          </div>
         </TabsContent>
 
         {/* Verwaltung */}
