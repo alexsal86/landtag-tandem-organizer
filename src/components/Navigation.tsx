@@ -38,7 +38,7 @@ interface NavigationProps {
 
 export function Navigation({ activeSection, onSectionChange }: NavigationProps) {
   const { signOut, user } = useAuth();
-  const { onlineUsers, getStatusDisplay } = useUserStatus();
+  const { onlineUsers, getStatusDisplay, currentStatus } = useUserStatus();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
@@ -197,6 +197,22 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
 
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+
+  // Status-Ring Farbe basierend auf Status-Typ
+  const getStatusRingColor = (status: string) => {
+    switch (status) {
+      case 'available':
+        return 'ring-green-500';
+      case 'busy':
+        return 'ring-red-500';
+      case 'away':
+        return 'ring-yellow-500';
+      case 'in_meeting':
+        return 'ring-blue-500';
+      default:
+        return 'ring-muted';
+    }
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -396,24 +412,6 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
             <SidebarGroupContent>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {onlineUsers.slice(0, 8).map((onlineUser) => {
-                  const statusDisplay = getStatusDisplay(onlineUser.status);
-                  
-                  // Status-Ring Farbe basierend auf Status-Typ
-                  const getStatusRingColor = (status: string) => {
-                    switch (status) {
-                      case 'available':
-                        return 'ring-green-500';
-                      case 'busy':
-                        return 'ring-red-500';
-                      case 'away':
-                        return 'ring-yellow-500';
-                      case 'in_meeting':
-                        return 'ring-blue-500';
-                      default:
-                        return 'ring-muted';
-                    }
-                  };
-                  
                   return (
                     <div
                       key={onlineUser.user_id}
@@ -463,7 +461,10 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer flex-1"
                 >
-                  <Avatar className="h-8 w-8">
+                  <Avatar className={cn(
+                    "h-8 w-8 ring-2",
+                    getStatusRingColor(currentStatus?.status_type || 'available')
+                  )}>
                     <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
                     <AvatarFallback>
                       {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
