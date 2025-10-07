@@ -58,22 +58,23 @@ export function LexicalYjsCollaborationPlugin({
       
       try {
         if (serializedState.trim()) {
-          // Parse structured EditorState from Yjs
+          // Parse JSON string to object, then parse as EditorState
           try {
-            const editorState = editor.parseEditorState(serializedState);
+            const stateObject = JSON.parse(serializedState);
+            const editorState = editor.parseEditorState(stateObject);
             editor.setEditorState(editorState);
             lastContentRef.current = serializedState;
+            console.log(`[LexicalYjsCollaboration:${clientId.current}] Successfully applied EditorState from Yjs`);
           } catch (parseError) {
-            console.error(`[LexicalYjsCollaboration:${clientId.current}] Failed to parse EditorState, falling back to plain text:`, parseError);
-            // Fallback: treat as plain text
+            console.error(`[LexicalYjsCollaboration:${clientId.current}] Failed to parse EditorState:`, parseError);
+            // Reset to empty state instead of showing JSON
             editor.update(() => {
               const root = $getRoot();
               root.clear();
               const p = $createParagraphNode();
-              p.append($createTextNode(serializedState));
               root.append(p);
             });
-            lastContentRef.current = serializedState;
+            lastContentRef.current = '';
           }
         } else {
           // Empty content - add single empty paragraph
