@@ -103,16 +103,21 @@ export function YjsProvider({
     });
 
     // Build WebSocket URL for Supabase Edge Function - LETTER COLLABORATION
-    // y-websocket expects: ws://base/path + /roomname
-    // We build the complete URL with documentId in the path and userId as query parameter
-    const wsUrl = `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/letter-collaboration/${documentId}?userId=${user.id}`;
-    console.log('[YjsProvider] Connecting to WebSocket:', wsUrl);
+    // Base URL without documentId - y-websocket will append documentId as room name
+    const wsUrl = `wss://wawofclbehbkebjivdte.supabase.co/functions/v1/letter-collaboration`;
+    console.log('[YjsProvider] Connecting to WebSocket:', wsUrl, 'Room:', documentId);
 
     // Create WebSocket provider
+    // y-websocket will automatically append documentId to create: wsUrl/documentId?userId=...
     const provider = new WebsocketProvider(
-      wsUrl,  // Complete URL with documentId in path
-      documentId,  // Room name (used internally by y-websocket)
-      doc
+      wsUrl,  // Base-URL OHNE documentId
+      documentId,  // y-websocket fügt dies automatisch an
+      doc,
+      {
+        params: {
+          userId: user.id  // Query-Parameter für userId
+        }
+      }
     );
     providerRef.current = provider;
 
