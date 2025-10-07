@@ -551,8 +551,9 @@ export const DecisionOverview = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Entscheidungen</h2>
+      <h2 className="text-2xl font-bold">Entscheidungen</h2>
+      
+      <div className="flex justify-center mb-4">
         <StandaloneDecisionCreator onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)} />
       </div>
 
