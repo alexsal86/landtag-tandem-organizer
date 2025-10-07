@@ -419,7 +419,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                     >
                       <div className="relative">
                         <Avatar className={cn(
-                          "h-8 w-8 ring-2",
+                          "h-8 w-8 ring-4 ring-offset-2 ring-offset-background",
                           getStatusRingColor(onlineUser.status?.status_type || 'available')
                         )}>
                           <AvatarImage src={onlineUser.avatar_url || ""} alt={onlineUser.display_name || 'User'} />
@@ -462,7 +462,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer flex-1"
                 >
                   <Avatar className={cn(
-                    "h-8 w-8 ring-2",
+                    "h-8 w-8 ring-4 ring-offset-2 ring-offset-background",
                     getStatusRingColor(currentStatus?.status_type || 'available')
                   )}>
                     <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
