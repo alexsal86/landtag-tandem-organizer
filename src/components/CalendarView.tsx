@@ -75,9 +75,14 @@ export function CalendarView() {
     } else {
       fetchTodaysAppointments();
     }
-  }, [currentDate, view]);
+  }, [currentDate, view, currentTenant]);
 
   const fetchMonthAppointments = async () => {
+    if (!currentTenant) {
+      console.log('⚠️ Tenant not ready, postponing month fetch');
+      return;
+    }
+    
     try {
       setLoading(true);
       const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -197,6 +202,11 @@ export function CalendarView() {
   };
 
   const fetchWeekAppointments = async () => {
+    if (!currentTenant) {
+      console.log('⚠️ Tenant not ready, postponing week fetch');
+      return;
+    }
+    
     try {
       setLoading(true);
       const weekStart = getWeekStart(currentDate);
@@ -280,6 +290,11 @@ export function CalendarView() {
   };
 
   const fetchTodaysAppointments = async () => {
+    if (!currentTenant) {
+      console.log('⚠️ Tenant not ready, postponing day fetch');
+      return;
+    }
+    
     try {
       setLoading(true);
       const startOfDay = new Date(currentDate);
@@ -572,6 +587,7 @@ export function CalendarView() {
     try {
       console.log('🔍 Processing appointments for date range:', startDate.toISOString(), 'to', endDate.toISOString());
       console.log('📊 Raw appointments data:', appointmentsData);
+      console.log('🏢 Current tenant status:', currentTenant ? currentTenant.name : 'NOT AVAILABLE');
       
       // Fetch appointment categories to get colors
       const { data: categoriesData } = await supabase
@@ -652,13 +668,21 @@ export function CalendarView() {
         });
       }
 
+      console.log('📋 Internal events processed:', formattedEvents.length);
+      
       // Process external calendar events (from all tenant calendars)
-      if (currentTenant) {
-        console.log('🔍 Fetching external events for date range:', {
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          tenantId: currentTenant.id
-        });
+      if (!currentTenant) {
+        console.warn('⚠️ No tenant available, skipping external events');
+        console.log('📊 Setting appointments (internal only):', formattedEvents.length, 'events');
+        setAppointments(formattedEvents);
+        return;
+      }
+      
+      console.log('🔍 Fetching external events for date range:', {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        tenantId: currentTenant.id
+      });
         
         // Use overlap logic like regular appointments to catch multi-day events
         const { data: externalEvents, error: externalError } = await supabase
@@ -754,10 +778,11 @@ export function CalendarView() {
               _isExternal: true
             });
           }
-        } else {
-          console.log('⚠️ No external events found');
-        }
+      } else {
+        console.log('⚠️ No external events found');
       }
+
+      console.log('📊 Total events before event planning:', formattedEvents.length);
 
       // Get current user
       const { data: userData } = await supabase.auth.getUser();
