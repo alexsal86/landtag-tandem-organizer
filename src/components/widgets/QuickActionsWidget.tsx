@@ -60,6 +60,39 @@ const iconOptions = [
   { value: 'Trash2', label: 'Löschen' }
 ];
 
+// Available internal routes
+const INTERNAL_ROUTES = [
+  // Hauptbereiche
+  { value: '/', label: 'Dashboard', category: 'Hauptbereiche', icon: 'Plus' },
+  { value: '/calendar', label: 'Terminkalender', category: 'Hauptbereiche', icon: 'Calendar' },
+  { value: '/contacts', label: 'Kontakte', category: 'Hauptbereiche', icon: 'Users' },
+  { value: '/tasks', label: 'Aufgaben', category: 'Hauptbereiche', icon: 'CheckSquare' },
+  { value: '/decisions', label: 'Entscheidungen', category: 'Hauptbereiche', icon: 'MessageSquare' },
+  { value: '/meetings', label: 'Jour fixe', category: 'Hauptbereiche', icon: 'MessageSquare' },
+  { value: '/eventplanning', label: 'Planungen', category: 'Hauptbereiche', icon: 'CalendarIcon' },
+  { value: '/wahlkreise', label: 'Wahlkreise', category: 'Hauptbereiche', icon: 'Plus' },
+  { value: '/documents', label: 'Dokumente', category: 'Hauptbereiche', icon: 'FileText' },
+  { value: '/knowledge', label: 'Wissen', category: 'Hauptbereiche', icon: 'FileText' },
+  { value: '/settings', label: 'Einstellungen', category: 'Hauptbereiche', icon: 'Settings' },
+  { value: '/time', label: 'Zeiterfassung', category: 'Hauptbereiche', icon: 'Clock' },
+  { value: '/employee', label: 'Mitarbeiter', category: 'Hauptbereiche', icon: 'Users' },
+  
+  // Erstellen
+  { value: '/create-contact', label: 'Kontakt erstellen', category: 'Erstellen', icon: 'Users' },
+  { value: '/create-task', label: 'Aufgabe erstellen', category: 'Erstellen', icon: 'CheckSquare' },
+  { value: '/create-appointment', label: 'Termin erstellen', category: 'Erstellen', icon: 'Calendar' },
+  { value: '/create-distribution-list', label: 'Verteilerliste erstellen', category: 'Erstellen', icon: 'Users' },
+  
+  // Import
+  { value: '/import-contacts', label: 'Kontakte importieren', category: 'Import', icon: 'Users' },
+  
+  // Admin
+  { value: '/administration', label: 'Administration', category: 'Admin', icon: 'Settings' },
+  { value: '/drucksachen', label: 'Drucksachen', category: 'Admin', icon: 'FileText' },
+];
+
+const ROUTE_CATEGORIES = ['Hauptbereiche', 'Erstellen', 'Import', 'Admin'];
+
 const defaultActions: QuickAction[] = [
   {
     id: '1',
@@ -351,9 +384,50 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                 </div>
                 <div>
                   <Label>Link</Label>
+                  <Select 
+                    value={editingAction.link} 
+                    onValueChange={(value) => {
+                      const route = INTERNAL_ROUTES.find(r => r.value === value);
+                      setEditingAction(prev => prev ? { 
+                        ...prev, 
+                        link: value,
+                        icon: route?.icon || prev.icon
+                      } : null);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seite auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {ROUTE_CATEGORIES.map(category => (
+                        <React.Fragment key={category}>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                            {category}
+                          </div>
+                          {INTERNAL_ROUTES
+                            .filter(route => route.category === category)
+                            .map(route => (
+                              <SelectItem key={route.value} value={route.value}>
+                                <div className="flex items-center gap-2">
+                                  {renderIcon(route.icon, 'h-4 w-4')}
+                                  {route.label}
+                                </div>
+                              </SelectItem>
+                            ))
+                          }
+                        </React.Fragment>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-muted-foreground">oder eigene URL:</span>
+                  </div>
                   <Input
+                    placeholder="Benutzerdefinierte URL eingeben"
                     value={editingAction.link}
                     onChange={(e) => setEditingAction(prev => prev ? { ...prev, link: e.target.value } : null)}
+                    className="text-xs mt-1"
                   />
                 </div>
                 <div>
@@ -485,55 +559,96 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
               {/* Add New Action */}
               <div className="space-y-2 p-2 border rounded bg-background">
                 <Label className="text-xs font-medium">Neue Aktion hinzufügen</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
                   <Input
                     placeholder="Label"
                     value={newAction.label}
                     onChange={(e) => setNewAction(prev => ({ ...prev, label: e.target.value }))}
                     className="text-xs"
                   />
-                  <Input
-                    placeholder="Link (z.B. /tasks)"
-                    value={newAction.link}
-                    onChange={(e) => setNewAction(prev => ({ ...prev, link: e.target.value }))}
-                    className="text-xs"
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <Select 
-                    value={newAction.icon} 
-                    onValueChange={(value) => setNewAction(prev => ({ ...prev, icon: value }))}
-                  >
-                    <SelectTrigger className="text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {iconOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <div className="flex items-center gap-2">
-                            {renderIcon(option.value, 'h-3 w-3')}
-                            {option.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select 
-                    value={newAction.iconSize} 
-                    onValueChange={(value: 'sm' | 'md' | 'lg') => setNewAction(prev => ({ ...prev, iconSize: value }))}
-                  >
-                    <SelectTrigger className="text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sm">Klein</SelectItem>
-                      <SelectItem value="md">Mittel</SelectItem>
-                      <SelectItem value="lg">Groß</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" onClick={handleAddAction}>
-                    <Plus className="h-3 w-3" />
-                  </Button>
+                  <div>
+                    <Select 
+                      value={newAction.link} 
+                      onValueChange={(value) => {
+                        const route = INTERNAL_ROUTES.find(r => r.value === value);
+                        setNewAction(prev => ({ 
+                          ...prev, 
+                          link: value,
+                          icon: route?.icon || prev.icon
+                        }));
+                      }}
+                    >
+                      <SelectTrigger className="text-xs">
+                        <SelectValue placeholder="Seite auswählen..." />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {ROUTE_CATEGORIES.map(category => (
+                          <React.Fragment key={category}>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                              {category}
+                            </div>
+                            {INTERNAL_ROUTES
+                              .filter(route => route.category === category)
+                              .map(route => (
+                                <SelectItem key={route.value} value={route.value}>
+                                  <div className="flex items-center gap-2">
+                                    {renderIcon(route.icon, 'h-4 w-4')}
+                                    {route.label}
+                                  </div>
+                                </SelectItem>
+                              ))
+                            }
+                          </React.Fragment>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="text-xs text-muted-foreground">oder</span>
+                      <Input
+                        placeholder="Eigene URL"
+                        value={newAction.link}
+                        onChange={(e) => setNewAction(prev => ({ ...prev, link: e.target.value }))}
+                        className="text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Select 
+                      value={newAction.icon} 
+                      onValueChange={(value) => setNewAction(prev => ({ ...prev, icon: value }))}
+                    >
+                      <SelectTrigger className="text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {iconOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <div className="flex items-center gap-2">
+                              {renderIcon(option.value, 'h-3 w-3')}
+                              {option.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select 
+                      value={newAction.iconSize} 
+                      onValueChange={(value: 'sm' | 'md' | 'lg') => setNewAction(prev => ({ ...prev, iconSize: value }))}
+                    >
+                      <SelectTrigger className="text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sm">Klein</SelectItem>
+                        <SelectItem value="md">Mittel</SelectItem>
+                        <SelectItem value="lg">Groß</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" onClick={handleAddAction}>
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
