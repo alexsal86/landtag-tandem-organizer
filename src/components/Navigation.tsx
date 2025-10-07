@@ -199,8 +199,8 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const isCollapsed = state === "collapsed";
 
   // Status-Ring Farbe basierend auf Status-Typ
-  const getStatusRingColor = (status: string) => {
-    switch (status) {
+  const getStatusRingColor = (statusType: string) => {
+    switch (statusType) {
       case 'available':
         return 'ring-green-500';
       case 'busy':
@@ -210,7 +210,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       case 'in_meeting':
         return 'ring-blue-500';
       default:
-        return 'ring-muted';
+        return 'ring-gray-500';
     }
   };
 
@@ -418,15 +418,22 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                       className="flex items-center gap-3 px-2 py-1.5 rounded-md text-sm hover:bg-accent/50 transition-colors"
                     >
                       <div className="relative">
-                        <Avatar className={cn(
-                          "h-8 w-8 ring-4 ring-offset-2 ring-offset-background",
-                          getStatusRingColor(onlineUser.status?.status_type || 'available')
-                        )}>
+                        <Avatar className="h-8 w-8 ring-4 ring-offset-2 ring-offset-background">
                           <AvatarImage src={onlineUser.avatar_url || ""} alt={onlineUser.display_name || 'User'} />
                           <AvatarFallback className="text-xs">
                             {onlineUser.display_name?.substring(0, 2).toUpperCase() || 'U'}
                           </AvatarFallback>
                         </Avatar>
+                        {/* Status Ring Overlay */}
+                        <div className={cn(
+                          "absolute inset-0 rounded-full ring-4 ring-offset-2 ring-offset-background pointer-events-none",
+                          onlineUser.status?.status_type === 'online' && 'ring-green-500',
+                          onlineUser.status?.status_type === 'meeting' && 'ring-blue-500',
+                          onlineUser.status?.status_type === 'away' && 'ring-yellow-500',
+                          onlineUser.status?.status_type === 'break' && 'ring-orange-500',
+                          onlineUser.status?.status_type === 'offline' && 'ring-gray-500',
+                          !onlineUser.status?.status_type && 'ring-gray-500'
+                        )} />
                       </div>
                       {!isCollapsed && (
                         <span className="text-muted-foreground truncate flex-1">
@@ -461,15 +468,24 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer flex-1"
                 >
-                  <Avatar className={cn(
-                    "h-8 w-8 ring-4 ring-offset-2 ring-offset-background",
-                    getStatusRingColor(currentStatus?.status_type || 'available')
-                  )}>
-                    <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
-                    <AvatarFallback>
-                      {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar className="h-8 w-8 ring-4 ring-offset-2 ring-offset-background">
+                      <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
+                      <AvatarFallback>
+                        {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    {/* Status Ring Overlay */}
+                    <div className={cn(
+                      "absolute inset-0 rounded-full ring-4 ring-offset-2 ring-offset-background pointer-events-none",
+                      currentStatus?.status_type === 'online' && 'ring-green-500',
+                      currentStatus?.status_type === 'meeting' && 'ring-blue-500',
+                      currentStatus?.status_type === 'away' && 'ring-yellow-500',
+                      currentStatus?.status_type === 'break' && 'ring-orange-500',
+                      currentStatus?.status_type === 'offline' && 'ring-gray-500',
+                      !currentStatus?.status_type && 'ring-gray-500'
+                    )} />
+                  </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">
                       {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
