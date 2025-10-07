@@ -223,15 +223,16 @@ export const DashboardGreetingSection = () => {
   }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments, openTasksCount, completedTasksCount]);
 
   return (
-    <div className="mb-6 flex items-start justify-between gap-4">
-      <div className="flex-1 min-w-0">
+    <div className="mb-6 space-y-6">
+      <div className="w-full">
         <TypewriterText 
           text={fullText}
           speed={20}
           className="text-lg leading-relaxed text-foreground whitespace-pre-wrap"
         />
       </div>
-      <div className="hidden lg:block flex-shrink-0">
+      
+      <div className="w-full lg:max-w-3xl">
         <WidgetQuickAccess />
       </div>
     </div>
