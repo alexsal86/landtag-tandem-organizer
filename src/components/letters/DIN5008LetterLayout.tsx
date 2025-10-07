@@ -253,19 +253,22 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                     <div
                       className="absolute"
                       style={{
-                        // Correct scaling: convert canvas pixels (595px = 210mm, 200px = 45mm for header)
-                        left: `${(element.x || 0) * 210 / 595}mm`, // Convert canvas x to mm
-                        top: `${(element.y || 0) * 45 / 200}mm`, // Convert canvas y to mm (header height)
-                        fontSize: `${element.fontSize || 12}pt`, // Use original font size
+                        // Use direct mm coordinates - same as PDF generation
+                        left: `${element.x || 0}mm`,
+                        top: `${element.y || 0}mm`,
+                        fontSize: `${element.fontSize || 12}pt`,
                         fontFamily: element.fontFamily || 'Arial, sans-serif',
                         fontWeight: element.fontWeight || 'normal',
                         color: element.color || '#000000',
-                        width: `${(element.width || 100) * 210 / 595}mm`, // Convert width to mm
+                        width: `${element.width || 100}mm`,
                         lineHeight: '1.2',
-                        pointerEvents: 'none'
+                        pointerEvents: 'none',
+                        textAlign: (element.textAlign as 'left' | 'center' | 'right') || 'left',
+                        fontStyle: element.fontStyle || 'normal',
+                        whiteSpace: 'pre-wrap'
                       }}
                     >
-                      {element.content}
+                      {element.content || element.text}
                     </div>
                   )}
                   {element.type === 'image' && element.imageUrl && (
@@ -274,10 +277,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                       alt="Header Image"
                       className="absolute"
                       style={{
-                        left: `${(element.x || 0) * 210 / 595}mm`,
-                        top: `${(element.y || 0) * 45 / 200}mm`,
-                        width: `${(element.width || 100) * 210 / 595}mm`,
-                        height: `${(element.height || 50) * 45 / 200}mm`,
+                        left: `${element.x || 0}mm`,
+                        top: `${element.y || 0}mm`,
+                        width: `${element.width || 100}mm`,
+                        height: `${element.height || 50}mm`,
                         objectFit: 'contain'
                       }}
                     />
