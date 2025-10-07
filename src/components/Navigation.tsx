@@ -267,11 +267,15 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         isActive={activeSection === item.id}
                         tooltip={item.label}
                         className={cn(
-                          "nav-item transition-all flex items-center justify-between w-full group",
-                          activeSection === item.id && "nav-item-active"
+                          "nav-item transition-all w-full group",
+                          activeSection === item.id && "nav-item-active",
+                          isCollapsed ? "justify-center" : "justify-between"
                         )}
                       >
-                        <div className="flex items-center gap-1">
+                        <div className={cn(
+                          "flex items-center gap-2",
+                          isCollapsed && "justify-center"
+                        )}>
                           <item.icon className="nav-icon transition-all duration-200" />
                           {!isCollapsed && <span>{item.label}</span>}
                         </div>
@@ -329,9 +333,15 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         }}
                         isActive={activeSection === "administration"}
                         tooltip="Administration"
-                        className="flex items-center justify-between w-full"
+                        className={cn(
+                          "w-full",
+                          isCollapsed ? "justify-center" : "justify-between"
+                        )}
                       >
-                        <div className="flex items-center gap-1">
+                        <div className={cn(
+                          "flex items-center gap-2",
+                          isCollapsed && "justify-center"
+                        )}>
                           <Shield />
                           {!isCollapsed && <span>Administration</span>}
                         </div>
