@@ -3201,6 +3201,71 @@ export type Database = {
           },
         ]
       }
+      login_customization: {
+        Row: {
+          accent_color: string | null
+          background_attribution: Json | null
+          background_image_url: string | null
+          background_position: string | null
+          created_at: string | null
+          footer_text: string | null
+          id: string
+          logo_url: string | null
+          password_reset_enabled: boolean | null
+          primary_color: string | null
+          registration_enabled: boolean | null
+          social_login_enabled: boolean | null
+          tagline: string | null
+          tenant_id: string
+          updated_at: string | null
+          welcome_text: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          background_attribution?: Json | null
+          background_image_url?: string | null
+          background_position?: string | null
+          created_at?: string | null
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          password_reset_enabled?: boolean | null
+          primary_color?: string | null
+          registration_enabled?: boolean | null
+          social_login_enabled?: boolean | null
+          tagline?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          welcome_text?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          background_attribution?: Json | null
+          background_image_url?: string | null
+          background_position?: string | null
+          created_at?: string | null
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          password_reset_enabled?: boolean | null
+          primary_color?: string | null
+          registration_enabled?: boolean | null
+          social_login_enabled?: boolean | null
+          tagline?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          welcome_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "login_customization_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matrix_bot_logs: {
         Row: {
           created_at: string

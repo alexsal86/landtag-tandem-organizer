@@ -33,6 +33,7 @@ import { TagAdminSettings } from "@/components/TagAdminSettings";
 import { RSSSourceManager } from "@/components/administration/RSSSourceManager";
 import { RSSSettingsManager } from "@/components/administration/RSSSettingsManager";
 import { CalendarSyncSettings } from "@/components/administration/CalendarSyncSettings";
+import { LoginCustomization } from "@/components/administration/LoginCustomization";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -557,6 +558,7 @@ export default function Administration() {
           <Tabs defaultValue="general" className="space-y-4">
             <TabsList>
               <TabsTrigger value="general">Allgemein</TabsTrigger>
+              <TabsTrigger value="login">Login-Anpassung</TabsTrigger>
               <TabsTrigger value="status">Status</TabsTrigger>
               <TabsTrigger value="collaboration">Kollaboration</TabsTrigger>
               {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
@@ -564,6 +566,10 @@ export default function Administration() {
 
             <TabsContent value="general">
               <GeneralSettings />
+            </TabsContent>
+
+            <TabsContent value="login">
+              <LoginCustomization />
             </TabsContent>
 
             <TabsContent value="status">
