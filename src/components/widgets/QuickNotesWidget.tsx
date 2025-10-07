@@ -267,7 +267,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
             placeholder="Neue Notiz..."
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
-            className="min-h-[60px] text-xs resize-none"
+            className="min-h-[140px] text-xs resize-none"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && e.ctrlKey) {
                 e.preventDefault();
