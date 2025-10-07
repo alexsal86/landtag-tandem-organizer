@@ -26,20 +26,20 @@ export function LexicalYjsCollaborationPlugin({
 
     console.log('[LexicalYjsCollaboration] Setting up structured Lexical Yjs binding for:', id);
 
-    // Use Y.XmlFragment for structured rich text instead of plain text
-    const sharedXml = doc.getXmlFragment('content');
+    // Use Y.Text for storing JSON-serialized EditorState
+    const sharedText = doc.getText('content');
 
     const applyYjsToLexical = (origin?: any, transactionOrigin?: string) => {
       // Prevent echo: skip if this update originated from our own Lexical editor
-      const isOwnUpdate = origin === 'supabase' || transactionOrigin === clientId.current;
+      const isOwnUpdate = transactionOrigin === clientId.current;
       
       if (isOwnUpdate) {
-        console.log(`[LexicalYjsCollaboration:${clientId.current}] Skipping echo - origin:`, origin, 'transaction:', transactionOrigin);
+        console.log(`[LexicalYjsCollaboration:${clientId.current}] Skipping echo - transaction:`, transactionOrigin);
         return;
       }
       
-      // Get serialized state from Y.XmlFragment
-      const serializedState = sharedXml.toString();
+      // Get serialized state from Y.Text
+      const serializedState = sharedText.toString();
       
       // Skip if we're already applying a Yjs update or content hasn't changed
       if (isApplyingYjsUpdateRef.current || serializedState === lastContentRef.current) {
@@ -107,7 +107,7 @@ export function LexicalYjsCollaborationPlugin({
       }
     };
     
-    sharedXml.observeDeep(yObserver);
+    sharedText.observe(yObserver);
 
     // Initial bootstrap from Yjs (only once after sync)
     if (shouldBootstrap && !hasBootstrapped.current) {
@@ -143,16 +143,13 @@ export function LexicalYjsCollaborationPlugin({
           
           // Use transaction with client ID to prevent echo
           doc.transact(() => {
-            // Clear existing content
-            const currentLength = sharedXml.length;
+            // Replace entire content with new serialized state
+            const currentLength = sharedText.length;
             if (currentLength > 0) {
-              sharedXml.delete(0, currentLength);
+              sharedText.delete(0, currentLength);
             }
-            // Insert new serialized state as XmlText
             if (serializedState) {
-              const xmlText = new Y.XmlText();
-              xmlText.insert(0, serializedState);
-              sharedXml.insert(0, [xmlText]);
+              sharedText.insert(0, serializedState);
             }
           }, clientId.current);
           
@@ -165,9 +162,9 @@ export function LexicalYjsCollaborationPlugin({
     });
 
     return () => {
-      console.log(`[LexicalYjsCollaboration:${clientId.current}] Cleaning up Yjs xml binding`);
+      console.log(`[LexicalYjsCollaboration:${clientId.current}] Cleaning up Yjs text binding`);
       try {
-        sharedXml.unobserveDeep(yObserver);
+        sharedText.unobserve(yObserver);
         unregister();
       } catch (error) {
         console.error(`[LexicalYjsCollaboration:${clientId.current}] Error during cleanup:`, error);

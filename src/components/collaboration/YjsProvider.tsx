@@ -55,15 +55,44 @@ class SupabaseYjsProvider {
     // Listen for Yjs updates via Supabase
     this.channel
       .on('broadcast', { event: 'yjs-update' }, ({ payload }: any) => {
-        // Double echo prevention: check both clientId and avoid self-broadcasts
+        // Echo prevention: only check clientId
         if (payload && payload.clientId !== this.clientId && payload.update) {
-          console.log(`[SupabaseYjsProvider] Received remote Yjs update from client: ${payload.clientId}, origin: ${payload.origin}`);
+          console.log(`[SupabaseYjsProvider] Received remote Yjs update from client: ${payload.clientId}`);
           try {
             const update = new Uint8Array(payload.update);
-            // Mark update as 'remote' to prevent echo
-            Y.applyUpdate(this.doc, update, 'remote');
+            // Apply update without origin tag
+            Y.applyUpdate(this.doc, update);
           } catch (e) {
             console.warn('[SupabaseYjsProvider] Failed to apply remote update:', e);
+          }
+        }
+      })
+      .on('broadcast', { event: 'request-state' }, ({ payload }: any) => {
+        // If someone requests state and it's not us, send full state
+        if (payload && payload.requesterId !== this.clientId && this.doc) {
+          console.log(`[SupabaseYjsProvider] Received state request from: ${payload.requesterId}, sending full state`);
+          const state = Y.encodeStateAsUpdate(this.doc);
+          this.channel.send({
+            type: 'broadcast',
+            event: 'full-state',
+            payload: {
+              state: Array.from(state),
+              targetId: payload.requesterId,
+              senderId: this.clientId
+            }
+          });
+        }
+      })
+      .on('broadcast', { event: 'full-state' }, ({ payload }: any) => {
+        // Only apply if this state is meant for us
+        if (payload && payload.targetId === this.clientId && payload.state) {
+          console.log(`[SupabaseYjsProvider] Received full state from: ${payload.senderId}`);
+          try {
+            const state = new Uint8Array(payload.state);
+            Y.applyUpdate(this.doc, state);
+            console.log('[SupabaseYjsProvider] Applied initial state successfully');
+          } catch (e) {
+            console.error('[SupabaseYjsProvider] Failed to apply initial state:', e);
           }
         }
       })
@@ -81,17 +110,16 @@ class SupabaseYjsProvider {
 
     // Listen to local Yjs updates to broadcast via Supabase
     this.doc.on('update', (update: Uint8Array, origin: any) => {
-      // Only broadcast if NOT from remote AND NOT from our own client
-      if (origin !== 'remote' && origin !== this.clientId && this.channel) {
-        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update from client: ${this.clientId}, origin: ${origin}`);
+      // Only broadcast if NOT from our own client
+      if (origin !== this.clientId && this.channel) {
+        console.log(`[SupabaseYjsProvider] Broadcasting local Yjs update from client: ${this.clientId}`);
         this.channel.send({
           type: 'broadcast',
           event: 'yjs-update',
           payload: {
             clientId: this.clientId,
             userId: this.userId,
-            update: Array.from(update),
-            origin: 'supabase' // Explicit origin tag
+            update: Array.from(update)
           }
         });
       }
@@ -126,6 +154,18 @@ class SupabaseYjsProvider {
         if (this.isConnectedState && !wasConnected) {
           console.log('[SupabaseYjsProvider] Connected to Supabase transport');
           this.emit('connect');
+          
+          // Request initial state from other clients after connection
+          setTimeout(() => {
+            if (this.channel) {
+              console.log('[SupabaseYjsProvider] Requesting initial state from collaborators');
+              this.channel.send({
+                type: 'broadcast',
+                event: 'request-state',
+                payload: { requesterId: this.clientId }
+              });
+            }
+          }, 500);
         } else if (!this.isConnectedState && wasConnected) {
           console.log('[SupabaseYjsProvider] Disconnected from Supabase transport');
           this.emit('disconnect');
