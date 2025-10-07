@@ -343,6 +343,51 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                   Speichern
                 </Button>
               </div>
+
+              {/* Widget Settings */}
+              <div className="space-y-2 p-2 border rounded bg-background">
+                <Label className="text-xs font-medium">Widget-Einstellungen</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Button-Größe</Label>
+                    <Select 
+                      value={configuration.buttonSize || 'md'} 
+                      onValueChange={(value: 'sm' | 'md' | 'lg') => {
+                        const newConfig = { ...configuration, buttonSize: value };
+                        onConfigurationChange?.(newConfig);
+                      }}
+                    >
+                      <SelectTrigger className="text-xs h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sm">Klein</SelectItem>
+                        <SelectItem value="md">Mittel</SelectItem>
+                        <SelectItem value="lg">Groß</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Icon-Größe (alle)</Label>
+                    <Select 
+                      value={configuration.globalIconSize || 'md'} 
+                      onValueChange={(value: 'sm' | 'md' | 'lg') => {
+                        const newConfig = { ...configuration, globalIconSize: value };
+                        onConfigurationChange?.(newConfig);
+                      }}
+                    >
+                      <SelectTrigger className="text-xs h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sm">Klein</SelectItem>
+                        <SelectItem value="md">Mittel</SelectItem>
+                        <SelectItem value="lg">Groß</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
               
               {/* Existing Actions List */}
               <div className="space-y-2 max-h-48 overflow-y-auto">
