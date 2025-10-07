@@ -33,6 +33,7 @@ interface QuickActionsWidgetProps {
     actions?: QuickAction[];
     columns?: number;
     theme?: string;
+    buttonSize?: 'sm' | 'md' | 'lg';
   };
 }
 
@@ -163,6 +164,12 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
   };
 
   const getActionButtonSize = (): "sm" | "lg" | "default" => {
+    // Use configured button size if available
+    if (configuration.buttonSize) {
+      return configuration.buttonSize === 'md' ? 'default' : configuration.buttonSize;
+    }
+    
+    // Fallback to auto-detection based on widget size
     const [width, height] = widgetSize.split('x').map(Number);
     if (width <= 2 || height <= 1) return 'sm';
     if (width >= 4 || height >= 3) return 'lg';
@@ -173,7 +180,8 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
     const newConfig = {
       ...configuration,
       actions,
-      columns: getColumns()
+      columns: getColumns(),
+      buttonSize: configuration.buttonSize || 'md'
     };
     
     onConfigurationChange?.(newConfig);
@@ -448,6 +456,32 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                 </div>
               </div>
 
+              {/* Widget Settings */}
+              <div className="space-y-2 p-2 border rounded bg-background">
+                <Label className="text-xs font-medium">Widget-Einstellungen</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Button-Größe</Label>
+                    <Select 
+                      value={configuration.buttonSize || 'md'} 
+                      onValueChange={(value: 'sm' | 'md' | 'lg') => {
+                        const newConfig = { ...configuration, buttonSize: value };
+                        onConfigurationChange?.(newConfig);
+                      }}
+                    >
+                      <SelectTrigger className="text-xs h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sm">Klein</SelectItem>
+                        <SelectItem value="md">Mittel</SelectItem>
+                        <SelectItem value="lg">Groß</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
               {/* Add New Action */}
               <div className="space-y-2 p-2 border rounded bg-background">
                 <Label className="text-xs font-medium">Neue Aktion hinzufügen</Label>
@@ -541,14 +575,17 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                 asChild
                 variant="outline"
                 size={buttonSize}
-                className="h-auto p-3 flex flex-col items-center justify-center gap-2 hover:bg-accent/50 transition-colors"
+                className={`h-auto flex flex-col items-center justify-center hover:bg-accent/50 transition-colors ${
+                  buttonSize === 'sm' ? 'p-2 gap-1' : 
+                  buttonSize === 'lg' ? 'p-4 gap-3' : 'p-3 gap-2'
+                }`}
                 title={action.description}
               >
                 <Link to={action.link}>
                   {renderIcon(action.icon, getIconSize(action.iconSize))}
                   <span className={`text-center leading-tight ${
                     buttonSize === 'sm' ? 'text-xs' : 
-                    buttonSize === 'lg' ? 'text-sm' : 'text-xs'
+                    buttonSize === 'lg' ? 'text-base font-medium' : 'text-sm'
                   }`}>
                     {action.label}
                   </span>
