@@ -274,7 +274,6 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
     return IconComponent ? <IconComponent className={size} /> : <Plus className={size} />;
   };
 
-  const buttonSize = getActionButtonSize();
   const columns = getColumns();
 
   // Full-width layout (horizontal scrollbar)
@@ -307,17 +306,17 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                 key={action.id}
                 asChild
                 variant="outline"
-                size={buttonSize}
+                size={getActionButtonSize()}
                 className={`flex-shrink-0 h-auto min-w-[100px] flex flex-col items-center hover:bg-accent ${
-                  buttonSize === 'sm' ? 'p-2 gap-1' : 
-                  buttonSize === 'lg' ? 'p-4 gap-2.5' : 'p-3 gap-1.5'
+                  getActionButtonSize() === 'sm' ? 'p-2 gap-1' : 
+                  getActionButtonSize() === 'lg' ? 'p-4 gap-2.5' : 'p-3 gap-1.5'
                 }`}
               >
                 <Link to={action.link}>
                   {renderIcon(action.icon, getIconSize(action.iconSize))}
                   <span className={`text-center leading-tight whitespace-nowrap ${
-                    buttonSize === 'sm' ? 'text-xs' : 
-                    buttonSize === 'lg' ? 'text-sm font-medium' : 'text-xs'
+                    getActionButtonSize() === 'sm' ? 'text-xs' : 
+                    getActionButtonSize() === 'lg' ? 'text-sm font-medium' : 'text-xs'
                   }`}>
                     {action.label}
                   </span>
@@ -763,18 +762,18 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                 key={action.id}
                 asChild
                 variant="outline"
-                size={buttonSize}
+                size={getActionButtonSize()}
                 className={`h-auto flex flex-col items-center justify-center hover:bg-accent/50 transition-colors ${
-                  buttonSize === 'sm' ? 'p-2 gap-1' : 
-                  buttonSize === 'lg' ? 'p-4 gap-3' : 'p-3 gap-2'
+                  getActionButtonSize() === 'sm' ? 'p-2 gap-1' : 
+                  getActionButtonSize() === 'lg' ? 'p-4 gap-3' : 'p-3 gap-2'
                 }`}
                 title={action.description}
               >
                 <Link to={action.link}>
                   {renderIcon(action.icon, getIconSize(action.iconSize))}
                   <span className={`text-center leading-tight ${
-                    buttonSize === 'sm' ? 'text-xs' : 
-                    buttonSize === 'lg' ? 'text-base font-medium' : 'text-sm'
+                    getActionButtonSize() === 'sm' ? 'text-xs' : 
+                    getActionButtonSize() === 'lg' ? 'text-base font-medium' : 'text-sm'
                   }`}>
                     {action.label}
                   </span>
