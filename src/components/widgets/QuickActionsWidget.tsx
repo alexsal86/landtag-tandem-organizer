@@ -307,12 +307,18 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
                 key={action.id}
                 asChild
                 variant="outline"
-                size="sm"
-                className="flex-shrink-0 h-auto min-w-[100px] p-3 flex flex-col items-center gap-1.5 hover:bg-accent"
+                size={buttonSize}
+                className={`flex-shrink-0 h-auto min-w-[100px] flex flex-col items-center hover:bg-accent ${
+                  buttonSize === 'sm' ? 'p-2 gap-1' : 
+                  buttonSize === 'lg' ? 'p-4 gap-2.5' : 'p-3 gap-1.5'
+                }`}
               >
                 <Link to={action.link}>
                   {renderIcon(action.icon, getIconSize(action.iconSize))}
-                  <span className="text-xs text-center leading-tight whitespace-nowrap">
+                  <span className={`text-center leading-tight whitespace-nowrap ${
+                    buttonSize === 'sm' ? 'text-xs' : 
+                    buttonSize === 'lg' ? 'text-sm font-medium' : 'text-xs'
+                  }`}>
                     {action.label}
                   </span>
                 </Link>
