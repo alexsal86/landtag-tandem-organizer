@@ -217,7 +217,8 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
       ...configuration,
       actions,
       columns: getColumns(),
-      buttonSize: configuration.buttonSize || 'md'
+      buttonSize: configuration.buttonSize || 'md',
+      globalIconSize: configuration.globalIconSize || 'md'
     };
     
     onConfigurationChange?.(newConfig);
