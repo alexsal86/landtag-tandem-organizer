@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,29 +7,15 @@ const corsHeaders = {
 }
 
 interface RSSSource {
+  id: string;
   name: string;
   url: string;
   category: string;
-  rsshub_path?: string;
+  is_active: boolean;
+  order_index: number;
 }
 
-// RSSHub public instance and RSS feeds
-const RSS_SOURCES: RSSSource[] = [
-  // German News via RSSHub
-  { name: 'Tagesschau', url: 'https://rsshub.app/tagesschau/news', category: 'politik' },
-  { name: 'Spiegel Politik', url: 'https://rsshub.app/spiegel/politik', category: 'politik' },
-  { name: 'Zeit Online Politik', url: 'https://rsshub.app/zeit/politik', category: 'politik' },
-  { name: 'Handelsblatt', url: 'https://rsshub.app/handelsblatt/news', category: 'wirtschaft' },
-  { name: 'Heise Online', url: 'https://rsshub.app/heise/news', category: 'tech' },
-  { name: 'Kicker', url: 'https://rsshub.app/kicker/news', category: 'sport' },
-  
-  // Direct RSS feeds as fallback
-  { name: 'ARD Tagesschau', url: 'https://www.tagesschau.de/xml/rss2/', category: 'politik' },
-  { name: 'Deutsche Welle', url: 'https://rss.dw.com/xml/rss-de-all', category: 'politik' },
-  { name: 'FAZ Politik', url: 'https://www.faz.net/rss/aktuell/politik/', category: 'politik' },
-];
-
-async function parseRSSFeed(url: string, source: string, category: string) {
+async function parseRSSFeed(url: string, source: string, category: string, articlesPerFeed: number = 10) {
   console.log(`Fetching RSS from: ${url}`);
   
   try {
@@ -72,8 +59,8 @@ async function parseRSSFeed(url: string, source: string, category: string) {
         });
       }
       
-      // Limit items per feed
-      if (items.length >= 10) break;
+      // Limit items per feed (dynamic)
+      if (items.length >= articlesPerFeed) break;
     }
     
     console.log(`Parsed ${items.length} items from ${source}`);
@@ -123,18 +110,65 @@ serve(async (req) => {
   }
 
   try {
-    const { category, limit = 20 } = await req.json();
+    const { category, limit, tenant_id } = await req.json();
     
-    // Filter sources by category if specified
-    const sourcesToFetch = category 
-      ? RSS_SOURCES.filter(source => source.category === category)
-      : RSS_SOURCES;
-    
-    console.log(`Fetching from ${sourcesToFetch.length} sources for category: ${category || 'all'}`);
+    if (!tenant_id) {
+      throw new Error('tenant_id is required');
+    }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Load settings from database
+    const { data: settings } = await supabase
+      .from('rss_settings')
+      .select('*')
+      .eq('tenant_id', tenant_id)
+      .single();
+
+    const articlesPerFeed = settings?.articles_per_feed || 10;
+    const totalLimit = limit || settings?.total_articles_limit || 20;
+
+    // Load sources from database (only active)
+    const { data: sources, error: sourcesError } = await supabase
+      .from('rss_sources')
+      .select('*')
+      .eq('tenant_id', tenant_id)
+      .eq('is_active', true)
+      .order('order_index');
+
+    if (sourcesError) {
+      console.error('Error loading sources:', sourcesError);
+      throw sourcesError;
+    }
+
+    if (!sources || sources.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          articles: [],
+          total: 0,
+          sources: 0,
+          message: 'No active RSS sources configured for this tenant'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Filter by category if specified
+    let filteredSources = sources;
+    if (category && category !== 'all') {
+      filteredSources = sources.filter((s: RSSSource) => s.category === category);
+    }
+
+    console.log(`Fetching from ${filteredSources.length} sources for tenant ${tenant_id}, category: ${category || 'all'}`);
     
     // Fetch from all sources in parallel
-    const fetchPromises = sourcesToFetch.map(source => 
-      parseRSSFeed(source.url, source.name, source.category)
+    const fetchPromises = filteredSources.map((source: RSSSource) => 
+      parseRSSFeed(source.url, source.name, source.category, articlesPerFeed)
     );
     
     const results = await Promise.allSettled(fetchPromises);
@@ -144,7 +178,7 @@ serve(async (req) => {
       .filter(result => result.status === 'fulfilled')
       .flatMap(result => (result as PromiseFulfilledResult<any[]>).value)
       .sort((a, b) => new Date(b.pub_date).getTime() - new Date(a.pub_date).getTime())
-      .slice(0, limit);
+      .slice(0, totalLimit);
     
     console.log(`Returning ${allArticles.length} articles`);
     
@@ -152,7 +186,7 @@ serve(async (req) => {
       JSON.stringify({ 
         articles: allArticles,
         total: allArticles.length,
-        sources: sourcesToFetch.length 
+        sources: filteredSources.length 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

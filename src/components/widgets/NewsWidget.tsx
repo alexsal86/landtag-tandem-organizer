@@ -41,7 +41,19 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
     setError(null);
     
     try {
-      // Add timeout wrapper to prevent hanging
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: memberships } = await supabase
+        .from('user_tenant_memberships')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+        .single();
+
+      if (!memberships?.tenant_id) throw new Error('No tenant found');
+
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Request timeout')), 10000)
       );
@@ -49,7 +61,8 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
       const fetchPromise = supabase.functions.invoke('fetch-rss-feeds', {
         body: { 
           category: selectedCategory === 'all' ? undefined : selectedCategory,
-          limit: 20 
+          limit: 20,
+          tenant_id: memberships.tenant_id
         }
       });
 

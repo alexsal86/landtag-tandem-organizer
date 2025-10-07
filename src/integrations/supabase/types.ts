@@ -4505,6 +4505,94 @@ export type Database = {
           },
         ]
       }
+      rss_settings: {
+        Row: {
+          articles_per_feed: number
+          created_at: string
+          id: string
+          refresh_interval_minutes: number
+          tenant_id: string
+          timeout_seconds: number
+          total_articles_limit: number
+          updated_at: string
+        }
+        Insert: {
+          articles_per_feed?: number
+          created_at?: string
+          id?: string
+          refresh_interval_minutes?: number
+          tenant_id: string
+          timeout_seconds?: number
+          total_articles_limit?: number
+          updated_at?: string
+        }
+        Update: {
+          articles_per_feed?: number
+          created_at?: string
+          id?: string
+          refresh_interval_minutes?: number
+          tenant_id?: string
+          timeout_seconds?: number
+          total_articles_limit?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rss_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rss_sources: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          name: string
+          order_index: number
+          tenant_id: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          name: string
+          order_index?: number
+          tenant_id: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_index?: number
+          tenant_id?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rss_sources_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sender_information: {
         Row: {
           created_at: string
