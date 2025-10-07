@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { TaskDetailSidebar } from '@/components/TaskDetailSidebar';
 
 interface QuickNote {
   id: string;
@@ -68,8 +69,29 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     is_completed: boolean;
     due_date?: string;
   }>}>({});
+  const [selectedTask, setSelectedTask] = useState<{
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+    due_date?: string;
+  } | null>(null);
+  const [taskSidebarOpen, setTaskSidebarOpen] = useState(false);
 
   const { autoSave = true, compact = false } = configuration;
+
+  const taskCategories = [
+    { name: 'personal', label: 'Persönlich' },
+    { name: 'legislation', label: 'Gesetzgebung' },
+    { name: 'constituency', label: 'Wahlkreis' },
+    { name: 'committee', label: 'Ausschuss' }
+  ];
+
+  const taskStatuses = [
+    { name: 'todo', label: 'Zu erledigen' },
+    { name: 'in-progress', label: 'In Bearbeitung' },
+    { name: 'completed', label: 'Abgeschlossen' }
+  ];
 
   const colors = [
     '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
@@ -142,7 +164,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     try {
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
-        .select('id, title, priority, status, due_date')
+        .select('id, title, priority, status, due_date, description, category, assigned_to, progress')
         .eq('user_id', user.id)
         .neq('status', 'completed')
         .order('due_date', { ascending: true, nullsFirst: false })
@@ -349,7 +371,13 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         <div className="space-y-1">
           {tasks.map(task => (
             <div key={task.id} className="space-y-0.5">
-              <div className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-accent/50 cursor-pointer">
+              <div 
+                className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-accent/50 cursor-pointer"
+                onClick={() => {
+                  setSelectedTask(task as any);
+                  setTaskSidebarOpen(true);
+                }}
+              >
                 <CheckSquare className="h-3 w-3 flex-shrink-0" />
                 <span className="flex-1 truncate">{task.title}</span>
                 {task.priority === 'high' && (
@@ -628,6 +656,27 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Task Detail Sidebar */}
+      <TaskDetailSidebar
+        task={selectedTask as any}
+        isOpen={taskSidebarOpen}
+        onClose={() => {
+          setTaskSidebarOpen(false);
+          setSelectedTask(null);
+          loadTasks();
+        }}
+        onTaskUpdate={(updatedTask) => {
+          loadTasks();
+          setSelectedTask(null);
+          setTaskSidebarOpen(false);
+        }}
+        onTaskRestored={(restoredTask) => {
+          loadTasks();
+        }}
+        taskCategories={taskCategories}
+        taskStatuses={taskStatuses}
+      />
     </Card>
   );
 };
