@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Edit, FileText } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { useAppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import { AppointmentPreparationDataTab } from "@/components/appointment-preparations/AppointmentPreparationDataTab";
 import { AppointmentPreparationChecklistTab } from "@/components/appointment-preparations/AppointmentPreparationChecklistTab";
 import { AppointmentPreparationDetailsTab } from "@/components/appointment-preparations/AppointmentPreparationDetailsTab";
+import { AppointmentPreparationFileUpload } from "@/components/appointments/AppointmentPreparationFileUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -192,9 +193,9 @@ export default function AppointmentPreparationDetail() {
           </CardHeader>
         </Card>
 
-        {/* Tab Navigation - Removed Overview Tab */}
+        {/* Tab Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="preparation" className="flex items-center gap-2">
               <Edit className="h-4 w-4" />
               Vorbereitung
@@ -206,6 +207,10 @@ export default function AppointmentPreparationDetail() {
             <TabsTrigger value="details" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Details
+            </TabsTrigger>
+            <TabsTrigger value="dokumente" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Dokumente
             </TabsTrigger>
           </TabsList>
 
@@ -229,6 +234,20 @@ export default function AppointmentPreparationDetail() {
                 preparation={preparation}
                 onUpdate={updatePreparation}
               />
+            </TabsContent>
+
+            <TabsContent value="dokumente">
+              <Card className="bg-card shadow-card border-border">
+                <CardHeader>
+                  <CardTitle>Dokumente</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AppointmentPreparationFileUpload
+                    preparationId={preparation.id}
+                    tenantId={preparation.tenant_id}
+                  />
+                </CardContent>
+              </Card>
             </TabsContent>
           </div>
         </Tabs>
