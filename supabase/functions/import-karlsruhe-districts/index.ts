@@ -65,14 +65,20 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Fetching GeoJSON from GitHub...');
+    console.log('Fetching GeoJSON from GitHub raw content...');
     
-    // Fetch the GeoJSON file from GitHub
+    // Fetch the GeoJSON file from GitHub raw content
     const geoJsonUrl = `https://raw.githubusercontent.com/alexsal86/landtag-tandem-organizer/main/public/data/karlsruhe-stadtteile.geojson`;
-    const response = await fetch(geoJsonUrl);
+    const response = await fetch(geoJsonUrl, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Supabase-Edge-Function'
+      }
+    });
     
     if (!response.ok) {
-      throw new Error(`Failed to fetch GeoJSON: ${response.statusText}`);
+      console.error('Failed to fetch GeoJSON:', response.status, response.statusText);
+      throw new Error(`Failed to fetch GeoJSON: ${response.status} ${response.statusText}`);
     }
 
     const geoJson: GeoJSONData = await response.json();
