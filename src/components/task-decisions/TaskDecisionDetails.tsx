@@ -241,6 +241,15 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
           {decision.description && (
             <p className="text-sm text-muted-foreground">{decision.description}</p>
           )}
+          <p className="text-xs text-muted-foreground">
+            Erstellt am: {new Date(decision.created_at).toLocaleString('de-DE', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </p>
         </DialogHeader>
 
         <div className="space-y-4">

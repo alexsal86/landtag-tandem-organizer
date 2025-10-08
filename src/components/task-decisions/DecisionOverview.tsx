@@ -476,6 +476,15 @@ export const DecisionOverview = () => {
               {decision.description && (
                 <p className="text-xs text-muted-foreground mt-1">{decision.description}</p>
               )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
             </div>
             
             {decision.isCreator && (
