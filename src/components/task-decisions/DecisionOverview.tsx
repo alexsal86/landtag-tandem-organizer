@@ -600,7 +600,7 @@ export const DecisionOverview = () => {
                     Task
                   </Badge>
                 )}
-                {decision.attachmentCount && decision.attachmentCount > 0 && (
+                {(decision.attachmentCount ?? 0) > 0 && (
                   <Badge variant="outline" className="text-xs">
                     <Paperclip className="h-3 w-3 mr-1" />
                     {decision.attachmentCount}
@@ -796,7 +796,7 @@ export const DecisionOverview = () => {
                     Task
                   </Badge>
                 )}
-                {decision.attachmentCount && decision.attachmentCount > 0 && (
+                {(decision.attachmentCount ?? 0) > 0 && (
                   <Badge variant="outline" className="text-xs">
                     <Paperclip className="h-3 w-3 mr-1" />
                     {decision.attachmentCount}
