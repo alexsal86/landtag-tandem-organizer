@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Users, Clock, ExternalLink, BarChart3, Trash2, Edit, Plus } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Calendar, Users, Clock, ExternalLink, BarChart3, Trash2, Plus, Archive, CheckCircle, XCircle, RotateCcw, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +34,11 @@ export const PollListView = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPoll, setSelectedPoll] = useState<string | null>(null);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
+  const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
+
+  // Filter polls by status
+  const activePolls = polls.filter(p => p.status === 'active');
+  const archivedPolls = polls.filter(p => p.status === 'completed' || p.status === 'cancelled');
 
   useEffect(() => {
     if (user) {
@@ -134,13 +141,92 @@ export const PollListView = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge variant="default">Aktiv</Badge>;
+        return (
+          <Badge variant="default" className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            Aktiv
+          </Badge>
+        );
       case 'completed':
-        return <Badge variant="secondary">Abgeschlossen</Badge>;
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
+            Abgeschlossen
+          </Badge>
+        );
       case 'cancelled':
-        return <Badge variant="destructive">Abgebrochen</Badge>;
+        return (
+          <Badge variant="destructive" className="flex items-center gap-1">
+            <XCircle className="h-3 w-3" />
+            Abgebrochen
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const restorePoll = async (pollId: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointment_polls')
+        .update({ status: 'active' })
+        .eq('id', pollId);
+
+      if (error) throw error;
+
+      // Send notification about restoration
+      await supabase.rpc('create_notification', {
+        user_id_param: user!.id,
+        type_name: 'poll_restored',
+        title_param: 'Abstimmung wiederhergestellt',
+        message_param: 'Die Terminabstimmung wurde wiederhergestellt und ist wieder aktiv.',
+        data_param: { poll_id: pollId },
+        priority_param: 'medium'
+      });
+
+      toast({
+        title: "Abstimmung wiederhergestellt",
+        description: "Die Terminabstimmung ist jetzt wieder aktiv.",
+      });
+
+      loadPolls();
+    } catch (error) {
+      console.error('Error restoring poll:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Abstimmung konnte nicht wiederhergestellt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const permanentlyDeletePoll = async (pollId: string) => {
+    if (!window.confirm('Diese Aktion löscht die Abstimmung unwiderruflich. Alle Daten gehen verloren. Fortfahren?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('appointment_polls')
+        .delete()
+        .eq('id', pollId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Abstimmung endgültig gelöscht",
+        description: "Die Terminabstimmung wurde unwiderruflich gelöscht.",
+      });
+
+      loadPolls();
+    } catch (error) {
+      console.error('Error permanently deleting poll:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Abstimmung konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -241,6 +327,157 @@ export const PollListView = () => {
     );
   }
 
+  const renderPollsTable = (pollsList: Poll[], isArchive: boolean = false) => {
+    if (pollsList.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          {isArchive ? (
+            <>
+              <Archive className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <p>Keine archivierten Abstimmungen vorhanden.</p>
+            </>
+          ) : (
+            <>
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <p>Keine aktiven Abstimmungen vorhanden.</p>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Titel</TableHead>
+            <TableHead className="text-center">Status</TableHead>
+            <TableHead className="text-center">Teilnehmer</TableHead>
+            <TableHead className="text-center">Antworten</TableHead>
+            <TableHead className="text-center">Zeitslots</TableHead>
+            <TableHead className="text-center">Frist</TableHead>
+            <TableHead className="text-center">Erstellt</TableHead>
+            <TableHead className="text-center">Aktionen</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {pollsList.map((poll) => (
+            <TableRow 
+              key={poll.id} 
+              className={isArchive ? 'opacity-75 hover:opacity-100 transition-opacity' : ''}
+            >
+              <TableCell>
+                <div>
+                  <div className={`font-medium ${isArchive ? 'text-muted-foreground' : ''}`}>
+                    {poll.title}
+                  </div>
+                  {poll.description && (
+                    <div className="text-sm text-muted-foreground truncate max-w-xs">
+                      {poll.description}
+                    </div>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="text-center">
+                {getStatusBadge(poll.status)}
+              </TableCell>
+              <TableCell className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <Users className="h-4 w-4" />
+                  {poll.participant_count}
+                </div>
+              </TableCell>
+              <TableCell className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <BarChart3 className="h-4 w-4" />
+                  {poll.response_count} / {poll.participant_count}
+                </div>
+              </TableCell>
+              <TableCell className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  {poll.time_slots_count}
+                </div>
+              </TableCell>
+              <TableCell className="text-center">
+                {poll.deadline ? (
+                  <div className="text-sm">
+                    {format(new Date(poll.deadline), 'dd.MM.yyyy', { locale: de })}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+              <TableCell className="text-center">
+                <div className="text-sm">
+                  {format(new Date(poll.created_at), 'dd.MM.yyyy', { locale: de })}
+                </div>
+              </TableCell>
+              <TableCell className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedPoll(poll.id)}
+                    title="Ergebnisse anzeigen"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openPollLink(poll.id)}
+                    title="Link öffnen"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                  {isArchive ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => restorePoll(poll.id)}
+                        title="Wiederherstellen"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => permanentlyDeletePoll(poll.id)}
+                        title="Endgültig löschen"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <PollEditDialog
+                        pollId={poll.id}
+                        currentTitle={poll.title}
+                        currentDescription={poll.description}
+                        currentDeadline={poll.deadline}
+                        onUpdate={loadPolls}
+                      />
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deletePoll(poll.id)}
+                        title="Abstimmung löschen"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -264,114 +501,36 @@ export const PollListView = () => {
             <p>Noch keine Terminabstimmungen erstellt.</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Titel</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead className="text-center">Teilnehmer</TableHead>
-                <TableHead className="text-center">Antworten</TableHead>
-                <TableHead className="text-center">Zeitslots</TableHead>
-                <TableHead className="text-center">Frist</TableHead>
-                <TableHead className="text-center">Erstellt</TableHead>
-                <TableHead className="text-center">Aktionen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {polls.map((poll) => {
-                const isInactive = poll.status === 'completed' || poll.status === 'cancelled';
-                return (
-                <TableRow 
-                  key={poll.id} 
-                  className={isInactive ? 'opacity-60 bg-muted/30' : ''}
-                >
-                  <TableCell>
-                    <div>
-                      <div className={`font-medium ${isInactive ? 'text-muted-foreground' : ''}`}>
-                        {poll.title}
-                      </div>
-                      {poll.description && (
-                        <div className="text-sm text-muted-foreground truncate max-w-xs">
-                          {poll.description}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {getStatusBadge(poll.status)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <Users className="h-4 w-4" />
-                      {poll.participant_count}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <BarChart3 className="h-4 w-4" />
-                      {poll.response_count} / {poll.participant_count}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {poll.time_slots_count}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {poll.deadline ? (
-                      <div className="text-sm">
-                        {format(new Date(poll.deadline), 'dd.MM.yyyy', { locale: de })}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="text-sm">
-                      {format(new Date(poll.created_at), 'dd.MM.yyyy', { locale: de })}
-                    </div>
-                  </TableCell>
-                   <TableCell className="text-center">
-                     <div className="flex items-center justify-center gap-1">
-                       <Button
-                         size="sm"
-                         variant="outline"
-                         onClick={() => setSelectedPoll(poll.id)}
-                         title="Ergebnisse anzeigen"
-                       >
-                         <BarChart3 className="h-4 w-4" />
-                       </Button>
-                       <Button
-                         size="sm"
-                         variant="outline"
-                         onClick={() => openPollLink(poll.id)}
-                         title="Link öffnen"
-                       >
-                         <ExternalLink className="h-4 w-4" />
-                       </Button>
-                       <PollEditDialog
-                         pollId={poll.id}
-                         currentTitle={poll.title}
-                         currentDescription={poll.description}
-                         currentDeadline={poll.deadline}
-                         onUpdate={loadPolls}
-                       />
-                       <Button
-                         size="sm"
-                         variant="destructive"
-                         onClick={() => deletePoll(poll.id)}
-                         title="Abstimmung löschen"
-                       >
-                         <Trash2 className="h-4 w-4" />
-                       </Button>
-                      </div>
-                    </TableCell>
-                </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'active' | 'archive')}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="active" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Aktive Abstimmungen ({activePolls.length})
+              </TabsTrigger>
+              <TabsTrigger value="archive" className="flex items-center gap-2">
+                <Archive className="h-4 w-4" />
+                Archiv ({archivedPolls.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="active" className="mt-0">
+              {renderPollsTable(activePolls, false)}
+            </TabsContent>
+
+            <TabsContent value="archive" className="mt-0">
+              {archivedPolls.length > 0 && (
+                <Alert className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Archivierte Abstimmungen</AlertTitle>
+                  <AlertDescription>
+                    Diese Abstimmungen wurden automatisch oder manuell archiviert.
+                    Sie können wiederhergestellt oder endgültig gelöscht werden.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {renderPollsTable(archivedPolls, true)}
+            </TabsContent>
+          </Tabs>
         )}
       </CardContent>
     </Card>

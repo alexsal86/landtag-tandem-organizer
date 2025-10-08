@@ -6021,6 +6021,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      auto_update_poll_status: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       can_access_knowledge_document: {
         Args: { _document_id: string; _user_id: string }
         Returns: boolean
