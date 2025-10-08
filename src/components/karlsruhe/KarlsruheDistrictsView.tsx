@@ -27,6 +27,7 @@ export const KarlsruheDistrictsView = () => {
   const [visibleFlagTypes, setVisibleFlagTypes] = useState<Set<string>>(
     new Set(flagTypes.map(t => t.id))
   );
+  const [showDistricts, setShowDistricts] = useState(true);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -107,7 +108,7 @@ export const KarlsruheDistrictsView = () => {
                 <Skeleton className="w-full h-[600px] rounded-lg" />
               ) : (
                 <KarlsruheDistrictsMap
-                  districts={districts}
+                  districts={showDistricts ? districts : []}
                   onDistrictClick={setSelectedDistrict}
                   selectedDistrict={selectedDistrict}
                   flags={flags}
@@ -154,6 +155,23 @@ export const KarlsruheDistrictsView = () => {
               <div className="text-xs text-muted-foreground">
                 <Flag className="h-3 w-3 inline mr-1" />
                 {flags.length} Flaggen gesetzt
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Layer Controls */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Kartenebenen</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="show-districts" className="text-sm">Stadtteile anzeigen</Label>
+                <Switch
+                  id="show-districts"
+                  checked={showDistricts}
+                  onCheckedChange={setShowDistricts}
+                />
               </div>
             </CardContent>
           </Card>

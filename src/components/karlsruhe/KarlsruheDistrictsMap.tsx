@@ -109,16 +109,21 @@ export const KarlsruheDistrictsMap = ({
               icon: L.divIcon({
                 className: 'district-label',
                 html: `<div style="
-                  background: white;
                   padding: 4px 8px;
-                  border-radius: 4px;
-                  font-size: 12px;
-                  font-weight: 600;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                  font-size: 13px;
+                  font-weight: 700;
+                  text-shadow: 
+                    -1px -1px 0 white,  
+                    1px -1px 0 white,
+                    -1px 1px 0 white,
+                    1px 1px 0 white,
+                    2px 2px 4px rgba(0,0,0,0.3);
                   white-space: nowrap;
                   pointer-events: none;
+                  text-align: center;
                 ">${district.name}</div>`,
-                iconSize: [0, 0],
+                iconSize: [100, 30],
+                iconAnchor: [50, 15],
               }),
             }).addTo(map);
             
