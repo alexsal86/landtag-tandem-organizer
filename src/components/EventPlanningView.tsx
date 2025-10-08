@@ -1859,7 +1859,7 @@ export function EventPlanningView() {
         throw new Error('Storage-Bucket "planning-documents" existiert nicht. Bitte kontaktieren Sie den Administrator.');
       }
 
-      const filePath = `${user.id}/${itemId}/${fileName}`;
+      const filePath = `${currentTenant.id}/${itemId}/${fileName}`;
 
       console.log('Uploading file:', { fileName, filePath, fileSize: file.size, fileType: file.type, tenantId: currentTenant.id });
 
