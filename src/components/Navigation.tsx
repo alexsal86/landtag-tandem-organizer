@@ -2,7 +2,7 @@ import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle,
 import { NotificationBell } from "./NotificationBell";
 import { NavigationBadge } from "./NavigationBadge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { CompactStatusSelector } from "./CompactStatusSelector";
 import { UserStatusSelector } from "./UserStatusSelector";

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
 import CreateTask from "./pages/CreateTask";
@@ -34,6 +35,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TenantProvider>
+        <NotificationProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -82,6 +84,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
           </TooltipProvider>
+        </NotificationProvider>
       </TenantProvider>
     </AuthProvider>
   </QueryClientProvider>

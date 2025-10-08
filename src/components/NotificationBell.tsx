@@ -8,7 +8,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { NotificationCenter } from './NotificationCenter';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 export const NotificationBell: React.FC = () => {
   const [open, setOpen] = useState(false);

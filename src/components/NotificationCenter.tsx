@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useNotifications, Notification } from '@/hooks/useNotifications';
+import { useNotifications, type Notification } from '@/contexts/NotificationContext';
 import { cn } from '@/lib/utils';
 
 interface NotificationCenterProps {
