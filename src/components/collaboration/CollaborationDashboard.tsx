@@ -101,6 +101,7 @@ export function CollaborationDashboard({
         variant="outline"
         size="sm"
         onClick={onToggle}
+        className="fixed top-16 right-20 z-30"
         title="Aktivitäts-Stream öffnen"
       >
         <Activity className="h-4 w-4" />
