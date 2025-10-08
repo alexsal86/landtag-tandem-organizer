@@ -3513,9 +3513,11 @@ export type Database = {
           event_type: string
           id: string
           message_content: string | null
+          message_type: string | null
           metadata: Json | null
           response_content: string | null
           room_id: string | null
+          sent_date: string | null
           status: string
           user_id: string | null
         }
@@ -3525,9 +3527,11 @@ export type Database = {
           event_type: string
           id?: string
           message_content?: string | null
+          message_type?: string | null
           metadata?: Json | null
           response_content?: string | null
           room_id?: string | null
+          sent_date?: string | null
           status?: string
           user_id?: string | null
         }
@@ -3537,11 +3541,49 @@ export type Database = {
           event_type?: string
           id?: string
           message_content?: string | null
+          message_type?: string | null
           metadata?: Json | null
           response_content?: string | null
           room_id?: string | null
+          sent_date?: string | null
           status?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      matrix_morning_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          include_appointments: boolean
+          include_greeting: boolean
+          include_weather: boolean
+          send_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          include_appointments?: boolean
+          include_greeting?: boolean
+          include_weather?: boolean
+          send_time?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          include_appointments?: boolean
+          include_greeting?: boolean
+          include_weather?: boolean
+          send_time?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

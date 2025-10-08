@@ -99,3 +99,6 @@ verify_jwt = false
 
 [functions.check-meeting-reminders]
 verify_jwt = false
+
+[functions.send-matrix-morning-greeting]
+verify_jwt = false

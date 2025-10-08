@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { MatrixMorningSettings } from './MatrixMorningSettings';
 
 interface MatrixSubscription {
   id: string;
@@ -308,17 +309,18 @@ export const MatrixSettings: React.FC = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          Matrix-Benachrichtigungen
-        </CardTitle>
-        <CardDescription>
-          Erhalten Sie Benachrichtigungen in Matrix-Räumen
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            Matrix-Benachrichtigungen
+          </CardTitle>
+          <CardDescription>
+            Erhalten Sie Benachrichtigungen in Matrix-Räumen
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
         {/* Global Matrix toggle */}
         <div className="flex items-center justify-between">
           <div>
@@ -440,6 +442,10 @@ export const MatrixSettings: React.FC = () => {
           </div>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+
+      {/* Morning Greetings Settings */}
+      <MatrixMorningSettings />
+    </div>
   );
 };
