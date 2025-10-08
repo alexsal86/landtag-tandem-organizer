@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,7 +21,9 @@ import {
   Search,
   FileText,
   Eye,
-  Mail
+  Mail,
+  ChevronDown,
+  Save
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +31,13 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import EmailRichTextEditor from "./EmailRichTextEditor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Contact {
   id: string;
@@ -37,6 +45,7 @@ interface Contact {
   email?: string;
   organization?: string;
   avatar_url?: string;
+  phone?: string;
 }
 
 interface DistributionList {
@@ -52,6 +61,19 @@ interface Document {
   file_name: string;
 }
 
+interface SenderInfo {
+  id: string;
+  name: string;
+  landtag_email: string;
+}
+
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body_html: string;
+}
+
 export function EmailComposer() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -63,6 +85,13 @@ export function EmailComposer() {
   const [manualEmailInput, setManualEmailInput] = useState("");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
+
+  // Neue States
+  const [senderInfos, setSenderInfos] = useState<SenderInfo[]>([]);
+  const [selectedSender, setSelectedSender] = useState<string>("");
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [previewContact, setPreviewContact] = useState<Contact | null>(null);
 
   // Recipients
   const [distributionLists, setDistributionLists] = useState<DistributionList[]>([]);
@@ -82,8 +111,105 @@ export function EmailComposer() {
       fetchDistributionLists();
       fetchContacts();
       fetchDocuments();
+      fetchSenderInfos();
+      fetchEmailTemplates();
     }
   }, [currentTenant]);
+
+  const fetchSenderInfos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("sender_information")
+        .select("id, name, landtag_email")
+        .eq("tenant_id", currentTenant!.id)
+        .eq("is_active", true);
+      
+      if (error) throw error;
+      setSenderInfos(data || []);
+      
+      // Set default sender
+      const defaultSender = data?.find((s: any) => s.is_default);
+      if (defaultSender) setSelectedSender(defaultSender.id);
+    } catch (error) {
+      console.error("Error fetching sender infos:", error);
+    }
+  };
+
+  const fetchEmailTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("email_templates")
+        .select("id, name, subject, body_html")
+        .eq("tenant_id", currentTenant!.id)
+        .eq("is_active", true)
+        .order("name");
+      
+      if (error) throw error;
+      setEmailTemplates(data || []);
+    } catch (error) {
+      console.error("Error fetching email templates:", error);
+    }
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    const template = emailTemplates.find(t => t.id === templateId);
+    if (template) {
+      setSubject(template.subject);
+      setBodyHtml(template.body_html);
+      setSelectedTemplate(templateId);
+      toast({ title: "Template geladen", description: `"${template.name}" wurde geladen` });
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!subject.trim() || !bodyHtml.trim()) {
+      toast({
+        title: "Fehler",
+        description: "Betreff und Nachricht müssen ausgefüllt sein",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const templateName = prompt("Template-Name eingeben:");
+    if (!templateName) return;
+
+    try {
+      const { error } = await supabase.from("email_templates").insert({
+        tenant_id: currentTenant!.id,
+        created_by: user!.id,
+        name: templateName,
+        subject,
+        body_html: bodyHtml,
+        is_active: true,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Template gespeichert", description: `"${templateName}" wurde erstellt` });
+      fetchEmailTemplates();
+    } catch (error: any) {
+      toast({
+        title: "Fehler beim Speichern",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const insertVariable = (variable: string) => {
+    setBodyHtml(bodyHtml + `{{${variable}}}`);
+  };
+
+  const replaceVariables = (text: string, contact: Contact | null) => {
+    if (!contact) return text;
+    
+    return text
+      .replace(/\{\{name\}\}/g, contact.name)
+      .replace(/\{\{email\}\}/g, contact.email || "")
+      .replace(/\{\{organization\}\}/g, contact.organization || "")
+      .replace(/\{\{phone\}\}/g, contact.phone || "");
+  };
 
   const fetchDistributionLists = async () => {
     try {
@@ -117,7 +243,7 @@ export function EmailComposer() {
     try {
       const { data, error } = await supabase
         .from("contacts")
-        .select("id, name, email, organization, avatar_url")
+        .select("id, name, email, organization, avatar_url, phone")
         .eq("tenant_id", currentTenant!.id)
         .not("email", "is", null)
         .order("name");
@@ -206,7 +332,7 @@ export function EmailComposer() {
       const { data, error } = await supabase.functions.invoke("send-document-email", {
         body: {
           subject,
-          body_html: bodyHtml.replace(/\n/g, "<br>"),
+          body_html: bodyHtml,
           recipients: manualEmails,
           cc: cc.split(",").map(e => e.trim()).filter(e => e),
           bcc: bcc.split(",").map(e => e.trim()).filter(e => e),
@@ -215,15 +341,24 @@ export function EmailComposer() {
           document_ids: selectedDocuments,
           tenant_id: currentTenant!.id,
           user_id: user!.id,
+          sender_id: selectedSender,
         },
       });
 
       if (error) throw error;
 
-      toast({
-        title: "E-Mails versendet",
-        description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet.`,
-      });
+      if (data.failed > 0 && data.failed_recipients) {
+        toast({
+          title: "Teilweise versendet",
+          description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet. ${data.failed} fehlgeschlagen.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "E-Mails versendet",
+          description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet.`,
+        });
+      }
 
       // Reset form
       setSubject("");
@@ -290,9 +425,49 @@ export function EmailComposer() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>E-Mail-Inhalt</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>E-Mail-Inhalt</span>
+                <div className="flex gap-2">
+                  {/* Template Dropdown */}
+                  <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Template wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {emailTemplates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {/* Save as Template */}
+                  <Button variant="outline" size="sm" onClick={handleSaveAsTemplate}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Als Template
+                  </Button>
+                </div>
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Sender Selection */}
+              <div>
+                <Label htmlFor="sender">Absender *</Label>
+                <Select value={selectedSender} onValueChange={setSelectedSender}>
+                  <SelectTrigger id="sender">
+                    <SelectValue placeholder="Absender wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {senderInfos.map((sender) => (
+                      <SelectItem key={sender.id} value={sender.id}>
+                        {sender.name} ({sender.landtag_email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div>
                 <Label htmlFor="subject">Betreff *</Label>
                 <Input
@@ -304,14 +479,36 @@ export function EmailComposer() {
               </div>
 
               <div>
-                <Label htmlFor="body">Nachricht *</Label>
-                <Textarea
-                  id="body"
-                  value={bodyHtml}
-                  onChange={(e) => setBodyHtml(e.target.value)}
-                  placeholder="Ihre Nachricht hier eingeben..."
-                  rows={12}
-                  className="font-mono text-sm"
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="body">Nachricht *</Label>
+                  
+                  {/* Variables Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        Variablen <ChevronDown className="h-4 w-4 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => insertVariable("name")}>
+                        {"{{name}}"} - Name
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => insertVariable("email")}>
+                        {"{{email}}"} - E-Mail
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => insertVariable("organization")}>
+                        {"{{organization}}"} - Organisation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => insertVariable("phone")}>
+                        {"{{phone}}"} - Telefon
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                
+                <EmailRichTextEditor
+                  initialContent={bodyHtml}
+                  onChange={setBodyHtml}
                 />
               </div>
 
@@ -341,15 +538,43 @@ export function EmailComposer() {
           {showPreview && (
             <Card>
               <CardHeader>
-                <CardTitle>Vorschau</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Vorschau</CardTitle>
+                  
+                  {/* Preview Contact Selector */}
+                  <Select 
+                    value={previewContact?.id || ""} 
+                    onValueChange={(id) => {
+                      const contact = contacts.find(c => c.id === id);
+                      setPreviewContact(contact || null);
+                    }}
+                  >
+                    <SelectTrigger className="w-[250px]">
+                      <SelectValue placeholder="Beispiel-Kontakt wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contacts.slice(0, 10).map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id}>
+                          {contact.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="border rounded-lg p-4 bg-muted/20">
-                  <div className="font-bold mb-2">{subject || "(Kein Betreff)"}</div>
+                <div className="border rounded-lg p-4 bg-muted/20 space-y-2">
+                  <div className="text-sm text-muted-foreground">
+                    <strong>Von:</strong> {senderInfos.find(s => s.id === selectedSender)?.landtag_email || "Kein Absender"}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <strong>An:</strong> {previewContact?.email || "Beispiel Empfänger"}
+                  </div>
+                  <div className="font-bold mt-4">{replaceVariables(subject, previewContact) || "(Kein Betreff)"}</div>
                   <div 
-                    className="whitespace-pre-wrap text-sm"
+                    className="mt-2 text-sm"
                     dangerouslySetInnerHTML={{ 
-                      __html: bodyHtml.replace(/\n/g, "<br>") 
+                      __html: replaceVariables(bodyHtml, previewContact)
                     }}
                   />
                 </div>
@@ -497,6 +722,45 @@ export function EmailComposer() {
                   </ScrollArea>
                 </TabsContent>
               </Tabs>
+            </CardContent>
+          </Card>
+
+          {/* Document attachments */}
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                <FileText className="h-5 w-5 inline mr-2" />
+                Dokumente anhängen (optional)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[200px]">
+                <div className="space-y-2">
+                  {documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50"
+                    >
+                      <Checkbox
+                        checked={selectedDocuments.includes(doc.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedDocuments([...selectedDocuments, doc.id]);
+                          } else {
+                            setSelectedDocuments(
+                              selectedDocuments.filter((id) => id !== doc.id)
+                            );
+                          }
+                        }}
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{doc.title}</p>
+                        <p className="text-xs text-muted-foreground">{doc.file_name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
             </CardContent>
           </Card>
         </div>

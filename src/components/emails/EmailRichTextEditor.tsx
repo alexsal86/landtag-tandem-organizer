@@ -16,14 +16,14 @@ import { CodeNode } from '@lexical/code';
 import { EnhancedLexicalToolbar } from '@/components/EnhancedLexicalToolbar';
 
 interface EmailRichTextEditorProps {
-  value: string;
+  initialContent?: string;
   onChange: (html: string) => void;
   placeholder?: string;
   disabled?: boolean;
 }
 
 const EmailRichTextEditor: React.FC<EmailRichTextEditorProps> = ({
-  value,
+  initialContent = "",
   onChange,
   placeholder = "E-Mail-Text eingeben...",
   disabled = false

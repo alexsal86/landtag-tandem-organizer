@@ -238,7 +238,7 @@ export function EmailTemplateManager() {
               <div>
                 <Label>E-Mail-Inhalt</Label>
                 <EmailRichTextEditor
-                  value={formData.body_html}
+                  initialContent={formData.body_html}
                   onChange={(html) => setFormData({ ...formData, body_html: html })}
                   placeholder="Verfassen Sie Ihr E-Mail-Template..."
                 />
