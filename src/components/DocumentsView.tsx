@@ -55,6 +55,7 @@ import { useLetterArchiving } from "@/hooks/useLetterArchiving";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmailComposer } from "./emails/EmailComposer";
 import { EmailHistory } from "./emails/EmailHistory";
+import { EmailTemplateManager } from "./emails/EmailTemplateManager";
 
 interface DocumentFolder {
   id: string;
@@ -130,6 +131,7 @@ export function DocumentsView() {
   const [selectedLetter, setSelectedLetter] = useState<Letter | undefined>(undefined);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails'>('documents');
+  const [emailSubTab, setEmailSubTab] = useState<'compose' | 'history' | 'templates'>('compose');
   const [letterSubTab, setLetterSubTab] = useState<'active' | 'archived'>('active');
   const [autoArchiveDays, setAutoArchiveDays] = useState(30);
   const [showArchiveSettings, setShowArchiveSettings] = useState(false);

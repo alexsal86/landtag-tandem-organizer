@@ -1891,7 +1891,9 @@ export type Database = {
           created_at: string | null
           document_ids: Json | null
           error_message: string | null
+          failed_recipients: Json | null
           id: string
+          personalization_data: Json | null
           recipients: Json
           scheduled_for: string | null
           sent_at: string | null
@@ -1907,7 +1909,9 @@ export type Database = {
           created_at?: string | null
           document_ids?: Json | null
           error_message?: string | null
+          failed_recipients?: Json | null
           id?: string
+          personalization_data?: Json | null
           recipients: Json
           scheduled_for?: string | null
           sent_at?: string | null
@@ -1923,7 +1927,9 @@ export type Database = {
           created_at?: string | null
           document_ids?: Json | null
           error_message?: string | null
+          failed_recipients?: Json | null
           id?: string
+          personalization_data?: Json | null
           recipients?: Json
           scheduled_for?: string | null
           sent_at?: string | null
