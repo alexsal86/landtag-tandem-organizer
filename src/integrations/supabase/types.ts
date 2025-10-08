@@ -2994,6 +2994,42 @@ export type Database = {
         }
         Relationships: []
       }
+      karlsruhe_districts: {
+        Row: {
+          area_km2: number | null
+          boundaries: Json
+          center_coordinates: Json | null
+          color: string
+          created_at: string | null
+          id: string
+          name: string
+          population: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          area_km2?: number | null
+          boundaries: Json
+          center_coordinates?: Json | null
+          color: string
+          created_at?: string | null
+          id?: string
+          name: string
+          population?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          area_km2?: number | null
+          boundaries?: Json
+          center_coordinates?: Json | null
+          color?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          population?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       knowledge_document_collaborators: {
         Row: {
           cursor_position: Json | null
