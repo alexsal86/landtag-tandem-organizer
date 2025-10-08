@@ -93,3 +93,6 @@ verify_jwt = true
 
 [functions.matrix-decision-handler]
 verify_jwt = false
+
+[functions.check-meeting-reminders]
+verify_jwt = false
