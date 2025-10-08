@@ -1779,9 +1779,65 @@ export type Database = {
           },
         ]
       }
+      employee_meeting_action_items: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          description: string
+          due_date: string | null
+          id: string
+          meeting_id: string
+          notes: string | null
+          owner: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description: string
+          due_date?: string | null
+          id?: string
+          meeting_id: string
+          notes?: string | null
+          owner: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          meeting_id?: string
+          notes?: string | null
+          owner?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_meeting_action_items_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "employee_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_meeting_requests: {
         Row: {
           created_at: string
+          declined_at: string | null
+          declined_by: string | null
+          declined_reason: string | null
           employee_id: string
           id: string
           reason: string
@@ -1794,6 +1850,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          declined_at?: string | null
+          declined_by?: string | null
+          declined_reason?: string | null
           employee_id: string
           id?: string
           reason: string
@@ -1806,6 +1865,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          declined_at?: string | null
+          declined_by?: string | null
+          declined_reason?: string | null
           employee_id?: string
           id?: string
           reason?: string
@@ -1840,13 +1902,16 @@ export type Database = {
           created_at: string
           employee_id: string
           employee_notes: string | null
+          employee_preparation: Json | null
           id: string
           meeting_date: string
           meeting_type: string
           next_meeting_due: string | null
           protocol: Json | null
+          shared_during_meeting: boolean | null
           status: string
           supervisor_notes: string | null
+          supervisor_preparation: Json | null
           tenant_id: string
           updated_at: string
         }
@@ -1856,13 +1921,16 @@ export type Database = {
           created_at?: string
           employee_id: string
           employee_notes?: string | null
+          employee_preparation?: Json | null
           id?: string
           meeting_date: string
           meeting_type?: string
           next_meeting_due?: string | null
           protocol?: Json | null
+          shared_during_meeting?: boolean | null
           status?: string
           supervisor_notes?: string | null
+          supervisor_preparation?: Json | null
           tenant_id: string
           updated_at?: string
         }
@@ -1872,13 +1940,16 @@ export type Database = {
           created_at?: string
           employee_id?: string
           employee_notes?: string | null
+          employee_preparation?: Json | null
           id?: string
           meeting_date?: string
           meeting_type?: string
           next_meeting_due?: string | null
           protocol?: Json | null
+          shared_during_meeting?: boolean | null
           status?: string
           supervisor_notes?: string | null
+          supervisor_preparation?: Json | null
           tenant_id?: string
           updated_at?: string
         }
