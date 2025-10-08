@@ -36,6 +36,7 @@ import { CalendarSyncSettings } from "@/components/administration/CalendarSyncSe
 import { LoginCustomization } from "@/components/administration/LoginCustomization";
 import { UserColorManager } from "@/components/administration/UserColorManager";
 import { DecisionArchiveSettings } from "@/components/administration/DecisionArchiveSettings";
+import { MatrixSettings } from "@/components/MatrixSettings";
 import { NewsEmailTemplateManager } from "@/components/administration/NewsEmailTemplateManager";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
@@ -563,6 +564,7 @@ export default function Administration() {
               <TabsTrigger value="expense">Verwaltung</TabsTrigger>
               {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
               {isSuperAdmin && <TabsTrigger value="usercolors"><Palette className="h-4 w-4 mr-2" />Benutzerfarben</TabsTrigger>}
+              <TabsTrigger value="matrix">Matrix</TabsTrigger>
             </TabsList>
 
             <TabsContent value="general">
@@ -681,6 +683,10 @@ export default function Administration() {
                 <UserColorManager />
               </TabsContent>
             )}
+
+            <TabsContent value="matrix">
+              <MatrixSettings />
+            </TabsContent>
           </Tabs>
         </TabsContent>
 
