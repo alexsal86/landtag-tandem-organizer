@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -64,6 +65,7 @@ type PendingLeaveRequest = {
 type Employee = EmployeeSettingsRow & Profile & {
   next_meeting_due?: string | null;
   open_meeting_requests?: number;
+  last_meeting_id?: string | null;
 };
 
 type LeaveAgg = {
@@ -74,6 +76,7 @@ type LeaveAgg = {
 };
 
 export function EmployeesView() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -90,6 +93,7 @@ export function EmployeesView() {
   const [selfSettings, setSelfSettings] = useState<EmployeeSettingsRow | null>(null);
   const [selfLeaveAgg, setSelfLeaveAgg] = useState<LeaveAgg | null>(null);
   const [selfProfile, setSelfProfile] = useState<Profile | null>(null);
+  const [selfLastMeetingId, setSelfLastMeetingId] = useState<string | null>(null);
 
   // SEO basics
   useEffect(() => {
@@ -166,7 +170,7 @@ export function EmployeesView() {
           return;
         }
 
-        const [profilesRes, settingsRes, leaveRes, pendingRes, sickRes, meetingRequestsRes] = await Promise.all([
+        const [profilesRes, settingsRes, leaveRes, pendingRes, sickRes, meetingRequestsRes, lastMeetingsRes] = await Promise.all([
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
           supabase
             .from("employee_settings")
@@ -190,6 +194,11 @@ export function EmployeesView() {
             .select("employee_id")
             .eq("status", "pending")
             .in("employee_id", managedIds),
+          supabase
+            .from("employee_meetings")
+            .select("id, employee_id, meeting_date")
+            .in("employee_id", managedIds)
+            .order("meeting_date", { ascending: false }),
         ]);
         if (sickRes.error) throw sickRes.error;
         if (profilesRes.error) throw profilesRes.error;
@@ -197,12 +206,21 @@ export function EmployeesView() {
         if (leaveRes.error) throw leaveRes.error;
         if (pendingRes.error) throw pendingRes.error;
         if (meetingRequestsRes.error) throw meetingRequestsRes.error;
+        if (lastMeetingsRes.error) throw lastMeetingsRes.error;
 
         const profileMap = new Map<string, Profile>();
         (profilesRes.data as Profile[] | null)?.forEach((p) => profileMap.set(p.user_id, p));
 
         const settingsMap = new Map<string, EmployeeSettingsRow>();
         (settingsRes.data as any[] | null)?.forEach((s) => settingsMap.set(s.user_id, s as EmployeeSettingsRow));
+
+        // Map last meeting per employee
+        const lastMeetingMap = new Map<string, string>();
+        (lastMeetingsRes.data || []).forEach((m: any) => {
+          if (!lastMeetingMap.has(m.employee_id)) {
+            lastMeetingMap.set(m.employee_id, m.id);
+          }
+        });
 
         // Count open meeting requests per employee
         const meetingRequestCounts: Record<string, number> = {};
@@ -241,6 +259,7 @@ export function EmployeesView() {
             next_meeting_reminder_days: s?.next_meeting_reminder_days ?? 14,
             next_meeting_due,
             open_meeting_requests: meetingRequestCounts[uid] || 0,
+            last_meeting_id: lastMeetingMap.get(uid) || null,
           } as Employee;
         });
         setEmployees(joined);
@@ -361,10 +380,10 @@ export function EmployeesView() {
     const loadEmployeeData = async () => {
       setLoading(true);
       try {
-        const [settingsRes, profileRes, leavesRes] = await Promise.all([
+        const [settingsRes, profileRes, leavesRes, lastMeetingRes] = await Promise.all([
           supabase
             .from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays, days_per_week, annual_vacation_days, employment_start_date")
+            .select("user_id, hours_per_week, timezone, workdays, days_per_week, annual_vacation_days, employment_start_date, last_meeting_date")
             .eq("user_id", user.id)
             .maybeSingle(),
           supabase
@@ -377,7 +396,14 @@ export function EmployeesView() {
             .select("id, type, status, start_date, end_date")
             .eq("user_id", user.id)
             .gte("start_date", startOfYear(new Date()).toISOString())
-            .lte("end_date", endOfYear(new Date()).toISOString())
+            .lte("end_date", endOfYear(new Date()).toISOString()),
+          supabase
+            .from("employee_meetings")
+            .select("id")
+            .eq("employee_id", user.id)
+            .order("meeting_date", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
         ]);
 
         // FORCE REFRESH: Check if data exists now
@@ -445,6 +471,7 @@ export function EmployeesView() {
 
         setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
         setSelfProfile((profileRes.data as Profile) || null);
+        setSelfLastMeetingId(lastMeetingRes.data?.id || null);
 
                   const agg: LeaveAgg = {
            counts: { vacation: 0, sick: 0, other: 0 },
@@ -1008,7 +1035,23 @@ export function EmployeesView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {selfSettings?.last_meeting_date ? (
+                {selfSettings?.last_meeting_date && selfLastMeetingId ? (
+                  <Button
+                    variant="ghost"
+                    className="h-auto w-full p-3 justify-start hover:bg-muted"
+                    onClick={() => navigate(`/employee-meeting/${selfLastMeetingId}`)}
+                  >
+                    <div className="text-left space-y-1">
+                      <span className="text-sm text-muted-foreground">Letztes Gespräch:</span>
+                      <div className="font-medium">
+                        {formatDistanceToNow(new Date(selfSettings.last_meeting_date), { 
+                          addSuffix: true, 
+                          locale: de 
+                        })}
+                      </div>
+                    </div>
+                  </Button>
+                ) : selfSettings?.last_meeting_date ? (
                   <div className="text-sm">
                     <span className="text-muted-foreground">Letztes Gespräch:</span>
                     <div className="font-medium">
@@ -1276,7 +1319,25 @@ export function EmployeesView() {
                             )}
                          </TableCell>
                          <TableCell>
-                           {e.last_meeting_date ? (
+                           {e.last_meeting_date && e.last_meeting_id ? (
+                             <Button
+                               variant="ghost"
+                               className="h-auto p-2 hover:bg-muted"
+                               onClick={() => navigate(`/employee-meeting/${e.last_meeting_id}`)}
+                             >
+                               <div className="space-y-1 text-left">
+                                 <div className="text-sm">
+                                   {new Date(e.last_meeting_date).toLocaleDateString('de-DE')}
+                                 </div>
+                                 <div className="text-xs text-muted-foreground">
+                                   {formatDistanceToNow(new Date(e.last_meeting_date), { 
+                                     addSuffix: true, 
+                                     locale: de 
+                                   })}
+                                 </div>
+                               </div>
+                             </Button>
+                           ) : e.last_meeting_date ? (
                              <div className="space-y-1">
                                <div className="text-sm">
                                  {new Date(e.last_meeting_date).toLocaleDateString('de-DE')}

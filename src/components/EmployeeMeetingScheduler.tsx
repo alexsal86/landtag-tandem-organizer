@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ export function EmployeeMeetingScheduler({
   onOpenChange,
   onScheduled,
 }: EmployeeMeetingSchedulerProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -116,6 +118,9 @@ export function EmployeeMeetingScheduler({
       onOpenChange(false);
       setMeetingDate(undefined);
       setMeetingType("regular");
+
+      // Navigate to meeting protocol
+      navigate(`/employee-meeting/${meeting.id}`);
     } catch (error: any) {
       console.error("Error scheduling meeting:", error);
       toast({
