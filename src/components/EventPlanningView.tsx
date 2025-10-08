@@ -1961,97 +1961,22 @@ export function EventPlanningView() {
 
   const handleItemFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
     const file = event.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !currentTenant?.id) return;
 
     setUploading(true);
     try {
       const fileExtension = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExtension}`;
-      if (!currentTenant?.id) {
-        throw new Error('Kein Tenant verfügbar. Bitte laden Sie die Seite neu.');
-      }
-
-      // 1. Verify authentication and session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Nicht authentifiziert. Bitte melden Sie sich erneut an.');
-      }
-
-      console.log('🔐 Auth & Tenant Info:', {
-        userId: session.user.id,
-        tenantId: currentTenant.id,
-        hasSession: !!session,
-        email: session.user.email
-      });
-
-      // 2. Verify active tenant membership
-      const { data: membership, error: membershipError } = await supabase
-        .from('user_tenant_memberships')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('tenant_id', currentTenant.id)
-        .eq('is_active', true)
-        .single();
-
-      if (membershipError || !membership) {
-        console.error('❌ Tenant membership error:', membershipError);
-        throw new Error(`Keine aktive Tenant-Zuordnung gefunden für Tenant ${currentTenant.id}`);
-      }
-
-      console.log('✅ Tenant membership verified:', membership);
-
-      // 3. Check if bucket exists
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(b => b.id === 'planning-documents');
-
-      console.log('📦 Bucket check:', { bucketExists, availableBuckets: buckets?.map(b => b.id) });
-
-      if (!bucketExists) {
-        throw new Error('Storage-Bucket "planning-documents" existiert nicht. Bitte kontaktieren Sie den Administrator.');
-      }
-
-      const filePath = `${currentTenant.id}/${itemId}/${fileName}`;
-
-      console.log('📤 Uploading file:', { 
-        fileName, 
-        filePath, 
-        fileSize: file.size, 
-        fileType: file.type, 
-        tenantId: currentTenant.id,
-        fullPath: `planning-documents/${filePath}`
-      });
-
-      // 4. Attempt upload with detailed error handling
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const filePath = `${currentTenant.id}/planning-items/${itemId}/${fileName}`;
+      
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
         .from('planning-documents')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file);
 
-      if (uploadError) {
-        console.error('❌ Upload error details:', {
-          error: uploadError,
-          message: uploadError.message,
-          statusCode: (uploadError as any).statusCode,
-          hint: (uploadError as any).hint,
-          details: (uploadError as any).details,
-          name: uploadError.name
-        });
-        
-        // Specific error message for RLS issues
-        if (uploadError.message.includes('row-level security') || 
-            uploadError.message.includes('policy') ||
-            uploadError.message.includes('RLS')) {
-          throw new Error(
-            `🔒 Zugriffsfehler: Keine Berechtigung für Tenant ${currentTenant.id}. ` +
-            `Fehler: ${uploadError.message}. ` +
-            `Bitte überprüfen Sie Ihre Tenant-Zuordnung und Storage-Policies.`
-          );
-        }
-        
-        throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`);
-      }
+      if (uploadError) throw uploadError;
 
-      console.log('Upload successful:', uploadData);
-
+      // Insert document record
       const { error: dbError } = await supabase
         .from('planning_item_documents')
         .insert({
@@ -2064,10 +1989,7 @@ export function EventPlanningView() {
           file_type: file.type,
         });
 
-      if (dbError) {
-        console.error('Database error:', dbError);
-        throw new Error(`Datenbank-Fehler: ${dbError.message}`);
-      }
+      if (dbError) throw dbError;
 
       loadItemDocuments(itemId);
       loadAllItemCounts();
@@ -2077,22 +1999,9 @@ export function EventPlanningView() {
         description: "Das Dokument wurde erfolgreich hinzugefügt.",
       });
     } catch (error) {
-      console.error('Error uploading document:', error);
-      
-      // Detailed error logging for debugging
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          message: error.message,
-          name: error.name,
-          stack: error.stack
-        });
-      }
-      
       toast({
         title: "Upload fehlgeschlagen",
-        description: error instanceof Error 
-          ? `Fehler: ${error.message}` 
-          : "Das Dokument konnte nicht hochgeladen werden. Bitte prüfen Sie Ihre Berechtigung.",
+        description: error instanceof Error ? error.message : "Das Dokument konnte nicht hochgeladen werden.",
         variant: "destructive",
       });
     } finally {
