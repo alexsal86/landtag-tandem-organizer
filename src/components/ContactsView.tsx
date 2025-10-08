@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, Star, Tag } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, Star, Tag, Merge } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { useInfiniteContacts, Contact } from "@/hooks/useInfiniteContacts";
 import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
 import { ContactSkeleton } from "./ContactSkeleton";
 import { StakeholderView } from "./StakeholderView";
+import { DuplicateContactsSheet } from "./contacts/DuplicateContactsSheet";
 import { debounce } from "@/utils/debounce";
 import { useCounts } from "@/hooks/useCounts";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
@@ -59,6 +60,7 @@ export function ContactsView() {
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>("");
+  const [isDuplicateSheetOpen, setIsDuplicateSheetOpen] = useState(false);
   
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -388,6 +390,14 @@ export function ContactsView() {
                 Kontakte importieren
               </Button>
             </Link>
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => setIsDuplicateSheetOpen(true)}
+            >
+              <Merge className="h-4 w-4" />
+              Duplikate prüfen
+            </Button>
             <Link to="/distribution-lists/new">
               <Button variant="outline" className="gap-2">
                 <Users className="h-4 w-4" />
@@ -1085,6 +1095,12 @@ export function ContactsView() {
           setSelectedContactId(null);
         }}
         onContactUpdate={refreshContacts}
+      />
+
+      <DuplicateContactsSheet
+        isOpen={isDuplicateSheetOpen}
+        onClose={() => setIsDuplicateSheetOpen(false)}
+        onDuplicatesResolved={refreshContacts}
       />
     </div>
   );
