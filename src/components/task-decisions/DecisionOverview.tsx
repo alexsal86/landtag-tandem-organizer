@@ -519,17 +519,9 @@ export const DecisionOverview = () => {
       >
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
-              <CardTitle className="text-sm font-medium">{decision.title}</CardTitle>
-              {decision.creator && (
-                <UserBadge 
-                  userId={decision.creator.user_id}
-                  displayName={decision.creator.display_name}
-                  badgeColor={decision.creator.badge_color}
-                  size="sm"
-                />
-              )}
-            </div>
+            <CardTitle className="text-sm font-medium cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+              {decision.title}
+            </CardTitle>
             
             {decision.isCreator && (
               <DropdownMenu>
@@ -583,6 +575,14 @@ export const DecisionOverview = () => {
               </p>
               
               <div className="flex items-center gap-1 flex-wrap">
+                {decision.creator && (
+                  <UserBadge 
+                    userId={decision.creator.user_id}
+                    displayName={decision.creator.display_name}
+                    badgeColor={decision.creator.badge_color}
+                    size="sm"
+                  />
+                )}
                 {decision.visible_to_all && (
                   <Badge variant="secondary" className="text-xs">
                     <Globe className="h-3 w-3 mr-1" />
@@ -713,17 +713,9 @@ export const DecisionOverview = () => {
       >
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
-              <CardTitle className="text-sm font-medium text-muted-foreground">{decision.title}</CardTitle>
-              {decision.creator && (
-                <UserBadge 
-                  userId={decision.creator.user_id}
-                  displayName={decision.creator.display_name}
-                  badgeColor={decision.creator.badge_color}
-                  size="sm"
-                />
-              )}
-            </div>
+            <CardTitle className="text-sm font-medium text-muted-foreground cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+              {decision.title}
+            </CardTitle>
             
             {decision.isCreator && (
               <Button
@@ -781,6 +773,14 @@ export const DecisionOverview = () => {
               </div>
               
               <div className="flex items-center gap-1 flex-wrap">
+                {decision.creator && (
+                  <UserBadge 
+                    userId={decision.creator.user_id}
+                    displayName={decision.creator.display_name}
+                    badgeColor={decision.creator.badge_color}
+                    size="sm"
+                  />
+                )}
                 <Badge variant="outline" className="text-gray-600 border-gray-600 text-xs">
                   <Archive className="h-3 w-3 mr-1" />
                   Archiviert
