@@ -182,6 +182,21 @@ export const DashboardGreetingSection = () => {
     const timeSlot = getCurrentTimeSlot();
     const greeting = getGreeting(timeSlot);
     
+    // Keyword-Detection für Plenum, Ausschuss, AK
+    const hasPlenum = appointments.some(apt => 
+      apt.title.toLowerCase().includes('plenum')
+    );
+    
+    const hasCommittee = appointments.some(apt => 
+      apt.title.toLowerCase().match(/ausschuss|ak\s/i)
+    );
+
+    const multipleSessions = (hasPlenum && hasCommittee) || 
+      (appointments.filter(apt => 
+        apt.title.toLowerCase().includes('plenum') || 
+        apt.title.toLowerCase().match(/ausschuss|ak\s/i)
+      ).length >= 2);
+    
     // Get contextual message
     const context = {
       timeSlot,
@@ -190,7 +205,10 @@ export const DashboardGreetingSection = () => {
       tasksCount: 0,
       completedTasks: 0,
       isHoliday: false,
-      month: new Date().getMonth() + 1
+      month: new Date().getMonth() + 1,
+      hasPlenum,
+      hasCommittee,
+      multipleSessions
     };
     
     const message = selectMessage(context);

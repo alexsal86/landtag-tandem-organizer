@@ -11,6 +11,9 @@ export interface DashboardMessage {
     maxAppointments?: number;
     taskThreshold?: number;
     completedTasks?: number;
+    hasPlenum?: boolean;
+    hasCommittee?: boolean;
+    multipleSessions?: boolean;
   };
   priority: number;
   text: string;
@@ -25,9 +28,114 @@ export interface DashboardContext {
   completedTasks: number;
   isHoliday: boolean;
   month: number;
+  hasPlenum?: boolean;
+  hasCommittee?: boolean;
+  multipleSessions?: boolean;
 }
 
 export const messages: DashboardMessage[] = [
+  // NEUE NACHRICHTEN: Plenum-Sitzungen (Priorität: 120)
+  {
+    id: 'plenum-morning-prep',
+    timeSlot: 'morning',
+    conditions: { hasPlenum: true },
+    priority: 120,
+    text: 'Heute ist Plenarsitzung! Zeit, alle Unterlagen zu prüfen und gut vorbereitet zu sein.',
+    variant: 'motivational'
+  },
+  {
+    id: 'plenum-midday-focus',
+    timeSlot: 'midday',
+    conditions: { hasPlenum: true },
+    priority: 120,
+    text: 'Plenarsitzung läuft! Bleib konzentriert und nutze die Pausen effektiv.',
+    variant: 'encouraging'
+  },
+  {
+    id: 'plenum-afternoon-endurance',
+    timeSlot: 'afternoon',
+    conditions: { hasPlenum: true },
+    priority: 120,
+    text: 'Die Plenarsitzung geht weiter. Durchhalten – wir sind auf der Zielgeraden!',
+    variant: 'motivational'
+  },
+  {
+    id: 'plenum-evening-debrief',
+    timeSlot: 'evening',
+    conditions: { hasPlenum: true },
+    priority: 120,
+    text: 'Plenarsitzung beendet! Zeit für eine kurze Nachbereitung und dann entspannen.',
+    variant: 'celebration'
+  },
+
+  // NEUE NACHRICHTEN: Ausschuss-Sitzungen (Priorität: 115)
+  {
+    id: 'committee-morning-prep',
+    timeSlot: 'morning',
+    conditions: { hasCommittee: true },
+    priority: 115,
+    text: 'Ausschusssitzung heute! Bereite dich vor und gehe die wichtigsten Punkte durch.',
+    variant: 'motivational'
+  },
+  {
+    id: 'committee-midday-active',
+    timeSlot: 'midday',
+    conditions: { hasCommittee: true },
+    priority: 115,
+    text: 'Ausschuss läuft! Nutze die Gelegenheit, deine Positionen einzubringen.',
+    variant: 'encouraging'
+  },
+  {
+    id: 'committee-afternoon-wrap',
+    timeSlot: 'afternoon',
+    conditions: { hasCommittee: true },
+    priority: 115,
+    text: 'Die Ausschusssitzung geht dem Ende entgegen. Halte durch!',
+    variant: 'motivational'
+  },
+  {
+    id: 'committee-evening-done',
+    timeSlot: 'evening',
+    conditions: { hasCommittee: true },
+    priority: 115,
+    text: 'Ausschuss geschafft! Zeit, die Ergebnisse zu reflektieren.',
+    variant: 'celebration'
+  },
+
+  // NEUE NACHRICHTEN: Mehrere Sitzungen an einem Tag (Priorität: 130 - höchste!)
+  {
+    id: 'multiple-sessions-morning',
+    timeSlot: 'morning',
+    conditions: { multipleSessions: true },
+    priority: 130,
+    text: 'Heute stehen mehrere Sitzungen an! Plane deine Pausen strategisch und bleib energiegeladen.',
+    variant: 'warning'
+  },
+  {
+    id: 'multiple-sessions-midday',
+    timeSlot: 'midday',
+    conditions: { multipleSessions: true },
+    priority: 130,
+    text: 'Mehrere Sitzungen laufen! Nimm dir kurze Auszeiten zwischen den Terminen.',
+    variant: 'encouraging'
+  },
+  {
+    id: 'multiple-sessions-afternoon',
+    timeSlot: 'afternoon',
+    conditions: { multipleSessions: true },
+    priority: 130,
+    text: 'Noch mehr Sitzungen heute! Du machst das großartig – weiter so!',
+    variant: 'motivational'
+  },
+  {
+    id: 'multiple-sessions-evening',
+    timeSlot: 'evening',
+    conditions: { multipleSessions: true },
+    priority: 130,
+    text: 'Wow! Mehrere Sitzungen an einem Tag gemeistert. Das war Spitzenleistung!',
+    variant: 'celebration'
+  },
+
   // Bestehende Nachrichten
   {
     id: 'friday-morning',
@@ -454,7 +562,7 @@ export const selectMessage = (context: DashboardContext): DashboardMessage => {
 
     // Bedingungen prüfen
     if (msg.conditions) {
-      const { minAppointments, maxAppointments, taskThreshold, completedTasks } = msg.conditions;
+      const { minAppointments, maxAppointments, taskThreshold, completedTasks, hasPlenum, hasCommittee, multipleSessions } = msg.conditions;
 
       if (minAppointments !== undefined && context.appointmentsCount < minAppointments) {
         return false;
@@ -469,6 +577,19 @@ export const selectMessage = (context: DashboardContext): DashboardMessage => {
       }
 
       if (completedTasks !== undefined && context.completedTasks < completedTasks) {
+        return false;
+      }
+
+      // Neue Keyword-basierte Bedingungen
+      if (hasPlenum !== undefined && context.hasPlenum !== hasPlenum) {
+        return false;
+      }
+
+      if (hasCommittee !== undefined && context.hasCommittee !== hasCommittee) {
+        return false;
+      }
+
+      if (multipleSessions !== undefined && context.multipleSessions !== multipleSessions) {
         return false;
       }
     }
