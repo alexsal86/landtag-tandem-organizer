@@ -4,6 +4,7 @@ import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar } from "lucide-react";
 import { NotificationSettings } from "./NotificationSettings";
 import { ExternalCalendarSettings } from "./ExternalCalendarSettings";
+import { TwoFactorSettings } from "./TwoFactorSettings";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -203,6 +204,11 @@ export function SettingsView() {
           <NotificationSettings />
         </div>
 
+        {/* Two-Factor Authentication */}
+        <div className="mt-6">
+          <TwoFactorSettings />
+        </div>
+
         {/* Additional Settings Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
           {/* Privacy & Security */}
@@ -220,10 +226,6 @@ export function SettingsView() {
               <Button variant="outline" className="w-full justify-start">
                 <Shield className="h-4 w-4 mr-2" />
                 Passwort ändern
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Shield className="h-4 w-4 mr-2" />
-                Zwei-Faktor-Authentifizierung
               </Button>
               <Button variant="outline" className="w-full justify-start">
                 <Shield className="h-4 w-4 mr-2" />

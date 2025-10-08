@@ -17,6 +17,9 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showMfaChallenge, setShowMfaChallenge] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [factorId, setFactorId] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
   const { customization, isLoading: customLoading } = useLoginCustomization();
@@ -71,7 +74,7 @@ const Auth = () => {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -84,8 +87,39 @@ const Auth = () => {
       } else {
         setError(error.message);
       }
+      return;
+    }
+
+    // Check if MFA is required
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const hasVerifiedFactor = factors?.all?.some((f: any) => f.status === "verified");
+    
+    if (hasVerifiedFactor && factors?.all && factors.all.length > 0) {
+      setFactorId(factors.all[0].id);
+      setShowMfaChallenge(true);
     } else {
       navigate("/");
+    }
+  };
+
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const { error } = await supabase.auth.mfa.challengeAndVerify({
+        factorId: factorId,
+        code: mfaCode
+      });
+
+      if (error) throw error;
+
+      navigate("/");
+    } catch (error: any) {
+      setError("Ungültiger 2FA-Code. Bitte versuchen Sie es erneut.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -192,7 +226,8 @@ const Auth = () => {
               </TabsList>
               
               <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4">
+                {!showMfaChallenge ? (
+                  <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signin-email">E-Mail</Label>
                     <Input
@@ -234,6 +269,59 @@ const Auth = () => {
                     Anmelden
                   </Button>
                 </form>
+                ) : (
+                  <form onSubmit={handleMfaVerify} className="space-y-4">
+                    <div className="text-center mb-4">
+                      <h3 className="font-semibold text-lg mb-2">Zwei-Faktor-Authentifizierung</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="mfa-code">6-stelliger Code</Label>
+                      <Input
+                        id="mfa-code"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                        required
+                        placeholder="000000"
+                        className="text-center text-2xl tracking-widest font-mono transition-all focus:ring-2 focus:ring-primary"
+                        autoFocus
+                      />
+                    </div>
+                    {error && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    )}
+                    <Button 
+                      type="submit" 
+                      className="w-full font-semibold"
+                      disabled={loading || mfaCode.length !== 6}
+                      style={{
+                        backgroundColor: customization.primary_color || '#57ab27'
+                      }}
+                    >
+                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Verifizieren
+                    </Button>
+                    <Button 
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => {
+                        setShowMfaChallenge(false);
+                        setMfaCode("");
+                        setError("");
+                      }}
+                    >
+                      Zurück
+                    </Button>
+                  </form>
+                )}
               </TabsContent>
               
               {customization.registration_enabled && (
