@@ -80,11 +80,15 @@ export function DecisionFileUpload({
 
     for (const file of Array.from(selectedFiles)) {
       try {
-        const fileName = `decisions/${decisionId}/${Date.now()}-${file.name}`;
+        // Get user ID for file path structure
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+        
+        const fileName = `${user.id}/decisions/${decisionId}/${Date.now()}-${file.name}`;
 
         // Upload to storage
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('documents')
+          .from('decision-attachments')
           .upload(fileName, file);
 
         if (uploadError) throw uploadError;
@@ -126,7 +130,7 @@ export function DecisionFileUpload({
   const downloadFile = async (filePath: string, fileName: string) => {
     try {
       const { data, error } = await supabase.storage
-        .from('documents')
+        .from('decision-attachments')
         .download(filePath);
 
       if (error) throw error;
@@ -158,7 +162,7 @@ export function DecisionFileUpload({
     try {
       // Delete from storage
       const { error: storageError } = await supabase.storage
-        .from('documents')
+        .from('decision-attachments')
         .remove([filePath]);
 
       if (storageError) throw storageError;
