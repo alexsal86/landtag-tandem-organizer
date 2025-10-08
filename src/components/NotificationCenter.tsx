@@ -26,6 +26,8 @@ const getNotificationIcon = (type: string) => {
   switch (type) {
     case 'task_created':
     case 'task_due':
+    case 'task_assigned':
+    case 'task_updated':
       return CheckCheck;
     case 'appointment_reminder':
       return Calendar;
@@ -35,6 +37,12 @@ const getNotificationIcon = (type: string) => {
       return DollarSign;
     case 'system_update':
       return Settings;
+    case 'employee_meeting_overdue':
+    case 'employee_meeting_due_soon':
+    case 'employee_meeting_request_overdue':
+    case 'employee_meeting_action_item_overdue':
+    case 'employee_meeting_scheduled':
+      return Calendar;
     default:
       return Bell;
   }
@@ -67,39 +75,51 @@ const NotificationItem: React.FC<{
       onMarkRead(notification.id);
     }
     
-      // Navigate based on notification type
-      if (notification.data) {
-        const { type } = notification.data;
-        let path = '/';
-        
-        switch (type) {
-          case 'task_created':
-          case 'task_due':
-            path = '/tasks';
-            break;
-          case 'appointment_reminder':
-            path = '/calendar';
-            break;
-          case 'message_received':
-            path = '/messages';
-            break;
-          case 'document_created':
-            path = '/documents';
-            break;
-          case 'knowledge_document_created':
-            path = '/knowledge';
-            break;
-          case 'meeting_created':
-            path = '/meetings';
-            break;
-          default:
-            path = '/';
+    // Navigate based on notification type or notification_types.name
+    const notificationType = notification.notification_types?.name || notification.data?.type;
+    let path = '/';
+    
+    switch (notificationType) {
+      case 'task_created':
+      case 'task_due':
+      case 'task_assigned':
+      case 'task_updated':
+        path = '/tasks';
+        break;
+      case 'appointment_reminder':
+        path = '/calendar';
+        break;
+      case 'message_received':
+        path = '/messages';
+        break;
+      case 'document_created':
+        path = '/documents';
+        break;
+      case 'knowledge_document_created':
+        path = '/knowledge';
+        break;
+      case 'meeting_created':
+        path = '/meetings';
+        break;
+      case 'employee_meeting_overdue':
+      case 'employee_meeting_due_soon':
+      case 'employee_meeting_request_overdue':
+      case 'employee_meeting_action_item_overdue':
+      case 'employee_meeting_scheduled':
+        // Navigate to employees view
+        path = '/employees';
+        // If there's a specific meeting_id in data, navigate to that meeting
+        if (notification.data?.meeting_id) {
+          path = `/employee-meeting/${notification.data.meeting_id}`;
         }
-        
-        // Use proper navigation
-        window.location.href = '/#' + path;
-        onClose?.();
-      }
+        break;
+      default:
+        path = '/';
+    }
+    
+    // Use proper navigation
+    window.location.href = '/#' + path;
+    onClose?.();
   };
 
   return (
