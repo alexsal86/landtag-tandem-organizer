@@ -50,12 +50,23 @@ export function SenderInformationManager() {
     if (!currentTenant) return;
     setLoading(true);
     try {
-      const data = { ...formData, tenant_id: currentTenant.id, is_active: true };
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const data = { 
+        ...formData, 
+        tenant_id: currentTenant.id, 
+        is_active: true,
+        created_by: user.id
+      };
+      
       if (editingInfo) {
-        await supabase.from('sender_information').update(data).eq('id', editingInfo.id);
+        const { error } = await supabase.from('sender_information').update(data as any).eq('id', editingInfo.id);
+        if (error) throw error;
         toast({ title: "Absender aktualisiert" });
       } else {
-        await supabase.from('sender_information').insert(data);
+        const { error } = await supabase.from('sender_information').insert([data] as any);
+        if (error) throw error;
         toast({ title: "Absender erstellt" });
       }
       setShowDialog(false);
