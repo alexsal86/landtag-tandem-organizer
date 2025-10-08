@@ -96,7 +96,7 @@ export function AppointmentPreparationFileUpload({
         const filePath = `${tenantId}/preparations/${preparationId}/${fileName}`;
         
         // Upload to storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('planning-documents')
           .upload(filePath, file);
 
@@ -111,7 +111,7 @@ export function AppointmentPreparationFileUpload({
           .from('appointment_preparation_documents')
           .insert({
             preparation_id: preparationId,
-            file_path: uploadData.path,
+            file_path: filePath,
             file_name: file.name,
             file_size: file.size,
             file_type: file.type,
@@ -127,7 +127,7 @@ export function AppointmentPreparationFileUpload({
           f.file_name === file.name && f.uploading ? {
             id: docData.id,
             file_name: file.name,
-            file_path: uploadData.path,
+            file_path: filePath,
             file_size: file.size,
             file_type: file.type,
             uploaded: true,
