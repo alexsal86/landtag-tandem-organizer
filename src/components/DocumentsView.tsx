@@ -27,6 +27,12 @@ import {
   Tag,
   FileType,
   Folder,
+  FolderPlus,
+  FolderInput,
+  Home,
+  ChevronRight,
+  MoreVertical,
+  Edit,
   Mail,
   Edit3,
   Send,
@@ -45,6 +51,22 @@ import LetterPDFExport from "./LetterPDFExport";
 import LetterDOCXExport from "./LetterDOCXExport";
 import { ArchivedLetterDetails } from "./letters/ArchivedLetterDetails";
 import { useLetterArchiving } from "@/hooks/useLetterArchiving";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+interface DocumentFolder {
+  id: string;
+  user_id: string;
+  tenant_id: string;
+  name: string;
+  description?: string;
+  parent_folder_id?: string;
+  color: string;
+  icon: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+  documentCount?: number;
+}
 
 interface Document {
   id: string;
@@ -62,6 +84,7 @@ interface Document {
   document_type?: string;
   source_letter_id?: string;
   archived_attachments?: any[];
+  folder_id?: string;
 }
 
 interface Letter {
@@ -93,6 +116,8 @@ export function DocumentsView() {
   
   const [documents, setDocuments] = useState<Document[]>([]);
   const [letters, setLetters] = useState<Letter[]>([]);
+  const [folders, setFolders] = useState<DocumentFolder[]>([]);
+  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -108,6 +133,15 @@ export function DocumentsView() {
   const [showArchivedLetterDetails, setShowArchivedLetterDetails] = useState(false);
   const [selectedArchivedDocument, setSelectedArchivedDocument] = useState<Document | null>(null);
   
+  // Folder management state
+  const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
+  const [showMoveFolderDialog, setShowMoveFolderDialog] = useState(false);
+  const [folderName, setFolderName] = useState("");
+  const [folderDescription, setFolderDescription] = useState("");
+  const [folderColor, setFolderColor] = useState("#3b82f6");
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [moveToFolderId, setMoveToFolderId] = useState<string>("");
+  
   // Letter archiving hook
   const { archiveLetter, isArchiving } = useLetterArchiving();
 
@@ -118,6 +152,7 @@ export function DocumentsView() {
   const [uploadCategory, setUploadCategory] = useState("general");
   const [uploadTags, setUploadTags] = useState("");
   const [uploadStatus, setUploadStatus] = useState("draft");
+  const [uploadFolderId, setUploadFolderId] = useState<string>("");
 
   const categoryLabels = {
     general: "Allgemein",
@@ -139,6 +174,7 @@ export function DocumentsView() {
     if (user && currentTenant) {
       if (activeTab === 'documents') {
         fetchDocuments();
+        fetchFolders();
       } else {
         fetchLetters();
       }
@@ -169,6 +205,37 @@ export function DocumentsView() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFolders = async () => {
+    if (!currentTenant) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('document_folders')
+        .select('*')
+        .eq('tenant_id', currentTenant.id)
+        .order('order_index', { ascending: true });
+
+      if (error) throw error;
+      
+      // Count documents in each folder
+      const foldersWithCounts = await Promise.all((data || []).map(async (folder) => {
+        const { count } = await supabase
+          .from('documents')
+          .select('*', { count: 'exact', head: true })
+          .eq('folder_id', folder.id);
+        
+        return {
+          ...folder,
+          documentCount: count || 0
+        };
+      }));
+      
+      setFolders(foldersWithCounts);
+    } catch (error: any) {
+      console.error('Error fetching folders:', error);
     }
   };
 
@@ -216,7 +283,7 @@ export function DocumentsView() {
         .from('documents')
         .insert({
           user_id: user.id,
-          tenant_id: currentTenant?.id || '', // Use current tenant ID
+          tenant_id: currentTenant?.id || '',
           title: uploadTitle,
           description: uploadDescription,
           file_name: uploadFile.name,
@@ -226,6 +293,7 @@ export function DocumentsView() {
           category: uploadCategory,
           tags: uploadTags ? uploadTags.split(',').map(tag => tag.trim()) : [],
           status: uploadStatus,
+          folder_id: uploadFolderId || null,
         });
 
       if (dbError) throw dbError;
@@ -240,11 +308,13 @@ export function DocumentsView() {
       setUploadTitle("");
       setUploadDescription("");
       setUploadTags("");
+      setUploadFolderId("");
       setShowUploadDialog(false);
       
-      // Refresh documents
+      // Refresh documents and folders
       if (activeTab === 'documents') {
         fetchDocuments();
+        fetchFolders();
       }
     } catch (error: any) {
       toast({
@@ -351,9 +421,12 @@ export function DocumentsView() {
                          doc.file_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === "all" || doc.category === filterCategory;
     const matchesStatus = filterStatus === "all" || doc.status === filterStatus;
+    const matchesFolder = currentFolder ? doc.folder_id === currentFolder : !doc.folder_id;
     
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesCategory && matchesStatus && matchesFolder;
   });
+
+  const currentFolderSubfolders = folders.filter(f => f.parent_folder_id === currentFolder);
 
   const filteredLetters = letters.filter(letter => {
     const matchesSearch = letter.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -528,6 +601,138 @@ export function DocumentsView() {
     }
   };
 
+  // Folder management functions
+  const handleCreateFolder = async () => {
+    if (!folderName || !user || !currentTenant) return;
+
+    try {
+      const { error } = await supabase
+        .from('document_folders')
+        .insert({
+          user_id: user.id,
+          tenant_id: currentTenant.id,
+          name: folderName,
+          description: folderDescription,
+          parent_folder_id: currentFolder,
+          color: folderColor,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Ordner erstellt",
+        description: `Der Ordner "${folderName}" wurde erfolgreich erstellt.`,
+      });
+
+      setFolderName("");
+      setFolderDescription("");
+      setFolderColor("#3b82f6");
+      setShowCreateFolderDialog(false);
+      fetchFolders();
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+    const folder = folders.find(f => f.id === folderId);
+    if (!folder) return;
+
+    if (folder.documentCount && folder.documentCount > 0) {
+      toast({
+        title: "Ordner nicht leer",
+        description: "Bitte verschieben oder löschen Sie zuerst alle Dokumente in diesem Ordner.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(`Möchten Sie den Ordner "${folder.name}" wirklich löschen?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('document_folders')
+        .delete()
+        .eq('id', folderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Ordner gelöscht",
+        description: "Der Ordner wurde erfolgreich gelöscht.",
+      });
+
+      fetchFolders();
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMoveDocument = async () => {
+    if (!selectedDocument) return;
+
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .update({ folder_id: moveToFolderId || null })
+        .eq('id', selectedDocument.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Dokument verschoben",
+        description: "Das Dokument wurde erfolgreich verschoben.",
+      });
+
+      setShowMoveFolderDialog(false);
+      setSelectedDocument(null);
+      setMoveToFolderId("");
+      fetchDocuments();
+      fetchFolders();
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const navigateToFolder = (folderId: string) => {
+    setCurrentFolder(folderId);
+  };
+
+  const navigateUp = () => {
+    const currentFolderData = folders.find(f => f.id === currentFolder);
+    if (currentFolderData?.parent_folder_id) {
+      setCurrentFolder(currentFolderData.parent_folder_id);
+    } else {
+      setCurrentFolder(null);
+    }
+  };
+
+  const getCurrentFolderPath = (): DocumentFolder[] => {
+    const path: DocumentFolder[] = [];
+    let current = currentFolder;
+    
+    while (current) {
+      const folder = folders.find(f => f.id === current);
+      if (!folder) break;
+      path.unshift(folder);
+      current = folder.parent_folder_id || null;
+    }
+    
+    return path;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="max-w-7xl mx-auto">
@@ -547,13 +752,70 @@ export function DocumentsView() {
               </div>
               <div className="flex gap-2">
                 {activeTab === 'documents' ? (
-                  <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-                    <DialogTrigger asChild>
-                      <Button className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Dokument hochladen
-                      </Button>
-                    </DialogTrigger>
+                  <>
+                    <Dialog open={showCreateFolderDialog} onOpenChange={setShowCreateFolderDialog}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="gap-2">
+                          <FolderPlus className="h-4 w-4" />
+                          Ordner erstellen
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[400px]">
+                        <DialogHeader>
+                          <DialogTitle>Neuen Ordner erstellen</DialogTitle>
+                          <DialogDescription>
+                            Erstellen Sie einen neuen Ordner zur Organisation Ihrer Dokumente
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="folder-name">Ordnername</Label>
+                            <Input
+                              id="folder-name"
+                              value={folderName}
+                              onChange={(e) => setFolderName(e.target.value)}
+                              placeholder="z.B. Projektdokumente"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="folder-description">Beschreibung (optional)</Label>
+                            <Textarea
+                              id="folder-description"
+                              value={folderDescription}
+                              onChange={(e) => setFolderDescription(e.target.value)}
+                              placeholder="Ordnerbeschreibung"
+                              rows={2}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="folder-color">Farbe</Label>
+                            <Input
+                              id="folder-color"
+                              type="color"
+                              value={folderColor}
+                              onChange={(e) => setFolderColor(e.target.value)}
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setShowCreateFolderDialog(false)}>
+                              Abbrechen
+                            </Button>
+                            <Button onClick={handleCreateFolder} disabled={!folderName}>
+                              <FolderPlus className="h-4 w-4 mr-2" />
+                              Erstellen
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    
+                    <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+                      <DialogTrigger asChild>
+                        <Button className="gap-2">
+                          <Plus className="h-4 w-4" />
+                          Dokument hochladen
+                        </Button>
+                      </DialogTrigger>
                     <DialogContent className="sm:max-w-[500px]">
                       <DialogHeader>
                         <DialogTitle>Neues Dokument hochladen</DialogTitle>
@@ -626,6 +888,22 @@ export function DocumentsView() {
                             placeholder="Tag1, Tag2, Tag3"
                           />
                         </div>
+                        <div>
+                          <Label htmlFor="folder">Ordner (optional)</Label>
+                          <Select value={uploadFolderId} onValueChange={setUploadFolderId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Kein Ordner" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">Kein Ordner</SelectItem>
+                              {folders.filter(f => f.parent_folder_id === currentFolder).map((folder) => (
+                                <SelectItem key={folder.id} value={folder.id}>
+                                  {folder.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" onClick={() => setShowUploadDialog(false)}>
                             Abbrechen
@@ -641,6 +919,7 @@ export function DocumentsView() {
                       </div>
                     </DialogContent>
                   </Dialog>
+                  </>
                  ) : (
                    <div className="flex gap-2">
                      <Button onClick={handleCreateLetter} className="gap-2">
@@ -797,6 +1076,33 @@ export function DocumentsView() {
           </Card>
         </div>
 
+        {/* Breadcrumb Navigation */}
+        {activeTab === 'documents' && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setCurrentFolder(null)}
+              className="gap-2"
+            >
+              <Home className="h-4 w-4" />
+              Alle Dokumente
+            </Button>
+            {getCurrentFolderPath().map((folder) => (
+              <div key={folder.id} className="flex items-center gap-2">
+                <ChevronRight className="h-4 w-4" />
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setCurrentFolder(folder.id)}
+                >
+                  {folder.name}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Content Grid */}
         {loading && (activeTab === 'documents' ? documents.length === 0 : letters.length === 0) ? (
           <div className="text-center py-8">
@@ -805,7 +1111,58 @@ export function DocumentsView() {
             </p>
           </div>
         ) : activeTab === 'documents' ? (
-          filteredDocuments.length === 0 ? (
+          <>
+            {/* Folders Grid */}
+            {currentFolderSubfolders.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold mb-4">Ordner</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {currentFolderSubfolders.map((folder) => (
+                    <Card 
+                      key={folder.id}
+                      className="hover:shadow-lg cursor-pointer transition-shadow"
+                      onClick={() => navigateToFolder(folder.id)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Folder className="h-8 w-8 flex-shrink-0" style={{ color: folder.color }} />
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold truncate">{folder.name}</h3>
+                            <p className="text-xs text-muted-foreground">
+                              {folder.documentCount || 0} Dokument{folder.documentCount !== 1 ? 'e' : ''}
+                            </p>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteFolder(folder.id);
+                              }}>
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Löschen
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        {folder.description && (
+                          <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                            {folder.description}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Documents Section */}
+            {filteredDocuments.length === 0 && currentFolderSubfolders.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -898,6 +1255,18 @@ export function DocumentsView() {
                          >
                            <Download className="h-4 w-4" />
                            Download
+                         </Button>
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => {
+                             setSelectedDocument(document);
+                             setShowMoveFolderDialog(true);
+                           }}
+                           className="gap-1"
+                         >
+                           <FolderInput className="h-4 w-4" />
+                           Verschieben
                          </Button>
                        </div>
                        <Button
@@ -992,7 +1361,8 @@ export function DocumentsView() {
                 </Table>
               </Card>
             )
-          )
+          )}
+          </>
         ) : (
           // Letters tab
           filteredLetters.length === 0 ? (
@@ -1284,6 +1654,49 @@ export function DocumentsView() {
                 </Button>
                 <Button onClick={saveArchiveSettings}>
                   Speichern
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Move Document Dialog */}
+        <Dialog open={showMoveFolderDialog} onOpenChange={setShowMoveFolderDialog}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Dokument verschieben</DialogTitle>
+              <DialogDescription>
+                Wählen Sie einen Zielordner für "{selectedDocument?.title}"
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="target-folder">Zielordner</Label>
+                <Select value={moveToFolderId} onValueChange={setMoveToFolderId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Ordner wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Kein Ordner (Hauptebene)</SelectItem>
+                    {folders.map((folder) => (
+                      <SelectItem key={folder.id} value={folder.id}>
+                        {folder.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => {
+                  setShowMoveFolderDialog(false);
+                  setSelectedDocument(null);
+                  setMoveToFolderId("");
+                }}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleMoveDocument}>
+                  <FolderInput className="h-4 w-4 mr-2" />
+                  Verschieben
                 </Button>
               </div>
             </div>

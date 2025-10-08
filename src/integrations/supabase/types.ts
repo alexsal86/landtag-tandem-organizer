@@ -1548,6 +1548,56 @@ export type Database = {
           },
         ]
       }
+      document_folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          order_index: number | null
+          parent_folder_id: string | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          order_index?: number | null
+          parent_folder_id?: string | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          order_index?: number | null
+          parent_folder_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           archived_attachments: Json | null
@@ -1559,6 +1609,7 @@ export type Database = {
           file_path: string
           file_size: number | null
           file_type: string | null
+          folder_id: string | null
           id: string
           source_letter_id: string | null
           status: string | null
@@ -1579,6 +1630,7 @@ export type Database = {
           file_path: string
           file_size?: number | null
           file_type?: string | null
+          folder_id?: string | null
           id?: string
           source_letter_id?: string | null
           status?: string | null
@@ -1599,6 +1651,7 @@ export type Database = {
           file_path?: string
           file_size?: number | null
           file_type?: string | null
+          folder_id?: string | null
           id?: string
           source_letter_id?: string | null
           status?: string | null
@@ -1610,6 +1663,13 @@ export type Database = {
           workflow_history?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_tenant_id_fkey"
             columns: ["tenant_id"]
