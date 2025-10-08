@@ -9,7 +9,7 @@ import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionEditDialog } from "./DecisionEditDialog";
 import { UserBadge } from "@/components/ui/user-badge";
-import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical, Archive, RotateCcw } from "lucide-react";
+import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical, Archive, RotateCcw, Paperclip } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,7 @@ interface DecisionRequest {
   isParticipant?: boolean;
   isStandalone: boolean;
   isCreator: boolean;
+  attachmentCount?: number;
   creator?: {
     user_id: string;
     display_name: string | null;
@@ -96,7 +97,8 @@ export const DecisionOverview = () => {
             visible_to_all,
             tasks (
               title
-            )
+            ),
+            task_decision_attachments (count)
           ),
           task_decision_responses (
             id
@@ -131,7 +133,8 @@ export const DecisionOverview = () => {
             task_decision_responses (
               id
             )
-          )
+          ),
+          task_decision_attachments (count)
         `)
         .in('status', ['active', 'open']);
 
@@ -161,7 +164,8 @@ export const DecisionOverview = () => {
             task_decision_responses (
               id
             )
-          )
+          ),
+          task_decision_attachments (count)
         `)
         .eq('status', 'archived');
 
@@ -190,6 +194,7 @@ export const DecisionOverview = () => {
         isParticipant: true,
         isStandalone: !item.task_decisions.task_id,
         isCreator: item.task_decisions.created_by === currentUserId,
+        attachmentCount: item.task_decisions.task_decision_attachments?.[0]?.count || 0,
       })) || [];
 
       // Format all decisions - filter for relevant ones
@@ -226,6 +231,7 @@ export const DecisionOverview = () => {
             isParticipant: !!userParticipant,
             isStandalone: !item.task_id,
             isCreator: item.created_by === currentUserId,
+            attachmentCount: item.task_decision_attachments?.[0]?.count || 0,
           };
         }) || [];
 
@@ -541,6 +547,12 @@ export const DecisionOverview = () => {
                     Task-bezogen
                   </Badge>
                 )}
+                {decision.attachmentCount && decision.attachmentCount > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    <Paperclip className="h-3 w-3 mr-1" />
+                    {decision.attachmentCount}
+                  </Badge>
+                )}
               </div>
               {decision.task ? (
                 <p className="text-xs text-muted-foreground">
@@ -719,6 +731,12 @@ export const DecisionOverview = () => {
                   <Badge variant="destructive">
                     <CheckSquare className="h-3 w-3 mr-1" />
                     Task-bezogen
+                  </Badge>
+                )}
+                {decision.attachmentCount && decision.attachmentCount > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    <Paperclip className="h-3 w-3 mr-1" />
+                    {decision.attachmentCount}
                   </Badge>
                 )}
               </div>

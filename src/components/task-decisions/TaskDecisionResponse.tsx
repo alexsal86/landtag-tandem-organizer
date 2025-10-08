@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, MessageCircle, Edit2 } from "lucide-react";
+import { Check, X, MessageCircle, Edit2, Paperclip } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { DecisionFileUpload } from "./DecisionFileUpload";
 
 interface TaskDecisionResponseProps {
   decisionId: string;
@@ -271,6 +272,19 @@ export const TaskDecisionResponse = ({
               placeholder="Ihre Frage oder Ihr Kommentar..."
               rows={4}
             />
+            
+            {/* File Upload Section */}
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-2 flex items-center">
+                <Paperclip className="h-4 w-4 mr-2" />
+                Dateien anhängen (optional)
+              </p>
+              <DecisionFileUpload 
+                decisionId={decisionId}
+                canUpload={true}
+              />
+            </div>
+            
             <div className="flex justify-end space-x-2">
               <Button 
                 variant="outline" 

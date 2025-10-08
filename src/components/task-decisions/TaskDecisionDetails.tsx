@@ -6,10 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { UserBadge } from "@/components/ui/user-badge";
-import { Check, X, MessageCircle, Send, Archive, History } from "lucide-react";
+import { Check, X, MessageCircle, Send, Archive, History, Paperclip } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ResponseHistoryTimeline } from "./ResponseHistoryTimeline";
+import { DecisionFileUpload } from "./DecisionFileUpload";
 
 interface Participant {
   id: string;
@@ -278,6 +279,23 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                   ({summary.pending} ausstehend)
                 </span>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* File Attachments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center">
+                <Paperclip className="h-4 w-4 mr-2" />
+                Anhänge
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DecisionFileUpload 
+                decisionId={decisionId}
+                onFilesChange={loadDecisionDetails}
+                canUpload={true}
+              />
             </CardContent>
           </Card>
 
