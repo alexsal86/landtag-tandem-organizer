@@ -514,7 +514,7 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="system" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             System & Allgemein
@@ -539,17 +539,9 @@ export default function Administration() {
             <FileText className="h-4 w-4" />
             Dokumente & Vorlagen
           </TabsTrigger>
-          <TabsTrigger value="calendar-sync" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Kalender-Sync
-          </TabsTrigger>
           <TabsTrigger value="rss" className="flex items-center gap-2">
             <Rss className="h-4 w-4" />
             RSS-Quellen & News
-          </TabsTrigger>
-          <TabsTrigger value="admin" className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
-            Verwaltung
           </TabsTrigger>
         </TabsList>
 
@@ -561,6 +553,7 @@ export default function Administration() {
               <TabsTrigger value="login">Login-Anpassung</TabsTrigger>
               <TabsTrigger value="status">Status</TabsTrigger>
               <TabsTrigger value="collaboration">Kollaboration</TabsTrigger>
+              <TabsTrigger value="expense">Verwaltung</TabsTrigger>
               {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
             </TabsList>
 
@@ -578,6 +571,10 @@ export default function Administration() {
 
             <TabsContent value="collaboration">
               <TenantCollaboration />
+            </TabsContent>
+
+            <TabsContent value="expense">
+              <ExpenseManagement />
             </TabsContent>
 
             {isSuperAdmin && (
@@ -685,7 +682,8 @@ export default function Administration() {
               <TabsTrigger value="config">Termine</TabsTrigger>
               <TabsTrigger value="guests">Standard-Gäste</TabsTrigger>
               <TabsTrigger value="preparation">Vorbereitung</TabsTrigger>
-              <TabsTrigger value="calendar-sync">Kalender Sync</TabsTrigger>
+              <TabsTrigger value="calendar-debug">Kalender Debug</TabsTrigger>
+              <TabsTrigger value="calendar-sync">Synchronisation</TabsTrigger>
             </TabsList>
 
             <TabsContent value="config">
@@ -905,8 +903,12 @@ export default function Administration() {
               <AppointmentPreparationTemplateAdmin />
             </TabsContent>
 
-            <TabsContent value="calendar-sync">
+            <TabsContent value="calendar-debug">
               <CalendarSyncDebug />
+            </TabsContent>
+
+            <TabsContent value="calendar-sync">
+              <CalendarSyncSettings />
             </TabsContent>
           </Tabs>
         </TabsContent>
@@ -1501,11 +1503,6 @@ export default function Administration() {
           </Tabs>
         </TabsContent>
 
-        {/* Kalender-Synchronisation */}
-        <TabsContent value="calendar-sync">
-          <CalendarSyncSettings />
-        </TabsContent>
-
         {/* RSS-Quellen & News */}
         <TabsContent value="rss" className="space-y-6">
           <div>
@@ -1517,11 +1514,6 @@ export default function Administration() {
             <h3 className="text-lg font-medium mb-4">RSS-Einstellungen</h3>
             <RSSSettingsManager />
           </div>
-        </TabsContent>
-
-        {/* Verwaltung */}
-        <TabsContent value="admin" className="space-y-6">
-          <ExpenseManagement />
         </TabsContent>
       </Tabs>
     </main>
