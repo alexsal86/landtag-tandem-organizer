@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useKarlsruheDistricts, KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
 import { useMapFlags, MapFlag } from '@/hooks/useMapFlags';
 import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
@@ -28,6 +28,13 @@ export const KarlsruheDistrictsView = () => {
     new Set(flagTypes.map(t => t.id))
   );
   const [showDistricts, setShowDistricts] = useState(true);
+
+  // Initialize visible flag types when flagTypes are loaded
+  useEffect(() => {
+    if (flagTypes.length > 0 && visibleFlagTypes.size === 0) {
+      setVisibleFlagTypes(new Set(flagTypes.map(t => t.id)));
+    }
+  }, [flagTypes]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
