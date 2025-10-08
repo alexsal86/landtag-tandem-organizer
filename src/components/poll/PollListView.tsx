@@ -519,12 +519,62 @@ export const PollListView = () => {
 
             <TabsContent value="archive" className="mt-0">
               {archivedPolls.length > 0 && (
-                <Alert className="mb-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Archivierte Abstimmungen</AlertTitle>
-                  <AlertDescription>
-                    Diese Abstimmungen wurden automatisch oder manuell archiviert.
-                    Sie können wiederhergestellt oder endgültig gelöscht werden.
+                <Alert className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+                  <Archive className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <AlertTitle className="text-blue-900 dark:text-blue-100 mb-2">
+                    Archivierte Terminabstimmungen
+                  </AlertTitle>
+                  <AlertDescription className="text-blue-800 dark:text-blue-200 space-y-3 text-sm">
+                    <p>
+                      Diese Abstimmungen wurden automatisch oder manuell archiviert und sind 
+                      nicht mehr für Teilnehmer sichtbar.
+                    </p>
+
+                    <div className="space-y-1">
+                      <p className="font-medium">Automatische Archivierung erfolgt bei:</p>
+                      <ul className="list-none space-y-1.5 ml-2">
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 mt-0.5 text-green-600 dark:text-green-500 flex-shrink-0" />
+                          <span>
+                            <strong>Abgeschlossen:</strong> Alle Teilnehmer haben geantwortet
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <XCircle className="h-4 w-4 mt-0.5 text-red-600 dark:text-red-500 flex-shrink-0" />
+                          <span>
+                            <strong>Abgebrochen:</strong> Frist abgelaufen und weniger als 50% Beteiligung
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="font-medium">Verfügbare Aktionen:</p>
+                      <ul className="list-none space-y-1.5 ml-2">
+                        <li className="flex items-start gap-2">
+                          <RotateCcw className="h-4 w-4 mt-0.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                          <span>
+                            <strong>Wiederherstellen:</strong> Setzt die Abstimmung zurück auf "Aktiv"
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Trash2 className="h-4 w-4 mt-0.5 text-destructive flex-shrink-0" />
+                          <span>
+                            <strong>Endgültig löschen:</strong> Unwiderrufliche Löschung aller Daten
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="pt-2 border-t border-blue-300 dark:border-blue-700">
+                      <p className="text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                        <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                        <span>
+                          Das System prüft täglich um 6:00 Uhr automatisch alle aktiven Abstimmungen 
+                          und verschiebt sie bei Bedarf ins Archiv. Sie werden per Benachrichtigung informiert.
+                        </span>
+                      </p>
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}
