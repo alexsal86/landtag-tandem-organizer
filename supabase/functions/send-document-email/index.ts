@@ -15,20 +15,24 @@ const corsHeaders = {
 interface SendEmailRequest {
   subject: string;
   body_html: string;
-  recipients: string[]; // Email addresses
+  recipients?: string[];
+  recipient_emails?: string[];
   cc?: string[];
   bcc?: string[];
   distribution_list_ids?: string[];
   contact_ids?: string[];
   document_ids?: string[];
-  template_id?: string;
-  variables?: Record<string, string>;
   tenant_id: string;
   user_id: string;
+  sender_id?: string;
+}
+
+interface FailedRecipient {
+  email: string;
+  error: string;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -39,130 +43,196 @@ serve(async (req) => {
     const {
       subject,
       body_html,
-      recipients,
+      recipients = [],
+      recipient_emails = [],
       cc = [],
       bcc = [],
       distribution_list_ids = [],
       contact_ids = [],
       document_ids = [],
-      template_id,
-      variables = {},
       tenant_id,
       user_id,
+      sender_id,
     }: SendEmailRequest = await req.json();
 
-    console.log("Send email request received:", {
+    console.log("Email request:", {
       subject,
-      recipients: recipients.length,
-      distribution_list_ids: distribution_list_ids.length,
-      contact_ids: contact_ids.length,
+      recipients_count: recipients.length + recipient_emails.length,
+      contact_ids_count: contact_ids.length,
+      distribution_list_ids_count: distribution_list_ids.length,
     });
 
-    // Collect all email addresses
-    const allRecipients = new Set(recipients);
+    // Collect recipients with contact data for personalization
+    const allRecipients: Array<{ email: string; contact_data?: any }> = [];
 
-    // Resolve distribution lists to email addresses
+    // Add manual recipients
+    recipients.forEach(email => allRecipients.push({ email }));
+    recipient_emails.forEach(email => allRecipients.push({ email }));
+
+    // Get emails from distribution lists with contact data
     if (distribution_list_ids.length > 0) {
       const { data: listMembers, error: listError } = await supabase
         .from("distribution_list_members")
-        .select("contact_id, contacts!inner(email)")
+        .select("contact_id, contacts(id, name, email, organization, phone)")
         .in("distribution_list_id", distribution_list_ids);
 
-      if (listError) throw listError;
-
-      listMembers?.forEach((member: any) => {
-        if (member.contacts?.email) {
-          allRecipients.add(member.contacts.email);
-        }
-      });
+      if (listError) {
+        console.error("Distribution list error:", listError);
+      } else if (listMembers) {
+        listMembers.forEach((member: any) => {
+          if (member.contacts?.email) {
+            allRecipients.push({
+              email: member.contacts.email,
+              contact_data: member.contacts,
+            });
+          }
+        });
+      }
     }
 
-    // Resolve contact IDs to email addresses
+    // Get contact data
     if (contact_ids.length > 0) {
       const { data: contacts, error: contactError } = await supabase
         .from("contacts")
-        .select("email, name")
+        .select("id, name, email, organization, phone")
         .in("id", contact_ids);
 
-      if (contactError) throw contactError;
-
-      contacts?.forEach((contact: any) => {
-        if (contact.email) {
-          allRecipients.add(contact.email);
-        }
-      });
+      if (contactError) {
+        console.error("Contacts error:", contactError);
+      } else if (contacts) {
+        contacts.forEach((contact: any) => {
+          if (contact.email) {
+            allRecipients.push({
+              email: contact.email,
+              contact_data: contact,
+            });
+          }
+        });
+      }
     }
 
-    // Get sender information
-    const { data: senderInfo } = await supabase
-      .from("sender_information")
-      .select("*")
-      .eq("tenant_id", tenant_id)
-      .eq("is_active", true)
-      .limit(1)
-      .single();
+    // Get sender info
+    let fromEmail = "onboarding@resend.dev";
+    let fromName = "Team";
 
-    const fromEmail = senderInfo?.email || "noreply@example.com";
-    const fromName = senderInfo?.name || "Absender";
+    if (sender_id) {
+      const { data: senderInfo, error: senderError } = await supabase
+        .from("sender_information")
+        .select("name, landtag_email")
+        .eq("id", sender_id)
+        .single();
 
-    // Process body_html with variables
-    let processedBody = body_html;
-    Object.entries(variables).forEach(([key, value]) => {
-      const regex = new RegExp(`{{${key}}}`, "g");
-      processedBody = processedBody.replace(regex, value);
-    });
+      if (!senderError && senderInfo) {
+        fromEmail = senderInfo.landtag_email || fromEmail;
+        fromName = senderInfo.name || fromName;
+      }
+    }
 
-    // Send emails
-    const recipientArray = Array.from(allRecipients);
-    const emailPromises: Promise<any>[] = [];
+    // Remove duplicates
+    const uniqueRecipients = Array.from(
+      new Map(allRecipients.map(r => [r.email, r])).values()
+    );
 
-    console.log(`Sending to ${recipientArray.length} recipients`);
+    console.log(`Sending to ${uniqueRecipients.length} unique recipients`);
 
-    for (const recipient of recipientArray) {
-      emailPromises.push(
-        resend.emails.send({
-          from: `${fromName} <${fromEmail}>`,
-          to: [recipient],
-          cc: cc.length > 0 ? cc : undefined,
-          bcc: bcc.length > 0 ? bcc : undefined,
-          subject,
-          html: processedBody,
-        })
+    if (uniqueRecipients.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "No recipients found" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
-    const results = await Promise.allSettled(emailPromises);
-    
-    const successCount = results.filter(r => r.status === "fulfilled").length;
-    const failureCount = results.filter(r => r.status === "rejected").length;
+    // Replace variables function
+    const replaceVariables = (text: string, contactData?: any) => {
+      if (!contactData) return text;
+      
+      return text
+        .replace(/\{\{name\}\}/g, contactData.name || "")
+        .replace(/\{\{email\}\}/g, contactData.email || "")
+        .replace(/\{\{organization\}\}/g, contactData.organization || "")
+        .replace(/\{\{phone\}\}/g, contactData.phone || "");
+    };
 
-    console.log(`Email results: ${successCount} sent, ${failureCount} failed`);
+    // Send personalized emails
+    let sent = 0;
+    let failed = 0;
+    const failedRecipients: FailedRecipient[] = [];
+    const personalizationData: Record<string, any> = {};
 
-    // Log email in database
-    const { error: logError } = await supabase.from("email_logs").insert({
+    for (const recipient of uniqueRecipients) {
+      try {
+        const personalizedSubject = replaceVariables(subject, recipient.contact_data);
+        const personalizedBody = replaceVariables(body_html, recipient.contact_data);
+
+        const emailResponse = await resend.emails.send({
+          from: `${fromName} <${fromEmail}>`,
+          to: [recipient.email],
+          cc: cc.length > 0 ? cc : undefined,
+          bcc: bcc.length > 0 ? bcc : undefined,
+          subject: personalizedSubject,
+          html: personalizedBody,
+        });
+
+        if (emailResponse.error) {
+          throw emailResponse.error;
+        }
+
+        sent++;
+        
+        if (recipient.contact_data) {
+          personalizationData[recipient.email] = {
+            name: recipient.contact_data.name,
+            organization: recipient.contact_data.organization,
+          };
+        }
+
+        console.log(`✓ Sent to ${recipient.email}`);
+      } catch (error: any) {
+        failed++;
+        failedRecipients.push({
+          email: recipient.email,
+          error: error.message || "Unknown error",
+        });
+        console.error(`✗ Failed ${recipient.email}:`, error.message);
+      }
+    }
+
+    // Log to database
+    const emailLogData = {
       tenant_id,
       user_id,
       subject,
-      recipients: recipientArray,
+      body_html,
+      recipients: uniqueRecipients.map(r => r.email),
       cc,
       bcc,
-      body_html: processedBody,
-      status: failureCount > 0 ? "failed" : "sent",
-      error_message: failureCount > 0 ? `${failureCount} emails failed` : null,
-      document_ids: document_ids || [],
+      status: failed > 0 ? (sent > 0 ? "partially_sent" : "failed") : "sent",
+      error_message: failed > 0 ? `${failed} emails failed` : null,
       sent_at: new Date().toISOString(),
-    });
+      personalization_data: personalizationData,
+      failed_recipients: failedRecipients.length > 0 ? failedRecipients : null,
+    };
+
+    const { error: logError } = await supabase
+      .from("email_logs")
+      .insert(emailLogData);
 
     if (logError) {
-      console.error("Error logging email:", logError);
+      console.error("Log error:", logError);
     }
+
+    console.log(`Results: ${sent} sent, ${failed} failed`);
 
     return new Response(
       JSON.stringify({
-        success: true,
-        sent: successCount,
-        failed: failureCount,
-        total: recipientArray.length,
+        success: sent > 0,
+        sent,
+        failed,
+        total: uniqueRecipients.length,
+        failed_recipients: failedRecipients,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -170,7 +240,7 @@ serve(async (req) => {
       }
     );
   } catch (error: any) {
-    console.error("Error in send-document-email:", error);
+    console.error("Function error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

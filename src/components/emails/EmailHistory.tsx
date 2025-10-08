@@ -91,6 +91,7 @@ export function EmailHistory() {
         recipients: Array.isArray(log.recipients) ? log.recipients : [],
         cc: Array.isArray(log.cc) ? log.cc : [],
         bcc: Array.isArray(log.bcc) ? log.bcc : [],
+        failed_recipients: Array.isArray(log.failed_recipients) ? log.failed_recipients as Array<{ email: string; error: string }> : undefined,
       })) as EmailLog[];
       
       setEmailLogs(typedData);
@@ -373,11 +374,14 @@ export function EmailHistory() {
         </DialogContent>
       </Dialog>
 
-      {selectedEmail && (
+      {selectedEmail && selectedEmail.failed_recipients && (
         <EmailRetryDialog
           open={showRetryDialog}
           onOpenChange={setShowRetryDialog}
-          email={selectedEmail}
+          emailLogId={selectedEmail.id}
+          failedRecipients={selectedEmail.failed_recipients}
+          emailSubject={selectedEmail.subject}
+          emailBody={selectedEmail.body_html}
           onRetrySuccess={fetchEmailLogs}
         />
       )}

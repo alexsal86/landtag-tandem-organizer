@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar } from "lucide-react";
+import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail } from "lucide-react";
 import { NotificationSettings } from "./NotificationSettings";
 import { ExternalCalendarSettings } from "./ExternalCalendarSettings";
 import { TwoFactorSettings } from "./TwoFactorSettings";
+import { SenderInformationManager } from "./administration/SenderInformationManager";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -279,6 +280,27 @@ export function SettingsView() {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Sender Information Settings - Admin Only */}
+        {isAdmin && (
+          <div className="mt-6">
+            <Card className="bg-card shadow-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Absender-Einstellungen
+                </CardTitle>
+                <CardDescription>
+                  Verwalten Sie E-Mail-Absender-Konfigurationen
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SenderInformationManager />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        
         {/* Save Button */}
         <div className="mt-8 flex justify-end">
           <Button onClick={handleSaveSettings} className="gap-2">
