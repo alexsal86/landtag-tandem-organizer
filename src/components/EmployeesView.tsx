@@ -10,7 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { startOfYear, endOfYear, eachDayOfInterval, isWeekend } from "date-fns";
+import { startOfYear, endOfYear, eachDayOfInterval, isWeekend, formatDistanceToNow, differenceInDays } from "date-fns";
+import { de } from "date-fns/locale";
+import { Calendar, AlertCircle } from "lucide-react";
+import { EmployeeMeetingRequestDialog } from "./EmployeeMeetingRequestDialog";
+import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
 
 // Types derived from DB schema
 type LeaveType = "vacation" | "sick" | "other";
@@ -27,6 +31,9 @@ type EmployeeSettingsRow = {
   hours_per_month: number;
   days_per_month: number;
   days_per_week: number;
+  last_meeting_date?: string | null;
+  meeting_interval_months?: number;
+  next_meeting_reminder_days?: number;
 };
 
 type Profile = {
@@ -54,7 +61,10 @@ type PendingLeaveRequest = {
   status: LeaveStatus;
 };
 
-type Employee = EmployeeSettingsRow & Profile;
+type Employee = EmployeeSettingsRow & Profile & {
+  next_meeting_due?: string | null;
+  open_meeting_requests?: number;
+};
 
 type LeaveAgg = {
   counts: Record<LeaveType, number>;
@@ -73,6 +83,8 @@ export function EmployeesView() {
   const [leaves, setLeaves] = useState<Record<string, LeaveAgg>>({});
   const [pendingLeaves, setPendingLeaves] = useState<PendingLeaveRequest[]>([]);
   const [sickDays, setSickDays] = useState<Record<string, number>>({});
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null);
 
   // Self-view state for non-admin users
   const [selfSettings, setSelfSettings] = useState<EmployeeSettingsRow | null>(null);
@@ -154,11 +166,11 @@ export function EmployeesView() {
           return;
         }
 
-        const [profilesRes, settingsRes, leaveRes, pendingRes, sickRes] = await Promise.all([
+        const [profilesRes, settingsRes, leaveRes, pendingRes, sickRes, meetingRequestsRes] = await Promise.all([
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
           supabase
             .from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date, hours_per_month, days_per_month, days_per_week")
+            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date, hours_per_month, days_per_month, days_per_week, last_meeting_date, meeting_interval_months, next_meeting_reminder_days")
             .in("user_id", managedIds),
           supabase
             .from("leave_requests")
@@ -173,12 +185,18 @@ export function EmployeesView() {
             .from("sick_days")
             .select("user_id")
             .in("user_id", managedIds),
+          supabase
+            .from("employee_meeting_requests")
+            .select("employee_id")
+            .eq("status", "pending")
+            .in("employee_id", managedIds),
         ]);
         if (sickRes.error) throw sickRes.error;
         if (profilesRes.error) throw profilesRes.error;
         if (settingsRes.error) throw settingsRes.error;
         if (leaveRes.error) throw leaveRes.error;
         if (pendingRes.error) throw pendingRes.error;
+        if (meetingRequestsRes.error) throw meetingRequestsRes.error;
 
         const profileMap = new Map<string, Profile>();
         (profilesRes.data as Profile[] | null)?.forEach((p) => profileMap.set(p.user_id, p));
@@ -186,9 +204,25 @@ export function EmployeesView() {
         const settingsMap = new Map<string, EmployeeSettingsRow>();
         (settingsRes.data as any[] | null)?.forEach((s) => settingsMap.set(s.user_id, s as EmployeeSettingsRow));
 
+        // Count open meeting requests per employee
+        const meetingRequestCounts: Record<string, number> = {};
+        (meetingRequestsRes.data || []).forEach((req: any) => {
+          meetingRequestCounts[req.employee_id] = (meetingRequestCounts[req.employee_id] || 0) + 1;
+        });
+
         const joined: Employee[] = managedIds.map((uid) => {
           const s = settingsMap.get(uid);
           const p = profileMap.get(uid);
+          
+          // Calculate next meeting due date
+          let next_meeting_due: string | null = null;
+          if (s?.last_meeting_date && s?.meeting_interval_months) {
+            const lastMeeting = new Date(s.last_meeting_date);
+            const nextDue = new Date(lastMeeting);
+            nextDue.setMonth(nextDue.getMonth() + s.meeting_interval_months);
+            next_meeting_due = nextDue.toISOString();
+          }
+          
           return {
             user_id: uid,
             hours_per_week: s?.hours_per_week ?? 40,
@@ -202,6 +236,11 @@ export function EmployeesView() {
             hours_per_month: s?.hours_per_month ?? 160,
             days_per_month: s?.days_per_month ?? 20,
             days_per_week: s?.days_per_week ?? 5,
+            last_meeting_date: s?.last_meeting_date ?? null,
+            meeting_interval_months: s?.meeting_interval_months ?? 3,
+            next_meeting_reminder_days: s?.next_meeting_reminder_days ?? 14,
+            next_meeting_due,
+            open_meeting_requests: meetingRequestCounts[uid] || 0,
           } as Employee;
         });
         setEmployees(joined);
@@ -962,6 +1001,39 @@ export function EmployeesView() {
               )}
             </CardContent>
           </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Mitarbeitergespräche</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {selfSettings?.last_meeting_date ? (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Letztes Gespräch:</span>
+                    <div className="font-medium">
+                      {formatDistanceToNow(new Date(selfSettings.last_meeting_date), { 
+                        addSuffix: true, 
+                        locale: de 
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Noch kein Mitarbeitergespräch erfasst
+                  </div>
+                )}
+                
+                <div className="pt-2">
+                  <EmployeeMeetingRequestDialog />
+                </div>
+                
+                <p className="text-xs text-muted-foreground">
+                  Sie können jederzeit ein Gespräch mit Ihrem Vorgesetzten beantragen.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </section>
       </main>
     );
@@ -1095,6 +1167,9 @@ export function EmployeesView() {
                     <TableHead>Beginn Arbeitsverhältnis</TableHead>
                     <TableHead>Krankentage</TableHead>
                     <TableHead>Urlaub</TableHead>
+                    <TableHead>Letztes Gespräch</TableHead>
+                    <TableHead>Nächstes Gespräch</TableHead>
+                    <TableHead>Aktion</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1189,26 +1264,104 @@ export function EmployeesView() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{sickDays[e.user_id] || 0} Tage</Badge>
-                        </TableCell>
+                         </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {vacApproved} von {e.annual_vacation_days} Arbeitstagen
+                            </Badge>
+                            {remainingVacationDays > 0 && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {remainingVacationDays} verbleibende Arbeitstage
+                              </div>
+                            )}
+                         </TableCell>
                          <TableCell>
-                           <Badge variant="secondary">
-                             {vacApproved} von {e.annual_vacation_days} Arbeitstagen
-                           </Badge>
-                           {remainingVacationDays > 0 && (
-                             <div className="text-xs text-muted-foreground mt-1">
-                               {remainingVacationDays} verbleibende Arbeitstage
+                           {e.last_meeting_date ? (
+                             <div className="space-y-1">
+                               <div className="text-sm">
+                                 {new Date(e.last_meeting_date).toLocaleDateString('de-DE')}
+                               </div>
+                               <div className="text-xs text-muted-foreground">
+                                 {formatDistanceToNow(new Date(e.last_meeting_date), { 
+                                   addSuffix: true, 
+                                   locale: de 
+                                 })}
+                               </div>
                              </div>
+                           ) : (
+                             <span className="text-muted-foreground text-sm">–</span>
                            )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-    </main>
-  );
-}
+                         </TableCell>
+                         <TableCell>
+                           {e.next_meeting_due ? (
+                             <div className="space-y-1">
+                               <div className="flex items-center gap-2">
+                                 <Calendar className="h-3 w-3" />
+                                 <span className="text-sm">
+                                   {new Date(e.next_meeting_due).toLocaleDateString('de-DE')}
+                                 </span>
+                               </div>
+                               {differenceInDays(new Date(e.next_meeting_due), new Date()) < 0 ? (
+                                 <Badge variant="destructive" className="text-xs">
+                                   <AlertCircle className="h-3 w-3 mr-1" />
+                                   Überfällig
+                                 </Badge>
+                               ) : differenceInDays(new Date(e.next_meeting_due), new Date()) <= 14 ? (
+                                 <Badge variant="default" className="text-xs">
+                                   In {differenceInDays(new Date(e.next_meeting_due), new Date())} Tagen
+                                 </Badge>
+                               ) : (
+                                 <span className="text-xs text-muted-foreground">
+                                   In {differenceInDays(new Date(e.next_meeting_due), new Date())} Tagen
+                                 </span>
+                               )}
+                               {e.open_meeting_requests > 0 && (
+                                 <Badge variant="secondary" className="text-xs">
+                                   {e.open_meeting_requests} Anfrage{e.open_meeting_requests > 1 ? 'n' : ''}
+                                 </Badge>
+                               )}
+                             </div>
+                           ) : (
+                             <span className="text-muted-foreground text-sm">Nicht geplant</span>
+                           )}
+                         </TableCell>
+                         <TableCell>
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             onClick={() => {
+                               setSelectedEmployee({
+                                 id: e.user_id,
+                                 name: e.display_name || "Unbenannt"
+                               });
+                               setSchedulerOpen(true);
+                             }}
+                           >
+                             Gespräch planen
+                           </Button>
+                         </TableCell>
+                       </TableRow>
+                     );
+                   })}
+                 </TableBody>
+               </Table>
+             )}
+           </CardContent>
+         </Card>
+       </section>
+       
+       {selectedEmployee && (
+         <EmployeeMeetingScheduler
+           employeeId={selectedEmployee.id}
+           employeeName={selectedEmployee.name}
+           open={schedulerOpen}
+           onOpenChange={setSchedulerOpen}
+           onScheduled={() => {
+             // Reload data after scheduling
+             window.location.reload();
+           }}
+         />
+       )}
+     </main>
+   );
+ }

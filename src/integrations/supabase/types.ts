@@ -1779,6 +1779,119 @@ export type Database = {
           },
         ]
       }
+      employee_meeting_requests: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          reason: string
+          requested_at: string
+          scheduled_meeting_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          urgency: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          reason: string
+          requested_at?: string
+          scheduled_meeting_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          urgency?: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          reason?: string
+          requested_at?: string
+          scheduled_meeting_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          urgency?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_meeting_requests_scheduled_meeting_id_fkey"
+            columns: ["scheduled_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "employee_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_meeting_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_meetings: {
+        Row: {
+          action_items: Json | null
+          conducted_by: string
+          created_at: string
+          employee_id: string
+          employee_notes: string | null
+          id: string
+          meeting_date: string
+          meeting_type: string
+          next_meeting_due: string | null
+          protocol: Json | null
+          status: string
+          supervisor_notes: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          action_items?: Json | null
+          conducted_by: string
+          created_at?: string
+          employee_id: string
+          employee_notes?: string | null
+          id?: string
+          meeting_date: string
+          meeting_type?: string
+          next_meeting_due?: string | null
+          protocol?: Json | null
+          status?: string
+          supervisor_notes?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          action_items?: Json | null
+          conducted_by?: string
+          created_at?: string
+          employee_id?: string
+          employee_notes?: string | null
+          id?: string
+          meeting_date?: string
+          meeting_type?: string
+          next_meeting_due?: string | null
+          protocol?: Json | null
+          status?: string
+          supervisor_notes?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_meetings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_settings: {
         Row: {
           admin_id: string | null
@@ -1792,6 +1905,9 @@ export type Database = {
           hours_per_month: number
           hours_per_week: number
           id: string
+          last_meeting_date: string | null
+          meeting_interval_months: number | null
+          next_meeting_reminder_days: number | null
           timezone: string
           updated_at: string
           user_id: string
@@ -1810,6 +1926,9 @@ export type Database = {
           hours_per_month?: number
           hours_per_week?: number
           id?: string
+          last_meeting_date?: string | null
+          meeting_interval_months?: number | null
+          next_meeting_reminder_days?: number | null
           timezone?: string
           updated_at?: string
           user_id: string
@@ -1828,6 +1947,9 @@ export type Database = {
           hours_per_month?: number
           hours_per_week?: number
           id?: string
+          last_meeting_date?: string | null
+          meeting_interval_months?: number | null
+          next_meeting_reminder_days?: number | null
           timezone?: string
           updated_at?: string
           user_id?: string
