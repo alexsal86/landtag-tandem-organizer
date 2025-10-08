@@ -25,6 +25,8 @@ interface SendEmailRequest {
   tenant_id: string;
   user_id: string;
   sender_id?: string;
+  reply_to?: string;
+  scheduled_at?: string;
 }
 
 interface FailedRecipient {
@@ -53,6 +55,8 @@ serve(async (req) => {
       tenant_id,
       user_id,
       sender_id,
+      reply_to,
+      scheduled_at,
     }: SendEmailRequest = await req.json();
 
     console.log("Email request:", {
@@ -170,10 +174,12 @@ serve(async (req) => {
         const emailResponse = await resend.emails.send({
           from: `${fromName} <${fromEmail}>`,
           to: [recipient.email],
+          replyTo: reply_to || undefined,
           cc: cc.length > 0 ? cc : undefined,
           bcc: bcc.length > 0 ? bcc : undefined,
           subject: personalizedSubject,
           html: personalizedBody,
+          scheduledAt: scheduled_at || undefined,
         });
 
         if (emailResponse.error) {
@@ -209,6 +215,8 @@ serve(async (req) => {
       recipients: uniqueRecipients.map(r => r.email),
       cc,
       bcc,
+      reply_to: reply_to || null,
+      scheduled_at: scheduled_at || null,
       status: failed > 0 ? (sent > 0 ? "partially_sent" : "failed") : "sent",
       error_message: failed > 0 ? `${failed} emails failed` : null,
       sent_at: new Date().toISOString(),

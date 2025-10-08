@@ -1895,6 +1895,8 @@ export type Database = {
           id: string
           personalization_data: Json | null
           recipients: Json
+          reply_to: string | null
+          scheduled_at: string | null
           scheduled_for: string | null
           sent_at: string | null
           status: string
@@ -1913,6 +1915,8 @@ export type Database = {
           id?: string
           personalization_data?: Json | null
           recipients: Json
+          reply_to?: string | null
+          scheduled_at?: string | null
           scheduled_for?: string | null
           sent_at?: string | null
           status?: string
@@ -1931,6 +1935,8 @@ export type Database = {
           id?: string
           personalization_data?: Json | null
           recipients?: Json
+          reply_to?: string | null
+          scheduled_at?: string | null
           scheduled_for?: string | null
           sent_at?: string | null
           status?: string
@@ -5255,6 +5261,87 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "rss_sources_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_emails: {
+        Row: {
+          bcc: Json | null
+          body_html: string
+          cc: Json | null
+          contact_ids: Json | null
+          created_at: string | null
+          distribution_list_ids: Json | null
+          document_ids: Json | null
+          error_message: string | null
+          id: string
+          recipients: Json
+          reply_to: string | null
+          scheduled_for: string
+          sender_id: string | null
+          sent_at: string | null
+          status: string | null
+          subject: string
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          bcc?: Json | null
+          body_html: string
+          cc?: Json | null
+          contact_ids?: Json | null
+          created_at?: string | null
+          distribution_list_ids?: Json | null
+          document_ids?: Json | null
+          error_message?: string | null
+          id?: string
+          recipients?: Json
+          reply_to?: string | null
+          scheduled_for: string
+          sender_id?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          bcc?: Json | null
+          body_html?: string
+          cc?: Json | null
+          contact_ids?: Json | null
+          created_at?: string | null
+          distribution_list_ids?: Json | null
+          document_ids?: Json | null
+          error_message?: string | null
+          id?: string
+          recipients?: Json
+          reply_to?: string | null
+          scheduled_for?: string
+          sender_id?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_emails_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "sender_information"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_emails_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

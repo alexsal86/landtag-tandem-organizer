@@ -108,3 +108,6 @@ verify_jwt = true
 
 [functions.send-document-email]
 verify_jwt = true
+
+[functions.process-scheduled-emails]
+verify_jwt = false

@@ -23,7 +23,9 @@ import {
   Eye,
   Mail,
   ChevronDown,
-  Save
+  Save,
+  Calendar as CalendarIcon,
+  Clock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,6 +40,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
 
 interface Contact {
   id: string;
@@ -85,6 +92,9 @@ export function EmailComposer() {
   const [manualEmailInput, setManualEmailInput] = useState("");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
+  const [replyTo, setReplyTo] = useState("");
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledFor, setScheduledFor] = useState<Date | undefined>(undefined);
 
   // Neue States
   const [senderInfos, setSenderInfos] = useState<SenderInfo[]>([]);
@@ -326,38 +336,67 @@ export function EmailComposer() {
       return;
     }
 
+    if (isScheduled && !scheduledFor) {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie einen Zeitpunkt für den geplanten Versand.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("send-document-email", {
-        body: {
-          subject,
-          body_html: bodyHtml,
-          recipients: manualEmails,
-          cc: cc.split(",").map(e => e.trim()).filter(e => e),
-          bcc: bcc.split(",").map(e => e.trim()).filter(e => e),
-          distribution_list_ids: selectedDistributionLists,
-          contact_ids: selectedContacts,
-          document_ids: selectedDocuments,
-          tenant_id: currentTenant!.id,
-          user_id: user!.id,
-          sender_id: selectedSender,
-        },
-      });
+      const emailData = {
+        subject,
+        body_html: bodyHtml,
+        reply_to: replyTo || undefined,
+        recipients: manualEmails,
+        cc: cc.split(",").map(e => e.trim()).filter(e => e),
+        bcc: bcc.split(",").map(e => e.trim()).filter(e => e),
+        distribution_list_ids: selectedDistributionLists,
+        contact_ids: selectedContacts,
+        document_ids: selectedDocuments,
+        tenant_id: currentTenant!.id,
+        user_id: user!.id,
+        sender_id: selectedSender,
+      };
 
-      if (error) throw error;
+      if (isScheduled && scheduledFor) {
+        // Save to scheduled_emails table
+        const { error } = await supabase.from("scheduled_emails").insert({
+          ...emailData,
+          scheduled_for: scheduledFor.toISOString(),
+          status: "scheduled",
+        });
 
-      if (data.failed > 0 && data.failed_recipients) {
+        if (error) throw error;
+
         toast({
-          title: "Teilweise versendet",
-          description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet. ${data.failed} fehlgeschlagen.`,
-          variant: "destructive",
+          title: "E-Mail geplant",
+          description: `E-Mail wird am ${format(scheduledFor, "dd.MM.yyyy 'um' HH:mm", { locale: de })} versendet.`,
         });
       } else {
-        toast({
-          title: "E-Mails versendet",
-          description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet.`,
+        // Immediate send
+        const { data, error } = await supabase.functions.invoke("send-document-email", {
+          body: emailData,
         });
+
+        if (error) throw error;
+
+        if (data.failed > 0 && data.failed_recipients) {
+          toast({
+            title: "Teilweise versendet",
+            description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet. ${data.failed} fehlgeschlagen.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "E-Mails versendet",
+            description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet.`,
+          });
+        }
       }
 
       // Reset form
@@ -366,6 +405,9 @@ export function EmailComposer() {
       setManualEmails([]);
       setCc("");
       setBcc("");
+      setReplyTo("");
+      setIsScheduled(false);
+      setScheduledFor(undefined);
       setSelectedDistributionLists([]);
       setSelectedContacts([]);
       setSelectedDocuments([]);
@@ -414,10 +456,80 @@ export function EmailComposer() {
             disabled={loading || getTotalRecipients() === 0}
             className="gap-2"
           >
-            <Send className="h-4 w-4" />
-            {loading ? "Wird gesendet..." : "Senden"}
+            {isScheduled ? <Clock className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+            {loading ? "Wird gesendet..." : isScheduled ? "Planen" : "Senden"}
           </Button>
         </div>
+      </div>
+
+      {/* Scheduled Sending Options */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={isScheduled}
+                onCheckedChange={setIsScheduled}
+              />
+              <div>
+                <Label className="text-base font-medium">Geplanter Versand</Label>
+                <p className="text-sm text-muted-foreground">
+                  E-Mail zu einem späteren Zeitpunkt automatisch versenden
+                </p>
+              </div>
+            </div>
+            
+            {isScheduled && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    {scheduledFor 
+                      ? format(scheduledFor, "dd.MM.yyyy HH:mm", { locale: de })
+                      : "Zeitpunkt wählen"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <div className="p-4 space-y-4">
+                    <Calendar
+                      mode="single"
+                      selected={scheduledFor}
+                      onSelect={(date) => {
+                        if (date) {
+                          const newDate = scheduledFor || new Date();
+                          newDate.setFullYear(date.getFullYear());
+                          newDate.setMonth(date.getMonth());
+                          newDate.setDate(date.getDate());
+                          setScheduledFor(new Date(newDate));
+                        }
+                      }}
+                      disabled={(date) => date < new Date()}
+                      className="pointer-events-auto"
+                      locale={de}
+                    />
+                    <div className="space-y-2">
+                      <Label>Uhrzeit</Label>
+                      <Input
+                        type="time"
+                        value={scheduledFor ? format(scheduledFor, "HH:mm") : ""}
+                        onChange={(e) => {
+                          const [hours, minutes] = e.target.value.split(":");
+                          const newDate = scheduledFor || new Date();
+                          newDate.setHours(parseInt(hours));
+                          newDate.setMinutes(parseInt(minutes));
+                          setScheduledFor(new Date(newDate));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid md:grid-cols-2 gap-6">
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -466,6 +578,18 @@ export function EmailComposer() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Reply-To Field */}
+              <div>
+                <Label htmlFor="replyTo">Antwort an (Reply-To)</Label>
+                <Input
+                  id="replyTo"
+                  type="email"
+                  value={replyTo}
+                  onChange={(e) => setReplyTo(e.target.value)}
+                  placeholder="antwort@example.com (optional)"
+                />
               </div>
 
               <div>

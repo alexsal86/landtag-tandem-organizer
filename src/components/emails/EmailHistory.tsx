@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Table, 
   TableBody, 
@@ -26,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Mail, Eye, CheckCircle, XCircle, Clock, Download, RefreshCw, Filter, ArrowUpDown } from "lucide-react";
+import { Search, Mail, Eye, CheckCircle, XCircle, Clock, Download, RefreshCw, Filter, ArrowUpDown, Calendar, Edit, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -55,11 +56,13 @@ export function EmailHistory() {
   const { toast } = useToast();
 
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [scheduledEmails, setScheduledEmails] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showRetryDialog, setShowRetryDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("sent");
   
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
@@ -70,6 +73,7 @@ export function EmailHistory() {
   useEffect(() => {
     if (user && currentTenant) {
       fetchEmailLogs();
+      fetchScheduledEmails();
     }
   }, [user, currentTenant]);
 
@@ -104,6 +108,43 @@ export function EmailHistory() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchScheduledEmails = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("scheduled_emails")
+        .select("*")
+        .eq("tenant_id", currentTenant!.id)
+        .eq("user_id", user!.id)
+        .in("status", ["scheduled"])
+        .order("scheduled_for", { ascending: true });
+
+      if (error) throw error;
+      setScheduledEmails(data || []);
+    } catch (error: any) {
+      console.error("Error fetching scheduled emails:", error);
+    }
+  };
+
+  const handleCancelScheduled = async (emailId: string) => {
+    try {
+      const { error } = await supabase
+        .from("scheduled_emails")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("id", emailId);
+
+      if (error) throw error;
+
+      toast({ title: "Abgebrochen", description: "Geplante E-Mail wurde abgebrochen" });
+      fetchScheduledEmails();
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -224,16 +265,30 @@ export function EmailHistory() {
         <div>
           <h2 className="text-2xl font-bold">E-Mail-Verlauf</h2>
           <p className="text-sm text-muted-foreground">
-            {filteredEmailLogs.length} von {emailLogs.length} E-Mails
+            {activeTab === "sent" 
+              ? `${filteredEmailLogs.length} von ${emailLogs.length} E-Mails`
+              : `${scheduledEmails.length} geplante E-Mails`}
           </p>
         </div>
-        <Button onClick={handleExportCSV} variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />
-          CSV Export
-        </Button>
+        {activeTab === "sent" && (
+          <Button onClick={handleExportCSV} variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />
+            CSV Export
+          </Button>
+        )}
       </div>
 
-      <Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="sent">Gesendet</TabsTrigger>
+          <TabsTrigger value="scheduled">
+            Geplant ({scheduledEmails.length})
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Sent Tab */}
+        <TabsContent value="sent">
+          <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
@@ -340,6 +395,55 @@ export function EmailHistory() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        {/* Scheduled Tab */}
+        <TabsContent value="scheduled">
+          <Card>
+            <CardContent className="pt-6">
+              {scheduledEmails.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Keine geplanten E-Mails vorhanden
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {scheduledEmails.map((email) => (
+                    <Card key={email.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">
+                                Geplant für: {format(new Date(email.scheduled_for), "dd.MM.yyyy HH:mm", { locale: de })}
+                              </span>
+                            </div>
+                            <h3 className="font-semibold">{email.subject}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {Array.isArray(email.recipients) ? email.recipients.length : 0} Empfänger
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCancelScheduled(email.id)}
+                              className="gap-2"
+                            >
+                              <X className="h-4 w-4" />
+                              Abbrechen
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
