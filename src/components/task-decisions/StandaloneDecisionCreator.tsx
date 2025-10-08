@@ -368,11 +368,12 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
       <DialogTrigger asChild>
         {TriggerButton}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Entscheidung anfordern</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        
+        <div className="flex-1 overflow-y-auto pr-2 space-y-4">
           <div>
             <label className="text-sm font-medium">Titel</label>
             <Input
@@ -457,22 +458,22 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
               </label>
             </div>
           </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsOpen(false)}
-              disabled={isLoading}
-            >
-              Abbrechen
-            </Button>
-            <Button 
-              onClick={handleSubmit}
-              disabled={isLoading}
-            >
-              {isLoading ? "Erstelle..." : "Erstellen"}
-            </Button>
-          </div>
+        </div>
+        
+        <div className="flex justify-end space-x-2 pt-4 border-t mt-4">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsOpen(false)}
+            disabled={isLoading}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? "Erstelle..." : "Erstellen"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

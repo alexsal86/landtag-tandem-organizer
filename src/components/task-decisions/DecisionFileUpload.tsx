@@ -275,25 +275,27 @@ export function DecisionFileUpload({
           <CardContent className="p-4">
             <div className="space-y-2">
               <p className="text-sm font-medium">Ausgewählte Dateien ({selectedFiles.length})</p>
-              {selectedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
-                  <div className="flex items-center space-x-2 flex-1">
-                    <File className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+              <div className="max-h-[200px] overflow-y-auto space-y-2">
+                {selectedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                    <div className="flex items-center space-x-2 flex-1">
+                      <File className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{file.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                      </div>
                     </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeSelectedFile(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeSelectedFile(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -303,7 +305,7 @@ export function DecisionFileUpload({
       {mode === 'view' && files.length > 0 ? (
         <Card>
           <CardContent className="p-4">
-            <div className="space-y-2">
+            <div className="max-h-[200px] overflow-y-auto space-y-2">
               {files.map((file) => (
                 <div key={file.id} className="flex items-center justify-between p-2 bg-muted rounded">
                   <div className="flex items-center space-x-2 flex-1">
