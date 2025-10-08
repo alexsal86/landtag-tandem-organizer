@@ -3913,6 +3913,50 @@ export type Database = {
           },
         ]
       }
+      news_email_templates: {
+        Row: {
+          closing: string
+          created_at: string
+          greeting: string
+          id: string
+          introduction: string
+          signature: string
+          subject: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          closing?: string
+          created_at?: string
+          greeting?: string
+          id?: string
+          introduction?: string
+          signature?: string
+          subject?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          closing?: string
+          created_at?: string
+          greeting?: string
+          id?: string
+          introduction?: string
+          signature?: string
+          subject?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_email_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_navigation_mapping: {
         Row: {
           created_at: string

@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RefreshCw, ExternalLink, Filter, Rss } from 'lucide-react';
+import { RefreshCw, ExternalLink, Filter, Rss, Share2, CheckSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { NewsShareDialog } from './NewsShareDialog';
+import { NewsToTaskDialog } from './NewsToTaskDialog';
 
 interface NewsArticle {
   id: string;
@@ -27,6 +29,9 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
 
   const categories = [
     { value: 'all', label: 'Alle' },
@@ -165,14 +170,55 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
                 filteredArticles.map((article) => (
                   <div
                     key={article.id}
-                    className="group border-b pb-3 last:border-b-0 cursor-pointer hover:bg-accent/50 -mx-2 px-2 py-2 rounded transition-colors"
-                    onClick={() => window.open(article.link, '_blank')}
+                    className="group border-b pb-3 last:border-b-0 -mx-2 px-2 py-2 rounded transition-colors"
                   >
                     <div className="flex justify-between items-start gap-2 mb-1">
-                      <h4 className="font-medium text-sm line-clamp-2 group-hover:text-primary">
+                      <h4 
+                        className="font-medium text-sm line-clamp-2 hover:text-primary cursor-pointer flex-1"
+                        onClick={() => window.open(article.link, '_blank')}
+                      >
                         {article.title}
                       </h4>
-                      <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedArticle(article);
+                            setShareDialogOpen(true);
+                          }}
+                          title="News teilen"
+                        >
+                          <Share2 className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedArticle(article);
+                            setTaskDialogOpen(true);
+                          }}
+                          title="Aufgabe erstellen"
+                        >
+                          <CheckSquare className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(article.link, '_blank');
+                          }}
+                          title="Artikel öffnen"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                     
                     {article.description && (
@@ -203,6 +249,18 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
           </ScrollArea>
         )}
       </CardContent>
+
+      <NewsShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        article={selectedArticle}
+      />
+
+      <NewsToTaskDialog
+        open={taskDialogOpen}
+        onOpenChange={setTaskDialogOpen}
+        article={selectedArticle}
+      />
     </Card>
   );
 };

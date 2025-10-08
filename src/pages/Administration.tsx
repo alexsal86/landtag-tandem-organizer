@@ -36,6 +36,7 @@ import { CalendarSyncSettings } from "@/components/administration/CalendarSyncSe
 import { LoginCustomization } from "@/components/administration/LoginCustomization";
 import { UserColorManager } from "@/components/administration/UserColorManager";
 import { DecisionArchiveSettings } from "@/components/administration/DecisionArchiveSettings";
+import { NewsEmailTemplateManager } from "@/components/administration/NewsEmailTemplateManager";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -1526,6 +1527,11 @@ export default function Administration() {
           <div className="border-t pt-6">
             <h3 className="text-lg font-medium mb-4">RSS-Einstellungen</h3>
             <RSSSettingsManager />
+          </div>
+          
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-medium mb-4">News E-Mail-Vorlagen</h3>
+            <NewsEmailTemplateManager />
           </div>
         </TabsContent>
 
