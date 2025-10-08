@@ -65,10 +65,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Fetching GeoJSON from Supabase Storage...');
+    console.log('Fetching GeoJSON from GitHub...');
     
-    // Fetch the GeoJSON file from Supabase Storage
-    const geoJsonUrl = `https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/documents/public-data/karlsruhe-stadtteile.geojson`;
+    // Fetch the GeoJSON file from GitHub
+    const geoJsonUrl = `https://raw.githubusercontent.com/alexsal86/landtag-tandem-organizer/main/public/data/karlsruhe-stadtteile.geojson`;
     const response = await fetch(geoJsonUrl);
     
     if (!response.ok) {
