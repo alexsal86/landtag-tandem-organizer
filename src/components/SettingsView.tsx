@@ -4,7 +4,7 @@ import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar } from "lucide-react";
 import { NotificationSettings } from "./NotificationSettings";
 import { ExternalCalendarSettings } from "./ExternalCalendarSettings";
-import { DashboardDefaultCover } from "./administration/DashboardDefaultCover";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -277,14 +277,6 @@ export function SettingsView() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Dashboard Default Cover - Admin Only */}
-        {isAdmin && (
-          <div className="mt-6">
-            <DashboardDefaultCover />
-          </div>
-        )}
-
         {/* Save Button */}
         <div className="mt-8 flex justify-end">
           <Button onClick={handleSaveSettings} className="gap-2">

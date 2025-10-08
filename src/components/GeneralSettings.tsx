@@ -7,6 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Upload, Save, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { DashboardDefaultCover } from "./administration/DashboardDefaultCover";
 
 interface AppSettings {
   app_name: string;
@@ -183,11 +184,12 @@ export function GeneralSettings() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Allgemeine Einstellungen</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Allgemeine Einstellungen</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="app_name">Name der Anwendung</Label>
@@ -249,11 +251,15 @@ export function GeneralSettings() {
           </div>
         </div>
 
-        <Button onClick={saveSettings} disabled={saving} className="gap-2">
-          <Save className="h-4 w-4" />
-          {saving ? "Speichern..." : "Einstellungen speichern"}
-        </Button>
-      </CardContent>
-    </Card>
+          <Button onClick={saveSettings} disabled={saving} className="gap-2">
+            <Save className="h-4 w-4" />
+            {saving ? "Speichern..." : "Einstellungen speichern"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Dashboard Default Cover */}
+      <DashboardDefaultCover />
+    </div>
   );
 }
