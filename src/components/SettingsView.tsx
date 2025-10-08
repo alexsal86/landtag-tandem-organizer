@@ -5,7 +5,6 @@ import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar 
 import { NotificationSettings } from "./NotificationSettings";
 import { ExternalCalendarSettings } from "./ExternalCalendarSettings";
 import { DashboardDefaultCover } from "./administration/DashboardDefaultCover";
-import { DecisionArchiveSettings } from "./administration/DecisionArchiveSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -281,25 +280,9 @@ export function SettingsView() {
 
         {/* Dashboard Default Cover - Admin Only */}
         {isAdmin && (
-          <>
-            <div className="mt-6">
-              <DashboardDefaultCover />
-            </div>
-
-            <div className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Entscheidungsarchivierung</CardTitle>
-                  <CardDescription>
-                    Verwalten Sie die automatische Archivierung von Entscheidungsanfragen
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <DecisionArchiveSettings />
-                </CardContent>
-              </Card>
-            </div>
-          </>
+          <div className="mt-6">
+            <DashboardDefaultCover />
+          </div>
         )}
 
         {/* Save Button */}

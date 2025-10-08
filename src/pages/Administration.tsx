@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -35,6 +35,7 @@ import { RSSSettingsManager } from "@/components/administration/RSSSettingsManag
 import { CalendarSyncSettings } from "@/components/administration/CalendarSyncSettings";
 import { LoginCustomization } from "@/components/administration/LoginCustomization";
 import { UserColorManager } from "@/components/administration/UserColorManager";
+import { DecisionArchiveSettings } from "@/components/administration/DecisionArchiveSettings";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -515,7 +516,7 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="system" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             System & Allgemein
@@ -543,6 +544,10 @@ export default function Administration() {
           <TabsTrigger value="rss" className="flex items-center gap-2">
             <Rss className="h-4 w-4" />
             RSS-Quellen & News
+          </TabsTrigger>
+          <TabsTrigger value="archiving" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Archivierung
           </TabsTrigger>
         </TabsList>
 
@@ -1522,6 +1527,24 @@ export default function Administration() {
             <h3 className="text-lg font-medium mb-4">RSS-Einstellungen</h3>
             <RSSSettingsManager />
           </div>
+        </TabsContent>
+
+        {/* Archivierung */}
+        <TabsContent value="archiving" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Entscheidungsarchivierung
+              </CardTitle>
+              <CardDescription>
+                Verwalten Sie die automatische Archivierung von Entscheidungsanfragen
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DecisionArchiveSettings />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </main>
