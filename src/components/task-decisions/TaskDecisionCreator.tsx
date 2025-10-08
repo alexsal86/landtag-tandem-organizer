@@ -58,10 +58,11 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
       return;
     }
 
-    if (selectedUsers.length === 0) {
+    // For non-public decisions, at least one user must be selected
+    if (!visibleToAll && selectedUsers.length === 0) {
       toast({
         title: "Fehler",
-        description: "Bitte wählen Sie mindestens einen Benutzer aus.",
+        description: "Bitte wählen Sie mindestens einen Benutzer aus oder machen Sie die Entscheidung öffentlich.",
         variant: "destructive",
       });
       return;
@@ -131,24 +132,26 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
 
       console.log('Decision created successfully:', decision);
 
-      // Add participants
-      const participants = selectedUsers.map(userId => ({
-        decision_id: decision.id,
-        user_id: userId,
-      }));
+      // Add participants (only if users are selected)
+      if (selectedUsers.length > 0) {
+        const participants = selectedUsers.map(userId => ({
+          decision_id: decision.id,
+          user_id: userId,
+        }));
 
-      console.log('Adding participants:', participants);
+        console.log('Adding participants:', participants);
 
-      const { error: participantsError } = await supabase
-        .from('task_decision_participants')
-        .insert(participants);
+        const { error: participantsError } = await supabase
+          .from('task_decision_participants')
+          .insert(participants);
 
-      if (participantsError) {
-        console.error('Participants creation error:', participantsError);
-        throw participantsError;
+        if (participantsError) {
+          console.error('Participants creation error:', participantsError);
+          throw participantsError;
+        }
+
+        console.log('Participants added successfully');
       }
-
-      console.log('Participants added successfully');
 
       // Send notifications to participants
       for (const userId of selectedUsers) {
@@ -362,7 +365,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
           </div>
 
           <div>
-            <label className="text-sm font-medium">Benutzer auswählen (mindestens einer erforderlich)</label>
+            <label className="text-sm font-medium">Benutzer auswählen{!visibleToAll && ' (mindestens einer erforderlich)'}</label>
             {profilesLoaded ? (
               <MultiSelect
                 options={userOptions}

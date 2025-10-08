@@ -93,10 +93,11 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       return;
     }
 
-    if (selectedUsers.length === 0) {
+    // For non-public decisions, at least one user must be selected
+    if (!visibleToAll && selectedUsers.length === 0) {
       toast({
         title: "Fehler",
-        description: "Bitte wählen Sie mindestens einen Benutzer aus.",
+        description: "Bitte wählen Sie mindestens einen Benutzer aus oder machen Sie die Entscheidung öffentlich.",
         variant: "destructive",
       });
       return;
@@ -238,7 +239,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
           </div>
 
           <div>
-            <label className="text-sm font-medium">Benutzer auswählen (mindestens einer erforderlich)</label>
+            <label className="text-sm font-medium">Benutzer auswählen{!visibleToAll && ' (mindestens einer erforderlich)'}</label>
             <MultiSelect
               options={userOptions}
               selected={selectedUsers}
