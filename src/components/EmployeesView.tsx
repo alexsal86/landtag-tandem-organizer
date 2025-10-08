@@ -16,6 +16,9 @@ import { de } from "date-fns/locale";
 import { Calendar, AlertCircle } from "lucide-react";
 import { EmployeeMeetingRequestDialog } from "./EmployeeMeetingRequestDialog";
 import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
+import { EmployeeMeetingHistory } from "./EmployeeMeetingHistory";
+import { EmployeeMeetingRequestManager } from "./EmployeeMeetingRequestManager";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 // Types derived from DB schema
 type LeaveType = "vacation" | "sick" | "other";
@@ -88,6 +91,8 @@ export function EmployeesView() {
   const [sickDays, setSickDays] = useState<Record<string, number>>({});
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null);
+  const [requestManagerOpen, setRequestManagerOpen] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   // Self-view state for non-admin users
   const [selfSettings, setSelfSettings] = useState<EmployeeSettingsRow | null>(null);
@@ -227,6 +232,9 @@ export function EmployeesView() {
         (meetingRequestsRes.data || []).forEach((req: any) => {
           meetingRequestCounts[req.employee_id] = (meetingRequestCounts[req.employee_id] || 0) + 1;
         });
+
+        // Set total pending requests count
+        setPendingRequestsCount((meetingRequestsRes.data || []).length);
 
         const joined: Employee[] = managedIds.map((uid) => {
           const s = settingsMap.get(uid);
@@ -1085,8 +1093,19 @@ export function EmployeesView() {
   return (
     <main>
       <header className="p-4 sm:p-6">
-        <h1 className="text-2xl font-semibold">Mitarbeiterverwaltung</h1>
-        <p className="text-muted-foreground">Überblick über Mitarbeitende, Stunden & Abwesenheiten</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Mitarbeiterverwaltung</h1>
+            <p className="text-muted-foreground">Überblick über Mitarbeitende, Stunden & Abwesenheiten</p>
+          </div>
+          {pendingRequestsCount > 0 && (
+            <Button onClick={() => setRequestManagerOpen(true)} className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Gesprächsanfragen
+              <Badge variant="secondary">{pendingRequestsCount}</Badge>
+            </Button>
+          )}
+        </div>
       </header>
 
       <section className="px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1408,21 +1427,38 @@ export function EmployeesView() {
                </Table>
              )}
            </CardContent>
-         </Card>
-       </section>
-       
-       {selectedEmployee && (
-         <EmployeeMeetingScheduler
-           employeeId={selectedEmployee.id}
-           employeeName={selectedEmployee.name}
-           open={schedulerOpen}
-           onOpenChange={setSchedulerOpen}
-           onScheduled={() => {
-             // Reload data after scheduling
-             window.location.reload();
-           }}
-         />
-       )}
-     </main>
-   );
- }
+          </Card>
+        </section>
+
+        {/* Meeting History Section */}
+        <section className="px-4 sm:px-6 pb-6">
+          <EmployeeMeetingHistory showFilters={true} />
+        </section>
+        
+        {selectedEmployee && (
+          <EmployeeMeetingScheduler
+            employeeId={selectedEmployee.id}
+            employeeName={selectedEmployee.name}
+            open={schedulerOpen}
+            onOpenChange={setSchedulerOpen}
+            onScheduled={() => {
+              setSchedulerOpen(false);
+              setSelectedEmployee(null);
+              // Reload data after scheduling
+              window.location.reload();
+            }}
+          />
+        )}
+
+        {/* Request Manager Dialog */}
+        <Dialog open={requestManagerOpen} onOpenChange={setRequestManagerOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Gesprächsanfragen verwalten</DialogTitle>
+            </DialogHeader>
+            <EmployeeMeetingRequestManager />
+          </DialogContent>
+        </Dialog>
+      </main>
+    );
+  }
