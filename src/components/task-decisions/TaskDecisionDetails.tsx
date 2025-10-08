@@ -4,10 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { UserBadge } from "@/components/ui/user-badge";
-import { Check, X, MessageCircle, Send, Archive } from "lucide-react";
+import { Check, X, MessageCircle, Send, Archive, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ResponseHistoryTimeline } from "./ResponseHistoryTimeline";
 
 interface Participant {
   id: string;
@@ -324,13 +326,24 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                       )}
                     </div>
                   </CardHeader>
-                  {latestResponse && (
+                   {latestResponse && (
                     <CardContent className="pt-0">
                       {latestResponse.comment && (
                         <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground">
-                            <strong>Kommentar:</strong> {latestResponse.comment}
-                          </p>
+                          <div className="flex items-start justify-between">
+                            <p className="text-sm text-muted-foreground">
+                              <strong>Kommentar:</strong> {latestResponse.comment}
+                            </p>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                              {new Date(latestResponse.created_at).toLocaleString('de-DE', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
                           
                           {/* Creator Response */}
                           {latestResponse.creator_response && (
@@ -362,9 +375,22 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                           )}
                         </div>
                       )}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {new Date(latestResponse.created_at).toLocaleString('de-DE')}
-                      </p>
+                      
+                      {/* Response History Timeline */}
+                      {participant.responses.length > 0 && (
+                        <Collapsible className="mt-2">
+                          <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground flex items-center">
+                            <History className="h-3 w-3 mr-1" />
+                            Verlauf anzeigen
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <ResponseHistoryTimeline 
+                              participantId={participant.id}
+                              decisionId={decisionId}
+                            />
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
                     </CardContent>
                   )}
                 </Card>

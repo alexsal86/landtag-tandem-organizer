@@ -5260,6 +5260,61 @@ export type Database = {
           },
         ]
       }
+      task_decision_response_history: {
+        Row: {
+          changed_by: string | null
+          comment: string | null
+          created_at: string
+          decision_id: string
+          id: string
+          participant_id: string
+          response_id: string
+          response_type: string
+        }
+        Insert: {
+          changed_by?: string | null
+          comment?: string | null
+          created_at?: string
+          decision_id: string
+          id?: string
+          participant_id: string
+          response_id: string
+          response_type: string
+        }
+        Update: {
+          changed_by?: string | null
+          comment?: string | null
+          created_at?: string
+          decision_id?: string
+          id?: string
+          participant_id?: string
+          response_id?: string
+          response_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_decision_response_history_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decision_response_history_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "task_decision_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decision_response_history_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "task_decision_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_decision_responses: {
         Row: {
           comment: string | null

@@ -66,16 +66,39 @@ export const TaskDecisionResponse = ({
   const handleResponse = async (responseType: 'yes' | 'no' | 'question', comment?: string) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      // Check if response already exists
+      const { data: existingResponse } = await supabase
         .from('task_decision_responses')
-        .insert({
-          decision_id: decisionId,
-          participant_id: participantId,
-          response_type: responseType,
-          comment: comment || null,
-        });
+        .select('id')
+        .eq('participant_id', participantId)
+        .eq('decision_id', decisionId)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (existingResponse) {
+        // UPDATE existing response (Trigger logs to history automatically)
+        const { error } = await supabase
+          .from('task_decision_responses')
+          .update({
+            response_type: responseType,
+            comment: comment || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingResponse.id);
+
+        if (error) throw error;
+      } else {
+        // INSERT new response (Trigger logs to history automatically)
+        const { error } = await supabase
+          .from('task_decision_responses')
+          .insert({
+            decision_id: decisionId,
+            participant_id: participantId,
+            response_type: responseType,
+            comment: comment || null,
+          });
+
+        if (error) throw error;
+      }
 
       // Check if all participants have responded
       const { data: participants } = await supabase
@@ -185,6 +208,16 @@ export const TaskDecisionResponse = ({
             Ändern
           </Button>
         </div>
+        
+        <span className="text-xs text-muted-foreground">
+          Geantwortet am {new Date(currentResponse.created_at).toLocaleString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}
+        </span>
         
         {/* Show participant comment */}
         {currentResponse.comment && (

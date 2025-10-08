@@ -730,7 +730,7 @@ export const DecisionOverview = () => {
               {decision.description && (
                 <p className="text-xs text-muted-foreground mt-1">{decision.description}</p>
               )}
-              <div className="flex gap-2 mt-1">
+              <div className="flex gap-2 mt-1 flex-wrap">
                 <p className="text-xs text-muted-foreground">
                   Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
                     day: '2-digit',
