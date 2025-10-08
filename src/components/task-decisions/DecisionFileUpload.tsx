@@ -17,24 +17,31 @@ interface UploadedFile {
 }
 
 interface DecisionFileUploadProps {
-  decisionId: string;
+  decisionId?: string;
   onFilesChange?: () => void;
   canUpload?: boolean;
+  mode?: 'view' | 'creation';
+  onFilesSelected?: (files: File[]) => void;
 }
 
 export function DecisionFileUpload({ 
   decisionId, 
   onFilesChange,
-  canUpload = true
+  canUpload = true,
+  mode = 'view',
+  onFilesSelected
 }: DecisionFileUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    loadExistingFiles();
-  }, [decisionId]);
+    if (decisionId && mode === 'view') {
+      loadExistingFiles();
+    }
+  }, [decisionId, mode]);
 
   const loadExistingFiles = async () => {
     try {
@@ -72,13 +79,29 @@ export function DecisionFileUpload({
     }
   };
 
-  const handleFileSelect = async (selectedFiles: FileList | null) => {
-    if (!selectedFiles || selectedFiles.length === 0) return;
+  const handleFileSelect = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
     if (!canUpload) return;
+
+    const filesArray = Array.from(fileList);
+
+    // If in creation mode, just store files and notify parent
+    if (mode === 'creation') {
+      setSelectedFiles(prev => [...prev, ...filesArray]);
+      onFilesSelected?.(filesArray);
+      toast({
+        title: "Dateien ausgewählt",
+        description: `${filesArray.length} Datei(en) ausgewählt und werden nach Erstellung hochgeladen.`,
+      });
+      return;
+    }
+
+    // If in view mode and we have a decisionId, upload immediately
+    if (!decisionId) return;
 
     setUploading(true);
 
-    for (const file of Array.from(selectedFiles)) {
+    for (const file of filesArray) {
       try {
         // Get user ID for file path structure
         const { data: { user } } = await supabase.auth.getUser();
@@ -102,7 +125,7 @@ export function DecisionFileUpload({
             file_name: file.name,
             file_size: file.size,
             file_type: file.type,
-            uploaded_by: (await supabase.auth.getUser()).data.user?.id!
+            uploaded_by: user.id
           });
 
         if (dbError) throw dbError;
@@ -125,6 +148,10 @@ export function DecisionFileUpload({
     setUploading(false);
     loadExistingFiles();
     onFilesChange?.();
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const downloadFile = async (filePath: string, fileName: string) => {
@@ -237,12 +264,43 @@ export function DecisionFileUpload({
             className="w-full"
           >
             <Upload className="h-4 w-4 mr-2" />
-            {uploading ? 'Wird hochgeladen...' : 'Dateien auswählen'}
+            {uploading ? 'Wird hochgeladen...' : mode === 'creation' ? 'Dateien auswählen' : 'Dateien hochladen'}
           </Button>
         </div>
       )}
 
-      {files.length > 0 ? (
+      {/* Show selected files in creation mode */}
+      {mode === 'creation' && selectedFiles.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Ausgewählte Dateien ({selectedFiles.length})</p>
+              {selectedFiles.map((file, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                  <div className="flex items-center space-x-2 flex-1">
+                    <File className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeSelectedFile(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Show uploaded files in view mode */}
+      {mode === 'view' && files.length > 0 ? (
         <Card>
           <CardContent className="p-4">
             <div className="space-y-2">
@@ -302,11 +360,11 @@ export function DecisionFileUpload({
             </div>
           </CardContent>
         </Card>
-      ) : (
+      ) : mode === 'view' ? (
         <p className="text-sm text-muted-foreground text-center py-4">
           Noch keine Dateien hochgeladen
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

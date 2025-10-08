@@ -8,6 +8,7 @@ import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Vote, Mail, Plus, MessageSquare, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { DecisionFileUpload } from "./DecisionFileUpload";
 
 interface StandaloneDecisionCreatorProps {
   onDecisionCreated: () => void;
@@ -30,6 +31,7 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
   const [sendByEmail, setSendByEmail] = useState(false);
   const [sendViaMatrix, setSendViaMatrix] = useState(false);
   const [visibleToAll, setVisibleToAll] = useState(true);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const { toast } = useToast();
 
   const loadProfiles = async () => {
@@ -123,6 +125,43 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
       }
 
       console.log('Decision created successfully:', decision);
+
+      // Upload files if any were selected
+      if (selectedFiles.length > 0) {
+        for (const file of selectedFiles) {
+          try {
+            const fileName = `${userData.user.id}/decisions/${decision.id}/${Date.now()}-${file.name}`;
+
+            // Upload to storage
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('decision-attachments')
+              .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            // Save to database
+            const { error: dbError } = await supabase
+              .from('task_decision_attachments')
+              .insert({
+                decision_id: decision.id,
+                file_path: uploadData.path,
+                file_name: file.name,
+                file_size: file.size,
+                file_type: file.type,
+                uploaded_by: userData.user.id
+              });
+
+            if (dbError) throw dbError;
+          } catch (fileError) {
+            console.error('File upload error:', fileError);
+            toast({
+              title: "Datei-Upload-Fehler",
+              description: `${file.name} konnte nicht hochgeladen werden.`,
+              variant: "destructive",
+            });
+          }
+        }
+      }
 
       // Add participants (only if users are selected)
       if (selectedUsers.length > 0) {
@@ -279,6 +318,7 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
       setTitle("");
       setDescription("");
       setSelectedUsers([]);
+      setSelectedFiles([]);
       setSendByEmail(false);
       setSendViaMatrix(false);
       setVisibleToAll(true);
@@ -381,6 +421,15 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
                 Lade Benutzer...
               </div>
             )}
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Dateien anhängen (optional)</label>
+            <DecisionFileUpload
+              mode="creation"
+              onFilesSelected={(files) => setSelectedFiles(prev => [...prev, ...files])}
+              canUpload={true}
+            />
           </div>
           
           <div className="space-y-3">
