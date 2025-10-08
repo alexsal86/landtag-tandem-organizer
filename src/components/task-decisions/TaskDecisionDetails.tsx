@@ -282,23 +282,6 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
             </CardContent>
           </Card>
 
-          {/* File Attachments Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center">
-                <Paperclip className="h-4 w-4 mr-2" />
-                Anhänge
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DecisionFileUpload 
-                decisionId={decisionId}
-                onFilesChange={loadDecisionDetails}
-                canUpload={true}
-              />
-            </CardContent>
-          </Card>
-
           {/* Participants */}
           <div className="space-y-3">
             <h4 className="font-medium">Teilnehmer</h4>
@@ -415,6 +398,23 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
               );
             })}
           </div>
+
+          {/* File Attachments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center">
+                <Paperclip className="h-4 w-4 mr-2" />
+                Anhänge
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DecisionFileUpload 
+                decisionId={decisionId}
+                onFilesChange={loadDecisionDetails}
+                canUpload={true}
+              />
+            </CardContent>
+          </Card>
         </div>
       </DialogContent>
     </Dialog>
