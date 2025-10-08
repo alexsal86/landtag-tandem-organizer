@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { TaskDecisionDetails } from "./TaskDecisionDetails";
+import { UserBadge } from "@/components/ui/user-badge";
 import { Check, X, MessageCircle, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,11 +24,17 @@ interface DecisionRequest {
   };
   hasResponded: boolean;
   isParticipant?: boolean;
+  creator?: {
+    user_id: string;
+    display_name: string | null;
+    badge_color: string | null;
+  };
   participants?: Array<{
     id: string;
     user_id: string;
     profile?: {
       display_name: string | null;
+      badge_color: string | null;
     };
     responses: Array<{
       id: string;
@@ -203,12 +210,15 @@ export const TaskDecisionList = () => {
 
         if (participantsError) throw participantsError;
 
-        // Get user profiles for participants
-        const userIds = [...new Set(participantsData?.map(p => p.user_id) || [])];
+        // Get user profiles for participants and creators
+        const allUserIds = [...new Set([
+          ...participantsData?.map(p => p.user_id) || [],
+          ...allDecisions.map(d => d.created_by)
+        ])];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('user_id, display_name')
-          .in('user_id', userIds);
+          .select('user_id, display_name, badge_color')
+          .in('user_id', allUserIds);
 
         const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
@@ -223,6 +233,7 @@ export const TaskDecisionList = () => {
             user_id: participant.user_id,
             profile: {
               display_name: profileMap.get(participant.user_id)?.display_name || null,
+              badge_color: profileMap.get(participant.user_id)?.badge_color || null,
             },
             responses: (participant.task_decision_responses || [])
               .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -233,9 +244,15 @@ export const TaskDecisionList = () => {
           });
         });
 
-        // Add participants data to decisions
+        // Add participants data and creator info to decisions
         allDecisions.forEach((decision: any) => {
           decision.participants = participantsByDecision.get(decision.id) || [];
+          const creatorProfile = profileMap.get(decision.created_by);
+          decision.creator = {
+            user_id: decision.created_by,
+            display_name: creatorProfile?.display_name || null,
+            badge_color: creatorProfile?.badge_color || null,
+          };
         });
       }
 
@@ -370,8 +387,18 @@ export const TaskDecisionList = () => {
             >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-sm font-medium">{decision.title}</CardTitle>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-sm font-medium">{decision.title}</CardTitle>
+                      {decision.creator && (
+                        <UserBadge 
+                          userId={decision.creator.user_id}
+                          displayName={decision.creator.display_name}
+                          badgeColor={decision.creator.badge_color}
+                          size="sm"
+                        />
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       Aufgabe: {decision.task.title}
                     </p>
@@ -417,9 +444,15 @@ export const TaskDecisionList = () => {
                         return (
                           <div key={participant.id} className="bg-orange-50 p-2 rounded text-xs space-y-1">
                             <div className="flex items-center justify-between">
-                              <span className="font-medium text-orange-700">
-                                Rückfrage von {participant.profile?.display_name || 'Unbekannt'}:
-                              </span>
+                      <span className="font-medium text-orange-700 flex items-center gap-2">
+                        Rückfrage von 
+                        <UserBadge 
+                          userId={participant.user_id}
+                          displayName={participant.profile?.display_name}
+                          badgeColor={participant.profile?.badge_color}
+                          size="sm"
+                        />
+                      </span>
                               <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">
                                 <MessageCircle className="h-2 w-2 mr-1" />
                                 Rückfrage

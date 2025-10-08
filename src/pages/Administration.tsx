@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, CheckSquare, Building, FileText, DollarSign, Users, Shield, Clock, MapPin, Rss } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, CheckSquare, Building, FileText, DollarSign, Users, Shield, Clock, MapPin, Rss, Palette } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NewUserForm } from "@/components/NewUserForm";
@@ -34,6 +34,7 @@ import { RSSSourceManager } from "@/components/administration/RSSSourceManager";
 import { RSSSettingsManager } from "@/components/administration/RSSSettingsManager";
 import { CalendarSyncSettings } from "@/components/administration/CalendarSyncSettings";
 import { LoginCustomization } from "@/components/administration/LoginCustomization";
+import { UserColorManager } from "@/components/administration/UserColorManager";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -555,6 +556,7 @@ export default function Administration() {
               <TabsTrigger value="collaboration">Kollaboration</TabsTrigger>
               <TabsTrigger value="expense">Verwaltung</TabsTrigger>
               {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
+              {isSuperAdmin && <TabsTrigger value="usercolors"><Palette className="h-4 w-4 mr-2" />Benutzerfarben</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="general">
@@ -665,6 +667,12 @@ export default function Administration() {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+            )}
+
+            {isSuperAdmin && (
+              <TabsContent value="usercolors">
+                <UserColorManager />
               </TabsContent>
             )}
           </Tabs>

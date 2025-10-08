@@ -4570,6 +4570,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          badge_color: string | null
           bio: string | null
           created_at: string
           dashboard_cover_image_attribution: Json | null
@@ -4583,6 +4584,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          badge_color?: string | null
           bio?: string | null
           created_at?: string
           dashboard_cover_image_attribution?: Json | null
@@ -4596,6 +4598,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          badge_color?: string | null
           bio?: string | null
           created_at?: string
           dashboard_cover_image_attribution?: Json | null

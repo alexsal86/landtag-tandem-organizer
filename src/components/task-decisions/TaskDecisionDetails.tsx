@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { UserBadge } from "@/components/ui/user-badge";
 import { Check, X, MessageCircle, Send, Archive } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +14,7 @@ interface Participant {
   user_id: string;
   profile: {
     display_name: string | null;
+    badge_color: string | null;
   };
   responses: Array<{
     id: string;
@@ -99,7 +101,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
       const userIds = participantsData?.map(p => p.user_id) || [];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, display_name')
+        .select('user_id, display_name, badge_color')
         .in('user_id', userIds);
 
       if (profilesError) throw profilesError;
@@ -111,6 +113,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
         user_id: participant.user_id,
         profile: {
           display_name: profileMap.get(participant.user_id)?.display_name || null,
+          badge_color: profileMap.get(participant.user_id)?.badge_color || null,
         },
         responses: (participant.task_decision_responses || [])
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -274,10 +277,15 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
               const latestResponse = participant.responses[0];
               return (
                 <Card key={participant.id}>
-                  <CardHeader className="pb-2">
+                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm">
-                        {participant.profile?.display_name || 'Unbekannter Benutzer'}
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <UserBadge 
+                          userId={participant.user_id}
+                          displayName={participant.profile?.display_name}
+                          badgeColor={participant.profile?.badge_color}
+                          size="sm"
+                        />
                       </CardTitle>
                       {latestResponse ? (
                         <div className="flex items-center space-x-2">
