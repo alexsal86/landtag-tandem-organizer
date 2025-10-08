@@ -3002,6 +3002,7 @@ export type Database = {
           color: string
           created_at: string | null
           id: string
+          is_city_boundary: boolean | null
           name: string
           population: number | null
           updated_at: string | null
@@ -3013,6 +3014,7 @@ export type Database = {
           color: string
           created_at?: string | null
           id?: string
+          is_city_boundary?: boolean | null
           name: string
           population?: number | null
           updated_at?: string | null
@@ -3024,6 +3026,7 @@ export type Database = {
           color?: string
           created_at?: string | null
           id?: string
+          is_city_boundary?: boolean | null
           name?: string
           population?: number | null
           updated_at?: string | null

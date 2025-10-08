@@ -12,13 +12,7 @@ interface OverpassElement {
     name?: string;
     'name:de'?: string;
     population?: string;
-    'addr:city'?: string;
-  };
-  bounds?: {
-    minlat: number;
-    minlon: number;
-    maxlat: number;
-    maxlon: number;
+    admin_level?: string;
   };
   members?: Array<{
     type: string;
@@ -99,13 +93,14 @@ Deno.serve(async (req) => {
 
     console.log('Fetching Karlsruhe districts from Overpass API...');
 
-    // Overpass API query for Karlsruhe city districts (admin_level=10)
+    // Overpass API query for Karlsruhe districts (admin_level=10) AND city boundary (admin_level=6)
     const overpassQuery = `
       [out:json][timeout:60];
       area["name"="Karlsruhe"]["admin_level"="6"]->.searchArea;
       (
         relation(area.searchArea)["boundary"="administrative"]["admin_level"="10"];
         relation(area.searchArea)["place"="suburb"];
+        relation(area.searchArea)["boundary"="administrative"]["admin_level"="6"]["name"="Karlsruhe"];
       );
       out geom;
     `;
@@ -143,19 +138,23 @@ Deno.serve(async (req) => {
 
       seenNames.add(name);
 
+      // Check if this is the city boundary
+      const isCityBoundary = element.tags?.admin_level === '6' && name === 'Karlsruhe';
+
       const centroid = calculateCentroid(geoJson.coordinates);
-      const color = generateSoftColor();
+      const color = isCityBoundary ? '#000000' : generateSoftColor();
       const population = element.tags?.population ? parseInt(element.tags.population) : null;
 
       districts.push({
-        name,
+        name: isCityBoundary ? 'Karlsruhe (Stadtgrenze)' : name,
         boundaries: geoJson,
         center_coordinates: centroid,
         color,
         population,
+        is_city_boundary: isCityBoundary,
       });
 
-      console.log(`Processed district: ${name}`);
+      console.log(`Processed ${isCityBoundary ? 'city boundary' : 'district'}: ${name}`);
     }
 
     console.log(`Inserting ${districts.length} districts into database...`);

@@ -59,14 +59,25 @@ export const KarlsruheDistrictsMap = ({
     districts.forEach(district => {
       if (!district.boundaries) return;
 
+      // Special styling for city boundary
+      const isCityBoundary = district.is_city_boundary || district.name.includes('Stadtgrenze');
+      
       const layer = L.geoJSON(district.boundaries, {
-        style: {
+        style: isCityBoundary ? {
+          color: '#000000',
+          weight: 3,
+          fillOpacity: 0,
+          dashArray: '8, 4',
+        } : {
           color: district.color,
           weight: 2,
           fillColor: district.color,
           fillOpacity: selectedDistrict?.id === district.id ? 0.6 : 0.35,
         },
         onEachFeature: (feature, layer) => {
+          // Skip labels and interactions for city boundary
+          if (isCityBoundary) return;
+          
           // Add district name label
           if (district.center_coordinates) {
             const label = L.marker([district.center_coordinates.lat, district.center_coordinates.lng], {

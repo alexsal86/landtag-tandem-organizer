@@ -10,6 +10,7 @@ export interface KarlsruheDistrict {
   color: string;
   area_km2?: number;
   population?: number;
+  is_city_boundary?: boolean;
   created_at: string;
   updated_at: string;
 }
