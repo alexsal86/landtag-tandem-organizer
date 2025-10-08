@@ -14,6 +14,7 @@ import { AlertCircle, Save, Check, Lock, Unlock, Plus, Trash2 } from "lucide-rea
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EmployeeMeetingPDFExport } from "@/components/EmployeeMeetingPDFExport";
 
 interface EmployeeMeetingProtocolProps {
   meetingId: string;
@@ -423,6 +424,15 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               </>
             )}
           </Badge>
+          {isCompleted && (
+            <EmployeeMeetingPDFExport 
+              meeting={meeting}
+              protocolData={protocolData}
+              actionItems={actionItems}
+              employeePrep={employeePrep}
+              supervisorPrep={supervisorPrep}
+            />
+          )}
           {onBack && (
             <Button variant="outline" size="sm" onClick={onBack}>
               Zurück

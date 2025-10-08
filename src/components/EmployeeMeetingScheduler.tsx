@@ -35,6 +35,7 @@ export function EmployeeMeetingScheduler({
   const [meetingDate, setMeetingDate] = useState<Date | undefined>(undefined);
   const [meetingType, setMeetingType] = useState<string>("regular");
   const [intervalMonths, setIntervalMonths] = useState(3);
+  const [addToCalendar, setAddToCalendar] = useState<boolean>(true);
 
   // Load employee settings to get their meeting interval
   useEffect(() => {
@@ -109,9 +110,43 @@ export function EmployeeMeetingScheduler({
         priority_param: "medium",
       });
 
+      // Create calendar entry if checkbox is active
+      if (addToCalendar) {
+        const startTime = new Date(meetingDate);
+        startTime.setHours(10, 0, 0, 0);
+        const endTime = new Date(meetingDate);
+        endTime.setHours(11, 0, 0, 0);
+
+        const { error: calendarError } = await supabase
+          .from("appointments")
+          .insert({
+            user_id: user.id,
+            tenant_id: currentTenant.id,
+            title: `Mitarbeitergespräch mit ${employeeName}`,
+            description: JSON.stringify({ 
+              employee_meeting_id: meeting.id, 
+              meeting_type: meetingType 
+            }),
+            category: "employee_meeting",
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            status: "planned",
+            priority: "high",
+          });
+
+        if (calendarError) {
+          console.error("Calendar entry error:", calendarError);
+          toast({
+            title: "Hinweis",
+            description: "Gespräch erstellt, aber Kalendereintrag konnte nicht angelegt werden",
+            variant: "default",
+          });
+        }
+      }
+
       toast({
         title: "Gespräch geplant",
-        description: `Mitarbeitergespräch mit ${employeeName} für ${format(meetingDate, "dd.MM.yyyy", { locale: de })} geplant.`,
+        description: `Mitarbeitergespräch mit ${employeeName} für ${format(meetingDate, "dd.MM.yyyy", { locale: de })} geplant${addToCalendar ? ' und im Kalender eingetragen' : ''}.`,
       });
 
       onScheduled?.();
@@ -171,6 +206,20 @@ export function EmployeeMeetingScheduler({
                 Nächstes Gespräch voraussichtlich fällig: {format(addMonths(meetingDate, intervalMonths), "dd.MM.yyyy", { locale: de })}
               </p>
             )}
+          </div>
+
+          {/* Calendar Checkbox */}
+          <div className="flex items-center space-x-2 p-3 border rounded-lg">
+            <input
+              type="checkbox"
+              id="addToCalendar"
+              checked={addToCalendar}
+              onChange={(e) => setAddToCalendar(e.target.checked)}
+              className="h-4 w-4 rounded border-input"
+            />
+            <Label htmlFor="addToCalendar" className="text-sm cursor-pointer font-normal">
+              Als Kalendereintrag hinzufügen (10:00 - 11:00 Uhr)
+            </Label>
           </div>
 
           <div className="rounded-lg bg-muted p-4 space-y-2">
