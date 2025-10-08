@@ -105,3 +105,6 @@ verify_jwt = false
 
 [functions.reset-user-mfa]
 verify_jwt = true
+
+[functions.send-document-email]
+verify_jwt = true

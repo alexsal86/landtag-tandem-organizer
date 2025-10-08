@@ -1883,6 +1883,112 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          bcc: Json | null
+          body_html: string
+          cc: Json | null
+          created_at: string | null
+          document_ids: Json | null
+          error_message: string | null
+          id: string
+          recipients: Json
+          scheduled_for: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          bcc?: Json | null
+          body_html: string
+          cc?: Json | null
+          created_at?: string | null
+          document_ids?: Json | null
+          error_message?: string | null
+          id?: string
+          recipients: Json
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          bcc?: Json | null
+          body_html?: string
+          cc?: Json | null
+          created_at?: string | null
+          document_ids?: Json | null
+          error_message?: string | null
+          id?: string
+          recipients?: Json
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          body_html: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string
+          tenant_id: string
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          body_html: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject: string
+          tenant_id: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          body_html?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string
+          tenant_id?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_meeting_action_items: {
         Row: {
           assigned_to: string | null

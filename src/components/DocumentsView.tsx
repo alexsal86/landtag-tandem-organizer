@@ -41,7 +41,8 @@ import {
   Settings,
   Archive,
   RotateCcw,
-  Info
+  Info,
+  Inbox
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -52,6 +53,8 @@ import LetterDOCXExport from "./LetterDOCXExport";
 import { ArchivedLetterDetails } from "./letters/ArchivedLetterDetails";
 import { useLetterArchiving } from "@/hooks/useLetterArchiving";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { EmailComposer } from "./emails/EmailComposer";
+import { EmailHistory } from "./emails/EmailHistory";
 
 interface DocumentFolder {
   id: string;
@@ -126,7 +129,7 @@ export function DocumentsView() {
   const [showLetterEditor, setShowLetterEditor] = useState(false);
   const [selectedLetter, setSelectedLetter] = useState<Letter | undefined>(undefined);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
-  const [activeTab, setActiveTab] = useState<'documents' | 'letters'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails'>('documents');
   const [letterSubTab, setLetterSubTab] = useState<'active' | 'archived'>('active');
   const [autoArchiveDays, setAutoArchiveDays] = useState(30);
   const [showArchiveSettings, setShowArchiveSettings] = useState(false);
@@ -953,18 +956,29 @@ export function DocumentsView() {
                   <FileText className="h-4 w-4 inline mr-2" />
                   Dokumente
                 </button>
-                 <button
-                   onClick={() => setActiveTab('letters')}
-                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                     activeTab === 'letters'
-                       ? 'border-primary text-primary'
-                       : 'border-transparent text-muted-foreground hover:text-foreground'
-                   }`}
-                 >
-                   <Mail className="h-4 w-4 inline mr-2" />
-                   Briefe
-                 </button>
-               </div>
+                <button
+                  onClick={() => setActiveTab('letters')}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'letters'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Mail className="h-4 w-4 inline mr-2" />
+                  Briefe
+                </button>
+                <button
+                  onClick={() => setActiveTab('emails')}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'emails'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Send className="h-4 w-4 inline mr-2" />
+                  E-Mails
+                </button>
+              </div>
                
                {/* Letter Sub-tabs */}
                {activeTab === 'letters' && (
@@ -994,6 +1008,7 @@ export function DocumentsView() {
              </div>
 
           {/* Filters */}
+          {activeTab !== 'emails' && (
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-wrap gap-4 items-center justify-between">
@@ -1074,6 +1089,7 @@ export function DocumentsView() {
               </div>
             </CardContent>
           </Card>
+          )}
         </div>
 
         {/* Breadcrumb Navigation */}
@@ -1104,11 +1120,42 @@ export function DocumentsView() {
         )}
 
         {/* Content Grid */}
-        {loading && (activeTab === 'documents' ? documents.length === 0 : letters.length === 0) ? (
+        {loading && (activeTab === 'documents' ? documents.length === 0 : activeTab === 'letters' ? letters.length === 0 : false) ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">
               {activeTab === 'documents' ? 'Dokumente werden geladen...' : 'Briefe werden geladen...'}
             </p>
+          </div>
+        ) : activeTab === 'emails' ? (
+          <div className="space-y-6">
+            <div className="mb-6">
+              <div className="flex border-b">
+                <button
+                  onClick={() => setLetterSubTab('active')}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    letterSubTab === 'active'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Send className="h-4 w-4 inline mr-2" />
+                  E-Mail verfassen
+                </button>
+                <button
+                  onClick={() => setLetterSubTab('archived')}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    letterSubTab === 'archived'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Inbox className="h-4 w-4 inline mr-2" />
+                  E-Mail-Verlauf
+                </button>
+              </div>
+            </div>
+            
+            {letterSubTab === 'active' ? <EmailComposer /> : <EmailHistory />}
           </div>
         ) : activeTab === 'documents' ? (
           <>
