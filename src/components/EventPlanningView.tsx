@@ -1847,13 +1847,20 @@ export function EventPlanningView() {
     try {
       const fileExtension = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExtension}`;
-      const filePath = `planning-items/${user.id}/${itemId}/${fileName}`;
+      const filePath = `${user.id}/${itemId}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      console.log('Uploading file:', { fileName, filePath, fileSize: file.size, fileType: file.type });
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('planning-documents')
-        .upload(filePath, file);
+        .upload(filePath, file, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`);
+      }
+
+      console.log('Upload successful:', uploadData);
 
       const { error: dbError } = await supabase
         .from('planning_item_documents')
@@ -1866,10 +1873,13 @@ export function EventPlanningView() {
           file_type: file.type,
         });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw new Error(`Datenbank-Fehler: ${dbError.message}`);
+      }
 
       loadItemDocuments(itemId);
-      loadAllItemCounts(); // Refresh counts
+      loadAllItemCounts();
       
       toast({
         title: "Dokument hochgeladen",
@@ -1879,7 +1889,7 @@ export function EventPlanningView() {
       console.error('Error uploading document:', error);
       toast({
         title: "Fehler",
-        description: "Das Dokument konnte nicht hochgeladen werden.",
+        description: error instanceof Error ? error.message : "Das Dokument konnte nicht hochgeladen werden.",
         variant: "destructive",
       });
     } finally {
@@ -2482,6 +2492,13 @@ export function EventPlanningView() {
                   value={selectedPlanning.description || ""}
                   onChange={(e) => updatePlanningField("description", e.target.value)}
                   placeholder="Beschreibung der Veranstaltung..."
+                  rows={3}
+                  className="min-h-[80px] resize-none"
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = target.scrollHeight + 'px';
+                  }}
                 />
               </div>
               <div>
@@ -2553,6 +2570,13 @@ export function EventPlanningView() {
                   value={selectedPlanning.background_info || ""}
                   onChange={(e) => updatePlanningField("background_info", e.target.value)}
                   placeholder="Hintergrundinformationen..."
+                  rows={3}
+                  className="min-h-[80px] resize-none"
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = target.scrollHeight + 'px';
+                  }}
                 />
               </div>
             </CardContent>
