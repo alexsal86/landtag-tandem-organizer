@@ -183,14 +183,32 @@ export const DecisionOverview = () => {
           };
         }) || [];
 
-      // Combine and deduplicate (prefer participant data when available)
-      const allDecisionsList = [...formattedParticipantData];
-      
+      // Intelligente Deduplizierung: Merge participant data with all data
+      const decisionsMap = new Map<string, any>();
+
+      // Zuerst alle Decisions aus formattedAllData hinzufügen
       formattedAllData.forEach(decision => {
-        if (!allDecisionsList.some(existing => existing.id === decision.id)) {
-          allDecisionsList.push(decision);
+        decisionsMap.set(decision.id, decision);
+      });
+
+      // Dann participant-spezifische Daten mergen/überschreiben
+      formattedParticipantData.forEach(participantDecision => {
+        const existing = decisionsMap.get(participantDecision.id);
+        if (existing) {
+          // Merge: Participant-Daten haben Priorität für participant_id und hasResponded
+          decisionsMap.set(participantDecision.id, {
+            ...existing,
+            participant_id: participantDecision.participant_id,
+            hasResponded: participantDecision.hasResponded,
+            isParticipant: true, // User ist definitiv Participant
+          });
+        } else {
+          // Neue Decision nur in participant data
+          decisionsMap.set(participantDecision.id, participantDecision);
         }
       });
+
+      const allDecisionsList = Array.from(decisionsMap.values());
 
       // Now load all participants and responses for each decision
       if (allDecisionsList.length > 0) {
