@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<!--[if IE 9]> <html lang="de" class="ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html lang="de"> <!--<![endif]-->
+  <head>
+    
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta charset="utf-8" />
+      <meta name="generator" content="ckan 2.9.5" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Stadtteile Stadt Karlsruhe - Stadtteile Stadt Karlsruhe - GeoJSON - Stadt Karlsruhe</title>
+
+    
+    <link rel="shortcut icon" href="/base/images/ckan.ico" />
+    
+        
+    
+    
+      
+      
+      
+      
+    
+
+    
+    
+
+
+    
+    
+        
+        
+
+
+    
+      
+      
+    
+  
+  <meta property="og:title" content="Stadtteile Stadt Karlsruhe - Stadtteile Stadt Karlsruhe - GeoJSON - Stadt Karlsruhe">
+  <meta property="og:description" content="Der Datensatz enthält Stadtteilgrenzen, die Stadtteilnummer und die Stadtteilnamen der Karlsruher Stadtteile.">
+
+
+    
+    <link href="/webassets/base/a98d57ea_main.css" rel="stylesheet"/>
+<link href="/webassets/ckanext-harvest/c95a0af2_harvest_css.css" rel="stylesheet"/>
+<link href="/webassets/ckanext-geoview/77c3ca23_geo-resource-styles.css" rel="stylesheet"/>
+<link href="/webassets/ka/ka.css?6d69ddf3" rel="stylesheet"/>
+  
+    
+
+   <!-- Matomo -->
+   <script type="text/plain" data-cookiecategory="statistics">
+    var _paq = window._paq = window._paq || [];
+    /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+    _paq.push(['trackPageView']);
+    _paq.push(['enableLinkTracking']);
+    (function() {
+      var u="https://dienste.karlsruhe.de/piwik/";
+      _paq.push(['setTrackerUrl', u+'matomo.php']);
+      _paq.push(['setSiteId', '17']);
+      var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+      g.type='text/javascript'; g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+    })();
+  </script>
+  <!-- End Matomo Code -->
+  
+  
+   
+
+
+  </head>
+
+  
+  <body data-site-root="https://transparenz.karlsruhe.de/" data-locale-root="https://transparenz.karlsruhe.de/" >
+
+    
+    <div class="sr-only sr-only-focusable"><a href="#content">Überspringen zum Inhalt</a></div>
+  
+
+  
+    
+ 
+<div class="account-masthead">
+  <div class="container">
+     
+    <nav class="account not-authed" aria-label="Benutzerkonto">
+      <ul class="list-unstyled">
+        
+TEST
+
+      </ul>
+    </nav>
+     
+  </div>
+</div>
+
+<header class="navbar navbar-static-top masthead">
+    
+  <div class="container">
+    <div class="navbar-right">
+      <button data-target="#main-navigation-toggle" data-toggle="collapse" class="navbar-toggle collapsed" type="button" aria-label="expand or collapse" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="fa fa-bars"></span>
+      </button>
+    </div>
+    <hgroup class="header-image navbar-left">
+       
+      <a class="logo" href="/"><img src="/uploads/admin/2021-09-06-100057.158623logokarlsruhe.svg" alt="Stadt Karlsruhe" title="Stadt Karlsruhe" /></a>
+       
+    </hgroup>
+
+    <div class="collapse navbar-collapse" id="main-navigation-toggle">
+      
+      <nav class="section navigation">
+        <ul class="nav nav-pills">
+            
+  <li><a href="/dataset/">Datensätze</a></li><li><a href="/organization/">Organisationen</a></li><li><a href="/group/">Kategorien</a></li><li><a href="/showcase">Anwendungen</a></li><li><a href="/pages/datenanfrage">Datenanfrage</a></li>
+
+        </ul>
+      </nav>
+       
+<div class="menu-right container-fluid">
+</div>
+
+
+    </div>
+  </div>
+</header>
+
+<div class="jumbotron">
+<header>
+<h1> Transparenzportal der Stadt Karlsruhe</h1>
+</header>
+</div>
+
+
+
+  
+    <div class="main">
+      <div id="content" class="container">
+        
+          
+            <div class="flash-messages">
+              
+                
+              
+            </div>
+          
+
+          
+            <div class="toolbar" role="navigation" aria-label="Brotkrumen-Navigation">
+              
+                
+                  <ol class="breadcrumb">
+                    
+<li class="home"><a href="/" aria-label="Start"><i class="fa fa-home"></i><span> Start</span></a></li>
+                    
+  
+  
+    
+    
+      
+      
+      <li><a href="/organization/">Organisationen</a></li>
+      <li><a href="/organization/stadt-karlsruhe">Stadt Karlsruhe</a></li>
+    
+    <li><a href="/dataset/stadtteile">Stadtteile Stadt Karlsruhe</a></li>
+  
+
+  <li class="active"><a href="">Stadtteile Stadt Karlsruhe...</a></li>
+
+                  </ol>
+                
+              
+            </div>
+          
+
+          <div class="row wrapper">
+            
+            
+  
+    <section class="module module-resource" role="complementary">
+      
+      <div class="module-content">
+        <div class="actions">
+          
+          <ul>
+            
+  
+            
+            
+              <li>
+                <div class="btn-group">
+                <a class="btn btn-primary resource-url-analytics resource-type-None" href="https://transparenz.karlsruhe.de/dataset/8474ba52-f851-4f4b-b05a-1cba9bbd1f4d/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af/download/stadtteile.json">
+                  
+                    <i class="fa fa-arrow-circle-o-down"></i> Herunterladen
+                  
+                </a>
+                
+                  
+                <button class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                    <span class="caret"></span>
+                  </button>
+                <ul class="dropdown-menu">
+                  <li>
+                    <a href="/datastore/dump/2a7fd644-bc67-477a-bb9e-cf88f076b7af?bom=True"
+                      target="_blank"><span>CSV</span></a>
+                    <a href="/datastore/dump/2a7fd644-bc67-477a-bb9e-cf88f076b7af?bom=True&amp;format=tsv"
+                      target="_blank"><span>TSV</span></a>
+                    <a href="/datastore/dump/2a7fd644-bc67-477a-bb9e-cf88f076b7af?format=json"
+                      target="_blank"><span>JSON</span></a>
+                    <a href="/datastore/dump/2a7fd644-bc67-477a-bb9e-cf88f076b7af?format=xml"
+                      target="_blank"><span>XML</span></a>
+                  </li>
+                </ul>
+                  
+                
+                </div>
+              </li>
+            
+            
+  
+    <li>
+
+  
+  
+  <a class="btn btn-success" href="/api/1/util/snippet/api_info.html?resource_id=2a7fd644-bc67-477a-bb9e-cf88f076b7af" data-module="api-info" data-module-template="/api/1/util/snippet/api_info.html?resource_id=2a7fd644-bc67-477a-bb9e-cf88f076b7af" data-loading-text="Lädt..."><i class="fa fa-flask fa-lg"></i> Daten-API</a>
+</li>
+  
+
+          </ul>
+          
+        </div>
+        
+          
+            
+          
+          <h1 class="page-heading">Stadtteile Stadt Karlsruhe - GeoJSON</h1>
+          
+            
+              <p class="text-muted ellipsis">URL: <a class="resource-url-analytics" href="https://transparenz.karlsruhe.de/dataset/8474ba52-f851-4f4b-b05a-1cba9bbd1f4d/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af/download/stadtteile.json" title="https://transparenz.karlsruhe.de/dataset/8474ba52-f851-4f4b-b05a-1cba9bbd1f4d/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af/download/stadtteile.json">https://transparenz.karlsruhe.de/dataset/8474ba52-f851-4f4b-b05a-1cba9bbd1f4d/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af/download/stadtteile.json</a></p>
+            
+          
+          <div class="prose notes" property="rdfs:label">
+            
+              <p>Der Datensatz enthält Stadtteilgrenzen, die Stadtteilnummer und die Stadtteilnamen der Karlsruher Stadtteile.</p>
+            
+            
+          </div>
+        
+      
+      
+      
+        
+          
+          
+
+  <ul class="nav nav-tabs nav-tabs-plain" >
+    
+
+  
+  
+  	
+    
+
+
+  
+
+
+<li class=" active" data-id="e2d2f900-b5c7-4ded-90e1-ad5101c3a011">
+
+  <a href="/dataset/stadtteile/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af?view_id=e2d2f900-b5c7-4ded-90e1-ad5101c3a011" data-id="e2d2f900-b5c7-4ded-90e1-ad5101c3a011">
+    <i class="fa icon fa-map-marker"></i>
+    Vorschau 
+  </a>
+</li>
+  
+</ul>
+
+        
+          
+            <div class="resource-view">
+              
+              
+              
+                
+                  
+                    
+                      
+
+
+  <div id="view-e2d2f900-b5c7-4ded-90e1-ad5101c3a011" class="resource-view" data-id="e2d2f900-b5c7-4ded-90e1-ad5101c3a011" data-title="Vorschau " data-description="">
+  <div class="actions">
+    <a class="btn btn-default"
+       target="_blank"
+       href="https://transparenz.karlsruhe.de/dataset/stadtteile/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af/view/e2d2f900-b5c7-4ded-90e1-ad5101c3a011">
+      <i class="fa fa-arrows-alt"></i>
+      Vollbildschirm
+    </a>
+    <a class="btn btn-default"
+       href="#embed-e2d2f900-b5c7-4ded-90e1-ad5101c3a011"
+       data-module="resource-view-embed"
+       data-module-id="e2d2f900-b5c7-4ded-90e1-ad5101c3a011"
+       data-module-url="https://transparenz.karlsruhe.de/dataset/stadtteile/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af/view/e2d2f900-b5c7-4ded-90e1-ad5101c3a011">
+      <i class="fa fa-code"></i>
+      Einbettung
+    </a>
+  </div>
+  <p class="desc"></p>
+    <div class="m-top ckanext-datapreview">
+      
+      
+        <div class="data-viewer-error js-hide">
+          <p class="text-danger">
+            <i class="fa fa-info-circle"></i>
+            Diese Ressourcendarstellung/-view kann momentan nicht angezeigt werden.
+            <a href="#" data-toggle="collapse" data-target="#data-view-error">
+              Klick hier für mehr Informationen
+            </a>
+          </p>
+          <p id="data-view-error" class="collapse"></p>
+          <p>
+            <a href="https://transparenz.karlsruhe.de/dataset/8474ba52-f851-4f4b-b05a-1cba9bbd1f4d/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af/download/stadtteile.json" class="btn btn-default btn-lg resource-url-analytics" target="_blank">
+              <i class="fa fa-lg fa-arrow-circle-o-down"></i>
+              Ressource herunterladen
+            </a>
+          </p>
+        </div>
+        
+          
+          
+            
+          
+        
+        <iframe src="https://transparenz.karlsruhe.de/dataset/stadtteile/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af/view/e2d2f900-b5c7-4ded-90e1-ad5101c3a011" frameborder="0" width="100%" data-module="data-viewer">
+          <p>Dein Browser unterstützt iframes nicht</p>
+        </iframe>
+      
+    </div>
+    <div id="embed-e2d2f900-b5c7-4ded-90e1-ad5101c3a011" class="modal fade resource-view-embed">
+      <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h3 class="modal-title">Ressourcendarstellung/-view einbetten</h3>
+      </div>
+      <div class="modal-body">
+        <p class="embed-content">Sie können den Einbettungs-Code in ein CMS oder eine Blog-Software, die "raw HTML" unterstützt, einbetten</p>
+        <div class="row">
+          <div class="col-md-6">
+            
+  <div class="form-group control-full">
+  <label class="control-label" for="width">Breite</label>
+  <div class="controls ">
+  
+<input id="width" type="text" name="width" value="700" placeholder=""  class="form-control" />
+
+  
+  
+  </div>
+  </div>
+  
+
+          </div>
+          <div class="col-md-6">
+            
+  <div class="form-group control-full">
+  <label class="control-label" for="height">Höhe</label>
+  <div class="controls ">
+  
+<input id="height" type="text" name="height" value="400" placeholder=""  class="form-control" />
+
+  
+  
+  </div>
+  </div>
+  
+
+          </div>
+        </div>
+        
+  
+  
+  <div class="form-group pre control-full">
+  <label class="control-label" for="code">Code</label>
+  <div class="controls ">
+  
+  <textarea id="code" name="code" cols="20" rows="3" placeholder=""  class="form-control"></textarea>
+  
+  
+  
+  </div>
+  </div>
+  
+  
+      </div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+                    
+                  
+                
+              
+            </div>
+          
+        </div>
+      
+      
+      
+      
+    </section>
+  
+
+
+            
+              <aside class="secondary col-sm-3">
+                
+                
+
+  
+    
+
+
+  
+    <section class="module module-narrow resources">
+      
+        
+          <h2 class="module-heading"><i class="fa fa-files-o"></i> Ressourcen</h2>
+        
+        
+          <ul class="list-unstyled nav nav-simple">
+            
+              <li class="nav-item">
+                <a href="/dataset/stadtteile/resource/b11bc64d-c511-4fec-bc99-7333989ec673?inner_span=True">Stadtteile Stadt Karlsruhe</a>
+              </li>
+            
+              <li class="nav-item active">
+                <a href="/dataset/stadtteile/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af?inner_span=True">Stadtteile Stadt...</a>
+              </li>
+            
+          </ul>
+        
+      
+    </section>
+  
+
+  
+
+  
+
+
+              </aside>
+            
+
+            
+              <div class="primary col-sm-9 col-xs-12" role="main">
+                
+                
+  
+  
+
+
+
+  
+
+   
+    
+
+
+    
+    
+    
+    
+    
+    
+    
+
+    <section class="citehelp">
+
+      
+        <h3>Lizenz</h3>
+      
+
+      
+
+        
+
+        
+          <p>Dieser Datensatz wurde unter der Lizenz <a href="http://www.opendefinition.org/licenses/cc-zero" property="dc:rights">Creative Commons CC Zero License (cc-zero)</a> veröffentlicht.</p>
+        
+
+        
+          <p>Bitte nutzen Sie folgenden Quellenverweis wenn Sie den Datensatz verwenden:</p>
+          <textarea class="citehelp-citation-text" readonly>Datensatz "Stadtteile Stadt Karlsruhe", Stadt Karlsruhe (https://transparenz.karlsruhe.de/organization/47f81b28-f494-4bca-a36c-b636924ad0c3). Veröffentlicht unter der Lizenz "Creative Commons CC Zero License (cc-zero)" (http://www.opendefinition.org/licenses/cc-zero). Siehe https://transparenz.karlsruhe.de/packages?id=8474ba52-f851-4f4b-b05a-1cba9bbd1f4d.</textarea>
+        
+
+        
+          <p>Hier ist der entsprechende HTML-Code:</p>
+          <textarea class="citehelp-citation-html" readonly>&lt;p&gt;Datensatz &lt;a href="https://transparenz.karlsruhe.de/packages?id=8474ba52-f851-4f4b-b05a-1cba9bbd1f4d"&gt;Stadtteile Stadt Karlsruhe&lt;/a&gt;, &lt;a href="https://transparenz.karlsruhe.de/organization/47f81b28-f494-4bca-a36c-b636924ad0c3"&gt;Stadt Karlsruhe&lt;/a&gt;. Veröffentlicht unter der Lizenz &lt;a href="http://www.opendefinition.org/licenses/cc-zero"&gt;Creative Commons CC Zero License (cc-zero)&lt;/a&gt;.&lt;/p&gt;</textarea>
+        
+
+        
+
+      
+
+    </section>
+
+  
+
+
+
+
+  
+    
+      <section class="module">
+        
+  
+  
+    <div class="module-content">
+      <h2>Datenverzeichnis</h2>
+      <table class="table table-striped table-bordered table-condensed" data-module="table-toggle-more">
+        <thead>
+          
+          <tr>
+            <th scope="col">Spalte</th>
+            <th scope="col">Typ</th>
+            <th scope="col">Bezeichnung</th>
+            <th scope="col">Beschreibung</th>
+          </tr>
+          
+        </thead>
+        
+          
+          
+        
+      </table>
+    </div>
+  
+  
+  
+        <div class="module-content">
+          <h2>Zusätzliche Informationen</h2>
+          <table class="table table-striped table-bordered table-condensed" data-module="table-toggle-more">
+            <thead>
+              <tr>
+                <th scope="col">Feld</th>
+                <th scope="col">Wert</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Daten wurden zuletzt aktualisiert</th>
+                <td>8. März 2023</td>
+              </tr>
+              <tr>
+                <th scope="row">Metadaten zuletzt aktualisiert</th>
+                <td>20. November 2023</td>
+              </tr>
+              <tr>
+                <th scope="row">Erstellt</th>
+                <td>unbekannt</td>
+              </tr>
+              <tr>
+                <th scope="row">Format</th>
+                <td>GeoJSON</td>
+              </tr>
+              <tr>
+                <th scope="row">Lizenz</th>
+                <td>
+
+
+  
+    
+  
+    <a href="http://www.opendefinition.org/licenses/cc-zero" rel="dc:rights">Creative Commons CC Zero License (cc-zero)</a>
+  
+
+  
+</td>
+              </tr>
+              
+                
+                  <tr class="toggle-more"><th scope="row">Erstellt</th><td>vor 3 Jahren</td></tr>
+                
+              
+                
+                  <tr class="toggle-more"><th scope="row">Media type</th><td>application/json</td></tr>
+                
+              
+                
+                  <tr class="toggle-more"><th scope="row">Size</th><td>783.330</td></tr>
+                
+              
+                
+                  <tr class="toggle-more"><th scope="row">Datastore active</th><td>True</td></tr>
+                
+              
+                
+              
+                
+                  <tr class="toggle-more"><th scope="row">Has views</th><td>True</td></tr>
+                
+              
+                
+                  <tr class="toggle-more"><th scope="row">Id</th><td>2a7fd644-bc67-477a-bb9e-cf88f076b7af</td></tr>
+                
+              
+                
+              
+                
+              
+                
+                  <tr class="toggle-more"><th scope="row">On same domain</th><td>True</td></tr>
+                
+              
+                
+                  <tr class="toggle-more"><th scope="row">Package id</th><td>8474ba52-f851-4f4b-b05a-1cba9bbd1f4d</td></tr>
+                
+              
+                
+                  <tr class="toggle-more"><th scope="row">Position</th><td>1</td></tr>
+                
+              
+                
+                  <tr class="toggle-more"><th scope="row">State</th><td>active</td></tr>
+                
+              
+                
+                  <tr class="toggle-more"><th scope="row">Url type</th><td>upload</td></tr>
+                
+              
+            </tbody>
+          </table>
+        </div>
+        
+
+      </section>
+    
+  
+
+
+              </div>
+            
+          </div>
+        
+      </div>
+    </div>
+  
+    <footer class="site-footer">
+  <div class="container">
+    
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <div id="c85290" class="frame frame-default frame-type-textpic frame-layout-0">
+                <div class="media-element media-element--right ce-intext ce-nowrap"></div>
+                <div class="ce-bodytext">
+                    <header>
+                        <h4 class="">
+                            INFOS
+                        </h4>
+                    </header>
+                    <p>
+                        <a href="/pages/nutzungsbedingungen" title="Nutzungsbedingungen"
+                            class="link">Nutzungsbedingungen</a>&nbsp;<br>
+
+                        <a href="/pages/datenschutz" title="Datenschutz" class="link">Datenschutz</a>&nbsp;<br>
+                        <a href="/pages/impressum" title="Impressum" class="link">Impressum</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div id="c85291" class="frame frame-default frame-type-textpic frame-layout-0">
+                <div class="media-element media-element--right ce-intext ce-nowrap"></div>
+                <div class="ce-bodytext">
+                    <header>
+                        <h4 class="">
+                            weiterführende Links
+                        </h4>
+                    </header>
+                    <p>
+                        
+                            
+                            
+                            <a href="https://okfn.org/en/what-we-do/tools/" title="OKFN / CKAN Community" target="_blank" class="link">OKFN / CKAN Community</a><br>
+                            <a href="http://docs.ckan.org/en/2.9/" title="CKAN-Docs" target="blank" class="link">CKAN Dokumentation</a><br>
+                            <a href="http://docs.ckan.org/en/2.9/api/" title="CKAN-API" target="blank" class="link">CKAN API Dokumentation</a><br>
+                            <a href="/api/3/action/status_show" title="API Transparenzportal" target="_blank" class="link">API Transparenzportal</a><br>
+                        
+                    </p>
+                </div>
+            </div>
+
+        </div>
+        <div class="col-md-4"></div>
+
+        <div class="col-md-4">
+            <div id="c85293" class="frame frame-default frame-type-header frame-layout-0">
+                <header>
+                    <h4 class="">                        
+                    </h4>
+                </header>
+            </div>
+
+            <div class="social-media">
+            </div>
+        </div>
+    </div>
+</div>
+<br>
+<br>
+<br>
+<br>
+<br>
+<div class="copyright"><span>Copyright 2025 Stadt Karlsruhe </span></div>
+
+
+  </div>
+
+  
+    
+  
+</footer>
+  
+  
+  
+  
+  
+  
+    
+  <!-- body content ... -->
+  <script defer src="/cookieconsent.js"></script>
+  <script>
+    const datenschutzUrl = '/pages/datenschutz'
+  </script>
+  <script defer src="/cookieconsent-init.js"></script>
+
+
+      
+
+    
+    
+    <link href="/webassets/webassets-external/de8ab57dd2d11a20df1ee9f67317a0d5_cookieconsent.css" rel="stylesheet"/>
+<link href="/webassets/ka/ka-citehelp.css?f5f43e2e" rel="stylesheet"/>
+<link href="/webassets/vendor/f3b8236b_select2.css" rel="stylesheet"/>
+<link href="/webassets/vendor/0b01aef1_font-awesome.css" rel="stylesheet"/>
+    <script src="/webassets/vendor/d8ae4bed_jquery.js" type="text/javascript"></script>
+<script src="/webassets/vendor/fb6095a0_vendor.js" type="text/javascript"></script>
+<script src="/webassets/vendor/580fa18d_bootstrap.js" type="text/javascript"></script>
+<script src="/webassets/base/15a18f6c_main.js" type="text/javascript"></script>
+<script src="/webassets/base/266988e1_ckan.js" type="text/javascript"></script>
+  </body>
+</html>

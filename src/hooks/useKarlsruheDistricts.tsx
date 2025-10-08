@@ -31,22 +31,22 @@ export const useKarlsruheDistricts = () => {
     },
   });
 
-  // Auto-fetch from Overpass API if no data exists
+  // Auto-import from official GeoJSON if no data exists
   useEffect(() => {
-    const fetchFromOverpass = async () => {
+    const importDistricts = async () => {
       if (!isLoading && districts && districts.length === 0 && !isFetching) {
         setIsFetching(true);
-        console.log('No districts found, fetching from Overpass API...');
+        console.log('No districts found, importing from official GeoJSON...');
 
         try {
           const { error: functionError } = await supabase.functions.invoke(
-            'fetch-karlsruhe-districts'
+            'import-karlsruhe-districts'
           );
 
           if (functionError) {
-            console.error('Error fetching districts:', functionError);
+            console.error('Error importing districts:', functionError);
           } else {
-            console.log('Districts fetched successfully');
+            console.log('Districts imported successfully');
             // Refetch the data
             await refetch();
           }
@@ -58,7 +58,7 @@ export const useKarlsruheDistricts = () => {
       }
     };
 
-    fetchFromOverpass();
+    importDistricts();
   }, [isLoading, districts, isFetching, refetch]);
 
   return {
@@ -68,7 +68,7 @@ export const useKarlsruheDistricts = () => {
     refetch: async () => {
       setIsFetching(true);
       try {
-        await supabase.functions.invoke('fetch-karlsruhe-districts');
+        await supabase.functions.invoke('import-karlsruhe-districts');
         await refetch();
       } finally {
         setIsFetching(false);
