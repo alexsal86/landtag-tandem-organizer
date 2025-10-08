@@ -1120,13 +1120,13 @@ export function DocumentsView() {
                   {currentFolderSubfolders.map((folder) => (
                     <Card 
                       key={folder.id}
-                      className="hover:shadow-lg cursor-pointer transition-shadow"
+                      className="hover:shadow-lg cursor-pointer transition-shadow overflow-hidden"
                       onClick={() => navigateToFolder(folder.id)}
                     >
                       <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <Folder className="h-8 w-8 flex-shrink-0" style={{ color: folder.color }} />
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <h3 className="font-semibold truncate">{folder.name}</h3>
                             <p className="text-xs text-muted-foreground">
                               {folder.documentCount || 0} Dokument{folder.documentCount !== 1 ? 'e' : ''}
@@ -1185,47 +1185,47 @@ export function DocumentsView() {
             viewType === 'card' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDocuments.map((document) => (
-                <Card key={document.id} className="hover:shadow-lg transition-shadow">
+                <Card key={document.id} className="hover:shadow-lg transition-shadow overflow-hidden">
                   <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-primary" />
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                        <FileText className="h-5 w-5 text-primary flex-shrink-0" />
                         <CardTitle className="text-lg truncate">{document.title}</CardTitle>
                       </div>
-                      <Badge className={getStatusColor(document.status)}>
+                      <Badge className={`${getStatusColor(document.status)} flex-shrink-0`}>
                         {statusLabels[document.status as keyof typeof statusLabels]}
                       </Badge>
                     </div>
                     {document.description && (
-                      <CardDescription className="line-clamp-2">
+                      <CardDescription className="line-clamp-2 break-words">
                         {document.description}
                       </CardDescription>
                     )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Folder className="h-4 w-4" />
-                        <span>{categoryLabels[document.category as keyof typeof categoryLabels]}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Folder className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{categoryLabels[document.category as keyof typeof categoryLabels]}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>{format(new Date(document.created_at), "dd.MM.yyyy", { locale: de })}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Calendar className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{format(new Date(document.created_at), "dd.MM.yyyy", { locale: de })}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <FileType className="h-4 w-4" />
-                        <span>{document.file_name}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileType className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{document.file_name}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span>Größe: {formatFileSize(document.file_size)}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="truncate">Größe: {formatFileSize(document.file_size)}</span>
                       </div>
                     </div>
                     
                     {document.tags && document.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1 overflow-hidden">
                         {document.tags.map((tag, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            <Tag className="h-3 w-3 mr-1" />
+                          <Badge key={index} variant="outline" className="text-xs truncate max-w-full">
+                            <Tag className="h-3 w-3 mr-1 flex-shrink-0" />
                             {tag}
                           </Badge>
                         ))}
