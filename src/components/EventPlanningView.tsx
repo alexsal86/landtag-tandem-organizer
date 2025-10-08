@@ -129,6 +129,18 @@ interface PlanningDocument {
   created_at: string;
 }
 
+interface GeneralPlanningDocument {
+  id: string;
+  event_planning_id: string;
+  file_name: string;
+  file_path: string;
+  file_size?: number;
+  file_type?: string;
+  uploaded_by: string;
+  tenant_id: string;
+  created_at: string;
+}
+
 interface Collaborator {
   id: string;
   event_planning_id: string;
@@ -215,6 +227,9 @@ export function EventPlanningView() {
   // New states for result dialog
   const [completingSubtask, setCompletingSubtask] = useState<string | null>(null);
   const [completionResult, setCompletionResult] = useState('');
+
+  // General planning documents (not tied to checklist items)
+  const [generalDocuments, setGeneralDocuments] = useState<GeneralPlanningDocument[]>([]);
 
   // States for appointment preparations
   const [appointmentPreparations, setAppointmentPreparations] = useState<AppointmentPreparation[]>([]);
@@ -655,6 +670,9 @@ export function EventPlanningView() {
       .order("order_index");
 
     setSpeakers(speakersData || []);
+
+    // Fetch general documents
+    await loadGeneralDocuments(planningId);
   };
 
   // Utility function for debouncing
@@ -1426,6 +1444,108 @@ export function EventPlanningView() {
     toast({
       title: "Erfolg",
       description: "Mitarbeiter wurde entfernt.",
+    });
+  };
+
+  // General document management functions
+  const loadGeneralDocuments = async (planningId: string) => {
+    const { data, error } = await supabase
+      .from('event_planning_documents')
+      .select('*')
+      .eq('event_planning_id', planningId)
+      .order('created_at', { ascending: false });
+    
+    if (!error && data) {
+      setGeneralDocuments(data);
+    }
+  };
+
+  const handleGeneralFileUpload = async (files: FileList | null) => {
+    if (!files || !selectedPlanning || !currentTenant || !user) return;
+
+    setUploading(true);
+    
+    for (const file of Array.from(files)) {
+      const fileName = `${Date.now()}-${file.name}`;
+      const filePath = `${currentTenant.id}/general/${selectedPlanning.id}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('planning-documents')
+        .upload(filePath, file);
+      
+      if (uploadError) {
+        toast({ 
+          title: "Fehler", 
+          description: `Upload fehlgeschlagen: ${uploadError.message}`, 
+          variant: "destructive" 
+        });
+        continue;
+      }
+      
+      const { error: dbError } = await supabase
+        .from('event_planning_documents')
+        .insert({
+          event_planning_id: selectedPlanning.id,
+          file_path: filePath,
+          file_name: file.name,
+          file_size: file.size,
+          file_type: file.type,
+          uploaded_by: user.id,
+          tenant_id: currentTenant.id
+        });
+      
+      if (dbError) {
+        toast({ 
+          title: "Fehler", 
+          description: "Dokument-Metadaten konnten nicht gespeichert werden", 
+          variant: "destructive" 
+        });
+      }
+    }
+    
+    await loadGeneralDocuments(selectedPlanning.id);
+    setUploading(false);
+    toast({ 
+      title: "Erfolg", 
+      description: "Dokumente erfolgreich hochgeladen" 
+    });
+  };
+
+  const downloadGeneralDocument = async (doc: GeneralPlanningDocument) => {
+    const { data, error } = await supabase.storage
+      .from('planning-documents')
+      .download(doc.file_path);
+    
+    if (error) {
+      toast({ 
+        title: "Fehler", 
+        description: "Download fehlgeschlagen", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    const url = window.URL.createObjectURL(data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = doc.file_name;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  const deleteGeneralDocument = async (docId: string) => {
+    const doc = generalDocuments.find(d => d.id === docId);
+    if (!doc) return;
+    
+    await supabase.storage.from('planning-documents').remove([doc.file_path]);
+    await supabase.from('event_planning_documents').delete().eq('id', docId);
+    
+    setGeneralDocuments(prev => prev.filter(d => d.id !== docId));
+    toast({ 
+      title: "Erfolg", 
+      description: "Dokument gelöscht" 
     });
   };
 
@@ -3140,6 +3260,70 @@ export function EventPlanningView() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </Card>
+
+          {/* Dokumente - Allgemein */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Dokumente
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => document.getElementById('general-file-upload')?.click()}
+                  disabled={uploading}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Hochladen
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <input
+                id="general-file-upload"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => handleGeneralFileUpload(e.target.files)}
+              />
+              <div className="space-y-2">
+                {generalDocuments.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-2 border rounded">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="h-4 w-4" />
+                      <span className="text-sm">{doc.file_name}</span>
+                      {doc.file_size && (
+                        <span className="text-xs text-muted-foreground">
+                          ({(doc.file_size / 1024).toFixed(1)} KB)
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => downloadGeneralDocument(doc)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => deleteGeneralDocument(doc.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {generalDocuments.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Noch keine allgemeinen Dokumente hochgeladen
+                  </p>
+                )}
+              </div>
+            </CardContent>
           </Card>
 
           {/* Termine */}

@@ -2295,6 +2295,60 @@ export type Database = {
           },
         ]
       }
+      event_planning_documents: {
+        Row: {
+          created_at: string
+          event_planning_id: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          tenant_id: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          event_planning_id: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          tenant_id: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          event_planning_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_planning_documents_event_planning_id_fkey"
+            columns: ["event_planning_id"]
+            isOneToOne: false
+            referencedRelation: "event_plannings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_planning_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_planning_speakers: {
         Row: {
           bio: string | null
