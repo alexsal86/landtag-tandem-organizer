@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, Star, Tag, Merge } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, Star, Tag, Merge, CheckSquare, Square } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,6 +19,8 @@ import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
 import { ContactSkeleton } from "./ContactSkeleton";
 import { StakeholderView } from "./StakeholderView";
 import { DuplicateContactsSheet } from "./contacts/DuplicateContactsSheet";
+import { BulkActionsToolbar } from "./contacts/BulkActionsToolbar";
+import { ContactQuickActions } from "./contacts/ContactQuickActions";
 import { debounce } from "@/utils/debounce";
 import { useCounts } from "@/hooks/useCounts";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
@@ -61,6 +64,8 @@ export function ContactsView() {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>("");
   const [isDuplicateSheetOpen, setIsDuplicateSheetOpen] = useState(false);
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -323,6 +328,29 @@ export function ContactsView() {
   // Contacts are now filtered server-side by the hook
   const filteredContacts = contacts;
 
+  const toggleContactSelection = (contactId: string) => {
+    setSelectedContactIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(contactId)) {
+        newSet.delete(contactId);
+      } else {
+        newSet.add(contactId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllContacts = () => {
+    setSelectedContactIds(new Set(filteredContacts.map(c => c.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedContactIds(new Set());
+    setIsSelectionMode(false);
+  };
+
+  const selectedContacts = filteredContacts.filter(c => selectedContactIds.has(c.id));
+
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
@@ -529,6 +557,38 @@ export function ContactsView() {
               <Filter className="h-4 w-4" />
               Filter
             </Button>
+            {activeTab === "contacts" && (
+              <>
+                <Button 
+                  variant={isSelectionMode ? "default" : "outline"} 
+                  className="gap-2"
+                  onClick={() => {
+                    setIsSelectionMode(!isSelectionMode);
+                    if (isSelectionMode) {
+                      clearSelection();
+                    }
+                  }}
+                >
+                  {isSelectionMode ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                  Auswählen
+                </Button>
+                {isSelectionMode && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      if (selectedContactIds.size === filteredContacts.length) {
+                        clearSelection();
+                      } else {
+                        selectAllContacts();
+                      }
+                    }}
+                  >
+                    {selectedContactIds.size === filteredContacts.length ? 'Alle abwählen' : 'Alle auswählen'}
+                  </Button>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -592,14 +652,31 @@ export function ContactsView() {
                   {filteredContacts.map((contact) => (
             <Card
               key={contact.id}
-              className={`bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer ${getPriorityColor(
+              className={`bg-card shadow-card border-border hover:shadow-elegant transition-all duration-300 cursor-pointer group relative ${getPriorityColor(
                 contact.priority
-              )}`}
+              )} ${selectedContactIds.has(contact.id) ? 'ring-2 ring-primary' : ''}`}
               onClick={() => {
-                setSelectedContactId(contact.id);
-                setIsSheetOpen(true);
+                if (isSelectionMode) {
+                  toggleContactSelection(contact.id);
+                } else {
+                  setSelectedContactId(contact.id);
+                  setIsSheetOpen(true);
+                }
               }}
             >
+              {isSelectionMode && (
+                <div className="absolute top-3 left-3 z-10" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedContactIds.has(contact.id)}
+                    onCheckedChange={() => toggleContactSelection(contact.id)}
+                  />
+                </div>
+              )}
+              
+              {!isSelectionMode && (
+                <ContactQuickActions contact={contact} />
+              )}
+              
                <CardHeader className="pb-3">
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -1086,6 +1163,16 @@ export function ContactsView() {
           <ChevronUp className="h-4 w-4" />
         </Button>
       )}
+
+      <BulkActionsToolbar
+        selectedContacts={selectedContacts}
+        onClearSelection={clearSelection}
+        onActionComplete={() => {
+          clearSelection();
+          refreshContacts();
+        }}
+        allTags={allTags}
+      />
 
       <ContactDetailSheet
         contactId={selectedContactId}
