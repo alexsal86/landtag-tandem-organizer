@@ -149,10 +149,6 @@ const Index = () => {
       case "wahlkreise":
         console.log('Rendering ElectionDistrictsView');
         return <ElectionDistrictsView />;
-      case "stadtteile":
-        console.log('Rendering KarlsruheDistrictsView');
-        navigate("/stadtteile-karlsruhe");
-        return null;
       case "kreisverbände":
         console.log('Rendering PartyAssociationsMapView');
         return <PartyAssociationsMapView />;

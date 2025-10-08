@@ -41,6 +41,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { onlineUsers, getStatusDisplay, currentStatus } = useUserStatus();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
   const { notifications } = useNotifications();
   
@@ -55,6 +56,13 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   });
   const handleNavigationClick = async (sectionId: string) => {
     await markNavigationAsVisited(sectionId);
+    
+    // Direct navigation for standalone routes
+    if (sectionId === 'stadtteile') {
+      navigate('/stadtteile-karlsruhe');
+      return;
+    }
+    
     onSectionChange(sectionId);
   };
 
