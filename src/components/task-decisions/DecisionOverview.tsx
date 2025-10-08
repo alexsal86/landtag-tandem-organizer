@@ -691,7 +691,7 @@ export const DecisionOverview = () => {
     return (
       <Card 
         key={decision.id} 
-        className="border-l-4 border-l-gray-400 bg-muted/30"
+        className={`border-l-4 ${getBorderColor(summary)} bg-muted/30`}
       >
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
