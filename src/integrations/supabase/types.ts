@@ -1908,6 +1908,7 @@ export type Database = {
           meeting_type: string
           next_meeting_due: string | null
           protocol: Json | null
+          protocol_data: Json | null
           shared_during_meeting: boolean | null
           status: string
           supervisor_notes: string | null
@@ -1927,6 +1928,7 @@ export type Database = {
           meeting_type?: string
           next_meeting_due?: string | null
           protocol?: Json | null
+          protocol_data?: Json | null
           shared_during_meeting?: boolean | null
           status?: string
           supervisor_notes?: string | null
@@ -1946,6 +1948,7 @@ export type Database = {
           meeting_type?: string
           next_meeting_due?: string | null
           protocol?: Json | null
+          protocol_data?: Json | null
           shared_during_meeting?: boolean | null
           status?: string
           supervisor_notes?: string | null
