@@ -109,12 +109,39 @@ export const DashboardGreetingSection = () => {
         .lt('start_time', dayAfterTomorrow.toISOString())
         .order('start_time', { ascending: true });
       
-      // Kombinieren und max 2 Termine
-      const combined = [...(normalAppointments || []), ...(allDayAppointments || [])]
-        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+      // Externe Kalender-Events (type-safe cast to avoid deep instantiation)
+      const externalEventsResult = await (supabase as any)
+        .from('external_events')
+        .select('id, title, start_time, all_day')
+        .eq('tenant_id', currentTenant.id)
+        .gte('start_time', yesterday.toISOString())
+        .lt('start_time', dayAfterTomorrow.toISOString())
+        .order('start_time', { ascending: true });
+      
+      // Map external events to AppointmentData type
+      const externalEventsFormatted: AppointmentData[] = (externalEventsResult.data || []).map((e: any) => ({
+        id: e.id as string,
+        title: e.title as string,
+        start_time: e.start_time as string,
+        is_all_day: (e.all_day as boolean) ?? false
+      }));
+      
+      // Alle Events kombinieren
+      const allEvents: AppointmentData[] = [
+        ...(normalAppointments || []),
+        ...(allDayAppointments || []),
+        ...externalEventsFormatted
+      ];
+      
+      // Filtern für lokale Zeit (Deutsche Zeit = UTC+1/+2)
+      const filteredEvents = allEvents.filter(event => {
+        const eventDate = new Date(event.start_time);
+        const localDate = new Date(eventDate.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+        return localDate.toDateString() === today.toDateString();
+      }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
         .slice(0, 2);
       
-      setAppointments(combined);
+      setAppointments(filteredEvents);
       setIsLoading(false);
     };
     

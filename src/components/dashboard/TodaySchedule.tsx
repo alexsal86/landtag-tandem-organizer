@@ -66,13 +66,41 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
           .lt('start_time', dayAfterTomorrow.toISOString())
           .order('start_time', { ascending: true });
         
-        // Combine and sort
-        const combined = [...(normalAppointments || []), ...(allDayAppointments || [])]
-          .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+        // External calendar events (type-safe cast to avoid deep instantiation)
+        const externalEventsResult = await (supabase as any)
+          .from('external_events')
+          .select('id, title, start_time, location, all_day')
+          .eq('tenant_id', currentTenant.id)
+          .gte('start_time', yesterday.toISOString())
+          .lt('start_time', dayAfterTomorrow.toISOString())
+          .order('start_time', { ascending: true });
         
-        setAppointments(combined);
+        // Map external events to Appointment type
+        const externalEventsFormatted: Appointment[] = (externalEventsResult.data || []).map((e: any) => ({
+          id: e.id as string,
+          title: e.title as string,
+          start_time: e.start_time as string,
+          location: (e.location as string | null) ?? null,
+          is_all_day: (e.all_day as boolean) ?? false
+        }));
+        
+        // Combine all events
+        const allEvents: Appointment[] = [
+          ...(normalAppointments || []),
+          ...(allDayAppointments || []),
+          ...externalEventsFormatted
+        ];
+        
+        // Filter for local time (German time = UTC+1/+2)
+        const filteredEvents = allEvents.filter(event => {
+          const eventDate = new Date(event.start_time);
+          const localDate = new Date(eventDate.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+          return localDate.toDateString() === today.toDateString();
+        }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+        
+        setAppointments(filteredEvents);
         if (onCountChange) {
-          onCountChange(combined.length);
+          onCountChange(filteredEvents.length);
         }
       } catch (error) {
         console.error('Error fetching appointments:', error);
