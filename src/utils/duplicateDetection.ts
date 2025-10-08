@@ -2,20 +2,19 @@
  * Utility functions for detecting duplicate contacts
  */
 
-interface Contact {
+export interface Contact {
   id: string;
   name: string;
-  email?: string;
-  phone?: string;
-  organization?: string;
+  email?: string | null;
+  phone?: string | null;
+  organization?: string | null;
   contact_type?: string;
 }
 
-interface DuplicateMatch {
-  contact1: Contact;
-  contact2: Contact;
-  matchScore: number;
-  matchReasons: string[];
+export interface DuplicateMatch {
+  contact: Contact;
+  score: number;
+  reasons: string[];
 }
 
 /**
@@ -74,10 +73,10 @@ function normalizePhone(phone: string): string {
 }
 
 /**
- * Detect potential duplicate contacts
+ * Detect potential duplicate contacts - returns pairs of duplicates
  */
-export function findDuplicates(contacts: Contact[]): DuplicateMatch[] {
-  const duplicates: DuplicateMatch[] = [];
+export function findDuplicates(contacts: Contact[]): Array<{contact1: Contact; contact2: Contact; matchScore: number; matchReasons: string[]}> {
+  const duplicates: Array<{contact1: Contact; contact2: Contact; matchScore: number; matchReasons: string[]}> = [];
   const processed = new Set<string>();
 
   for (let i = 0; i < contacts.length; i++) {
@@ -159,8 +158,60 @@ export function findPotentialDuplicates(
   newContact: Contact,
   existingContacts: Contact[]
 ): DuplicateMatch[] {
-  return findDuplicates([newContact, ...existingContacts])
-    .filter(match => 
-      match.contact1.id === newContact.id || match.contact2.id === newContact.id
-    );
+  const matches: DuplicateMatch[] = [];
+  
+  for (const existing of existingContacts) {
+    const matchReasons: string[] = [];
+    let matchScore = 0;
+
+    // Exact email match (very strong indicator)
+    if (newContact.email && existing.email) {
+      const email1 = newContact.email.toLowerCase().trim();
+      const email2 = existing.email.toLowerCase().trim();
+      
+      if (email1 === email2) {
+        matchScore += 0.8;
+        matchReasons.push('Identische E-Mail-Adresse');
+      }
+    }
+
+    // Exact phone match (strong indicator)
+    if (newContact.phone && existing.phone) {
+      const phone1 = normalizePhone(newContact.phone);
+      const phone2 = normalizePhone(existing.phone);
+      
+      if (phone1 === phone2 && phone1.length > 5) {
+        matchScore += 0.7;
+        matchReasons.push('Identische Telefonnummer');
+      }
+    }
+
+    // Name similarity
+    const nameSimilarity = stringSimilarity(newContact.name, existing.name);
+    if (nameSimilarity > 0.8) {
+      matchScore += nameSimilarity * 0.5;
+      matchReasons.push(`Ähnlicher Name (${Math.round(nameSimilarity * 100)}%)`);
+    }
+
+    // Organization match
+    if (newContact.organization && existing.organization) {
+      const orgSimilarity = stringSimilarity(newContact.organization, existing.organization);
+      if (orgSimilarity > 0.85 && nameSimilarity > 0.6) {
+        matchScore += 0.3;
+        matchReasons.push(`Gleiche Organisation`);
+      }
+    }
+
+    // If match score is high enough, add to matches
+    if (matchScore >= 0.7 && matchReasons.length > 0) {
+      matches.push({
+        contact: existing,
+        score: Math.min(matchScore, 1),
+        reasons: matchReasons,
+      });
+    }
+  }
+
+  // Sort by score (highest first)
+  return matches.sort((a, b) => b.score - a.score);
 }
