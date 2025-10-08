@@ -9,7 +9,7 @@ import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionEditDialog } from "./DecisionEditDialog";
 import { UserBadge } from "@/components/ui/user-badge";
-import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical } from "lucide-react";
+import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical, Archive, RotateCcw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,9 @@ interface DecisionRequest {
   created_by: string;
   participant_id: string | null;
   visible_to_all?: boolean;
+  status: string;
+  archived_at: string | null;
+  archived_by: string | null;
   task: {
     title: string;
   } | null;
@@ -74,7 +77,7 @@ export const DecisionOverview = () => {
 
   const loadDecisionRequests = async (currentUserId: string) => {
     try {
-      // Load decisions where user is a participant
+      // Load active decisions where user is a participant
       const { data: participantDecisions, error: participantError } = await supabase
         .from('task_decision_participants')
         .select(`
@@ -88,6 +91,8 @@ export const DecisionOverview = () => {
             created_at,
             created_by,
             status,
+            archived_at,
+            archived_by,
             visible_to_all,
             tasks (
               title
@@ -98,11 +103,11 @@ export const DecisionOverview = () => {
           )
         `)
         .eq('user_id', currentUserId)
-        .eq('task_decisions.status', 'active');
+        .in('task_decisions.status', ['active', 'open']);
 
       if (participantError) throw participantError;
 
-      // Load all decisions created by user, assigned to user, or visible to all
+      // Load all active decisions created by user, assigned to user, or visible to all
       const { data: allDecisions, error: allError } = await supabase
         .from('task_decisions')
         .select(`
@@ -113,6 +118,8 @@ export const DecisionOverview = () => {
           created_at,
           created_by,
           status,
+          archived_at,
+          archived_by,
           visible_to_all,
           tasks (
             title,
@@ -126,9 +133,42 @@ export const DecisionOverview = () => {
             )
           )
         `)
-        .eq('status', 'active');
+        .in('status', ['active', 'open']);
 
       if (allError) throw allError;
+
+      // Load archived decisions
+      const { data: archivedDecisions, error: archivedError } = await supabase
+        .from('task_decisions')
+        .select(`
+          id,
+          task_id,
+          title,
+          description,
+          created_at,
+          created_by,
+          status,
+          archived_at,
+          archived_by,
+          visible_to_all,
+          tasks (
+            title,
+            assigned_to
+          ),
+          task_decision_participants (
+            id,
+            user_id,
+            task_decision_responses (
+              id
+            )
+          )
+        `)
+        .eq('status', 'archived');
+
+      if (archivedError) throw archivedError;
+
+      // Combine active and archived decisions
+      const combinedDecisions = [...(allDecisions || []), ...(archivedDecisions || [])];
 
       // Format participant decisions
       const formattedParticipantData = participantDecisions?.map(item => ({
@@ -138,6 +178,9 @@ export const DecisionOverview = () => {
         description: item.task_decisions.description,
         created_at: item.task_decisions.created_at,
         created_by: item.task_decisions.created_by,
+        status: item.task_decisions.status,
+        archived_at: item.task_decisions.archived_at,
+        archived_by: item.task_decisions.archived_by,
         visible_to_all: item.task_decisions.visible_to_all,
         participant_id: item.id,
         task: item.task_decisions.tasks ? {
@@ -150,7 +193,7 @@ export const DecisionOverview = () => {
       })) || [];
 
       // Format all decisions - filter for relevant ones
-      const formattedAllData = allDecisions
+      const formattedAllData = combinedDecisions
         ?.filter(item => {
           // Include if user is creator, participant, assigned to task, or visible_to_all
           const isCreator = item.created_by === currentUserId;
@@ -171,6 +214,9 @@ export const DecisionOverview = () => {
             description: item.description,
             created_at: item.created_at,
             created_by: item.created_by,
+            status: item.status,
+            archived_at: item.archived_at,
+            archived_by: item.archived_by,
             visible_to_all: item.visible_to_all,
             participant_id: userParticipant?.id || null,
             task: item.tasks ? {
@@ -379,6 +425,37 @@ export const DecisionOverview = () => {
     }
   };
 
+  const restoreDecision = async (decisionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({
+          status: 'open',
+          archived_at: null,
+          archived_by: null,
+        })
+        .eq('id', decisionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Erfolgreich",
+        description: "Entscheidung wurde wiederhergestellt.",
+      });
+
+      if (user?.id) {
+        loadDecisionRequests(user.id);
+      }
+    } catch (error) {
+      console.error('Error restoring decision:', error);
+      toast({
+        title: "Fehler",
+        description: "Entscheidung konnte nicht wiederhergestellt werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getResponseSummary = (participants: DecisionRequest['participants'] = []) => {
     const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
     const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
@@ -409,17 +486,18 @@ export const DecisionOverview = () => {
   };
 
   const filteredDecisions = decisions.filter(decision => {
+    if (activeTab === "archived") {
+      return decision.status === 'archived';
+    }
+    
+    // For all other tabs, only show non-archived decisions
+    if (decision.status === 'archived') return false;
+    
     switch (activeTab) {
-      case "standalone":
-        return decision.isStandalone;
-      case "task-based":
-        return !decision.isStandalone;
-      case "my-requests":
+      case "my-decisions":
         return decision.isCreator;
-      case "to-respond":
-        return decision.isParticipant && !decision.hasResponded;
-      case "public":
-        return decision.visible_to_all === true;
+      case "participating":
+        return decision.isParticipant;
       default:
         return true;
     }
@@ -607,6 +685,120 @@ export const DecisionOverview = () => {
     );
   };
 
+  const renderArchivedDecisionCard = (decision: DecisionRequest) => {
+    const summary = getResponseSummary(decision.participants);
+    
+    return (
+      <Card 
+        key={decision.id} 
+        className="border-l-4 border-l-gray-400 bg-muted/30"
+      >
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{decision.title}</CardTitle>
+                {decision.creator && (
+                  <UserBadge 
+                    userId={decision.creator.user_id}
+                    displayName={decision.creator.display_name}
+                    badgeColor={decision.creator.badge_color}
+                    size="sm"
+                  />
+                )}
+                <Badge variant="outline" className="text-gray-600 border-gray-600">
+                  <Archive className="h-3 w-3 mr-1" />
+                  Archiviert
+                </Badge>
+                {decision.isStandalone ? (
+                  <Badge variant="secondary">
+                    <Vote className="h-3 w-3 mr-1" />
+                    Eigenständig
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive">
+                    <CheckSquare className="h-3 w-3 mr-1" />
+                    Task-bezogen
+                  </Badge>
+                )}
+              </div>
+              {decision.task && (
+                <p className="text-xs text-muted-foreground">
+                  Aufgabe: {decision.task.title}
+                </p>
+              )}
+              {decision.description && (
+                <p className="text-xs text-muted-foreground mt-1">{decision.description}</p>
+              )}
+              <div className="flex gap-2 mt-1">
+                <p className="text-xs text-muted-foreground">
+                  Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+                {decision.archived_at && (
+                  <p className="text-xs text-muted-foreground">
+                    • Archiviert: {new Date(decision.archived_at).toLocaleString('de-DE', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {decision.isCreator && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  restoreDecision(decision.id);
+                }}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Wiederherstellen
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-2">
+            {/* Final Result */}
+            {decision.participants && decision.participants.length > 0 && (
+              <div className="flex items-center space-x-4 text-xs">
+                <span className="flex items-center text-green-600">
+                  <Check className="h-3 w-3 mr-1" />
+                  {summary.yesCount} Ja
+                </span>
+                <span className="flex items-center text-orange-600">
+                  <MessageCircle className="h-3 w-3 mr-1" />
+                  {summary.questionCount} Fragen
+                </span>
+                <span className="flex items-center text-red-600">
+                  <X className="h-3 w-3 mr-1" />
+                  {summary.noCount} Nein
+                </span>
+                {summary.pending > 0 && (
+                  <span className="text-muted-foreground">
+                    ({summary.pending} nicht beantwortet)
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Entscheidungen</h2>
@@ -616,28 +808,27 @@ export const DecisionOverview = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="all">Alle ({decisions.length})</TabsTrigger>
-          <TabsTrigger value="standalone">Eigenständig ({decisions.filter(d => d.isStandalone).length})</TabsTrigger>
-          <TabsTrigger value="task-based">Task-bezogen ({decisions.filter(d => !d.isStandalone).length})</TabsTrigger>
-          <TabsTrigger value="my-requests">Meine Anfragen ({decisions.filter(d => d.isCreator).length})</TabsTrigger>
-          <TabsTrigger value="to-respond">Zu beantworten ({decisions.filter(d => d.isParticipant && !d.hasResponded).length})</TabsTrigger>
-          <TabsTrigger value="public">Öffentlich ({decisions.filter(d => d.visible_to_all).length})</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="all">Alle ({decisions.filter(d => d.status !== 'archived').length})</TabsTrigger>
+          <TabsTrigger value="my-decisions">Meine Anfragen ({decisions.filter(d => d.isCreator && d.status !== 'archived').length})</TabsTrigger>
+          <TabsTrigger value="participating">Teilnehmend ({decisions.filter(d => d.isParticipant && d.status !== 'archived').length})</TabsTrigger>
+          <TabsTrigger value="archived">Archiviert ({decisions.filter(d => d.status === 'archived').length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">
           {filteredDecisions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {activeTab === "all" && "Keine Entscheidungen vorhanden."}
-              {activeTab === "standalone" && "Keine eigenständigen Entscheidungen vorhanden."}
-              {activeTab === "task-based" && "Keine task-bezogenen Entscheidungen vorhanden."}
-              {activeTab === "my-requests" && "Sie haben noch keine Entscheidungsanfragen erstellt."}
-              {activeTab === "to-respond" && "Keine offenen Entscheidungen zu beantworten."}
-              {activeTab === "public" && "Keine öffentlichen Entscheidungen vorhanden."}
+              {activeTab === "my-decisions" && "Sie haben noch keine Entscheidungsanfragen erstellt."}
+              {activeTab === "participating" && "Sie nehmen an keinen Entscheidungen teil."}
+              {activeTab === "archived" && "Keine archivierten Entscheidungen vorhanden."}
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredDecisions.map(renderDecisionCard)}
+              {activeTab === "archived" 
+                ? filteredDecisions.map(renderArchivedDecisionCard)
+                : filteredDecisions.map(renderDecisionCard)
+              }
             </div>
           )}
         </TabsContent>
