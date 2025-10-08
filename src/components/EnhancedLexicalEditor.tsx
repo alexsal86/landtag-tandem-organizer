@@ -82,6 +82,8 @@ interface EnhancedLexicalEditorProps {
   useYjsCollaboration?: boolean;
   showToolbar?: boolean;
   onConnectionChange?: (connected: boolean) => void;
+  showCollabDashboard?: boolean;
+  onCollabDashboardToggle?: () => void;
 }
 
 // Toolbar Plugin with formatting commands
@@ -556,7 +558,6 @@ function YjsContentSyncPlugin({
 // Clean Yjs Collaboration Editor component  
 function YjsCollaborationEditor(props: any) {
   const yjsProvider = useYjsProvider();
-  const [showCollabDashboard, setShowCollabDashboard] = React.useState(false);
   
   return (
     <div className="relative min-h-[200px] border rounded-md overflow-hidden">
@@ -570,11 +571,13 @@ function YjsCollaborationEditor(props: any) {
       )}
       
       {/* Collaboration Dashboard - positioned near toolbar */}
-      <CollaborationDashboard
-        documentId={props.documentId}
-        isVisible={showCollabDashboard}
-        onToggle={() => setShowCollabDashboard(!showCollabDashboard)}
-      />
+      {props.documentId && props.showCollabDashboard !== undefined && (
+        <CollaborationDashboard
+          documentId={props.documentId}
+          isVisible={props.showCollabDashboard}
+          onToggle={props.onCollabDashboardToggle}
+        />
+      )}
       
       <YjsSyncStatus>
         <LexicalComposer 

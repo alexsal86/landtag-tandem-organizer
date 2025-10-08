@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, PanelLeft, PanelLeftClose, Mail, Settings, Wifi, WifiOff } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, PanelLeft, PanelLeftClose, Mail, Settings, Wifi, WifiOff, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -138,6 +138,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [collaborators, setCollaborators] = useState<LetterCollaborator[]>([]);
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
   const [showDINPreview, setShowDINPreview] = useState(false);
+  const [showCollabDashboard, setShowCollabDashboard] = useState(false);
   const [senderInfos, setSenderInfos] = useState<any[]>([]);
   const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -1139,6 +1140,19 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
               Vorschau Brief
             </Button>
 
+            {/* Collaboration Dashboard Toggle */}
+            {letter?.id && (
+              <Button
+                variant={showCollabDashboard ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowCollabDashboard(!showCollabDashboard)}
+                title="Aktivitäts-Stream"
+              >
+                <Activity className="h-4 w-4 mr-2" />
+                Aktivitäten
+              </Button>
+            )}
+
             {/* Proofreading Mode Toggle - nur bei draft/review */}
             {editedLetter.status !== 'approved' && editedLetter.status !== 'sent' && (
               <Button
@@ -1768,6 +1782,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                   enableCollaboration={!!letter?.id}
                   useYjsCollaboration={true}
                   showToolbar={true}
+                  showCollabDashboard={showCollabDashboard}
+                  onCollabDashboardToggle={() => setShowCollabDashboard(!showCollabDashboard)}
                 />
               </div>
 

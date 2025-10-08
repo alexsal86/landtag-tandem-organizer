@@ -96,17 +96,7 @@ export function CollaborationDashboard({
   };
 
   if (!isVisible) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onToggle}
-        className="fixed top-16 right-20 z-30"
-        title="Aktivitäts-Stream öffnen"
-      >
-        <Activity className="h-4 w-4" />
-      </Button>
-    );
+    return null;
   }
 
   return (
