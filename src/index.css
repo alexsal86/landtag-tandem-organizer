@@ -480,19 +480,19 @@ All colors MUST be HSL.
   }
   
   .leaflet-popup-content-wrapper {
-    z-index: 99999 !important;
+    z-index: 400 !important;
   }
   
   .leaflet-popup-tip {
-    z-index: 99998 !important;
+    z-index: 399 !important;
   }
   
   .leaflet-tooltip-pane {
-    z-index: 99997 !important;
+    z-index: 398 !important;
   }
   
   .leaflet-control-container {
-    z-index: 99996 !important;
+    z-index: 397 !important;
   }
   
   /* Additional popup visibility fixes */
@@ -502,7 +502,7 @@ All colors MUST be HSL.
   }
   
   .leaflet-container {
-    z-index: auto !important;
+    z-index: 1 !important;
   }
 }
 
