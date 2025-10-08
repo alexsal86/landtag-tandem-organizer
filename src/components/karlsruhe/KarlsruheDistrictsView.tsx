@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useKarlsruheDistricts, KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
 import { useMapFlags, MapFlag } from '@/hooks/useMapFlags';
 import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
@@ -80,6 +80,12 @@ export const KarlsruheDistrictsView = () => {
 
   const totalPopulation = districts.reduce((sum, d) => sum + (d.population || 0), 0);
 
+  // Memoize displayed districts to prevent unnecessary re-renders
+  const displayedDistricts = useMemo(
+    () => showDistricts ? districts : [],
+    [showDistricts, districts]
+  );
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -115,7 +121,7 @@ export const KarlsruheDistrictsView = () => {
                 <Skeleton className="w-full h-[600px] rounded-lg" />
               ) : (
                 <KarlsruheDistrictsMap
-                  districts={showDistricts ? districts : []}
+                  districts={displayedDistricts}
                   onDistrictClick={setSelectedDistrict}
                   selectedDistrict={selectedDistrict}
                   flags={flags}
