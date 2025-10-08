@@ -1847,9 +1847,21 @@ export function EventPlanningView() {
     try {
       const fileExtension = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExtension}`;
+      if (!currentTenant?.id) {
+        throw new Error('Kein Tenant verfügbar. Bitte laden Sie die Seite neu.');
+      }
+
+      // Check if bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(b => b.id === 'planning-documents');
+
+      if (!bucketExists) {
+        throw new Error('Storage-Bucket "planning-documents" existiert nicht. Bitte kontaktieren Sie den Administrator.');
+      }
+
       const filePath = `${user.id}/${itemId}/${fileName}`;
 
-      console.log('Uploading file:', { fileName, filePath, fileSize: file.size, fileType: file.type });
+      console.log('Uploading file:', { fileName, filePath, fileSize: file.size, fileType: file.type, tenantId: currentTenant.id });
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('planning-documents')
@@ -1867,6 +1879,7 @@ export function EventPlanningView() {
         .insert({
           planning_item_id: itemId,
           user_id: user.id,
+          tenant_id: currentTenant.id,
           file_name: file.name,
           file_path: filePath,
           file_size: file.size,
@@ -1887,9 +1900,21 @@ export function EventPlanningView() {
       });
     } catch (error) {
       console.error('Error uploading document:', error);
+      
+      // Detailed error logging for debugging
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        });
+      }
+      
       toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : "Das Dokument konnte nicht hochgeladen werden.",
+        title: "Upload fehlgeschlagen",
+        description: error instanceof Error 
+          ? `Fehler: ${error.message}` 
+          : "Das Dokument konnte nicht hochgeladen werden. Bitte prüfen Sie Ihre Berechtigung.",
         variant: "destructive",
       });
     } finally {

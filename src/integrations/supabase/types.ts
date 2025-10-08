@@ -4338,6 +4338,7 @@ export type Database = {
           file_type: string | null
           id: string
           planning_item_id: string
+          tenant_id: string
           updated_at: string
           user_id: string
         }
@@ -4349,6 +4350,7 @@ export type Database = {
           file_type?: string | null
           id?: string
           planning_item_id: string
+          tenant_id: string
           updated_at?: string
           user_id: string
         }
@@ -4360,10 +4362,19 @@ export type Database = {
           file_type?: string | null
           id?: string
           planning_item_id?: string
+          tenant_id?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "planning_item_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       planning_item_subtasks: {
         Row: {
