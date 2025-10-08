@@ -275,7 +275,7 @@ export function DecisionFileUpload({
           <CardContent className="p-4">
             <div className="space-y-2">
               <p className="text-sm font-medium">Ausgewählte Dateien ({selectedFiles.length})</p>
-              <div className="max-h-[200px] overflow-y-auto space-y-2">
+            <div className="max-h-[300px] overflow-y-auto space-y-2">
                 {selectedFiles.map((file, index) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
                     <div className="flex items-center space-x-2 flex-1">
@@ -305,7 +305,7 @@ export function DecisionFileUpload({
       {mode === 'view' && files.length > 0 ? (
         <Card>
           <CardContent className="p-4">
-            <div className="max-h-[200px] overflow-y-auto space-y-2">
+            <div className="max-h-[300px] overflow-y-auto space-y-2">
               {files.map((file) => (
                 <div key={file.id} className="flex items-center justify-between p-2 bg-muted rounded">
                   <div className="flex items-center space-x-2 flex-1">
