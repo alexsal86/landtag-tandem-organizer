@@ -90,6 +90,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "meetings", label: "Jour fixe", icon: MessageSquare },
     { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
     { id: "wahlkreise", label: "Wahlkreise", icon: MapPin },
+    { id: "stadtteile", label: "Stadtteile KA", icon: MapPin },
     { id: "documents", label: "Dokumente", icon: FileText },
     ...(isAdmin ? [{ id: "drucksachen", label: "Drucksachen", icon: Archive }] : []),
     { id: "knowledge", label: "Wissen", icon: Database },
