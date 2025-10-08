@@ -834,14 +834,20 @@ export const DecisionOverview = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Entscheidungen</h2>
-      
-      <div className="flex justify-center mb-4">
-        <StandaloneDecisionCreator onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)} />
+    <div className="min-h-screen bg-gradient-subtle p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Entscheidungen</h1>
+        <p className="text-muted-foreground">
+          Verwalten Sie Entscheidungsanfragen und Abstimmungen
+        </p>
       </div>
+      
+      <div className="space-y-6">
+        <div className="flex justify-center mb-4">
+          <StandaloneDecisionCreator onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)} />
+        </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="all">Alle ({decisions.filter(d => d.status !== 'archived').length})</TabsTrigger>
           <TabsTrigger value="my-decisions">Meine Anfragen ({decisions.filter(d => d.isCreator && d.status !== 'archived').length})</TabsTrigger>
@@ -866,9 +872,9 @@ export const DecisionOverview = () => {
             </div>
           )}
         </TabsContent>
-      </Tabs>
+        </Tabs>
 
-      {selectedDecisionId && (
+        {selectedDecisionId && (
         <TaskDecisionDetails
           decisionId={selectedDecisionId}
           isOpen={isDetailsOpen}
@@ -907,6 +913,7 @@ export const DecisionOverview = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 };

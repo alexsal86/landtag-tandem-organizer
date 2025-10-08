@@ -11,9 +11,7 @@ export default function Decisions() {
         activeSection={currentSection} 
         onSectionChange={setCurrentSection} 
       />
-      <main className="container mx-auto px-4 py-8">
-        <DecisionOverview />
-      </main>
+      <DecisionOverview />
     </div>
   );
 }
