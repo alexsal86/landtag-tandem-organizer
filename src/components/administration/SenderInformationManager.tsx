@@ -53,19 +53,30 @@ export function SenderInformationManager() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      const data = { 
-        ...formData, 
-        tenant_id: currentTenant.id, 
-        is_active: true,
-        created_by: user.id
-      };
-      
       if (editingInfo) {
-        const { error } = await supabase.from('sender_information').update(data as any).eq('id', editingInfo.id);
+        const { error } = await supabase
+          .from('sender_information')
+          .update({
+            name: formData.sender_name,
+            organization: formData.sender_name,
+            landtag_email: formData.sender_email,
+            is_default: formData.is_default,
+          })
+          .eq('id', editingInfo.id);
         if (error) throw error;
         toast({ title: "Absender aktualisiert" });
       } else {
-        const { error } = await supabase.from('sender_information').insert([data] as any);
+        const { error } = await supabase
+          .from('sender_information')
+          .insert({
+            name: formData.sender_name,
+            organization: formData.sender_name,
+            landtag_email: formData.sender_email,
+            is_default: formData.is_default,
+            tenant_id: currentTenant.id,
+            is_active: true,
+            created_by: user.id,
+          });
         if (error) throw error;
         toast({ title: "Absender erstellt" });
       }
@@ -103,8 +114,8 @@ export function SenderInformationManager() {
       <div className="grid gap-4">
         {senderInfos.map((info) => (
           <Card key={info.id}>
-            <CardHeader><CardTitle><Building className="h-5 w-5 inline mr-2" />{info.sender_name}</CardTitle></CardHeader>
-            <CardContent><p>{info.sender_email}</p></CardContent>
+            <CardHeader><CardTitle><Building className="h-5 w-5 inline mr-2" />{info.name}</CardTitle></CardHeader>
+            <CardContent><p>{info.landtag_email}</p></CardContent>
           </Card>
         ))}
       </div>
