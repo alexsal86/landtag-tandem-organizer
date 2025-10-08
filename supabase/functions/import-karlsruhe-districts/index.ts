@@ -65,14 +65,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Fetching GeoJSON from local file...');
+    console.log('Fetching GeoJSON from Supabase Storage...');
     
-    // Fetch the GeoJSON file from the public directory
-    const geoJsonUrl = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/documents/karlsruhe-stadtteile.geojson`;
-    
-    // For now, we'll use a hardcoded URL to the file
-    // In production, this should be uploaded to Supabase Storage
-    const response = await fetch('https://transparenz.karlsruhe.de/dataset/stadtteile/resource/2a7fd644-bc67-477a-bb9e-cf88f076b7af');
+    // Fetch the GeoJSON file from Supabase Storage
+    const geoJsonUrl = `https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/documents/public-data/karlsruhe-stadtteile.geojson`;
+    const response = await fetch(geoJsonUrl);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch GeoJSON: ${response.statusText}`);
