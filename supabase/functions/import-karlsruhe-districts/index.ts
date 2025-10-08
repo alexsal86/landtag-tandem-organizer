@@ -92,9 +92,14 @@ serve(async (req) => {
         continue;
       }
 
-      // Get district name from properties
-      const name = feature.properties.STADTTEIL || feature.properties.name;
-      if (!name) continue;
+      console.log(`Processing feature properties:`, JSON.stringify(feature.properties));
+
+      // Get district name from properties (checking NAME first for karlsruhe-stadtteile.geojson)
+      const name = feature.properties.NAME || feature.properties.name || feature.properties.STADTTEIL;
+      if (!name) {
+        console.log('Skipping feature without name:', feature.properties);
+        continue;
+      }
 
       // Calculate centroid for label placement
       let coordinates: number[][][];
