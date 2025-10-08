@@ -7,14 +7,17 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Edit, Plus, Save, X, GripVertical } from "lucide-react";
+import { icons, LucideIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { TagIconPicker } from "@/components/contacts/TagIconPicker";
 
 type Tag = {
   id: string;
   name: string;
   label: string;
   color: string;
+  icon?: string;
   is_active: boolean;
   order_index: number;
 };
@@ -23,8 +26,8 @@ export function TagAdminSettings() {
   const { toast } = useToast();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingTag, setEditingTag] = useState<{ id: string; label: string; color: string } | null>(null);
-  const [newTag, setNewTag] = useState<{ label: string; color: string } | null>(null);
+  const [editingTag, setEditingTag] = useState<{ id: string; label: string; color: string; icon?: string } | null>(null);
+  const [newTag, setNewTag] = useState<{ label: string; color: string; icon?: string } | null>(null);
 
   useEffect(() => {
     loadTags();
@@ -48,7 +51,7 @@ export function TagAdminSettings() {
     }
   };
 
-  const addTag = async (label: string, color: string) => {
+  const addTag = async (label: string, color: string, icon?: string) => {
     if (!label.trim()) return;
     
     try {
@@ -56,6 +59,7 @@ export function TagAdminSettings() {
         name: label.toLowerCase().replace(/\s+/g, '_'),
         label,
         color,
+        icon: icon || null,
         order_index: Math.max(...tags.map(t => t.order_index), -1) + 1
       });
       
@@ -70,14 +74,15 @@ export function TagAdminSettings() {
     }
   };
 
-  const saveTag = async (id: string, label: string, color: string) => {
+  const saveTag = async (id: string, label: string, color: string, icon?: string) => {
     if (!label.trim()) return;
     
     try {
       const { error } = await supabase.from('tags').update({
         name: label.toLowerCase().replace(/\s+/g, '_'),
         label,
-        color
+        color,
+        icon: icon || null
       }).eq('id', id);
       
       if (error) throw error;
@@ -89,6 +94,12 @@ export function TagAdminSettings() {
       console.error('Error updating tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht aktualisiert werden.", variant: "destructive" });
     }
+  };
+
+  const getIconComponent = (iconName?: string): LucideIcon | null => {
+    if (!iconName) return null;
+    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
+    return Icon || null;
   };
 
   const deleteTag = async (id: string) => {
@@ -168,7 +179,7 @@ export function TagAdminSettings() {
         <CardTitle className="flex items-center justify-between">
           Tags & Kategorien
           <Button
-            onClick={() => setNewTag({ label: '', color: '#3b82f6' })}
+            onClick={() => setNewTag({ label: '', color: '#3b82f6', icon: undefined })}
             size="sm"
             className="ml-2"
           >
@@ -187,6 +198,7 @@ export function TagAdminSettings() {
                     <TableRow>
                       <TableHead className="w-8"></TableHead>
                       <TableHead>Label</TableHead>
+                      <TableHead className="w-16">Icon</TableHead>
                       <TableHead className="w-24">Farbe</TableHead>
                       <TableHead className="w-20">Status</TableHead>
                       <TableHead className="w-32">Aktionen</TableHead>
@@ -205,6 +217,12 @@ export function TagAdminSettings() {
                           />
                         </TableCell>
                         <TableCell>
+                          <TagIconPicker
+                            value={newTag.icon}
+                            onChange={(icon) => setNewTag({ ...newTag, icon })}
+                          />
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-2">
                             <input
                               type="color"
@@ -220,7 +238,7 @@ export function TagAdminSettings() {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button
-                              onClick={() => addTag(newTag.label, newTag.color)}
+                              onClick={() => addTag(newTag.label, newTag.color, newTag.icon)}
                               size="sm"
                               variant="outline"
                               className="h-8 w-8 p-0"
@@ -264,8 +282,33 @@ export function TagAdminSettings() {
                                     className="inline-block w-3 h-3 rounded-full"
                                     style={{ backgroundColor: tag.color }}
                                   />
+                                  {(() => {
+                                    const Icon = getIconComponent(tag.icon);
+                                    return Icon ? <Icon className="h-3.5 w-3.5" /> : null;
+                                  })()}
                                   {tag.label}
                                 </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {editingTag?.id === tag.id ? (
+                                <TagIconPicker
+                                  value={editingTag.icon}
+                                  onChange={(icon) => setEditingTag({ ...editingTag, icon })}
+                                />
+                              ) : (
+                                (() => {
+                                  const Icon = getIconComponent(tag.icon);
+                                  return Icon ? (
+                                    <div className="flex items-center justify-center w-8 h-8">
+                                      <Icon className="h-4 w-4" />
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-center w-8 h-8 text-muted-foreground">
+                                      -
+                                    </div>
+                                  );
+                                })()
                               )}
                             </TableCell>
                             <TableCell>
@@ -298,7 +341,7 @@ export function TagAdminSettings() {
                                 {editingTag?.id === tag.id ? (
                                   <>
                                     <Button
-                                      onClick={() => saveTag(tag.id, editingTag.label, editingTag.color)}
+                                      onClick={() => saveTag(tag.id, editingTag.label, editingTag.color, editingTag.icon)}
                                       size="sm"
                                       variant="outline"
                                       className="h-8 w-8 p-0"
@@ -317,7 +360,7 @@ export function TagAdminSettings() {
                                 ) : (
                                   <>
                                     <Button
-                                      onClick={() => setEditingTag({ id: tag.id, label: tag.label, color: tag.color })}
+                                      onClick={() => setEditingTag({ id: tag.id, label: tag.label, color: tag.color, icon: tag.icon })}
                                       size="sm"
                                       variant="outline"
                                       className="h-8 w-8 p-0"

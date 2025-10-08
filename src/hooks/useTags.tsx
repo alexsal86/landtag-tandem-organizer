@@ -6,6 +6,7 @@ interface Tag {
   name: string;
   label: string;
   color: string;
+  icon?: string;
   is_active: boolean;
   order_index: number;
 }
