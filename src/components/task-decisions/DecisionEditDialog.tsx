@@ -93,10 +93,10 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       return;
     }
 
-    if (!visibleToAll && selectedUsers.length === 0) {
+    if (selectedUsers.length === 0) {
       toast({
         title: "Fehler",
-        description: "Bitte wählen Sie mindestens einen Benutzer aus oder aktivieren Sie 'Für alle sichtbar'.",
+        description: "Bitte wählen Sie mindestens einen Benutzer aus.",
         variant: "destructive",
       });
       return;
@@ -220,29 +220,32 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
             />
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="visible-to-all"
-              checked={visibleToAll}
-              onCheckedChange={(checked) => setVisibleToAll(checked === true)}
-            />
-            <label htmlFor="visible-to-all" className="text-sm font-medium flex items-center">
-              <Globe className="h-4 w-4 mr-1" />
-              Für alle sichtbar
-            </label>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="visible-to-all"
+                checked={visibleToAll}
+                onCheckedChange={(checked) => setVisibleToAll(checked === true)}
+              />
+              <label htmlFor="visible-to-all" className="text-sm font-medium flex items-center">
+                <Globe className="h-4 w-4 mr-1" />
+                Öffentlich (für alle Büromitarbeiter sichtbar)
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground ml-6">
+              Öffentliche Entscheidungen sind für alle Büromitarbeiter sichtbar. Die ausgewählten Benutzer können abstimmen.
+            </p>
           </div>
 
-          {!visibleToAll && (
-            <div>
-              <label className="text-sm font-medium">Benutzer auswählen</label>
-              <MultiSelect
-                options={userOptions}
-                selected={selectedUsers}
-                onChange={setSelectedUsers}
-                placeholder="Benutzer auswählen"
-              />
-            </div>
-          )}
+          <div>
+            <label className="text-sm font-medium">Benutzer auswählen (mindestens einer erforderlich)</label>
+            <MultiSelect
+              options={userOptions}
+              selected={selectedUsers}
+              onChange={setSelectedUsers}
+              placeholder="Benutzer auswählen"
+            />
+          </div>
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button 

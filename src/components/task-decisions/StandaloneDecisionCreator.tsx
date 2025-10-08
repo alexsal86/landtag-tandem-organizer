@@ -29,7 +29,7 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
   const [isLoading, setIsLoading] = useState(false);
   const [sendByEmail, setSendByEmail] = useState(false);
   const [sendViaMatrix, setSendViaMatrix] = useState(false);
-  const [visibleToAll, setVisibleToAll] = useState(false);
+  const [visibleToAll, setVisibleToAll] = useState(true);
   const { toast } = useToast();
 
   const loadProfiles = async () => {
@@ -58,10 +58,10 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
       return;
     }
 
-    if (!visibleToAll && selectedUsers.length === 0) {
+    if (selectedUsers.length === 0) {
       toast({
         title: "Fehler",
-        description: "Bitte wählen Sie mindestens einen Benutzer aus oder aktivieren Sie 'Für alle sichtbar'.",
+        description: "Bitte wählen Sie mindestens einen Benutzer aus.",
         variant: "destructive",
       });
       return;
@@ -278,7 +278,7 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
       setSelectedUsers([]);
       setSendByEmail(false);
       setSendViaMatrix(false);
-      setVisibleToAll(false);
+      setVisibleToAll(true);
       setIsOpen(false);
       onDecisionCreated();
     } catch (error) {
@@ -347,35 +347,38 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
               rows={3}
             />
           </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="visible-to-all"
-              checked={visibleToAll}
-              onCheckedChange={(checked) => setVisibleToAll(checked === true)}
-            />
-            <label htmlFor="visible-to-all" className="text-sm font-medium flex items-center">
-              <Globe className="h-4 w-4 mr-1" />
-              Für alle sichtbar
-            </label>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="visible-to-all"
+                checked={visibleToAll}
+                onCheckedChange={(checked) => setVisibleToAll(checked === true)}
+              />
+              <label htmlFor="visible-to-all" className="text-sm font-medium flex items-center">
+                <Globe className="h-4 w-4 mr-1" />
+                Öffentlich (für alle Büromitarbeiter sichtbar)
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground ml-6">
+              Öffentliche Entscheidungen sind für alle Büromitarbeiter sichtbar. Die ausgewählten Benutzer können abstimmen.
+            </p>
           </div>
 
-          {!visibleToAll && (
-            <div>
-              <label className="text-sm font-medium">Benutzer auswählen</label>
-              {profilesLoaded ? (
-                <MultiSelect
-                  options={userOptions}
-                  selected={selectedUsers}
-                  onChange={setSelectedUsers}
-                  placeholder="Benutzer auswählen"
-                />
-              ) : (
-                <div className="w-full h-10 bg-muted rounded-md flex items-center px-3 text-muted-foreground">
-                  Lade Benutzer...
-                </div>
-              )}
-            </div>
-          )}
+          <div>
+            <label className="text-sm font-medium">Benutzer auswählen (mindestens einer erforderlich)</label>
+            {profilesLoaded ? (
+              <MultiSelect
+                options={userOptions}
+                selected={selectedUsers}
+                onChange={setSelectedUsers}
+                placeholder="Benutzer auswählen"
+              />
+            ) : (
+              <div className="w-full h-10 bg-muted rounded-md flex items-center px-3 text-muted-foreground">
+                Lade Benutzer...
+              </div>
+            )}
+          </div>
           
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
