@@ -245,15 +245,9 @@ export const PollListView = () => {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Terminabstimmungen
-            </CardTitle>
-            <CardDescription>
-              Übersicht über alle erstellten Terminabstimmungen
-            </CardDescription>
-          </div>
+          <CardDescription>
+            Übersicht über alle erstellten Terminabstimmungen
+          </CardDescription>
           <Button
             onClick={() => setShowCreatePoll(true)}
             className="flex items-center gap-2"
