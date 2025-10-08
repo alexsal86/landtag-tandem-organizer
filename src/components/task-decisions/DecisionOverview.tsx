@@ -517,64 +517,18 @@ export const DecisionOverview = () => {
         key={decision.id} 
         className={`border-l-4 ${getBorderColor(summary)} hover:bg-muted/50 transition-colors`}
       >
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <CardTitle className="text-sm font-medium">{decision.title}</CardTitle>
-                {decision.creator && (
-                  <UserBadge 
-                    userId={decision.creator.user_id}
-                    displayName={decision.creator.display_name}
-                    badgeColor={decision.creator.badge_color}
-                    size="sm"
-                  />
-                )}
-                {decision.visible_to_all && (
-                  <Badge variant="secondary" className="text-xs">
-                    <Globe className="h-3 w-3 mr-1" />
-                    Öffentlich
-                  </Badge>
-                )}
-                {decision.isStandalone ? (
-                  <Badge variant="secondary">
-                    <Vote className="h-3 w-3 mr-1" />
-                    Eigenständig
-                  </Badge>
-                ) : (
-                  <Badge variant="destructive">
-                    <CheckSquare className="h-3 w-3 mr-1" />
-                    Task-bezogen
-                  </Badge>
-                )}
-                {decision.attachmentCount && decision.attachmentCount > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    <Paperclip className="h-3 w-3 mr-1" />
-                    {decision.attachmentCount}
-                  </Badge>
-                )}
-              </div>
-              {decision.task ? (
-                <p className="text-xs text-muted-foreground">
-                  Aufgabe: {decision.task.title}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Eigenständige Entscheidung
-                </p>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+              <CardTitle className="text-sm font-medium">{decision.title}</CardTitle>
+              {decision.creator && (
+                <UserBadge 
+                  userId={decision.creator.user_id}
+                  displayName={decision.creator.display_name}
+                  badgeColor={decision.creator.badge_color}
+                  size="sm"
+                />
               )}
-              {decision.description && (
-                <p className="text-xs text-muted-foreground mt-1">{decision.description}</p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">
-                Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
             </div>
             
             {decision.isCreator && (
@@ -601,39 +555,103 @@ export const DecisionOverview = () => {
             )}
           </div>
         </CardHeader>
+        
         <CardContent className="pt-0">
-          <div className="space-y-2">
-            {/* Voting Results */}
-            {decision.participants && decision.participants.length > 0 && (
-              <div className="flex items-center space-x-4 text-xs">
-                <span className="flex items-center text-green-600">
-                  <Check className="h-3 w-3 mr-1" />
-                  {summary.yesCount}
-                </span>
-                <span className="flex items-center text-orange-600">
-                  <MessageCircle className="h-3 w-3 mr-1" />
-                  {summary.questionCount}
-                </span>
-                <span className="flex items-center text-red-600">
-                  <X className="h-3 w-3 mr-1" />
-                  {summary.noCount}
-                </span>
-                <span className="text-muted-foreground">
-                  ({summary.pending} ausstehend)
-                </span>
-              </div>
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            {/* Left Column: Description */}
+            <div className="space-y-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+              {decision.description && (
+                <p className="text-xs text-muted-foreground line-clamp-3">{decision.description}</p>
+              )}
+              {decision.task && (
+                <p className="text-xs text-muted-foreground italic">
+                  Aufgabe: {decision.task.title}
+                </p>
+              )}
+            </div>
 
-            {/* Show questions and responses for creators */}
-            {user?.id === decision.created_by && decision.participants && (
-              <div className="space-y-2 mb-3" onClick={(e) => e.stopPropagation()}>
-                {decision.participants.map(participant => {
-                  const latestResponse = participant.responses[0];
-                  if (!latestResponse || latestResponse.response_type !== 'question') return null;
-                  
-                  return (
-                    <div key={participant.id} className="bg-orange-50 p-2 rounded text-xs space-y-1">
-                      <div className="flex items-center justify-between">
+            {/* Right Column: Metadata, Badges, Voting, Actions */}
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+              
+              <div className="flex items-center gap-1 flex-wrap">
+                {decision.visible_to_all && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Globe className="h-3 w-3 mr-1" />
+                    Öffentlich
+                  </Badge>
+                )}
+                {decision.isStandalone ? (
+                  <Badge variant="secondary" className="text-xs">
+                    <Vote className="h-3 w-3 mr-1" />
+                    Eigenständig
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" className="text-xs">
+                    <CheckSquare className="h-3 w-3 mr-1" />
+                    Task
+                  </Badge>
+                )}
+                {decision.attachmentCount && decision.attachmentCount > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    <Paperclip className="h-3 w-3 mr-1" />
+                    {decision.attachmentCount}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Voting Results */}
+              {decision.participants && decision.participants.length > 0 && (
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center text-green-600">
+                    <Check className="h-3 w-3 mr-1" />
+                    {summary.yesCount}
+                  </span>
+                  <span className="flex items-center text-orange-600">
+                    <MessageCircle className="h-3 w-3 mr-1" />
+                    {summary.questionCount}
+                  </span>
+                  <span className="flex items-center text-red-600">
+                    <X className="h-3 w-3 mr-1" />
+                    {summary.noCount}
+                  </span>
+                  <span className="text-muted-foreground">
+                    ({summary.pending} ausstehend)
+                  </span>
+                </div>
+              )}
+
+              {/* Response option for participants */}
+              {decision.isParticipant && !decision.hasResponded && decision.participant_id && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <TaskDecisionResponse 
+                    decisionId={decision.id}
+                    participantId={decision.participant_id}
+                    onResponseSubmitted={handleResponseSubmitted}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Questions section - Full width */}
+          {user?.id === decision.created_by && decision.participants && (
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              {decision.participants.map(participant => {
+                const latestResponse = participant.responses[0];
+                if (!latestResponse || latestResponse.response_type !== 'question') return null;
+                
+                return (
+                  <div key={participant.id} className="bg-orange-50 p-2 rounded text-xs space-y-1">
+                    <div className="flex items-center justify-between">
                       <span className="font-medium text-orange-700 flex items-center gap-2">
                         Rückfrage von 
                         <UserBadge 
@@ -643,55 +661,43 @@ export const DecisionOverview = () => {
                           size="sm"
                         />
                       </span>
-                        <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">
-                          <MessageCircle className="h-2 w-2 mr-1" />
-                          Rückfrage
-                        </Badge>
-                      </div>
-                      <p className="text-muted-foreground">{latestResponse.comment}</p>
-                      
-                      {latestResponse.creator_response ? (
-                        <div className="bg-white p-2 rounded border">
-                          <strong className="text-green-700">Ihre Antwort:</strong> {latestResponse.creator_response}
-                        </div>
-                      ) : (
-                        <div className="flex space-x-2 mt-2">
-                          <Textarea
-                            placeholder="Antwort eingeben..."
-                            value={creatorResponses[latestResponse.id] || ''}
-                            onChange={(e) => setCreatorResponses(prev => ({
-                              ...prev,
-                              [latestResponse.id]: e.target.value
-                            }))}
-                            className="flex-1 text-xs min-h-[60px]"
-                            rows={2}
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => sendCreatorResponse(latestResponse.id)}
-                            disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}
-                          >
-                            <Send className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
+                      <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">
+                        <MessageCircle className="h-2 w-2 mr-1" />
+                        Rückfrage
+                      </Badge>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Response option for participants */}
-            {decision.isParticipant && !decision.hasResponded && decision.participant_id && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <TaskDecisionResponse 
-                  decisionId={decision.id}
-                  participantId={decision.participant_id}
-                  onResponseSubmitted={handleResponseSubmitted}
-                />
-              </div>
-            )}
-          </div>
+                    <p className="text-muted-foreground">{latestResponse.comment}</p>
+                    
+                    {latestResponse.creator_response ? (
+                      <div className="bg-white p-2 rounded border">
+                        <strong className="text-green-700">Ihre Antwort:</strong> {latestResponse.creator_response}
+                      </div>
+                    ) : (
+                      <div className="flex space-x-2 mt-2">
+                        <Textarea
+                          placeholder="Antwort eingeben..."
+                          value={creatorResponses[latestResponse.id] || ''}
+                          onChange={(e) => setCreatorResponses(prev => ({
+                            ...prev,
+                            [latestResponse.id]: e.target.value
+                          }))}
+                          className="flex-1 text-xs min-h-[60px]"
+                          rows={2}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => sendCreatorResponse(latestResponse.id)}
+                          disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}
+                        >
+                          <Send className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -705,71 +711,18 @@ export const DecisionOverview = () => {
         key={decision.id} 
         className={`border-l-4 ${getBorderColor(summary)} bg-muted/30`}
       >
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{decision.title}</CardTitle>
-                {decision.creator && (
-                  <UserBadge 
-                    userId={decision.creator.user_id}
-                    displayName={decision.creator.display_name}
-                    badgeColor={decision.creator.badge_color}
-                    size="sm"
-                  />
-                )}
-                <Badge variant="outline" className="text-gray-600 border-gray-600">
-                  <Archive className="h-3 w-3 mr-1" />
-                  Archiviert
-                </Badge>
-                {decision.isStandalone ? (
-                  <Badge variant="secondary">
-                    <Vote className="h-3 w-3 mr-1" />
-                    Eigenständig
-                  </Badge>
-                ) : (
-                  <Badge variant="destructive">
-                    <CheckSquare className="h-3 w-3 mr-1" />
-                    Task-bezogen
-                  </Badge>
-                )}
-                {decision.attachmentCount && decision.attachmentCount > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    <Paperclip className="h-3 w-3 mr-1" />
-                    {decision.attachmentCount}
-                  </Badge>
-                )}
-              </div>
-              {decision.task && (
-                <p className="text-xs text-muted-foreground">
-                  Aufgabe: {decision.task.title}
-                </p>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{decision.title}</CardTitle>
+              {decision.creator && (
+                <UserBadge 
+                  userId={decision.creator.user_id}
+                  displayName={decision.creator.display_name}
+                  badgeColor={decision.creator.badge_color}
+                  size="sm"
+                />
               )}
-              {decision.description && (
-                <p className="text-xs text-muted-foreground mt-1">{decision.description}</p>
-              )}
-              <div className="flex gap-2 mt-1 flex-wrap">
-                <p className="text-xs text-muted-foreground">
-                  Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-                {decision.archived_at && (
-                  <p className="text-xs text-muted-foreground">
-                    • Archiviert: {new Date(decision.archived_at).toLocaleString('de-DE', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                )}
-              </div>
             </div>
             
             {decision.isCreator && (
@@ -787,30 +740,93 @@ export const DecisionOverview = () => {
             )}
           </div>
         </CardHeader>
+        
         <CardContent className="pt-0">
-          <div className="space-y-2">
-            {/* Final Result */}
-            {decision.participants && decision.participants.length > 0 && (
-              <div className="flex items-center space-x-4 text-xs">
-                <span className="flex items-center text-green-600">
-                  <Check className="h-3 w-3 mr-1" />
-                  {summary.yesCount} Ja
-                </span>
-                <span className="flex items-center text-orange-600">
-                  <MessageCircle className="h-3 w-3 mr-1" />
-                  {summary.questionCount} Fragen
-                </span>
-                <span className="flex items-center text-red-600">
-                  <X className="h-3 w-3 mr-1" />
-                  {summary.noCount} Nein
-                </span>
-                {summary.pending > 0 && (
-                  <span className="text-muted-foreground">
-                    ({summary.pending} nicht beantwortet)
-                  </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left Column: Description */}
+            <div className="space-y-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+              {decision.description && (
+                <p className="text-xs text-muted-foreground line-clamp-3">{decision.description}</p>
+              )}
+              {decision.task && (
+                <p className="text-xs text-muted-foreground italic">
+                  Aufgabe: {decision.task.title}
+                </p>
+              )}
+            </div>
+
+            {/* Right Column: Metadata, Badges, Voting */}
+            <div className="space-y-2">
+              <div className="flex gap-2 flex-wrap text-xs text-muted-foreground">
+                <p>
+                  Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+                {decision.archived_at && (
+                  <p>
+                    • Archiviert: {new Date(decision.archived_at).toLocaleString('de-DE', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
                 )}
               </div>
-            )}
+              
+              <div className="flex items-center gap-1 flex-wrap">
+                <Badge variant="outline" className="text-gray-600 border-gray-600 text-xs">
+                  <Archive className="h-3 w-3 mr-1" />
+                  Archiviert
+                </Badge>
+                {decision.isStandalone ? (
+                  <Badge variant="secondary" className="text-xs">
+                    <Vote className="h-3 w-3 mr-1" />
+                    Eigenständig
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" className="text-xs">
+                    <CheckSquare className="h-3 w-3 mr-1" />
+                    Task
+                  </Badge>
+                )}
+                {decision.attachmentCount && decision.attachmentCount > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    <Paperclip className="h-3 w-3 mr-1" />
+                    {decision.attachmentCount}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Final Result */}
+              {decision.participants && decision.participants.length > 0 && (
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center text-green-600">
+                    <Check className="h-3 w-3 mr-1" />
+                    {summary.yesCount}
+                  </span>
+                  <span className="flex items-center text-orange-600">
+                    <MessageCircle className="h-3 w-3 mr-1" />
+                    {summary.questionCount}
+                  </span>
+                  <span className="flex items-center text-red-600">
+                    <X className="h-3 w-3 mr-1" />
+                    {summary.noCount}
+                  </span>
+                  {summary.pending > 0 && (
+                    <span className="text-muted-foreground">
+                      ({summary.pending} ausstehend)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
