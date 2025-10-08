@@ -112,8 +112,14 @@ export const DashboardGreetingSection = () => {
       // Externe Kalender-Events (type-safe cast to avoid deep instantiation)
       const externalEventsResult = await (supabase as any)
         .from('external_events')
-        .select('id, title, start_time, all_day')
-        .eq('tenant_id', currentTenant.id)
+        .select(`
+          id,
+          title,
+          start_time,
+          all_day,
+          external_calendars!inner(tenant_id)
+        `)
+        .eq('external_calendars.tenant_id', currentTenant.id)
         .gte('start_time', yesterday.toISOString())
         .lt('start_time', dayAfterTomorrow.toISOString())
         .order('start_time', { ascending: true });
