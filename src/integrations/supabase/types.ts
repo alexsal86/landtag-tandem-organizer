@@ -860,6 +860,50 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_activities: {
+        Row: {
+          activity_type: string
+          contact_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          metadata: Json | null
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          activity_type: string
+          contact_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          activity_type?: string
+          contact_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_activities_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_usage_stats: {
         Row: {
           contact_id: string

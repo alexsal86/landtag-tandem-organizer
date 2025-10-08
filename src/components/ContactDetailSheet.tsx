@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ContactEditForm } from "./ContactEditForm";
 import { CallLogWidget } from "@/components/widgets/CallLogWidget";
 import { formatGermanDate } from "@/lib/utils";
+import { ActivityTimeline } from "./contacts/ActivityTimeline";
 
 interface CallLog {
   id: string;
@@ -73,8 +74,10 @@ interface ContactDetailSheetProps {
 export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate }: ContactDetailSheetProps) {
   const [contact, setContact] = useState<Contact | null>(null);
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingCallLogs, setLoadingCallLogs] = useState(false);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showCallLogWidget, setShowCallLogWidget] = useState(false);
   const [allTags, setAllTags] = useState<{ direct: string[], inherited: string[] }>({ direct: [], inherited: [] });
@@ -117,6 +120,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
       fetchContact();
       fetchCallLogs();
       fetchContactTags();
+      fetchActivities();
     }
   }, [contactId, isOpen]);
 
@@ -138,6 +142,33 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
       console.error('Error fetching call logs:', error);
     } finally {
       setLoadingCallLogs(false);
+    }
+  };
+
+  const fetchActivities = async () => {
+    if (!contactId) return;
+
+    try {
+      setActivitiesLoading(true);
+      const { data, error } = await supabase
+        .from("contact_activities")
+        .select(`
+          *,
+          profiles:created_by (
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq("contact_id", contactId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setActivities(data || []);
+    } catch (error) {
+      console.error("Error fetching activities:", error);
+    } finally {
+      setActivitiesLoading(false);
     }
   };
 
@@ -351,8 +382,9 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
             <Separator />
 
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="details">Kontaktdaten</TabsTrigger>
+                <TabsTrigger value="activities">Aktivitäten ({activities.length})</TabsTrigger>
                 <TabsTrigger value="calls">Anrufliste ({callLogs.length})</TabsTrigger>
               </TabsList>
               
@@ -583,6 +615,10 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                     </CardContent>
                   </Card>
                 )}
+              </TabsContent>
+
+              <TabsContent value="activities" className="space-y-4 mt-4">
+                <ActivityTimeline activities={activities} loading={activitiesLoading} />
               </TabsContent>
 
               <TabsContent value="calls" className="space-y-4 mt-4">
