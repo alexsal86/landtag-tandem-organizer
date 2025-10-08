@@ -3777,6 +3777,107 @@ export type Database = {
           },
         ]
       }
+      map_flag_types: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          order_index: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          order_index?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_index?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      map_flags: {
+        Row: {
+          coordinates: Json
+          created_at: string
+          created_by: string
+          description: string | null
+          flag_type_id: string
+          id: string
+          metadata: Json | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          coordinates: Json
+          created_at?: string
+          created_by: string
+          description?: string | null
+          flag_type_id: string
+          id?: string
+          metadata?: Json | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          coordinates?: Json
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          flag_type_id?: string
+          id?: string
+          metadata?: Json | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_flag_type"
+            columns: ["flag_type_id"]
+            isOneToOne: false
+            referencedRelation: "map_flag_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matrix_bot_logs: {
         Row: {
           created_at: string
@@ -6824,6 +6925,7 @@ export type Database = {
     }
     Enums: {
       app_role: "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant"
+      flag_visibility: "public" | "private" | "team"
       leave_status: "pending" | "approved" | "rejected"
       leave_type: "vacation" | "sick" | "other"
       user_status_type:
@@ -6961,6 +7063,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant"],
+      flag_visibility: ["public", "private", "team"],
       leave_status: ["pending", "approved", "rejected"],
       leave_type: ["vacation", "sick", "other"],
       user_status_type: [

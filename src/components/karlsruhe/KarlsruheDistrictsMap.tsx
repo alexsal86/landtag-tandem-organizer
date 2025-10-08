@@ -2,21 +2,39 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
+import { MapFlag } from '@/hooks/useMapFlags';
+import { MapFlagType } from '@/hooks/useMapFlagTypes';
 
 interface KarlsruheDistrictsMapProps {
   districts: KarlsruheDistrict[];
   onDistrictClick?: (district: KarlsruheDistrict) => void;
   selectedDistrict?: KarlsruheDistrict | null;
+  flags?: MapFlag[];
+  flagTypes?: MapFlagType[];
+  visibleFlagTypes?: Set<string>;
+  flagMode?: boolean;
+  onFlagClick?: (coordinates: { lat: number; lng: number }) => void;
+  onFlagEdit?: (flag: MapFlag) => void;
+  onFlagDelete?: (flagId: string) => void;
 }
 
 export const KarlsruheDistrictsMap = ({
   districts,
   onDistrictClick,
   selectedDistrict,
+  flags = [],
+  flagTypes = [],
+  visibleFlagTypes = new Set(),
+  flagMode = false,
+  onFlagClick,
+  onFlagEdit,
+  onFlagDelete,
 }: KarlsruheDistrictsMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layersRef = useRef<Map<string, L.GeoJSON>>(new Map());
+  const flagLayersRef = useRef<Map<string, L.LayerGroup>>(new Map());
+  const flagMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const [mapReady, setMapReady] = useState(false);
 
   // Initialize map
@@ -36,6 +54,13 @@ export const KarlsruheDistrictsMap = ({
       maxZoom: 19,
     }).addTo(map);
 
+    // Click handler for flag mode
+    map.on('click', (e) => {
+      if (flagMode && onFlagClick) {
+        onFlagClick({ lat: e.latlng.lat, lng: e.latlng.lng });
+      }
+    });
+
     mapInstanceRef.current = map;
     setMapReady(true);
 
@@ -43,7 +68,7 @@ export const KarlsruheDistrictsMap = ({
       map.remove();
       mapInstanceRef.current = null;
     };
-  }, []);
+  }, [flagMode, onFlagClick]);
 
   // Render districts
   useEffect(() => {
@@ -158,10 +183,114 @@ export const KarlsruheDistrictsMap = ({
     });
   }, [selectedDistrict, mapReady]);
 
+  // Render flags
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return;
+
+    const map = mapInstanceRef.current;
+
+    // Clear existing flag markers
+    flagMarkersRef.current.forEach(marker => marker.remove());
+    flagMarkersRef.current.clear();
+
+    // Create layer groups for each flag type
+    flagTypes.forEach(type => {
+      if (!flagLayersRef.current.has(type.id)) {
+        const layerGroup = L.layerGroup();
+        flagLayersRef.current.set(type.id, layerGroup);
+      }
+    });
+
+    // Add flag markers
+    flags.forEach(flag => {
+      const flagType = flagTypes.find(t => t.id === flag.flag_type_id);
+      if (!flagType) return;
+
+      const layerGroup = flagLayersRef.current.get(flagType.id);
+      if (!layerGroup) return;
+
+      const marker = L.marker([flag.coordinates.lat, flag.coordinates.lng], {
+        icon: L.divIcon({
+          html: `<div style="
+            background: ${flagType.color};
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 2px solid white;
+            cursor: pointer;
+          ">${flagType.icon}</div>`,
+          iconSize: [32, 32],
+          className: 'map-flag-marker',
+        }),
+      });
+
+      marker.bindPopup(`
+        <div style="font-family: sans-serif; min-width: 200px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span style="font-size: 20px;">${flagType.icon}</span>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 600;">${flag.title}</h3>
+          </div>
+          ${flag.description ? `<p style="margin: 8px 0; color: #666;">${flag.description}</p>` : ''}
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; display: flex; gap: 8px;">
+            <button 
+              onclick="window.dispatchEvent(new CustomEvent('editFlag', { detail: '${flag.id}' }))"
+              style="flex: 1; padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;"
+            >
+              Bearbeiten
+            </button>
+            <button 
+              onclick="window.dispatchEvent(new CustomEvent('deleteFlag', { detail: '${flag.id}' }))"
+              style="flex: 1; padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;"
+            >
+              Löschen
+            </button>
+          </div>
+        </div>
+      `);
+
+      marker.addTo(layerGroup);
+      flagMarkersRef.current.set(flag.id, marker);
+    });
+
+    // Toggle layer visibility
+    flagLayersRef.current.forEach((layerGroup, typeId) => {
+      if (visibleFlagTypes.has(typeId)) {
+        layerGroup.addTo(map);
+      } else {
+        layerGroup.remove();
+      }
+    });
+
+    // Event listeners for edit/delete from popup
+    const handleEditFlag = (e: any) => {
+      const flagId = e.detail;
+      const flag = flags.find(f => f.id === flagId);
+      if (flag && onFlagEdit) onFlagEdit(flag);
+    };
+
+    const handleDeleteFlag = (e: any) => {
+      const flagId = e.detail;
+      if (onFlagDelete) onFlagDelete(flagId);
+    };
+
+    window.addEventListener('editFlag', handleEditFlag);
+    window.addEventListener('deleteFlag', handleDeleteFlag);
+
+    return () => {
+      window.removeEventListener('editFlag', handleEditFlag);
+      window.removeEventListener('deleteFlag', handleDeleteFlag);
+    };
+  }, [mapReady, flags, flagTypes, visibleFlagTypes, onFlagEdit, onFlagDelete]);
+
   return (
     <div
       ref={mapRef}
-      className="w-full h-[600px] rounded-lg border border-border"
+      className={`w-full h-[600px] rounded-lg border border-border ${flagMode ? 'cursor-crosshair' : ''}`}
     />
   );
 };

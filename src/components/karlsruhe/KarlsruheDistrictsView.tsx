@@ -1,16 +1,32 @@
 import { useState } from 'react';
 import { useKarlsruheDistricts, KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
+import { useMapFlags, MapFlag } from '@/hooks/useMapFlags';
+import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
 import { KarlsruheDistrictsMap } from './KarlsruheDistrictsMap';
+import { MapFlagTypeManager } from './MapFlagTypeManager';
+import { MapFlagEditor } from './MapFlagEditor';
+import { MapFlagLayerToggle } from './MapFlagLayerToggle';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin, RefreshCw, Users } from 'lucide-react';
+import { MapPin, RefreshCw, Users, Flag } from 'lucide-react';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export const KarlsruheDistrictsView = () => {
   const { districts, isLoading, refetch } = useKarlsruheDistricts();
+  const { flags, deleteFlag } = useMapFlags();
+  const { flagTypes } = useMapFlagTypes();
   const [selectedDistrict, setSelectedDistrict] = useState<KarlsruheDistrict | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [flagMode, setFlagMode] = useState(false);
+  const [flagEditorOpen, setFlagEditorOpen] = useState(false);
+  const [flagCoordinates, setFlagCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [editingFlag, setEditingFlag] = useState<MapFlag | null>(null);
+  const [visibleFlagTypes, setVisibleFlagTypes] = useState<Set<string>>(
+    new Set(flagTypes.map(t => t.id))
+  );
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -22,6 +38,36 @@ export const KarlsruheDistrictsView = () => {
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  const handleFlagClick = (coordinates: { lat: number; lng: number }) => {
+    setFlagCoordinates(coordinates);
+    setEditingFlag(null);
+    setFlagEditorOpen(true);
+  };
+
+  const handleFlagEdit = (flag: MapFlag) => {
+    setEditingFlag(flag);
+    setFlagCoordinates(null);
+    setFlagEditorOpen(true);
+  };
+
+  const handleFlagDelete = async (flagId: string) => {
+    if (confirm('Möchten Sie diese Flagge wirklich löschen?')) {
+      await deleteFlag.mutateAsync(flagId);
+    }
+  };
+
+  const toggleFlagType = (typeId: string) => {
+    setVisibleFlagTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(typeId)) {
+        next.delete(typeId);
+      } else {
+        next.add(typeId);
+      }
+      return next;
+    });
   };
 
   const totalPopulation = districts.reduce((sum, d) => sum + (d.population || 0), 0);
@@ -64,6 +110,13 @@ export const KarlsruheDistrictsView = () => {
                   districts={districts}
                   onDistrictClick={setSelectedDistrict}
                   selectedDistrict={selectedDistrict}
+                  flags={flags}
+                  flagTypes={flagTypes}
+                  visibleFlagTypes={visibleFlagTypes}
+                  flagMode={flagMode}
+                  onFlagClick={handleFlagClick}
+                  onFlagEdit={handleFlagEdit}
+                  onFlagDelete={handleFlagDelete}
                 />
               )}
             </CardContent>
@@ -72,6 +125,39 @@ export const KarlsruheDistrictsView = () => {
 
         {/* Sidebar */}
         <div className="lg:col-span-1 space-y-4">
+          {/* Flag Controls */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Flaggen</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="flag-mode" className="text-sm">Flaggen-Modus</Label>
+                <Switch
+                  id="flag-mode"
+                  checked={flagMode}
+                  onCheckedChange={setFlagMode}
+                />
+              </div>
+              {flagMode && (
+                <p className="text-xs text-muted-foreground">
+                  Klicken Sie auf die Karte, um eine Flagge zu setzen
+                </p>
+              )}
+              <MapFlagTypeManager />
+              {flagTypes.length > 0 && (
+                <MapFlagLayerToggle
+                  visibleTypes={visibleFlagTypes}
+                  onToggleType={toggleFlagType}
+                />
+              )}
+              <div className="text-xs text-muted-foreground">
+                <Flag className="h-3 w-3 inline mr-1" />
+                {flags.length} Flaggen gesetzt
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Statistics */}
           <Card>
             <CardHeader>
@@ -163,6 +249,13 @@ export const KarlsruheDistrictsView = () => {
           </Card>
         </div>
       </div>
+
+      <MapFlagEditor
+        open={flagEditorOpen}
+        onOpenChange={setFlagEditorOpen}
+        coordinates={flagCoordinates}
+        editFlag={editingFlag}
+      />
     </div>
   );
 };
