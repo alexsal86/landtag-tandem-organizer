@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- 
 """
 parse_landtag_pdf.py (robuster TOC-Parser + feste Mittel-Splittung, v3.5.0)
 
