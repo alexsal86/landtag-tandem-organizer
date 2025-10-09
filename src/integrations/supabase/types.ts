@@ -2752,6 +2752,8 @@ export type Database = {
           ics_url: string
           id: string
           is_active: boolean
+          last_etag: string | null
+          last_modified_http: string | null
           last_successful_sync: string | null
           last_sync: string | null
           last_sync_error: string | null
@@ -2773,6 +2775,8 @@ export type Database = {
           ics_url: string
           id?: string
           is_active?: boolean
+          last_etag?: string | null
+          last_modified_http?: string | null
           last_successful_sync?: string | null
           last_sync?: string | null
           last_sync_error?: string | null
@@ -2794,6 +2798,8 @@ export type Database = {
           ics_url?: string
           id?: string
           is_active?: boolean
+          last_etag?: string | null
+          last_modified_http?: string | null
           last_successful_sync?: string | null
           last_sync?: string | null
           last_sync_error?: string | null
@@ -5319,6 +5325,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rss_cache: {
+        Row: {
+          cache_key: string
+          content: Json
+          created_at: string | null
+          expires_at: string
+        }
+        Insert: {
+          cache_key: string
+          content: Json
+          created_at?: string | null
+          expires_at: string
+        }
+        Update: {
+          cache_key?: string
+          content?: Json
+          created_at?: string | null
+          expires_at?: string
+        }
+        Relationships: []
       }
       rss_settings: {
         Row: {

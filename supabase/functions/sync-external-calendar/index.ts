@@ -376,9 +376,52 @@ serve(async (req) => {
     const endDate = new Date(calendar.sync_end_date);
     const maxEvents = calendar.max_events || 20000;
 
-    // Fetch the ICS content
+    // Fetch the ICS content with conditional requests (ETag and Last-Modified)
     console.log('📥 Fetching ICS content...');
-    const icsResponse = await fetch(calendar.ics_url);
+    
+    const headers: HeadersInit = {
+      'User-Agent': 'CalendarSync/1.0',
+    };
+    
+    // Add conditional request headers if available
+    if (calendar.last_etag) {
+      headers['If-None-Match'] = calendar.last_etag;
+      console.log(`🔄 Using If-None-Match: ${calendar.last_etag.substring(0, 20)}...`);
+    }
+    if (calendar.last_modified_http) {
+      headers['If-Modified-Since'] = calendar.last_modified_http;
+      console.log(`🔄 Using If-Modified-Since: ${calendar.last_modified_http}`);
+    }
+    
+    const icsResponse = await fetch(calendar.ics_url, { headers });
+    
+    // Handle 304 Not Modified - calendar hasn't changed
+    if (icsResponse.status === 304) {
+      console.log('📌 Calendar unchanged (304 Not Modified), skipping download');
+      console.log('💰 Egress saved: No ICS download needed');
+      
+      // Update last_sync timestamp without downloading
+      const { error: updateError } = await supabase
+        .from('external_calendars')
+        .update({ 
+          last_sync: new Date().toISOString(),
+        })
+        .eq('id', calendar_id);
+      
+      if (updateError) {
+        console.error('Error updating sync timestamp:', updateError);
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          message: 'Calendar unchanged, no download needed',
+          skipped: true,
+          egress_saved: true,
+          calendar_id,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     if (!icsResponse.ok) {
       throw new Error(`Failed to fetch ICS: ${icsResponse.status} ${icsResponse.statusText}`);
@@ -386,25 +429,37 @@ serve(async (req) => {
 
     const icsContent = await icsResponse.text();
     console.log(`📄 ICS content length: ${icsContent.length} characters`);
+    
+    // Extract ETag and Last-Modified headers for next sync
+    const etag = icsResponse.headers.get('etag');
+    const lastModified = icsResponse.headers.get('last-modified');
+    if (etag) {
+      console.log(`📝 Storing ETag: ${etag.substring(0, 20)}...`);
+    }
+    if (lastModified) {
+      console.log(`📝 Storing Last-Modified: ${lastModified}`);
+    }
 
     // Parse ICS content with configurable parameters
     const events = parseICS(icsContent, startDate, endDate, maxEvents);
     console.log(`✅ Parsed ${events.length} events from ICS`);
 
-    // Update calendar sync timestamp
+    // Update calendar sync timestamp with ETag and Last-Modified
     await supabase
       .from('external_calendars')
       .update({ 
         last_sync: new Date().toISOString(),
         sync_errors_count: 0,
-        last_sync_error: null
+        last_sync_error: null,
+        last_etag: etag,
+        last_modified_http: lastModified,
       })
       .eq('id', calendar_id);
 
     // Perform incremental sync
     const syncStats = await incrementalSync(supabase, calendar_id, events);
 
-    // Update successful sync timestamp and reset error count
+    // Update successful sync timestamp and reset error count (ETag already set above)
     await supabase
       .from('external_calendars')
       .update({ 

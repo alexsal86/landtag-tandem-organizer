@@ -116,10 +116,43 @@ serve(async (req) => {
       throw new Error('tenant_id is required');
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client first for cache check
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Check cache first (5 minute TTL)
+    const cacheKey = `rss_${tenant_id}_${category || 'all'}`;
+    console.log(`🔍 Checking cache with key: ${cacheKey}`);
+    
+    const { data: cachedData, error: cacheError } = await supabase
+      .from('rss_cache')
+      .select('*')
+      .eq('cache_key', cacheKey)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+    
+    if (cachedData && !cacheError) {
+      console.log('✅ Cache hit! Returning cached RSS data');
+      console.log('💰 Egress saved: No external RSS fetch needed');
+      return new Response(
+        JSON.stringify({
+          ...cachedData.content,
+          cached: true,
+          cache_expires_at: cachedData.expires_at
+        }),
+        { 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'X-Cache': 'HIT'
+          } 
+        }
+      );
+    }
+    
+    console.log('❌ Cache miss, fetching fresh RSS data');
+
 
     // Load settings from database
     const { data: settings } = await supabase
@@ -182,14 +215,41 @@ serve(async (req) => {
     
     console.log(`Returning ${allArticles.length} articles`);
     
+    // Prepare response data
+    const responseData = {
+      articles: allArticles,
+      total: allArticles.length,
+      sources: filteredSources.length,
+      cached: false
+    };
+    
+    // Store in cache (5 minute TTL)
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    console.log(`💾 Storing RSS data in cache until ${expiresAt}`);
+    
+    const { error: cacheInsertError } = await supabase
+      .from('rss_cache')
+      .upsert({
+        cache_key: cacheKey,
+        content: responseData,
+        expires_at: expiresAt
+      }, {
+        onConflict: 'cache_key'
+      });
+    
+    if (cacheInsertError) {
+      console.error('⚠️ Failed to cache RSS data:', cacheInsertError);
+      // Continue anyway - caching is not critical
+    }
+    
     return new Response(
-      JSON.stringify({ 
-        articles: allArticles,
-        total: allArticles.length,
-        sources: filteredSources.length 
-      }),
+      JSON.stringify(responseData),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'X-Cache': 'MISS'
+        },
       }
     );
     
