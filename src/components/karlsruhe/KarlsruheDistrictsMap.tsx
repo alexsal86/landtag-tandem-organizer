@@ -295,7 +295,7 @@ export const KarlsruheDistrictsMap = ({
   return (
     <div
       ref={mapRef}
-      className={`w-full h-[600px] rounded-lg border border-border ${flagMode ? 'cursor-crosshair' : ''}`}
+      className={`w-full h-[600px] rounded-lg border border-border z-0 ${flagMode ? 'cursor-crosshair' : ''}`}
     />
   );
 };
