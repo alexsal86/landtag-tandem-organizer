@@ -27,7 +27,7 @@ jobs:
         run: python scripts/download_landtag_protokolle.py
 
       - name: Upload downloaded PDFs as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: plenarprotokolle
           path: downloads/plenarprotokolle/
