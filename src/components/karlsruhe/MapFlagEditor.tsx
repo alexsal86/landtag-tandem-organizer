@@ -21,7 +21,10 @@ interface MapFlagEditorProps {
 export const MapFlagEditor = ({ open, onOpenChange, coordinates, editFlag }: MapFlagEditorProps) => {
   const { createFlag, updateFlag } = useMapFlags();
   const { flagTypes } = useMapFlagTypes();
-  const { tags } = useTags();
+  const { tags, loading: tagsLoading } = useTags();
+  
+  console.log('Tags geladen:', tags.length, 'Loading:', tagsLoading);
+  console.log('Tags:', tags);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [flagTypeId, setFlagTypeId] = useState('');
@@ -43,6 +46,8 @@ export const MapFlagEditor = ({ open, onOpenChange, coordinates, editFlag }: Map
 
   const handleSave = async () => {
     if (!title.trim() || !flagTypeId) return;
+
+    console.log('Speichere Flagge mit Tags:', selectedTags);
 
     if (editFlag) {
       await updateFlag.mutateAsync({
@@ -138,24 +143,27 @@ export const MapFlagEditor = ({ open, onOpenChange, coordinates, editFlag }: Map
               Stakeholder mit diesen Tags werden an dieser Flagge angezeigt
             </div>
             <div className="flex flex-wrap gap-2 p-3 border border-border rounded-md min-h-[60px]">
-              {tags.map((tag) => {
-                const isSelected = selectedTags.includes(tag.label);
-                return (
-                  <Badge
-                    key={tag.id}
-                    variant={isSelected ? "default" : "outline"}
-                    className="cursor-pointer"
-                    style={isSelected ? { backgroundColor: tag.color, borderColor: tag.color } : {}}
-                    onClick={() => toggleTag(tag.label)}
-                  >
-                    {tag.icon && <span className="mr-1">{tag.icon}</span>}
-                    {tag.label}
-                    {isSelected && <X className="ml-1 h-3 w-3" />}
-                  </Badge>
-                );
-              })}
-              {tags.length === 0 && (
+              {tagsLoading ? (
+                <span className="text-sm text-muted-foreground">Lade Tags...</span>
+              ) : tags.length === 0 ? (
                 <span className="text-sm text-muted-foreground">Keine Tags verfügbar</span>
+              ) : (
+                tags.map((tag) => {
+                  const isSelected = selectedTags.includes(tag.label);
+                  return (
+                    <Badge
+                      key={tag.id}
+                      variant={isSelected ? "default" : "outline"}
+                      className="cursor-pointer"
+                      style={isSelected ? { backgroundColor: tag.color, borderColor: tag.color } : {}}
+                      onClick={() => toggleTag(tag.label)}
+                    >
+                      {tag.icon && <span className="mr-1">{tag.icon}</span>}
+                      {tag.label}
+                      {isSelected && <X className="ml-1 h-3 w-3" />}
+                    </Badge>
+                  );
+                })
               )}
             </div>
             {selectedTags.length > 0 && (
