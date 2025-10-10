@@ -28,7 +28,7 @@ jobs:
           python scripts/download_plenarprotokolle_17.py
 
       - name: Upload PDFs as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: plenarprotokolle-17
           path: downloads/plenarprotokolle_17/
