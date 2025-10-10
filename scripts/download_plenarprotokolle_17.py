@@ -6,6 +6,19 @@ BASE_URL = "https://www.landtag-bw.de/ajax/filterlist/de/plenarprotokolle-509800
 SAVE_DIR = Path("downloads/plenarprotokolle_17")
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
+def fetch_json(BASE_URL):
+    response = requests.get(BASE_URL)
+    if not response.content.strip():
+        print("Fehler: Leere Antwort vom Server.")
+        print("Status Code:", response.status_code)
+        return None
+    try:
+        return response.json()
+    except ValueError:
+        print("Fehler: Die Antwort ist kein gültiges JSON.")
+        print("Antwort-Text:", response.text)
+        return None
+        
 def fetch_all_protokolle():
     offset = 0
     all_items = []
@@ -41,6 +54,14 @@ def download_pdf(url, save_dir):
     print(f"Lade herunter: {local_name}")
     r = requests.get(url)
     out_path.write_bytes(r.content)
+
+def main():
+    data = fetch_json(BASE_URL)
+    if data is None:
+        print("Download fehlgeschlagen.")
+        exit(1)
+    # Hier kannst du mit den Daten weiter arbeiten
+    print("Erfolgreich geladen:", data)
 
 if __name__ == "__main__":
     items = fetch_all_protokolle()
