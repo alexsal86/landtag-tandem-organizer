@@ -17,6 +17,8 @@ interface KarlsruheDistrictsMapProps {
   onFlagClick?: (coordinates: { lat: number; lng: number }) => void;
   onFlagEdit?: (flag: MapFlag) => void;
   onFlagDelete?: (flagId: string) => void;
+  showStakeholders?: boolean;
+  showDistrictBoundaries?: boolean;
 }
 
 export const KarlsruheDistrictsMap = ({
@@ -30,6 +32,8 @@ export const KarlsruheDistrictsMap = ({
   onFlagClick,
   onFlagEdit,
   onFlagDelete,
+  showStakeholders = true,
+  showDistrictBoundaries = true,
 }: KarlsruheDistrictsMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -38,7 +42,6 @@ export const KarlsruheDistrictsMap = ({
   const flagMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const stakeholderMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const [mapReady, setMapReady] = useState(false);
-  const [showStakeholders, setShowStakeholders] = useState(true);
 
   // Initialize map
   useEffect(() => {
@@ -82,6 +85,9 @@ export const KarlsruheDistrictsMap = ({
     // Clear existing layers
     layersRef.current.forEach(layer => layer.remove());
     layersRef.current.clear();
+
+    // Skip rendering if boundaries are hidden
+    if (!showDistrictBoundaries) return;
 
     // Add district layers
     districts.forEach(district => {
@@ -178,7 +184,7 @@ export const KarlsruheDistrictsMap = ({
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [mapReady, districts, selectedDistrict, onDistrictClick]);
+  }, [mapReady, districts, selectedDistrict, onDistrictClick, showDistrictBoundaries]);
 
   // Update selected district style
   useEffect(() => {

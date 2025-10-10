@@ -9,7 +9,7 @@ import { MapFlagLayerToggle } from './MapFlagLayerToggle';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin, RefreshCw, Users, Flag } from 'lucide-react';
+import { MapPin, RefreshCw, Users, Flag, Building2, Map } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -28,6 +28,7 @@ export const KarlsruheDistrictsView = () => {
     new Set(flagTypes.map(t => t.id))
   );
   const [showDistricts, setShowDistricts] = useState(true);
+  const [showStakeholders, setShowStakeholders] = useState(true);
 
   // Initialize visible flag types when flagTypes are loaded
   useEffect(() => {
@@ -131,6 +132,8 @@ export const KarlsruheDistrictsView = () => {
                   onFlagClick={handleFlagClick}
                   onFlagEdit={handleFlagEdit}
                   onFlagDelete={handleFlagDelete}
+                  showStakeholders={showStakeholders}
+                  showDistrictBoundaries={showDistricts}
                 />
               )}
             </CardContent>
@@ -177,14 +180,57 @@ export const KarlsruheDistrictsView = () => {
             <CardHeader>
               <CardTitle className="text-lg">Kartenebenen</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label htmlFor="show-districts" className="text-sm">Stadtteile anzeigen</Label>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="show-districts" className="text-sm">Stadtteile anzeigen</Label>
+                </div>
                 <Switch
                   id="show-districts"
                   checked={showDistricts}
                   onCheckedChange={setShowDistricts}
                 />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="show-stakeholders" className="text-sm">Stakeholder anzeigen</Label>
+                </div>
+                <Switch
+                  id="show-stakeholders"
+                  checked={showStakeholders}
+                  onCheckedChange={setShowStakeholders}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Legend */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Legende</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-lg">
+                  🎯
+                </div>
+                <span className="text-sm text-muted-foreground">Flaggen (nach Typ gefärbt)</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500/20 text-lg">
+                  🏢
+                </div>
+                <span className="text-sm text-muted-foreground">Stakeholder (Tag-basiert)</span>
+              </div>
+
+              <div className="pt-2 border-t">
+                <p className="text-xs text-muted-foreground">
+                  Stakeholder werden automatisch angezeigt, wenn ihre Tags mit den Tags einer Flagge übereinstimmen.
+                </p>
               </div>
             </CardContent>
           </Card>
