@@ -3839,6 +3839,7 @@ export type Database = {
           flag_type_id: string
           id: string
           metadata: Json | null
+          tags: string[] | null
           tenant_id: string
           title: string
           updated_at: string
@@ -3851,6 +3852,7 @@ export type Database = {
           flag_type_id: string
           id?: string
           metadata?: Json | null
+          tags?: string[] | null
           tenant_id: string
           title: string
           updated_at?: string
@@ -3863,6 +3865,7 @@ export type Database = {
           flag_type_id?: string
           id?: string
           metadata?: Json | null
+          tags?: string[] | null
           tenant_id?: string
           title?: string
           updated_at?: string

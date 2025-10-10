@@ -7,6 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMapFlags } from '@/hooks/useMapFlags';
 import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
+import { useTags } from '@/hooks/useTags';
+import { Badge } from '@/components/ui/badge';
+import { X } from 'lucide-react';
 
 interface MapFlagEditorProps {
   open: boolean;
@@ -18,19 +21,23 @@ interface MapFlagEditorProps {
 export const MapFlagEditor = ({ open, onOpenChange, coordinates, editFlag }: MapFlagEditorProps) => {
   const { createFlag, updateFlag } = useMapFlags();
   const { flagTypes } = useMapFlagTypes();
+  const { tags } = useTags();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [flagTypeId, setFlagTypeId] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   useEffect(() => {
     if (editFlag) {
       setTitle(editFlag.title);
       setDescription(editFlag.description || '');
       setFlagTypeId(editFlag.flag_type_id);
+      setSelectedTags(editFlag.tags || []);
     } else {
       setTitle('');
       setDescription('');
       setFlagTypeId(flagTypes[0]?.id || '');
+      setSelectedTags([]);
     }
   }, [editFlag, flagTypes]);
 
@@ -40,7 +47,7 @@ export const MapFlagEditor = ({ open, onOpenChange, coordinates, editFlag }: Map
     if (editFlag) {
       await updateFlag.mutateAsync({
         id: editFlag.id,
-        updates: { title, description, flag_type_id: flagTypeId },
+        updates: { title, description, flag_type_id: flagTypeId, tags: selectedTags },
       });
     } else if (coordinates) {
       await createFlag.mutateAsync({
@@ -49,10 +56,19 @@ export const MapFlagEditor = ({ open, onOpenChange, coordinates, editFlag }: Map
         flag_type_id: flagTypeId,
         coordinates,
         metadata: {},
+        tags: selectedTags,
       });
     }
 
     onOpenChange(false);
+  };
+
+  const toggleTag = (tagLabel: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tagLabel) 
+        ? prev.filter(t => t !== tagLabel)
+        : [...prev, tagLabel]
+    );
   };
 
   if (flagTypes.length === 0) {
@@ -114,6 +130,39 @@ export const MapFlagEditor = ({ open, onOpenChange, coordinates, editFlag }: Map
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Verknüpfte Stakeholder-Tags</Label>
+            <div className="text-xs text-muted-foreground mb-2">
+              Stakeholder mit diesen Tags werden an dieser Flagge angezeigt
+            </div>
+            <div className="flex flex-wrap gap-2 p-3 border border-border rounded-md min-h-[60px]">
+              {tags.map((tag) => {
+                const isSelected = selectedTags.includes(tag.label);
+                return (
+                  <Badge
+                    key={tag.id}
+                    variant={isSelected ? "default" : "outline"}
+                    className="cursor-pointer"
+                    style={isSelected ? { backgroundColor: tag.color, borderColor: tag.color } : {}}
+                    onClick={() => toggleTag(tag.label)}
+                  >
+                    {tag.icon && <span className="mr-1">{tag.icon}</span>}
+                    {tag.label}
+                    {isSelected && <X className="ml-1 h-3 w-3" />}
+                  </Badge>
+                );
+              })}
+              {tags.length === 0 && (
+                <span className="text-sm text-muted-foreground">Keine Tags verfügbar</span>
+              )}
+            </div>
+            {selectedTags.length > 0 && (
+              <div className="text-xs text-muted-foreground">
+                {selectedTags.length} Tag{selectedTags.length !== 1 ? 's' : ''} ausgewählt
+              </div>
+            )}
           </div>
 
           {coordinates && !editFlag && (

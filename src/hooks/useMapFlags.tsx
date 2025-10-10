@@ -15,6 +15,7 @@ export interface MapFlag {
   created_at: string;
   updated_at: string;
   metadata: Record<string, any>;
+  tags: string[];
 }
 
 export const useMapFlags = () => {

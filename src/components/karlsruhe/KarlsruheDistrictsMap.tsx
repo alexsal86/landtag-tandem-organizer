@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
 import { MapFlag } from '@/hooks/useMapFlags';
 import { MapFlagType } from '@/hooks/useMapFlagTypes';
+import { useMapFlagStakeholders } from '@/hooks/useMapFlagStakeholders';
 
 interface KarlsruheDistrictsMapProps {
   districts: KarlsruheDistrict[];
@@ -35,7 +36,9 @@ export const KarlsruheDistrictsMap = ({
   const layersRef = useRef<Map<string, L.GeoJSON>>(new Map());
   const flagLayersRef = useRef<Map<string, L.LayerGroup>>(new Map());
   const flagMarkersRef = useRef<Map<string, L.Marker>>(new Map());
+  const stakeholderMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const [mapReady, setMapReady] = useState(false);
+  const [showStakeholders, setShowStakeholders] = useState(true);
 
   // Initialize map
   useEffect(() => {
@@ -188,15 +191,17 @@ export const KarlsruheDistrictsMap = ({
     });
   }, [selectedDistrict, mapReady]);
 
-  // Render flags
+  // Render flags and stakeholders
   useEffect(() => {
     if (!mapReady || !mapInstanceRef.current) return;
 
     const map = mapInstanceRef.current;
 
-    // Clear existing flag markers
+    // Clear existing markers
     flagMarkersRef.current.forEach(marker => marker.remove());
     flagMarkersRef.current.clear();
+    stakeholderMarkersRef.current.forEach(marker => marker.remove());
+    stakeholderMarkersRef.current.clear();
 
     // Create layer groups for each flag type
     flagTypes.forEach(type => {
@@ -260,6 +265,81 @@ export const KarlsruheDistrictsMap = ({
 
       marker.addTo(layerGroup);
       flagMarkersRef.current.set(flag.id, marker);
+
+      // Add stakeholder markers for this flag
+      if (showStakeholders && flag.tags && flag.tags.length > 0) {
+        // Fetch stakeholders with matching tags
+        const fetchStakeholders = async () => {
+          const { data } = await import('@/integrations/supabase/client').then(m => m.supabase
+            .from('contacts')
+            .select('id, name, organization, email, phone, tags, business_description, website')
+            .eq('contact_type', 'organization')
+            .not('tags', 'is', null)
+          );
+
+          if (!data) return;
+
+          // Filter stakeholders with matching tags
+          const matchingStakeholders = data.filter(contact => 
+            contact.tags && contact.tags.some((tag: string) => flag.tags.includes(tag))
+          );
+
+          // Add stakeholder markers near the flag
+          matchingStakeholders.forEach((stakeholder, index) => {
+            // Offset markers slightly so they don't overlap
+            const offset = 0.0015;
+            const angle = (index * (360 / matchingStakeholders.length)) * (Math.PI / 180);
+            const lat = flag.coordinates.lat + (Math.cos(angle) * offset);
+            const lng = flag.coordinates.lng + (Math.sin(angle) * offset);
+
+            const stakeholderMarker = L.marker([lat, lng], {
+              icon: L.divIcon({
+                html: `<div style="
+                  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                  border-radius: 50%;
+                  width: 28px;
+                  height: 28px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 14px;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+                  border: 2px solid white;
+                  cursor: pointer;
+                ">🏢</div>`,
+                iconSize: [28, 28],
+                className: 'stakeholder-marker',
+              }),
+            });
+
+            const matchingTags = stakeholder.tags.filter((t: string) => flag.tags.includes(t));
+            
+            stakeholderMarker.bindPopup(`
+              <div style="font-family: sans-serif; min-width: 220px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                  <span style="font-size: 18px;">🏢</span>
+                  <h3 style="margin: 0; font-size: 15px; font-weight: 600;">${stakeholder.name}</h3>
+                </div>
+                ${stakeholder.organization ? `<p style="margin: 4px 0; color: #666; font-size: 13px;">${stakeholder.organization}</p>` : ''}
+                ${stakeholder.business_description ? `<p style="margin: 8px 0; color: #666; font-size: 12px; line-height: 1.4;">${stakeholder.business_description.substring(0, 120)}${stakeholder.business_description.length > 120 ? '...' : ''}</p>` : ''}
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
+                  ${stakeholder.email ? `<p style="margin: 2px 0; font-size: 12px;">📧 ${stakeholder.email}</p>` : ''}
+                  ${stakeholder.phone ? `<p style="margin: 2px 0; font-size: 12px;">📞 ${stakeholder.phone}</p>` : ''}
+                  ${stakeholder.website ? `<p style="margin: 2px 0; font-size: 12px;">🌐 <a href="${stakeholder.website}" target="_blank" style="color: #3b82f6;">${stakeholder.website}</a></p>` : ''}
+                </div>
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
+                  <p style="margin: 0; font-size: 11px; color: #888;">Verknüpft über Tags: ${matchingTags.join(', ')}</p>
+                </div>
+              </div>
+            `);
+
+            stakeholderMarker.addTo(map);
+            stakeholderMarkersRef.current.set(`${flag.id}-${stakeholder.id}`, stakeholderMarker);
+          });
+        };
+
+        fetchStakeholders();
+      }
     });
 
     // Toggle layer visibility
@@ -290,7 +370,7 @@ export const KarlsruheDistrictsMap = ({
       window.removeEventListener('editFlag', handleEditFlag);
       window.removeEventListener('deleteFlag', handleDeleteFlag);
     };
-  }, [mapReady, flags, flagTypes, visibleFlagTypes, onFlagEdit, onFlagDelete]);
+  }, [mapReady, flags, flagTypes, visibleFlagTypes, onFlagEdit, onFlagDelete, showStakeholders]);
 
   return (
     <div
