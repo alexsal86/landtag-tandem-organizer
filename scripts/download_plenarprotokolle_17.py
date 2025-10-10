@@ -25,7 +25,12 @@ def fetch_all_protokolle():
     while True:
         url = BASE_URL.format(offset=offset)
         resp = requests.get(url)
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError:
+            print("Fehler: Die Antwort ist kein gültiges JSON oder leer.")
+            print("Antwort-Text:", resp.text)
+            break
         items = data.get("result", [])
         if not items:
             break
