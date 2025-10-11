@@ -258,7 +258,7 @@ export function CreateContact() {
     setIsSubmitting(true);
     
     try {
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('contacts')
         .insert({
           user_id: user.id,
@@ -293,9 +293,25 @@ export function CreateContact() {
           iban: formData.iban || null,
           tags: formData.tags.length > 0 ? formData.tags : null,
           tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
-        });
+        })
+        .select('id');
 
       if (error) throw error;
+
+      const insertedContactId = data?.[0]?.id;
+
+      // Trigger geocoding if business address exists
+      if (insertedContactId && (formData.address && formData.address.trim() !== '')) {
+        supabase.functions.invoke('geocode-contact-address', {
+          body: { contactId: insertedContactId }
+        }).then(({ error }) => {
+          if (error) {
+            console.error('❌ Geocoding fehlgeschlagen:', error);
+          } else {
+            console.log('✅ Geocoding gestartet für Kontakt:', insertedContactId);
+          }
+        });
+      }
 
       toast({
         title: "Kontakt erstellt",

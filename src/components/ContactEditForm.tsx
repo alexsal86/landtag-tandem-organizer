@@ -44,6 +44,11 @@ interface Contact {
   main_contact_person?: string;
   business_description?: string;
   tags?: string[];
+  business_street?: string;
+  business_house_number?: string;
+  business_postal_code?: string;
+  business_city?: string;
+  business_country?: string;
 }
 
 interface ContactEditFormProps {
@@ -334,6 +339,22 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         title: "Kontakt aktualisiert",
         description: `${formData.name} wurde erfolgreich aktualisiert.`,
       });
+
+      // Trigger geocoding if business address exists
+      const hasBusinessAddress = (formData.business_street && formData.business_street.trim() !== '') ||
+                                  (formData.business_city && formData.business_city.trim() !== '');
+      
+      if (hasBusinessAddress) {
+        supabase.functions.invoke('geocode-contact-address', {
+          body: { contactId: contact.id }
+        }).then(({ data, error }) => {
+          if (!error && data?.coordinates) {
+            console.log('✅ Geocoding erfolgreich:', data.coordinates);
+          } else if (error) {
+            console.error('❌ Geocoding fehlgeschlagen:', error);
+          }
+        });
+      }
 
       onSuccess();
     } catch (error) {

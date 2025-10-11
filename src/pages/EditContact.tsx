@@ -273,6 +273,19 @@ export default function EditContact() {
         description: "Kontakt wurde aktualisiert.",
       });
       
+      // Trigger geocoding if address exists (old address field)
+      if (contact.address && contact.address.trim() !== '') {
+        supabase.functions.invoke('geocode-contact-address', {
+          body: { contactId: contact.id }
+        }).then(({ error }) => {
+          if (error) {
+            console.error('❌ Geocoding fehlgeschlagen:', error);
+          } else {
+            console.log('✅ Geocoding gestartet für Kontakt:', contact.id);
+          }
+        });
+      }
+      
       navigate(`/contacts/${contact.id}`);
     } catch (error: any) {
       console.error('Error updating contact:', error);
