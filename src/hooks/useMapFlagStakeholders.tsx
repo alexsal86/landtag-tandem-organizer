@@ -13,6 +13,10 @@ export interface StakeholderContact {
   avatar_url: string | null;
   business_description: string | null;
   website: string | null;
+  coordinates: { lat: number; lng: number } | null;
+  business_street: string | null;
+  business_city: string | null;
+  business_postal_code: string | null;
 }
 
 export const useMapFlagStakeholders = (flagTags?: string[]) => {
@@ -25,7 +29,7 @@ export const useMapFlagStakeholders = (flagTags?: string[]) => {
 
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, name, organization, email, phone, tags, category, avatar_url, business_description, website')
+        .select('id, name, organization, email, phone, tags, category, avatar_url, business_description, website, coordinates, business_street, business_city, business_postal_code')
         .eq('tenant_id', currentTenant.id)
         .eq('contact_type', 'organization')
         .not('tags', 'is', null);

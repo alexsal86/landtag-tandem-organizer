@@ -969,6 +969,7 @@ export type Database = {
           contract_end_date: string | null
           contract_start_date: string | null
           contract_type: string | null
+          coordinates: Json | null
           created_at: string
           credit_limit: number | null
           customer_number: string | null
@@ -984,6 +985,8 @@ export type Database = {
           first_name: string | null
           founding_date: string | null
           gdpr_consent_date: string | null
+          geocoded_at: string | null
+          geocoding_source: string | null
           iban: string | null
           id: string
           industry: string | null
@@ -1072,6 +1075,7 @@ export type Database = {
           contract_end_date?: string | null
           contract_start_date?: string | null
           contract_type?: string | null
+          coordinates?: Json | null
           created_at?: string
           credit_limit?: number | null
           customer_number?: string | null
@@ -1087,6 +1091,8 @@ export type Database = {
           first_name?: string | null
           founding_date?: string | null
           gdpr_consent_date?: string | null
+          geocoded_at?: string | null
+          geocoding_source?: string | null
           iban?: string | null
           id?: string
           industry?: string | null
@@ -1175,6 +1181,7 @@ export type Database = {
           contract_end_date?: string | null
           contract_start_date?: string | null
           contract_type?: string | null
+          coordinates?: Json | null
           created_at?: string
           credit_limit?: number | null
           customer_number?: string | null
@@ -1190,6 +1197,8 @@ export type Database = {
           first_name?: string | null
           founding_date?: string | null
           gdpr_consent_date?: string | null
+          geocoded_at?: string | null
+          geocoding_source?: string | null
           iban?: string | null
           id?: string
           industry?: string | null

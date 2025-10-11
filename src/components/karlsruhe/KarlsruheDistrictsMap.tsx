@@ -278,7 +278,7 @@ export const KarlsruheDistrictsMap = ({
         const fetchStakeholders = async () => {
           const { data } = await import('@/integrations/supabase/client').then(m => m.supabase
             .from('contacts')
-            .select('id, name, organization, email, phone, tags, business_description, website')
+            .select('id, name, organization, email, phone, tags, business_description, website, coordinates, business_street, business_city, business_postal_code')
             .eq('contact_type', 'organization')
             .not('tags', 'is', null)
           );
@@ -290,13 +290,21 @@ export const KarlsruheDistrictsMap = ({
             contact.tags && contact.tags.some((tag: string) => flag.tags.includes(tag))
           );
 
-          // Add stakeholder markers near the flag
-          matchingStakeholders.forEach((stakeholder, index) => {
-            // Offset markers slightly so they don't overlap
-            const offset = 0.0015;
-            const angle = (index * (360 / matchingStakeholders.length)) * (Math.PI / 180);
-            const lat = flag.coordinates.lat + (Math.cos(angle) * offset);
-            const lng = flag.coordinates.lng + (Math.sin(angle) * offset);
+          // Add stakeholder markers
+          matchingStakeholders.forEach((stakeholder: any, index: number) => {
+            let lat, lng;
+            
+            // Use real coordinates if available
+            if (stakeholder.coordinates?.lat && stakeholder.coordinates?.lng) {
+              lat = stakeholder.coordinates.lat;
+              lng = stakeholder.coordinates.lng;
+            } else {
+              // Fallback: offset around flag if no geocoded coordinates
+              const offset = 0.0015;
+              const angle = (index * (360 / matchingStakeholders.length)) * (Math.PI / 180);
+              lat = flag.coordinates.lat + (Math.cos(angle) * offset);
+              lng = flag.coordinates.lng + (Math.sin(angle) * offset);
+            }
 
             const stakeholderMarker = L.marker([lat, lng], {
               icon: L.divIcon({
@@ -320,6 +328,19 @@ export const KarlsruheDistrictsMap = ({
 
             const matchingTags = stakeholder.tags.filter((t: string) => flag.tags.includes(t));
             
+            // Build address display
+            const addressParts = [
+              stakeholder.business_street,
+              stakeholder.business_postal_code,
+              stakeholder.business_city
+            ].filter(Boolean);
+            const addressDisplay = addressParts.length > 0 ? addressParts.join(', ') : null;
+            
+            // Location status message
+            const locationStatus = stakeholder.coordinates 
+              ? `<p style="margin: 2px 0; font-size: 11px; color: #10b981;">📍 Echter Standort</p>`
+              : `<p style="margin: 2px 0; font-size: 11px; color: #f59e0b;">⚠️ Geschätzter Standort (noch nicht geocoded)</p>`;
+            
             stakeholderMarker.bindPopup(`
               <div style="font-family: sans-serif; min-width: 220px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
@@ -327,6 +348,8 @@ export const KarlsruheDistrictsMap = ({
                   <h3 style="margin: 0; font-size: 15px; font-weight: 600;">${stakeholder.name}</h3>
                 </div>
                 ${stakeholder.organization ? `<p style="margin: 4px 0; color: #666; font-size: 13px;">${stakeholder.organization}</p>` : ''}
+                ${addressDisplay ? `<p style="margin: 4px 0; color: #666; font-size: 12px;">📮 ${addressDisplay}</p>` : ''}
+                ${locationStatus}
                 ${stakeholder.business_description ? `<p style="margin: 8px 0; color: #666; font-size: 12px; line-height: 1.4;">${stakeholder.business_description.substring(0, 120)}${stakeholder.business_description.length > 120 ? '...' : ''}</p>` : ''}
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
                   ${stakeholder.email ? `<p style="margin: 2px 0; font-size: 12px;">📧 ${stakeholder.email}</p>` : ''}

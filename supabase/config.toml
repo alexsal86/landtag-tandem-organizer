@@ -114,3 +114,9 @@ verify_jwt = true
 
 [functions.process-scheduled-emails]
 verify_jwt = false
+
+[functions.geocode-contact-address]
+verify_jwt = true
+
+[functions.batch-geocode-contacts]
+verify_jwt = true
