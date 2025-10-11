@@ -46,6 +46,14 @@ interface ContactFormData {
   billing_address: string;
   iban: string;
   tags: string[];
+  customer_number: string;
+  supplier_number: string;
+  commercial_register_number: string;
+  business_street: string;
+  business_house_number: string;
+  business_postal_code: string;
+  business_city: string;
+  business_country: string;
 }
 
 export function CreateContact() {
@@ -84,6 +92,14 @@ export function CreateContact() {
     billing_address: "",
     iban: "",
     tags: [],
+    customer_number: "",
+    supplier_number: "",
+    commercial_register_number: "",
+    business_street: "",
+    business_house_number: "",
+    business_postal_code: "",
+    business_city: "",
+    business_country: "Deutschland",
   });
 
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -301,7 +317,10 @@ export function CreateContact() {
       const insertedContactId = data?.[0]?.id;
 
       // Trigger geocoding if business address exists
-      if (insertedContactId && (formData.address && formData.address.trim() !== '')) {
+      const hasBusinessAddress = (formData.business_street && formData.business_street.trim() !== '') ||
+                                  (formData.business_city && formData.business_city.trim() !== '');
+      
+      if (insertedContactId && hasBusinessAddress) {
         supabase.functions.invoke('geocode-contact-address', {
           body: { contactId: insertedContactId }
         }).then(({ error }) => {

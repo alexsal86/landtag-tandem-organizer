@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -737,6 +737,69 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
               id="website"
               value={formData.website || ''}
               onChange={(e) => handleChange('website', e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Business Address */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Geschäftsadresse</CardTitle>
+          <CardDescription>
+            Diese Adresse wird für die Kartenanzeige geocoded
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="md:col-span-3">
+              <Label htmlFor="business_street">Straße</Label>
+              <Input
+                id="business_street"
+                value={formData.business_street || ''}
+                onChange={(e) => handleChange('business_street', e.target.value)}
+                placeholder="z.B. Hauptstraße"
+              />
+            </div>
+            <div>
+              <Label htmlFor="business_house_number">Hausnummer</Label>
+              <Input
+                id="business_house_number"
+                value={formData.business_house_number || ''}
+                onChange={(e) => handleChange('business_house_number', e.target.value)}
+                placeholder="42"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="business_postal_code">PLZ</Label>
+              <Input
+                id="business_postal_code"
+                value={formData.business_postal_code || ''}
+                onChange={(e) => handleChange('business_postal_code', e.target.value)}
+                placeholder="76137"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="business_city">Stadt</Label>
+              <Input
+                id="business_city"
+                value={formData.business_city || ''}
+                onChange={(e) => handleChange('business_city', e.target.value)}
+                placeholder="Karlsruhe"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="business_country">Land</Label>
+            <Input
+              id="business_country"
+              value={formData.business_country || 'Deutschland'}
+              onChange={(e) => handleChange('business_country', e.target.value)}
+              placeholder="Deutschland"
             />
           </div>
         </CardContent>

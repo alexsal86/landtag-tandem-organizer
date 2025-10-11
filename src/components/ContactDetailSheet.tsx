@@ -62,6 +62,13 @@ interface Contact {
   business_description?: string;
   tags?: string[];
   inherited_tags?: string[];
+  business_street?: string;
+  business_house_number?: string;
+  business_postal_code?: string;
+  business_city?: string;
+  business_country?: string;
+  coordinates?: { lat: number; lng: number };
+  geocoded_at?: string;
 }
 
 interface ContactDetailSheetProps {
@@ -191,6 +198,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
         category: data.category as Contact["category"],
         priority: data.priority as Contact["priority"],
         tags: data.tags || [],
+        coordinates: data.coordinates as { lat: number; lng: number } | undefined,
       });
     } catch (error) {
       console.error('Error fetching contact:', error);
@@ -430,13 +438,21 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                   </div>
                 )}
 
-                {(contact.address || contact.location) && (
+                {(contact.business_street || contact.business_city || contact.address || contact.location) && (
                   <div className="flex items-center gap-3">
                     <MapPin className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">Adresse</p>
+                      <p className="font-medium">Geschäftsadresse</p>
                       <p className="text-muted-foreground">
-                        {contact.address || contact.location}
+                        {contact.business_street && (
+                          <>
+                            {contact.business_street} {contact.business_house_number}
+                            <br />
+                            {contact.business_postal_code} {contact.business_city}
+                            {contact.coordinates && ' 📍'}
+                          </>
+                        )}
+                        {!contact.business_street && (contact.address || contact.location)}
                       </p>
                     </div>
                   </div>
