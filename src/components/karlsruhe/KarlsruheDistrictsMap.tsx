@@ -19,6 +19,7 @@ interface KarlsruheDistrictsMapProps {
   onFlagDelete?: (flagId: string) => void;
   showStakeholders?: boolean;
   showDistrictBoundaries?: boolean;
+  isColorMap?: boolean;
 }
 
 export const KarlsruheDistrictsMap = ({
@@ -34,6 +35,7 @@ export const KarlsruheDistrictsMap = ({
   onFlagDelete,
   showStakeholders = true,
   showDistrictBoundaries = true,
+  isColorMap = false,
 }: KarlsruheDistrictsMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -41,6 +43,7 @@ export const KarlsruheDistrictsMap = ({
   const flagLayersRef = useRef<Map<string, L.LayerGroup>>(new Map());
   const flagMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const stakeholderMarkersRef = useRef<Map<string, L.Marker>>(new Map());
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
   // Initialize map
@@ -55,9 +58,10 @@ export const KarlsruheDistrictsMap = ({
       maxZoom: 16,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    tileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
+      className: isColorMap ? '' : 'grayscale-map',
     }).addTo(map);
 
     // Click handler for flag mode
@@ -73,8 +77,26 @@ export const KarlsruheDistrictsMap = ({
     return () => {
       map.remove();
       mapInstanceRef.current = null;
+      tileLayerRef.current = null;
     };
   }, [flagMode, onFlagClick]);
+
+  // Update tile layer when color mode changes
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || !tileLayerRef.current) return;
+
+    const map = mapInstanceRef.current;
+    
+    // Remove old tile layer
+    tileLayerRef.current.remove();
+    
+    // Add new tile layer with updated className
+    tileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+      className: isColorMap ? '' : 'grayscale-map',
+    }).addTo(map);
+  }, [isColorMap, mapReady]);
 
   // Render districts
   useEffect(() => {

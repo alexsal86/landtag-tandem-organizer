@@ -629,3 +629,9 @@ All colors MUST be HSL.
     }
   }
 }
+
+/* Grayscale filter for OpenStreetMap tiles */
+.grayscale-map {
+  filter: grayscale(100%);
+  -webkit-filter: grayscale(100%);
+}

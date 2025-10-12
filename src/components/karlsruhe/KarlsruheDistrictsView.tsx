@@ -29,6 +29,7 @@ export const KarlsruheDistrictsView = () => {
   );
   const [showDistricts, setShowDistricts] = useState(true);
   const [showStakeholders, setShowStakeholders] = useState(true);
+  const [isColorMap, setIsColorMap] = useState(false); // Default: schwarz-weiß
 
   // Initialize visible flag types when flagTypes are loaded
   useEffect(() => {
@@ -134,6 +135,7 @@ export const KarlsruheDistrictsView = () => {
                   onFlagDelete={handleFlagDelete}
                   showStakeholders={showStakeholders}
                   showDistrictBoundaries={showDistricts}
+                  isColorMap={isColorMap}
                 />
               )}
             </CardContent>
@@ -202,6 +204,18 @@ export const KarlsruheDistrictsView = () => {
                   id="show-stakeholders"
                   checked={showStakeholders}
                   onCheckedChange={setShowStakeholders}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Map className="h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="map-color" className="text-sm">Farbige Karte</Label>
+                </div>
+                <Switch
+                  id="map-color"
+                  checked={isColorMap}
+                  onCheckedChange={setIsColorMap}
                 />
               </div>
             </CardContent>
