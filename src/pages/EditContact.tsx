@@ -39,6 +39,12 @@ interface Contact {
   industry?: string;
   main_contact_person?: string;
   business_description?: string;
+  // Structured business address fields
+  business_street?: string;
+  business_house_number?: string;
+  business_postal_code?: string;
+  business_city?: string;
+  business_country?: string;
 }
 
 export default function EditContact() {
@@ -76,6 +82,11 @@ export default function EditContact() {
     industry: "",
     main_contact_person: "",
     business_description: "",
+    business_street: "",
+    business_house_number: "",
+    business_postal_code: "",
+    business_city: "",
+    business_country: "",
   });
 
   useEffect(() => {
@@ -144,6 +155,11 @@ export default function EditContact() {
           industry: data.industry || "",
           main_contact_person: data.main_contact_person || "",
           business_description: data.business_description || "",
+          business_street: data.business_street || "",
+          business_house_number: data.business_house_number || "",
+          business_postal_code: data.business_postal_code || "",
+          business_city: data.business_city || "",
+          business_country: data.business_country || "",
         });
       }
     } catch (error) {
@@ -253,6 +269,11 @@ export default function EditContact() {
         industry: contact.industry,
         main_contact_person: contact.main_contact_person,
         business_description: contact.business_description,
+        business_street: contact.business_street,
+        business_house_number: contact.business_house_number,
+        business_postal_code: contact.business_postal_code,
+        business_city: contact.business_city,
+        business_country: contact.business_country,
         updated_at: new Date().toISOString()
       };
 
@@ -273,8 +294,12 @@ export default function EditContact() {
         description: "Kontakt wurde aktualisiert.",
       });
       
-      // Trigger geocoding if address exists (old address field)
-      if (contact.address && contact.address.trim() !== '') {
+      // Trigger geocoding if any address fields exist (structured business address or old address field)
+      if (
+        (contact.business_street && contact.business_street.trim() !== '') ||
+        (contact.business_city && contact.business_city.trim() !== '') ||
+        (contact.address && contact.address.trim() !== '')
+      ) {
         supabase.functions.invoke('geocode-contact-address', {
           body: { contactId: contact.id }
         }).then(({ error }) => {
@@ -496,11 +521,14 @@ export default function EditContact() {
                   </div>
 
                   <div>
-                    <Label htmlFor="address">Adresse</Label>
+                    <Label htmlFor="address" className="text-muted-foreground">
+                      Adresse (veraltet - bitte strukturierte Geschäftsadresse nutzen)
+                    </Label>
                     <Input
                       id="address"
                       value={contact.address}
                       onChange={(e) => setContact({ ...contact, address: e.target.value })}
+                      className="opacity-60"
                     />
                   </div>
 
@@ -562,6 +590,72 @@ export default function EditContact() {
                   </div>
                 </div>
               </div>
+
+              {/* Structured Business Address */}
+              <Card className="bg-card/50 border-border/50">
+                <CardHeader>
+                  <CardTitle className="text-lg">Geschäftsadresse</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Diese Adresse wird für die Kartenanzeige verwendet
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Straße + Hausnummer */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="md:col-span-3">
+                      <Label htmlFor="business_street">Straße</Label>
+                      <Input
+                        id="business_street"
+                        value={contact.business_street || ""}
+                        onChange={(e) => setContact({ ...contact, business_street: e.target.value })}
+                        placeholder="z.B. Hauptstraße"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="business_house_number">Hausnummer</Label>
+                      <Input
+                        id="business_house_number"
+                        value={contact.business_house_number || ""}
+                        onChange={(e) => setContact({ ...contact, business_house_number: e.target.value })}
+                        placeholder="42"
+                      />
+                    </div>
+                  </div>
+
+                  {/* PLZ + Stadt */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="business_postal_code">PLZ</Label>
+                      <Input
+                        id="business_postal_code"
+                        value={contact.business_postal_code || ""}
+                        onChange={(e) => setContact({ ...contact, business_postal_code: e.target.value })}
+                        placeholder="76137"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label htmlFor="business_city">Stadt</Label>
+                      <Input
+                        id="business_city"
+                        value={contact.business_city || ""}
+                        onChange={(e) => setContact({ ...contact, business_city: e.target.value })}
+                        placeholder="Karlsruhe"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Land */}
+                  <div>
+                    <Label htmlFor="business_country">Land</Label>
+                    <Input
+                      id="business_country"
+                      value={contact.business_country || "Deutschland"}
+                      onChange={(e) => setContact({ ...contact, business_country: e.target.value })}
+                      placeholder="Deutschland"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Social Media */}
               <div className="space-y-4">
