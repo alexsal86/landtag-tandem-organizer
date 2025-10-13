@@ -596,6 +596,19 @@ export function StakeholderView({
                     <TableCell>
                       <div className="text-sm text-muted-foreground">
                         {(() => {
+                          // Debug logging
+                          if (stakeholder.name === 'Anne-Frank-Schule') {
+                            console.log('Anne-Frank-Schule address data:', {
+                              business_street: stakeholder.business_street,
+                              business_house_number: stakeholder.business_house_number,
+                              business_postal_code: stakeholder.business_postal_code,
+                              business_city: stakeholder.business_city,
+                              address: stakeholder.address,
+                              location: stakeholder.location,
+                              allFields: Object.keys(stakeholder)
+                            });
+                          }
+                          
                           const businessAddress = [
                             stakeholder.business_street,
                             stakeholder.business_house_number,
