@@ -595,21 +595,25 @@ export function StakeholderView({
                     </TableCell>
                     <TableCell>
                       <div className="text-sm text-muted-foreground">
-                        {stakeholder.business_street || stakeholder.business_city ? (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">
-                              {[
-                                stakeholder.business_street,
-                                stakeholder.business_house_number,
-                                stakeholder.business_postal_code,
-                                stakeholder.business_city,
-                              ].filter(Boolean).join(' ')}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        {(() => {
+                          const businessAddress = [
+                            stakeholder.business_street,
+                            stakeholder.business_house_number,
+                            stakeholder.business_postal_code,
+                            stakeholder.business_city,
+                          ].filter(Boolean).join(' ');
+                          
+                          const displayAddress = businessAddress || stakeholder.address || stakeholder.location;
+                          
+                          return displayAddress ? (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{displayAddress}</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          );
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell>
