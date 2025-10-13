@@ -11,6 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { ThemeProvider } from 'next-themes';
+import { Navigation } from '@/components/Navigation';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 interface Contact {
   id: string;
@@ -328,10 +331,19 @@ export default function EditContact() {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
 
+  const handleSectionChange = (section: string) => {
+    const path = section === 'dashboard' ? '/' : `/${section}`;
+    navigate(path);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center mb-6">
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full bg-background">
+          <Navigation activeSection="contacts" onSectionChange={handleSectionChange} />
+          <main className="flex-1 p-6">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center mb-6">
           <Button 
             variant="outline" 
             onClick={() => navigate(`/contacts/${id}`)}
@@ -743,7 +755,10 @@ export default function EditContact() {
             </form>
           </CardContent>
         </Card>
-      </div>
-    </div>
+              </div>
+            </main>
+          </div>
+        </SidebarProvider>
+      </ThemeProvider>
   );
 }

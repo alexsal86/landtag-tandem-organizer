@@ -544,6 +544,7 @@ export function StakeholderView({
               <TableRow>
                 <TableHead className="w-12">Favorit</TableHead>
                 <SortableTableHead sortKey="name">Name</SortableTableHead>
+                <TableHead>Adresse</TableHead>
                 <TableHead>Kontakte</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefon</TableHead>
@@ -590,6 +591,25 @@ export function StakeholderView({
                             <div className="text-xs text-muted-foreground">{stakeholder.industry}</div>
                           )}
                         </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-muted-foreground">
+                        {stakeholder.business_street || stakeholder.business_city ? (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">
+                              {[
+                                stakeholder.business_street,
+                                stakeholder.business_house_number,
+                                stakeholder.business_postal_code,
+                                stakeholder.business_city,
+                              ].filter(Boolean).join(' ')}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>

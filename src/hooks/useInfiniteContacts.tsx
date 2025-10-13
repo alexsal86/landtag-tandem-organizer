@@ -35,6 +35,11 @@ export interface Contact {
   main_contact_person?: string;
   business_description?: string;
   tags?: string[];
+  business_street?: string;
+  business_house_number?: string;
+  business_postal_code?: string;
+  business_city?: string;
+  business_country?: string;
 }
 
 interface UseInfiniteContactsProps {
