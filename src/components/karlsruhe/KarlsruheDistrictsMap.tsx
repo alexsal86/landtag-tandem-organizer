@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
 import { MapFlag } from '@/hooks/useMapFlags';
 import { MapFlagType } from '@/hooks/useMapFlagTypes';
 import { useMapFlagStakeholders } from '@/hooks/useMapFlagStakeholders';
+import { supabase } from '@/integrations/supabase/client';
 
 interface KarlsruheDistrictsMapProps {
   districts: KarlsruheDistrict[];
@@ -45,6 +46,96 @@ export const KarlsruheDistrictsMap = ({
   const stakeholderMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapReady, setMapReady] = useState(false);
+
+  // Extract stakeholder loading logic into a reusable function
+  const loadStakeholders = useCallback(async () => {
+    if (!mapInstanceRef.current || !showStakeholders) return;
+
+    const map = mapInstanceRef.current;
+
+    // Clear existing stakeholder markers
+    stakeholderMarkersRef.current.forEach(marker => marker.remove());
+    stakeholderMarkersRef.current.clear();
+
+    for (const flagTypeId of Array.from(visibleFlagTypes)) {
+      const flagType = flagTypes.find(t => t.id === flagTypeId);
+      if (!flagType || !flagType.tag_filter) continue;
+
+      const { data: allData } = await supabase
+        .from('contacts')
+        .select('id, name, organization, email, phone, tags, business_description, website, coordinates, business_street, business_city, business_postal_code')
+        .eq('contact_type', 'organization')
+        .not('coordinates', 'is', null);
+
+      // Filter case-insensitive for tag match
+      const data = allData?.filter(contact => 
+        contact.tags?.some((tag: string) => 
+          tag.toLowerCase() === flagType.tag_filter!.toLowerCase()
+        )
+      );
+
+      if (!data || data.length === 0) continue;
+
+      // Add stakeholder markers
+      data.forEach((stakeholder: any) => {
+        const lat = stakeholder.coordinates.lat;
+        const lng = stakeholder.coordinates.lng;
+
+        const stakeholderMarker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            html: `<div style="
+              background: linear-gradient(135deg, ${flagType.color} 0%, ${flagType.color}dd 100%);
+              border-radius: 50%;
+              width: 28px;
+              height: 28px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 14px;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+              border: 2px solid white;
+              cursor: pointer;
+            ">🏢</div>`,
+            iconSize: [28, 28],
+            className: 'stakeholder-marker',
+          }),
+        });
+
+        // Build address display
+        const addressParts = [
+          stakeholder.business_street,
+          stakeholder.business_postal_code,
+          stakeholder.business_city
+        ].filter(Boolean);
+        const addressDisplay = addressParts.length > 0 ? addressParts.join(', ') : null;
+
+        stakeholderMarker.bindPopup(`
+          <div style="font-family: sans-serif; min-width: 220px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <span style="font-size: 18px;">🏢</span>
+              <h3 style="margin: 0; font-size: 15px; font-weight: 600;">${stakeholder.name}</h3>
+            </div>
+            ${stakeholder.organization ? `<p style="margin: 4px 0; color: #666; font-size: 13px;">${stakeholder.organization}</p>` : ''}
+            ${addressDisplay ? `<p style="margin: 4px 0; color: #666; font-size: 12px;">📮 ${addressDisplay}</p>` : ''}
+            <p style="margin: 2px 0; font-size: 11px; color: #10b981;">📍 Geocodierte Adresse</p>
+            ${stakeholder.business_description ? `<p style="margin: 8px 0; color: #666; font-size: 12px; line-height: 1.4;">${stakeholder.business_description.substring(0, 120)}${stakeholder.business_description.length > 120 ? '...' : ''}</p>` : ''}
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
+              ${stakeholder.email ? `<p style="margin: 2px 0; font-size: 12px;">📧 ${stakeholder.email}</p>` : ''}
+              ${stakeholder.phone ? `<p style="margin: 2px 0; font-size: 12px;">📞 ${stakeholder.phone}</p>` : ''}
+              ${stakeholder.website ? `<p style="margin: 2px 0; font-size: 12px;">🌐 <a href="${stakeholder.website}" target="_blank" style="color: #3b82f6;">${stakeholder.website}</a></p>` : ''}
+            </div>
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
+              <p style="margin: 0; font-size: 11px; color: #888;">Verknüpft über Tag: ${flagType.tag_filter}</p>
+              <a href="/contacts/${stakeholder.id}" target="_blank" style="display: inline-block; margin-top: 8px; padding: 4px 12px; background: #3b82f6; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">Details anzeigen</a>
+            </div>
+          </div>
+        `);
+
+        stakeholderMarker.addTo(map);
+        stakeholderMarkersRef.current.set(`${flagType.id}-${stakeholder.id}`, stakeholderMarker);
+      });
+    }
+  }, [flagTypes, visibleFlagTypes, showStakeholders]);
 
   // Initialize map
   useEffect(() => {
@@ -219,17 +310,51 @@ export const KarlsruheDistrictsMap = ({
     });
   }, [selectedDistrict, mapReady]);
 
-  // Render flags and stakeholders
+  // Setup realtime subscription for contact updates
+  useEffect(() => {
+    if (!mapReady) return;
+
+    console.log('Setting up realtime subscription for contacts');
+
+    const channel = supabase
+      .channel('contacts_map_changes')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'contacts',
+        filter: 'contact_type=eq.organization'
+      }, (payload) => {
+        const updated = payload.new as any;
+        console.log('Contact updated via realtime:', updated);
+        
+        if (updated.coordinates) {
+          console.log('Coordinates found, reloading stakeholders...');
+          loadStakeholders();
+        }
+      })
+      .subscribe();
+    
+    return () => {
+      console.log('Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [mapReady, loadStakeholders]);
+
+  // Load stakeholders when dependencies change
+  useEffect(() => {
+    if (!mapReady) return;
+    loadStakeholders();
+  }, [mapReady, loadStakeholders]);
+
+  // Render flags
   useEffect(() => {
     if (!mapReady || !mapInstanceRef.current) return;
 
     const map = mapInstanceRef.current;
 
-    // Clear existing markers
+    // Clear existing flag markers
     flagMarkersRef.current.forEach(marker => marker.remove());
     flagMarkersRef.current.clear();
-    stakeholderMarkersRef.current.forEach(marker => marker.remove());
-    stakeholderMarkersRef.current.clear();
 
     // Create layer groups for each flag type
     flagTypes.forEach(type => {
@@ -238,91 +363,6 @@ export const KarlsruheDistrictsMap = ({
         flagLayersRef.current.set(type.id, layerGroup);
       }
     });
-
-    // Load stakeholders directly for each visible flag type with tag_filter
-    const loadStakeholdersByFlagType = async () => {
-      for (const flagTypeId of Array.from(visibleFlagTypes)) {
-        const flagType = flagTypes.find(t => t.id === flagTypeId);
-        if (!flagType || !flagType.tag_filter || !showStakeholders) continue;
-
-        const { supabase } = await import('@/integrations/supabase/client');
-        const { data: allData } = await supabase
-          .from('contacts')
-          .select('id, name, organization, email, phone, tags, business_description, website, coordinates, business_street, business_city, business_postal_code')
-          .eq('contact_type', 'organization')
-          .not('coordinates', 'is', null);
-
-        // Filter case-insensitive for tag match
-        const data = allData?.filter(contact => 
-          contact.tags?.some((tag: string) => 
-            tag.toLowerCase() === flagType.tag_filter!.toLowerCase()
-          )
-        );
-
-        if (!data || data.length === 0) continue;
-
-        // Add stakeholder markers
-        data.forEach((stakeholder: any) => {
-          const lat = stakeholder.coordinates.lat;
-          const lng = stakeholder.coordinates.lng;
-
-          const stakeholderMarker = L.marker([lat, lng], {
-            icon: L.divIcon({
-              html: `<div style="
-                background: linear-gradient(135deg, ${flagType.color} 0%, ${flagType.color}dd 100%);
-                border-radius: 50%;
-                width: 28px;
-                height: 28px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 14px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-                border: 2px solid white;
-                cursor: pointer;
-              ">🏢</div>`,
-              iconSize: [28, 28],
-              className: 'stakeholder-marker',
-            }),
-          });
-
-          // Build address display
-          const addressParts = [
-            stakeholder.business_street,
-            stakeholder.business_postal_code,
-            stakeholder.business_city
-          ].filter(Boolean);
-          const addressDisplay = addressParts.length > 0 ? addressParts.join(', ') : null;
-
-          stakeholderMarker.bindPopup(`
-            <div style="font-family: sans-serif; min-width: 220px;">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                <span style="font-size: 18px;">🏢</span>
-                <h3 style="margin: 0; font-size: 15px; font-weight: 600;">${stakeholder.name}</h3>
-              </div>
-              ${stakeholder.organization ? `<p style="margin: 4px 0; color: #666; font-size: 13px;">${stakeholder.organization}</p>` : ''}
-              ${addressDisplay ? `<p style="margin: 4px 0; color: #666; font-size: 12px;">📮 ${addressDisplay}</p>` : ''}
-              <p style="margin: 2px 0; font-size: 11px; color: #10b981;">📍 Geocodierte Adresse</p>
-              ${stakeholder.business_description ? `<p style="margin: 8px 0; color: #666; font-size: 12px; line-height: 1.4;">${stakeholder.business_description.substring(0, 120)}${stakeholder.business_description.length > 120 ? '...' : ''}</p>` : ''}
-              <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
-                ${stakeholder.email ? `<p style="margin: 2px 0; font-size: 12px;">📧 ${stakeholder.email}</p>` : ''}
-                ${stakeholder.phone ? `<p style="margin: 2px 0; font-size: 12px;">📞 ${stakeholder.phone}</p>` : ''}
-                ${stakeholder.website ? `<p style="margin: 2px 0; font-size: 12px;">🌐 <a href="${stakeholder.website}" target="_blank" style="color: #3b82f6;">${stakeholder.website}</a></p>` : ''}
-              </div>
-              <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
-                <p style="margin: 0; font-size: 11px; color: #888;">Verknüpft über Tag: ${flagType.tag_filter}</p>
-                <a href="/contacts/${stakeholder.id}" target="_blank" style="display: inline-block; margin-top: 8px; padding: 4px 12px; background: #3b82f6; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">Details anzeigen</a>
-              </div>
-            </div>
-          `);
-
-          stakeholderMarker.addTo(map);
-          stakeholderMarkersRef.current.set(`${flagType.id}-${stakeholder.id}`, stakeholderMarker);
-        });
-      }
-    };
-
-    loadStakeholdersByFlagType();
 
     // Add flag markers
     flags.forEach(flag => {

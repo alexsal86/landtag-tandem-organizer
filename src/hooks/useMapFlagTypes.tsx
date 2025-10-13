@@ -72,7 +72,7 @@ export const useMapFlagTypes = () => {
   });
 
   const updateFlagType = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<MapFlagType> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Omit<MapFlagType, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'tenant_id'>> }) => {
       const { data, error } = await supabase
         .from('map_flag_types')
         .update(updates)
@@ -85,6 +85,7 @@ export const useMapFlagTypes = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['map-flag-types'] });
+      queryClient.invalidateQueries({ queryKey: ['map-flags'] });
       toast({ title: 'Flaggentyp aktualisiert' });
     },
     onError: (error) => {
