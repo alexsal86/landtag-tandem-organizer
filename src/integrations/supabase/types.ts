@@ -3802,6 +3802,7 @@ export type Database = {
           is_active: boolean
           name: string
           order_index: number
+          tag_filter: string | null
           tenant_id: string
           updated_at: string
         }
@@ -3814,6 +3815,7 @@ export type Database = {
           is_active?: boolean
           name: string
           order_index?: number
+          tag_filter?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -3826,6 +3828,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           order_index?: number
+          tag_filter?: string | null
           tenant_id?: string
           updated_at?: string
         }

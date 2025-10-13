@@ -14,6 +14,7 @@ export const MapFlagTypeManager = () => {
   const { flagTypes, createFlagType, deleteFlagType } = useMapFlagTypes();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('📍');
   const [selectedColor, setSelectedColor] = useState('#3b82f6');
 
@@ -26,9 +27,11 @@ export const MapFlagTypeManager = () => {
       color: selectedColor,
       is_active: true,
       order_index: flagTypes.length,
+      tag_filter: tagFilter.trim() || undefined,
     });
 
     setName('');
+    setTagFilter('');
     setSelectedIcon('📍');
     setSelectedColor('#3b82f6');
     setOpen(false);
@@ -87,6 +90,18 @@ export const MapFlagTypeManager = () => {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="z.B. Veranstaltungen"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tag für Kontakt-Filter</Label>
+              <Input
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                placeholder="z.B. schule, kita, spielplatz"
+              />
+              <p className="text-xs text-muted-foreground">
+                Kontakte mit diesem Tag werden automatisch auf der Karte angezeigt
+              </p>
             </div>
 
             <div className="space-y-2">
