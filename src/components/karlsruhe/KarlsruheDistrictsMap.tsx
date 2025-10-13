@@ -246,14 +246,20 @@ export const KarlsruheDistrictsMap = ({
         if (!flagType || !flagType.tag_filter || !showStakeholders) continue;
 
         const { supabase } = await import('@/integrations/supabase/client');
-        const { data } = await supabase
+        const { data: allData } = await supabase
           .from('contacts')
           .select('id, name, organization, email, phone, tags, business_description, website, coordinates, business_street, business_city, business_postal_code')
           .eq('contact_type', 'organization')
-          .contains('tags', [flagType.tag_filter])
           .not('coordinates', 'is', null);
 
-        if (!data) continue;
+        // Filter case-insensitive for tag match
+        const data = allData?.filter(contact => 
+          contact.tags?.some((tag: string) => 
+            tag.toLowerCase() === flagType.tag_filter!.toLowerCase()
+          )
+        );
+
+        if (!data || data.length === 0) continue;
 
         // Add stakeholder markers
         data.forEach((stakeholder: any) => {
