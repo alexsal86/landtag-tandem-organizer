@@ -3,21 +3,27 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMapFlagTypes, MapFlagType } from '@/hooks/useMapFlagTypes';
+import { useTags } from '@/hooks/useTags';
 import { Settings, Plus, Trash2, Pencil } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { TagIconPicker } from '@/components/contacts/TagIconPicker';
+import { icons } from 'lucide-react';
 
-const PRESET_ICONS = ['📍', '🚧', '🎉', '⚠️', '🏗️', '🌳', '🏢', '🚶', '🚲', '🚗'];
 const PRESET_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
 
 export const MapFlagTypeManager = () => {
   const { flagTypes, createFlagType, updateFlagType, deleteFlagType } = useMapFlagTypes();
+  const { tags, loading: tagsLoading } = useTags();
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingType, setEditingType] = useState<MapFlagType | null>(null);
   const [name, setName] = useState('');
-  const [tagFilter, setTagFilter] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState('📍');
+  const [description, setDescription] = useState('');
+  const [tagFilter, setTagFilter] = useState<string | undefined>(undefined);
+  const [selectedIcon, setSelectedIcon] = useState('map-pin');
   const [selectedColor, setSelectedColor] = useState('#3b82f6');
 
   const handleCreate = async () => {
@@ -29,12 +35,14 @@ export const MapFlagTypeManager = () => {
       color: selectedColor,
       is_active: true,
       order_index: flagTypes.length,
-      tag_filter: tagFilter.trim() || undefined,
+      tag_filter: tagFilter || undefined,
+      description: description.trim() || undefined,
     });
 
     setName('');
-    setTagFilter('');
-    setSelectedIcon('📍');
+    setDescription('');
+    setTagFilter(undefined);
+    setSelectedIcon('map-pin');
     setSelectedColor('#3b82f6');
     setOpen(false);
   };
@@ -42,7 +50,8 @@ export const MapFlagTypeManager = () => {
   const handleEdit = (type: MapFlagType) => {
     setEditingType(type);
     setName(type.name);
-    setTagFilter(type.tag_filter || '');
+    setDescription(type.description || '');
+    setTagFilter(type.tag_filter || undefined);
     setSelectedIcon(type.icon);
     setSelectedColor(type.color);
     setEditOpen(true);
@@ -57,13 +66,15 @@ export const MapFlagTypeManager = () => {
         name: name.trim(),
         icon: selectedIcon,
         color: selectedColor,
-        tag_filter: tagFilter.trim() || undefined,
+        tag_filter: tagFilter || undefined,
+        description: description.trim() || undefined,
       },
     });
 
     setName('');
-    setTagFilter('');
-    setSelectedIcon('📍');
+    setDescription('');
+    setTagFilter(undefined);
+    setSelectedIcon('map-pin');
     setSelectedColor('#3b82f6');
     setEditingType(null);
     setEditOpen(false);
@@ -87,36 +98,50 @@ export const MapFlagTypeManager = () => {
           <div className="space-y-2">
             <Label>Vorhandene Flaggentypen</Label>
             <div className="grid gap-2">
-              {flagTypes.map((type) => (
-                <Card key={type.id} className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{type.icon}</span>
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-4 h-4 rounded-full" 
-                        style={{ backgroundColor: type.color }}
-                      />
-                      <span className="font-medium">{type.name}</span>
+              {flagTypes.map((type) => {
+                const Icon = icons[type.icon as keyof typeof icons];
+                return (
+                  <Card key={type.id} className="p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {Icon ? (
+                        <Icon className="h-5 w-5 flex-shrink-0" style={{ color: type.color }} />
+                      ) : (
+                        <span className="text-xl">{type.icon}</span>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full flex-shrink-0" 
+                            style={{ backgroundColor: type.color }}
+                          />
+                          <span className="font-medium">{type.name}</span>
+                        </div>
+                        {type.description && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {type.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(type)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteFlagType.mutate(type.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </Card>
-              ))}
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(type)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteFlagType.mutate(type.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           </div>
 
@@ -134,12 +159,33 @@ export const MapFlagTypeManager = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Tag für Kontakt-Filter</Label>
-              <Input
-                value={tagFilter}
-                onChange={(e) => setTagFilter(e.target.value)}
-                placeholder="z.B. schule, kita, spielplatz"
+              <Label>Beschreibung (optional)</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Beschreiben Sie den Verwendungszweck dieses Flaggentyps..."
+                rows={3}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tag für Kontakt-Filter (optional)</Label>
+              <Select
+                value={tagFilter}
+                onValueChange={(value) => setTagFilter(value === 'none' ? undefined : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Wählen Sie einen Tag aus..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Kein Filter</SelectItem>
+                  {tags.map((tag) => (
+                    <SelectItem key={tag.id} value={tag.name}>
+                      {tag.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
                 Kontakte mit diesem Tag werden automatisch auf der Karte angezeigt
               </p>
@@ -147,20 +193,14 @@ export const MapFlagTypeManager = () => {
 
             <div className="space-y-2">
               <Label>Icon</Label>
-              <div className="flex gap-2 flex-wrap">
-                {PRESET_ICONS.map((icon) => (
-                  <button
-                    key={icon}
-                    onClick={() => setSelectedIcon(icon)}
-                    className={`text-2xl p-2 rounded border-2 transition-all ${
-                      selectedIcon === icon 
-                        ? 'border-primary bg-primary/10' 
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {icon}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <TagIconPicker
+                  value={selectedIcon}
+                  onChange={setSelectedIcon}
+                />
+                <span className="text-sm text-muted-foreground">
+                  Über 1000 Icons verfügbar - durchsuchen Sie die Sammlung
+                </span>
               </div>
             </div>
 
@@ -212,12 +252,33 @@ export const MapFlagTypeManager = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Tag für Kontakt-Filter</Label>
-              <Input
-                value={tagFilter}
-                onChange={(e) => setTagFilter(e.target.value)}
-                placeholder="z.B. schule, kita, spielplatz"
+              <Label>Beschreibung (optional)</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Beschreiben Sie den Verwendungszweck dieses Flaggentyps..."
+                rows={3}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tag für Kontakt-Filter (optional)</Label>
+              <Select
+                value={tagFilter}
+                onValueChange={(value) => setTagFilter(value === 'none' ? undefined : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Wählen Sie einen Tag aus..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Kein Filter</SelectItem>
+                  {tags.map((tag) => (
+                    <SelectItem key={tag.id} value={tag.name}>
+                      {tag.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
                 Kontakte mit diesem Tag werden automatisch auf der Karte angezeigt
               </p>
@@ -225,20 +286,14 @@ export const MapFlagTypeManager = () => {
 
             <div className="space-y-2">
               <Label>Icon</Label>
-              <div className="flex gap-2 flex-wrap">
-                {PRESET_ICONS.map((icon) => (
-                  <button
-                    key={icon}
-                    onClick={() => setSelectedIcon(icon)}
-                    className={`text-2xl p-2 rounded border-2 transition-all ${
-                      selectedIcon === icon 
-                        ? 'border-primary bg-primary/10' 
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {icon}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <TagIconPicker
+                  value={selectedIcon}
+                  onChange={setSelectedIcon}
+                />
+                <span className="text-sm text-muted-foreground">
+                  Über 1000 Icons verfügbar - durchsuchen Sie die Sammlung
+                </span>
               </div>
             </div>
 
@@ -274,8 +329,9 @@ export const MapFlagTypeManager = () => {
                   setEditOpen(false);
                   setEditingType(null);
                   setName('');
-                  setTagFilter('');
-                  setSelectedIcon('📍');
+                  setDescription('');
+                  setTagFilter(undefined);
+                  setSelectedIcon('map-pin');
                   setSelectedColor('#3b82f6');
                 }}
               >

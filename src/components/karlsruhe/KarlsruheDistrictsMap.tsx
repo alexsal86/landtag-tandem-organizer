@@ -6,6 +6,20 @@ import { MapFlag } from '@/hooks/useMapFlags';
 import { MapFlagType } from '@/hooks/useMapFlagTypes';
 import { useMapFlagStakeholders } from '@/hooks/useMapFlagStakeholders';
 import { supabase } from '@/integrations/supabase/client';
+import { icons } from 'lucide-react';
+
+// Helper function to get icon display (emoji or fallback for Lucide icons)
+const getIconDisplay = (iconName: string): string => {
+  // Check if it's a Lucide icon name (not an emoji)
+  const Icon = icons[iconName as keyof typeof icons];
+  if (Icon) {
+    // For Lucide icons on the map, use a generic marker emoji as fallback
+    // (Leaflet doesn't support SVG icons easily in divIcon HTML)
+    return '🚩';
+  }
+  // Return emoji as-is
+  return iconName;
+};
 
 interface KarlsruheDistrictsMapProps {
   districts: KarlsruheDistrict[];
@@ -95,7 +109,7 @@ export const KarlsruheDistrictsMap = ({
               box-shadow: 0 2px 6px rgba(0,0,0,0.25);
               border: 2px solid white;
               cursor: pointer;
-            ">🏢</div>`,
+            ">${getIconDisplay(flagType.icon)}</div>`,
             iconSize: [28, 28],
             className: 'stakeholder-marker',
           }),
@@ -386,7 +400,7 @@ export const KarlsruheDistrictsMap = ({
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             border: 2px solid white;
             cursor: pointer;
-          ">${flagType.icon}</div>`,
+          ">${getIconDisplay(flagType.icon)}</div>`,
           iconSize: [32, 32],
           className: 'map-flag-marker',
         }),
@@ -395,7 +409,7 @@ export const KarlsruheDistrictsMap = ({
       marker.bindPopup(`
         <div style="font-family: sans-serif; min-width: 200px;">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span style="font-size: 20px;">${flagType.icon}</span>
+            <span style="font-size: 20px;">${getIconDisplay(flagType.icon)}</span>
             <h3 style="margin: 0; font-size: 16px; font-weight: 600;">${flag.title}</h3>
           </div>
           ${flag.description ? `<p style="margin: 8px 0; color: #666;">${flag.description}</p>` : ''}

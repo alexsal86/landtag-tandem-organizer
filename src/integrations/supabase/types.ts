@@ -3797,6 +3797,7 @@ export type Database = {
           color: string
           created_at: string
           created_by: string
+          description: string | null
           icon: string
           id: string
           is_active: boolean
@@ -3810,6 +3811,7 @@ export type Database = {
           color?: string
           created_at?: string
           created_by: string
+          description?: string | null
           icon?: string
           id?: string
           is_active?: boolean
@@ -3823,6 +3825,7 @@ export type Database = {
           color?: string
           created_at?: string
           created_by?: string
+          description?: string | null
           icon?: string
           id?: string
           is_active?: boolean

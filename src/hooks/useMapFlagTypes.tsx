@@ -16,6 +16,7 @@ export interface MapFlagType {
   created_at: string;
   updated_at: string;
   tag_filter?: string;
+  description?: string | null;
 }
 
 export const useMapFlagTypes = () => {
