@@ -6,19 +6,27 @@ import { MapFlag } from '@/hooks/useMapFlags';
 import { MapFlagType } from '@/hooks/useMapFlagTypes';
 import { useMapFlagStakeholders } from '@/hooks/useMapFlagStakeholders';
 import { supabase } from '@/integrations/supabase/client';
-import { icons } from 'lucide-react';
+import { lucideIconToSvg, isLucideIcon } from '@/utils/lucideIconToSvg';
 
-// Helper function to get icon display (emoji or fallback for Lucide icons)
-const getIconDisplay = (iconName: string): string => {
-  // Check if it's a Lucide icon name (not an emoji)
-  const Icon = icons[iconName as keyof typeof icons];
-  if (Icon) {
-    // For Lucide icons on the map, use a generic marker emoji as fallback
-    // (Leaflet doesn't support SVG icons easily in divIcon HTML)
-    return '🚩';
+/**
+ * Helper function to get icon display for Leaflet markers
+ * Handles both Lucide icons (as SVG) and emojis
+ * @param iconName - Icon identifier (Lucide icon name or emoji)
+ * @param color - Color for the icon (used for Lucide icons)
+ * @param size - Size of the icon in pixels
+ * @returns HTML string for icon display
+ */
+const getIconDisplay = (iconName: string, color: string = '#ffffff', size: number = 18): string => {
+  // Check if it's a Lucide icon
+  if (isLucideIcon(iconName)) {
+    const svgString = lucideIconToSvg(iconName, color, size);
+    if (svgString) {
+      return svgString;
+    }
   }
-  // Return emoji as-is
-  return iconName;
+  
+  // Fallback: treat as emoji
+  return `<span style="font-size: ${size}px; line-height: 1;">${iconName}</span>`;
 };
 
 interface KarlsruheDistrictsMapProps {
@@ -105,11 +113,10 @@ export const KarlsruheDistrictsMap = ({
               display: flex;
               align-items: center;
               justify-content: center;
-              font-size: 14px;
               box-shadow: 0 2px 6px rgba(0,0,0,0.25);
               border: 2px solid white;
               cursor: pointer;
-            ">${getIconDisplay(flagType.icon)}</div>`,
+            ">${getIconDisplay(flagType.icon, '#ffffff', 16)}</div>`,
             iconSize: [28, 28],
             className: 'stakeholder-marker',
           }),
@@ -396,11 +403,10 @@ export const KarlsruheDistrictsMap = ({
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             border: 2px solid white;
             cursor: pointer;
-          ">${getIconDisplay(flagType.icon)}</div>`,
+          ">${getIconDisplay(flagType.icon, '#ffffff', 18)}</div>`,
           iconSize: [32, 32],
           className: 'map-flag-marker',
         }),
@@ -409,7 +415,7 @@ export const KarlsruheDistrictsMap = ({
       marker.bindPopup(`
         <div style="font-family: sans-serif; min-width: 200px;">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span style="font-size: 20px;">${getIconDisplay(flagType.icon)}</span>
+            <div style="display: inline-flex; align-items: center; justify-content: center;">${getIconDisplay(flagType.icon, flagType.color, 20)}</div>
             <h3 style="margin: 0; font-size: 16px; font-weight: 600;">${flag.title}</h3>
           </div>
           ${flag.description ? `<p style="margin: 8px 0; color: #666;">${flag.description}</p>` : ''}
