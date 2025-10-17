@@ -80,9 +80,18 @@ serve(async (req) => {
       });
 
       finalStructuredData = {
-        agenda_items: structuredData.agendaItems || [],
-        speeches: structuredData.speeches || [],
-        sessions: structuredData.sessions || []
+        agenda_items: (structuredData.agendaItems || []).map((item: any) => ({
+          ...item,
+          item_type: mapItemType(item.item_type || item.description || 'regular')
+        })),
+        speeches: (structuredData.speeches || []).map((speech: any, idx: number) => ({
+          ...speech,
+          index: speech.index ?? idx
+        })),
+        sessions: (structuredData.sessions || []).map((session: any) => ({
+          ...session,
+          timestamp: convertToTimestamp(session.timestamp)
+        }))
       };
     } else {
       // Fallback: Server-side analysis (legacy approach)
@@ -424,6 +433,26 @@ function determineItemType(title: string): string {
   if (/antrag/i.test(title)) return 'motion';
   if (/regierungserklärung/i.test(title)) return 'government_statement';
   return 'regular';
+}
+
+function mapItemType(type: string): string {
+  const mapping: Record<string, string> = {
+    'Aktuelle Debatte': 'current_debate',
+    'Zweite Beratung': 'second_reading',
+    'Antrag': 'motion',
+    'Fragestunde': 'question_hour',
+    'Regierungserklärung': 'government_statement',
+    'Petition': 'petition'
+  };
+  return mapping[type] || 'regular';
+}
+
+function convertToTimestamp(time: string): string {
+  if (!time) return new Date().toISOString();
+  if (time.includes('T')) return time;
+  
+  const currentDate = new Date().toISOString().split('T')[0];
+  return `${currentDate}T${time}`;
 }
 
 function extractPartyFromSpeaker(speakerName: string): string | undefined {

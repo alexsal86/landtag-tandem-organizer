@@ -158,15 +158,51 @@
   background: hsl(var(--muted) / 0.5);
 }
 
-/* Typography improvements */
-.protocol-text {
-  line-height: 1.8;
+/* Plenary Protocol Styles */
+.plenary-protocol {
+  font-family: var(--font-sans);
+}
+
+.protocol-header {
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+.speech-block {
+  margin-bottom: 2rem;
+  page-break-inside: avoid;
+}
+
+.speaker-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.speech-content {
   text-align: justify;
   hyphens: auto;
 }
 
-.protocol-heading {
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1.2;
+.page-number {
+  text-align: right;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+/* Print styles for Plenary Protocol */
+@media print {
+  .plenary-protocol {
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+  
+  .speech-block {
+    page-break-inside: avoid;
+  }
+  
+  .protocol-header {
+    page-break-after: avoid;
+  }
 }

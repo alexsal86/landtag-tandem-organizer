@@ -5118,36 +5118,45 @@ export type Database = {
           agenda_number: string
           created_at: string
           description: string | null
+          drucksachen: Json | null
           end_time: string | null
           id: string
           item_type: string | null
           page_number: number | null
           protocol_id: string
+          speakers: Json | null
           start_time: string | null
+          subentries: Json | null
           title: string
         }
         Insert: {
           agenda_number: string
           created_at?: string
           description?: string | null
+          drucksachen?: Json | null
           end_time?: string | null
           id?: string
           item_type?: string | null
           page_number?: number | null
           protocol_id: string
+          speakers?: Json | null
           start_time?: string | null
+          subentries?: Json | null
           title: string
         }
         Update: {
           agenda_number?: string
           created_at?: string
           description?: string | null
+          drucksachen?: Json | null
           end_time?: string | null
           id?: string
           item_type?: string | null
           page_number?: number | null
           protocol_id?: string
+          speakers?: Json | null
           start_time?: string | null
+          subentries?: Json | null
           title?: string
         }
         Relationships: [
@@ -5203,7 +5212,10 @@ export type Database = {
           agenda_item_id: string | null
           created_at: string
           end_time: string | null
+          events: Json | null
+          events_flat: Json | null
           id: string
+          index: number | null
           page_number: number | null
           protocol_id: string
           speaker_name: string
@@ -5217,7 +5229,10 @@ export type Database = {
           agenda_item_id?: string | null
           created_at?: string
           end_time?: string | null
+          events?: Json | null
+          events_flat?: Json | null
           id?: string
+          index?: number | null
           page_number?: number | null
           protocol_id: string
           speaker_name: string
@@ -5231,7 +5246,10 @@ export type Database = {
           agenda_item_id?: string | null
           created_at?: string
           end_time?: string | null
+          events?: Json | null
+          events_flat?: Json | null
           id?: string
+          index?: number | null
           page_number?: number | null
           protocol_id?: string
           speaker_name?: string

@@ -8,11 +8,7 @@ interface JSONProtocolStructure {
   };
   speeches: Array<{
     index: number;
-    speaker: string | {
-      name: string;
-      party?: string;
-      role?: string;
-    };
+    speaker: string;
     role?: string;
     party?: string;
     text: string;
@@ -21,6 +17,8 @@ interface JSONProtocolStructure {
     speech_type?: string;
     timestamp?: string;
     agenda_item_number?: number;
+    events?: any[];
+    events_flat?: any[];
   }>;
   agenda?: Array<{
     number: string;
@@ -28,6 +26,9 @@ interface JSONProtocolStructure {
     description?: string;
     page_number?: number;
     item_type?: string;
+    speakers?: any[];
+    drucksachen?: any[];
+    subentries?: any[];
   }>;
   toc?: {
     items: Array<{
@@ -69,6 +70,9 @@ export interface ParsedJSONProtocol {
       description?: string;
       page_number?: number;
       item_type: string;
+      speakers?: any[];
+      drucksachen?: any[];
+      subentries?: any[];
     }>;
     speeches: Array<{
       speaker_name: string;
@@ -79,6 +83,9 @@ export interface ParsedJSONProtocol {
       speech_type: string;
       timestamp?: string;
       index: number;
+      agenda_item_number?: number;
+      events?: any[];
+      events_flat?: any[];
     }>;
     sessions: Array<{
       session_type: string;
@@ -128,7 +135,7 @@ export function parseJSONProtocol(jsonData: JSONProtocolStructure): ParsedJSONPr
       total_pages: jsonData.stats?.pages || jsonData.statistics?.total_pages || 0,
       parties_represented: jsonData.statistics?.parties_represented || Array.from(new Set(
         jsonData.speeches
-          .map(s => typeof s.speaker === 'string' ? s.party : s.speaker.party)
+          .map(s => s.party)
           .filter(Boolean)
       )),
       session_duration: jsonData.statistics?.session_duration
@@ -140,25 +147,27 @@ export function parseJSONProtocol(jsonData: JSONProtocolStructure): ParsedJSONPr
     agenda_number: item.number?.toString() || item.agenda_number || '',
     title: item.title,
     description: item.description || item.kind,
-    page_number: item.page_number,
-    item_type: item.item_type || item.kind || 'regular'
+    page_number: item.page_number || item.speakers?.[0]?.pages?.[0],
+    item_type: item.item_type || item.kind || 'regular',
+    speakers: item.speakers || [],
+    drucksachen: item.drucksachen || [],
+    subentries: item.subentries || []
   }));
 
-  // Parse speeches with flexible speaker structure
+  // Parse speeches - speaker, role, party are on same level in JSON
   const speeches = jsonData.speeches.map(speech => {
-    const speakerName = typeof speech.speaker === 'string' ? speech.speaker : speech.speaker.name;
-    const speakerParty = typeof speech.speaker === 'string' ? speech.party : speech.speaker.party;
-    const speakerRole = typeof speech.speaker === 'string' ? speech.role : speech.speaker.role;
-    
     return {
-      speaker_name: speakerName,
-      speaker_party: speakerParty,
-      speaker_role: speakerRole,
+      speaker_name: speech.speaker,
+      speaker_party: speech.party,
+      speaker_role: speech.role,
       speech_content: speech.text,
       page_number: speech.page_number || speech.start_page,
       speech_type: speech.speech_type || 'main',
       timestamp: speech.timestamp,
-      index: speech.index
+      index: speech.index,
+      agenda_item_number: speech.agenda_item_number,
+      events: speech.events || [],
+      events_flat: speech.events_flat || []
     };
   });
 
@@ -215,7 +224,7 @@ export function getJSONProtocolPreview(jsonData: JSONProtocolStructure): {
 } {
   const parties = Array.from(new Set(
     jsonData.speeches
-      .map(s => typeof s.speaker === 'string' ? s.party : s.speaker.party)
+      .map(s => s.party)
       .filter(Boolean)
   ));
 

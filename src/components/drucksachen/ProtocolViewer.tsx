@@ -30,6 +30,7 @@ import { ProtocolExport } from './ProtocolExport';
 import { ProtocolOverview } from './ProtocolOverview';
 import { ProtocolAgenda } from './ProtocolAgenda';
 import { ProtocolRawData } from './ProtocolRawData';
+import { ProtocolPlenaryView } from './ProtocolPlenaryView';
 import '@/styles/protocol-viewer.css';
 
 interface Protocol {
@@ -236,7 +237,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
 
       {/* Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Übersicht</span>
@@ -248,6 +249,10 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
           <TabsTrigger value="speeches" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             <span className="hidden sm:inline">Reden</span>
+          </TabsTrigger>
+          <TabsTrigger value="plenary" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Protokoll</span>
           </TabsTrigger>
           <TabsTrigger value="raw" className="flex items-center gap-2">
             <Code className="h-4 w-4" />
@@ -484,6 +489,14 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
               </Card>
             </div>
           </div>
+        </TabsContent>
+
+        {/* Plenary Protocol Tab */}
+        <TabsContent value="plenary" className="mt-6">
+          <ProtocolPlenaryView 
+            protocol={protocol}
+            structuredData={protocol.structured_data}
+          />
         </TabsContent>
 
         {/* Raw Data Tab */}
