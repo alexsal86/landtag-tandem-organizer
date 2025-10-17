@@ -59,32 +59,72 @@ export function ProtocolPlenaryView({ protocol, structuredData }: ProtocolPlenar
 
   const getEventClass = (eventType: string) => {
     const type = eventType.toLowerCase();
+    
+    // Beifall/Applaus
     if (type.includes('beifall')) return 'event-beifall';
-    if (type.includes('zuruf')) return 'event-zuruf';
+    
+    // Zurufe/Zwischenrufe
+    if (type.includes('zuruf') || type.includes('zwischenruf')) return 'event-zuruf';
+    
+    // Heiterkeit/Lachen
     if (type.includes('heiterkeit') || type.includes('lachen')) return 'event-heiterkeit';
+    
+    // Unruhe
+    if (type.includes('unruhe')) return 'event-unruhe';
+    
+    // Glocke des Präsidenten
+    if (type.includes('glocke')) return 'event-glocke';
+    
+    // Default
     return 'event-default';
   };
 
-  const renderSpeechContent = (text: string, events: any[] = []) => {
+  const renderSpeechContent = (text: string, events_flat: any[] = []) => {
     if (!text) return null;
     
-    // Split text into paragraphs
-    const paragraphs = text.split('\n').filter(p => p.trim());
+    // Text in Zeilen aufteilen
+    const lines = text.split('\n').filter(l => l.trim());
     
-    return paragraphs.map((paragraph, idx) => (
-      <p key={idx} className="mb-4 protocol-text">
-        {paragraph}
-      </p>
-    ));
-  };
-
-  const renderEvents = (events: any[] = []) => {
-    if (!events || events.length === 0) return null;
+    // Events nach line_index gruppieren
+    const eventsByLine = new Map<number, any[]>();
+    events_flat.forEach(event => {
+      const lineIdx = event.line_index;
+      if (!eventsByLine.has(lineIdx)) {
+        eventsByLine.set(lineIdx, []);
+      }
+      eventsByLine.get(lineIdx)!.push(event);
+    });
     
-    return events.map((event, idx) => (
-      <div key={idx} className={`italic text-sm my-2 ${getEventClass(event.type)}`}>
-        ({event.text})
-      </div>
+    // Zeilen und Events kombiniert rendern
+    return lines.map((line, idx) => (
+      <React.Fragment key={idx}>
+        {/* Textzeile */}
+        <p className="mb-2 protocol-text leading-relaxed">
+          {line}
+        </p>
+        
+        {/* Events nach dieser Zeile */}
+        {eventsByLine.has(idx) && eventsByLine.get(idx)!.map((event, eventIdx) => {
+          // Spezialfall: Zwischenruf mit Redner
+          if (event.type === 'Zwischenruf' && event.speaker) {
+            return (
+              <div key={`event-${idx}-${eventIdx}`} className="protocol-event event-zuruf">
+                ({event.speaker} {event.party && `(${event.party})`}: {event.message})
+              </div>
+            );
+          }
+          
+          // Standard-Event
+          return (
+            <div 
+              key={`event-${idx}-${eventIdx}`} 
+              className={`protocol-event italic text-sm my-2 ml-4 ${getEventClass(event.type)}`}
+            >
+              ({event.text})
+            </div>
+          );
+        })}
+      </React.Fragment>
     ));
   };
 
@@ -209,41 +249,44 @@ export function ProtocolPlenaryView({ protocol, structuredData }: ProtocolPlenar
                             )
                           ) : null}
 
-                          {/* Speaker line */}
-                          <div className="speaker-line mb-3">
-                            <span className="font-bold text-lg">
+                          {/* Speaker line - IM STIL DES ORIGINAL-PROTOKOLLS */}
+                          <div className="speaker-line mb-3 flex items-start gap-2">
+                            {/* Redner-Name: FETT wie im Original */}
+                            <span className="font-bold text-base">
+                              {speech.speaker_role && `${speech.speaker_role} `}
                               {speech.speaker_name || speech.speaker}
                             </span>
-                            {speech.speaker_role && (
-                              <span className="text-muted-foreground ml-2">
-                                {speech.speaker_role}
-                              </span>
-                            )}
+                            
+                            {/* Partei-Badge */}
                             {speech.speaker_party && (
                               <Badge 
                                 variant="outline" 
-                                className={`ml-2 ${getPartyColor(speech.speaker_party)}`}
+                                className={`${getPartyColor(speech.speaker_party)}`}
                               >
                                 {speech.speaker_party}
                               </Badge>
                             )}
+                            
+                            {/* Timestamp rechts */}
                             {speech.timestamp && (
                               <span className="text-xs text-muted-foreground ml-auto">
-                                {speech.timestamp}
+                                {speech.timestamp} Uhr
                               </span>
                             )}
                           </div>
 
-                          {/* Speech content */}
+                          {/* Speech content mit inline Events */}
                           <div className="speech-content ml-8">
-                            {renderSpeechContent(speech.text || speech.speech_content, speech.events)}
-                            {renderEvents(speech.events_flat)}
+                            {renderSpeechContent(
+                              speech.text || speech.speech_content, 
+                              speech.events_flat || []
+                            )}
                           </div>
 
-                          {/* Page number */}
-                          {speech.start_page && (
-                            <div className="page-number text-right mt-2">
-                              Seite {speech.start_page}
+                          {/* Page number - aus start_page oder page_number */}
+                          {(speech.start_page || speech.page_number) && (
+                            <div className="page-number text-right text-xs text-muted-foreground mt-2">
+                              Seite {speech.start_page || speech.page_number}
                             </div>
                           )}
 

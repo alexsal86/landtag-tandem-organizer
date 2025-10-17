@@ -75,23 +75,72 @@
   color: hsl(300, 50%, 65%);
 }
 
-/* Speech Events */
+/* Inline Events im Plenarprotokoll-Stil */
+.protocol-event {
+  font-style: italic;
+  padding-left: 1rem;
+  border-left: 3px solid transparent;
+  margin: 0.5rem 0;
+}
+
 .event-beifall {
   color: hsl(120, 60%, 45%);
-  font-weight: 600;
+  border-left-color: hsl(120, 60%, 45%);
+}
+
+.dark .event-beifall {
+  color: hsl(120, 60%, 65%);
+  border-left-color: hsl(120, 60%, 65%);
 }
 
 .event-zuruf {
   color: hsl(0, 70%, 50%);
-  font-style: italic;
+  border-left-color: hsl(0, 70%, 50%);
+}
+
+.dark .event-zuruf {
+  color: hsl(0, 70%, 65%);
+  border-left-color: hsl(0, 70%, 65%);
 }
 
 .event-heiterkeit {
   color: hsl(45, 100%, 45%);
+  border-left-color: hsl(45, 100%, 45%);
+}
+
+.dark .event-heiterkeit {
+  color: hsl(45, 100%, 60%);
+  border-left-color: hsl(45, 100%, 60%);
+}
+
+.event-unruhe {
+  color: hsl(30, 80%, 45%);
+  border-left-color: hsl(30, 80%, 45%);
+}
+
+.dark .event-unruhe {
+  color: hsl(30, 80%, 60%);
+  border-left-color: hsl(30, 80%, 60%);
+}
+
+.event-glocke {
+  color: hsl(270, 60%, 50%);
+  border-left-color: hsl(270, 60%, 50%);
+}
+
+.dark .event-glocke {
+  color: hsl(270, 60%, 65%);
+  border-left-color: hsl(270, 60%, 65%);
 }
 
 .event-default {
   color: hsl(205, 100%, 45%);
+  border-left-color: hsl(205, 100%, 45%);
+}
+
+.dark .event-default {
+  color: hsl(205, 100%, 65%);
+  border-left-color: hsl(205, 100%, 65%);
 }
 
 /* Monospace for codes */
@@ -173,15 +222,26 @@
 }
 
 .speaker-line {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
 .speech-content {
+  font-size: 0.95rem;
+  line-height: 1.7;
   text-align: justify;
   hyphens: auto;
+  color: hsl(var(--foreground));
+}
+
+.protocol-text {
+  text-indent: 0;
+  margin-bottom: 0.5rem;
 }
 
 .page-number {
