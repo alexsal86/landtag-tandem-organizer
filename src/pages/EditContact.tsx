@@ -346,7 +346,7 @@ export default function EditContact() {
               <div className="flex items-center mb-6">
           <Button 
             variant="outline" 
-            onClick={() => navigate(`/contacts/${id}`)}
+            onClick={() => navigate('/contacts')}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Zurück
