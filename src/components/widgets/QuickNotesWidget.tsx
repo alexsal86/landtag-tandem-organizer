@@ -530,7 +530,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                 onClick={() => !editingNote && startEdit(note)}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex flex-col flex-1 min-w-0">
+                  <div className="flex-1 min-w-0">
                     {note.title && (
                       <h4 className="font-medium text-sm truncate mb-1">
                         {note.title}
@@ -539,7 +539,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                     <p className={`text-xs text-muted-foreground ${compact ? 'line-clamp-2' : 'line-clamp-3'}`}>
                       {note.content}
                     </p>
-                    <div className="flex items-center gap-2 mt-auto pt-4">
+                    <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs text-muted-foreground">
                         {new Date(note.updated_at).toLocaleDateString()}
                       </span>
