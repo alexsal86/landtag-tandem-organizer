@@ -2602,14 +2602,19 @@ export function EventPlanningView() {
                 <Textarea
                   id="description"
                   value={selectedPlanning.description || ""}
-                  onChange={(e) => updatePlanningField("description", e.target.value)}
-                  placeholder="Beschreibung der Veranstaltung..."
-                  rows={3}
-                  className="min-h-[80px] resize-none"
-                  onInput={(e) => {
+                  onChange={(e) => {
+                    updatePlanningField("description", e.target.value);
                     const target = e.target as HTMLTextAreaElement;
                     target.style.height = 'auto';
                     target.style.height = target.scrollHeight + 'px';
+                  }}
+                  placeholder="Beschreibung der Veranstaltung..."
+                  className="min-h-[80px] resize-none overflow-hidden"
+                  ref={(el) => {
+                    if (el) {
+                      el.style.height = 'auto';
+                      el.style.height = el.scrollHeight + 'px';
+                    }
                   }}
                 />
               </div>
@@ -2680,14 +2685,19 @@ export function EventPlanningView() {
                 <Textarea
                   id="background"
                   value={selectedPlanning.background_info || ""}
-                  onChange={(e) => updatePlanningField("background_info", e.target.value)}
-                  placeholder="Hintergrundinformationen..."
-                  rows={3}
-                  className="min-h-[80px] resize-none"
-                  onInput={(e) => {
+                  onChange={(e) => {
+                    updatePlanningField("background_info", e.target.value);
                     const target = e.target as HTMLTextAreaElement;
                     target.style.height = 'auto';
                     target.style.height = target.scrollHeight + 'px';
+                  }}
+                  placeholder="Hintergrundinformationen..."
+                  className="min-h-[80px] resize-none overflow-hidden"
+                  ref={(el) => {
+                    if (el) {
+                      el.style.height = 'auto';
+                      el.style.height = el.scrollHeight + 'px';
+                    }
                   }}
                 />
               </div>
