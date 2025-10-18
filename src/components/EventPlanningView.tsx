@@ -2691,6 +2691,113 @@ export function EventPlanningView() {
                   }}
                 />
               </div>
+
+              <Separator className="my-4" />
+
+              {/* Termine */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Termine</Label>
+                  {!planningDates.some(d => d.is_confirmed) && (
+                    <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Termin hinzufügen
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Neuen Termin hinzufügen</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label>Datum</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !selectedDate && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {selectedDate ? format(selectedDate, "dd.MM.yyyy", { locale: de }) : "Datum wählen"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                  mode="single"
+                                  selected={selectedDate}
+                                  onSelect={setSelectedDate}
+                                  initialFocus
+                                  className="pointer-events-auto"
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div>
+                            <Label htmlFor="time">Uhrzeit</Label>
+                            <Input
+                              id="time"
+                              type="time"
+                              value={selectedTime}
+                              onChange={(e) => setSelectedTime(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button onClick={addPlanningDate}>Hinzufügen</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {planningDates.map((date) => (
+                    <div key={date.id}>
+                      {date.is_confirmed ? (
+                        <div className="flex items-center justify-between p-3 rounded-md border bg-primary/10 border-primary">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-4 w-4" />
+                            <input
+                              type="datetime-local"
+                              value={new Date(date.date_time).toISOString().slice(0, 16)}
+                              onChange={(e) => updateConfirmedDate(date.id, new Date(e.target.value).toISOString())}
+                              className="bg-transparent border-none outline-none font-medium"
+                            />
+                            <Badge variant="default">Bestätigt</Badge>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 rounded-md border">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-4 w-4" />
+                            <span>
+                              {format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => confirmDate(date.id)}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {planningDates.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      Noch keine Termine hinzugefügt
+                    </p>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -3229,115 +3336,6 @@ export function EventPlanningView() {
                 {generalDocuments.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     Noch keine allgemeinen Dokumente hochgeladen
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Termine */}
-          <Card className="bg-card shadow-card border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Termine
-                {!planningDates.some(d => d.is_confirmed) && (
-                  <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Termin hinzufügen
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Neuen Termin hinzufügen</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label>Datum</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full justify-start text-left font-normal",
-                                  !selectedDate && "text-muted-foreground"
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {selectedDate ? format(selectedDate, "dd.MM.yyyy", { locale: de }) : "Datum wählen"}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={selectedDate}
-                                onSelect={setSelectedDate}
-                                initialFocus
-                                className="pointer-events-auto"
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        <div>
-                          <Label htmlFor="time">Uhrzeit</Label>
-                          <Input
-                            id="time"
-                            type="time"
-                            value={selectedTime}
-                            onChange={(e) => setSelectedTime(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button onClick={addPlanningDate}>Hinzufügen</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {planningDates.map((date) => (
-                  <div key={date.id}>
-                    {date.is_confirmed ? (
-                      <div className="flex items-center justify-between p-3 rounded-md border bg-primary/10 border-primary">
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4" />
-                          <input
-                            type="datetime-local"
-                            value={new Date(date.date_time).toISOString().slice(0, 16)}
-                            onChange={(e) => updateConfirmedDate(date.id, new Date(e.target.value).toISOString())}
-                            className="bg-transparent border-none outline-none font-medium"
-                          />
-                          <Badge variant="default">Bestätigt</Badge>
-                        </div>
-                        <Button variant="ghost" size="sm">
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between p-3 rounded-md border">
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4" />
-                          <span>
-                            {format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}
-                          </span>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => confirmDate(date.id)}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {planningDates.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Noch keine Termine hinzugefügt
                   </p>
                 )}
               </div>
