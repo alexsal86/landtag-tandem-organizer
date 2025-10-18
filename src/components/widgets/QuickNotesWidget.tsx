@@ -529,17 +529,19 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                 style={{ borderLeftColor: note.color, borderLeftWidth: '3px' }}
                 onClick={() => !editingNote && startEdit(note)}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    {note.title && (
-                      <h4 className="font-medium text-sm truncate mb-1">
-                        {note.title}
-                      </h4>
-                    )}
-                    <p className={`text-xs text-muted-foreground ${compact ? 'line-clamp-2' : 'line-clamp-3'}`}>
-                      {note.content}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-start justify-between gap-2 min-h-[120px]">
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <div className="flex-1">
+                      {note.title && (
+                        <h4 className="font-medium text-sm truncate mb-1">
+                          {note.title}
+                        </h4>
+                      )}
+                      <p className={`text-xs text-muted-foreground ${compact ? 'line-clamp-2' : 'line-clamp-3'}`}>
+                        {note.content}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-auto pt-3 border-t border-border/40">
                       <span className="text-xs text-muted-foreground">
                         {new Date(note.updated_at).toLocaleDateString()}
                       </span>
