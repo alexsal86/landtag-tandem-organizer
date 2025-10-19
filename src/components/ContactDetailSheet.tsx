@@ -137,7 +137,6 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
     if (contactId && isOpen) {
       fetchContact();
       fetchCallLogs();
-      fetchContactTags();
       fetchActivities();
     }
   }, [contactId, isOpen]);
@@ -211,6 +210,24 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
         tags: data.tags || [],
         coordinates: data.coordinates as { lat: number; lng: number } | undefined,
       });
+      
+      // Tags direkt hier laden, nachdem contact gesetzt wurde
+      let inheritedTags: string[] = [];
+      if (data.contact_type === 'person' && data.organization_id) {
+        const { data: orgData, error: orgError } = await supabase
+          .from('contacts')
+          .select('tags')
+          .eq('id', data.organization_id)
+          .single();
+        
+        if (!orgError && orgData?.tags) {
+          inheritedTags = orgData.tags;
+        }
+      }
+      
+      const directTags = data.tags || [];
+      setAllTags({ direct: directTags, inherited: inheritedTags });
+      
     } catch (error) {
       console.error('Error fetching contact:', error);
       toast({
@@ -223,32 +240,6 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
     }
   };
 
-  const fetchContactTags = async () => {
-    if (!contactId || !contact) return;
-    
-    try {
-      let inheritedTags: string[] = [];
-      
-      // If this is a person with an organization, fetch inherited tags
-      if (contact.contact_type === 'person' && contact.organization_id) {
-        const { data: orgData, error: orgError } = await supabase
-          .from('contacts')
-          .select('tags')
-          .eq('id', contact.organization_id)
-          .single();
-        
-        if (!orgError && orgData?.tags) {
-          inheritedTags = orgData.tags;
-        }
-      }
-      
-      const directTags = contact.tags || [];
-      setAllTags({ direct: directTags, inherited: inheritedTags });
-    } catch (error) {
-      console.error('Error fetching contact tags:', error);
-      setAllTags({ direct: [], inherited: [] });
-    }
-  };
 
   const handleDelete = async () => {
     if (!contact) return;
@@ -303,7 +294,6 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
     setIsEditing(false);
     fetchContact();
     fetchCallLogs();
-    fetchContactTags();
     onContactUpdate();
   };
 
