@@ -56,6 +56,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { EmailComposer } from "./emails/EmailComposer";
 import { EmailHistory } from "./emails/EmailHistory";
 import { EmailTemplateManager } from "./emails/EmailTemplateManager";
+import { DocumentContactManager } from "./documents/DocumentContactManager";
+import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
+import { useStakeholderPreload } from "@/hooks/useStakeholderPreload";
+import { useDocumentContacts } from "@/hooks/useDocumentContacts";
 
 interface DocumentFolder {
   id: string;
@@ -158,6 +162,16 @@ export function DocumentsView() {
   const [uploadTags, setUploadTags] = useState("");
   const [uploadStatus, setUploadStatus] = useState("draft");
   const [uploadFolderId, setUploadFolderId] = useState<string>("");
+  const [uploadContacts, setUploadContacts] = useState<string[]>([]);
+  const [uploadContactType, setUploadContactType] = useState<string>("related");
+  
+  // Contact selection for documents
+  const { personContacts } = useAllPersonContacts();
+  const { stakeholders } = useStakeholderPreload();
+  const allContacts = [...personContacts, ...stakeholders];
+  
+  // For viewing document contacts
+  const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
 
   const categoryLabels = {
     general: "Allgemein",
@@ -284,7 +298,7 @@ export function DocumentsView() {
       if (uploadError) throw uploadError;
 
       // Create document record
-      const { error: dbError } = await supabase
+      const { data: documentData, error: dbError } = await supabase
         .from('documents')
         .insert({
           user_id: user.id,
@@ -299,9 +313,29 @@ export function DocumentsView() {
           tags: uploadTags ? uploadTags.split(',').map(tag => tag.trim()) : [],
           status: uploadStatus,
           folder_id: uploadFolderId || null,
-        });
+        })
+        .select()
+        .single();
 
       if (dbError) throw dbError;
+
+      // Link contacts to document
+      if (uploadContacts.length > 0 && documentData) {
+        const contactLinks = uploadContacts.map(contactId => ({
+          document_id: documentData.id,
+          contact_id: contactId,
+          relationship_type: uploadContactType,
+          created_by: user.id,
+        }));
+
+        const { error: linkError } = await supabase
+          .from('document_contacts')
+          .insert(contactLinks);
+
+        if (linkError) {
+          console.error('Error linking contacts:', linkError);
+        }
+      }
 
       toast({
         title: "Dokument hochgeladen",
@@ -314,6 +348,8 @@ export function DocumentsView() {
       setUploadDescription("");
       setUploadTags("");
       setUploadFolderId("");
+      setUploadContacts([]);
+      setUploadContactType("related");
       setShowUploadDialog(false);
       
       // Refresh documents and folders
@@ -909,6 +945,60 @@ export function DocumentsView() {
                             </SelectContent>
                           </Select>
                         </div>
+                        <div>
+                          <Label>Kontakte & Stakeholder (optional)</Label>
+                          <div className="space-y-3">
+                            <Select value={uploadContactType} onValueChange={setUploadContactType}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="recipient">Empfänger</SelectItem>
+                                <SelectItem value="cc">In Kopie</SelectItem>
+                                <SelectItem value="mentioned">Erwähnt</SelectItem>
+                                <SelectItem value="stakeholder">Stakeholder</SelectItem>
+                                <SelectItem value="related">Verbunden</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <div className="border rounded-md p-3 max-h-40 overflow-y-auto">
+                              {allContacts.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">Keine Kontakte verfügbar</p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {allContacts.map((contact) => (
+                                    <label
+                                      key={contact.id}
+                                      className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={uploadContacts.includes(contact.id)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setUploadContacts([...uploadContacts, contact.id]);
+                                          } else {
+                                            setUploadContacts(uploadContacts.filter(id => id !== contact.id));
+                                          }
+                                        }}
+                                        className="rounded"
+                                      />
+                                      <span className="text-sm">
+                                        {contact.contact_type === 'organization' ? '🏢 ' : '👤 '}
+                                        {contact.name}
+                                        {contact.organization && ` (${contact.organization})`}
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            {uploadContacts.length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                {uploadContacts.length} Kontakt{uploadContacts.length !== 1 ? 'e' : ''} ausgewählt
+                              </p>
+                            )}
+                          </div>
+                        </div>
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" onClick={() => setShowUploadDialog(false)}>
                             Abbrechen
@@ -1280,6 +1370,8 @@ export function DocumentsView() {
                         ))}
                       </div>
                     )}
+
+                    <DocumentContactManager documentId={document.id} compact />
 
                     <Separator />
                     

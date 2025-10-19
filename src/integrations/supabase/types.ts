@@ -1557,6 +1557,51 @@ export type Database = {
           },
         ]
       }
+      document_contacts: {
+        Row: {
+          contact_id: string
+          created_at: string
+          created_by: string
+          document_id: string
+          id: string
+          notes: string | null
+          relationship_type: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          created_by: string
+          document_id: string
+          id?: string
+          notes?: string | null
+          relationship_type?: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          created_by?: string
+          document_id?: string
+          id?: string
+          notes?: string | null
+          relationship_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_contacts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_folders: {
         Row: {
           color: string | null
