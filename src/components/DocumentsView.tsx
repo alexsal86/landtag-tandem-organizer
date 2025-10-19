@@ -44,7 +44,8 @@ import {
   Archive,
   RotateCcw,
   Info,
-  Inbox
+  Inbox,
+  Save
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -794,6 +795,17 @@ export function DocumentsView() {
     }
   };
 
+  const handleEditDocument = (document: Document) => {
+    setEditingDocument(document);
+    setEditTitle(document.title);
+    setEditDescription(document.description || "");
+    setEditCategory(document.category);
+    setEditTags(document.tags || []);
+    setEditStatus(document.status);
+    setEditFolderId(document.folder_id || "");
+    setShowEditDialog(true);
+  };
+
   const handleUpdateDocument = async () => {
     if (!editingDocument) return;
 
@@ -1108,6 +1120,102 @@ export function DocumentsView() {
                           >
                             <Upload className="h-4 w-4 mr-2" />
                             {loading ? "Wird hochgeladen..." : "Hochladen"}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  {/* Edit Document Dialog */}
+                  <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+                    <DialogContent className="sm:max-w-[500px]">
+                      <DialogHeader>
+                        <DialogTitle>Dokument bearbeiten</DialogTitle>
+                        <DialogDescription>
+                          Bearbeiten Sie die Details des Dokuments
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="edit-title">Titel</Label>
+                          <Input
+                            id="edit-title"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            placeholder="Dokumententitel"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-description">Beschreibung</Label>
+                          <Textarea
+                            id="edit-description"
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            placeholder="Optionale Beschreibung"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="edit-category">Kategorie</Label>
+                            <Select value={editCategory} onValueChange={setEditCategory}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {documentCategories.map((category) => (
+                                  <SelectItem key={category.id} value={category.name}>{category.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="edit-status">Status</Label>
+                            <Select value={editStatus} onValueChange={setEditStatus}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(statusLabels).map(([value, label]) => (
+                                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-tags">Tags</Label>
+                          <MultiSelect
+                            options={tags.map(tag => ({ value: tag.label, label: tag.label }))}
+                            selected={editTags}
+                            onChange={setEditTags}
+                            placeholder="Tags auswählen..."
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-folder">Ordner (optional)</Label>
+                          <Select value={editFolderId || undefined} onValueChange={(value) => setEditFolderId(value || "")}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Kein Ordner" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {folders.map((folder) => (
+                                <SelectItem key={folder.id} value={folder.id}>
+                                  {folder.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                            Abbrechen
+                          </Button>
+                          <Button 
+                            onClick={handleUpdateDocument} 
+                            disabled={!editTitle || loading}
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            Speichern
                           </Button>
                         </div>
                       </div>
@@ -1491,6 +1599,20 @@ export function DocumentsView() {
                               <TooltipContent>Details</TooltipContent>
                             </Tooltip>
                           )}
+                          {document.document_type !== 'archived_letter' && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditDocument(document)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Bearbeiten</TooltipContent>
+                            </Tooltip>
+                          )}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
@@ -1603,34 +1725,48 @@ export function DocumentsView() {
                           {formatFileSize(document.file_size)}
                         </TableCell>
                          <TableCell className="text-right">
-                           <TooltipProvider>
-                             <div className="flex items-center gap-1 justify-end">
-                               {document.document_type === 'archived_letter' && document.source_letter_id && (
-                                 <Tooltip>
-                                   <TooltipTrigger asChild>
-                                     <Button
-                                       variant="ghost"
-                                       size="sm"
-                                       onClick={() => handleShowArchivedLetterDetails(document)}
-                                     >
-                                       <Info className="h-4 w-4" />
-                                     </Button>
-                                   </TooltipTrigger>
-                                   <TooltipContent>Details</TooltipContent>
-                                 </Tooltip>
-                               )}
-                               <Tooltip>
-                                 <TooltipTrigger asChild>
-                                   <Button
-                                     variant="ghost"
-                                     size="sm"
-                                     onClick={() => handleDownload(document)}
-                                   >
-                                     <Download className="h-4 w-4" />
-                                   </Button>
-                                 </TooltipTrigger>
-                                 <TooltipContent>Download</TooltipContent>
-                               </Tooltip>
+                             <TooltipProvider>
+                              <div className="flex items-center gap-1 justify-end">
+                                {document.document_type === 'archived_letter' && document.source_letter_id && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleShowArchivedLetterDetails(document)}
+                                      >
+                                        <Info className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Details</TooltipContent>
+                                  </Tooltip>
+                                )}
+                                {document.document_type !== 'archived_letter' && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleEditDocument(document)}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Bearbeiten</TooltipContent>
+                                  </Tooltip>
+                                )}
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDownload(document)}
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Download</TooltipContent>
+                                </Tooltip>
                                <Tooltip>
                                  <TooltipTrigger asChild>
                                    <Button

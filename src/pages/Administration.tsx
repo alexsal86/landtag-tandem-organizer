@@ -30,6 +30,7 @@ import { PartyDistrictMappingManager } from "@/components/administration/PartyDi
 import { CalendarSyncDebug } from "@/components/CalendarSyncDebug";
 import { PartyAssociationsAdmin } from "@/components/PartyAssociationsAdmin";
 import { TagAdminSettings } from "@/components/TagAdminSettings";
+import { DocumentCategoryAdminSettings } from "@/components/DocumentCategoryAdminSettings";
 import { RSSSourceManager } from "@/components/administration/RSSSourceManager";
 import { RSSSettingsManager } from "@/components/administration/RSSSettingsManager";
 import { CalendarSyncSettings } from "@/components/administration/CalendarSyncSettings";
@@ -691,8 +692,9 @@ export default function Administration() {
         </TabsContent>
 
         {/* Tags & Kategorien */}
-        <TabsContent value="tags">
+        <TabsContent value="tags" className="space-y-6">
           <TagAdminSettings />
+          <DocumentCategoryAdminSettings />
         </TabsContent>
 
         {/* Termine & Kalender */}
