@@ -87,12 +87,18 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
 
       // Fetch tag-based documents (documents that share at least one tag with contact)
       if (contactTags && contactTags.length > 0) {
-        const { data: taggedData, error: taggedError } = await supabase
+        let query = supabase
           .from('documents')
           .select('*')
           .eq('tenant_id', currentTenant.id)
-          .overlaps('tags', contactTags)
-          .not('id', 'in', `(${directDocIds.join(',') || 'null'})`)
+          .overlaps('tags', contactTags);
+        
+        // Only exclude direct docs if there are any
+        if (directDocIds.length > 0) {
+          query = query.not('id', 'in', `(${directDocIds.join(',')})`);
+        }
+        
+        const { data: taggedData, error: taggedError } = await query
           .order('created_at', { ascending: false });
 
         if (taggedError) {
