@@ -24,11 +24,12 @@ export const useContactDocumentCounts = (contactIds: string[]) => {
 
       setLoading(true);
       try {
-        // Bulk query for direct links
+        // Bulk query for direct links with tenant_id filter via JOIN
         const { data: directData, error: directError } = await supabase
           .from('document_contacts')
-          .select('contact_id, document_id')
-          .in('contact_id', contactIds);
+          .select('contact_id, document_id, document:documents!inner(tenant_id)')
+          .in('contact_id', contactIds)
+          .eq('document.tenant_id', currentTenant.id);
 
         if (directError) throw directError;
 
