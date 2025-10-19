@@ -931,12 +931,11 @@ export function DocumentsView() {
                         </div>
                         <div>
                           <Label htmlFor="folder">Ordner (optional)</Label>
-                          <Select value={uploadFolderId} onValueChange={setUploadFolderId}>
+                          <Select value={uploadFolderId || undefined} onValueChange={(value) => setUploadFolderId(value || "")}>
                             <SelectTrigger>
                               <SelectValue placeholder="Kein Ordner" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Kein Ordner</SelectItem>
                               {folders.filter(f => f.parent_folder_id === currentFolder).map((folder) => (
                                 <SelectItem key={folder.id} value={folder.id}>
                                   {folder.name}
@@ -1813,12 +1812,11 @@ export function DocumentsView() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="target-folder">Zielordner</Label>
-                <Select value={moveToFolderId} onValueChange={setMoveToFolderId}>
+                <Select value={moveToFolderId || undefined} onValueChange={(value) => setMoveToFolderId(value || "")}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Ordner wählen" />
+                    <SelectValue placeholder="Kein Ordner (Hauptebene)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Kein Ordner (Hauptebene)</SelectItem>
                     {folders.map((folder) => (
                       <SelectItem key={folder.id} value={folder.id}>
                         {folder.name}
