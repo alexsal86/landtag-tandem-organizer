@@ -26,6 +26,7 @@ import { debounce } from "@/utils/debounce";
 import { useCounts } from "@/hooks/useCounts";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
+import { ContactDocumentsList } from "./contacts/ContactDocumentsList";
 
 interface DistributionList {
   id: string;
@@ -683,26 +684,17 @@ export function ContactsView() {
                 <ContactQuickActions contact={contact} />
               )}
               
-              {/* Document Count Badge */}
+              {/* Document Count Badge with Collapsible List */}
               {documentCounts[contact.id]?.total > 0 && (
-                <div className="absolute top-3 right-3 z-10">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge variant="secondary" className="gap-1 cursor-help shadow-sm">
-                          <FileText className="h-3 w-3" />
-                          {documentCounts[contact.id].total}
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <div className="text-xs space-y-1">
-                          <p className="font-semibold">Dokumente:</p>
-                          <p>Direkt verknüpft: {documentCounts[contact.id].direct}</p>
-                          <p>Über Tags: {documentCounts[contact.id].tagged}</p>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                <div 
+                  className="absolute top-3 right-3 z-10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ContactDocumentsList
+                    contactId={contact.id}
+                    contactTags={contact.tags || []}
+                    documentCount={documentCounts[contact.id]}
+                  />
                 </div>
               )}
               
@@ -918,28 +910,15 @@ export function ContactsView() {
                   <TableCell className="text-muted-foreground">
                     {contact.last_contact || "—"}
                   </TableCell>
-                  <TableCell className="text-center">
-                    {documentCounts[contact.id]?.total > 0 ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="outline" className="gap-1 cursor-help">
-                              <FileText className="h-3 w-3" />
-                              {documentCounts[contact.id].total}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <div className="text-xs space-y-1">
-                              <p className="font-semibold">Dokumente:</p>
-                              <p>Direkt: {documentCounts[contact.id].direct}</p>
-                              <p>Tags: {documentCounts[contact.id].tagged}</p>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">—</span>
-                    )}
+                  <TableCell 
+                    className="text-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ContactDocumentsList
+                      contactId={contact.id}
+                      contactTags={contact.tags || []}
+                      documentCount={documentCounts[contact.id] || { direct: 0, tagged: 0, total: 0 }}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

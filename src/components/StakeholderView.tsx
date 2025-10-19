@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag, Users, Star, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag, Users, Star, ChevronUp, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,8 @@ import { TagInput } from "@/components/ui/tag-input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTags } from "@/hooks/useTags";
+import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
+import { ContactDocumentsList } from "./contacts/ContactDocumentsList";
 
 interface StakeholderViewProps {
   stakeholders: Contact[];
@@ -52,6 +54,10 @@ export function StakeholderView({
   const [localTagUpdates, setLocalTagUpdates] = useState<Record<string, string[]>>({});
   const { toast } = useToast();
   const { tagSuggestions } = useTags();
+
+  // Get document counts for stakeholders
+  const stakeholderIds = stakeholders.map(s => s.id);
+  const { counts: documentCounts } = useContactDocumentCounts(stakeholderIds);
 
   console.log('StakeholderView: Tag suggestions loaded:', tagSuggestions);
 
@@ -467,6 +473,20 @@ export function StakeholderView({
                         Verteiler erstellen
                       </Button>
                     </div>
+
+                    {/* Documents Section */}
+                    {documentCounts[stakeholder.id]?.total > 0 && (
+                      <div 
+                        className="pt-3 border-t mt-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ContactDocumentsList
+                          contactId={stakeholder.id}
+                          contactTags={stakeholderTags}
+                          documentCount={documentCounts[stakeholder.id]}
+                        />
+                      </div>
+                    )}
                   </CardHeader>
                 </CollapsibleTrigger>
 
@@ -550,6 +570,7 @@ export function StakeholderView({
                 <TableHead>Telefon</TableHead>
                 <SortableTableHead sortKey="tags">Tags</SortableTableHead>
                 <TableHead className="w-32">Aktionen</TableHead>
+                <TableHead className="text-center w-24">Dokumente</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -756,6 +777,16 @@ export function StakeholderView({
                           <Users className="h-3 w-3" />
                         </Button>
                       </div>
+                    </TableCell>
+                    <TableCell 
+                      className="text-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ContactDocumentsList
+                        contactId={stakeholder.id}
+                        contactTags={stakeholderTags}
+                        documentCount={documentCounts[stakeholder.id] || { direct: 0, tagged: 0, total: 0 }}
+                      />
                     </TableCell>
                   </TableRow>
                   
