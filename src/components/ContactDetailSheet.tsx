@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag, Linkedin, Facebook, Instagram, Hash } from "lucide-react";
+import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag, Linkedin, Facebook, Instagram, Hash, FileText, ChevronDown } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,12 +7,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ContactEditForm } from "./ContactEditForm";
 import { CallLogWidget } from "@/components/widgets/CallLogWidget";
 import { formatGermanDate } from "@/lib/utils";
 import { ActivityTimeline } from "./contacts/ActivityTimeline";
+import { ContactDocumentList } from "./contacts/ContactDocumentList";
+import { useContactDocuments } from "@/hooks/useContactDocuments";
 
 interface CallLog {
   id: string;
@@ -88,7 +91,15 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
   const [isEditing, setIsEditing] = useState(false);
   const [showCallLogWidget, setShowCallLogWidget] = useState(false);
   const [allTags, setAllTags] = useState<{ direct: string[], inherited: string[] }>({ direct: [], inherited: [] });
+  const [showDirectDocs, setShowDirectDocs] = useState(true);
+  const [showTaggedDocs, setShowTaggedDocs] = useState(true);
   const { toast } = useToast();
+
+  // Fetch documents related to this contact
+  const { directDocuments, taggedDocuments, loading: documentsLoading, removeDocumentLink } = useContactDocuments(
+    contactId || undefined,
+    [...(allTags.direct || []), ...(allTags.inherited || [])]
+  );
 
   // Helper functions for social media
   const cleanUsername = (input: string): string => {
@@ -390,10 +401,13 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
             <Separator />
 
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="details">Kontaktdaten</TabsTrigger>
                 <TabsTrigger value="activities">Aktivitäten ({activities.length})</TabsTrigger>
                 <TabsTrigger value="calls">Anrufliste ({callLogs.length})</TabsTrigger>
+                <TabsTrigger value="documents">
+                  Dokumente ({directDocuments.length + taggedDocuments.length})
+                </TabsTrigger>
               </TabsList>
               
               <TabsContent value="details" className="space-y-4 mt-4">
@@ -730,9 +744,69 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                        </div>
                      )}
                    </CardContent>
-                 </Card>
-               </TabsContent>
-             </Tabs>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="documents" className="space-y-4 mt-4">
+                  {documentsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Directly linked documents */}
+                      <Collapsible open={showDirectDocs} onOpenChange={setShowDirectDocs}>
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-base">Direkt verknüpfte Dokumente</CardTitle>
+                                <Badge variant="secondary">{directDocuments.length}</Badge>
+                              </div>
+                              <ChevronDown className={`h-4 w-4 transition-transform ${showDirectDocs ? 'rotate-180' : ''}`} />
+                            </CollapsibleTrigger>
+                          </CardHeader>
+                          <CollapsibleContent>
+                            <CardContent>
+                              <ContactDocumentList
+                                documents={directDocuments}
+                                type="direct"
+                                onRemove={removeDocumentLink}
+                              />
+                            </CardContent>
+                          </CollapsibleContent>
+                        </Card>
+                      </Collapsible>
+
+                      {/* Tag-based documents */}
+                      <Collapsible open={showTaggedDocs} onOpenChange={setShowTaggedDocs}>
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+                              <div className="flex items-center gap-2">
+                                <Tag className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-base">Über Tags verknüpft</CardTitle>
+                                <Badge variant="secondary">{taggedDocuments.length}</Badge>
+                              </div>
+                              <ChevronDown className={`h-4 w-4 transition-transform ${showTaggedDocs ? 'rotate-180' : ''}`} />
+                            </CollapsibleTrigger>
+                          </CardHeader>
+                          <CollapsibleContent>
+                            <CardContent>
+                              <ContactDocumentList
+                                documents={taggedDocuments}
+                                type="tagged"
+                                contactTags={[...(allTags.direct || []), ...(allTags.inherited || [])]}
+                              />
+                            </CardContent>
+                          </CollapsibleContent>
+                        </Card>
+                      </Collapsible>
+                    </>
+                  )}
+                </TabsContent>
+              </Tabs>
            </div>
         ) : (
           <div className="flex items-center justify-center h-96">
