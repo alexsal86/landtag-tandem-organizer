@@ -39,6 +39,10 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
 
     setLoading(true);
     try {
+      console.log('Fetching documents for contact:', contactId);
+      console.log('Contact tags:', contactTags);
+      console.log('Tenant ID:', currentTenant.id);
+      
       // Fetch directly linked documents via document_contacts
       const { data: directData, error: directError } = await supabase
         .from('document_contacts')
@@ -66,7 +70,12 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
         `)
         .eq('contact_id', contactId);
 
-      if (directError) throw directError;
+      if (directError) {
+        console.error('Error fetching direct documents:', directError);
+        throw directError;
+      }
+
+      console.log('Direct documents raw:', directData);
 
       const directDocs: DirectDocument[] = (directData || [])
         .filter(item => item.document)
@@ -78,12 +87,15 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
         }));
 
       setDirectDocuments(directDocs);
+      console.log('Direct documents processed:', directDocs);
 
       // Get IDs of directly linked documents to exclude them from tag-based search
       const directDocIds = directDocs.map(doc => doc.id);
 
       // Fetch tag-based documents (documents that share at least one tag with contact)
       if (contactTags && contactTags.length > 0) {
+        console.log('Searching for documents with tags:', contactTags);
+        
         const { data: taggedData, error: taggedError } = await supabase
           .from('documents')
           .select('*')
@@ -92,9 +104,15 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
           .not('id', 'in', `(${directDocIds.join(',') || 'null'})`)
           .order('created_at', { ascending: false });
 
-        if (taggedError) throw taggedError;
+        if (taggedError) {
+          console.error('Error fetching tagged documents:', taggedError);
+          throw taggedError;
+        }
+        
+        console.log('Tagged documents found:', taggedData);
         setTaggedDocuments((taggedData || []) as Document[]);
       } else {
+        console.log('No contact tags provided, skipping tag-based search');
         setTaggedDocuments([]);
       }
     } catch (error) {
