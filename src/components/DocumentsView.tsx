@@ -14,6 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   FileText, 
   Upload, 
@@ -60,6 +62,9 @@ import { DocumentContactManager } from "./documents/DocumentContactManager";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 import { useStakeholderPreload } from "@/hooks/useStakeholderPreload";
 import { useDocumentContacts } from "@/hooks/useDocumentContacts";
+import { useTags } from "@/hooks/useTags";
+import { useDocumentCategories } from "@/hooks/useDocumentCategories";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 interface DocumentFolder {
   id: string;
@@ -121,6 +126,8 @@ export function DocumentsView() {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const { viewType, setViewType } = useViewPreference({ key: 'documents' });
+  const { tags } = useTags();
+  const { categories: documentCategories } = useDocumentCategories();
   
   const [documents, setDocuments] = useState<Document[]>([]);
   const [letters, setLetters] = useState<Letter[]>([]);
@@ -158,12 +165,24 @@ export function DocumentsView() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDescription, setUploadDescription] = useState("");
-  const [uploadCategory, setUploadCategory] = useState("general");
-  const [uploadTags, setUploadTags] = useState("");
+  const [uploadCategory, setUploadCategory] = useState("");
+  const [uploadTags, setUploadTags] = useState<string[]>([]);
   const [uploadStatus, setUploadStatus] = useState("draft");
   const [uploadFolderId, setUploadFolderId] = useState<string>("");
   const [uploadContacts, setUploadContacts] = useState<string[]>([]);
   const [uploadContactType, setUploadContactType] = useState<string>("related");
+  const [contactSearch, setContactSearch] = useState("");
+  
+  // Edit form state
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editStatus, setEditStatus] = useState("draft");
+  const [editFolderId, setEditFolderId] = useState<string>("");
+  const [editContactSearch, setEditContactSearch] = useState("");
   
   // Contact selection for documents
   const { personContacts } = useAllPersonContacts();
@@ -173,21 +192,36 @@ export function DocumentsView() {
   // For viewing document contacts
   const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
 
-  const categoryLabels = {
-    general: "Allgemein",
-    legal: "Rechtlich",
-    parliamentary: "Parlamentarisch",
-    correspondence: "Korrespondenz",
-    reports: "Berichte",
-    proposals: "Anträge"
-  };
-
   const statusLabels = {
     draft: "Entwurf",
     review: "Überprüfung",
     approved: "Genehmigt",
     archived: "Archiviert"
   };
+
+  // Helper to get category label from document categories
+  const getCategoryLabel = (categoryName: string) => {
+    const category = documentCategories.find(c => c.name === categoryName);
+    return category?.label || categoryName;
+  };
+
+  // Helper to get tag data
+  const getTagData = (tagName: string) => {
+    return tags.find(t => t.label === tagName);
+  };
+
+  // Filtered contacts for search
+  const filteredContactsForUpload = allContacts.filter(contact =>
+    contact.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    contact.organization?.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    contact.tags?.some((tag: string) => tag.toLowerCase().includes(contactSearch.toLowerCase()))
+  );
+
+  const filteredContactsForEdit = allContacts.filter(contact =>
+    contact.name.toLowerCase().includes(editContactSearch.toLowerCase()) ||
+    contact.organization?.toLowerCase().includes(editContactSearch.toLowerCase()) ||
+    contact.tags?.some((tag: string) => tag.toLowerCase().includes(editContactSearch.toLowerCase()))
+  );
 
   useEffect(() => {
     if (user && currentTenant) {
@@ -310,7 +344,7 @@ export function DocumentsView() {
           file_size: uploadFile.size,
           file_type: uploadFile.type,
           category: uploadCategory,
-          tags: uploadTags ? uploadTags.split(',').map(tag => tag.trim()) : [],
+          tags: uploadTags,
           status: uploadStatus,
           folder_id: uploadFolderId || null,
         })
@@ -346,7 +380,7 @@ export function DocumentsView() {
       setUploadFile(null);
       setUploadTitle("");
       setUploadDescription("");
-      setUploadTags("");
+      setUploadTags([]);
       setUploadFolderId("");
       setUploadContacts([]);
       setUploadContactType("related");
@@ -760,6 +794,41 @@ export function DocumentsView() {
     }
   };
 
+  const handleUpdateDocument = async () => {
+    if (!editingDocument) return;
+
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .update({
+          title: editTitle,
+          description: editDescription,
+          category: editCategory,
+          tags: editTags,
+          status: editStatus,
+          folder_id: editFolderId || null,
+        })
+        .eq('id', editingDocument.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Dokument aktualisiert",
+        description: "Das Dokument wurde erfolgreich aktualisiert.",
+      });
+
+      setShowEditDialog(false);
+      setEditingDocument(null);
+      fetchDocuments();
+    } catch (error: any) {
+      toast({
+        title: "Fehler",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const getCurrentFolderPath = (): DocumentFolder[] => {
     const path: DocumentFolder[] = [];
     let current = currentFolder;
@@ -900,8 +969,8 @@ export function DocumentsView() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {Object.entries(categoryLabels).map(([value, label]) => (
-                                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                                {documentCategories.map((category) => (
+                                  <SelectItem key={category.id} value={category.name}>{category.label}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -921,12 +990,12 @@ export function DocumentsView() {
                           </div>
                         </div>
                         <div>
-                          <Label htmlFor="tags">Tags (kommagetrennt)</Label>
-                          <Input
-                            id="tags"
-                            value={uploadTags}
-                            onChange={(e) => setUploadTags(e.target.value)}
-                            placeholder="Tag1, Tag2, Tag3"
+                          <Label htmlFor="tags">Tags</Label>
+                          <MultiSelect
+                            options={tags.map(tag => ({ value: tag.label, label: tag.label }))}
+                            selected={uploadTags}
+                            onChange={setUploadTags}
+                            placeholder="Tags auswählen..."
                           />
                         </div>
                         <div>
@@ -959,35 +1028,66 @@ export function DocumentsView() {
                                 <SelectItem value="related">Verbunden</SelectItem>
                               </SelectContent>
                             </Select>
-                            <div className="border rounded-md p-3 max-h-40 overflow-y-auto">
-                              {allContacts.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">Keine Kontakte verfügbar</p>
+                            <Input
+                              placeholder="Kontakte suchen..."
+                              value={contactSearch}
+                              onChange={(e) => setContactSearch(e.target.value)}
+                              className="mb-2"
+                            />
+                            <div className="border rounded-md p-3 max-h-60 overflow-y-auto">
+                              {filteredContactsForUpload.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                  {contactSearch ? 'Keine Kontakte gefunden' : 'Keine Kontakte verfügbar'}
+                                </p>
                               ) : (
                                 <div className="space-y-2">
-                                  {allContacts.map((contact) => (
-                                    <label
-                                      key={contact.id}
-                                      className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={uploadContacts.includes(contact.id)}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
+                                  {uploadContacts.length > 0 && (
+                                    <>
+                                      <p className="text-xs font-medium text-muted-foreground mb-2">Ausgewählt ({uploadContacts.length})</p>
+                                      {filteredContactsForUpload
+                                        .filter(c => uploadContacts.includes(c.id))
+                                        .map((contact) => (
+                                          <label
+                                            key={contact.id}
+                                            className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
+                                          >
+                                            <Checkbox
+                                              checked={true}
+                                              onCheckedChange={() => {
+                                                setUploadContacts(uploadContacts.filter(id => id !== contact.id));
+                                              }}
+                                            />
+                                            <span className="text-sm">
+                                              {contact.contact_type === 'organization' ? '🏢 ' : '👤 '}
+                                              {contact.name}
+                                              {contact.organization && ` (${contact.organization})`}
+                                            </span>
+                                          </label>
+                                        ))}
+                                      <Separator className="my-2" />
+                                      <p className="text-xs font-medium text-muted-foreground mb-2">Verfügbar</p>
+                                    </>
+                                  )}
+                                  {filteredContactsForUpload
+                                    .filter(c => !uploadContacts.includes(c.id))
+                                    .map((contact) => (
+                                      <label
+                                        key={contact.id}
+                                        className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded"
+                                      >
+                                        <Checkbox
+                                          checked={false}
+                                          onCheckedChange={() => {
                                             setUploadContacts([...uploadContacts, contact.id]);
-                                          } else {
-                                            setUploadContacts(uploadContacts.filter(id => id !== contact.id));
-                                          }
-                                        }}
-                                        className="rounded"
-                                      />
-                                      <span className="text-sm">
-                                        {contact.contact_type === 'organization' ? '🏢 ' : '👤 '}
-                                        {contact.name}
-                                        {contact.organization && ` (${contact.organization})`}
-                                      </span>
-                                    </label>
-                                  ))}
+                                          }}
+                                        />
+                                        <span className="text-sm">
+                                          {contact.contact_type === 'organization' ? '🏢 ' : '👤 '}
+                                          {contact.name}
+                                          {contact.organization && ` (${contact.organization})`}
+                                        </span>
+                                      </label>
+                                    ))}
                                 </div>
                               )}
                             </div>
@@ -1121,8 +1221,8 @@ export function DocumentsView() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Alle Kategorien</SelectItem>
-                          {Object.entries(categoryLabels).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          {documentCategories.map((category) => (
+                            <SelectItem key={category.id} value={category.name}>{category.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -1344,7 +1444,7 @@ export function DocumentsView() {
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2 min-w-0">
                         <Folder className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{categoryLabels[document.category as keyof typeof categoryLabels]}</span>
+                        <span className="truncate">{getCategoryLabel(document.category)}</span>
                       </div>
                       <div className="flex items-center gap-2 min-w-0">
                         <Calendar className="h-4 w-4 flex-shrink-0" />
@@ -1374,51 +1474,87 @@ export function DocumentsView() {
 
                     <Separator />
                     
-                     <div className="flex justify-between gap-2">
-                       <div className="flex gap-1">
-                         {document.document_type === 'archived_letter' && document.source_letter_id && (
-                           <Button
-                             variant="outline"
-                             size="sm"
-                             onClick={() => handleShowArchivedLetterDetails(document)}
-                             className="gap-1"
-                           >
-                             <Info className="h-4 w-4" />
-                             Details
-                           </Button>
-                         )}
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => handleDownload(document)}
-                           className="gap-1"
-                         >
-                           <Download className="h-4 w-4" />
-                           Download
-                         </Button>
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => {
-                             setSelectedDocument(document);
-                             setShowMoveFolderDialog(true);
-                           }}
-                           className="gap-1"
-                         >
-                           <FolderInput className="h-4 w-4" />
-                           Verschieben
-                         </Button>
-                       </div>
-                       <Button
-                         variant="outline"
-                         size="sm"
-                         onClick={() => handleDelete(document)}
-                         className="gap-1 text-destructive hover:text-destructive"
-                       >
-                         <Trash2 className="h-4 w-4" />
-                         Löschen
-                       </Button>
-                     </div>
+                    <TooltipProvider>
+                      <div className="flex justify-between gap-2">
+                        <div className="flex gap-1">
+                          {document.document_type === 'archived_letter' && document.source_letter_id && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleShowArchivedLetterDetails(document)}
+                                >
+                                  <Info className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Details</TooltipContent>
+                            </Tooltip>
+                          )}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownload(document)}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Download</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedDocument(document);
+                                  setShowMoveFolderDialog(true);
+                                }}
+                              >
+                                <FolderInput className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Verschieben</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingDocument(document);
+                                  setEditTitle(document.title);
+                                  setEditDescription(document.description || "");
+                                  setEditCategory(document.category);
+                                  setEditTags(document.tags || []);
+                                  setEditStatus(document.status);
+                                  setEditFolderId(document.folder_id || "");
+                                  setShowEditDialog(true);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Bearbeiten</TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(document)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Löschen</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TooltipProvider>
                   </CardContent>
                 </Card>
                 ))}
@@ -1453,7 +1589,7 @@ export function DocumentsView() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {categoryLabels[document.category as keyof typeof categoryLabels]}
+                          {getCategoryLabel(document.category)}
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(document.status)}>
@@ -1467,33 +1603,49 @@ export function DocumentsView() {
                           {formatFileSize(document.file_size)}
                         </TableCell>
                          <TableCell className="text-right">
-                           <div className="flex items-center gap-1 justify-end">
-                             {document.document_type === 'archived_letter' && document.source_letter_id && (
-                               <Button
-                                 variant="ghost"
-                                 size="sm"
-                                 onClick={() => handleShowArchivedLetterDetails(document)}
-                                 title="Brief-Details anzeigen"
-                               >
-                                 <Info className="h-4 w-4" />
-                               </Button>
-                             )}
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={() => handleDownload(document)}
-                             >
-                               <Download className="h-4 w-4" />
-                             </Button>
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={() => handleDelete(document)}
-                               className="text-destructive hover:text-destructive"
-                             >
-                               <Trash2 className="h-4 w-4" />
-                             </Button>
-                           </div>
+                           <TooltipProvider>
+                             <div className="flex items-center gap-1 justify-end">
+                               {document.document_type === 'archived_letter' && document.source_letter_id && (
+                                 <Tooltip>
+                                   <TooltipTrigger asChild>
+                                     <Button
+                                       variant="ghost"
+                                       size="sm"
+                                       onClick={() => handleShowArchivedLetterDetails(document)}
+                                     >
+                                       <Info className="h-4 w-4" />
+                                     </Button>
+                                   </TooltipTrigger>
+                                   <TooltipContent>Details</TooltipContent>
+                                 </Tooltip>
+                               )}
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <Button
+                                     variant="ghost"
+                                     size="sm"
+                                     onClick={() => handleDownload(document)}
+                                   >
+                                     <Download className="h-4 w-4" />
+                                   </Button>
+                                 </TooltipTrigger>
+                                 <TooltipContent>Download</TooltipContent>
+                               </Tooltip>
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <Button
+                                     variant="ghost"
+                                     size="sm"
+                                     onClick={() => handleDelete(document)}
+                                     className="text-destructive hover:text-destructive"
+                                   >
+                                     <Trash2 className="h-4 w-4" />
+                                   </Button>
+                                 </TooltipTrigger>
+                                 <TooltipContent>Löschen</TooltipContent>
+                               </Tooltip>
+                             </div>
+                           </TooltipProvider>
                          </TableCell>
                       </TableRow>
                     ))}
