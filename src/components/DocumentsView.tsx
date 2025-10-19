@@ -318,7 +318,33 @@ export function DocumentsView() {
   };
 
   const handleUpload = async () => {
-    if (!uploadFile || !uploadTitle || !user) return;
+    // Validate with error messages
+    if (!uploadFile) {
+      toast({
+        title: "Datei fehlt",
+        description: "Bitte wählen Sie eine Datei aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!uploadTitle.trim()) {
+      toast({
+        title: "Titel fehlt",
+        description: "Bitte geben Sie einen Titel ein.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!user) {
+      toast({
+        title: "Authentifizierung fehlt",
+        description: "Sie sind nicht angemeldet.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -947,22 +973,30 @@ export function DocumentsView() {
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
-                          <Label htmlFor="file">Datei auswählen</Label>
+                          <Label htmlFor="file" className="flex items-center gap-2">
+                            Datei auswählen <span className="text-destructive">*</span>
+                          </Label>
                           <Input
                             id="file"
                             type="file"
                             onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
                             accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                            className={!uploadFile ? "border-destructive/50" : ""}
                           />
+                          {!uploadFile && <p className="text-xs text-muted-foreground mt-1">Pflichtfeld</p>}
                         </div>
                         <div>
-                          <Label htmlFor="title">Titel</Label>
+                          <Label htmlFor="title" className="flex items-center gap-2">
+                            Titel <span className="text-destructive">*</span>
+                          </Label>
                           <Input
                             id="title"
                             value={uploadTitle}
                             onChange={(e) => setUploadTitle(e.target.value)}
                             placeholder="Dokumententitel"
+                            className={!uploadTitle.trim() ? "border-destructive/50" : ""}
                           />
+                          {!uploadTitle.trim() && <p className="text-xs text-muted-foreground mt-1">Pflichtfeld</p>}
                         </div>
                         <div>
                           <Label htmlFor="description">Beschreibung</Label>

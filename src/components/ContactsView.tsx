@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, Star, Tag, Merge, CheckSquare, Square } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, Star, Tag, Merge, CheckSquare, Square, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -24,6 +25,7 @@ import { ContactQuickActions } from "./contacts/ContactQuickActions";
 import { debounce } from "@/utils/debounce";
 import { useCounts } from "@/hooks/useCounts";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
+import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
 
 interface DistributionList {
   id: string;
@@ -97,6 +99,10 @@ export function ContactsView() {
     sortDirection: activeTab === "stakeholders" ? stakeholderSortDirection : sortDirection,
     selectedTagFilter,
   });
+
+  // Get document counts for visible contacts
+  const visibleContactIds = contacts.map(c => c.id);
+  const { counts: documentCounts } = useContactDocumentCounts(visibleContactIds);
 
   // Create stable debounced function - MUST be before early returns
   const debouncedUpdate = useMemo(
@@ -677,6 +683,29 @@ export function ContactsView() {
                 <ContactQuickActions contact={contact} />
               )}
               
+              {/* Document Count Badge */}
+              {documentCounts[contact.id]?.total > 0 && (
+                <div className="absolute top-3 right-3 z-10">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge variant="secondary" className="gap-1 cursor-help shadow-sm">
+                          <FileText className="h-3 w-3" />
+                          {documentCounts[contact.id].total}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="text-xs space-y-1">
+                          <p className="font-semibold">Dokumente:</p>
+                          <p>Direkt verknüpft: {documentCounts[contact.id].direct}</p>
+                          <p>Über Tags: {documentCounts[contact.id].tagged}</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              )}
+              
                <CardHeader className="pb-3">
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -810,6 +839,7 @@ export function ContactsView() {
                 <SortableTableHead sortKey="email">Kontakt</SortableTableHead>
                 <SortableTableHead sortKey="address">Adresse</SortableTableHead>
                 <SortableTableHead sortKey="last_contact">Letzter Kontakt</SortableTableHead>
+                <TableHead className="text-center w-24">Dokumente</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -887,6 +917,29 @@ export function ContactsView() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {contact.last_contact || "—"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {documentCounts[contact.id]?.total > 0 ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="gap-1 cursor-help">
+                              <FileText className="h-3 w-3" />
+                              {documentCounts[contact.id].total}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="text-xs space-y-1">
+                              <p className="font-semibold">Dokumente:</p>
+                              <p>Direkt: {documentCounts[contact.id].direct}</p>
+                              <p>Tags: {documentCounts[contact.id].tagged}</p>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
