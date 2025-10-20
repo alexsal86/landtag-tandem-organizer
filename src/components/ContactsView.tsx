@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, Star, Tag, Merge, CheckSquare, Square, FileText } from "lucide-react";
+import { Search, Plus, Mail, Phone, MapPin, Building, User, Filter, Grid3X3, List, Users, Edit, Trash2, Archive, Upload, ChevronUp, ChevronDown, ChevronRight, Star, Tag, Merge, CheckSquare, Square, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,8 @@ import { useCounts } from "@/hooks/useCounts";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
 import { ContactDocumentsList } from "./contacts/ContactDocumentsList";
+import { ContactDocumentRows } from "./contacts/ContactDocumentRows";
+import { useContactDocuments } from "@/hooks/useContactDocuments";
 
 interface DistributionList {
   id: string;
@@ -69,6 +72,7 @@ export function ContactsView() {
   const [isDuplicateSheetOpen, setIsDuplicateSheetOpen] = useState(false);
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [expandedDocuments, setExpandedDocuments] = useState<Set<string>>(new Set());
   
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -148,6 +152,18 @@ export function ContactsView() {
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const toggleDocumentsExpanded = (contactId: string) => {
+    setExpandedDocuments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(contactId)) {
+        newSet.delete(contactId);
+      } else {
+        newSet.add(contactId);
+      }
+      return newSet;
+    });
   };
 
   // Debug effect for stakeholder loading
@@ -684,20 +700,6 @@ export function ContactsView() {
                 <ContactQuickActions contact={contact} />
               )}
               
-              {/* Document Count Badge with Collapsible List */}
-              {documentCounts[contact.id]?.total > 0 && (
-                <div 
-                  className="absolute top-3 right-3 z-10"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <ContactDocumentsList
-                    contactId={contact.id}
-                    contactTags={contact.tags || []}
-                    documentCount={documentCounts[contact.id]}
-                  />
-                </div>
-              )}
-              
                <CardHeader className="pb-3">
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -836,14 +838,14 @@ export function ContactsView() {
             </TableHeader>
             <TableBody>
               {filteredContacts.map((contact) => (
-                <TableRow
-                  key={contact.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => {
-                    setSelectedContactId(contact.id);
-                    setIsSheetOpen(true);
-                  }}
-                >
+                <React.Fragment key={contact.id}>
+                  <TableRow
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => {
+                      setSelectedContactId(contact.id);
+                      setIsSheetOpen(true);
+                    }}
+                  >
                   <TableCell>
                     <Button
                       variant="ghost"
@@ -914,14 +916,34 @@ export function ContactsView() {
                     className="text-center"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <ContactDocumentsList
-                      contactId={contact.id}
-                      contactTags={contact.tags || []}
-                      documentCount={documentCounts[contact.id] || { direct: 0, tagged: 0, total: 0 }}
-                    />
+                    {documentCounts[contact.id]?.total > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleDocumentsExpanded(contact.id)}
+                        className="p-1 h-auto text-sm hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ChevronRight 
+                            className={`h-3 w-3 transition-transform ${
+                              expandedDocuments.has(contact.id) ? 'rotate-90' : ''
+                            }`} 
+                          />
+                          <FileText className="h-3 w-3" />
+                          <span>{documentCounts[contact.id].total}</span>
+                        </div>
+                      </Button>
+                    )}
+                    {(!documentCounts[contact.id] || documentCounts[contact.id].total === 0) && "—"}
                   </TableCell>
-                </TableRow>
+                  </TableRow>
+                  {/* Collapsible document rows */}
+                  {expandedDocuments.has(contact.id) && (
+                    <ContactDocumentRows contactId={contact.id} contactTags={contact.tags || []} />
+                  )}
+                </React.Fragment>
               ))}
+
                 </TableBody>
               </Table>
             </div>
