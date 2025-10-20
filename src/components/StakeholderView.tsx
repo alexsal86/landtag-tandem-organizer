@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag, Users, Star, ChevronUp, FileText } from "lucide-react";
+import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag, Users, Star, ChevronUp, FileText, Euro } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTags } from "@/hooks/useTags";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
 import { ContactDocumentsList } from "./contacts/ContactDocumentsList";
+import { ContactFundingsList } from "./contacts/ContactFundingsList";
 
 interface StakeholderViewProps {
   stakeholders: Contact[];
@@ -48,6 +49,7 @@ export function StakeholderView({
   onTagClick,
 }: StakeholderViewProps) {
   const [expandedStakeholders, setExpandedStakeholders] = useState<Set<string>>(new Set());
+  const [expandedFundings, setExpandedFundings] = useState<Set<string>>(new Set());
   const [distributionDialogOpen, setDistributionDialogOpen] = useState(false);
   const [selectedStakeholder, setSelectedStakeholder] = useState<Contact | null>(null);
   const [editingTags, setEditingTags] = useState<string | null>(null);
@@ -154,6 +156,16 @@ export function StakeholderView({
       newExpanded.add(stakeholderId);
     }
     setExpandedStakeholders(newExpanded);
+  };
+
+  const toggleFundingsExpanded = (stakeholderId: string) => {
+    const newExpanded = new Set(expandedFundings);
+    if (newExpanded.has(stakeholderId)) {
+      newExpanded.delete(stakeholderId);
+    } else {
+      newExpanded.add(stakeholderId);
+    }
+    setExpandedFundings(newExpanded);
   };
 
   const getStakeholderContacts = (stakeholderId: string) => {
@@ -487,6 +499,18 @@ export function StakeholderView({
                         />
                       </div>
                     )}
+
+                    {/* Fundings Section */}
+                    <div 
+                      className="pt-3 border-t mt-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ContactFundingsList
+                        contactId={stakeholder.id}
+                        isExpanded={expandedFundings.has(stakeholder.id)}
+                        onToggle={() => toggleFundingsExpanded(stakeholder.id)}
+                      />
+                    </div>
                   </CardHeader>
                 </CollapsibleTrigger>
 

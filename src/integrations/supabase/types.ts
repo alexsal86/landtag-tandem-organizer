@@ -2965,6 +2965,107 @@ export type Database = {
           },
         ]
       }
+      funding_participants: {
+        Row: {
+          allocated_amount: number | null
+          contact_id: string
+          created_at: string
+          funding_id: string
+          id: string
+          notes: string | null
+          role: string | null
+        }
+        Insert: {
+          allocated_amount?: number | null
+          contact_id: string
+          created_at?: string
+          funding_id: string
+          id?: string
+          notes?: string | null
+          role?: string | null
+        }
+        Update: {
+          allocated_amount?: number | null
+          contact_id?: string
+          created_at?: string
+          funding_id?: string
+          id?: string
+          notes?: string | null
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funding_participants_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funding_participants_funding_id_fkey"
+            columns: ["funding_id"]
+            isOneToOne: false
+            referencedRelation: "fundings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fundings: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          end_date: string | null
+          funding_source: string | null
+          id: string
+          start_date: string | null
+          status: string | null
+          tenant_id: string
+          title: string
+          total_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_date?: string | null
+          funding_source?: string | null
+          id?: string
+          start_date?: string | null
+          status?: string | null
+          tenant_id: string
+          title: string
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_date?: string | null
+          funding_source?: string | null
+          id?: string
+          start_date?: string | null
+          status?: string | null
+          tenant_id?: string
+          title?: string
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fundings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       habit_completions: {
         Row: {
           completion_date: string

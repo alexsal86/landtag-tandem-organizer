@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag, Linkedin, Facebook, Instagram, Hash, FileText, ChevronDown } from "lucide-react";
+import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag, Linkedin, Facebook, Instagram, Hash, FileText, ChevronDown, Euro } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,9 @@ import { formatGermanDate } from "@/lib/utils";
 import { ActivityTimeline } from "./contacts/ActivityTimeline";
 import { ContactDocumentList } from "./contacts/ContactDocumentList";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
+import { FundingDialog } from "./contacts/FundingDialog";
+import { ContactFundingsList } from "./contacts/ContactFundingsList";
+import { useContactFundings } from "@/hooks/useContactFundings";
 
 interface CallLog {
   id: string;
@@ -93,6 +96,8 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
   const [allTags, setAllTags] = useState<{ direct: string[], inherited: string[] }>({ direct: [], inherited: [] });
   const [showDirectDocs, setShowDirectDocs] = useState(true);
   const [showTaggedDocs, setShowTaggedDocs] = useState(true);
+  const [fundingDialogOpen, setFundingDialogOpen] = useState(false);
+  const [fundingsExpanded, setFundingsExpanded] = useState(false);
   const { toast } = useToast();
 
   // Fetch documents related to this contact
@@ -100,6 +105,9 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
     contactId || undefined,
     [...(allTags.direct || []), ...(allTags.inherited || [])]
   );
+
+  // Fetch fundings related to this contact
+  const { data: fundings = [], isLoading: fundingsLoading } = useContactFundings(contactId || undefined);
 
   // Helper functions for social media
   const cleanUsername = (input: string): string => {
@@ -391,12 +399,15 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
             <Separator />
 
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="details">Kontaktdaten</TabsTrigger>
                 <TabsTrigger value="activities">Aktivitäten ({activities.length})</TabsTrigger>
                 <TabsTrigger value="calls">Anrufliste ({callLogs.length})</TabsTrigger>
                 <TabsTrigger value="documents">
                   Dokumente ({directDocuments.length + taggedDocuments.length})
+                </TabsTrigger>
+                <TabsTrigger value="fundings">
+                  Förderungen ({fundings.length})
                 </TabsTrigger>
               </TabsList>
               
@@ -796,6 +807,44 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                     </>
                   )}
                 </TabsContent>
+
+                <TabsContent value="fundings" className="space-y-4 mt-4">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Euro className="h-5 w-5" />
+                          Förderungen & Unterstützungen
+                        </CardTitle>
+                        <Button 
+                          size="sm" 
+                          onClick={() => setFundingDialogOpen(true)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Neue Förderung
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {fundingsLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                      ) : fundings.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Euro className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                          <p>Keine Förderungen vorhanden</p>
+                        </div>
+                      ) : (
+                        <ContactFundingsList
+                          contactId={contactId || ''}
+                          isExpanded={fundingsExpanded}
+                          onToggle={() => setFundingsExpanded(!fundingsExpanded)}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
               </Tabs>
            </div>
         ) : (
@@ -804,6 +853,14 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
           </div>
         )}
       </SheetContent>
+
+      {contactId && (
+        <FundingDialog
+          open={fundingDialogOpen}
+          onOpenChange={setFundingDialogOpen}
+          initialContactId={contactId}
+        />
+      )}
     </Sheet>
   );
 }
