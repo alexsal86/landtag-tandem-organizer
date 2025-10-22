@@ -1674,27 +1674,6 @@ export function DocumentsView() {
                             </TooltipTrigger>
                             <TooltipContent>Verschieben</TooltipContent>
                           </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingDocument(document);
-                                  setEditTitle(document.title);
-                                  setEditDescription(document.description || "");
-                                  setEditCategory(document.category);
-                                  setEditTags(document.tags || []);
-                                  setEditStatus(document.status);
-                                  setEditFolderId(document.folder_id || "");
-                                  setShowEditDialog(true);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Bearbeiten</TooltipContent>
-                          </Tooltip>
                         </div>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1725,6 +1704,7 @@ export function DocumentsView() {
                       <TableHead>Status</TableHead>
                       <TableHead>Erstellt</TableHead>
                       <TableHead>Größe</TableHead>
+                      <TableHead>Kontakte</TableHead>
                       <TableHead className="text-right">Aktionen</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1757,6 +1737,9 @@ export function DocumentsView() {
                         </TableCell>
                         <TableCell>
                           {formatFileSize(document.file_size)}
+                        </TableCell>
+                        <TableCell>
+                          <DocumentContactManager documentId={document.id} compact />
                         </TableCell>
                          <TableCell className="text-right">
                              <TooltipProvider>

@@ -89,7 +89,7 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
               <div>
                 <div className="font-medium text-sm">{doc.title}</div>
                 <div className="text-xs text-muted-foreground">
-                  {doc.relationship_type} • {doc.file_name}
+                  {doc.file_name}
                 </div>
               </div>
             </div>
