@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag, Users, Star, ChevronUp, FileText, Euro } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTags } from "@/hooks/useTags";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
-import { ContactDocumentsList } from "./contacts/ContactDocumentsList";
+import { ContactDocumentRows } from "./contacts/ContactDocumentRows";
 import { ContactFundingsList } from "./contacts/ContactFundingsList";
 
 interface StakeholderViewProps {
@@ -50,6 +50,7 @@ export function StakeholderView({
 }: StakeholderViewProps) {
   const [expandedStakeholders, setExpandedStakeholders] = useState<Set<string>>(new Set());
   const [expandedFundings, setExpandedFundings] = useState<Set<string>>(new Set());
+  const [expandedDocuments, setExpandedDocuments] = useState<Set<string>>(new Set());
   const [distributionDialogOpen, setDistributionDialogOpen] = useState(false);
   const [selectedStakeholder, setSelectedStakeholder] = useState<Contact | null>(null);
   const [editingTags, setEditingTags] = useState<string | null>(null);
@@ -166,6 +167,16 @@ export function StakeholderView({
       newExpanded.add(stakeholderId);
     }
     setExpandedFundings(newExpanded);
+  };
+
+  const toggleDocumentsExpanded = (stakeholderId: string) => {
+    const newExpanded = new Set(expandedDocuments);
+    if (newExpanded.has(stakeholderId)) {
+      newExpanded.delete(stakeholderId);
+    } else {
+      newExpanded.add(stakeholderId);
+    }
+    setExpandedDocuments(newExpanded);
   };
 
   const getStakeholderContacts = (stakeholderId: string) => {
@@ -487,18 +498,25 @@ export function StakeholderView({
                     </div>
 
                     {/* Documents Section */}
-                    {documentCounts[stakeholder.id]?.total > 0 && (
-                      <div 
-                        className="pt-3 border-t mt-3"
-                        onClick={(e) => e.stopPropagation()}
+                    <div 
+                      className="pt-3 border-t mt-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleDocumentsExpanded(stakeholder.id)}
+                        className="w-full justify-start gap-2"
                       >
-                        <ContactDocumentsList
-                          contactId={stakeholder.id}
-                          contactTags={stakeholderTags}
-                          documentCount={documentCounts[stakeholder.id]}
+                        <FileText className="h-4 w-4" />
+                        <span>Dokumente ({documentCounts[stakeholder.id]?.total || 0})</span>
+                        <ChevronRight 
+                          className={`h-4 w-4 transition-transform ml-auto ${
+                            expandedDocuments.has(stakeholder.id) ? 'rotate-90' : ''
+                          }`} 
                         />
-                      </div>
-                    )}
+                      </Button>
+                    </div>
 
                     {/* Fundings Section */}
                     <div 
@@ -516,6 +534,26 @@ export function StakeholderView({
 
                 <CollapsibleContent>
                   <CardContent className="pt-0">
+                    {/* Expanded Documents */}
+                    {expandedDocuments.has(stakeholder.id) && (
+                      <div className="border-t pt-4 mb-4">
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Dokumente
+                        </h4>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableBody>
+                              <ContactDocumentRows
+                                contactId={stakeholder.id}
+                                contactTags={stakeholderTags}
+                              />
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="border-t pt-4">
                       <h4 className="font-medium mb-3 flex items-center gap-2">
                         <User className="h-4 w-4" />
@@ -604,8 +642,8 @@ export function StakeholderView({
                 const isExpanded = expandedStakeholders.has(stakeholder.id);
                 
                 return (
-                  <>
-                    <TableRow key={stakeholder.id} className="hover:bg-muted/50">
+                  <React.Fragment key={stakeholder.id}>
+                    <TableRow className="hover:bg-muted/50">
                     <TableCell>
                       <Button
                         variant="ghost"
@@ -802,17 +840,33 @@ export function StakeholderView({
                         </Button>
                       </div>
                     </TableCell>
-                    <TableCell 
-                      className="text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <ContactDocumentsList
-                        contactId={stakeholder.id}
-                        contactTags={stakeholderTags}
-                        documentCount={documentCounts[stakeholder.id] || { direct: 0, tagged: 0, total: 0 }}
-                      />
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleDocumentsExpanded(stakeholder.id)}
+                        className="p-1 h-auto text-sm hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-3 w-3" />
+                          <span>{documentCounts[stakeholder.id]?.total || 0}</span>
+                          <ChevronRight 
+                            className={`h-3 w-3 transition-transform ${
+                              expandedDocuments.has(stakeholder.id) ? 'rotate-90' : ''
+                            }`} 
+                          />
+                        </div>
+                      </Button>
                     </TableCell>
                   </TableRow>
+
+                  {/* Collapsible document rows */}
+                  {expandedDocuments.has(stakeholder.id) && (
+                    <ContactDocumentRows
+                      contactId={stakeholder.id}
+                      contactTags={stakeholderTags}
+                    />
+                  )}
                   
                   {/* Collapsible contact rows */}
                   {isExpanded && stakeholderContacts.map((contact) => (
@@ -889,7 +943,7 @@ export function StakeholderView({
                       <TableCell></TableCell>
                     </TableRow>
                   ))}
-                </>
+                </React.Fragment>
                 );
               })}
             </TableBody>
