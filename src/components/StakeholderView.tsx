@@ -498,25 +498,27 @@ export function StakeholderView({
                     </div>
 
                     {/* Documents Section */}
-                    <div 
-                      className="pt-3 border-t mt-3"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleDocumentsExpanded(stakeholder.id)}
-                        className="w-full justify-start gap-2"
+                    {documentCounts[stakeholder.id]?.total > 0 && (
+                      <div 
+                        className="pt-3 border-t mt-3"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <FileText className="h-4 w-4" />
-                        <span>Dokumente ({documentCounts[stakeholder.id]?.total || 0})</span>
-                        <ChevronRight 
-                          className={`h-4 w-4 transition-transform ml-auto ${
-                            expandedDocuments.has(stakeholder.id) ? 'rotate-90' : ''
-                          }`} 
-                        />
-                      </Button>
-                    </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleDocumentsExpanded(stakeholder.id)}
+                          className="w-full justify-start gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          <span>Dokumente ({documentCounts[stakeholder.id]?.total})</span>
+                          <ChevronRight 
+                            className={`h-4 w-4 transition-transform ml-auto ${
+                              expandedDocuments.has(stakeholder.id) ? 'rotate-90' : ''
+                            }`} 
+                          />
+                        </Button>
+                      </div>
+                    )}
 
                     {/* Fundings Section */}
                     <div 
@@ -841,22 +843,26 @@ export function StakeholderView({
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleDocumentsExpanded(stakeholder.id)}
-                        className="p-1 h-auto text-sm hover:bg-muted/50"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-3 w-3" />
-                          <span>{documentCounts[stakeholder.id]?.total || 0}</span>
-                          <ChevronRight 
-                            className={`h-3 w-3 transition-transform ${
-                              expandedDocuments.has(stakeholder.id) ? 'rotate-90' : ''
-                            }`} 
-                          />
-                        </div>
-                      </Button>
+                      {documentCounts[stakeholder.id]?.total > 0 ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleDocumentsExpanded(stakeholder.id)}
+                          className="p-1 h-auto text-sm hover:bg-muted/50"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-3 w-3" />
+                            <span>{documentCounts[stakeholder.id]?.total}</span>
+                            <ChevronRight 
+                              className={`h-3 w-3 transition-transform ${
+                                expandedDocuments.has(stakeholder.id) ? 'rotate-90' : ''
+                              }`} 
+                            />
+                          </div>
+                        </Button>
+                      ) : (
+                        <span className="text-sm">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
 
