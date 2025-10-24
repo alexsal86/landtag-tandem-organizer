@@ -445,15 +445,14 @@ async function sendDecisionMessages(
           continue;
         }
 
-        // Get user's Matrix subscription
-        const { data: matrixSub, error: matrixError } = await supabaseAdmin
+        // Get user's Matrix subscriptions (all active rooms)
+        const { data: matrixSubs, error: matrixError } = await supabaseAdmin
           .from('matrix_subscriptions')
           .select('room_id, user_id')
           .eq('user_id', participantId)
-          .eq('is_active', true)
-          .maybeSingle();
+          .eq('is_active', true);
 
-        if (matrixError || !matrixSub) {
+        if (matrixError || !matrixSubs || matrixSubs.length === 0) {
           console.log(`ℹ️ No Matrix subscription for user ${participantId}, skipping Matrix send`);
           results.push({ participantId, success: false, error: 'No Matrix subscription' });
           failedCount++;
@@ -492,47 +491,88 @@ async function sendDecisionMessages(
           }
         };
 
-        // Send Matrix message
-        const txnId = `decision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const matrixUrl = `${matrixHomeserver}/_matrix/client/r0/rooms/${matrixSub.room_id}/send/m.room.message/${txnId}`;
+        // Send Matrix message to all rooms
+        let sentToAnyRoom = false;
+        const roomResults = [];
         
-        console.log(`🔗 Sending decision to Matrix room: ${matrixSub.room_id}`);
-        
-        const response = await fetch(matrixUrl, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${matrixToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(decisionMessage)
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`❌ Matrix API error for user ${participantId}:`, response.status, errorText);
-          failedCount++;
-          results.push({ participantId, success: false, error: `Matrix API error: ${response.status}` });
-        } else {
-          const result = await response.json();
-          console.log(`✅ Decision message sent via Matrix to user ${participantId}`);
-          sentCount++;
-          
-          // Track the Matrix message
-          await supabaseAdmin
-            .from('decision_matrix_messages')
-            .insert({
-              decision_id: decisionId,
-              participant_id: participant.id,
-              matrix_room_id: matrixSub.room_id,
-              matrix_event_id: result.event_id,
-              sent_at: new Date().toISOString()
+        for (const matrixSub of matrixSubs) {
+          try {
+            const txnId = `decision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const matrixUrl = `${matrixHomeserver}/_matrix/client/r0/rooms/${matrixSub.room_id}/send/m.room.message/${txnId}`;
+            
+            console.log(`🔗 Sending decision to Matrix room: ${matrixSub.room_id}`);
+            
+            const response = await fetch(matrixUrl, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${matrixToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(decisionMessage)
             });
 
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`❌ Matrix API error for room ${matrixSub.room_id}:`, response.status, errorText);
+              roomResults.push({ roomId: matrixSub.room_id, success: false, error: `API error: ${response.status}` });
+              continue;
+            }
+
+            const result = await response.json();
+            console.log(`✅ Decision message sent to room ${matrixSub.room_id}:`, result);
+            sentToAnyRoom = true;
+            
+            // Log to matrix_bot_logs
+            await supabaseAdmin.from('matrix_bot_logs').insert({
+              event_type: 'decision_sent',
+              room_id: matrixSub.room_id,
+              user_id: participantId,
+              success: true,
+              timestamp: new Date().toISOString()
+            });
+
+            // Track the Matrix message
+            await supabaseAdmin
+              .from('decision_matrix_messages')
+              .insert({
+                decision_id: decisionId,
+                participant_id: participant.id,
+                matrix_room_id: matrixSub.room_id,
+                matrix_event_id: result.event_id,
+                sent_at: new Date().toISOString()
+              });
+
+            roomResults.push({ 
+              roomId: matrixSub.room_id, 
+              success: true, 
+              eventId: result.event_id 
+            });
+            
+          } catch (roomError) {
+            console.error(`❌ Error sending to room ${matrixSub.room_id}:`, roomError);
+            roomResults.push({ 
+              roomId: matrixSub.room_id, 
+              success: false, 
+              error: roomError instanceof Error ? roomError.message : 'Unknown error' 
+            });
+          }
+        }
+
+        if (sentToAnyRoom) {
+          sentCount++;
           results.push({ 
             participantId, 
             success: true, 
-            matrixEventId: result.event_id,
-            roomId: matrixSub.room_id 
+            rooms_sent: roomResults.filter(r => r.success).length,
+            room_details: roomResults
+          });
+        } else {
+          failedCount++;
+          results.push({ 
+            participantId, 
+            success: false, 
+            error: 'Failed to send to any Matrix room',
+            room_details: roomResults
           });
         }
 
