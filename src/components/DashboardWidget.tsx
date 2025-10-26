@@ -18,6 +18,7 @@ import { PomodoroWidget } from '@/components/widgets/PomodoroWidget';
 import { HabitsWidget } from '@/components/widgets/HabitsWidget';
 import { CallLogWidget } from '@/components/widgets/CallLogWidget';
 import { QuickActionsWidget } from '@/components/widgets/QuickActionsWidget';
+import { AppointmentFeedbackWidget } from '@/components/dashboard/AppointmentFeedbackWidget';
 
 interface WidgetProps {
   widget: WidgetType;
@@ -566,6 +567,8 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         return <CombinedMessagesWidget configuration={widget.configuration} />;
       case 'news':
         return <NewsWidget widgetId={widget.id} />;
+      case 'appointmentfeedback':
+        return <AppointmentFeedbackWidget widgetSize={widget.widgetSize} isEditMode={isEditMode} />;
 
       default:
         return <div>Unbekanntes Widget</div>;
@@ -573,7 +576,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
   };
 
   // For new widget types that handle their own layout, render them directly
-  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news'].includes(widget.type)) {
+  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news', 'appointmentfeedback'].includes(widget.type)) {
     return (
       <div 
         className={`relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}

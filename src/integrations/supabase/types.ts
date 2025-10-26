@@ -187,6 +187,116 @@ export type Database = {
           },
         ]
       }
+      appointment_feedback: {
+        Row: {
+          appointment_id: string
+          completed_at: string | null
+          created_at: string | null
+          feedback_status: string
+          has_documents: boolean | null
+          has_tasks: boolean | null
+          id: string
+          notes: string | null
+          priority_score: number | null
+          reminder_dismissed: boolean | null
+          reminder_dismissed_at: string | null
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          appointment_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          feedback_status?: string
+          has_documents?: boolean | null
+          has_tasks?: boolean | null
+          id?: string
+          notes?: string | null
+          priority_score?: number | null
+          reminder_dismissed?: boolean | null
+          reminder_dismissed_at?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          appointment_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          feedback_status?: string
+          has_documents?: boolean | null
+          has_tasks?: boolean | null
+          id?: string
+          notes?: string | null
+          priority_score?: number | null
+          reminder_dismissed?: boolean | null
+          reminder_dismissed_at?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_feedback_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_feedback_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_feedback_settings: {
+        Row: {
+          auto_skip_internal: boolean | null
+          created_at: string | null
+          id: string
+          priority_categories: string[] | null
+          reminder_start_time: string | null
+          show_all_appointments: boolean | null
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_skip_internal?: boolean | null
+          created_at?: string | null
+          id?: string
+          priority_categories?: string[] | null
+          reminder_start_time?: string | null
+          show_all_appointments?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_skip_internal?: boolean | null
+          created_at?: string | null
+          id?: string
+          priority_categories?: string[] | null
+          reminder_start_time?: string | null
+          show_all_appointments?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_feedback_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_guests: {
         Row: {
           appointment_id: string
@@ -6949,26 +7059,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      _meeting_default_end: {
-        Args: { _date: string }
-        Returns: string
-      }
-      _meeting_default_start: {
-        Args: { _date: string }
-        Returns: string
-      }
+      _meeting_default_end: { Args: { _date: string }; Returns: string }
+      _meeting_default_start: { Args: { _date: string }; Returns: string }
       assign_contact_to_organization: {
         Args: { contact_id: string; org_id: string }
         Returns: undefined
       }
-      auto_archive_completed_preparations: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      auto_update_poll_status: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      auto_archive_completed_preparations: { Args: never; Returns: undefined }
+      auto_update_poll_status: { Args: never; Returns: undefined }
       can_access_knowledge_document: {
         Args: { _document_id: string; _user_id: string }
         Returns: boolean
@@ -6997,26 +7095,29 @@ export type Database = {
         Args: { message_id_param: string }
         Returns: boolean
       }
-      create_default_checklist_items: {
-        Args:
-          | { planning_id: string }
-          | { planning_id: string; template_id_param?: string }
-        Returns: undefined
-      }
-      create_knowledge_document_snapshot: {
-        Args:
-          | {
+      create_default_checklist_items:
+        | {
+            Args: { planning_id: string; template_id_param?: string }
+            Returns: undefined
+          }
+        | { Args: { planning_id: string }; Returns: undefined }
+      create_knowledge_document_snapshot:
+        | {
+            Args: {
               _document_id: string
               _snapshot_type?: string
               _yjs_state: string
             }
-          | {
+            Returns: string
+          }
+        | {
+            Args: {
               _document_id: string
               _snapshot_type?: string
               _yjs_state: string
             }
-        Returns: string
-      }
+            Returns: string
+          }
       create_notification: {
         Args: {
           data_param?: Json
@@ -7036,18 +7137,9 @@ export type Database = {
         }
         Returns: string
       }
-      generate_decision_participant_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_guest_invitation_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_participant_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_decision_participant_token: { Args: never; Returns: string }
+      generate_guest_invitation_token: { Args: never; Returns: string }
+      generate_participant_token: { Args: never; Returns: string }
       get_authored_messages: {
         Args: { author_id_param: string }
         Returns: {
@@ -7062,10 +7154,7 @@ export type Database = {
           title: string
         }[]
       }
-      get_daily_hours: {
-        Args: { _user_id: string }
-        Returns: number
-      }
+      get_daily_hours: { Args: { _user_id: string }; Returns: number }
       get_user_messages: {
         Args: { user_id_param: string }
         Returns: {
@@ -7085,14 +7174,8 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string
       }
-      get_user_role_level: {
-        Args: { _user_id: string }
-        Returns: number
-      }
-      get_user_tenant_ids: {
-        Args: { _user_id: string }
-        Returns: string[]
-      }
+      get_user_role_level: { Args: { _user_id: string }; Returns: number }
+      get_user_tenant_ids: { Args: { _user_id: string }; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -7104,14 +7187,8 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: undefined
       }
-      is_admin: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      is_admin_of: {
-        Args: { employee: string }
-        Returns: boolean
-      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_of: { Args: { employee: string }; Returns: boolean }
       is_message_recipient: {
         Args: { message_id_param: string; user_id_param: string }
         Returns: boolean
@@ -7147,14 +7224,8 @@ export type Database = {
         }
         Returns: undefined
       }
-      sync_birthday_appointments: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      sync_existing_contact_tags: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      sync_birthday_appointments: { Args: never; Returns: undefined }
+      sync_existing_contact_tags: { Args: never; Returns: undefined }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined

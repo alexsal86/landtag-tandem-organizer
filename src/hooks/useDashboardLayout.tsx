@@ -12,7 +12,7 @@ export type WidgetSize =
 
 export interface DashboardWidget {
   id: string;
-  type: 'stats' | 'tasks' | 'schedule' | 'actions' | 'messages' | 'blackboard' | 'combined-messages' | 'quicknotes' | 'pomodoro' | 'habits' | 'calllog' | 'teamchat' | 'quickactions' | 'news';
+  type: 'stats' | 'tasks' | 'schedule' | 'actions' | 'messages' | 'blackboard' | 'combined-messages' | 'quicknotes' | 'pomodoro' | 'habits' | 'calllog' | 'teamchat' | 'quickactions' | 'news' | 'appointmentfeedback';
   title: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -120,6 +120,15 @@ export function useDashboardLayout() {
         size: { width: 3, height: 2 },
         widgetSize: '3x2',
         configuration: { theme: 'default', showFollowUps: true }
+      },
+      {
+        id: 'appointmentfeedback',
+        type: 'appointmentfeedback',
+        title: 'Termin-Feedback',
+        position: { x: 6, y: 3 },
+        size: { width: 2, height: 2 },
+        widgetSize: '2x2',
+        configuration: { theme: 'default' }
       },
       {
         id: 'actions',
