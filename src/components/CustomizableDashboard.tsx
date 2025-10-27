@@ -181,47 +181,46 @@ export const CustomizableDashboard: React.FC = () => {
   ];
 
   const handleAddWidget = (widgetType: string) => {
-    console.log('🎯 handleAddWidget called with type:', widgetType);
+    console.log('🎯 handleAddWidget START:', widgetType);
+    console.log('🔍 addWidget function type:', typeof addWidget);
+    console.log('📋 Current layout widgets:', currentLayout?.widgets.length);
     
     const widgetInfo = availableWidgets.find(w => w.type === widgetType);
     if (!widgetInfo) {
-      console.error('❌ Widget type not found in availableWidgets:', widgetType);
+      console.error('❌ Widget type not found:', widgetType);
+      toast.error('Widget-Typ nicht gefunden');
       return;
     }
 
     console.log('✅ Found widget info:', widgetInfo);
 
-    // Find a good position for the new widget
+    // Einfache Position-Berechnung - platziere am Ende
     const existingWidgets = currentLayout?.widgets || [];
-    let x = 0, y = 0;
-    
-    // Simple positioning: try to place at the end of existing widgets
+    let x = 0;
+    let y = 0;
+
     if (existingWidgets.length > 0) {
-      const lastWidget = existingWidgets[existingWidgets.length - 1];
-      
-      // Parse the widgetSize (e.g., "3x2" -> w=3, h=2) to get grid units
-      const [w, h] = (lastWidget.widgetSize || '2x2').split('x').map(Number);
-      
-      x = lastWidget.position.x + w;
-      y = lastWidget.position.y;
-      
-      // If it would go off screen (max 6 columns), start new row
-      if (x + 2 > 6) {  // 2 = default width of new widget
-        x = 0;
-        // Find the maximum Y position + height of all widgets
-        y = Math.max(...existingWidgets.map(widget => {
-          const [, widgetH] = (widget.widgetSize || '2x2').split('x').map(Number);
-          return widget.position.y + widgetH;
-        }));
-      }
+      // Finde die maximale Y-Position
+      const maxY = Math.max(
+        ...existingWidgets.map(widget => {
+          const [, h] = (widget.widgetSize || '2x2').split('x').map(Number);
+          return widget.position.y + h;
+        })
+      );
+      y = maxY;
     }
 
     console.log('📍 Calculated position:', { x, y });
-    console.log('🚀 Calling addWidget from hook...');
+    console.log('🚀 Calling addWidget with:', { type: widgetType, position: { x, y } });
     
-    addWidget(widgetType as any, { x, y });
-    setShowAddWidgetDialog(false);
-    toast.success(`${widgetInfo.title} Widget hinzugefügt`);
+    // WICHTIG: addWidget ZUERST aufrufen, DANN Dialog schließen
+    addWidget(widgetType, { x, y });
+    
+    // Dialog mit Verzögerung schließen, damit State-Update nicht unterbrochen wird
+    setTimeout(() => {
+      setShowAddWidgetDialog(false);
+      toast.success(`${widgetInfo.title} Widget hinzugefügt`);
+    }, 200);
   };
 
   useEffect(() => {

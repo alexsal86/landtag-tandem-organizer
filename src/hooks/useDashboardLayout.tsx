@@ -494,10 +494,24 @@ export function useDashboardLayout() {
 
   // Add new widget with position parameter
   const addWidget = (type: string, position?: { x: number; y: number }) => {
-    console.log('🆕 useDashboardLayout: Adding widget:', { type, position, hasCurrentLayout: !!currentLayout });
+    console.log('🆕 useDashboardLayout.addWidget CALLED:', { 
+      type, 
+      position, 
+      hasCurrentLayout: !!currentLayout,
+      currentWidgetCount: currentLayout?.widgets.length 
+    });
     
     if (!currentLayout) {
-      console.error('❌ No currentLayout available for adding widget');
+      console.error('❌ No currentLayout available');
+      toast.error('Layout nicht verfügbar');
+      return;
+    }
+
+    // Validiere Type
+    const validTypes = ['stats', 'tasks', 'schedule', 'appointmentfeedback', 'messages', 'combined-messages', 'quicknotes', 'pomodoro', 'habits', 'calllog', 'teamchat', 'quickactions', 'news', 'blackboard', 'actions'];
+    if (!validTypes.includes(type)) {
+      console.error('❌ Invalid widget type:', type);
+      toast.error(`Ungültiger Widget-Typ: ${type}`);
       return;
     }
     
