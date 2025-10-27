@@ -37,7 +37,8 @@ import {
   Clock,
   Phone,
   Users,
-  Rss
+  Rss,
+  ClipboardCheck
 } from 'lucide-react';
 
 // CSS imports for react-grid-layout
@@ -169,6 +170,7 @@ export const CustomizableDashboard: React.FC = () => {
     { type: 'stats', title: 'Statistiken', icon: CheckSquare, description: 'Zeigt wichtige Statistiken und KPIs' },
     { type: 'tasks', title: 'Aufgaben', icon: CheckSquare, description: 'Zeigt ausstehende Aufgaben' },
     { type: 'schedule', title: 'Terminplan', icon: Calendar, description: 'Zeigt anstehende Termine' },
+    { type: 'appointmentfeedback', title: 'Termin-Feedback', icon: ClipboardCheck, description: 'Schnelle Rückmeldung zu vergangenen Terminen' },
     { type: 'messages', title: 'Nachrichten', icon: MessageSquare, description: 'Nachrichtensystem' },
     { type: 'combined-messages', title: 'Chat', icon: MessageSquare, description: 'Kombinierte Nachrichten' },
     { type: 'quicknotes', title: 'Notizen', icon: FileText, description: 'Schnelle Notizen' },
