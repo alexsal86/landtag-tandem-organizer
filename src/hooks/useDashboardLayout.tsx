@@ -501,6 +501,25 @@ export function useDashboardLayout() {
       return;
     }
     
+    // Widget titles mapping für korrekte deutsche Titel
+    const widgetTitles: Record<string, string> = {
+      'stats': 'Schnellstatistiken',
+      'tasks': 'Ausstehende Aufgaben',
+      'schedule': 'Terminplan',
+      'appointmentfeedback': 'Termin-Feedback',
+      'messages': 'Nachrichten',
+      'combined-messages': 'Chat',
+      'quicknotes': 'Quick Notes',
+      'pomodoro': 'Pomodoro Timer',
+      'habits': 'Habit Tracker',
+      'calllog': 'Anrufliste',
+      'teamchat': 'Team Chat',
+      'quickactions': 'Quick Actions',
+      'news': 'News Feed',
+      'blackboard': 'Pinnwand',
+      'actions': 'Aktionen'
+    };
+    
     // Find next available position
     const existingPositions = currentLayout.widgets.map(w => ({
       x: w.position.x,
@@ -515,7 +534,7 @@ export function useDashboardLayout() {
     const newWidget: DashboardWidget = {
       id: `widget-${Date.now()}`,
       type: type as any,
-      title: type.charAt(0).toUpperCase() + type.slice(1),
+      title: widgetTitles[type] || type.charAt(0).toUpperCase() + type.slice(1),
       position: defaultPosition,
       size: { width: 400, height: 400 },
       widgetSize: '2x2'

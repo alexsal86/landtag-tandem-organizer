@@ -181,8 +181,15 @@ export const CustomizableDashboard: React.FC = () => {
   ];
 
   const handleAddWidget = (widgetType: string) => {
+    console.log('🎯 handleAddWidget called with type:', widgetType);
+    
     const widgetInfo = availableWidgets.find(w => w.type === widgetType);
-    if (!widgetInfo) return;
+    if (!widgetInfo) {
+      console.error('❌ Widget type not found in availableWidgets:', widgetType);
+      return;
+    }
+
+    console.log('✅ Found widget info:', widgetInfo);
 
     // Find a good position for the new widget
     const existingWidgets = currentLayout?.widgets || [];
@@ -201,6 +208,9 @@ export const CustomizableDashboard: React.FC = () => {
       }
     }
 
+    console.log('📍 Calculated position:', { x, y });
+    console.log('🚀 Calling addWidget from hook...');
+    
     addWidget(widgetType as any, { x, y });
     setShowAddWidgetDialog(false);
     toast.success(`${widgetInfo.title} Widget hinzugefügt`);
