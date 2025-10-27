@@ -22,7 +22,8 @@ import {
   Plus,
   Sparkles,
   Clock,
-  TrendingUp
+  TrendingUp,
+  ClipboardCheck
 } from 'lucide-react';
 import { DashboardWidget } from '@/hooks/useDashboardLayout';
 
@@ -104,6 +105,14 @@ const WIDGET_TYPES = [
     icon: Phone,
     category: 'communication',
     popular: false
+  },
+  {
+    type: 'appointmentfeedback' as const,
+    title: 'Termin-Feedback',
+    description: 'Schnelle Rückmeldung zu vergangenen Terminen',
+    icon: ClipboardCheck,
+    category: 'calendar',
+    popular: true
   },
   {
     type: 'teamchat' as const,
