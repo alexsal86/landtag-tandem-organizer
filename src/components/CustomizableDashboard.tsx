@@ -198,13 +198,21 @@ export const CustomizableDashboard: React.FC = () => {
     // Simple positioning: try to place at the end of existing widgets
     if (existingWidgets.length > 0) {
       const lastWidget = existingWidgets[existingWidgets.length - 1];
-      x = lastWidget.position.x + lastWidget.size.width;
+      
+      // Parse the widgetSize (e.g., "3x2" -> w=3, h=2) to get grid units
+      const [w, h] = (lastWidget.widgetSize || '2x2').split('x').map(Number);
+      
+      x = lastWidget.position.x + w;
       y = lastWidget.position.y;
       
-      // If it would go off screen, start new row
-      if (x + 2 > 12) {
+      // If it would go off screen (max 6 columns), start new row
+      if (x + 2 > 6) {  // 2 = default width of new widget
         x = 0;
-        y = Math.max(...existingWidgets.map(w => w.position.y + w.size.height));
+        // Find the maximum Y position + height of all widgets
+        y = Math.max(...existingWidgets.map(widget => {
+          const [, widgetH] = (widget.widgetSize || '2x2').split('x').map(Number);
+          return widget.position.y + widgetH;
+        }));
       }
     }
 
