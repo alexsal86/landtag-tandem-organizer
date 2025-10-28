@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact } from "@/lib/utils";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { TagInput } from "@/components/ui/tag-input";
@@ -60,6 +61,7 @@ export function CreateContact() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   
   const [formData, setFormData] = useState<ContactFormData>({
     contact_type: "person",
@@ -271,7 +273,24 @@ export function CreateContact() {
       return;
     }
 
+    if (!currentTenant) {
+      console.error('No tenant available');
+      toast({
+        title: "Fehler",
+        description: "Mandant nicht verfügbar. Bitte wählen Sie einen Mandanten aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
+
+    console.log('Creating contact:', {
+      user_id: user.id,
+      tenant_id: currentTenant.id,
+      contact_type: formData.contact_type,
+      name: formData.name
+    });
     
     try {
       const { error, data } = await supabase
@@ -307,8 +326,8 @@ export function CreateContact() {
           main_contact_person: formData.main_contact_person || null,
           billing_address: formData.billing_address || null,
           iban: formData.iban || null,
-          tags: formData.tags.length > 0 ? formData.tags : null,
-          tenant_id: 'default-tenant-id' // TODO: Add proper tenant context
+        tags: formData.tags.length > 0 ? formData.tags : null,
+        tenant_id: currentTenant.id
         })
         .select('id');
 
