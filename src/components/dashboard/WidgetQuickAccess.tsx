@@ -1,4 +1,4 @@
-import { Phone, Timer, FileText, Plus, X } from "lucide-react";
+import { Phone, Timer, FileText, Plus, X, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 import { CallLogWidget } from '@/components/widgets/CallLogWidget';
@@ -8,6 +8,7 @@ import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { QuickActionsWidget } from '@/components/widgets/QuickActionsWidget';
 import { ExpenseWidget } from '@/components/widgets/ExpenseWidget';
 import { WeatherWidget } from '@/components/dashboard/WeatherWidget';
+import { AppointmentFeedbackWidget } from '@/components/dashboard/AppointmentFeedbackWidget';
 import { TasksSummary } from '@/components/dashboard/TasksSummary';
 import { TodaySchedule } from '@/components/dashboard/TodaySchedule';
 import { CombinedMessagesWidget } from '@/components/CombinedMessagesWidget';
@@ -33,6 +34,7 @@ const WIDGET_REGISTRY = [
   { id: 'news', name: 'News', icon: FileText, description: 'Aktuelle Nachrichten' },
   { id: 'quickactions', name: 'Schnellaktionen', icon: Plus, description: 'Schnelle Aktionen' },
   { id: 'expenses', name: 'Ausgaben', icon: FileText, description: 'Ausgaben-Übersicht' },
+  { id: 'appointmentfeedback', name: 'Termin-Feedback', icon: ClipboardCheck, description: 'Feedback zu vergangenen Terminen' },
 ];
 
 export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickAccessProps) {
@@ -160,6 +162,7 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
         {activeWidget === 'news' && <NewsWidget />}
         {activeWidget === 'quickactions' && <QuickActionsWidget />}
         {activeWidget === 'expenses' && <ExpenseWidget />}
+        {activeWidget === 'appointmentfeedback' && <AppointmentFeedbackWidget />}
       </div>
     </div>
   );
