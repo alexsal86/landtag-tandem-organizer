@@ -576,7 +576,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
   };
 
   // For new widget types that handle their own layout, render them directly
-  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news', 'appointmentfeedback'].includes(widget.type)) {
+  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news', 'appointmentfeedback', 'stats', 'actions', 'tasks', 'schedule', 'messages', 'blackboard'].includes(widget.type)) {
     return (
       <div 
         className={`relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''} ${isEditMode ? 'cursor-move' : ''}`}
