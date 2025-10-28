@@ -40,6 +40,7 @@ export function useDashboardLayout() {
   const [layouts, setLayouts] = useState<DashboardLayout[]>([]);
   const [currentLayout, setCurrentLayout] = useState<DashboardLayout | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pendingWidgetType, setPendingWidgetType] = useState<string | null>(null);
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -538,8 +539,8 @@ export function useDashboardLayout() {
     const existingPositions = currentLayout.widgets.map(w => ({
       x: w.position.x,
       y: w.position.y,
-      w: 2, // Default width
-      h: 2  // Default height
+      w: 2,
+      h: 2
     }));
 
     const defaultPosition = position || findAvailablePosition(existingPositions);
@@ -556,20 +557,35 @@ export function useDashboardLayout() {
     
     console.log('✨ Creating new widget:', newWidget);
     
-    const updatedLayout = {
-      ...currentLayout,
-      widgets: [...currentLayout.widgets, newWidget]
-    };
+    // Verwende React's setState callback pattern um sicherzustellen, dass das Update ankommt
+    setCurrentLayout(prev => {
+      if (!prev) return prev;
+      const newLayout = {
+        ...prev,
+        widgets: [...prev.widgets, newWidget]
+      };
+      console.log('🔄 State update callback executed, new widget count:', newLayout.widgets.length);
+      return newLayout;
+    });
     
-    console.log('💾 Setting updated layout with new widget, total widgets:', updatedLayout.widgets.length);
-    setCurrentLayout(updatedLayout);
+    // Set pending widget type für Toast-Nachricht nach Render
+    setPendingWidgetType(widgetTitles[type] || type);
     
     // Auto-save after a delay to ensure state is updated
     setTimeout(() => {
       console.log('⏰ Auto-saving layout after widget addition...');
       saveCurrentLayout();
-    }, 100);
+    }, 500);
   };
+
+  // Show success toast after widget is added
+  useEffect(() => {
+    if (pendingWidgetType && currentLayout) {
+      console.log('✅ Widget successfully added to layout:', pendingWidgetType);
+      toast.success(`${pendingWidgetType} Widget hinzugefügt`);
+      setPendingWidgetType(null);
+    }
+  }, [pendingWidgetType, currentLayout]);
 
   // Remove widget
   const removeWidget = (widgetId: string) => {

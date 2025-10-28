@@ -213,14 +213,11 @@ export const CustomizableDashboard: React.FC = () => {
     console.log('📍 Calculated position:', { x, y });
     console.log('🚀 Calling addWidget with:', { type: widgetType, position: { x, y } });
     
-    // WICHTIG: addWidget ZUERST aufrufen, DANN Dialog schließen
+    // Widget hinzufügen - Toast wird im Hook gemacht
     addWidget(widgetType, { x, y });
     
-    // Dialog mit Verzögerung schließen, damit State-Update nicht unterbrochen wird
-    setTimeout(() => {
-      setShowAddWidgetDialog(false);
-      toast.success(`${widgetInfo.title} Widget hinzugefügt`);
-    }, 200);
+    // Dialog SOFORT schließen - State-Update passiert asynchron
+    setShowAddWidgetDialog(false);
   };
 
   useEffect(() => {
