@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
+import { de } from "date-fns/locale";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -15,8 +16,9 @@ function Calendar({
 }: CalendarProps) {
   return (
     <DayPicker
+      locale={de}
       showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
+      className={cn("p-3 pointer-events-auto", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
@@ -52,7 +54,12 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Chevron: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
+        Chevron: ({ orientation }) => {
+          if (orientation === 'left') {
+            return <ChevronLeft className="h-4 w-4" />;
+          }
+          return <ChevronRight className="h-4 w-4" />;
+        },
       }}
       {...props}
     />

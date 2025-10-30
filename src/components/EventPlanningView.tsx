@@ -792,61 +792,94 @@ export function EventPlanningView() {
   };
 
   const addPlanningDate = async () => {
-    if (!selectedPlanning || !selectedDate) return;
-
-    const dateTime = new Date(selectedDate);
-    const [hours, minutes] = selectedTime.split(":").map(Number);
-    dateTime.setHours(hours, minutes);
-
-    const { data, error } = await supabase
-      .from("event_planning_dates")
-      .insert({
-        event_planning_id: selectedPlanning.id,
-        date_time: dateTime.toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) {
+    if (!selectedPlanning || !selectedDate) {
       toast({
         title: "Fehler",
-        description: "Termin konnte nicht hinzugefügt werden.",
+        description: "Bitte wählen Sie ein Datum aus.",
         variant: "destructive",
       });
       return;
     }
 
-    // Create blocked appointment and store appointment_id
-    const { data: appointment, error: appointmentError } = await supabase
-      .from("appointments")
-      .insert({
-        user_id: user?.id,
-        tenant_id: currentTenant?.id || '', // Use current tenant ID
-        title: `Geplant: ${selectedPlanning.title}`,
-        start_time: dateTime.toISOString(),
-        end_time: new Date(dateTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
-        category: "blocked",
-        status: "planned",
-      })
-      .select()
-      .single();
-
-    if (!appointmentError && appointment) {
-      // Update the planning date with the appointment_id
-      await supabase
-        .from("event_planning_dates")
-        .update({ appointment_id: appointment.id })
-        .eq("id", data.id);
+    if (!selectedTime || selectedTime === "") {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie eine Uhrzeit aus.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    fetchPlanningDetails(selectedPlanning.id);
-    setSelectedDate(undefined);
-    setIsDateDialogOpen(false);
+    if (!currentTenant?.id) {
+      toast({
+        title: "Fehler",
+        description: "Kein Tenant gefunden. Bitte laden Sie die Seite neu.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    toast({
-      title: "Erfolg",
-      description: "Termin wurde hinzugefügt und im Kalender geblockt.",
-    });
+    try {
+      const dateTime = new Date(selectedDate);
+      const [hours, minutes] = selectedTime.split(":").map(Number);
+      
+      if (isNaN(hours) || isNaN(minutes)) {
+        throw new Error("Ungültiges Zeitformat");
+      }
+      
+      dateTime.setHours(hours, minutes);
+
+      const { data, error } = await supabase
+        .from("event_planning_dates")
+        .insert({
+          event_planning_id: selectedPlanning.id,
+          date_time: dateTime.toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Create blocked appointment and store appointment_id
+      const { data: appointment, error: appointmentError } = await supabase
+        .from("appointments")
+        .insert({
+          user_id: user?.id,
+          tenant_id: currentTenant.id,
+          title: `Geplant: ${selectedPlanning.title}`,
+          start_time: dateTime.toISOString(),
+          end_time: new Date(dateTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+          category: "blocked",
+          status: "planned",
+        })
+        .select()
+        .single();
+
+      if (!appointmentError && appointment) {
+        // Update the planning date with the appointment_id
+        await supabase
+          .from("event_planning_dates")
+          .update({ appointment_id: appointment.id })
+          .eq("id", data.id);
+      }
+
+      fetchPlanningDetails(selectedPlanning.id);
+
+      toast({
+        title: "Erfolg",
+        description: "Termin wurde hinzugefügt und im Kalender geblockt.",
+      });
+    } catch (error) {
+      console.error('Error in addPlanningDate:', error);
+      toast({
+        title: "Fehler",
+        description: `Termin konnte nicht hinzugefügt werden: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setSelectedDate(undefined);
+      setIsDateDialogOpen(false);
+    }
   };
 
   const confirmDate = async (dateId: string) => {
