@@ -820,14 +820,26 @@ export function EventPlanningView() {
     }
 
     try {
+      console.log('🔍 addPlanningDate - selectedDate:', selectedDate);
+      console.log('🔍 addPlanningDate - selectedTime:', selectedTime);
+      console.log('🔍 addPlanningDate - currentTenant:', currentTenant);
+      
       const dateTime = new Date(selectedDate);
+      console.log('🔍 dateTime after Date constructor:', dateTime);
+      
+      if (isNaN(dateTime.getTime())) {
+        throw new Error("Ungültiges Datum");
+      }
+      
       const [hours, minutes] = selectedTime.split(":").map(Number);
+      console.log('🔍 hours:', hours, 'minutes:', minutes);
       
       if (isNaN(hours) || isNaN(minutes)) {
         throw new Error("Ungültiges Zeitformat");
       }
       
-      dateTime.setHours(hours, minutes);
+      dateTime.setHours(hours, minutes, 0, 0);
+      console.log('🔍 Final dateTime:', dateTime.toISOString());
 
       const { data, error } = await supabase
         .from("event_planning_dates")
@@ -870,10 +882,18 @@ export function EventPlanningView() {
         description: "Termin wurde hinzugefügt und im Kalender geblockt.",
       });
     } catch (error) {
-      console.error('Error in addPlanningDate:', error);
+      console.error('❌ Error in addPlanningDate:', error);
+      console.error('❌ Error stack:', error.stack);
+      console.error('❌ Error details:', {
+        selectedDate,
+        selectedTime,
+        currentTenant,
+        selectedPlanning: selectedPlanning?.id
+      });
+      
       toast({
         title: "Fehler",
-        description: `Termin konnte nicht hinzugefügt werden: ${error.message}`,
+        description: error.message || "Termin konnte nicht hinzugefügt werden. Bitte versuchen Sie es erneut.",
         variant: "destructive",
       });
     } finally {
@@ -2787,6 +2807,8 @@ export function EventPlanningView() {
                               type="time"
                               value={selectedTime}
                               onChange={(e) => setSelectedTime(e.target.value)}
+                              placeholder="HH:MM"
+                              required
                             />
                           </div>
                         </div>
