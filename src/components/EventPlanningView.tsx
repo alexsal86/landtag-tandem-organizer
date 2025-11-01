@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -2567,33 +2567,97 @@ export function EventPlanningView() {
               Veranstaltungsplanung
             </h1>
           </div>
-          <div className="flex items-center space-x-2">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
+        <div className="flex items-center space-x-4">
+          {/* Mitarbeiter Avatar-Kreise */}
+          {collaborators.length > 0 && (
+            <div className="flex -space-x-2">
+              {collaborators.slice(0, 5).map((collab) => (
+                <Avatar 
+                  key={collab.id} 
+                  className="h-8 w-8 border-2 border-background cursor-pointer hover:z-10 transition-transform hover:scale-110" 
+                  title={`${collab.profiles?.display_name || 'Unbenannt'} - ${collab.can_edit ? 'Bearbeiten' : 'Ansehen'}`}
+                >
+                  <AvatarImage src={collab.profiles?.avatar_url} />
+                  <AvatarFallback>
+                    {collab.profiles?.display_name?.charAt(0) || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+              {collaborators.length > 5 && (
+                <Avatar className="h-8 w-8 border-2 border-background">
+                  <AvatarFallback>+{collaborators.length - 5}</AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+          )}
+
+          {/* Plus-Button für Mitarbeiter-Dialog */}
+          <Dialog open={isCollaboratorDialogOpen} onOpenChange={setIsCollaboratorDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                Mitarbeiter
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Mitarbeiter hinzufügen</DialogTitle>
+                <DialogDescription>
+                  Wählen Sie Mitarbeiter aus der Liste aus.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                {allProfiles
+                  .filter(profile => !collaborators.some(c => c.user_id === profile.user_id))
+                  .map((profile) => (
+                    <div key={profile.user_id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                      <span>{profile.display_name || 'Unbenannt'}</span>
+                      <div className="space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addCollaborator(profile.user_id, false)}
+                        >
+                          Nur ansehen
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => addCollaborator(profile.user_id, true)}
+                        >
+                          Bearbeiten
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Löschen-Button */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Löschen
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Planung löschen</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Möchten Sie diese Planung wirklich löschen? Diese Aktion kann
+                  nicht rückgängig gemacht werden.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deletePlanning(selectedPlanning!.id)}>
                   Löschen
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Planung löschen</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Sind Sie sicher, dass Sie diese Planung löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deletePlanning(selectedPlanning.id)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Löschen
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
