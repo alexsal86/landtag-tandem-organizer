@@ -2660,7 +2660,7 @@ export function EventPlanningView() {
         </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
           {/* Grunddaten */}
           <Card className="bg-card shadow-card border-border">
             <CardHeader>
@@ -3382,7 +3382,7 @@ export function EventPlanningView() {
           </Card>
 
           {/* Checkliste */}
-          <Card className="lg:col-span-2 bg-card shadow-card border-border">
+          <Card className="lg:col-span-2 xl:col-span-4 bg-card shadow-card border-border">
             <CardHeader>
               <CardTitle>Checkliste</CardTitle>
             </CardHeader>
