@@ -422,9 +422,17 @@ export function EventPlanningView() {
   };
 
   const fetchAllProfiles = async () => {
+    if (!currentTenant) return;
+    
     const { data, error } = await supabase
       .from("profiles")
-      .select("user_id, display_name, avatar_url");
+      .select(`
+        user_id, 
+        display_name, 
+        avatar_url,
+        tenant_members!inner(tenant_id)
+      `)
+      .eq('tenant_members.tenant_id', currentTenant.id);
 
     if (error) {
       console.error("Error fetching profiles:", error);
@@ -2619,7 +2627,10 @@ export function EventPlanningView() {
               </DialogHeader>
               <div className="space-y-2">
                 {allProfiles
-                  .filter(profile => !collaborators.some(c => c.user_id === profile.user_id))
+                  .filter(profile => 
+                    profile.user_id !== selectedPlanning?.user_id && 
+                    !collaborators.some(c => c.user_id === profile.user_id)
+                  )
                   .map((profile) => (
                     <div key={profile.user_id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                       <span>{profile.display_name || 'Unbenannt'}</span>
