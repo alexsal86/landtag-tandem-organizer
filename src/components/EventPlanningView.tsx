@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -2572,16 +2572,27 @@ export function EventPlanningView() {
           {collaborators.length > 0 && (
             <div className="flex -space-x-2">
               {collaborators.slice(0, 5).map((collab) => (
-                <Avatar 
-                  key={collab.id} 
-                  className="h-8 w-8 border-2 border-background cursor-pointer hover:z-10 transition-transform hover:scale-110" 
-                  title={`${collab.profiles?.display_name || 'Unbenannt'} - ${collab.can_edit ? 'Bearbeiten' : 'Ansehen'}`}
-                >
-                  <AvatarImage src={collab.profiles?.avatar_url} />
-                  <AvatarFallback>
-                    {collab.profiles?.display_name?.charAt(0) || 'U'}
-                  </AvatarFallback>
-                </Avatar>
+                <div key={collab.id} className="relative">
+                  <Avatar 
+                    className={cn(
+                      "h-8 w-8 border-2 cursor-pointer hover:z-10 transition-transform hover:scale-110",
+                      collab.can_edit 
+                        ? "border-primary ring-2 ring-primary/20" 
+                        : "border-muted-foreground/30 opacity-60"
+                    )}
+                    title={`${collab.profiles?.display_name || 'Unbenannt'} - ${collab.can_edit ? 'Bearbeiten' : 'Nur ansehen'}`}
+                  >
+                    <AvatarImage src={collab.profiles?.avatar_url} />
+                    <AvatarFallback className={collab.can_edit ? "bg-primary/10" : "bg-muted"}>
+                      {collab.profiles?.display_name?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!collab.can_edit && (
+                    <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
+                      <Eye className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
               ))}
               {collaborators.length > 5 && (
                 <Avatar className="h-8 w-8 border-2 border-background">
