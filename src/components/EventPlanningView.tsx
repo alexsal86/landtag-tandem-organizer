@@ -2660,7 +2660,7 @@ export function EventPlanningView() {
         </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-6 lg:grid-cols-2">
           {/* Grunddaten */}
           <Card className="bg-card shadow-card border-border">
             <CardHeader>
@@ -2930,9 +2930,10 @@ export function EventPlanningView() {
             </CardContent>
           </Card>
 
-
-          {/* Ansprechpersonen */}
-          <Card className="bg-card shadow-card border-border">
+          {/* Rechte Spalte mit Cards in Grid */}
+          <div className="space-y-6">
+            {/* Ansprechpersonen */}
+            <Card className="bg-card shadow-card border-border">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 Ansprechpersonen
@@ -3380,9 +3381,10 @@ export function EventPlanningView() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
           {/* Checkliste */}
-          <Card className="lg:col-span-2 xl:col-span-4 bg-card shadow-card border-border">
+          <Card className="lg:col-span-2 bg-card shadow-card border-border">
             <CardHeader>
               <CardTitle>Checkliste</CardTitle>
             </CardHeader>
