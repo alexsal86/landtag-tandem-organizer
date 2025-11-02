@@ -430,9 +430,10 @@ export function EventPlanningView() {
         user_id, 
         display_name, 
         avatar_url,
-        tenant_members!inner(tenant_id)
+        user_tenant_memberships!inner(tenant_id, is_active)
       `)
-      .eq('tenant_members.tenant_id', currentTenant.id);
+      .eq('user_tenant_memberships.tenant_id', currentTenant.id)
+      .eq('user_tenant_memberships.is_active', true);
 
     if (error) {
       console.error("Error fetching profiles:", error);
