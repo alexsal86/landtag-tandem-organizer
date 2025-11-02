@@ -2875,16 +2875,18 @@ export function EventPlanningView() {
                               </PopoverContent>
                             </Popover>
                           </div>
-                          <div>
+                          <div className="space-y-2">
                             <Label htmlFor="time">Uhrzeit</Label>
-                            <Input
-                              id="time"
-                              type="time"
-                              value={selectedTime}
-                              onChange={(e) => setSelectedTime(e.target.value)}
-                              placeholder="HH:MM"
-                              required
-                            />
+                            <div className="relative pointer-events-auto">
+                              <Input
+                                id="time"
+                                type="time"
+                                value={selectedTime}
+                                onChange={(e) => setSelectedTime(e.target.value)}
+                                className="pointer-events-auto w-full"
+                                required
+                              />
+                            </div>
                           </div>
                         </div>
                         <DialogFooter>
