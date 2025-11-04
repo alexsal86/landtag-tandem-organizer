@@ -147,22 +147,27 @@ export const MatrixMorningSettings: React.FC = () => {
           />
         </div>
 
-        {/* Time picker */}
+        {/* Time picker - only full hours */}
         <div className="space-y-2">
           <Label htmlFor="send-time" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            Versandzeit
+            Versandzeit (volle Stunde)
           </Label>
-          <Input
+          <select
             id="send-time"
-            type="time"
             value={settings.send_time}
             onChange={(e) => updateSetting('send_time', e.target.value)}
             disabled={loading || !settings.enabled}
-            className="max-w-[200px]"
-          />
+            className="flex h-10 w-full max-w-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 5).map(hour => (
+              <option key={hour} value={`${hour.toString().padStart(2, '0')}:00`}>
+                {hour.toString().padStart(2, '0')}:00 Uhr
+              </option>
+            ))}
+          </select>
           <p className="text-xs text-muted-foreground">
-            Wählen Sie die Uhrzeit für Ihren täglichen Morgengruß
+            Der Morgengruß wird zur vollen Stunde versendet
           </p>
         </div>
 
