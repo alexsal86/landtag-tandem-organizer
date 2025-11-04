@@ -39,13 +39,15 @@ export const useAppointmentFeedback = () => {
   const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
 
-  // Lädt Termine mit Feedback
+  // Lädt Termine mit Feedback (letzte 7 Tage)
   const { data: appointments, isLoading, refetch } = useQuery({
     queryKey: ['appointment-feedback', user?.id, currentTenant?.id],
     queryFn: async () => {
       if (!user?.id || !currentTenant?.id) return [];
 
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
       const now = new Date().toISOString();
       
       const { data, error } = await supabase
@@ -70,7 +72,7 @@ export const useAppointmentFeedback = () => {
         `)
         .eq('user_id', user.id)
         .eq('tenant_id', currentTenant.id)
-        .gte('start_time', `${today}T00:00:00`)
+        .gte('start_time', `${sevenDaysAgoStr}T00:00:00`)
         .lte('end_time', now)
         .order('start_time', { ascending: false });
 

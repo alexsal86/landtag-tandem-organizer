@@ -120,3 +120,6 @@ verify_jwt = true
 
 [functions.batch-geocode-contacts]
 verify_jwt = true
+
+[functions.create-daily-appointment-feedback]
+verify_jwt = false
