@@ -7,13 +7,15 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Settings, X } from 'lucide-react';
 import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
+import { useAppointmentCategories } from '@/hooks/useAppointmentCategories';
 
 export const AppointmentFeedbackSettings = () => {
   const { settings, updateSettings } = useAppointmentFeedback();
+  const { data: categories } = useAppointmentCategories();
   const [isOpen, setIsOpen] = useState(false);
   const [reminderTime, setReminderTime] = useState(settings?.reminder_start_time || '17:00:00');
   const [priorityCategories, setPriorityCategories] = useState<string[]>(
-    settings?.priority_categories || ['extern', 'wichtig']
+    settings?.priority_categories || []
   );
   const [showAllAppointments, setShowAllAppointments] = useState(
     settings?.show_all_appointments ?? true
@@ -21,15 +23,6 @@ export const AppointmentFeedbackSettings = () => {
   const [autoSkipInternal, setAutoSkipInternal] = useState(
     settings?.auto_skip_internal ?? false
   );
-
-  const availableCategories = [
-    'extern',
-    'wichtig',
-    'bürger',
-    'fraktion',
-    'intern',
-    'privat'
-  ];
 
   const toggleCategory = (category: string) => {
     if (priorityCategories.includes(category)) {
@@ -83,15 +76,20 @@ export const AppointmentFeedbackSettings = () => {
               Diese Kategorien werden zuerst angezeigt
             </p>
             <div className="flex flex-wrap gap-2">
-              {availableCategories.map((category) => (
+              {categories?.map((category) => (
                 <Badge
-                  key={category}
-                  variant={priorityCategories.includes(category) ? 'default' : 'outline'}
+                  key={category.id}
+                  variant={priorityCategories.includes(category.name) ? 'default' : 'outline'}
                   className="cursor-pointer hover:scale-105 transition-transform"
-                  onClick={() => toggleCategory(category)}
+                  onClick={() => toggleCategory(category.name)}
+                  style={{
+                    backgroundColor: priorityCategories.includes(category.name) ? category.color : undefined,
+                    borderColor: category.color,
+                    color: priorityCategories.includes(category.name) ? '#fff' : category.color
+                  }}
                 >
-                  {category}
-                  {priorityCategories.includes(category) && (
+                  {category.label}
+                  {priorityCategories.includes(category.name) && (
                     <X className="w-3 h-3 ml-1" />
                   )}
                 </Badge>

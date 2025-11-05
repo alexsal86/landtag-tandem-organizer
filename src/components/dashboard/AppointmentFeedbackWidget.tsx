@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
+import { useAppointmentCategories } from '@/hooks/useAppointmentCategories';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,6 +41,7 @@ export const AppointmentFeedbackWidget = ({
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { appointments, settings, updateFeedback, refetch } = useAppointmentFeedback();
+  const { data: categories } = useAppointmentCategories();
   
   const [selectedAppointment, setSelectedAppointment] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -258,15 +260,17 @@ export const AppointmentFeedbackWidget = ({
     }
   };
 
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      'extern': 'bg-red-500/10 text-red-500',
-      'wichtig': 'bg-orange-500/10 text-orange-500',
-      'bürger': 'bg-blue-500/10 text-blue-500',
-      'fraktion': 'bg-purple-500/10 text-purple-500',
-      'intern': 'bg-gray-500/10 text-gray-500'
-    };
-    return colors[category] || 'bg-gray-500/10 text-gray-500';
+  const getCategoryColor = (categoryName: string) => {
+    const category = categories?.find(c => c.name === categoryName);
+    if (!category?.color) return 'bg-muted/50 text-muted-foreground';
+    
+    // Convert hex to HSL for consistent theming
+    return `text-[${category.color}]`;
+  };
+
+  const getCategoryLabel = (categoryName: string) => {
+    const category = categories?.find(c => c.name === categoryName);
+    return category?.label || categoryName;
   };
 
   if (sortedAppointments.length === 0) {
@@ -292,16 +296,16 @@ export const AppointmentFeedbackWidget = ({
   }
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col relative">
+      {shouldShowReminder && (
+        <div className="absolute -top-2 -right-2 z-10 w-6 h-6 bg-destructive rounded-full flex items-center justify-center animate-pulse shadow-lg">
+          <HelpCircle className="w-4 h-4 text-destructive-foreground" />
+        </div>
+      )}
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 relative">
+        <CardTitle className="flex items-center gap-2">
           <CheckCircle2 className="w-5 h-5" />
           Termin-Feedback
-          {shouldShowReminder && (
-            <div className="absolute -top-1 -right-1 w-5 h-5 bg-destructive rounded-full flex items-center justify-center animate-pulse">
-              <HelpCircle className="w-3 h-3 text-destructive-foreground" />
-            </div>
-          )}
           <div className="ml-auto">
             <AppointmentFeedbackSettings />
           </div>
@@ -342,8 +346,16 @@ export const AppointmentFeedbackWidget = ({
                         )}
                       </div>
                     </div>
-                    <Badge variant="secondary" className={`${getCategoryColor(appointment.category)} text-xs`}>
-                      {appointment.category}
+                    <Badge 
+                      variant="secondary" 
+                      className="text-xs"
+                      style={{ 
+                        backgroundColor: categories?.find(c => c.name === appointment.category)?.color ? 
+                          `${categories.find(c => c.name === appointment.category)?.color}20` : undefined,
+                        color: categories?.find(c => c.name === appointment.category)?.color || undefined
+                      }}
+                    >
+                      {getCategoryLabel(appointment.category)}
                     </Badge>
                   </div>
 
