@@ -157,7 +157,7 @@ export const MatrixMorningSettings: React.FC = () => {
             id="send-time"
             value={settings.send_time}
             onChange={(e) => updateSetting('send_time', e.target.value)}
-            disabled={loading || !settings.enabled}
+            disabled={loading}
             className="flex h-10 w-full max-w-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {Array.from({ length: 12 }, (_, i) => i + 5).map(hour => (
@@ -183,7 +183,7 @@ export const MatrixMorningSettings: React.FC = () => {
             <Switch
               checked={settings.include_greeting}
               onCheckedChange={(checked) => updateSetting('include_greeting', checked)}
-              disabled={loading || !settings.enabled}
+              disabled={loading}
             />
           </div>
 
@@ -195,7 +195,7 @@ export const MatrixMorningSettings: React.FC = () => {
             <Switch
               checked={settings.include_weather}
               onCheckedChange={(checked) => updateSetting('include_weather', checked)}
-              disabled={loading || !settings.enabled}
+              disabled={loading}
             />
           </div>
 
@@ -207,7 +207,7 @@ export const MatrixMorningSettings: React.FC = () => {
             <Switch
               checked={settings.include_appointments}
               onCheckedChange={(checked) => updateSetting('include_appointments', checked)}
-              disabled={loading || !settings.enabled}
+              disabled={loading}
             />
           </div>
         </div>
