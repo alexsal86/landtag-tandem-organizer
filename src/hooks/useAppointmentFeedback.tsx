@@ -21,6 +21,7 @@ export interface AppointmentWithFeedback {
     has_tasks: boolean;
     priority_score: number;
     reminder_dismissed: boolean;
+    completed_at: string | null;
   } | null;
 }
 
@@ -67,7 +68,8 @@ export const useAppointmentFeedback = () => {
             has_documents,
             has_tasks,
             priority_score,
-            reminder_dismissed
+            reminder_dismissed,
+            completed_at
           )
         `)
         .eq('user_id', user.id)

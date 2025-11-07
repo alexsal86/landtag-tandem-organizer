@@ -99,11 +99,22 @@ export const AppointmentFeedbackWidget = ({
     
     return [...appointments]
       .filter(apt => {
-        // Zeige nur Termine mit Feedback oder erstelle automatisch welche
+        // Zeige nur Termine mit Feedback
         if (!apt.feedback) return false;
         
-        // Filter: Nur pending oder completed ohne dismissed
-        return apt.feedback.feedback_status !== 'skipped';
+        // Skipped-Termine ausblenden
+        if (apt.feedback.feedback_status === 'skipped') return false;
+        
+        // Completed-Termine nur 24h anzeigen
+        if (apt.feedback.feedback_status === 'completed') {
+          if (!apt.feedback.completed_at) return false;
+          const completedDate = new Date(apt.feedback.completed_at);
+          const hoursSinceCompletion = (Date.now() - completedDate.getTime()) / (1000 * 60 * 60);
+          return hoursSinceCompletion < 24;
+        }
+        
+        // Pending-Termine immer anzeigen
+        return true;
       })
       .sort((a, b) => {
         const priorityA = a.feedback?.priority_score || 0;
@@ -274,6 +285,17 @@ export const AppointmentFeedbackWidget = ({
   };
 
   if (sortedAppointments.length === 0) {
+    // Prüfe ob es completed-Termine gibt (die schon länger als 24h her sind)
+    const hasRecentlyCompleted = appointments?.some(apt => 
+      apt.feedback?.feedback_status === 'completed' &&
+      apt.feedback.completed_at &&
+      (Date.now() - new Date(apt.feedback.completed_at).getTime()) < 24 * 60 * 60 * 1000
+    );
+
+    const allAreCompleted = appointments?.every(apt => 
+      apt.feedback?.feedback_status === 'completed' || apt.feedback?.feedback_status === 'skipped'
+    );
+
     return (
       <Card className="h-full">
         <CardHeader>
@@ -288,7 +310,17 @@ export const AppointmentFeedbackWidget = ({
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <CheckCircle2 className="w-12 h-12 mb-3 opacity-50" />
-            <p className="text-sm">Keine Termine für Feedback vorhanden</p>
+            {allAreCompleted && appointments && appointments.length > 0 ? (
+              <>
+                <p className="text-sm font-medium text-foreground">Alle Feedbacks erledigt! 🎉</p>
+                <p className="text-xs mt-1">Erledigte Termine werden 24h angezeigt</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm">Keine offenen Termine für Feedback</p>
+                <p className="text-xs mt-1">Neue Termine erscheinen hier automatisch</p>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
