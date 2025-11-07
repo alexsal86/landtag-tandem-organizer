@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { NewItemIndicator } from "./NewItemIndicator";
+import { TimePickerSelect } from "@/components/ui/time-picker-select";
 
 interface EventPlanning {
   id: string;
@@ -2889,16 +2890,10 @@ export function EventPlanningView() {
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="time">Uhrzeit</Label>
-                            <div className="relative pointer-events-auto">
-                              <Input
-                                id="time"
-                                type="time"
-                                value={selectedTime}
-                                onChange={(e) => setSelectedTime(e.target.value)}
-                                className="pointer-events-auto w-full"
-                                required
-                              />
-                            </div>
+                            <TimePickerSelect
+                              value={selectedTime}
+                              onChange={setSelectedTime}
+                            />
                           </div>
                         </div>
                         <DialogFooter>

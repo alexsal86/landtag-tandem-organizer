@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatEventDisplay } from "@/lib/timeUtils";
 import { GuestManager } from "../GuestManager";
 import { useTenant } from "@/hooks/useTenant";
+import { TimePickerSelect } from "@/components/ui/time-picker-select";
 
 interface AppointmentDetailsSidebarProps {
   appointment: CalendarEvent | null;
@@ -543,18 +544,16 @@ export function AppointmentDetailsSidebar({
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs text-muted-foreground">Startzeit</label>
-                        <Input
-                          type="time"
+                        <TimePickerSelect
                           value={editData.startTime}
-                          onChange={(e) => setEditData({...editData, startTime: e.target.value})}
+                          onChange={(value) => setEditData({...editData, startTime: value})}
                         />
                       </div>
                       <div>
                         <label className="text-xs text-muted-foreground">Endzeit</label>
-                        <Input
-                          type="time"
+                        <TimePickerSelect
                           value={editData.endTime}
-                          onChange={(e) => setEditData({...editData, endTime: e.target.value})}
+                          onChange={(value) => setEditData({...editData, endTime: value})}
                         />
                       </div>
                     </div>

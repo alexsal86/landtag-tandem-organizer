@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { MeetingArchiveView } from "./MeetingArchiveView";
+import { TimePickerSelect } from "@/components/ui/time-picker-select";
 
 interface AgendaItem {
   id?: string;
@@ -1779,11 +1780,9 @@ export function MeetingsView() {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Startzeit</label>
-                  <Input
-                    type="time"
+                  <TimePickerSelect
                     value={newMeetingTime}
-                    onChange={(e) => setNewMeetingTime(e.target.value)}
-                    className="w-full"
+                    onChange={setNewMeetingTime}
                   />
                 </div>
               </div>
@@ -1852,11 +1851,9 @@ export function MeetingsView() {
                               />
                             </PopoverContent>
                           </Popover>
-                          <Input
-                            type="time"
+                          <TimePickerSelect
                             value={newMeetingTime}
-                            onChange={(e) => setNewMeetingTime(e.target.value)}
-                            className="text-sm"
+                            onChange={setNewMeetingTime}
                           />
                         </div>
                       </div>

@@ -27,6 +27,7 @@ import { RecurrenceSelector } from "@/components/ui/recurrence-selector";
 import { useDistrictDetection } from "@/hooks/useDistrictDetection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
+import { TimePickerSelect } from "@/components/ui/time-picker-select";
 
 // Helper functions for intelligent date/time defaults
 const getDefaultStartTime = () => {
@@ -508,10 +509,12 @@ export const CreateAppointmentDialog = ({ open, onOpenChange }: CreateAppointmen
                         <FormItem>
                           <FormLabel>Startzeit</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="time" 
-                              {...field}
-                              onChange={(e) => handleStartTimeChange(e.target.value)}
+                            <TimePickerSelect
+                              value={field.value}
+                              onChange={(value) => {
+                                field.onChange(value);
+                                handleStartTimeChange(value);
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -542,7 +545,10 @@ export const CreateAppointmentDialog = ({ open, onOpenChange }: CreateAppointmen
                         <FormItem>
                           <FormLabel>Endzeit</FormLabel>
                           <FormControl>
-                            <Input type="time" {...field} />
+                            <TimePickerSelect
+                              value={field.value}
+                              onChange={field.onChange}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
