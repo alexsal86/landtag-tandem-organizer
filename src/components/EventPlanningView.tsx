@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { NewItemIndicator } from "./NewItemIndicator";
-import { TimePickerSelect } from "@/components/ui/time-picker-select";
+import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 
 interface EventPlanning {
   id: string;
@@ -2890,7 +2890,7 @@ export function EventPlanningView() {
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="time">Uhrzeit</Label>
-                            <TimePickerSelect
+                            <TimePickerCombobox
                               value={selectedTime}
                               onChange={setSelectedTime}
                             />
