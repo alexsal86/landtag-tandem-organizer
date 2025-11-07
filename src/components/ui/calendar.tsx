@@ -1,6 +1,6 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker, getDefaultClassNames } from "react-day-picker";
 import { de } from "date-fns/locale";
 
 import { cn } from "@/lib/utils";
@@ -14,43 +14,63 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: CalendarProps) {
+  const defaultClassNames = getDefaultClassNames();
+
   return (
     <DayPicker
       locale={de}
       showOutsideDays={showOutsideDays}
       className={cn("p-3 pointer-events-auto", className)}
       classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex items-center justify-between pt-1 mb-2 relative",
-        caption_label: "text-sm font-medium",
-        nav: "flex items-center gap-1",
-        nav_button: cn(
+        months: cn(
+          "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+          defaultClassNames.months
+        ),
+        month: cn("space-y-4", defaultClassNames.month),
+        month_caption: cn(
+          "flex h-10 items-center justify-center relative text-sm font-medium",
+          defaultClassNames.month_caption
+        ),
+        nav: cn(
+          "absolute inset-x-0 top-0 flex items-center justify-between pointer-events-auto",
+          defaultClassNames.nav
+        ),
+        button_previous: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 pointer-events-auto",
+          defaultClassNames.button_previous
         ),
-        nav_button_previous: "absolute left-0",
-        nav_button_next: "absolute right-0",
-        table: "w-full border-collapse space-y-1",
-        head_row: "grid grid-cols-7 w-full",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] flex items-center justify-center",
-        row: "grid grid-cols-7 w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative flex items-center justify-center [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        button_next: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 pointer-events-auto",
+          defaultClassNames.button_next
+        ),
+        month_grid: cn("w-full border-collapse space-y-1", defaultClassNames.month_grid),
+        weekdays: cn("flex", defaultClassNames.weekdays),
+        weekday: cn(
+          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+          defaultClassNames.weekday
+        ),
+        week: cn("flex w-full mt-2", defaultClassNames.week),
         day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+          "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+          defaultClassNames.day
         ),
-        day_range_end: "day-range-end",
-        day_selected:
+        day_button: cn(
+          buttonVariants({ variant: "ghost" }),
+          "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
+          defaultClassNames.day_button
+        ),
+        range_end: "day-range-end",
+        selected:
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
+        today: "bg-accent text-accent-foreground",
+        outside:
           "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
+        disabled: "text-muted-foreground opacity-50",
+        range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
+        hidden: "invisible",
         ...classNames,
       }}
       components={{
