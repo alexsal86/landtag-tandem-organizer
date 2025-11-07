@@ -331,8 +331,36 @@ export const DecisionOverview = () => {
         });
       }
 
-      // Sort by creation date
-      allDecisionsList.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      // Multi-level sorting: Unanswered first, then by creation date
+      allDecisionsList.sort((a, b) => {
+        // Calculate response summaries for sorting
+        const summaryA = getResponseSummary(a.participants);
+        const summaryB = getResponseSummary(b.participants);
+        
+        // Priority 1: User is participant and hasn't responded yet
+        const aIsUnansweredParticipant = a.isParticipant && !a.hasResponded;
+        const bIsUnansweredParticipant = b.isParticipant && !b.hasResponded;
+        
+        if (aIsUnansweredParticipant && !bIsUnansweredParticipant) return -1;
+        if (!aIsUnansweredParticipant && bIsUnansweredParticipant) return 1;
+        
+        // Priority 2: Questions pending (for creators)
+        const aHasQuestions = summaryA.questionCount > 0;
+        const bHasQuestions = summaryB.questionCount > 0;
+        
+        if (aHasQuestions && !bHasQuestions) return -1;
+        if (!aHasQuestions && bHasQuestions) return 1;
+        
+        // Priority 3: Pending responses (for creators)
+        const aPending = summaryA.pending;
+        const bPending = summaryB.pending;
+        
+        if (aPending > 0 && bPending === 0) return -1;
+        if (aPending === 0 && bPending > 0) return 1;
+        
+        // Priority 4: Sort by creation date (newest first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
 
       setDecisions(allDecisionsList);
     } catch (error) {
