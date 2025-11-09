@@ -1067,22 +1067,23 @@ export function CalendarView() {
     <div className="min-h-screen bg-gradient-subtle p-6">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Terminkalender</h1>
-            <p className="text-muted-foreground">{formatDate(currentDate)}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Terminkalender</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">{formatDate(currentDate)}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button 
-              className="gap-2"
+              className="gap-2 min-h-[44px]"
               onClick={() => navigate("/calendar?action=create-appointment")}
             >
               <Plus className="h-4 w-4" />
-              Neuer Termin
+              <span className="hidden sm:inline">Neuer Termin</span>
+              <span className="sm:hidden">Neu</span>
             </Button>
             <Button
               variant="outline"
-              className="gap-2"
+              className="gap-2 min-h-[44px]"
               onClick={() => setView("polls")}
             >
               Abstimmungen
@@ -1091,12 +1092,13 @@ export function CalendarView() {
         </div>
 
         {/* View Controls */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigateDate('prev')}
+              className="min-h-[44px] min-w-[44px]"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -1104,6 +1106,7 @@ export function CalendarView() {
               variant="outline" 
               size="sm"
               onClick={() => setCurrentDate(new Date())}
+              className="min-h-[44px]"
             >
               Heute
             </Button>
@@ -1111,18 +1114,20 @@ export function CalendarView() {
               variant="outline"
               size="sm"
               onClick={() => navigateDate('next')}
+              className="min-h-[44px] min-w-[44px]"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-2">
             {["day", "week", "month", "agenda"].map((viewType) => (
               <Button
                 key={viewType}
                 variant={view === viewType ? "default" : "outline"}
                 size="sm"
                 onClick={() => setView(viewType as typeof view)}
+                className="whitespace-nowrap min-h-[44px]"
               >
                 {viewType === "day" && "Tag"}
                 {viewType === "week" && "Woche"}

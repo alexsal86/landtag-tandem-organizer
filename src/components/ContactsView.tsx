@@ -622,7 +622,7 @@ export function ContactsView() {
             variant={selectedType === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => setSelectedType("all")}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap min-h-[44px]"
           >
             Alle ({contacts.length})
           </Button>
@@ -630,7 +630,7 @@ export function ContactsView() {
             variant={selectedType === "person" ? "default" : "outline"}
             size="sm"
             onClick={() => setSelectedType("person")}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap min-h-[44px]"
           >
             Personen ({contacts.filter(c => c.contact_type === "person").length})
           </Button>
@@ -638,7 +638,7 @@ export function ContactsView() {
             variant={selectedType === "organization" ? "default" : "outline"}
             size="sm"
             onClick={() => setSelectedType("organization")}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap min-h-[44px]"
           >
             Organisationen ({contacts.filter(c => c.contact_type === "organization").length})
           </Button>
@@ -654,7 +654,7 @@ export function ContactsView() {
               variant={selectedCategory === category.value ? "default" : "outline"}
               size="sm"
               onClick={() => setSelectedCategory(category.value)}
-              className="whitespace-nowrap"
+              className="whitespace-nowrap min-h-[44px]"
             >
               {category.label} ({category.count})
             </Button>

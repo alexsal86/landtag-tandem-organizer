@@ -1497,21 +1497,22 @@ export function TasksView() {
       <div className="min-h-screen bg-gradient-subtle p-6">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-4 mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">Aufgaben</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Aufgaben</h1>
+              <p className="text-muted-foreground text-sm sm:text-base">
                 Verwalten Sie Ihre Aufgaben und To-Dos effizient
               </p>
             </div>
             <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                <Button className="gap-2" onClick={() => window.location.href = '/tasks/new'}>
+              <div className="flex flex-wrap gap-2">
+                <Button className="gap-2 min-h-[44px] flex-1 sm:flex-none" onClick={() => window.location.href = '/tasks/new'}>
                   <Plus className="h-4 w-4" />
-                  Neue Aufgabe
+                  <span className="hidden sm:inline">Neue Aufgabe</span>
+                  <span className="sm:hidden">Aufgabe</span>
                 </Button>
                 <Button 
-                  className="gap-2"
+                  className="gap-2 min-h-[44px] flex-1 sm:flex-none"
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
@@ -1522,43 +1523,46 @@ export function TasksView() {
                   }}
                 >
                   <Plus className="h-4 w-4" />
-                  Neues ToDo
+                  <span className="hidden sm:inline">Neues ToDo</span>
+                  <span className="sm:hidden">ToDo</span>
                 </Button>
               </div>
               
               {/* Secondary actions row directly under main buttons */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="gap-2"
+                  className="gap-2 min-h-[44px] flex-1 sm:flex-none"
                   onClick={() => setArchiveModalOpen(true)}
                 >
                   <Archive className="h-4 w-4" />
-                  Aufgaben-Archiv
+                  <span className="hidden sm:inline">Aufgaben-Archiv</span>
+                  <span className="sm:hidden">Archiv</span>
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="gap-2"
+                  className="gap-2 min-h-[44px] flex-1 sm:flex-none"
                   onClick={() => setSnoozeManagementOpen(true)}
                 >
                   <AlarmClock className="h-4 w-4" />
-                  Wiedervorlagen
+                  <span className="hidden sm:inline">Wiedervorlagen</span>
+                  <span className="sm:hidden">WV</span>
                 </Button>
               </div>
             </div>
           </div>
 
           {/* Advanced Filters */}
-          <div className="flex gap-4 items-center mt-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center mt-4 overflow-x-auto pb-2">
+            <div className="flex items-center gap-2 whitespace-nowrap">
               <Filter className="h-4 w-4" />
-              <span className="text-sm font-medium">Zusätzliche Filter:</span>
+              <span className="text-sm font-medium">Filter:</span>
             </div>
             
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px] min-h-[44px]">
                 <SelectValue placeholder="Kategorie" />
               </SelectTrigger>
               <SelectContent>
@@ -1571,7 +1575,7 @@ export function TasksView() {
             </Select>
 
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-auto sm:min-w-[160px] min-h-[44px]">
                 <SelectValue placeholder="Priorität" />
               </SelectTrigger>
               <SelectContent>
@@ -1616,17 +1620,18 @@ export function TasksView() {
               <TaskDecisionList />
             </CardContent>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[50px]"></TableHead>
-                    <TableHead>Aufgabe/ToDo</TableHead>
-                    <TableHead>Typ/Kategorie</TableHead>
-                    <TableHead>Fälligkeitsdatum</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]"></TableHead>
+                      <TableHead>Aufgabe/ToDo</TableHead>
+                      <TableHead>Typ/Kategorie</TableHead>
+                      <TableHead>Fälligkeitsdatum</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                   {/* Show assigned tasks */}
                   {filteredAssignedTasksWithSnooze.map((task) => {
                     const isSnoozed = taskSnoozes[task.id] && new Date(taskSnoozes[task.id]) > new Date();
@@ -1851,6 +1856,7 @@ export function TasksView() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         )}
