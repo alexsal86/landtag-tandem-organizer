@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { MobileHeader } from "@/components/MobileHeader";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -193,9 +194,12 @@ const Index = () => {
             activeSection={activeSection} 
             onSectionChange={handleSectionChange} 
           />
-          <main id="main-content" className="flex-1" tabIndex={-1}>
-            {renderActiveSection()}
-          </main>
+          <div className="flex flex-col flex-1">
+            <MobileHeader />
+            <main id="main-content" className="flex-1" tabIndex={-1}>
+              {renderActiveSection()}
+            </main>
+          </div>
           
           {/* Create Appointment Dialog */}
           <CreateAppointmentDialog
