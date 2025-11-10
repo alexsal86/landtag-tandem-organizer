@@ -2454,6 +2454,51 @@ export type Database = {
         }
         Relationships: []
       }
+      event_planning_action_logs: {
+        Row: {
+          action_id: string
+          checklist_item_id: string
+          executed_at: string
+          executed_by: string | null
+          execution_details: Json | null
+          execution_status: string
+          id: string
+        }
+        Insert: {
+          action_id: string
+          checklist_item_id: string
+          executed_at?: string
+          executed_by?: string | null
+          execution_details?: Json | null
+          execution_status: string
+          id?: string
+        }
+        Update: {
+          action_id?: string
+          checklist_item_id?: string
+          executed_at?: string
+          executed_by?: string | null
+          execution_details?: Json | null
+          execution_status?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_planning_action_logs_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "event_planning_item_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_planning_action_logs_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "event_planning_checklist_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_planning_checklist_items: {
         Row: {
           created_at: string
@@ -2663,6 +2708,44 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_planning_item_actions: {
+        Row: {
+          action_config: Json
+          action_type: string
+          checklist_item_id: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type: string
+          checklist_item_id: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          checklist_item_id?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_planning_item_actions_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "event_planning_checklist_items"
             referencedColumns: ["id"]
           },
         ]

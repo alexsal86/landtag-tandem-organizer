@@ -3,6 +3,9 @@ project_id = "wawofclbehbkebjivdte"
 [functions.fetch-karlsruhe-districts]
 verify_jwt = false
 
+[functions.send-checklist-email]
+verify_jwt = true
+
 [api]
 enabled = true
 port = 54321
