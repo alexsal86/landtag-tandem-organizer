@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List, Eye, Mail } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +29,6 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { NewItemIndicator } from "./NewItemIndicator";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
-import { ChecklistItemEmailDialog } from "@/components/event-planning/ChecklistItemEmailDialog";
 
 interface EventPlanning {
   id: string;
@@ -225,11 +224,6 @@ export function EventPlanningView() {
   const [showItemSubtasks, setShowItemSubtasks] = useState<{ [itemId: string]: boolean }>({});
   const [showItemComments, setShowItemComments] = useState<{ [itemId: string]: boolean }>({});
   const [showItemDocuments, setShowItemDocuments] = useState<{ [itemId: string]: boolean }>({});
-  
-  // Email action states
-  const [itemEmailActions, setItemEmailActions] = useState<{ [itemId: string]: any }>({});
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [selectedEmailItemId, setSelectedEmailItemId] = useState<string | null>(null);
   
   // New states for result dialog
   const [completingSubtask, setCompletingSubtask] = useState<string | null>(null);
@@ -640,11 +634,6 @@ export function EventPlanningView() {
     }));
     setChecklistItems(transformedChecklist);
     loadAllItemCounts(transformedChecklist); // Load counts after checklist is loaded
-    
-    // Fetch email actions for checklist items
-    if (transformedChecklist.length > 0) {
-      await fetchEmailActions(transformedChecklist.map((i: any) => i.id));
-    }
 
     // Fetch collaborators
     const { data: collabs } = await supabase
@@ -694,25 +683,6 @@ export function EventPlanningView() {
 
     // Fetch general documents
     await loadGeneralDocuments(planningId);
-  };
-
-  const fetchEmailActions = async (checklistItemIds: string[]) => {
-    const { data, error } = await supabase
-      .from("event_planning_item_actions")
-      .select("*")
-      .in("checklist_item_id", checklistItemIds)
-      .eq("action_type", "email");
-
-    if (error) {
-      console.error("Error fetching email actions:", error);
-      return;
-    }
-
-    const actionsMap: { [itemId: string]: any } = {};
-    data?.forEach(action => {
-      actionsMap[action.checklist_item_id] = action;
-    });
-    setItemEmailActions(actionsMap);
   };
 
   // Utility function for debouncing
@@ -1051,11 +1021,9 @@ export function EventPlanningView() {
   };
 
   const toggleChecklistItem = async (itemId: string, isCompleted: boolean) => {
-    const newCompletedState = !isCompleted;
-    
     const { error } = await supabase
       .from("event_planning_checklist_items")
-      .update({ is_completed: newCompletedState })
+      .update({ is_completed: !isCompleted })
       .eq("id", itemId);
 
     if (error) {
@@ -1069,47 +1037,9 @@ export function EventPlanningView() {
 
     setChecklistItems(items =>
       items.map(item =>
-        item.id === itemId ? { ...item, is_completed: newCompletedState } : item
+        item.id === itemId ? { ...item, is_completed: !isCompleted } : item
       )
     );
-
-    // Trigger email if item was just completed and has email action configured
-    if (newCompletedState && itemEmailActions[itemId]) {
-      const action = itemEmailActions[itemId];
-      if (action.is_enabled) {
-        await triggerChecklistEmail(itemId, action);
-      }
-    }
-  };
-
-  const triggerChecklistEmail = async (checklistItemId: string, action: any) => {
-    try {
-      const item = checklistItems.find(i => i.id === checklistItemId);
-      if (!item || !selectedPlanning) return;
-
-      const { error } = await supabase.functions.invoke('send-checklist-email', {
-        body: {
-          checklistItemId,
-          actionId: action.id,
-          eventTitle: selectedPlanning.title,
-          checklistItemTitle: item.title,
-        },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "E-Mail versendet",
-        description: `Benachrichtigung für "${item.title}" wurde verschickt.`,
-      });
-    } catch (error: any) {
-      console.error('Error sending checklist email:', error);
-      toast({
-        title: "E-Mail-Fehler",
-        description: error.message || "E-Mail konnte nicht versendet werden.",
-        variant: "destructive",
-      });
-    }
   };
 
   const updateChecklistItemTitle = async (itemId: string, title: string) => {
@@ -2635,6 +2565,1465 @@ export function EventPlanningView() {
     );
   }
 
-  // Main planning details view (too long to show here - keeping existing)
-  return null;
+  return (
+      <div className="min-h-screen bg-gradient-subtle p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" onClick={() => setSelectedPlanning(null)}>
+              ← Zurück
+            </Button>
+            <h1 className="text-3xl font-bold text-foreground">
+              Veranstaltungsplanung
+            </h1>
+          </div>
+        <div className="flex items-center space-x-4">
+          {/* Mitarbeiter Avatar-Kreise */}
+          {collaborators.length > 0 && (
+            <div className="flex -space-x-2">
+              {collaborators.slice(0, 5).map((collab) => (
+                <div key={collab.id} className="relative">
+                  <Avatar 
+                    className={cn(
+                      "h-8 w-8 border-2 cursor-pointer hover:z-10 transition-transform hover:scale-110",
+                      collab.can_edit 
+                        ? "border-primary ring-2 ring-primary/20" 
+                        : "border-muted-foreground/30 opacity-60"
+                    )}
+                    title={`${collab.profiles?.display_name || 'Unbenannt'} - ${collab.can_edit ? 'Bearbeiten' : 'Nur ansehen'}`}
+                  >
+                    <AvatarImage src={collab.profiles?.avatar_url} />
+                    <AvatarFallback className={collab.can_edit ? "bg-primary/10" : "bg-muted"}>
+                      {collab.profiles?.display_name?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!collab.can_edit && (
+                    <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
+                      <Eye className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {collaborators.length > 5 && (
+                <Avatar className="h-8 w-8 border-2 border-background">
+                  <AvatarFallback>+{collaborators.length - 5}</AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+          )}
+
+          {/* Plus-Button für Mitarbeiter-Dialog */}
+          <Dialog open={isCollaboratorDialogOpen} onOpenChange={setIsCollaboratorDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                Mitarbeiter
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Mitarbeiter hinzufügen</DialogTitle>
+                <DialogDescription>
+                  Wählen Sie Mitarbeiter aus der Liste aus.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                {allProfiles
+                  .filter(profile => 
+                    profile.user_id !== selectedPlanning?.user_id && 
+                    !collaborators.some(c => c.user_id === profile.user_id)
+                  )
+                  .map((profile) => (
+                    <div key={profile.user_id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                      <span>{profile.display_name || 'Unbenannt'}</span>
+                      <div className="space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addCollaborator(profile.user_id, false)}
+                        >
+                          Nur ansehen
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => addCollaborator(profile.user_id, true)}
+                        >
+                          Bearbeiten
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Löschen-Button */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Löschen
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Planung löschen</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Möchten Sie diese Planung wirklich löschen? Diese Aktion kann
+                  nicht rückgängig gemacht werden.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deletePlanning(selectedPlanning!.id)}>
+                  Löschen
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Grunddaten */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle>Grunddaten</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="title">Titel der Veranstaltung</Label>
+                <div className="flex items-center space-x-2">
+                  {editingTitle ? (
+                    <Input
+                      value={tempTitle}
+                      onChange={(e) => setTempTitle(e.target.value)}
+                      onBlur={() => {
+                        updatePlanningField("title", tempTitle);
+                        setEditingTitle(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updatePlanningField("title", tempTitle);
+                          setEditingTitle(false);
+                        }
+                        if (e.key === "Escape") {
+                          setTempTitle(selectedPlanning.title);
+                          setEditingTitle(false);
+                        }
+                      }}
+                      className="flex-1"
+                      autoFocus
+                    />
+                  ) : (
+                    <Input
+                      value={selectedPlanning.title}
+                      onClick={() => {
+                        setTempTitle(selectedPlanning.title);
+                        setEditingTitle(true);
+                      }}
+                      readOnly
+                      className="flex-1 cursor-pointer"
+                    />
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTempTitle(selectedPlanning.title);
+                      setEditingTitle(true);
+                    }}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="description">Beschreibung</Label>
+                <Textarea
+                  id="description"
+                  value={selectedPlanning.description || ""}
+                  onChange={(e) => {
+                    updatePlanningField("description", e.target.value);
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = target.scrollHeight + 'px';
+                  }}
+                  placeholder="Beschreibung der Veranstaltung..."
+                  className="min-h-[80px] resize-none overflow-hidden"
+                  ref={(el) => {
+                    if (el) {
+                      el.style.height = 'auto';
+                      el.style.height = el.scrollHeight + 'px';
+                    }
+                  }}
+                />
+              </div>
+              <div>
+                <Label htmlFor="location">Ort</Label>
+                <Input
+                  id="location"
+                  value={selectedPlanning.location || ""}
+                  onChange={(e) => updatePlanningField("location", e.target.value)}
+                  placeholder="Veranstaltungsort..."
+                />
+                {!selectedPlanning.is_digital && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDigitalEvent({
+                        platform: selectedPlanning.digital_platform || "",
+                        link: selectedPlanning.digital_link || "",
+                        access_info: selectedPlanning.digital_access_info || "",
+                      });
+                      setIsDigitalDialogOpen(true);
+                    }}
+                    className="mt-2"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Digital
+                  </Button>
+                )}
+                {selectedPlanning.is_digital && (
+                  <div className="mt-2 p-2 bg-muted rounded-md">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Digital: {selectedPlanning.digital_platform}</p>
+                        {selectedPlanning.digital_link && (
+                          <p className="text-xs text-muted-foreground">{selectedPlanning.digital_link}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setDigitalEvent({
+                              platform: selectedPlanning.digital_platform || "",
+                              link: selectedPlanning.digital_link || "",
+                              access_info: selectedPlanning.digital_access_info || "",
+                            });
+                            setIsDigitalDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={removeDigitalEventSettings}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="background">Hintergründe</Label>
+                <Textarea
+                  id="background"
+                  value={selectedPlanning.background_info || ""}
+                  onChange={(e) => {
+                    updatePlanningField("background_info", e.target.value);
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = target.scrollHeight + 'px';
+                  }}
+                  placeholder="Hintergrundinformationen..."
+                  className="min-h-[80px] resize-none overflow-hidden"
+                  ref={(el) => {
+                    if (el) {
+                      el.style.height = 'auto';
+                      el.style.height = el.scrollHeight + 'px';
+                    }
+                  }}
+                />
+              </div>
+
+              <Separator className="my-4" />
+
+              {/* Termine */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Termine</Label>
+                  {!planningDates.some(d => d.is_confirmed) && (
+                    <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Termin hinzufügen
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Neuen Termin hinzufügen</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label>Datum</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !selectedDate && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {selectedDate ? format(selectedDate, "dd.MM.yyyy", { locale: de }) : "Datum wählen"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                  mode="single"
+                                  selected={selectedDate}
+                                  onSelect={setSelectedDate}
+                                  initialFocus
+                                  className="pointer-events-auto"
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="time">Uhrzeit</Label>
+                            <TimePickerCombobox
+                              value={selectedTime}
+                              onChange={setSelectedTime}
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button onClick={addPlanningDate}>Hinzufügen</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {planningDates.map((date) => (
+                    <div key={date.id}>
+                      {date.is_confirmed ? (
+                        <div className="flex items-center justify-between p-3 rounded-md border bg-primary/10 border-primary">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-4 w-4" />
+                            <input
+                              type="datetime-local"
+                              value={new Date(date.date_time).toISOString().slice(0, 16)}
+                              onChange={(e) => updateConfirmedDate(date.id, new Date(e.target.value).toISOString())}
+                              className="bg-transparent border-none outline-none font-medium"
+                            />
+                            <Badge variant="default">Bestätigt</Badge>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 rounded-md border">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-4 w-4" />
+                            <span>
+                              {format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => confirmDate(date.id)}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {planningDates.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      Noch keine Termine hinzugefügt
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Rechte Spalte mit Cards in Grid */}
+          <div className="space-y-6">
+            {/* Ansprechpersonen */}
+            <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Ansprechpersonen
+                <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ansprechperson
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Ansprechperson hinzufügen</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Aus vorhandenen Kontakten wählen</Label>
+                          <Select onValueChange={(value) => {
+                            if (value !== "none") {
+                              fillFromContact(value);
+                            }
+                          }}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Kontakt auswählen..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Manuell eingeben</SelectItem>
+                              {availableContacts.map((contact) => (
+                                <SelectItem key={contact.id} value={contact.id}>
+                                  {contact.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Aus Büro-Mitarbeitern wählen</Label>
+                          <Select onValueChange={(value) => {
+                            if (value !== "none") {
+                              fillFromProfile(value);
+                            }
+                          }}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Mitarbeiter auswählen..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Manuell eingeben</SelectItem>
+                              {allProfiles.map((profile) => (
+                                <SelectItem key={profile.user_id} value={profile.user_id}>
+                                  {profile.display_name || 'Unbenannt'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <Separator />
+                      <div>
+                        <Label htmlFor="contact-name">Name</Label>
+                        <Input
+                          id="contact-name"
+                          value={newContact.name}
+                          onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                          placeholder="Name der Ansprechperson"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-email">E-Mail</Label>
+                        <Input
+                          id="contact-email"
+                          type="email"
+                          value={newContact.email}
+                          onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                          placeholder="email@beispiel.de"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="contact-phone">Telefon</Label>
+                        <Input
+                          id="contact-phone"
+                          type="tel"
+                          value={newContact.phone}
+                          onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                          placeholder="+49 123 456789"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={addContact}>Hinzufügen</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {contacts.length > 0 ? (
+                <div className="space-y-2">
+                  {contacts.map((contact) => (
+                    <div key={contact.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div>
+                        <p className="font-medium">{contact.name}</p>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {contact.email && <p>📧 {contact.email}</p>}
+                          {contact.phone && <p>📞 {contact.phone}</p>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingContact(contact);
+                            setIsEditContactDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeContact(contact.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Noch keine Ansprechpersonen hinzugefügt</p>
+              )}
+            </CardContent>
+
+            {/* Edit Contact Dialog */}
+            <Dialog open={isEditContactDialogOpen} onOpenChange={setIsEditContactDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Ansprechperson bearbeiten</DialogTitle>
+                </DialogHeader>
+                {editingContact && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-contact-name">Name</Label>
+                      <Input
+                        id="edit-contact-name"
+                        value={editingContact.name}
+                        onChange={(e) => setEditingContact({ ...editingContact, name: e.target.value })}
+                        placeholder="Name der Ansprechperson"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-contact-email">E-Mail</Label>
+                      <Input
+                        id="edit-contact-email"
+                        type="email"
+                        value={editingContact.email || ""}
+                        onChange={(e) => setEditingContact({ ...editingContact, email: e.target.value })}
+                        placeholder="email@beispiel.de"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-contact-phone">Telefon</Label>
+                      <Input
+                        id="edit-contact-phone"
+                        type="tel"
+                        value={editingContact.phone || ""}
+                        onChange={(e) => setEditingContact({ ...editingContact, phone: e.target.value })}
+                        placeholder="+49 123 456789"
+                      />
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditContactDialogOpen(false)}>
+                    Abbrechen
+                  </Button>
+                  <Button onClick={editContact}>Speichern</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </Card>
+
+          {/* Referenten */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Referenten
+                <Dialog open={isSpeakerDialogOpen} onOpenChange={setIsSpeakerDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Referent
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Referent hinzufügen</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Aus vorhandenen Kontakten wählen</Label>
+                        <Select onValueChange={(value) => {
+                          if (value !== "none") {
+                            fillSpeakerFromContact(value);
+                          }
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Kontakt auswählen..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Manuell eingeben</SelectItem>
+                            {availableContacts.map((contact) => (
+                              <SelectItem key={contact.id} value={contact.id}>
+                                {contact.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Separator />
+                      <div>
+                        <Label htmlFor="speaker-name">Name</Label>
+                        <Input
+                          id="speaker-name"
+                          value={newSpeaker.name}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, name: e.target.value })}
+                          placeholder="Name des Referenten"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-topic">Thema</Label>
+                        <Input
+                          id="speaker-topic"
+                          value={newSpeaker.topic}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, topic: e.target.value })}
+                          placeholder="Vortragsthema"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-email">E-Mail</Label>
+                        <Input
+                          id="speaker-email"
+                          type="email"
+                          value={newSpeaker.email}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, email: e.target.value })}
+                          placeholder="email@beispiel.de"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-phone">Telefon</Label>
+                        <Input
+                          id="speaker-phone"
+                          type="tel"
+                          value={newSpeaker.phone}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, phone: e.target.value })}
+                          placeholder="+49 123 456789"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="speaker-bio">Biografie</Label>
+                        <Textarea
+                          id="speaker-bio"
+                          value={newSpeaker.bio}
+                          onChange={(e) => setNewSpeaker({ ...newSpeaker, bio: e.target.value })}
+                          placeholder="Kurze Biografie oder Qualifikation"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={addSpeaker}>Hinzufügen</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {speakers.length > 0 ? (
+                <div className="space-y-2">
+                  {speakers.map((speaker) => (
+                    <div key={speaker.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div>
+                        <p className="font-medium">{speaker.name}</p>
+                        {speaker.topic && <p className="text-sm font-medium text-primary">{speaker.topic}</p>}
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {speaker.email && <p>📧 {speaker.email}</p>}
+                          {speaker.phone && <p>📞 {speaker.phone}</p>}
+                          {speaker.bio && <p className="mt-1">{speaker.bio}</p>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingSpeaker(speaker);
+                            setIsEditSpeakerDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeSpeaker(speaker.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Noch keine Referenten hinzugefügt</p>
+              )}
+            </CardContent>
+
+            {/* Edit Speaker Dialog */}
+            <Dialog open={isEditSpeakerDialogOpen} onOpenChange={setIsEditSpeakerDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Referent bearbeiten</DialogTitle>
+                </DialogHeader>
+                {editingSpeaker && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-speaker-name">Name</Label>
+                      <Input
+                        id="edit-speaker-name"
+                        value={editingSpeaker.name}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, name: e.target.value })}
+                        placeholder="Name des Referenten"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-topic">Thema</Label>
+                      <Input
+                        id="edit-speaker-topic"
+                        value={editingSpeaker.topic || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, topic: e.target.value })}
+                        placeholder="Vortragsthema"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-email">E-Mail</Label>
+                      <Input
+                        id="edit-speaker-email"
+                        type="email"
+                        value={editingSpeaker.email || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, email: e.target.value })}
+                        placeholder="email@beispiel.de"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-phone">Telefon</Label>
+                      <Input
+                        id="edit-speaker-phone"
+                        type="tel"
+                        value={editingSpeaker.phone || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, phone: e.target.value })}
+                        placeholder="+49 123 456789"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-speaker-bio">Biografie</Label>
+                      <Textarea
+                        id="edit-speaker-bio"
+                        value={editingSpeaker.bio || ""}
+                        onChange={(e) => setEditingSpeaker({ ...editingSpeaker, bio: e.target.value })}
+                        placeholder="Kurze Biografie oder Qualifikation"
+                      />
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditSpeakerDialogOpen(false)}>
+                    Abbrechen
+                  </Button>
+                  <Button onClick={editSpeaker}>Speichern</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </Card>
+
+          {/* Dokumente - Allgemein */}
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Dokumente
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => document.getElementById('general-file-upload')?.click()}
+                  disabled={uploading}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Hochladen
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <input
+                id="general-file-upload"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => handleGeneralFileUpload(e.target.files)}
+              />
+              <div className="space-y-2">
+                {generalDocuments.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-2 border rounded">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="h-4 w-4" />
+                      <span className="text-sm">{doc.file_name}</span>
+                      {doc.file_size && (
+                        <span className="text-xs text-muted-foreground">
+                          ({(doc.file_size / 1024).toFixed(1)} KB)
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => downloadGeneralDocument(doc)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => deleteGeneralDocument(doc.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {generalDocuments.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Noch keine allgemeinen Dokumente hochgeladen
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          </div>
+
+          {/* Checkliste */}
+          <Card className="lg:col-span-2 bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle>Checkliste</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="checklist">
+                    {(provided) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className="space-y-2"
+                      >
+                        {checklistItems.map((item: any, index: number) => (
+                          <Draggable key={item.id} draggableId={item.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={cn(
+                                  "group",
+                                  snapshot.isDragging && "z-50"
+                                )}
+                              >
+                                {item.type === 'separator' ? (
+                                  <div className="flex items-center gap-2 py-3 group">
+                                    <div {...provided.dragHandleProps} className="text-muted-foreground">
+                                      <GripVertical className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex-1 border-t border-dashed border-border"></div>
+                                    <Input
+                                      value={item.title || 'Trenner'}
+                                      onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
+                                      className="text-muted-foreground italic text-sm px-2 border-none bg-transparent text-center w-32"
+                                      placeholder="Trenner-Text eingeben..."
+                                    />
+                                    <div className="flex-1 border-t border-dashed border-border"></div>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => deleteChecklistItem(item.id)}
+                                      className="text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Trenner löschen"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <div className="flex items-center space-x-2 p-3 border border-border rounded-md bg-background hover:bg-muted/50 transition-colors">
+                                      <div {...provided.dragHandleProps} className="text-muted-foreground hover:text-foreground">
+                                        <GripVertical className="h-4 w-4" />
+                                      </div>
+                                      <Checkbox
+                                        checked={item.is_completed}
+                                        onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)}
+                                      />
+                                      <Input
+                                        value={item.title}
+                                        onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)}
+                                        className={cn(
+                                          "flex-1 border-none bg-transparent focus:bg-background",
+                                          item.is_completed && "line-through text-muted-foreground"
+                                        )}
+                                      />
+                                      <div className="flex items-center space-x-1">
+                                        {/* Clickable badges to expand sections */}
+                                        {(itemSubtasks[item.id]?.length || 0) > 0 && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                            className="h-auto p-1"
+                                          >
+                                            <Badge variant="secondary" className="text-xs">
+                                              <ListTodo className="h-3 w-3 mr-1" />
+                                              {itemSubtasks[item.id].length}
+                                            </Badge>
+                                          </Button>
+                                        )}
+                                        {(itemComments[item.id]?.length || 0) > 0 && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowItemComments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                            className="h-auto p-1"
+                                          >
+                                            <Badge variant="secondary" className="text-xs">
+                                              <MessageCircle className="h-3 w-3 mr-1" />
+                                              {itemComments[item.id].length}
+                                            </Badge>
+                                          </Button>
+                                        )}
+                                        {(itemDocuments[item.id]?.length || 0) > 0 && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowItemDocuments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                            className="h-auto p-1"
+                                          >
+                                            <Badge variant="secondary" className="text-xs">
+                                              <Paperclip className="h-3 w-3 mr-1" />
+                                              {itemDocuments[item.id].length}
+                                            </Badge>
+                                          </Button>
+                                        )}
+                                        
+                                         {/* Add new subtask/comment/document buttons - always visible when there are items */}
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                           className="text-muted-foreground hover:text-foreground transition-opacity"
+                                           title="Unteraufgabe hinzufügen"
+                                         >
+                                           <ListTodo className="h-3 w-3" />
+                                         </Button>
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => setShowItemComments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                           className="text-muted-foreground hover:text-foreground transition-opacity"
+                                           title="Kommentar hinzufügen"
+                                         >
+                                           <MessageCircle className="h-3 w-3" />
+                                         </Button>
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => setShowItemDocuments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                           className="text-muted-foreground hover:text-foreground transition-opacity"
+                                           title="Dokument hinzufügen"
+                                         >
+                                          <Paperclip className="h-3 w-3" />
+                                         </Button>
+                                         <Button 
+                                           variant="ghost" 
+                                           size="sm"
+                                           onClick={() => deleteChecklistItem(item.id)}
+                                           className="text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                           title="Punkt löschen"
+                                         >
+                                           <Trash2 className="h-3 w-3" />
+                                         </Button>
+                                       </div>
+                                     </div>
+
+                                    {/* Expanded Subtasks */}
+                                    {showItemSubtasks[item.id] && (
+                                      <div className="ml-8 space-y-2 border-l-2 border-border pl-4">
+                                        <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+                                          <ListTodo className="h-4 w-4" />
+                                          Unteraufgaben
+                                        </div>
+                                         {itemSubtasks[item.id]?.map((subtask) => (
+                                           <div key={subtask.id} className="space-y-2 p-2 border border-border rounded bg-muted/30">
+                                             <div className="flex items-center space-x-2">
+                                               <Checkbox
+                                                 checked={subtask.is_completed}
+                                                 onCheckedChange={(checked) => {
+                                                   if (checked) {
+                                                     setCompletingSubtask(subtask.id);
+                                                     setCompletionResult('');
+                                                   } else {
+                                                     // When unchecking, directly update
+                                                     supabase
+                                                       .from('planning_item_subtasks')
+                                                       .update({ 
+                                                         is_completed: false,
+                                                         result_text: null,
+                                                         completed_at: null
+                                                       })
+                                                       .eq('id', subtask.id)
+                                                       .then(() => {
+                                                         loadItemSubtasks(item.id);
+                                                         loadAllItemCounts();
+                                                       });
+                                                   }
+                                                 }}
+                                               />
+                                               <Input
+                                                 value={subtask.description}
+                                                 onChange={(e) => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .update({ description: e.target.value })
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                     });
+                                                 }}
+                                                 className={cn(
+                                                   "flex-1 text-sm border-none bg-transparent focus:bg-background",
+                                                   subtask.is_completed && "line-through text-muted-foreground"
+                                                 )}
+                                               />
+                                               <Select
+                                                 value={subtask.assigned_to || 'unassigned'}
+                                                 onValueChange={(value) => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .update({ assigned_to: value === 'unassigned' ? null : value })
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                     });
+                                                 }}
+                                               >
+                                                 <SelectTrigger className="w-[140px] h-8 text-xs">
+                                                   <SelectValue placeholder="Zuweisen..." />
+                                                 </SelectTrigger>
+                                                 <SelectContent>
+                                                   <SelectItem value="unassigned">Niemand</SelectItem>
+                                                   {allProfiles.map((profile) => (
+                                                     <SelectItem key={profile.user_id} value={profile.user_id}>
+                                                       {profile.display_name || 'Unbekannt'}
+                                                     </SelectItem>
+                                                   ))}
+                                                 </SelectContent>
+                                               </Select>
+                                               <Input
+                                                 type="date"
+                                                 value={subtask.due_date ? format(new Date(subtask.due_date), "yyyy-MM-dd") : ''}
+                                                 onChange={(e) => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .update({ due_date: e.target.value || null })
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                     });
+                                                 }}
+                                                 className="w-[130px] h-8 text-xs"
+                                                 placeholder="Frist..."
+                                               />
+                                               <Button
+                                                 variant="ghost"
+                                                 size="sm"
+                                                 onClick={() => {
+                                                   supabase
+                                                     .from('planning_item_subtasks')
+                                                     .delete()
+                                                     .eq('id', subtask.id)
+                                                     .then(() => {
+                                                       loadItemSubtasks(item.id);
+                                                       loadAllItemCounts();
+                                                     });
+                                                 }}
+                                                 className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                               >
+                                                 <Trash2 className="h-3 w-3" />
+                                               </Button>
+                                             </div>
+                                             {/* Result text display */}
+                                             {subtask.result_text && (
+                                               <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
+                                                 <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
+                                                 <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
+                                                 {subtask.completed_at && (
+                                                   <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                                     Abgeschlossen: {format(new Date(subtask.completed_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                                                   </p>
+                                                 )}
+                                               </div>
+                                             )}
+                                           </div>
+                                         ))}
+                                         {/* Add new subtask form */}
+                                         <div className="space-y-2 pt-2">
+                                           <Input
+                                             placeholder="Neue Unteraufgabe..."
+                                             className="text-sm"
+                                              onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  const input = e.target as HTMLInputElement;
+                                                  if (input.value.trim() && user) {
+                                                    addItemSubtask(input.value.trim(), 'unassigned', '', item.id);
+                                                    input.value = '';
+                                                  }
+                                                }
+                                              }}
+                                           />
+                                           {/* Quick assignment dropdown */}
+                                           <div className="flex gap-2">
+                                             <Select
+                                               value=""
+                                                onValueChange={(value) => {
+                                                  const description = (document.querySelector(`input[placeholder="Neue Unteraufgabe..."]`) as HTMLInputElement)?.value;
+                                                  if (description?.trim() && user) {
+                                                    const assignedTo = value === 'unassigned' ? '' : value;
+                                                    addItemSubtask(description.trim(), assignedTo, '', item.id);
+                                                    (document.querySelector(`input[placeholder="Neue Unteraufgabe..."]`) as HTMLInputElement).value = '';
+                                                  }
+                                                }}
+                                             >
+                                               <SelectTrigger className="w-[200px] h-8 text-xs">
+                                                 <SelectValue placeholder="Schnell zuweisen..." />
+                                               </SelectTrigger>
+                                               <SelectContent>
+                                                 <SelectItem value="unassigned">Niemand</SelectItem>
+                                                 {allProfiles.map((profile) => (
+                                                   <SelectItem key={profile.user_id} value={profile.user_id}>
+                                                     {profile.display_name || 'Unbekannt'}
+                                                   </SelectItem>
+                                                 ))}
+                                               </SelectContent>
+                                             </Select>
+                                           </div>
+                                         </div>
+                                      </div>
+                                    )}
+
+                                    {/* Expanded Comments */}
+                                    {showItemComments[item.id] && (
+                                      <div className="ml-8 space-y-2 border-l-2 border-border pl-4">
+                                        <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+                                          <MessageCircle className="h-4 w-4" />
+                                          Kommentare
+                                        </div>
+                                         {itemComments[item.id]?.map((comment) => (
+                                           <div key={comment.id} className="p-2 border border-border rounded bg-muted/30">
+                                             <div className="flex items-center justify-between mb-1">
+                                               <div className="flex items-center space-x-2">
+                                                 <span className="text-xs font-medium">
+                                                   {comment.profile?.display_name || 'Unbekannt'}
+                                                 </span>
+                                                 <span className="text-xs text-muted-foreground">
+                                                   {format(new Date(comment.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                                                 </span>
+                                               </div>
+                                               {comment.user_id === user?.id && (
+                                                 <div className="flex space-x-1">
+                                                   <Button
+                                                     variant="ghost"
+                                                     size="sm"
+                                                     onClick={() => {
+                                                       setEditingComment(prev => ({ 
+                                                         ...prev, 
+                                                         [comment.id]: comment.content 
+                                                       }));
+                                                     }}
+                                                     className="h-6 w-6 p-0"
+                                                   >
+                                                     <Edit2 className="h-3 w-3" />
+                                                   </Button>
+                                                   <Button
+                                                     variant="ghost"
+                                                     size="sm"
+                                                     onClick={() => deleteItemComment(comment)}
+                                                     className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                                   >
+                                                     <Trash2 className="h-3 w-3" />
+                                                   </Button>
+                                                 </div>
+                                               )}
+                                             </div>
+                                             {editingComment[comment.id] !== undefined ? (
+                                               <div className="space-y-2">
+                                                 <Input
+                                                   value={editingComment[comment.id]}
+                                                   onChange={(e) => setEditingComment(prev => ({
+                                                     ...prev,
+                                                     [comment.id]: e.target.value
+                                                   }))}
+                                                   className="text-sm"
+                                                   onKeyPress={(e) => {
+                                                     if (e.key === 'Enter') {
+                                                       updateItemComment(comment.id, editingComment[comment.id]);
+                                                     }
+                                                     if (e.key === 'Escape') {
+                                                       setEditingComment(prev => {
+                                                         const newState = { ...prev };
+                                                         delete newState[comment.id];
+                                                         return newState;
+                                                       });
+                                                     }
+                                                   }}
+                                                 />
+                                                 <div className="flex space-x-2">
+                                                   <Button
+                                                     size="sm"
+                                                     onClick={() => updateItemComment(comment.id, editingComment[comment.id])}
+                                                     className="h-6 text-xs"
+                                                   >
+                                                     Speichern
+                                                   </Button>
+                                                   <Button
+                                                     size="sm"
+                                                     variant="outline"
+                                                     onClick={() => {
+                                                       setEditingComment(prev => {
+                                                         const newState = { ...prev };
+                                                         delete newState[comment.id];
+                                                         return newState;
+                                                       });
+                                                     }}
+                                                     className="h-6 text-xs"
+                                                   >
+                                                     Abbrechen
+                                                   </Button>
+                                                 </div>
+                                               </div>
+                                             ) : (
+                                               <p className="text-sm">{comment.content}</p>
+                                             )}
+                                           </div>
+                                         ))}
+                                        {/* Add new comment form */}
+                                        <div className="pt-2">
+                                          <Input
+                                            placeholder="Kommentar hinzufügen..."
+                                            className="text-sm"
+                                            onKeyPress={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const input = e.target as HTMLInputElement;
+                                                if (input.value.trim()) {
+                                                  addItemCommentForItem(item.id, input.value);
+                                                  input.value = '';
+                                                }
+                                              }
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Expanded Documents */}
+                                    {showItemDocuments[item.id] && (
+                                      <div className="ml-8 space-y-2 border-l-2 border-border pl-4">
+                                        <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+                                          <Paperclip className="h-4 w-4" />
+                                          Dokumente
+                                        </div>
+                                        {itemDocuments[item.id]?.map((doc) => (
+                                          <div key={doc.id} className="flex items-center justify-between p-2 border border-border rounded bg-muted/30">
+                                            <div className="flex items-center space-x-2">
+                                              <Paperclip className="h-3 w-3" />
+                                              <span className="text-sm truncate">{doc.file_name}</span>
+                                            </div>
+                                            <div className="flex space-x-1">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => downloadItemDocument(doc)}
+                                              >
+                                                <Download className="h-3 w-3" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => deleteItemDocument(doc)}
+                                                className="text-destructive hover:text-destructive"
+                                              >
+                                                <Trash2 className="h-3 w-3" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ))}
+                                        {/* Add new document form */}
+                                        <div className="pt-2">
+                                          <Input
+                                            type="file"
+                                            onChange={(e) => handleItemFileUpload(e, item.id)}
+                                            className="text-sm"
+                                            disabled={uploading}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Legacy sub-items (will be migrated to new system) */}
+                                    {item.sub_items && Array.isArray(item.sub_items) && item.sub_items.length > 0 && (
+                                      <div className="ml-12 space-y-1">
+                                        {item.sub_items.map((subItem: any, index: number) => (
+                                          <div key={index} className="flex items-center space-x-2">
+                                            <Checkbox
+                                              checked={subItem.is_completed || false}
+                                              onCheckedChange={() => toggleSubItem(item.id, index, subItem.is_completed || false)}
+                                            />
+                                            <Input
+                                              value={subItem.title || ''}
+                                              onChange={(e) => updateSubItemTitle(item.id, index, e.target.value)}
+                                              className={cn(
+                                                "flex-1 text-sm",
+                                                subItem.is_completed && "line-through text-muted-foreground"
+                                              )}
+                                              placeholder="Unterpunkt..."
+                                            />
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => removeSubItem(item.id, index)}
+                                              className="text-muted-foreground hover:text-destructive"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+                
+                <div className="flex items-center space-x-2 mt-4">
+                  <Input
+                    value={newChecklistItem}
+                    onChange={(e) => setNewChecklistItem(e.target.value)}
+                    placeholder="Neuen Punkt hinzufügen (--- für Trenner)..."
+                    onKeyPress={(e) => e.key === "Enter" && addChecklistItem()}
+                  />
+                  <Button onClick={addChecklistItem}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Result Dialog for Subtasks */}
+      <Dialog open={!!completingSubtask} onOpenChange={() => setCompletingSubtask(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unteraufgabe abschließen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Wie wurde die Unteraufgabe gelöst?</Label>
+              <Textarea
+                placeholder="Beschreiben Sie, wie die Unteraufgabe erledigt wurde..."
+                value={completionResult}
+                onChange={(e) => setCompletionResult(e.target.value)}
+                className="mt-2"
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCompletingSubtask(null);
+                  setCompletionResult('');
+                }}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onClick={() => {
+                  if (completingSubtask) {
+                    // Find the parent item for this subtask
+                    const parentItemId = Object.keys(itemSubtasks).find(itemId =>
+                      itemSubtasks[itemId].some(subtask => subtask.id === completingSubtask)
+                    );
+                    if (parentItemId) {
+                      handleSubtaskComplete(completingSubtask, true, completionResult, parentItemId);
+                      setCompletingSubtask(null);
+                      setCompletionResult('');
+                    }
+                  }
+                }}
+                disabled={!completionResult.trim()}
+              >
+                Als erledigt markieren
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Digital Event Dialog */}
+      <Dialog open={isDigitalDialogOpen} onOpenChange={setIsDigitalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Digitale Veranstaltung einrichten</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="digital-platform">Plattform</Label>
+              <Input
+                id="digital-platform"
+                value={digitalEvent.platform}
+                onChange={(e) => setDigitalEvent({ ...digitalEvent, platform: e.target.value })}
+                placeholder="z.B. Zoom, Microsoft Teams, etc."
+              />
+            </div>
+            <div>
+              <Label htmlFor="digital-link">Meeting-Link</Label>
+              <Input
+                id="digital-link"
+                value={digitalEvent.link}
+                onChange={(e) => setDigitalEvent({ ...digitalEvent, link: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="digital-access">Einwahldaten</Label>
+              <Textarea
+                id="digital-access"
+                value={digitalEvent.access_info}
+                onChange={(e) => setDigitalEvent({ ...digitalEvent, access_info: e.target.value })}
+                placeholder="Meeting-ID, Passwort, Telefonnummer etc."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={updateDigitalEventSettings}>Speichern</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
