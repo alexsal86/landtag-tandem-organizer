@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List, Eye } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List, Eye, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { NewItemIndicator } from "./NewItemIndicator";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
+import { ChecklistItemEmailDialog } from "@/components/event-planning/ChecklistItemEmailDialog";
 
 interface EventPlanning {
   id: string;
@@ -218,6 +219,9 @@ export function EventPlanningView() {
   const [newComment, setNewComment] = useState("");
   const [newSubtask, setNewSubtask] = useState({ description: '', assigned_to: 'unassigned', due_date: '' });
   const [uploading, setUploading] = useState(false);
+  const [itemEmailActions, setItemEmailActions] = useState<Record<string, any>>({});
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [selectedEmailItemId, setSelectedEmailItemId] = useState<string | null>(null);
   const [editingComment, setEditingComment] = useState<{ [commentId: string]: string }>({});
   const [editingSubtask, setEditingSubtask] = useState<{ [id: string]: Partial<PlanningSubtask> }>({});
   const [expandedItems, setExpandedItems] = useState<{ [itemId: string]: { subtasks: boolean; comments: boolean; documents: boolean } }>({});
@@ -683,6 +687,34 @@ export function EventPlanningView() {
 
     // Fetch general documents
     await loadGeneralDocuments(planningId);
+
+    // Fetch email actions
+    await fetchEmailActions(planningId);
+  };
+
+  const fetchEmailActions = async (planningId: string) => {
+    const { data: items } = await supabase
+      .from("event_planning_checklist_items")
+      .select("id")
+      .eq("event_planning_id", planningId);
+
+    if (!items) return;
+
+    const itemIds = items.map((i) => i.id);
+    
+    const { data: actions } = await supabase
+      .from("event_planning_item_actions")
+      .select("*")
+      .in("checklist_item_id", itemIds)
+      .eq("action_type", "email");
+
+    if (actions) {
+      const actionsMap: Record<string, any> = {};
+      actions.forEach((action) => {
+        actionsMap[action.checklist_item_id] = action;
+      });
+      setItemEmailActions(actionsMap);
+    }
   };
 
   // Utility function for debouncing
@@ -1035,11 +1067,43 @@ export function EventPlanningView() {
       return;
     }
 
-    setChecklistItems(items =>
-      items.map(item =>
-        item.id === itemId ? { ...item, is_completed: !isCompleted } : item
-      )
-    );
+    // Check if email automation should be triggered (when checking, not unchecking)
+    const emailAction = itemEmailActions[itemId];
+    if (!isCompleted && emailAction?.is_enabled) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          await supabase.functions.invoke("send-checklist-email", {
+            body: {
+              actionId: emailAction.id,
+              checklistItemId: itemId,
+            },
+          });
+
+          toast({
+            title: "E-Mail versendet",
+            description: "Benachrichtigung wurde automatisch versendet.",
+          });
+        }
+      } catch (emailError) {
+        console.error("Error sending email:", emailError);
+        toast({
+          title: "Warnung",
+          description: "Checklist wurde aktualisiert, aber E-Mail konnte nicht versendet werden.",
+          variant: "destructive",
+        });
+      }
+    }
+
+    if (selectedPlanning) {
+      fetchPlanningDetails(selectedPlanning.id);
+    }
+
+    toast({
+      title: "Erfolg",
+      description: "Checkliste wurde aktualisiert.",
+    });
   };
 
   const updateChecklistItemTitle = async (itemId: string, title: string) => {
@@ -3510,9 +3574,16 @@ export function EventPlanningView() {
                                               {itemDocuments[item.id].length}
                                             </Badge>
                                           </Button>
-                                        )}
-                                        
-                                         {/* Add new subtask/comment/document buttons - always visible when there are items */}
+                                         )}
+                                         {/* Email automation indicator */}
+                                         {itemEmailActions[item.id]?.is_enabled && (
+                                           <Badge variant="outline" className="text-xs flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-200">
+                                             <Mail className="h-3 w-3" />
+                                             Auto
+                                           </Badge>
+                                         )}
+                                         
+                                          {/* Add new subtask/comment/document buttons - always visible when there are items */}
                                          <Button 
                                            variant="ghost" 
                                            size="sm"
@@ -3537,10 +3608,23 @@ export function EventPlanningView() {
                                            onClick={() => setShowItemDocuments(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
                                            className="text-muted-foreground hover:text-foreground transition-opacity"
                                            title="Dokument hinzufügen"
-                                         >
-                                          <Paperclip className="h-3 w-3" />
-                                         </Button>
-                                         <Button 
+                                          >
+                                           <Paperclip className="h-3 w-3" />
+                                          </Button>
+                                          {/* Email automation button */}
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm"
+                                            onClick={() => {
+                                              setSelectedEmailItemId(item.id);
+                                              setEmailDialogOpen(true);
+                                            }}
+                                            className="text-muted-foreground hover:text-foreground transition-opacity"
+                                            title="E-Mail-Automatisierung konfigurieren"
+                                          >
+                                            <Mail className="h-3 w-3" />
+                                          </Button>
+                                          <Button
                                            variant="ghost" 
                                            size="sm"
                                            onClick={() => deleteChecklistItem(item.id)}
@@ -4024,6 +4108,23 @@ export function EventPlanningView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Email Dialog */}
+      {selectedEmailItemId && (
+        <ChecklistItemEmailDialog
+          open={emailDialogOpen}
+          onOpenChange={setEmailDialogOpen}
+          checklistItemId={selectedEmailItemId}
+          checklistItemTitle={
+            checklistItems.find((item) => item.id === selectedEmailItemId)?.title || ""
+          }
+          onSaved={() => {
+            if (selectedPlanning) {
+              fetchEmailActions(selectedPlanning.id);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
