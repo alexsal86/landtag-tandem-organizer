@@ -43,6 +43,11 @@ const getNotificationIcon = (type: string) => {
     case 'employee_meeting_action_item_overdue':
     case 'employee_meeting_scheduled':
       return Calendar;
+    case 'decision_request':
+    case 'decision_response':
+    case 'decision_completed':
+    case 'task_decision_request':
+      return MessageSquare;
     default:
       return Bell;
   }
@@ -111,6 +116,18 @@ const NotificationItem: React.FC<{
         // If there's a specific meeting_id in data, navigate to that meeting
         if (notification.data?.meeting_id) {
           path = `/employee-meeting/${notification.data.meeting_id}`;
+        }
+        break;
+      case 'decision_request':
+      case 'decision_response':
+      case 'decision_completed':
+      case 'task_decision_request':
+        // Navigate to decisions view
+        path = '/decisions';
+        // If there's a specific decision_id in data, could add detailed view later
+        if (notification.data?.decision_id) {
+          // Future enhancement: path = `/decision/${notification.data.decision_id}`;
+          path = '/decisions';
         }
         break;
       default:
