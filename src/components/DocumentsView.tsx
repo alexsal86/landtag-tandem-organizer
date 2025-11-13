@@ -45,7 +45,8 @@ import {
   RotateCcw,
   Info,
   Inbox,
-  Save
+  Save,
+  UserPlus
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -60,6 +61,7 @@ import { EmailComposer } from "./emails/EmailComposer";
 import { EmailHistory } from "./emails/EmailHistory";
 import { EmailTemplateManager } from "./emails/EmailTemplateManager";
 import { DocumentContactManager } from "./documents/DocumentContactManager";
+import { DocumentContactAddDialog } from "./documents/DocumentContactAddDialog";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 import { useStakeholderPreload } from "@/hooks/useStakeholderPreload";
 import { useDocumentContacts } from "@/hooks/useDocumentContacts";
@@ -1674,6 +1676,19 @@ export function DocumentsView() {
                             </TooltipTrigger>
                             <TooltipContent>Verschieben</TooltipContent>
                           </Tooltip>
+                          <DocumentContactAddDialog 
+                            documentId={document.id}
+                            trigger={
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <UserPlus className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Kontakt hinzufügen</TooltipContent>
+                              </Tooltip>
+                            }
+                          />
                         </div>
                         <Tooltip>
                           <TooltipTrigger asChild>
