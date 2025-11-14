@@ -102,6 +102,22 @@ function parseContentToParagraphs(content: string): Paragraph[] {
 
 export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; filename: string } | null> {
   try {
+    // Default layout settings
+    const DEFAULT_LAYOUT = {
+      pageWidth: 210,
+      pageHeight: 297,
+      margins: { left: 25, right: 20, top: 45, bottom: 25 },
+      header: { height: 45, marginBottom: 8.46 },
+      addressField: { top: 46, left: 25, width: 85, height: 40 },
+      infoBlock: { top: 50, left: 125, width: 75, height: 40 },
+      subject: { top: 101.46, marginBottom: 8 },
+      content: { top: 109.46, maxHeight: 161, lineHeight: 4.5 },
+      footer: { top: 272 },
+      attachments: { top: 230 }
+    };
+    
+    let layoutSettings = DEFAULT_LAYOUT;
+    
     // Fetch template data
     let template: LetterTemplate | null = null;
     if (letter.template_id) {
@@ -110,7 +126,14 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
         .select('*')
         .eq('id', letter.template_id)
         .single();
-      template = templateData;
+      
+      if (templateData) {
+        template = templateData;
+        // Parse layout_settings from jsonb
+        if (templateData.layout_settings && typeof templateData.layout_settings === 'object') {
+          layoutSettings = templateData.layout_settings as typeof DEFAULT_LAYOUT;
+        }
+      }
     }
 
     // Fetch sender information
@@ -298,16 +321,23 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
       );
     }
 
+    // Helper function to convert mm to twip (1mm = ~56.7 twip)
+    const convertMillimetersToTwip = (mm: number): number => Math.round(mm * 56.692913386);
+
     // Create the document
     const doc = new Document({
       sections: [{
         properties: {
           page: {
+            size: {
+              width: convertMillimetersToTwip(layoutSettings.pageWidth),
+              height: convertMillimetersToTwip(layoutSettings.pageHeight),
+            },
             margin: {
-              top: 1134, // ~2cm
-              right: 1134, // ~2cm  
-              bottom: 1134, // ~2cm
-              left: 1134, // ~2cm
+              top: convertMillimetersToTwip(layoutSettings.margins.top),
+              right: convertMillimetersToTwip(layoutSettings.margins.right),
+              bottom: convertMillimetersToTwip(layoutSettings.margins.bottom),
+              left: convertMillimetersToTwip(layoutSettings.margins.left),
             }
           }
         },

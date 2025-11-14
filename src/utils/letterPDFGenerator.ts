@@ -26,10 +26,25 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     // Create LetterPDFExport component's PDF generation logic inline
     // This ensures 100% identical PDFs by using the EXACT same code
     
+    // Default layout settings
+    const DEFAULT_LAYOUT = {
+      pageWidth: 210,
+      pageHeight: 297,
+      margins: { left: 25, right: 20, top: 45, bottom: 25 },
+      header: { height: 45, marginBottom: 8.46 },
+      addressField: { top: 46, left: 25, width: 85, height: 40 },
+      infoBlock: { top: 50, left: 125, width: 75, height: 40 },
+      subject: { top: 101.46, marginBottom: 8 },
+      content: { top: 109.46, maxHeight: 161, lineHeight: 4.5 },
+      footer: { top: 272 },
+      attachments: { top: 230 }
+    };
+    
     let template: any = null;
     let senderInfo: any = null;
     let informationBlock: any = null;
     let attachments: any[] = [];
+    let layoutSettings = DEFAULT_LAYOUT;
 
     // Fetch template
     if (letter.template_id) {
@@ -39,8 +54,12 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         .eq('id', letter.template_id)
         .single();
 
-      if (!templateError) {
+      if (!templateError && templateData) {
         template = templateData;
+        // Parse layout_settings from jsonb
+        if (templateData.layout_settings && typeof templateData.layout_settings === 'object') {
+          layoutSettings = templateData.layout_settings as typeof DEFAULT_LAYOUT;
+        }
       }
     }
 
@@ -141,20 +160,20 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     // Create PDF with EXACT same logic as LetterPDFExport exportWithDIN5008Features function
     const pdf = new jsPDF('p', 'mm', 'a4');
     
-    // DIN 5008 measurements in mm
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const leftMargin = 25;
-    const rightMargin = 20;
-    const headerHeight = 45;
-    const addressFieldTop = 46;
-    const addressFieldLeft = leftMargin;
-    const addressFieldWidth = 85;
-    const addressFieldHeight = 40;
-    const infoBlockTop = 50;
-    const infoBlockLeft = 125;
-    const infoBlockWidth = 75;
-    const contentTop = 98.46;
+    // DIN 5008 measurements in mm (from layout settings)
+    const pageWidth = layoutSettings.pageWidth;
+    const pageHeight = layoutSettings.pageHeight;
+    const leftMargin = layoutSettings.margins.left;
+    const rightMargin = layoutSettings.margins.right;
+    const headerHeight = layoutSettings.header.height;
+    const addressFieldTop = layoutSettings.addressField.top;
+    const addressFieldLeft = layoutSettings.addressField.left;
+    const addressFieldWidth = layoutSettings.addressField.width;
+    const addressFieldHeight = layoutSettings.addressField.height;
+    const infoBlockTop = layoutSettings.infoBlock.top;
+    const infoBlockLeft = layoutSettings.infoBlock.left;
+    const infoBlockWidth = layoutSettings.infoBlock.width;
+    const contentTop = layoutSettings.content.top;
     
     // Debug helper function for consistent styling across all pages
     const drawDebugGuides = (pageNum: number) => {

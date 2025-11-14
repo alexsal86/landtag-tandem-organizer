@@ -3883,6 +3883,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_default: boolean | null
+          layout_settings: Json | null
           letterhead_css: string
           letterhead_html: string
           name: string
@@ -3903,6 +3904,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
+          layout_settings?: Json | null
           letterhead_css?: string
           letterhead_html?: string
           name: string
@@ -3923,6 +3925,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
+          layout_settings?: Json | null
           letterhead_css?: string
           letterhead_html?: string
           name?: string

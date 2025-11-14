@@ -33,10 +33,17 @@ interface HeaderTemplate {
 export class HeaderRenderer {
   private pdf: jsPDF;
   private leftMargin: number;
+  private layoutSettings: any;
 
-  constructor(pdf: jsPDF, leftMargin: number = 25) {
+  constructor(pdf: jsPDF, leftMargin: number = 25, layoutSettings?: any) {
     this.pdf = pdf;
     this.leftMargin = leftMargin;
+    this.layoutSettings = layoutSettings || {
+      pageWidth: 210,
+      pageHeight: 297,
+      margins: { left: 25, right: 20, top: 45, bottom: 25 },
+      header: { height: 45, marginBottom: 8.46 },
+    };
   }
 
   async renderHeader(template: HeaderTemplate | null): Promise<void> {

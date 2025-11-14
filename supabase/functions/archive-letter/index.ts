@@ -301,23 +301,39 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
   const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
+  // Load layout settings from template or use defaults
+  const DEFAULT_LAYOUT = {
+    pageWidth: 210,
+    pageHeight: 297,
+    margins: { left: 25, right: 20, top: 45, bottom: 25 },
+    header: { height: 45, marginBottom: 8.46 },
+    addressField: { top: 46, left: 25, width: 85, height: 40 },
+    infoBlock: { top: 50, left: 125, width: 75, height: 40 },
+    subject: { top: 101.46, marginBottom: 8 },
+    content: { top: 109.46, maxHeight: 161, lineHeight: 4.5 },
+    footer: { top: 272 },
+    attachments: { top: 230 }
+  };
+  
+  const layout = template?.layout_settings || DEFAULT_LAYOUT;
+  
   // DIN 5008 measurements (converting mm to points: 1mm = 2.834645669291339 points)
   const mmToPoints = (mm: number) => mm * 2.834645669291339;
   
-  const pageWidth = mmToPoints(210);  // A4 width
-  const pageHeight = mmToPoints(297); // A4 height
-  const leftMargin = mmToPoints(25);
-  const rightMargin = mmToPoints(20);
-  const headerHeight = mmToPoints(45);
-  const addressFieldTop = mmToPoints(46);
-  const addressFieldLeft = leftMargin;
-  const addressFieldWidth = mmToPoints(85);
-  const addressFieldHeight = mmToPoints(40);
-  const infoBlockTop = mmToPoints(50);
-  const infoBlockLeft = mmToPoints(125);
-  const infoBlockWidth = mmToPoints(75);
-  const contentTop = mmToPoints(98.46);
-  const lineHeight = mmToPoints(4.5);
+  const pageWidth = mmToPoints(layout.pageWidth);
+  const pageHeight = mmToPoints(layout.pageHeight);
+  const leftMargin = mmToPoints(layout.margins.left);
+  const rightMargin = mmToPoints(layout.margins.right);
+  const headerHeight = mmToPoints(layout.header.height);
+  const addressFieldTop = mmToPoints(layout.addressField.top);
+  const addressFieldLeft = mmToPoints(layout.addressField.left);
+  const addressFieldWidth = mmToPoints(layout.addressField.width);
+  const addressFieldHeight = mmToPoints(layout.addressField.height);
+  const infoBlockTop = mmToPoints(layout.infoBlock.top);
+  const infoBlockLeft = mmToPoints(layout.infoBlock.left);
+  const infoBlockWidth = mmToPoints(layout.infoBlock.width);
+  const contentTop = mmToPoints(layout.content.top);
+  const lineHeight = mmToPoints(layout.content.lineHeight);
   
   // Add first page
   let page = pdfDoc.addPage([pageWidth, pageHeight]);
