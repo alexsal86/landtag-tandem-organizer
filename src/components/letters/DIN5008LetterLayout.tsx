@@ -14,6 +14,7 @@ interface DIN5008LetterLayoutProps {
   className?: string;
   debugMode?: boolean;
   showPagination?: boolean;
+  layoutSettings?: any;
 }
 
 export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
@@ -28,8 +29,24 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   attachments,
   className = "",
   debugMode = false,
-  showPagination = false
+  showPagination = false,
+  layoutSettings,
 }) => {
+  // Load layout settings from prop, template, or use defaults
+  const DEFAULT_LAYOUT = {
+    pageWidth: 210,
+    pageHeight: 297,
+    margins: { left: 25, right: 20, top: 45, bottom: 25 },
+    header: { height: 45, marginBottom: 8.46 },
+    addressField: { top: 46, left: 25, width: 85, height: 40 },
+    infoBlock: { top: 50, left: 125, width: 75, height: 40 },
+    subject: { top: 101.46, marginBottom: 8 },
+    content: { top: 109.46, maxHeight: 161, lineHeight: 4.5 },
+    footer: { top: 272 },
+    attachments: { top: 230 }
+  };
+  
+  const layout = layoutSettings || template?.layout_settings || DEFAULT_LAYOUT;
   const formatAddress = (address: any) => {
     if (!address) return '';
     

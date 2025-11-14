@@ -33,6 +33,7 @@ interface LetterTemplate {
   default_info_blocks?: any;
   header_layout_type?: any;
   header_text_elements?: any;
+  layout_settings?: any;
 }
 
 interface SenderInformation {
