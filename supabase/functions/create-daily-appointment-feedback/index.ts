@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const now = new Date();
 
-    console.log(`Checking appointments from ${sevenDaysAgo.toISOString()} to ${now.toISOString()}`);
+    console.log(`Checking events from ${sevenDaysAgo.toISOString()} to ${now.toISOString()}`);
 
     // Find all completed appointments without feedback entries
     const { data: appointments, error: appointmentsError } = await supabase
@@ -54,23 +54,49 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${appointments?.length || 0} appointments without feedback`);
 
-    if (!appointments || appointments.length === 0) {
+    // Find all external events without feedback entries
+    const { data: externalEvents, error: externalEventsError } = await supabase
+      .from('external_events')
+      .select(`
+        id,
+        external_calendar_id,
+        title,
+        start_time,
+        end_time,
+        all_day,
+        external_calendars!inner(user_id, tenant_id),
+        feedback:appointment_feedback(id)
+      `)
+      .gte('start_time', sevenDaysAgo.toISOString())
+      .lte('end_time', now.toISOString())
+      .is('feedback.id', null);
+
+    if (externalEventsError) {
+      console.error('Error fetching external events:', externalEventsError);
+      throw externalEventsError;
+    }
+
+    console.log(`Found ${externalEvents?.length || 0} external events without feedback`);
+
+    if ((!appointments || appointments.length === 0) && (!externalEvents || externalEvents.length === 0)) {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'No appointments to process',
-          processed: 0
+          message: 'No events to process',
+          processed: 0,
+          skipped: 0
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Process each appointment
+    // Process events
     let processedCount = 0;
     let skippedCount = 0;
     const errors = [];
 
-    for (const appointment of appointments) {
+    // Process appointments
+    for (const appointment of appointments || []) {
       try {
         // Get user settings
         const { data: settings } = await supabase
@@ -123,6 +149,7 @@ Deno.serve(async (req) => {
             appointment_id: appointment.id,
             user_id: appointment.user_id,
             tenant_id: appointment.tenant_id,
+            event_type: 'appointment',
             feedback_status: 'pending',
             priority_score: priorityScore
           });
@@ -143,6 +170,56 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Process external events
+    for (const externalEvent of externalEvents || []) {
+      try {
+        const userId = externalEvent.external_calendars.user_id;
+        const tenantId = externalEvent.external_calendars.tenant_id;
+
+        // Get user settings
+        const { data: settings } = await supabase
+          .from('appointment_feedback_settings')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        const userSettings: AppointmentFeedbackSettings = settings || {
+          user_id: userId,
+          priority_categories: ['extern', 'wichtig'],
+          auto_skip_internal: false
+        };
+
+        // External events don't have categories, so we give them a default priority
+        const priorityScore = 1;
+
+        // Create feedback entry for external event
+        const { error: insertError } = await supabase
+          .from('appointment_feedback')
+          .insert({
+            external_event_id: externalEvent.id,
+            user_id: userId,
+            tenant_id: tenantId,
+            event_type: 'external_event',
+            feedback_status: 'pending',
+            priority_score: priorityScore
+          });
+
+        if (insertError) {
+          console.error(`Error creating feedback for external event ${externalEvent.id}:`, insertError);
+          errors.push({ event_id: externalEvent.id, error: insertError.message });
+        } else {
+          processedCount++;
+          console.log(`Created feedback for external event: ${externalEvent.title} (priority: ${priorityScore})`);
+        }
+      } catch (error) {
+        console.error(`Error processing external event ${externalEvent.id}:`, error);
+        errors.push({ 
+          event_id: externalEvent.id, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        });
+      }
+    }
+
     console.log(`Processing complete. Created: ${processedCount}, Skipped: ${skippedCount}, Errors: ${errors.length}`);
 
     return new Response(
@@ -151,7 +228,7 @@ Deno.serve(async (req) => {
         processed: processedCount,
         skipped: skippedCount,
         errors: errors.length > 0 ? errors : undefined,
-        message: `Successfully processed ${processedCount} appointments, auto-skipped ${skippedCount}`
+        message: `Successfully processed ${processedCount} events (appointments + external), auto-skipped ${skippedCount}`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

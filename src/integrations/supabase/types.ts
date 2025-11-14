@@ -189,9 +189,11 @@ export type Database = {
       }
       appointment_feedback: {
         Row: {
-          appointment_id: string
+          appointment_id: string | null
           completed_at: string | null
           created_at: string | null
+          event_type: string
+          external_event_id: string | null
           feedback_status: string
           has_documents: boolean | null
           has_tasks: boolean | null
@@ -205,9 +207,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          appointment_id: string
+          appointment_id?: string | null
           completed_at?: string | null
           created_at?: string | null
+          event_type?: string
+          external_event_id?: string | null
           feedback_status?: string
           has_documents?: boolean | null
           has_tasks?: boolean | null
@@ -221,9 +225,11 @@ export type Database = {
           user_id: string
         }
         Update: {
-          appointment_id?: string
+          appointment_id?: string | null
           completed_at?: string | null
           created_at?: string | null
+          event_type?: string
+          external_event_id?: string | null
           feedback_status?: string
           has_documents?: boolean | null
           has_tasks?: boolean | null
@@ -242,6 +248,13 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_feedback_external_event_id_fkey"
+            columns: ["external_event_id"]
+            isOneToOne: true
+            referencedRelation: "external_events"
             referencedColumns: ["id"]
           },
           {
