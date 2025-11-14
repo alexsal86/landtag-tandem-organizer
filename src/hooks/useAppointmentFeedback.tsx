@@ -1,3 +1,4 @@
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -10,9 +11,12 @@ export interface AppointmentWithFeedback {
   title: string;
   start_time: string;
   end_time: string;
-  category: string;
+  category?: string; // Optional for external events
   location: string | null;
   description: string | null;
+  user_id: string;
+  tenant_id: string;
+  event_type: 'appointment' | 'external_event';
   feedback: {
     id: string;
     feedback_status: 'pending' | 'completed' | 'skipped';
@@ -41,8 +45,8 @@ export const useAppointmentFeedback = () => {
   const queryClient = useQueryClient();
 
   // Lädt Termine mit Feedback (letzte 7 Tage)
-  const { data: appointments, isLoading, refetch } = useQuery({
-    queryKey: ['appointment-feedback', user?.id, currentTenant?.id],
+  const { data: appointments, isLoading: appointmentsLoading, refetch: refetchAppointments } = useQuery({
+    queryKey: ['appointment-feedback-appointments', user?.id, currentTenant?.id],
     queryFn: async () => {
       if (!user?.id || !currentTenant?.id) return [];
 
@@ -61,6 +65,8 @@ export const useAppointmentFeedback = () => {
           category,
           location,
           description,
+          user_id,
+          tenant_id,
           feedback:appointment_feedback(
             id,
             feedback_status,
@@ -83,6 +89,7 @@ export const useAppointmentFeedback = () => {
       // Transform data to match our interface
       return (data || []).map(apt => ({
         ...apt,
+        event_type: 'appointment' as const,
         feedback: Array.isArray(apt.feedback) && apt.feedback.length > 0 
           ? apt.feedback[0] 
           : null
@@ -90,6 +97,95 @@ export const useAppointmentFeedback = () => {
     },
     enabled: !!user?.id && !!currentTenant?.id
   });
+
+  // Lädt externe Events mit Feedback (letzte 7 Tage)
+  const { data: externalEvents, isLoading: externalEventsLoading, refetch: refetchExternalEvents } = useQuery({
+    queryKey: ['appointment-feedback-external', user?.id, currentTenant?.id],
+    queryFn: async () => {
+      if (!user?.id || !currentTenant?.id) return [];
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
+      const now = new Date().toISOString();
+
+      // Hole Feedback-Einträge für externe Events
+      const { data: feedbackData, error: feedbackError } = await supabase
+        .from('appointment_feedback')
+        .select(`
+          id,
+          feedback_status,
+          notes,
+          completed_at,
+          priority_score,
+          has_documents,
+          has_tasks,
+          reminder_dismissed,
+          external_event_id,
+          external_events!inner(
+            id,
+            title,
+            start_time,
+            end_time,
+            location,
+            description,
+            all_day,
+            external_calendar_id,
+            external_calendars!inner(user_id, tenant_id)
+          )
+        `)
+        .eq('event_type', 'external_event')
+        .eq('user_id', user.id)
+        .gte('external_events.start_time', `${sevenDaysAgoStr}T00:00:00`)
+        .lte('external_events.end_time', now)
+        .order('external_events.start_time', { ascending: false });
+
+      if (feedbackError) {
+        console.error('Error fetching external events feedback:', feedbackError);
+        return [];
+      }
+
+      // Transform zu AppointmentWithFeedback Interface
+      return (feedbackData || []).map(fb => {
+        const event = fb.external_events;
+        return {
+          id: event.id,
+          title: event.title,
+          start_time: event.start_time,
+          end_time: event.end_time,
+          location: event.location,
+          description: event.description,
+          user_id: event.external_calendars.user_id,
+          tenant_id: event.external_calendars.tenant_id,
+          event_type: 'external_event' as const,
+          feedback: {
+            id: fb.id,
+            feedback_status: fb.feedback_status,
+            notes: fb.notes,
+            completed_at: fb.completed_at,
+            priority_score: fb.priority_score,
+            has_documents: fb.has_documents,
+            has_tasks: fb.has_tasks,
+            reminder_dismissed: fb.reminder_dismissed,
+          }
+        };
+      }) as AppointmentWithFeedback[];
+    },
+    enabled: !!user?.id && !!currentTenant?.id
+  });
+
+  // Kombiniere und sortiere alle Events
+  const allEvents = React.useMemo(() => {
+    const combined = [
+      ...(appointments || []),
+      ...(externalEvents || [])
+    ];
+    return combined.sort((a, b) => 
+      new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+    );
+  }, [appointments, externalEvents]);
+
+  const isLoading = appointmentsLoading || externalEventsLoading;
 
   // Lade Settings
   const { data: settings } = useQuery({
@@ -161,7 +257,8 @@ export const useAppointmentFeedback = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointment-feedback'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment-feedback-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment-feedback-external'] });
     },
     onError: (error) => {
       console.error('Error updating feedback:', error);
@@ -197,7 +294,8 @@ export const useAppointmentFeedback = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointment-feedback'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment-feedback-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment-feedback-external'] });
     }
   });
 
@@ -230,13 +328,18 @@ export const useAppointmentFeedback = () => {
     }
   });
 
+  const refetch = React.useCallback(() => {
+    refetchAppointments();
+    refetchExternalEvents();
+  }, [refetchAppointments, refetchExternalEvents]);
+
   return {
-    appointments: appointments || [],
+    appointments: allEvents,
     settings,
     isLoading,
-    updateFeedback: updateFeedbackMutation.mutate,
-    createFeedback: createFeedbackMutation.mutate,
-    updateSettings: updateSettingsMutation.mutate,
-    refetch
+    updateFeedback: updateFeedbackMutation.mutateAsync,
+    createFeedback: createFeedbackMutation.mutateAsync,
+    updateSettings: updateSettingsMutation.mutateAsync,
+    refetch,
   };
 };

@@ -271,15 +271,14 @@ export const AppointmentFeedbackWidget = ({
     }
   };
 
-  const getCategoryColor = (categoryName: string) => {
+  const getCategoryColor = (categoryName?: string) => {
+    if (!categoryName) return '#3b82f6';
     const category = categories?.find(c => c.name === categoryName);
-    if (!category?.color) return 'bg-muted/50 text-muted-foreground';
-    
-    // Convert hex to HSL for consistent theming
-    return `text-[${category.color}]`;
+    return category?.color || '#3b82f6';
   };
 
-  const getCategoryLabel = (categoryName: string) => {
+  const getCategoryLabel = (categoryName?: string) => {
+    if (!categoryName) return 'Externer Termin';
     const category = categories?.find(c => c.name === categoryName);
     return category?.label || categoryName;
   };
@@ -378,17 +377,22 @@ export const AppointmentFeedbackWidget = ({
                         )}
                       </div>
                     </div>
-                    <Badge 
-                      variant="secondary" 
-                      className="text-xs"
-                      style={{ 
-                        backgroundColor: categories?.find(c => c.name === appointment.category)?.color ? 
-                          `${categories.find(c => c.name === appointment.category)?.color}20` : undefined,
-                        color: categories?.find(c => c.name === appointment.category)?.color || undefined
-                      }}
-                    >
-                      {getCategoryLabel(appointment.category)}
-                    </Badge>
+                    {appointment.event_type === 'external_event' ? (
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        📅 Externer Kalender
+                      </Badge>
+                    ) : (
+                      <Badge 
+                        variant="secondary" 
+                        className="text-xs shrink-0"
+                        style={{ 
+                          backgroundColor: `${getCategoryColor(appointment.category)}20`,
+                          color: getCategoryColor(appointment.category)
+                        }}
+                      >
+                        {getCategoryLabel(appointment.category)}
+                      </Badge>
+                    )}
                   </div>
 
                   {isCompleted ? (
