@@ -123,9 +123,4 @@ verify_jwt = true
 
 [functions.create-daily-appointment-feedback]
 verify_jwt = false
-
-[functions.send-checklist-email]
-verify_jwt = true
-
-[functions.create-daily-appointment-feedback]
 schedule = "0 17 * * *"
