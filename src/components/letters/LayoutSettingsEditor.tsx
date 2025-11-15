@@ -1,0 +1,342 @@
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RotateCcw } from 'lucide-react';
+import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
+
+interface LayoutSettingsEditorProps {
+  layoutSettings: LetterLayoutSettings;
+  onLayoutChange: (settings: LetterLayoutSettings) => void;
+}
+
+export function LayoutSettingsEditor({ layoutSettings, onLayoutChange }: LayoutSettingsEditorProps) {
+  const handleResetToDefault = () => {
+    onLayoutChange(DEFAULT_DIN5008_LAYOUT);
+  };
+
+  const updateSetting = (path: string[], value: number) => {
+    const newSettings = { ...layoutSettings };
+    let current: any = newSettings;
+    
+    for (let i = 0; i < path.length - 1; i++) {
+      current = current[path[i]];
+    }
+    current[path[path.length - 1]] = value;
+    
+    onLayoutChange(newSettings);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Layout-Einstellungen</h3>
+          <p className="text-sm text-muted-foreground">
+            Konfigurieren Sie alle Abstände und Positionen für dieses Template (alle Werte in mm)
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleResetToDefault}
+          className="flex items-center gap-2"
+        >
+          <RotateCcw className="h-4 w-4" />
+          DIN 5008 Standard
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Seitenformat */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-medium">Seitenformat</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="page-width">Breite (mm)</Label>
+              <Input
+                id="page-width"
+                type="number"
+                value={layoutSettings.pageWidth}
+                onChange={(e) => updateSetting(['pageWidth'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="page-height">Höhe (mm)</Label>
+              <Input
+                id="page-height"
+                type="number"
+                value={layoutSettings.pageHeight}
+                onChange={(e) => updateSetting(['pageHeight'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Seitenränder */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-medium">Seitenränder</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="margin-left">Links (mm)</Label>
+              <Input
+                id="margin-left"
+                type="number"
+                value={layoutSettings.margins.left}
+                onChange={(e) => updateSetting(['margins', 'left'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="margin-right">Rechts (mm)</Label>
+              <Input
+                id="margin-right"
+                type="number"
+                value={layoutSettings.margins.right}
+                onChange={(e) => updateSetting(['margins', 'right'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="margin-top">Oben (mm)</Label>
+              <Input
+                id="margin-top"
+                type="number"
+                value={layoutSettings.margins.top}
+                onChange={(e) => updateSetting(['margins', 'top'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="margin-bottom">Unten (mm)</Label>
+              <Input
+                id="margin-bottom"
+                type="number"
+                value={layoutSettings.margins.bottom}
+                onChange={(e) => updateSetting(['margins', 'bottom'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Header */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-medium">Header</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="header-height">Höhe (mm)</Label>
+              <Input
+                id="header-height"
+                type="number"
+                value={layoutSettings.header.height}
+                onChange={(e) => updateSetting(['header', 'height'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="header-margin-bottom">Abstand unten (mm)</Label>
+              <Input
+                id="header-margin-bottom"
+                type="number"
+                value={layoutSettings.header.marginBottom}
+                onChange={(e) => updateSetting(['header', 'marginBottom'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Adressfeld */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-medium">Adressfeld</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="address-top">Von oben (mm)</Label>
+              <Input
+                id="address-top"
+                type="number"
+                value={layoutSettings.addressField.top}
+                onChange={(e) => updateSetting(['addressField', 'top'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="address-left">Von links (mm)</Label>
+              <Input
+                id="address-left"
+                type="number"
+                value={layoutSettings.addressField.left}
+                onChange={(e) => updateSetting(['addressField', 'left'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="address-width">Breite (mm)</Label>
+              <Input
+                id="address-width"
+                type="number"
+                value={layoutSettings.addressField.width}
+                onChange={(e) => updateSetting(['addressField', 'width'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="address-height">Höhe (mm)</Label>
+              <Input
+                id="address-height"
+                type="number"
+                value={layoutSettings.addressField.height}
+                onChange={(e) => updateSetting(['addressField', 'height'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Infoblock */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-medium">Informationsblock</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="info-top">Von oben (mm)</Label>
+              <Input
+                id="info-top"
+                type="number"
+                value={layoutSettings.infoBlock.top}
+                onChange={(e) => updateSetting(['infoBlock', 'top'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="info-left">Von links (mm)</Label>
+              <Input
+                id="info-left"
+                type="number"
+                value={layoutSettings.infoBlock.left}
+                onChange={(e) => updateSetting(['infoBlock', 'left'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="info-width">Breite (mm)</Label>
+              <Input
+                id="info-width"
+                type="number"
+                value={layoutSettings.infoBlock.width}
+                onChange={(e) => updateSetting(['infoBlock', 'width'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="info-height">Höhe (mm)</Label>
+              <Input
+                id="info-height"
+                type="number"
+                value={layoutSettings.infoBlock.height}
+                onChange={(e) => updateSetting(['infoBlock', 'height'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Betreffzeile */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-medium">Betreffzeile</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="subject-top">Von oben (mm)</Label>
+              <Input
+                id="subject-top"
+                type="number"
+                value={layoutSettings.subject.top}
+                onChange={(e) => updateSetting(['subject', 'top'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="subject-margin-bottom">Abstand unten (mm)</Label>
+              <Input
+                id="subject-margin-bottom"
+                type="number"
+                value={layoutSettings.subject.marginBottom}
+                onChange={(e) => updateSetting(['subject', 'marginBottom'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Inhalt */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-medium">Inhalt</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="content-top">Von oben (mm)</Label>
+              <Input
+                id="content-top"
+                type="number"
+                value={layoutSettings.content.top}
+                onChange={(e) => updateSetting(['content', 'top'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="content-max-height">Max. Höhe (mm)</Label>
+              <Input
+                id="content-max-height"
+                type="number"
+                value={layoutSettings.content.maxHeight}
+                onChange={(e) => updateSetting(['content', 'maxHeight'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="content-line-height">Zeilenhöhe (mm)</Label>
+              <Input
+                id="content-line-height"
+                type="number"
+                value={layoutSettings.content.lineHeight}
+                onChange={(e) => updateSetting(['content', 'lineHeight'], parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Fußzeile */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-medium">Fußzeile</h4>
+          <div>
+            <Label htmlFor="footer-top">Von oben (mm)</Label>
+            <Input
+              id="footer-top"
+              type="number"
+              value={layoutSettings.footer.top}
+              onChange={(e) => updateSetting(['footer', 'top'], parseFloat(e.target.value))}
+              step="0.1"
+            />
+          </div>
+        </div>
+
+        {/* Anlagen */}
+        <div className="space-y-4 p-4 border rounded-lg">
+          <h4 className="font-medium">Anlagen</h4>
+          <div>
+            <Label htmlFor="attachments-top">Von oben (mm)</Label>
+            <Input
+              id="attachments-top"
+              type="number"
+              value={layoutSettings.attachments.top}
+              onChange={(e) => updateSetting(['attachments', 'top'], parseFloat(e.target.value))}
+              step="0.1"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

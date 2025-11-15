@@ -16,6 +16,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
 import { StructuredFooterEditor } from '@/components/letters/StructuredFooterEditor';
+import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
+import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
 
 interface LetterTemplate {
   id: string;
@@ -70,7 +72,8 @@ const LetterTemplateManager: React.FC = () => {
     default_sender_id: '',
     default_info_blocks: [] as string[],
     header_elements: [] as any[],
-    footer_blocks: [] as any[]
+    footer_blocks: [] as any[],
+    layout_settings: DEFAULT_DIN5008_LAYOUT as LetterLayoutSettings
   });
 
   useEffect(() => {
@@ -151,17 +154,20 @@ const LetterTemplateManager: React.FC = () => {
       const { error } = await supabase
         .from('letter_templates')
         .insert({
-          tenant_id: currentTenant.id,
-          created_by: user.id,
           name: formData.name.trim(),
           letterhead_html: formData.letterhead_html,
           letterhead_css: formData.letterhead_css,
           response_time_days: formData.response_time_days,
+          tenant_id: currentTenant.id,
+          created_by: user.id,
+          is_default: false,
+          is_active: true,
           default_sender_id: formData.default_sender_id || null,
           default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
           header_layout_type: formData.header_elements.length > 0 ? 'structured' : 'html',
           header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null,
-          footer_blocks: formData.footer_blocks.length > 0 ? formData.footer_blocks : null
+          footer_blocks: formData.footer_blocks.length > 0 ? formData.footer_blocks : null,
+          layout_settings: formData.layout_settings as any
         });
 
       if (error) throw error;
@@ -200,6 +206,7 @@ const LetterTemplateManager: React.FC = () => {
           header_layout_type: formData.header_elements.length > 0 ? 'structured' : 'html',
           header_text_elements: formData.header_elements.length > 0 ? formData.header_elements : null,
           footer_blocks: formData.footer_blocks.length > 0 ? formData.footer_blocks : null,
+          layout_settings: formData.layout_settings as any,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingTemplate.id);
@@ -260,7 +267,8 @@ const LetterTemplateManager: React.FC = () => {
       default_sender_id: '',
       default_info_blocks: [],
       header_elements: [],
-      footer_blocks: []
+      footer_blocks: [],
+      layout_settings: DEFAULT_DIN5008_LAYOUT
     });
   };
 
@@ -305,7 +313,8 @@ const LetterTemplateManager: React.FC = () => {
       default_sender_id: template.default_sender_id || '',
       default_info_blocks: template.default_info_blocks || [],
       header_elements: headerElements,
-      footer_blocks: footerBlocks
+      footer_blocks: footerBlocks,
+      layout_settings: template.layout_settings || DEFAULT_DIN5008_LAYOUT
     });
   };
 
@@ -404,9 +413,10 @@ const LetterTemplateManager: React.FC = () => {
             </DialogHeader>
             
             <Tabs defaultValue="header-designer" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
                 <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
+                <TabsTrigger value="layout-settings">Layout-Einstellungen</TabsTrigger>
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
               </TabsList>
@@ -435,6 +445,13 @@ const LetterTemplateManager: React.FC = () => {
                      onBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
                    />
                 </div>
+              </TabsContent>
+              
+              <TabsContent value="layout-settings" className="space-y-4">
+                <LayoutSettingsEditor
+                  layoutSettings={formData.layout_settings}
+                  onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
+                />
               </TabsContent>
               
               <TabsContent value="general" className="space-y-4">
@@ -624,9 +641,10 @@ const LetterTemplateManager: React.FC = () => {
             </DialogHeader>
             
             <Tabs defaultValue="header-designer" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="header-designer">Header-Designer</TabsTrigger>
                 <TabsTrigger value="footer-designer">Footer-Designer</TabsTrigger>
+                <TabsTrigger value="layout-settings">Layout-Einstellungen</TabsTrigger>
                 <TabsTrigger value="general">Allgemein</TabsTrigger>
                 <TabsTrigger value="advanced">Erweitert</TabsTrigger>
               </TabsList>
@@ -655,6 +673,13 @@ const LetterTemplateManager: React.FC = () => {
                      onBlocksChange={(blocks) => setFormData(prev => ({ ...prev, footer_blocks: blocks }))}
                    />
                 </div>
+              </TabsContent>
+              
+              <TabsContent value="layout-settings" className="space-y-4">
+                <LayoutSettingsEditor
+                  layoutSettings={formData.layout_settings}
+                  onLayoutChange={(settings) => setFormData(prev => ({ ...prev, layout_settings: settings }))}
+                />
               </TabsContent>
               
               <TabsContent value="general" className="space-y-4">
