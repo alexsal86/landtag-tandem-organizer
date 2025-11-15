@@ -313,6 +313,8 @@ export const useAppointmentFeedback = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointment-feedback-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment-feedback-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment-feedback-external'] });
       toast({
         title: 'Einstellungen gespeichert',
         description: 'Ihre Einstellungen wurden erfolgreich aktualisiert.'
