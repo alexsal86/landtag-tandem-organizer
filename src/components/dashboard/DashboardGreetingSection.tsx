@@ -17,6 +17,7 @@ interface AppointmentData {
   id: string;
   title: string;
   start_time: string;
+  end_time?: string;
   is_all_day: boolean;
 }
 
@@ -27,6 +28,7 @@ export const DashboardGreetingSection = () => {
   const [weatherKarlsruhe, setWeatherKarlsruhe] = useState<{ temp: number; condition: string; icon: string } | null>(null);
   const [weatherStuttgart, setWeatherStuttgart] = useState<{ temp: number; condition: string; icon: string } | null>(null);
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
+  const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeWidget, setActiveWidget] = useState<string>('quicknotes');
 
@@ -73,40 +75,43 @@ export const DashboardGreetingSection = () => {
     loadWeather();
   }, []);
 
-  // Load today's appointments (max 2)
+  // Load today's and tomorrow's appointments
   useEffect(() => {
     const loadAppointments = async () => {
       if (!user?.id || !currentTenant?.id) return;
       
+      const now = new Date();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      const dayAfterTomorrow = new Date(today);
+      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
       
       // Erweiterte Zeitfenster für Ganztagstermine (UTC-Probleme)
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      const dayAfterTomorrow = new Date(today);
-      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+      const threeDaysAhead = new Date(today);
+      threeDaysAhead.setDate(threeDaysAhead.getDate() + 3);
       
-      // Normale Termine
+      // Normale Termine für heute und morgen
       const { data: normalAppointments } = await supabase
         .from('appointments')
-        .select('id, title, start_time, is_all_day')
+        .select('id, title, start_time, end_time, is_all_day')
         .eq('tenant_id', currentTenant.id)
         .eq('is_all_day', false)
         .gte('start_time', today.toISOString())
-        .lt('start_time', tomorrow.toISOString())
+        .lt('start_time', dayAfterTomorrow.toISOString())
         .order('start_time', { ascending: true });
       
       // Ganztagstermine (größeres Zeitfenster wegen UTC)
       const { data: allDayAppointments } = await supabase
         .from('appointments')
-        .select('id, title, start_time, is_all_day')
+        .select('id, title, start_time, end_time, is_all_day')
         .eq('tenant_id', currentTenant.id)
         .eq('is_all_day', true)
         .gte('start_time', yesterday.toISOString())
-        .lt('start_time', dayAfterTomorrow.toISOString())
+        .lt('start_time', threeDaysAhead.toISOString())
         .order('start_time', { ascending: true });
       
       // Externe Kalender-Events (type-safe cast to avoid deep instantiation)
@@ -116,12 +121,13 @@ export const DashboardGreetingSection = () => {
           id,
           title,
           start_time,
+          end_time,
           all_day,
           external_calendars!inner(tenant_id)
         `)
         .eq('external_calendars.tenant_id', currentTenant.id)
         .gte('start_time', yesterday.toISOString())
-        .lt('start_time', dayAfterTomorrow.toISOString())
+        .lt('start_time', threeDaysAhead.toISOString())
         .order('start_time', { ascending: true });
       
       // Map external events to AppointmentData type
@@ -129,6 +135,7 @@ export const DashboardGreetingSection = () => {
         id: e.id as string,
         title: e.title as string,
         start_time: e.start_time as string,
+        end_time: e.end_time as string | undefined,
         is_all_day: (e.all_day as boolean) ?? false
       }));
       
@@ -139,15 +146,54 @@ export const DashboardGreetingSection = () => {
         ...externalEventsFormatted
       ];
       
-      // Filtern für lokale Zeit (Deutsche Zeit = UTC+1/+2)
-      const filteredEvents = allEvents.filter(event => {
+      // Schritt 1: Kommende Termine von heute finden
+      const todayUpcoming = allEvents.filter(event => {
         const eventDate = new Date(event.start_time);
         const localDate = new Date(eventDate.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-        return localDate.toDateString() === today.toDateString();
-      }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        .slice(0, 2);
+        
+        // Muss heute sein
+        if (localDate.toDateString() !== today.toDateString()) return false;
+        
+        // Für Ganztagstermine: Immer anzeigen
+        if (event.is_all_day) return true;
+        
+        // Für normale Termine: Nur wenn noch nicht vorbei
+        // Event gilt als "vorbei" wenn end_time < jetzt (oder start_time + 1h falls keine end_time)
+        const endTime = event.end_time 
+          ? new Date(event.end_time) 
+          : new Date(new Date(event.start_time).getTime() + 60 * 60 * 1000); // +1h default
+        
+        return endTime > now;
+      });
       
-      setAppointments(filteredEvents);
+      // Schritt 2: Falls keine kommenden Termine heute, nehme Termine von morgen
+      let finalAppointments: AppointmentData[];
+      let showingTomorrow = false;
+      
+      if (todayUpcoming.length === 0) {
+        // Zeige Termine von morgen
+        const tomorrowDate = new Date(today);
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        
+        finalAppointments = allEvents
+          .filter(event => {
+            const eventDate = new Date(event.start_time);
+            const localDate = new Date(eventDate.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+            return localDate.toDateString() === tomorrowDate.toDateString();
+          })
+          .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+          .slice(0, 2);
+        
+        showingTomorrow = true;
+      } else {
+        // Zeige heutige kommende Termine
+        finalAppointments = todayUpcoming
+          .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+          .slice(0, 2);
+      }
+      
+      setAppointments(finalAppointments);
+      setIsShowingTomorrow(showingTomorrow);
       setIsLoading(false);
     };
     
@@ -232,21 +278,26 @@ export const DashboardGreetingSection = () => {
       text += '\n';
     }
     
-    // Appointments section
-    text += '\n📅 **Deine Termine heute:**\n';
+    // Appointments section mit dynamischer Überschrift
+    text += isShowingTomorrow 
+      ? '\n📅 **Deine Termine morgen:**\n' 
+      : '\n📅 **Deine Termine heute:**\n';
+    
     if (appointments.length === 0) {
-      text += 'Keine Termine heute.\n';
+      text += isShowingTomorrow 
+        ? 'Keine Termine morgen.\n'
+        : 'Keine Termine heute.\n';
     } else {
-    appointments.forEach(apt => {
-      const time = apt.is_all_day 
-        ? 'Ganztägig' 
-        : format(new Date(apt.start_time), 'HH:mm', { locale: de });
-      text += `${time} - ${apt.title}\n`;
-    });
+      appointments.forEach(apt => {
+        const time = apt.is_all_day 
+          ? 'Ganztägig' 
+          : format(new Date(apt.start_time), 'HH:mm', { locale: de });
+        text += `${time} - ${apt.title}\n`;
+      });
     }
     
     return text;
-  }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments]);
+  }, [isLoading, userName, weatherKarlsruhe, weatherStuttgart, appointments, isShowingTomorrow]);
 
   return (
     <div className="mb-6 flex items-start gap-4">
