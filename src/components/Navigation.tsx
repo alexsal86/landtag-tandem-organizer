@@ -1,4 +1,4 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive, Search } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { NavigationBadge } from "./NavigationBadge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
@@ -254,6 +254,15 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+
+      {!isCollapsed && (
+        <div className="flex items-center gap-2 px-3 py-2 mx-2 mt-2 rounded-md bg-muted/50 text-xs text-muted-foreground border border-border">
+          <Search className="h-3 w-3 flex-shrink-0" />
+          <span className="flex items-center gap-1">
+            Drücke <kbd className="px-1.5 py-0.5 rounded bg-background border border-border font-mono text-[10px]">⌘K</kbd> zum Suchen
+          </span>
+        </div>
+      )}
 
       <SidebarContent>
         <SidebarGroup>

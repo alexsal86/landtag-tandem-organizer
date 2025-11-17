@@ -823,6 +823,30 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log_entries: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string | null
+          payload: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       calendar_sync_settings: {
         Row: {
           created_at: string | null
@@ -7287,6 +7311,7 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_for_audit_logs: { Args: { _user_id: string }; Returns: boolean }
       is_admin_of: { Args: { employee: string }; Returns: boolean }
       is_message_recipient: {
         Args: { message_id_param: string; user_id_param: string }

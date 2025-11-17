@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { GlobalSearchCommand } from "@/components/GlobalSearchCommand";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
 import CreateTask from "./pages/CreateTask";
@@ -38,6 +39,7 @@ const App = () => (
       <TenantProvider>
         <NotificationProvider>
           <TooltipProvider>
+            <GlobalSearchCommand />
             <Toaster />
             <Sonner />
           <BrowserRouter>

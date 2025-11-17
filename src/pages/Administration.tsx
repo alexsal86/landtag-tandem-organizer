@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, CheckSquare, Building, FileText, DollarSign, Users, Shield, Clock, MapPin, Rss, Palette } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, CheckSquare, Building, FileText, DollarSign, Users, Shield, Clock, MapPin, Rss, Palette, History } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NewUserForm } from "@/components/NewUserForm";
@@ -39,6 +39,7 @@ import { UserColorManager } from "@/components/administration/UserColorManager";
 import { DecisionArchiveSettings } from "@/components/administration/DecisionArchiveSettings";
 import { MatrixSettings } from "@/components/MatrixSettings";
 import { NewsEmailTemplateManager } from "@/components/administration/NewsEmailTemplateManager";
+import { AuditLogViewer } from "@/components/administration/AuditLogViewer";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -566,6 +567,7 @@ export default function Administration() {
               {isSuperAdmin && <TabsTrigger value="roles">Rechte</TabsTrigger>}
               {isSuperAdmin && <TabsTrigger value="usercolors"><Palette className="h-4 w-4 mr-2" />Benutzerfarben</TabsTrigger>}
               <TabsTrigger value="matrix">Matrix</TabsTrigger>
+              <TabsTrigger value="auditlogs"><History className="h-4 w-4 mr-2" />Audit-Logs</TabsTrigger>
             </TabsList>
 
             <TabsContent value="general">
@@ -687,6 +689,10 @@ export default function Administration() {
 
             <TabsContent value="matrix">
               <MatrixSettings />
+            </TabsContent>
+
+            <TabsContent value="auditlogs">
+              <AuditLogViewer />
             </TabsContent>
           </Tabs>
         </TabsContent>
