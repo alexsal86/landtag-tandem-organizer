@@ -5691,6 +5691,30 @@ export type Database = {
           },
         ]
       }
+      public_holidays: {
+        Row: {
+          created_at: string | null
+          holiday_date: string
+          id: string
+          name: string
+          state_code: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          holiday_date: string
+          id?: string
+          name: string
+          state_code?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          holiday_date?: string
+          id?: string
+          name?: string
+          state_code?: string | null
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           auth_key: string
@@ -6054,25 +6078,31 @@ export type Database = {
       sick_days: {
         Row: {
           created_at: string
+          end_date: string
           id: string
           notes: string | null
           sick_date: string
+          status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          end_date: string
           id?: string
           notes?: string | null
           sick_date: string
+          status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          end_date?: string
           id?: string
           notes?: string | null
           sick_date?: string
+          status?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -6816,6 +6846,7 @@ export type Database = {
           id: string
           minutes: number
           notes: string | null
+          pause_minutes: number | null
           started_at: string | null
           tenant_id: string | null
           updated_at: string
@@ -6828,6 +6859,7 @@ export type Database = {
           id?: string
           minutes: number
           notes?: string | null
+          pause_minutes?: number | null
           started_at?: string | null
           tenant_id?: string | null
           updated_at?: string
@@ -6840,6 +6872,7 @@ export type Database = {
           id?: string
           minutes?: number
           notes?: string | null
+          pause_minutes?: number | null
           started_at?: string | null
           tenant_id?: string | null
           updated_at?: string
@@ -6852,6 +6885,56 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_entry_history: {
+        Row: {
+          change_type: string
+          changed_at: string
+          changed_by: string
+          ended_at: string | null
+          id: string
+          minutes: number
+          notes: string | null
+          pause_minutes: number | null
+          started_at: string | null
+          time_entry_id: string
+          work_date: string
+        }
+        Insert: {
+          change_type: string
+          changed_at?: string
+          changed_by: string
+          ended_at?: string | null
+          id?: string
+          minutes: number
+          notes?: string | null
+          pause_minutes?: number | null
+          started_at?: string | null
+          time_entry_id: string
+          work_date: string
+        }
+        Update: {
+          change_type?: string
+          changed_at?: string
+          changed_by?: string
+          ended_at?: string | null
+          id?: string
+          minutes?: number
+          notes?: string | null
+          pause_minutes?: number | null
+          started_at?: string | null
+          time_entry_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entry_history_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
             referencedColumns: ["id"]
           },
         ]
