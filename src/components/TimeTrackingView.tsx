@@ -346,10 +346,12 @@ export function TimeTrackingView() {
     try {
       if (!sickDate) throw new Error("Bitte Datum wählen.");
 
-      const { error } = await supabase.from("sick_days").insert({
+      const { error } = await supabase.from("sick_days").insert([{
         user_id: user.id,
         sick_date: sickDate,
-      });
+        end_date: sickDate, // Single day sick leave
+        status: 'pending',
+      }]);
       if (error) throw error;
 
       toast({ title: "Krankmeldung gesendet", description: "Krankmeldung wurde erfasst." });
