@@ -38,11 +38,11 @@ const App = () => (
     <AuthProvider>
       <TenantProvider>
         <NotificationProvider>
-          <TooltipProvider>
-            <GlobalSearchCommand />
-            <Toaster />
-            <Sonner />
-          <BrowserRouter>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <GlobalSearchCommand />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Index />} />
