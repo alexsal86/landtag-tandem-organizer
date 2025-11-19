@@ -16,7 +16,7 @@ import { EventPlanningView } from "@/components/EventPlanningView";
 import { ElectionDistrictsView } from "@/components/ElectionDistrictsView";
 import { PartyAssociationsMapView } from "@/components/PartyAssociationsMapView";
 import { EmployeesView } from "@/components/EmployeesView";
-import TimeTrackingView from "@/components/TimeTrackingView";
+import { TimeTrackingView } from "@/components/TimeTrackingView";
 import Administration from "@/pages/Administration";
 import { DecisionOverview } from "@/components/task-decisions/DecisionOverview";
 import { DrucksachenView } from "@/components/DrucksachenView";
