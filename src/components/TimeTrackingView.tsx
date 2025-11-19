@@ -540,7 +540,7 @@ export function TimeTrackingView() {
                   const net = entry.minutes || 0;
                   return (
                     <TableRow key={entry.id}>
-                      <TableCell>{format(parseISO(entry.entry_date), "dd.MM.yyyy")}</TableCell>
+                      <TableCell>{format(parseISO(entry.work_date), "dd.MM.yyyy")}</TableCell>
                       <TableCell>
                         {entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "-"}
                       </TableCell>
@@ -586,8 +586,8 @@ export function TimeTrackingView() {
                 <Label>Datum</Label>
                 <Input
                   type="date"
-                  value={editingEntry.entry_date}
-                  onChange={(e) => setEditingEntry({ ...editingEntry, entry_date: e.target.value })}
+                  value={editingEntry.work_date}
+                  onChange={(e) => setEditingEntry({ ...editingEntry, work_date: e.target.value })}
                 />
               </div>
               <div>
@@ -596,7 +596,7 @@ export function TimeTrackingView() {
                   type="time"
                   value={editingEntry.started_at ? format(parseISO(editingEntry.started_at), "HH:mm") : ""}
                   onChange={(e) => {
-                    const newStart = `${editingEntry.entry_date}T${e.target.value}`;
+                    const newStart = `${editingEntry.work_date}T${e.target.value}`;
                     setEditingEntry({ ...editingEntry, started_at: new Date(newStart).toISOString() });
                   }}
                 />
@@ -607,7 +607,7 @@ export function TimeTrackingView() {
                   type="time"
                   value={editingEntry.ended_at ? format(parseISO(editingEntry.ended_at), "HH:mm") : ""}
                   onChange={(e) => {
-                    const newEnd = `${editingEntry.entry_date}T${e.target.value}`;
+                    const newEnd = `${editingEntry.work_date}T${e.target.value}`;
                     setEditingEntry({ ...editingEntry, ended_at: new Date(newEnd).toISOString() });
                   }}
                 />
@@ -643,7 +643,7 @@ export function TimeTrackingView() {
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>
-              Versionshistorie {historyEntry && `- ${format(parseISO(historyEntry.entry_date), "dd.MM.yyyy")}`}
+              Versionshistorie {historyEntry && `- ${format(parseISO(historyEntry.work_date), "dd.MM.yyyy")}`}
             </DialogTitle>
           </DialogHeader>
           <Table>
