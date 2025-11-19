@@ -1,619 +1,732 @@
-import { useEffect, useMemo, useState } from "react";
-import { addDays, differenceInCalendarDays, eachDayOfInterval, endOfMonth, isAfter, isBefore, isWithinInterval, parseISO, startOfMonth } from "date-fns";
-import { de } from "date-fns/locale";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Loader2, PlusCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from "date-fns";
+import { de } from "date-fns/locale";
+import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar } from "lucide-react";
+import { calculateVacationBalance } from "@/utils/vacationCalculations";
 
 interface TimeEntryRow {
   id: string;
-  work_date: string; // date
+  work_date: string;
   started_at: string | null;
   ended_at: string | null;
-  minutes: number;
+  minutes: number | null;
+  pause_minutes?: number;
   notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface EmployeeSettingsRow {
   user_id: string;
+  admin_id: string | null;
   hours_per_month: number;
   days_per_month: number;
-  employment_start_date: string | null;
   annual_vacation_days: number;
   carry_over_days: number;
+  employment_start_date: string | null;
+  contract_file_path: string | null;
 }
 
 interface LeaveRow {
   id: string;
-  type: string; // 'sick' | 'vacation' | 'other'
-  status: string; // 'pending' | 'approved' | ...
-  start_date: string; // date
-  end_date: string; // date
+  type: "vacation" | "sick" | "other";
+  start_date: string;
+  end_date: string;
+  status: string;
+  reason: string | null;
+  created_at: string;
+}
+
+interface HistoryRow {
+  id: string;
+  entry_date: string;
+  started_at: string | null;
+  ended_at: string | null;
+  minutes: number | null;
+  pause_minutes: number | null;
+  notes: string | null;
+  change_type: string;
+  changed_at: string;
+  changed_by: string | null;
+}
+
+interface HolidayRow {
+  id: string;
+  holiday_date: string;
+  name: string;
 }
 
 export function TimeTrackingView() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [entries, setEntries] = useState<TimeEntryRow[]>([]);
-  const [settings, setSettings] = useState<EmployeeSettingsRow | null>(null);
-  const [leaves, setLeaves] = useState<LeaveRow[]>([]);
-
-  const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [startTime, setStartTime] = useState<string>("09:00");
-  const [endTime, setEndTime] = useState<string>("17:00");
-  const [pauseMinutes, setPauseMinutes] = useState<string>("30");
-  const [notes, setNotes] = useState<string>("");
-
-  // Urlaub beantragen – Formularzustand
-  const [leaveStart, setLeaveStart] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [leaveEnd, setLeaveEnd] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [leaveReason, setLeaveReason] = useState<string>("");
-  const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
   
-  // Krankmeldung – Formularzustand
-  const [sickDate, setSickDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [sickSubmitting, setSickSubmitting] = useState(false);
+  // Form states
+  const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [pauseMinutes, setPauseMinutes] = useState("30");
+  const [notes, setNotes] = useState("");
 
-  const monthStart = startOfMonth(new Date());
-  const monthEnd = endOfMonth(new Date());
+  // Data states
+  const [entries, setEntries] = useState<TimeEntryRow[]>([]);
+  const [employeeSettings, setEmployeeSettings] = useState<EmployeeSettingsRow | null>(null);
+  const [vacationLeaves, setVacationLeaves] = useState<LeaveRow[]>([]);
+  const [sickLeaves, setSickLeaves] = useState<LeaveRow[]>([]);
+  const [holidays, setHolidays] = useState<HolidayRow[]>([]);
 
-  useEffect(() => {
-    // SEO
-    document.title = "Zeiterfassung & Urlaub – LandtagsOS";
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (!metaDescription) {
-      const meta = document.createElement("meta");
-      meta.name = "description";
-      meta.content = "Zeiterfassung mit Start/Ende, automatische Dauer und Urlaubsübersicht mit Übertrag und Anteiligkeit.";
-      document.head.appendChild(meta);
-    } else {
-      metaDescription.setAttribute("content", "Zeiterfassung mit Start/Ende, automatische Dauer und Urlaubsübersicht mit Übertrag und Anteiligkeit.");
-    }
-    // canonical
-    const linkCanonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (!linkCanonical) {
-      const link = document.createElement("link");
-      link.rel = "canonical";
-      link.href = window.location.href;
-      document.head.appendChild(link);
-    }
-  }, []);
+  // Edit/History states
+  const [editingEntry, setEditingEntry] = useState<TimeEntryRow | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [historyEntry, setHistoryEntry] = useState<TimeEntryRow | null>(null);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [showYearlyLeaves, setShowYearlyLeaves] = useState(false);
+
+  const monthStart = startOfMonth(selectedMonth);
+  const monthEnd = endOfMonth(selectedMonth);
 
   useEffect(() => {
-    if (!user) return;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data: entriesData, error: entriesErr } = await supabase
-          .from("time_entries")
-          .select("id, work_date, started_at, ended_at, minutes, notes")
-          .gte("work_date", monthStart.toISOString().slice(0, 10))
-          .lte("work_date", monthEnd.toISOString().slice(0, 10))
-          .eq("user_id", user.id)
-          .order("work_date", { ascending: false });
-        if (entriesErr) throw entriesErr;
-
-        const { data: settingsData, error: settingsErr } = await supabase
-          .from("employee_settings")
-          .select("user_id, hours_per_month, days_per_month, employment_start_date, annual_vacation_days, carry_over_days")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        if (settingsErr) throw settingsErr;
-
-        const { data: leavesData, error: leavesErr } = await supabase
-          .from("leave_requests")
-          .select("id, type, status, start_date, end_date")
-          .eq("user_id", user.id)
-          .lte("start_date", monthEnd.toISOString().slice(0,10))
-          .gte("end_date", monthStart.toISOString().slice(0,10));
-        if (leavesErr) throw leavesErr;
-
-        setEntries(entriesData || []);
-        setSettings(settingsData as any);
-        setLeaves(leavesData || []);
-      } catch (e: any) {
-        toast({ title: "Fehler beim Laden", description: e.message, variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [user]);
-
-  const [dailyHours, setDailyHours] = useState<number>(0);
-  useEffect(() => {
-    if (!user) return;
-    const fetchDaily = async () => {
-      const { data, error } = await supabase.rpc("get_daily_hours", { _user_id: user.id });
-      if (error) {
-        console.warn("get_daily_hours error", error.message);
-      }
-      let dh = (data as number) || 0;
-      if ((!dh || dh <= 0) && settings) {
-        dh = settings.hours_per_month / Math.max(1, settings.days_per_month);
-      }
-      setDailyHours(dh || 0);
-    };
-    fetchDaily();
-  }, [user, settings]);
-
-  const totals = useMemo(() => {
-    const workedMin = entries.reduce((acc, e) => acc + (e.minutes || 0), 0);
-
-    // Count approved sick days within current month and multiply by dailyHours
-    const sickDays = leaves
-      .filter(l => l.type === "sick" && l.status === "approved")
-      .reduce((acc, l) => {
-        const s = parseISO(l.start_date);
-        const e = parseISO(l.end_date);
-        const days = eachDayOfInterval({ start: s, end: e })
-          .filter(d => isWithinInterval(d, { start: monthStart, end: monthEnd }))
-          .filter(d => {
-            const dow = d.getDay();
-            return dow !== 0 && dow !== 6; // weekdays only
-          }).length;
-        return acc + days;
-      }, 0);
-
-    const sickMin = Math.round((dailyHours * 60) * sickDays);
-
-    return {
-      workedMin,
-      sickMin,
-      totalMin: workedMin + sickMin,
-      sickDays,
-    };
-  }, [entries, leaves, dailyHours, monthStart, monthEnd]);
-
-  const vacation = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const annual = settings?.annual_vacation_days || 0;
-    const carry = settings?.carry_over_days || 0;
-
-    // Determine prorated entitlement for current year based on employment_start_date
-    let prorated = annual;
-    if (settings?.employment_start_date) {
-      const start = parseISO(settings.employment_start_date);
-      if (start.getFullYear() === currentYear) {
-        const startMonth = start.getMonth(); // 0-based
-        const monthsEligible = 12 - startMonth; // inclusive current month
-        prorated = Math.round((annual * monthsEligible) / 12);
-      } else if (start.getFullYear() > currentYear) {
-        prorated = 0;
-      }
+    if (user) {
+      loadData();
     }
+  }, [user, selectedMonth]);
 
-    // Calculate approved vacation days taken this year (weekdays only)
-    const vacDaysTaken = leaves
-      .filter(l => l.type === "vacation" && l.status === "approved")
-      .reduce((acc, l) => {
-        const s = parseISO(l.start_date);
-        const e = parseISO(l.end_date);
-        const days = eachDayOfInterval({ start: s, end: e })
-          .filter(d => d.getFullYear() === currentYear)
-          .filter(d => {
-            const dow = d.getDay();
-            return dow !== 0 && dow !== 6;
-          }).length;
-        return acc + days;
-      }, 0);
-
-    const entitlement = prorated + carry;
-    const remaining = Math.max(0, entitlement - vacDaysTaken);
-
-    return { annual, carry, prorated, entitlement, vacDaysTaken, remaining };
-  }, [settings, leaves]);
-
-  const onSubmit = async () => {
+  const loadData = async () => {
     if (!user) return;
-    setSubmitting(true);
+    setLoading(true);
+
     try {
-      if (!date || !startTime || !endTime) {
-        throw new Error("Bitte Datum, Start- und Endzeit angeben.");
-      }
-      const start = new Date(`${date}T${startTime}:00`);
-      const end = new Date(`${date}T${endTime}:00`);
-      if (end <= start) throw new Error("Ende muss nach Start liegen.");
-
-      // Calculate total minutes worked minus pause
-      const totalMinutes = Math.floor((end.getTime() - start.getTime()) / (1000 * 60));
-      const pause = parseInt(pauseMinutes) || 0;
-      const workedMinutes = Math.max(0, totalMinutes - pause);
-
-      const { error } = await supabase.from("time_entries").insert({
-        user_id: user.id,
-        work_date: date,
-        started_at: start.toISOString(),
-        ended_at: end.toISOString(),
-        minutes: workedMinutes,
-        notes: notes ? `${notes} (Pause: ${pause} Min)` : `Pause: ${pause} Min`,
-      });
-      if (error) throw error;
-
-      toast({ title: "Erfasst", description: `Zeit wurde gespeichert. Arbeitszeit: ${workedMinutes} Min (${pause} Min Pause abgezogen)` });
-
-      // reload entries
-      const { data: entriesData, error: entriesErr } = await supabase
+      // Load time entries for selected month
+      const { data: entriesData, error: entriesError } = await supabase
         .from("time_entries")
-        .select("id, work_date, started_at, ended_at, minutes, notes")
-        .gte("work_date", monthStart.toISOString().slice(0, 10))
-        .lte("work_date", monthEnd.toISOString().slice(0, 10))
+        .select("*")
         .eq("user_id", user.id)
+        .gte("work_date", format(monthStart, "yyyy-MM-dd"))
+        .lte("work_date", format(monthEnd, "yyyy-MM-dd"))
         .order("work_date", { ascending: false });
-      if (entriesErr) throw entriesErr;
+
+      if (entriesError) throw entriesError;
       setEntries(entriesData || []);
 
-      // reset form
-      setNotes("");
-      setPauseMinutes("30");
-    } catch (e: any) {
-      toast({ title: "Fehler", description: e.message, variant: "destructive" });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const submitLeave = async () => {
-    if (!user) return;
-    setLeaveSubmitting(true);
-    try {
-      if (!leaveStart || !leaveEnd) throw new Error("Bitte Start- und Enddatum wählen.");
-      const s = new Date(`${leaveStart}T00:00:00`);
-      const e = new Date(`${leaveEnd}T00:00:00`);
-      if (e < s) throw new Error("Ende muss nach Start liegen.");
-
-      // Get user profile for display name
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("display_name")
+      // Load employee settings
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("employee_settings")
+        .select("*")
         .eq("user_id", user.id)
         .single();
 
-      // Get tenant information
-      const { data: tenantData } = await supabase
-        .from("user_tenant_memberships")
-        .select("tenant_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .limit(1)
-        .single();
+      if (settingsError && settingsError.code !== "PGRST116") throw settingsError;
+      setEmployeeSettings(settingsData);
 
-      if (!tenantData) {
-        throw new Error("Kein Tenant gefunden");
-      }
-
-      const { error } = await supabase.from("leave_requests").insert({
-        user_id: user.id,
-        type: "vacation",
-        start_date: leaveStart,
-        end_date: leaveEnd,
-        reason: leaveReason || null,
-      });
-      if (error) throw error;
-
-      // Create calendar entry for the request (pending status)
-      const userName = userProfile?.display_name || "Mitarbeiter";
-      const { error: calendarError } = await supabase
-        .from("appointments")
-        .insert({
-          user_id: user.id,
-          tenant_id: tenantData.tenant_id,
-          start_time: new Date(`${leaveStart}T00:00:00`).toISOString(),
-          end_time: new Date(`${leaveEnd}T23:59:59`).toISOString(),
-          title: `Anfrage Urlaub von ${userName}`,
-          description: `Urlaubsantrag eingereicht${leaveReason ? ` - Grund: ${leaveReason}` : ''}`,
-          category: "vacation_request",
-          priority: "medium",
-          status: "pending",
-          is_all_day: true
-        });
-
-      if (calendarError) {
-        console.error("Fehler beim Erstellen des Kalendereintrags:", calendarError);
-      }
-
-      toast({ title: "Antrag gesendet", description: "Urlaubsantrag wurde eingereicht und in den Kalender eingetragen." });
-
-      // Reload leaves for current month
-      const { data: leavesData, error: leavesErr } = await supabase
+      // Load all approved leave requests for vacation calculation
+      const { data: leavesData, error: leavesError } = await supabase
         .from("leave_requests")
-        .select("id, type, status, start_date, end_date")
+        .select("*")
         .eq("user_id", user.id)
-        .lte("start_date", monthEnd.toISOString().slice(0,10))
-        .gte("end_date", monthStart.toISOString().slice(0,10));
-      if (leavesErr) throw leavesErr;
-      setLeaves(leavesData || []);
+        .eq("status", "approved")
+        .order("start_date", { ascending: false });
 
-      setLeaveReason("");
-    } catch (e: any) {
-      toast({ title: "Fehler", description: e.message, variant: "destructive" });
+      if (leavesError) throw leavesError;
+      
+      const vacations = (leavesData || []).filter((l) => l.type === "vacation");
+      const sickDays = (leavesData || []).filter((l) => l.type === "sick");
+      setVacationLeaves(vacations);
+      setSickLeaves(sickDays);
+
+      // Load holidays for the selected year
+      const yearStart = `${selectedMonth.getFullYear()}-01-01`;
+      const yearEnd = `${selectedMonth.getFullYear()}-12-31`;
+      const { data: holidaysData, error: holidaysError } = await supabase
+        .from("public_holidays")
+        .select("*")
+        .gte("holiday_date", yearStart)
+        .lte("holiday_date", yearEnd)
+        .order("holiday_date");
+
+      if (holidaysError) throw holidaysError;
+      setHolidays(holidaysData || []);
+    } catch (error: any) {
+      console.error("Error loading data:", error);
+      toast.error("Fehler beim Laden der Daten: " + error.message);
     } finally {
-      setLeaveSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const submitSick = async () => {
-    if (!user) return;
-    setSickSubmitting(true);
-    try {
-      if (!sickDate) throw new Error("Bitte Datum wählen.");
+  const dailyHours = useMemo(() => {
+    if (!employeeSettings) return 8;
+    return employeeSettings.hours_per_month / employeeSettings.days_per_month;
+  }, [employeeSettings]);
 
-      const { error } = await supabase.from("sick_days").insert([{
+  // Calculate vacation balance
+  const vacationBalance = useMemo(() => {
+    if (!employeeSettings) return null;
+    return calculateVacationBalance({
+      annualVacationDays: employeeSettings.annual_vacation_days,
+      carryOverDays: employeeSettings.carry_over_days,
+      employmentStartDate: employeeSettings.employment_start_date,
+      approvedVacationLeaves: vacationLeaves.map((v) => ({
+        start_date: v.start_date,
+        end_date: v.end_date,
+      })),
+      currentYear: new Date().getFullYear(),
+    });
+  }, [employeeSettings, vacationLeaves]);
+
+  // Calculate monthly totals
+  const monthlyTotals = useMemo(() => {
+    const workedMinutes = entries.reduce((sum, entry) => sum + (entry.minutes || 0), 0);
+    
+    // Calculate sick hours for current month (only weekdays)
+    const sickMinutes = sickLeaves.reduce((sum, leave) => {
+      const start = parseISO(leave.start_date);
+      const end = parseISO(leave.end_date);
+      const daysInInterval = eachDayOfInterval({ start, end })
+        .filter((d) => {
+          const inMonth = d >= monthStart && d <= monthEnd;
+          const isWeekday = d.getDay() !== 0 && d.getDay() !== 6;
+          return inMonth && isWeekday;
+        }).length;
+      return sum + daysInInterval * dailyHours * 60;
+    }, 0);
+
+    // Calculate target hours (working days - holidays)
+    const allDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    const workingDays = allDaysInMonth.filter((d) => {
+      const isWeekday = d.getDay() !== 0 && d.getDay() !== 6;
+      const isHoliday = holidays.some((h) => h.holiday_date === format(d, "yyyy-MM-dd"));
+      return isWeekday && !isHoliday;
+    }).length;
+    
+    const targetMinutes = workingDays * dailyHours * 60;
+    const actualMinutes = workedMinutes + sickMinutes;
+    const differenceMinutes = actualMinutes - targetMinutes;
+
+    return {
+      worked: workedMinutes,
+      sick: sickMinutes,
+      actual: actualMinutes,
+      target: targetMinutes,
+      difference: differenceMinutes,
+      workingDays,
+    };
+  }, [entries, sickLeaves, holidays, monthStart, monthEnd, dailyHours]);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !startTime || !endTime) {
+      toast.error("Bitte alle Pflichtfelder ausfüllen");
+      return;
+    }
+
+    const start = new Date(`${entryDate}T${startTime}`);
+    const end = new Date(`${entryDate}T${endTime}`);
+    if (end <= start) {
+      toast.error("Endzeit muss nach Startzeit liegen");
+      return;
+    }
+
+    const grossMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
+    const pause = parseInt(pauseMinutes) || 0;
+    const netMinutes = grossMinutes - pause;
+
+    try {
+      const { error } = await supabase.from("time_entries").insert({
         user_id: user.id,
-        sick_date: sickDate,
-        end_date: sickDate, // Single day sick leave
-        status: 'pending',
-      }]);
+        work_date: entryDate,
+        started_at: start.toISOString(),
+        ended_at: end.toISOString(),
+        minutes: netMinutes,
+        pause_minutes: pause,
+        notes: notes || null,
+      });
+
       if (error) throw error;
 
-      toast({ title: "Krankmeldung gesendet", description: "Krankmeldung wurde erfasst." });
-
-      setSickDate(new Date().toISOString().slice(0, 10));
-    } catch (e: any) {
-      toast({ title: "Fehler", description: e.message, variant: "destructive" });
-    } finally {
-      setSickSubmitting(false);
+      toast.success("Zeiteintrag erfolgreich gespeichert");
+      setStartTime("");
+      setEndTime("");
+      setPauseMinutes("30");
+      setNotes("");
+      loadData();
+    } catch (error: any) {
+      console.error("Error saving entry:", error);
+      toast.error("Fehler beim Speichern: " + error.message);
     }
   };
+
+  const handleEdit = (entry: TimeEntryRow) => {
+    setEditingEntry(entry);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingEntry) return;
+
+    try {
+      const { error } = await supabase
+        .from("time_entries")
+        .update({
+          work_date: editingEntry.work_date,
+          started_at: editingEntry.started_at,
+          ended_at: editingEntry.ended_at,
+          pause_minutes: editingEntry.pause_minutes,
+          notes: editingEntry.notes,
+          // Recalculate minutes
+          minutes: editingEntry.started_at && editingEntry.ended_at
+            ? Math.round(
+                (new Date(editingEntry.ended_at).getTime() -
+                  new Date(editingEntry.started_at).getTime()) /
+                  60000
+              ) - (editingEntry.pause_minutes || 0)
+            : editingEntry.minutes,
+        })
+        .eq("id", editingEntry.id);
+
+      if (error) throw error;
+
+      toast.success("Eintrag aktualisiert");
+      setIsEditDialogOpen(false);
+      setEditingEntry(null);
+      loadData();
+    } catch (error: any) {
+      toast.error("Fehler beim Aktualisieren: " + error.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Eintrag wirklich löschen?")) return;
+
+    try {
+      const { error } = await supabase.from("time_entries").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Eintrag gelöscht");
+      loadData();
+    } catch (error: any) {
+      toast.error("Fehler beim Löschen: " + error.message);
+    }
+  };
+
+  const handleShowHistory = async (entry: TimeEntryRow) => {
+    try {
+      const { data, error } = await supabase
+        .from("time_entry_history")
+        .select("*")
+        .eq("time_entry_id", entry.id)
+        .order("changed_at", { ascending: false });
+
+      if (error) throw error;
+      setHistory(data || []);
+      setHistoryEntry(entry);
+      setIsHistoryDialogOpen(true);
+    } catch (error: any) {
+      toast.error("Fehler beim Laden der Historie: " + error.message);
+    }
+  };
+
+  const formatMinutes = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}:${mins.toString().padStart(2, "0")}`;
+  };
+
+  if (loading) {
+    return <div className="p-6">Lade Daten...</div>;
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <header className="sr-only">
-        <h1>Zeiterfassung und Urlaub</h1>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Gearbeitet (Monat)</CardTitle>
-            <CardDescription>Summe erfasster Zeiten</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="h-8 flex items-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
-            ) : (
-              <div className="text-2xl font-semibold">
-                {(totals.workedMin / 60).toFixed(1)} Std
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Krank (angerechnet)</CardTitle>
-            <CardDescription>{totals.sickDays} Tage × {dailyHours.toFixed(2)} Std</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="h-8 flex items-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
-            ) : (
-              <div className="text-2xl font-semibold">
-                {(totals.sickMin / 60).toFixed(1)} Std
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Gesamt (inkl. Krank)</CardTitle>
-            <CardDescription>Dieser Monat</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="h-8 flex items-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
-            ) : (
-              <div className="text-2xl font-semibold">
-                {(totals.totalMin / 60).toFixed(1)} Std
-              </div>
-            )}
-          </CardContent>
-        </Card>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Zeiterfassung</h1>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="font-semibold min-w-[150px] text-center">
+            {format(selectedMonth, "MMMM yyyy", { locale: de })}
+          </span>
+          <Button variant="outline" size="icon" onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" onClick={() => setSelectedMonth(new Date())}>
+            Heute
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Neue Zeit erfassen</CardTitle>
-            <CardDescription>Start/Ende eingeben, Pause wird abgezogen, Nettodauer wird gespeichert.</CardDescription>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Gearbeitet</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-              <div>
-                <Label htmlFor="date">Datum</Label>
-                <Input id="date" type="date" value={date} onChange={e => setDate(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="start">Start</Label>
-                <Input id="start" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="end">Ende</Label>
-                <Input id="end" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="pause">Pause (Min)</Label>
-                <Input 
-                  id="pause" 
-                  type="number" 
-                  min="0" 
-                  max="480" 
-                  value={pauseMinutes} 
-                  onChange={e => setPauseMinutes(e.target.value)} 
-                  placeholder="30"
-                />
-              </div>
-              <div className="md:col-span-1">
-                <Label htmlFor="notes">Notiz</Label>
-                <Input id="notes" placeholder="optional" value={notes} onChange={e => setNotes(e.target.value)} />
-              </div>
-              <div className="md:col-span-5">
-                <Button onClick={onSubmit} disabled={submitting} className="w-full">
-                  {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                  Speichern
-                </Button>
-              </div>
-            </div>
+            <div className="text-2xl font-bold">{formatMinutes(monthlyTotals.worked)}</div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle>Urlaubskonto</CardTitle>
-            <CardDescription>Übertrag & Anteiligkeit ab Startdatum</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {settings ? (
-              <div className="space-y-1">
-                <div className="flex justify-between"><span>Jahresanspruch</span><span>{vacation.annual} Tage</span></div>
-                <div className="flex justify-between"><span>Übertrag</span><span>{vacation.carry} Tage</span></div>
-                <div className="flex justify-between"><span>Anteilig (dieses Jahr)</span><span>{vacation.prorated} Tage</span></div>
-                <div className="flex justify-between"><span>Genommen (bewilligt)</span><span>{vacation.vacDaysTaken} Tage</span></div>
-                <div className="flex justify-between font-semibold"><span>Verfügbar</span><span>{vacation.remaining} Tage</span></div>
-              </div>
-            ) : (
-              <div className="text-muted-foreground">Keine Mitarbeiter-Einstellungen gefunden.</div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Urlaub beantragen</CardTitle>
-            <CardDescription>Zeitraum wählen und optionalen Grund angeben</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Krank</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              <div>
-                <Label htmlFor="leaveStart">Start</Label>
-                <Input id="leaveStart" type="date" value={leaveStart} onChange={e => setLeaveStart(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="leaveEnd">Ende</Label>
-                <Input id="leaveEnd" type="date" value={leaveEnd} onChange={e => setLeaveEnd(e.target.value)} />
-              </div>
-              <div className="md:col-span-1">
-                <Label htmlFor="leaveReason">Grund (optional)</Label>
-                <Input id="leaveReason" placeholder="z. B. Sommerurlaub" value={leaveReason} onChange={e => setLeaveReason(e.target.value)} />
-              </div>
-              <div className="md:col-span-3">
-                <Button onClick={submitLeave} disabled={leaveSubmitting} className="w-full">
-                  {leaveSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                  Urlaubsantrag einreichen
-                </Button>
-              </div>
-            </div>
+            <div className="text-2xl font-bold">{formatMinutes(monthlyTotals.sick)}</div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle>Krankmeldung</CardTitle>
-            <CardDescription>Krankheitstag direkt erfassen (keine Genehmigung erforderlich)</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Soll-Stunden</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-              <div>
-                <Label htmlFor="sickDate">Krankheitstag</Label>
-                <Input id="sickDate" type="date" value={sickDate} onChange={e => setSickDate(e.target.value)} />
-              </div>
-              <div>
-                <Button onClick={submitSick} disabled={sickSubmitting} className="w-full">
-                  {sickSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                  Krankmeldung erfassen
-                </Button>
-              </div>
-            </div>
+            <div className="text-2xl font-bold">{formatMinutes(monthlyTotals.target)}</div>
+            <p className="text-xs text-muted-foreground">{monthlyTotals.workingDays} Arbeitstage</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle>Urlaubsanträge (dieser Monat)</CardTitle>
-            <CardDescription>Eigene Anträge mit Status</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Differenz</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Start</TableHead>
-                    <TableHead>Ende</TableHead>
-                    <TableHead>Typ</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leaves.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">Keine Anträge</TableCell>
-                    </TableRow>
-                  )}
-                  {leaves.map(l => (
-                    <TableRow key={l.id}>
-                      <TableCell>{l.start_date}</TableCell>
-                      <TableCell>{l.end_date}</TableCell>
-                      <TableCell>{l.type}</TableCell>
-                      <TableCell>{l.status}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className={`text-2xl font-bold ${monthlyTotals.difference >= 0 ? "text-green-600" : "text-red-600"}`}>
+              {monthlyTotals.difference >= 0 ? "+" : ""}
+              {formatMinutes(Math.abs(monthlyTotals.difference))}
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Vacation Account */}
+      {vacationBalance && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              Urlaubskonto {new Date().getFullYear()}
+              <Button variant="outline" size="sm" onClick={() => setShowYearlyLeaves(!showYearlyLeaves)}>
+                <Calendar className="h-4 w-4 mr-2" />
+                Alle Anträge
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Jahresanspruch</p>
+                <p className="text-lg font-semibold">{vacationBalance.prorated} Tage</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Übertrag</p>
+                <p className="text-lg font-semibold">{vacationBalance.carryOver} Tage</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Gesamt</p>
+                <p className="text-lg font-semibold">{vacationBalance.totalEntitlement} Tage</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Genommen</p>
+                <p className="text-lg font-semibold">{vacationBalance.taken} Tage</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Verbleibend</p>
+                <p className="text-lg font-semibold text-primary">{vacationBalance.remaining} Tage</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* New Entry Form */}
       <Card>
         <CardHeader>
-          <CardTitle>Einträge (dieser Monat)</CardTitle>
-          <CardDescription>Start, Ende, Dauer und Notizen</CardDescription>
+          <CardTitle>Neuer Zeiteintrag</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Datum</TableHead>
-                  <TableHead>Start</TableHead>
-                  <TableHead>Ende</TableHead>
-                  <TableHead>Dauer (Min)</TableHead>
-                  <TableHead>Notiz</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">Keine Einträge</TableCell>
-                  </TableRow>
-                )}
-                {entries.map(e => (
-                  <TableRow key={e.id}>
-                    <TableCell>{e.work_date}</TableCell>
-                    <TableCell>{e.started_at ? new Date(e.started_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '-'}</TableCell>
-                    <TableCell>{e.ended_at ? new Date(e.ended_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '-'}</TableCell>
-                    <TableCell>{e.minutes}</TableCell>
-                    <TableCell>{e.notes || ''}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
+                <Label htmlFor="entryDate">Datum</Label>
+                <Input
+                  id="entryDate"
+                  type="date"
+                  value={entryDate}
+                  onChange={(e) => setEntryDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="startTime">Start</Label>
+                <Input
+                  id="startTime"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="endTime">Ende</Label>
+                <Input
+                  id="endTime"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="pauseMinutes">Pause (Min)</Label>
+                <Input
+                  id="pauseMinutes"
+                  type="number"
+                  value={pauseMinutes}
+                  onChange={(e) => setPauseMinutes(e.target.value)}
+                  min="0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="notes">Notiz</Label>
+                <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              </div>
+            </div>
+            <Button type="submit">Eintrag hinzufügen</Button>
+          </form>
         </CardContent>
       </Card>
+
+      {/* Entries Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Zeiteinträge {format(selectedMonth, "MMMM yyyy", { locale: de })}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Datum</TableHead>
+                <TableHead>Start</TableHead>
+                <TableHead>Ende</TableHead>
+                <TableHead>Brutto</TableHead>
+                <TableHead>Pause</TableHead>
+                <TableHead>Netto</TableHead>
+                <TableHead>Notiz</TableHead>
+                <TableHead>Erfasst am</TableHead>
+                <TableHead>Aktionen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
+                    Keine Einträge für diesen Monat
+                  </TableCell>
+                </TableRow>
+              ) : (
+                entries.map((entry) => {
+                  const gross =
+                    entry.started_at && entry.ended_at
+                      ? Math.round(
+                          (new Date(entry.ended_at).getTime() - new Date(entry.started_at).getTime()) / 60000
+                        )
+                      : 0;
+                  const pause = entry.pause_minutes || 0;
+                  const net = entry.minutes || 0;
+                  return (
+                    <TableRow key={entry.id}>
+                      <TableCell>{format(parseISO(entry.entry_date), "dd.MM.yyyy")}</TableCell>
+                      <TableCell>
+                        {entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "-"}
+                      </TableCell>
+                      <TableCell>{entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : "-"}</TableCell>
+                      <TableCell>{formatMinutes(gross)}</TableCell>
+                      <TableCell>{formatMinutes(pause)}</TableCell>
+                      <TableCell className="font-semibold">{formatMinutes(net)}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{entry.notes || "-"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {format(parseISO(entry.created_at), "dd.MM. HH:mm")}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(entry)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(entry.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleShowHistory(entry)}>
+                            <History className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Zeiteintrag bearbeiten</DialogTitle>
+          </DialogHeader>
+          {editingEntry && (
+            <div className="space-y-4">
+              <div>
+                <Label>Datum</Label>
+                <Input
+                  type="date"
+                  value={editingEntry.entry_date}
+                  onChange={(e) => setEditingEntry({ ...editingEntry, entry_date: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Start</Label>
+                <Input
+                  type="time"
+                  value={editingEntry.started_at ? format(parseISO(editingEntry.started_at), "HH:mm") : ""}
+                  onChange={(e) => {
+                    const newStart = `${editingEntry.entry_date}T${e.target.value}`;
+                    setEditingEntry({ ...editingEntry, started_at: new Date(newStart).toISOString() });
+                  }}
+                />
+              </div>
+              <div>
+                <Label>Ende</Label>
+                <Input
+                  type="time"
+                  value={editingEntry.ended_at ? format(parseISO(editingEntry.ended_at), "HH:mm") : ""}
+                  onChange={(e) => {
+                    const newEnd = `${editingEntry.entry_date}T${e.target.value}`;
+                    setEditingEntry({ ...editingEntry, ended_at: new Date(newEnd).toISOString() });
+                  }}
+                />
+              </div>
+              <div>
+                <Label>Pause (Min)</Label>
+                <Input
+                  type="number"
+                  value={editingEntry.pause_minutes || 0}
+                  onChange={(e) => setEditingEntry({ ...editingEntry, pause_minutes: parseInt(e.target.value) })}
+                />
+              </div>
+              <div>
+                <Label>Notiz</Label>
+                <Input
+                  value={editingEntry.notes || ""}
+                  onChange={(e) => setEditingEntry({ ...editingEntry, notes: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleSaveEdit}>Speichern</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              Versionshistorie {historyEntry && `- ${format(parseISO(historyEntry.entry_date), "dd.MM.yyyy")}`}
+            </DialogTitle>
+          </DialogHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Änderung</TableHead>
+                <TableHead>Datum</TableHead>
+                <TableHead>Start</TableHead>
+                <TableHead>Ende</TableHead>
+                <TableHead>Pause</TableHead>
+                <TableHead>Netto</TableHead>
+                <TableHead>Notiz</TableHead>
+                <TableHead>Geändert am</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {history.map((h) => (
+                <TableRow key={h.id}>
+                  <TableCell>
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        h.change_type === "deleted" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {h.change_type === "deleted" ? "Gelöscht" : "Aktualisiert"}
+                    </span>
+                  </TableCell>
+                  <TableCell>{format(parseISO(h.entry_date), "dd.MM.yyyy")}</TableCell>
+                  <TableCell>{h.started_at ? format(parseISO(h.started_at), "HH:mm") : "-"}</TableCell>
+                  <TableCell>{h.ended_at ? format(parseISO(h.ended_at), "HH:mm") : "-"}</TableCell>
+                  <TableCell>{formatMinutes(h.pause_minutes || 0)}</TableCell>
+                  <TableCell>{formatMinutes(h.minutes || 0)}</TableCell>
+                  <TableCell className="max-w-[150px] truncate">{h.notes || "-"}</TableCell>
+                  <TableCell className="text-xs">{format(parseISO(h.changed_at), "dd.MM. HH:mm")}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+      </Dialog>
+
+      {/* Yearly Leaves Dialog */}
+      <Dialog open={showYearlyLeaves} onOpenChange={setShowYearlyLeaves}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Alle Urlaubsanträge {new Date().getFullYear()}</DialogTitle>
+          </DialogHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Von</TableHead>
+                <TableHead>Bis</TableHead>
+                <TableHead>Tage</TableHead>
+                <TableHead>Grund</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {vacationLeaves
+                .filter((l) => new Date(l.start_date).getFullYear() === new Date().getFullYear())
+                .map((leave) => {
+                  const days = eachDayOfInterval({
+                    start: parseISO(leave.start_date),
+                    end: parseISO(leave.end_date),
+                  }).filter((d) => d.getDay() !== 0 && d.getDay() !== 6).length;
+                  return (
+                    <TableRow key={leave.id}>
+                      <TableCell>{format(parseISO(leave.start_date), "dd.MM.yyyy")}</TableCell>
+                      <TableCell>{format(parseISO(leave.end_date), "dd.MM.yyyy")}</TableCell>
+                      <TableCell>{days}</TableCell>
+                      <TableCell>{leave.reason || "-"}</TableCell>
+                      <TableCell>
+                        <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
+                          {leave.status}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+            </TableBody>
+          </Table>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
-export default TimeTrackingView;

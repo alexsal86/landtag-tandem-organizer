@@ -5693,25 +5693,31 @@ export type Database = {
       }
       public_holidays: {
         Row: {
-          created_at: string | null
+          created_at: string
           holiday_date: string
           id: string
+          is_nationwide: boolean | null
           name: string
-          state_code: string | null
+          state: string | null
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           holiday_date: string
           id?: string
+          is_nationwide?: boolean | null
           name: string
-          state_code?: string | null
+          state?: string | null
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           holiday_date?: string
           id?: string
+          is_nationwide?: boolean | null
           name?: string
-          state_code?: string | null
+          state?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -6893,51 +6899,49 @@ export type Database = {
         Row: {
           change_type: string
           changed_at: string
-          changed_by: string
+          changed_by: string | null
+          created_at: string
           ended_at: string | null
+          entry_date: string
           id: string
-          minutes: number
+          minutes: number | null
           notes: string | null
           pause_minutes: number | null
           started_at: string | null
           time_entry_id: string
-          work_date: string
+          user_id: string
         }
         Insert: {
           change_type: string
           changed_at?: string
-          changed_by: string
+          changed_by?: string | null
+          created_at?: string
           ended_at?: string | null
+          entry_date: string
           id?: string
-          minutes: number
+          minutes?: number | null
           notes?: string | null
           pause_minutes?: number | null
           started_at?: string | null
           time_entry_id: string
-          work_date: string
+          user_id: string
         }
         Update: {
           change_type?: string
           changed_at?: string
-          changed_by?: string
+          changed_by?: string | null
+          created_at?: string
           ended_at?: string | null
+          entry_date?: string
           id?: string
-          minutes?: number
+          minutes?: number | null
           notes?: string | null
           pause_minutes?: number | null
           started_at?: string | null
           time_entry_id?: string
-          work_date?: string
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "time_entry_history_time_entry_id_fkey"
-            columns: ["time_entry_id"]
-            isOneToOne: false
-            referencedRelation: "time_entries"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       todo_categories: {
         Row: {
