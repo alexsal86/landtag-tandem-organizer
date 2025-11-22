@@ -49,13 +49,20 @@ export function GlobalSearchCommand() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
+  // Custom event listener for programmatic opening
+  useEffect(() => {
+    const handleOpenSearch = () => setOpen(true);
+    window.addEventListener('openGlobalSearch', handleOpenSearch);
+    return () => window.removeEventListener('openGlobalSearch', handleOpenSearch);
+  }, []);
+
   // Debounced search
   const debouncedSearch = debounce((value: string) => {
     setSearchQuery(value);
   }, 300);
 
   // Search queries
-  const { data: contacts } = useQuery({
+  const { data: contacts, isLoading: contactsLoading } = useQuery({
     queryKey: ['global-search-contacts', searchQuery, currentTenant?.id],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
@@ -70,7 +77,7 @@ export function GlobalSearchCommand() {
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
   });
 
-  const { data: appointments } = useQuery({
+  const { data: appointments, isLoading: appointmentsLoading } = useQuery({
     queryKey: ['global-search-appointments', searchQuery, currentTenant?.id],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
@@ -87,23 +94,24 @@ export function GlobalSearchCommand() {
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
   });
 
-  const { data: tasks } = useQuery({
+  const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ['global-search-tasks', searchQuery, currentTenant?.id],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
       const { data } = await supabase
         .from('tasks')
         .select('id, title, due_date, status')
+        .eq('tenant_id', currentTenant!.id)
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
         .neq('status', 'completed')
         .order('due_date', { ascending: true })
         .limit(5);
       return data || [];
     },
-    enabled: !!searchQuery && searchQuery.length >= 2,
+    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
   });
 
-  const { data: documents } = useQuery({
+  const { data: documents, isLoading: documentsLoading } = useQuery({
     queryKey: ['global-search-documents', searchQuery, currentTenant?.id],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
@@ -119,7 +127,7 @@ export function GlobalSearchCommand() {
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
   });
 
-  const { data: letters } = useQuery({
+  const { data: letters, isLoading: lettersLoading } = useQuery({
     queryKey: ['global-search-letters', searchQuery, currentTenant?.id],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
@@ -135,7 +143,7 @@ export function GlobalSearchCommand() {
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
   });
 
-  const { data: protocols } = useQuery({
+  const { data: protocols, isLoading: protocolsLoading } = useQuery({
     queryKey: ['global-search-protocols', searchQuery, currentTenant?.id],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
@@ -176,14 +184,26 @@ export function GlobalSearchCommand() {
                      (tasks?.length || 0) + (documents?.length || 0) + 
                      (letters?.length || 0) + (protocols?.length || 0) > 0;
 
+  const isSearching = contactsLoading || appointmentsLoading || tasksLoading || 
+                      documentsLoading || lettersLoading || protocolsLoading;
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput 
-        placeholder="Durchsuche Kontakte, Termine, Aufgaben..." 
+        placeholder="Durchsuche Kontakte, Termine, Aufgaben, Dokumente... (mind. 2 Zeichen)" 
         onValueChange={debouncedSearch}
       />
       <CommandList>
-        <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
+        {isSearching && searchQuery ? (
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            <div className="flex items-center justify-center gap-2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <span>Suche läuft...</span>
+            </div>
+          </div>
+        ) : (
+          <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
+        )}
 
         {!searchQuery && (
           <CommandGroup heading="🚀 Navigation">

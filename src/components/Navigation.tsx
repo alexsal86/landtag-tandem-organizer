@@ -1,5 +1,7 @@
 import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive, Search } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { NavigationBadge } from "./NavigationBadge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -508,6 +510,26 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                   <CompactStatusSelector />
                 </>
               )}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('openGlobalSearch'));
+                      }}
+                      className="relative h-8 w-8"
+                    >
+                      <Search className="h-5 w-5" />
+                      <span className="sr-only">Suche öffnen</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Suche öffnen (⌘K / Ctrl+K)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <NotificationBell />
             </div>
           </SidebarMenuItem>
