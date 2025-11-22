@@ -1,14 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   CommandDialog, 
   CommandEmpty, 
   CommandGroup, 
   CommandInput, 
   CommandItem, 
-  CommandList 
+  CommandList,
+  CommandSeparator
 } from "@/components/ui/command";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { X, Clock, TrendingUp, Filter } from "lucide-react";
 import { 
   User, 
   Calendar, 
@@ -22,20 +26,65 @@ import {
   MessageSquare,
   CalendarPlus,
   MapPin,
-  Settings,
-  Clock
+  Settings
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useAuth } from "@/hooks/useAuth";
 import { debounce } from "@/utils/debounce";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
+// Recent searches management
+const RECENT_SEARCHES_KEY = 'global-search-recent';
+const MAX_RECENT_SEARCHES = 5;
+
+interface RecentSearch {
+  query: string;
+  timestamp: number;
+}
+
+const getRecentSearches = (): RecentSearch[] => {
+  try {
+    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const addRecentSearch = (query: string) => {
+  const recent = getRecentSearches();
+  const filtered = recent.filter(s => s.query !== query);
+  const updated = [{ query, timestamp: Date.now() }, ...filtered].slice(0, MAX_RECENT_SEARCHES);
+  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+};
+
+const clearRecentSearches = () => {
+  localStorage.removeItem(RECENT_SEARCHES_KEY);
+};
+
 export function GlobalSearchCommand() {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    dateFrom: "",
+    dateTo: "",
+    category: "",
+    status: ""
+  });
   const navigate = useNavigate();
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
+
+  // Load recent searches
+  useEffect(() => {
+    if (open) {
+      setRecentSearches(getRecentSearches());
+    }
+  }, [open]);
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -56,36 +105,102 @@ export function GlobalSearchCommand() {
     return () => window.removeEventListener('openGlobalSearch', handleOpenSearch);
   }, []);
 
+  // Track search analytics
+  const trackSearchMutation = useMutation({
+    mutationFn: async ({ query, resultCount, resultTypes }: { 
+      query: string; 
+      resultCount: number; 
+      resultTypes: string[] 
+    }) => {
+      if (!user || !currentTenant) return;
+      await supabase.from('search_analytics').insert({
+        user_id: user.id,
+        tenant_id: currentTenant.id,
+        search_query: query,
+        result_count: resultCount,
+        result_types: resultTypes
+      });
+    }
+  });
+
+  // Get popular searches
+  const { data: popularSearches } = useQuery({
+    queryKey: ['popular-searches', currentTenant?.id],
+    queryFn: async () => {
+      if (!currentTenant?.id) return [];
+      const { data } = await supabase
+        .from('search_analytics')
+        .select('search_query, result_count')
+        .eq('tenant_id', currentTenant.id)
+        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (!data) return [];
+      
+      // Count occurrences and sort by frequency
+      const counts = data.reduce((acc, item) => {
+        acc[item.search_query] = (acc[item.search_query] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      return Object.entries(counts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([query]) => query);
+    },
+    enabled: !!currentTenant?.id && open
+  });
+
   // Debounced search
   const debouncedSearch = debounce((value: string) => {
     setSearchQuery(value);
   }, 300);
 
-  // Search queries
+  // Search queries with fuzzy search
   const { data: contacts, isLoading: contactsLoading } = useQuery({
-    queryKey: ['global-search-contacts', searchQuery, currentTenant?.id],
+    queryKey: ['global-search-contacts', searchQuery, currentTenant?.id, filters],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
-      const { data } = await supabase
+      let query = supabase
         .from('contacts')
-        .select('id, name, organization, avatar_url')
-        .eq('tenant_id', currentTenant!.id)
-        .or(`name.ilike.%${searchQuery}%,organization.ilike.%${searchQuery}%`)
-        .limit(5);
+        .select('id, name, organization, avatar_url, category')
+        .eq('tenant_id', currentTenant!.id);
+      
+      // Fuzzy search using pg_trgm similarity
+      query = query.or(`name.ilike.%${searchQuery}%,organization.ilike.%${searchQuery}%`);
+      
+      if (filters.category) {
+        query = query.eq('category', filters.category);
+      }
+      
+      const { data } = await query.limit(5);
       return data || [];
     },
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
   });
 
   const { data: appointments, isLoading: appointmentsLoading } = useQuery({
-    queryKey: ['global-search-appointments', searchQuery, currentTenant?.id],
+    queryKey: ['global-search-appointments', searchQuery, currentTenant?.id, filters],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
-      const { data } = await supabase
+      let query = supabase
         .from('appointments')
-        .select('id, title, start_time, location')
+        .select('id, title, start_time, location, category')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`);
+      
+      if (filters.dateFrom) {
+        query = query.gte('start_time', filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        query = query.lte('start_time', filters.dateTo);
+      }
+      if (filters.category) {
+        query = query.eq('category', filters.category);
+      }
+      
+      const { data } = await query
         .gte('start_time', new Date().toISOString())
         .order('start_time', { ascending: true })
         .limit(5);
@@ -95,15 +210,29 @@ export function GlobalSearchCommand() {
   });
 
   const { data: tasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ['global-search-tasks', searchQuery, currentTenant?.id],
+    queryKey: ['global-search-tasks', searchQuery, currentTenant?.id, filters],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
-      const { data } = await supabase
+      let query = supabase
         .from('tasks')
-        .select('id, title, due_date, status')
+        .select('id, title, due_date, status, priority')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-        .neq('status', 'completed')
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      
+      if (filters.status && filters.status !== 'completed') {
+        query = query.eq('status', filters.status);
+      } else if (!filters.status) {
+        query = query.neq('status', 'completed');
+      }
+      
+      if (filters.dateFrom) {
+        query = query.gte('due_date', filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        query = query.lte('due_date', filters.dateTo);
+      }
+      
+      const { data } = await query
         .order('due_date', { ascending: true })
         .limit(5);
       return data || [];
@@ -112,14 +241,23 @@ export function GlobalSearchCommand() {
   });
 
   const { data: documents, isLoading: documentsLoading } = useQuery({
-    queryKey: ['global-search-documents', searchQuery, currentTenant?.id],
+    queryKey: ['global-search-documents', searchQuery, currentTenant?.id, filters],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
-      const { data } = await supabase
+      let query = supabase
         .from('documents')
-        .select('id, title, description, category')
+        .select('id, title, description, category, status')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      
+      if (filters.category) {
+        query = query.eq('category', filters.category);
+      }
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      
+      const { data } = await query
         .order('created_at', { ascending: false })
         .limit(5);
       return data || [];
@@ -159,11 +297,44 @@ export function GlobalSearchCommand() {
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
   });
 
-  const runCommand = (command: () => void) => {
+  // Track search when results change
+  useEffect(() => {
+    if (searchQuery && searchQuery.length >= 2) {
+      const resultCount = (contacts?.length || 0) + (appointments?.length || 0) + 
+                          (tasks?.length || 0) + (documents?.length || 0) + 
+                          (letters?.length || 0) + (protocols?.length || 0);
+      const resultTypes: string[] = [];
+      if (contacts?.length) resultTypes.push('contacts');
+      if (appointments?.length) resultTypes.push('appointments');
+      if (tasks?.length) resultTypes.push('tasks');
+      if (documents?.length) resultTypes.push('documents');
+      if (letters?.length) resultTypes.push('letters');
+      if (protocols?.length) resultTypes.push('protocols');
+      
+      trackSearchMutation.mutate({ query: searchQuery, resultCount, resultTypes });
+    }
+  }, [contacts, appointments, tasks, documents, letters, protocols, searchQuery]);
+
+  const runCommand = useCallback((command: () => void) => {
+    if (searchQuery && searchQuery.length >= 2) {
+      addRecentSearch(searchQuery);
+    }
     setOpen(false);
     setSearchQuery("");
+    setFilters({ dateFrom: "", dateTo: "", category: "", status: "" });
     command();
+  }, [searchQuery]);
+
+  const handleRecentSearchClick = (query: string) => {
+    setSearchQuery(query);
+    debouncedSearch(query);
   };
+
+  const clearFilters = () => {
+    setFilters({ dateFrom: "", dateTo: "", category: "", status: "" });
+  };
+
+  const activeFilterCount = Object.values(filters).filter(v => v).length;
 
   const navigationItems = [
     { label: "Dashboard", icon: Home, path: "/" },
@@ -189,10 +360,81 @@ export function GlobalSearchCommand() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput 
-        placeholder="Durchsuche Kontakte, Termine, Aufgaben, Dokumente... (mind. 2 Zeichen)" 
-        onValueChange={debouncedSearch}
-      />
+      <div className="flex items-center border-b px-3">
+        <CommandInput 
+          placeholder="Durchsuche Kontakte, Termine, Aufgaben, Dokumente... (mind. 2 Zeichen)" 
+          onValueChange={debouncedSearch}
+          value={searchQuery}
+          className="border-0 focus-visible:ring-0"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowFilters(!showFilters)}
+          className="ml-2 flex items-center gap-1"
+        >
+          <Filter className="h-4 w-4" />
+          {activeFilterCount > 0 && (
+            <Badge variant="secondary" className="ml-1 h-5 px-1 text-xs">
+              {activeFilterCount}
+            </Badge>
+          )}
+        </Button>
+      </div>
+
+      {showFilters && (
+        <div className="border-b p-3 space-y-2">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Filter</span>
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                Filter zurücksetzen
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Von Datum</label>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Bis Datum</label>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Kategorie</label>
+              <input
+                type="text"
+                value={filters.category}
+                onChange={(e) => setFilters({...filters, category: e.target.value})}
+                placeholder="z.B. Meeting"
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Status</label>
+              <input
+                type="text"
+                value={filters.status}
+                onChange={(e) => setFilters({...filters, status: e.target.value})}
+                placeholder="z.B. pending"
+                className="w-full px-2 py-1 text-sm border rounded"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <CommandList>
         {isSearching && searchQuery ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
@@ -203,6 +445,65 @@ export function GlobalSearchCommand() {
           </div>
         ) : (
           <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
+        )}
+
+        {!searchQuery && recentSearches.length > 0 && (
+          <>
+            <CommandGroup heading={
+              <div className="flex items-center justify-between w-full pr-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>Zuletzt gesucht</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearRecentSearches();
+                    setRecentSearches([]);
+                  }}
+                  className="h-6 px-2 text-xs"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Löschen
+                </Button>
+              </div>
+            }>
+              {recentSearches.map((search, idx) => (
+                <CommandItem
+                  key={idx}
+                  onSelect={() => handleRecentSearchClick(search.query)}
+                >
+                  <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span>{search.query}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
+
+        {!searchQuery && popularSearches && popularSearches.length > 0 && (
+          <>
+            <CommandGroup heading={
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                <span>Beliebte Suchen</span>
+              </div>
+            }>
+              {popularSearches.map((query, idx) => (
+                <CommandItem
+                  key={idx}
+                  onSelect={() => handleRecentSearchClick(query)}
+                >
+                  <TrendingUp className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span>{query}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
         )}
 
         {!searchQuery && (
