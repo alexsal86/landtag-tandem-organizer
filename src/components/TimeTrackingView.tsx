@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from "date-fns";
 import { de } from "date-fns/locale";
@@ -101,8 +102,8 @@ export function TimeTrackingView() {
       const [e, s, v, sick, h] = await Promise.all([
         supabase.from("time_entries").select("*").eq("user_id", user.id).gte("work_date", format(monthStart, "yyyy-MM-dd")).lte("work_date", format(monthEnd, "yyyy-MM-dd")).order("work_date", { ascending: false }),
         supabase.from("employee_settings").select("*").eq("user_id", user.id).single(),
-        supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "vacation").in("status", ["approved", "pending"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
-        supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "sick").in("status", ["pending", "approved"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
+        supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "vacation").in("status", ["approved", "pending", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
+        supabase.from("leave_requests").select("*").eq("user_id", user.id).eq("type", "sick").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
         supabase.from("public_holidays").select("*").gte("holiday_date", `${year}-01-01`).lte("holiday_date", `${year}-12-31`).order("holiday_date"),
       ]);
       setEntries(e.data || []); setEmployeeSettings(s.data); setVacationLeaves(v.data || []); setSickLeaves(sick.data || []); setHolidays(h.data || []);
@@ -126,6 +127,22 @@ export function TimeTrackingView() {
     const target = workingDays * dailyHours * 60;
     return { worked, sick, target, difference: worked + sick - target, workingDays };
   }, [entries, sickLeaves, holidays, monthStart, monthEnd, dailyHours]);
+
+  const projectionTotals = useMemo(() => {
+    const today = new Date();
+    const isCurrentMonth = today.getFullYear() === selectedMonth.getFullYear() && today.getMonth() === selectedMonth.getMonth();
+    if (!isCurrentMonth) return null;
+    const effectiveEndDate = today > monthEnd ? monthEnd : today;
+    const workedDaysSoFar = eachDayOfInterval({ start: monthStart, end: effectiveEndDate }).filter(d => d.getDay() !== 0 && d.getDay() !== 6 && !holidays.some(h => h.holiday_date === format(d, "yyyy-MM-dd"))).length;
+    const targetSoFar = workedDaysSoFar * dailyHours * 60;
+    const workedSoFar = entries.filter(e => parseISO(e.work_date) <= today).reduce((s, e) => s + (e.minutes || 0), 0);
+    const sickSoFar = sickLeaves.filter(l => l.status === "approved").reduce((s, l) => {
+      const days = eachDayOfInterval({ start: parseISO(l.start_date), end: parseISO(l.end_date) }).filter(d => d >= monthStart && d <= effectiveEndDate && d.getDay() !== 0 && d.getDay() !== 6).length;
+      return s + days * dailyHours * 60;
+    }, 0);
+    const actualSoFar = workedSoFar + sickSoFar;
+    return { workedDaysSoFar, targetSoFar, actualSoFar, differenceSoFar: actualSoFar - targetSoFar };
+  }, [entries, sickLeaves, holidays, monthStart, monthEnd, selectedMonth, dailyHours]);
 
   const validateDailyLimit = async (workDate: string, grossMin: number, excludeId?: string) => {
     if (!user) return;
@@ -159,6 +176,16 @@ export function TimeTrackingView() {
 
   const fmt = (m: number) => `${m < 0 ? "-" : ""}${Math.floor(Math.abs(m) / 60)}:${(Math.abs(m) % 60).toString().padStart(2, "0")}`;
 
+  const getStatusBadge = (status: string) => {
+    const config = {
+      approved: { variant: "default" as const, label: "✓ Genehmigt", className: "bg-green-100 text-green-800 border-green-200" },
+      pending: { variant: "secondary" as const, label: "⏳ Ausstehend", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+      rejected: { variant: "destructive" as const, label: "✗ Abgelehnt", className: "bg-red-100 text-red-800 border-red-200" },
+    };
+    const { label, className } = config[status as keyof typeof config] || config.pending;
+    return <Badge className={className}>{label}</Badge>;
+  };
+
   if (loading) return <div className="p-4">Lädt...</div>;
   if (!employeeSettings) return <div className="p-4">Keine Einstellungen.</div>;
 
@@ -170,17 +197,21 @@ export function TimeTrackingView() {
           <div className="grid grid-cols-4 gap-4">
             <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Gearbeitet</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{fmt(monthlyTotals.worked)}</div></CardContent></Card>
             <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Krank</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{fmt(monthlyTotals.sick)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Soll ({monthlyTotals.workingDays} AT)</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{fmt(monthlyTotals.target)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Differenz</CardTitle></CardHeader><CardContent><div className={`text-2xl font-bold ${monthlyTotals.difference >= 0 ? "text-green-600" : "text-red-600"}`}>{fmt(monthlyTotals.difference)}</div></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Soll/Ist ({monthlyTotals.workingDays} AT)</CardTitle></CardHeader><CardContent><div className="space-y-1"><div className="text-sm text-muted-foreground">Soll: {fmt(monthlyTotals.target)}</div><div className="text-sm text-muted-foreground">Ist: {fmt(monthlyTotals.worked + monthlyTotals.sick)}</div><div className={`text-lg font-bold ${monthlyTotals.difference >= 0 ? "text-green-600" : "text-red-600"}`}>Diff: {fmt(monthlyTotals.difference)}</div></div></CardContent></Card>
+            {projectionTotals && <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Hochrechnung ({projectionTotals.workedDaysSoFar}/{monthlyTotals.workingDays} AT)</CardTitle></CardHeader><CardContent><div className="space-y-1"><div className="text-sm text-muted-foreground">Soll: {fmt(projectionTotals.targetSoFar)}</div><div className="text-sm text-muted-foreground">Ist: {fmt(projectionTotals.actualSoFar)}</div><div className={`text-lg font-bold ${projectionTotals.differenceSoFar >= 0 ? "text-green-600" : "text-red-600"}`}>Diff: {fmt(projectionTotals.differenceSoFar)}</div></div></CardContent></Card>}
           </div>
           <Card><CardHeader><CardTitle>Neue Zeiterfassung</CardTitle></CardHeader><CardContent><form onSubmit={onSubmit} className="space-y-4"><div className="grid grid-cols-5 gap-4"><div><Label>Datum</Label><Input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} required /></div><div><Label>Start</Label><Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required /></div><div><Label>Ende</Label><Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required /></div><div><Label>Pause (Min)</Label><Input type="number" value={pauseMinutes} onChange={e => setPauseMinutes(e.target.value)} min="0" /></div><div className="flex items-end"><Button type="submit" className="w-full">Erfassen</Button></div></div><div><Label>Notizen</Label><Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" /></div></form></CardContent></Card>
           <Card><CardHeader><CardTitle>Zeiteinträge</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Datum</TableHead><TableHead>Start</TableHead><TableHead>Ende</TableHead><TableHead>Pause</TableHead><TableHead>Brutto</TableHead><TableHead>Netto</TableHead><TableHead>Notizen</TableHead></TableRow></TableHeader><TableBody>{entries.map(e => { const g = e.started_at && e.ended_at ? Math.round((new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000) : 0; return (<TableRow key={e.id}><TableCell>{format(parseISO(e.work_date), "dd.MM.yyyy")}</TableCell><TableCell>{e.started_at ? format(parseISO(e.started_at), "HH:mm") : "-"}</TableCell><TableCell>{e.ended_at ? format(parseISO(e.ended_at), "HH:mm") : "-"}</TableCell><TableCell>{e.pause_minutes || 0} Min</TableCell><TableCell>{fmt(g)}</TableCell><TableCell>{fmt(e.minutes || 0)}</TableCell><TableCell>{e.notes || "-"}</TableCell></TableRow>); })}</TableBody></Table></CardContent></Card>
         </TabsContent>
         <TabsContent value="leave-requests" className="space-y-6">
-          <Card><CardHeader><CardTitle>Urlaub beantragen</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><Label>Von</Label><Input type="date" value={vacationStartDate} onChange={e => setVacationStartDate(e.target.value)} /></div><div><Label>Bis</Label><Input type="date" value={vacationEndDate} onChange={e => setVacationEndDate(e.target.value)} /></div></div><div><Label>Grund</Label><Textarea value={vacationReason} onChange={e => setVacationReason(e.target.value)} /></div><Button onClick={handleRequestVacation}>Urlaub beantragen</Button></CardContent></Card>
-          <Card><CardHeader><CardTitle>Krankmeldung</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><Label>Von</Label><Input type="date" value={sickStartDate} onChange={e => setSickStartDate(e.target.value)} /></div><div><Label>Bis</Label><Input type="date" value={sickEndDate} onChange={e => setSickEndDate(e.target.value)} /></div></div><div><Label>Notizen</Label><Textarea value={sickNotes} onChange={e => setSickNotes(e.target.value)} /></div><Button onClick={handleReportSick}>Krankmeldung einreichen</Button></CardContent></Card>
-          <Card><CardHeader><CardTitle>Urlaubskonto {selectedMonth.getFullYear()}</CardTitle><CardDescription>Anspruch: {vacationBalance.totalEntitlement} | Genommen: {vacationBalance.taken} | Verbleibend: {vacationBalance.remaining}</CardDescription></CardHeader></Card>
-          <Card><CardHeader><CardTitle>Krankmeldungen {selectedMonth.getFullYear()}</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Von</TableHead><TableHead>Bis</TableHead><TableHead>Tage</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{sickLeaves.map(s => { const d = eachDayOfInterval({ start: parseISO(s.start_date), end: parseISO(s.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; return (<TableRow key={s.id}><TableCell>{format(parseISO(s.start_date), "dd.MM.yyyy")}</TableCell><TableCell>{format(parseISO(s.end_date), "dd.MM.yyyy")}</TableCell><TableCell>{d}</TableCell><TableCell><span className={`px-2 py-1 rounded text-xs ${s.status === "approved" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>{s.status === "approved" ? "✓ Genehmigt" : "⏳ Ausstehend"}</span></TableCell></TableRow>); })}</TableBody></Table></CardContent></Card>
+          <div className="grid grid-cols-2 gap-6">
+            <Card><CardHeader><CardTitle>Urlaub beantragen</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><Label>Von</Label><Input type="date" value={vacationStartDate} onChange={e => setVacationStartDate(e.target.value)} /></div><div><Label>Bis</Label><Input type="date" value={vacationEndDate} onChange={e => setVacationEndDate(e.target.value)} /></div></div><div><Label>Grund</Label><Textarea value={vacationReason} onChange={e => setVacationReason(e.target.value)} placeholder="Optional" /></div><Button onClick={handleRequestVacation}>Urlaub beantragen</Button></CardContent></Card>
+            <Card><CardHeader><CardTitle>Urlaubskonto {selectedMonth.getFullYear()}</CardTitle><CardDescription>Anspruch: {vacationBalance.totalEntitlement} | Genommen: {vacationBalance.taken} | Verbleibend: {vacationBalance.remaining}</CardDescription></CardHeader><CardContent>{vacationLeaves.length === 0 ? <p className="text-sm text-muted-foreground">Keine Urlaubsanträge vorhanden</p> : <Table><TableHeader><TableRow><TableHead>Von</TableHead><TableHead>Bis</TableHead><TableHead>Tage</TableHead><TableHead>Grund</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{vacationLeaves.map(v => { const d = eachDayOfInterval({ start: parseISO(v.start_date), end: parseISO(v.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; return (<TableRow key={v.id}><TableCell>{format(parseISO(v.start_date), "dd.MM.yyyy")}</TableCell><TableCell>{format(parseISO(v.end_date), "dd.MM.yyyy")}</TableCell><TableCell>{d}</TableCell><TableCell>{v.reason || "-"}</TableCell><TableCell>{getStatusBadge(v.status)}</TableCell></TableRow>); })}</TableBody></Table>}</CardContent></Card>
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <Card><CardHeader><CardTitle>Krankmeldung</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><Label>Von</Label><Input type="date" value={sickStartDate} onChange={e => setSickStartDate(e.target.value)} /></div><div><Label>Bis</Label><Input type="date" value={sickEndDate} onChange={e => setSickEndDate(e.target.value)} /></div></div><div><Label>Notizen</Label><Textarea value={sickNotes} onChange={e => setSickNotes(e.target.value)} placeholder="Optional" /></div><Button onClick={handleReportSick}>Krankmeldung einreichen</Button></CardContent></Card>
+            <Card><CardHeader><CardTitle>Krankmeldungen {selectedMonth.getFullYear()}</CardTitle></CardHeader><CardContent>{sickLeaves.length === 0 ? <p className="text-sm text-muted-foreground">Keine Krankmeldungen vorhanden</p> : <Table><TableHeader><TableRow><TableHead>Von</TableHead><TableHead>Bis</TableHead><TableHead>Tage</TableHead><TableHead>Notizen</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{sickLeaves.map(s => { const d = eachDayOfInterval({ start: parseISO(s.start_date), end: parseISO(s.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; return (<TableRow key={s.id}><TableCell>{format(parseISO(s.start_date), "dd.MM.yyyy")}</TableCell><TableCell>{format(parseISO(s.end_date), "dd.MM.yyyy")}</TableCell><TableCell>{d}</TableCell><TableCell>{s.reason || "-"}</TableCell><TableCell>{getStatusBadge(s.status)}</TableCell></TableRow>); })}</TableBody></Table>}</CardContent></Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
