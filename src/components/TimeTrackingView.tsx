@@ -191,16 +191,131 @@ export function TimeTrackingView() {
 
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <Card><CardHeader className="flex flex-row items-center justify-between space-y-0"><Button variant="outline" size="icon" onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button><CardTitle className="text-2xl">{format(selectedMonth, "MMMM yyyy", { locale: de })}</CardTitle><Button variant="outline" size="icon" onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}><ChevronRight className="h-4 w-4" /></Button></CardHeader></Card>
+      <Card>
+        <CardHeader className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Button variant="outline" size="icon" onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <CardTitle className="text-2xl">{format(selectedMonth, "MMMM yyyy", { locale: de })}</CardTitle>
+            <Button variant="outline" size="icon" onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {Array.from({ length: 12 }, (_, i) => {
+              const monthDate = new Date(selectedMonth.getFullYear(), i, 1);
+              const isSelected = i === selectedMonth.getMonth();
+              return (
+                <Button
+                  key={i}
+                  variant={isSelected ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedMonth(monthDate)}
+                  className={`min-w-[60px] ${isSelected ? "font-bold" : ""}`}
+                >
+                  {format(monthDate, "MMM", { locale: de })}
+                </Button>
+              );
+            })}
+          </div>
+        </CardHeader>
+      </Card>
       <Tabs defaultValue="time-tracking"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="time-tracking">Zeiterfassung</TabsTrigger><TabsTrigger value="leave-requests">Urlaub & Krankmeldungen</TabsTrigger></TabsList>
         <TabsContent value="time-tracking" className="space-y-6">
-          <div className="grid grid-cols-4 gap-4">
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Gearbeitet</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{fmt(monthlyTotals.worked)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Krank</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{fmt(monthlyTotals.sick)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Soll/Ist ({monthlyTotals.workingDays} AT)</CardTitle></CardHeader><CardContent><div className="space-y-1"><div className="text-sm text-muted-foreground">Soll: {fmt(monthlyTotals.target)}</div><div className="text-sm text-muted-foreground">Ist: {fmt(monthlyTotals.worked + monthlyTotals.sick)}</div><div className={`text-lg font-bold ${monthlyTotals.difference >= 0 ? "text-green-600" : "text-red-600"}`}>Diff: {fmt(monthlyTotals.difference)}</div></div></CardContent></Card>
-            {projectionTotals && <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Hochrechnung ({projectionTotals.workedDaysSoFar}/{monthlyTotals.workingDays} AT)</CardTitle></CardHeader><CardContent><div className="space-y-1"><div className="text-sm text-muted-foreground">Soll: {fmt(projectionTotals.targetSoFar)}</div><div className="text-sm text-muted-foreground">Ist: {fmt(projectionTotals.actualSoFar)}</div><div className={`text-lg font-bold ${projectionTotals.differenceSoFar >= 0 ? "text-green-600" : "text-red-600"}`}>Diff: {fmt(projectionTotals.differenceSoFar)}</div></div></CardContent></Card>}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle>Zeitübersicht {format(selectedMonth, "MMMM yyyy", { locale: de })}</CardTitle>
+                <CardDescription>{monthlyTotals.workingDays} Arbeitstage</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-sm">
+                    <span>📊</span>
+                    <span>MONATSBILANZ</span>
+                  </div>
+                  <div className="pl-6 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Gearbeitet:</span>
+                      <span className="font-mono">{fmt(monthlyTotals.worked)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Krankheitstage:</span>
+                      <span className="font-mono">{fmt(monthlyTotals.sick)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-1 mt-1">
+                      <span className="font-medium">Gesamt (Ist):</span>
+                      <span className="font-mono font-bold">{fmt(monthlyTotals.worked + monthlyTotals.sick)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-sm">
+                    <span>🎯</span>
+                    <span>SOLL/IST VERGLEICH</span>
+                  </div>
+                  <div className="pl-6 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Monatssoll:</span>
+                      <span className="font-mono">{fmt(monthlyTotals.target)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={monthlyTotals.difference >= 0 ? "text-green-600" : "text-red-600"}>Differenz:</span>
+                      <span className={`font-mono font-bold ${monthlyTotals.difference >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {monthlyTotals.difference >= 0 ? "+" : ""}{fmt(Math.abs(monthlyTotals.difference))}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Status:</span>
+                      <span className="font-mono">{Math.round((monthlyTotals.worked + monthlyTotals.sick) / monthlyTotals.target * 100)}% erfüllt</span>
+                    </div>
+                  </div>
+                </div>
+                {projectionTotals && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 font-semibold text-sm">
+                      <span>⏱️</span>
+                      <span>HOCHRECHNUNG BIS HEUTE</span>
+                    </div>
+                    <div className="pl-6 space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Soll ({projectionTotals.workedDaysSoFar}/{monthlyTotals.workingDays} AT):</span>
+                        <span className="font-mono">{fmt(projectionTotals.targetSoFar)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Ist bis heute:</span>
+                        <span className="font-mono">{fmt(projectionTotals.actualSoFar)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={projectionTotals.differenceSoFar >= 0 ? "text-green-600" : "text-red-600"}>Differenz:</span>
+                        <span className={`font-mono font-bold ${projectionTotals.differenceSoFar >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          {projectionTotals.differenceSoFar >= 0 ? "+" : ""}{fmt(Math.abs(projectionTotals.differenceSoFar))}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle>Neue Zeiterfassung</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={onSubmit} className="space-y-4">
+                  <div className="grid grid-cols-5 gap-4">
+                    <div><Label>Datum</Label><Input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} required /></div>
+                    <div><Label>Start</Label><Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required /></div>
+                    <div><Label>Ende</Label><Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required /></div>
+                    <div><Label>Pause (Min)</Label><Input type="number" value={pauseMinutes} onChange={e => setPauseMinutes(e.target.value)} min="0" /></div>
+                    <div className="flex items-end"><Button type="submit" className="w-full">Erfassen</Button></div>
+                  </div>
+                  <div><Label>Notizen</Label><Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" /></div>
+                </form>
+              </CardContent>
+            </Card>
           </div>
-          <Card><CardHeader><CardTitle>Neue Zeiterfassung</CardTitle></CardHeader><CardContent><form onSubmit={onSubmit} className="space-y-4"><div className="grid grid-cols-5 gap-4"><div><Label>Datum</Label><Input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} required /></div><div><Label>Start</Label><Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required /></div><div><Label>Ende</Label><Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required /></div><div><Label>Pause (Min)</Label><Input type="number" value={pauseMinutes} onChange={e => setPauseMinutes(e.target.value)} min="0" /></div><div className="flex items-end"><Button type="submit" className="w-full">Erfassen</Button></div></div><div><Label>Notizen</Label><Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" /></div></form></CardContent></Card>
           <Card><CardHeader><CardTitle>Zeiteinträge</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Datum</TableHead><TableHead>Start</TableHead><TableHead>Ende</TableHead><TableHead>Pause</TableHead><TableHead>Brutto</TableHead><TableHead>Netto</TableHead><TableHead>Notizen</TableHead></TableRow></TableHeader><TableBody>{entries.map(e => { const g = e.started_at && e.ended_at ? Math.round((new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000) : 0; return (<TableRow key={e.id}><TableCell>{format(parseISO(e.work_date), "dd.MM.yyyy")}</TableCell><TableCell>{e.started_at ? format(parseISO(e.started_at), "HH:mm") : "-"}</TableCell><TableCell>{e.ended_at ? format(parseISO(e.ended_at), "HH:mm") : "-"}</TableCell><TableCell>{e.pause_minutes || 0} Min</TableCell><TableCell>{fmt(g)}</TableCell><TableCell>{fmt(e.minutes || 0)}</TableCell><TableCell>{e.notes || "-"}</TableCell></TableRow>); })}</TableBody></Table></CardContent></Card>
         </TabsContent>
         <TabsContent value="leave-requests" className="space-y-6">
