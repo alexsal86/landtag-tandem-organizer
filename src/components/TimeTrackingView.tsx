@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { EmployeeInfoTab } from "./EmployeeInfoTab";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from "date-fns";
 import { de } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Edit, Trash2, History, Calendar } from "lucide-react";
@@ -30,6 +31,8 @@ interface EmployeeSettingsRow {
   user_id: string;
   hours_per_month: number;
   days_per_month: number;
+  hours_per_week: number;
+  days_per_week: number;
   annual_vacation_days: number;
   carry_over_days: number;
   employment_start_date: string | null;
@@ -221,7 +224,12 @@ export function TimeTrackingView() {
           </div>
         </CardHeader>
       </Card>
-      <Tabs defaultValue="time-tracking"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="time-tracking">Zeiterfassung</TabsTrigger><TabsTrigger value="leave-requests">Urlaub & Krankmeldungen</TabsTrigger></TabsList>
+      <Tabs defaultValue="time-tracking">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="time-tracking">Zeiterfassung</TabsTrigger>
+          <TabsTrigger value="leave-requests">Urlaub & Krankmeldungen</TabsTrigger>
+          <TabsTrigger value="employee-info">Mitarbeiter-Info</TabsTrigger>
+        </TabsList>
         <TabsContent value="time-tracking" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="h-full">
@@ -327,6 +335,10 @@ export function TimeTrackingView() {
             <Card><CardHeader><CardTitle>Krankmeldung</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><Label>Von</Label><Input type="date" value={sickStartDate} onChange={e => setSickStartDate(e.target.value)} /></div><div><Label>Bis</Label><Input type="date" value={sickEndDate} onChange={e => setSickEndDate(e.target.value)} /></div></div><div><Label>Notizen</Label><Textarea value={sickNotes} onChange={e => setSickNotes(e.target.value)} placeholder="Optional" /></div><Button onClick={handleReportSick}>Krankmeldung einreichen</Button></CardContent></Card>
             <Card><CardHeader><CardTitle>Krankmeldungen {selectedMonth.getFullYear()}</CardTitle></CardHeader><CardContent>{sickLeaves.length === 0 ? <p className="text-sm text-muted-foreground">Keine Krankmeldungen vorhanden</p> : <Table><TableHeader><TableRow><TableHead>Von</TableHead><TableHead>Bis</TableHead><TableHead>Tage</TableHead><TableHead>Notizen</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{sickLeaves.map(s => { const d = eachDayOfInterval({ start: parseISO(s.start_date), end: parseISO(s.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; return (<TableRow key={s.id}><TableCell>{format(parseISO(s.start_date), "dd.MM.yyyy")}</TableCell><TableCell>{format(parseISO(s.end_date), "dd.MM.yyyy")}</TableCell><TableCell>{d}</TableCell><TableCell>{s.reason || "-"}</TableCell><TableCell>{getStatusBadge(s.status)}</TableCell></TableRow>); })}</TableBody></Table>}</CardContent></Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="employee-info" className="space-y-6">
+          <EmployeeInfoTab employeeSettings={employeeSettings} />
         </TabsContent>
       </Tabs>
     </div>

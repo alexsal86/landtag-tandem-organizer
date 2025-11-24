@@ -2491,6 +2491,51 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_settings_history: {
+        Row: {
+          annual_vacation_days: number
+          change_reason: string | null
+          changed_by: string | null
+          created_at: string | null
+          days_per_month: number
+          days_per_week: number
+          hours_per_month: number
+          hours_per_week: number
+          id: string
+          user_id: string
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          annual_vacation_days: number
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          days_per_month: number
+          days_per_week: number
+          hours_per_month: number
+          hours_per_week: number
+          id?: string
+          user_id: string
+          valid_from: string
+          valid_until?: string | null
+        }
+        Update: {
+          annual_vacation_days?: number
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          days_per_month?: number
+          days_per_week?: number
+          hours_per_month?: number
+          hours_per_week?: number
+          id?: string
+          user_id?: string
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       event_planning_action_logs: {
         Row: {
           action_id: string
