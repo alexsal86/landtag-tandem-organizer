@@ -11,9 +11,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { startOfYear, endOfYear, eachDayOfInterval, isWeekend, formatDistanceToNow, differenceInDays } from "date-fns";
+import { startOfYear, endOfYear, eachDayOfInterval, isWeekend, formatDistanceToNow, differenceInDays, format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Calendar, AlertCircle } from "lucide-react";
+import { Calendar, AlertCircle, History } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmployeeMeetingRequestDialog } from "./EmployeeMeetingRequestDialog";
 import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
 import { EmployeeMeetingHistory } from "./EmployeeMeetingHistory";
@@ -77,6 +78,89 @@ type LeaveAgg = {
   approved: Record<LeaveType, number>;
   pending: Record<LeaveType, number>;
 };
+
+// History Popover Component
+function EmployeeHistoryPopover({ userId }: { userId: string }) {
+  const [history, setHistory] = useState<any[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const loadHistory = async () => {
+    if (loading || history.length > 0) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('employee_settings_history')
+        .select('*')
+        .eq('user_id', userId)
+        .order('valid_from', { ascending: false });
+
+      if (error) throw error;
+      setHistory(data || []);
+    } catch (error) {
+      console.error('Error loading history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && history.length === 0) {
+      loadHistory();
+    }
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+          <History className="h-3.5 w-3.5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-96">
+        <div className="space-y-3">
+          <h4 className="font-medium text-sm">Änderungshistorie</h4>
+          {loading ? (
+            <p className="text-xs text-muted-foreground">Lade Historie...</p>
+          ) : history.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Keine Änderungen vorhanden</p>
+          ) : (
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {history.map(h => {
+                const percentage = Math.round((h.hours_per_week / 39.5) * 100);
+                const isCurrent = !h.valid_until;
+                
+                return (
+                  <div key={h.id} className={`flex justify-between items-start border-b pb-2 ${isCurrent ? 'bg-accent/30 -mx-2 px-2 rounded' : ''}`}>
+                    <div className="space-y-0.5">
+                      <div className="font-medium text-sm">
+                        {h.hours_per_week}h/Woche ({percentage}%)
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(h.valid_from), "dd.MM.yyyy", { locale: de })} - 
+                        {h.valid_until ? format(new Date(h.valid_until), "dd.MM.yyyy", { locale: de }) : "heute"}
+                      </div>
+                      {h.change_reason && (
+                        <div className="text-xs text-muted-foreground italic">
+                          {h.change_reason}
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant={isCurrent ? "default" : "secondary"} className="text-xs">
+                      {isCurrent ? "Aktuell" : "Alt"}
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function EmployeesView() {
   const navigate = useNavigate();
@@ -911,7 +995,16 @@ export function EmployeesView() {
               {loading ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
-                <div className="text-2xl font-semibold">{selfSettings?.hours_per_week ?? '–'}</div>
+                <div className="space-y-1">
+                  <div className="text-2xl font-semibold">
+                    {selfSettings?.hours_per_week ?? '–'}h
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {selfSettings 
+                      ? `${Math.round((selfSettings.hours_per_week / 39.5) * 100)}% von Vollzeit (39,5h)`
+                      : '–'}
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1256,23 +1349,29 @@ export function EmployeesView() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Input
-                            type="number"
-                            step="0.5"
-                            value={e.hours_per_week}
-                            onChange={(ev) => {
-                              const newValue = Number(ev.target.value);
-                              if (newValue >= 1 && newValue <= 60) {
-                                setEmployees(prev => prev.map(emp => 
-                                  emp.user_id === e.user_id ? { ...emp, hours_per_week: newValue } : emp
-                                ));
-                                updateHours(e.user_id, newValue);
-                              }
-                            }}
-                            className="w-20"
-                            min="1"
-                            max="60"
-                          />
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              step="0.5"
+                              value={e.hours_per_week}
+                              onChange={(ev) => {
+                                const newValue = Number(ev.target.value);
+                                if (newValue >= 1 && newValue <= 60) {
+                                  setEmployees(prev => prev.map(emp => 
+                                    emp.user_id === e.user_id ? { ...emp, hours_per_week: newValue } : emp
+                                  ));
+                                  updateHours(e.user_id, newValue);
+                                }
+                              }}
+                              className="w-20"
+                              min="1"
+                              max="60"
+                            />
+                            <Badge variant="outline" className="text-xs whitespace-nowrap">
+                              {Math.round((e.hours_per_week / 39.5) * 100)}%
+                            </Badge>
+                            <EmployeeHistoryPopover userId={e.user_id} />
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Input
@@ -1461,4 +1560,6 @@ export function EmployeesView() {
         </Dialog>
       </main>
     );
-  }
+}
+
+export default EmployeesView;
