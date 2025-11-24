@@ -177,6 +177,83 @@ export function TimeTrackingView() {
     try { await supabase.from("leave_requests").insert({ user_id: user.id, type: "sick", start_date: sickStartDate, end_date: sickEndDate, reason: sickNotes || null, status: "pending" }); toast.success("Krankmeldung eingereicht"); setSickStartDate(""); setSickEndDate(""); setSickNotes(""); loadData(); } catch (error: any) { toast.error(error.message); }
   };
 
+  const handleEditEntry = (entry: TimeEntryRow) => {
+    setEditingEntry(entry);
+    setEntryDate(entry.work_date);
+    setStartTime(entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "");
+    setEndTime(entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : "");
+    setPauseMinutes((entry.pause_minutes || 30).toString());
+    setNotes(entry.notes || "");
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateEntry = async () => {
+    if (!user || !editingEntry || !startTime || !endTime) {
+      toast.error("Bitte alle Felder ausfüllen");
+      return;
+    }
+
+    const start = new Date(`${entryDate}T${startTime}`);
+    const end = new Date(`${entryDate}T${endTime}`);
+    
+    if (end <= start) {
+      toast.error("Endzeit muss nach Startzeit liegen");
+      return;
+    }
+
+    const gross = Math.round((end.getTime() - start.getTime()) / 60000);
+    const pause = parseInt(pauseMinutes) || 0;
+
+    try {
+      await validateDailyLimit(entryDate, gross, editingEntry.id);
+
+      const { error } = await supabase
+        .from("time_entries")
+        .update({
+          work_date: entryDate,
+          started_at: start.toISOString(),
+          ended_at: end.toISOString(),
+          minutes: gross - pause,
+          pause_minutes: pause,
+          notes: notes || null,
+        })
+        .eq("id", editingEntry.id)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      toast.success("Eintrag aktualisiert");
+      setIsEditDialogOpen(false);
+      setEditingEntry(null);
+      setStartTime("");
+      setEndTime("");
+      setPauseMinutes("30");
+      setNotes("");
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    if (!confirm("Eintrag wirklich löschen?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("time_entries")
+        .delete()
+        .eq("id", entryId)
+        .eq("user_id", user!.id);
+
+      if (error) throw error;
+      
+      toast.success("Eintrag gelöscht");
+      loadData();
+    } catch (error: any) {
+      toast.error("Fehler beim Löschen: " + error.message);
+    }
+  };
+
   const fmt = (m: number) => `${m < 0 ? "-" : ""}${Math.floor(Math.abs(m) / 60)}:${(Math.abs(m) % 60).toString().padStart(2, "0")}`;
 
   const getStatusBadge = (status: string) => {
@@ -324,7 +401,134 @@ export function TimeTrackingView() {
               </CardContent>
             </Card>
           </div>
-          <Card><CardHeader><CardTitle>Zeiteinträge</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Datum</TableHead><TableHead>Start</TableHead><TableHead>Ende</TableHead><TableHead>Pause</TableHead><TableHead>Brutto</TableHead><TableHead>Netto</TableHead><TableHead>Notizen</TableHead></TableRow></TableHeader><TableBody>{entries.map(e => { const g = e.started_at && e.ended_at ? Math.round((new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000) : 0; return (<TableRow key={e.id}><TableCell>{format(parseISO(e.work_date), "dd.MM.yyyy")}</TableCell><TableCell>{e.started_at ? format(parseISO(e.started_at), "HH:mm") : "-"}</TableCell><TableCell>{e.ended_at ? format(parseISO(e.ended_at), "HH:mm") : "-"}</TableCell><TableCell>{e.pause_minutes || 0} Min</TableCell><TableCell>{fmt(g)}</TableCell><TableCell>{fmt(e.minutes || 0)}</TableCell><TableCell>{e.notes || "-"}</TableCell></TableRow>); })}</TableBody></Table></CardContent></Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Zeiteinträge</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Datum</TableHead>
+                    <TableHead>Start</TableHead>
+                    <TableHead>Ende</TableHead>
+                    <TableHead>Pause</TableHead>
+                    <TableHead>Brutto</TableHead>
+                    <TableHead>Netto</TableHead>
+                    <TableHead>Notizen</TableHead>
+                    <TableHead className="text-right">Aktionen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {entries.map(e => {
+                    const g = e.started_at && e.ended_at 
+                      ? Math.round((new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000)
+                      : 0;
+                    
+                    return (
+                      <TableRow key={e.id}>
+                        <TableCell>{format(parseISO(e.work_date), "dd.MM.yyyy")}</TableCell>
+                        <TableCell>{e.started_at ? format(parseISO(e.started_at), "HH:mm") : "-"}</TableCell>
+                        <TableCell>{e.ended_at ? format(parseISO(e.ended_at), "HH:mm") : "-"}</TableCell>
+                        <TableCell>{e.pause_minutes || 0} Min</TableCell>
+                        <TableCell>{fmt(g)}</TableCell>
+                        <TableCell>{fmt(e.minutes || 0)}</TableCell>
+                        <TableCell>{e.notes || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditEntry(e)}
+                              title="Bearbeiten"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteEntry(e.id)}
+                              title="Löschen"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Edit Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Zeiteintrag bearbeiten</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Datum</Label>
+                    <Input
+                      type="date"
+                      value={entryDate}
+                      onChange={e => setEntryDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Start</Label>
+                    <Input
+                      type="time"
+                      value={startTime}
+                      onChange={e => setStartTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Ende</Label>
+                    <Input
+                      type="time"
+                      value={endTime}
+                      onChange={e => setEndTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Pause (Min)</Label>
+                    <Input
+                      type="number"
+                      value={pauseMinutes}
+                      onChange={e => setPauseMinutes(e.target.value)}
+                      min="0"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Notizen</Label>
+                  <Textarea
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleUpdateEntry}>
+                  Speichern
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
         </TabsContent>
         <TabsContent value="leave-requests" className="space-y-6">
           <div className="grid grid-cols-2 gap-6">
