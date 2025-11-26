@@ -109,45 +109,69 @@ export const useAppointmentFeedback = () => {
       const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
       const now = new Date().toISOString();
 
-      // Hole Feedback-Einträge für externe Events
-      const { data: feedbackData, error: feedbackError } = await supabase
-        .from('appointment_feedback')
+      // 1. Lade ALLE externen Events der letzten 7 Tage
+      const { data: externalEventsRaw, error: eventsError } = await supabase
+        .from('external_events')
         .select(`
           id,
-          feedback_status,
-          notes,
-          completed_at,
-          priority_score,
-          has_documents,
-          has_tasks,
-          reminder_dismissed,
-          external_event_id,
-          external_events!inner(
-            id,
-            title,
-            start_time,
-            end_time,
-            location,
-            description,
-            all_day,
-            external_calendar_id,
-            external_calendars!inner(user_id, tenant_id)
-          )
+          title,
+          start_time,
+          end_time,
+          location,
+          description,
+          all_day,
+          external_calendar_id,
+          external_calendars!inner(user_id, tenant_id)
         `)
-        .eq('event_type', 'external_event')
-        .eq('user_id', user.id)
-        .gte('external_events.start_time', `${sevenDaysAgoStr}T00:00:00`)
-        .lte('external_events.end_time', now)
-        .order('external_events.start_time', { ascending: false });
+        .eq('external_calendars.user_id', user.id)
+        .eq('external_calendars.tenant_id', currentTenant.id)
+        .gte('start_time', `${sevenDaysAgoStr}T00:00:00`)
+        .lte('end_time', now)
+        .order('start_time', { ascending: false });
 
-      if (feedbackError) {
-        console.error('Error fetching external events feedback:', feedbackError);
+      if (eventsError) {
+        console.error('Error fetching external events:', eventsError);
         return [];
       }
 
-      // Transform zu AppointmentWithFeedback Interface
-      return (feedbackData || []).map(fb => {
-        const event = fb.external_events;
+      if (!externalEventsRaw || externalEventsRaw.length === 0) return [];
+
+      // 2. Lade existierende Feedback-Einträge für diese Events
+      const eventIds = externalEventsRaw.map(e => e.id);
+      const { data: feedbackData } = await supabase
+        .from('appointment_feedback')
+        .select('*')
+        .in('external_event_id', eventIds);
+
+      // 3. Finde Events ohne Feedback
+      const feedbackMap = new Map(feedbackData?.map(f => [f.external_event_id, f]) || []);
+      const eventsWithoutFeedback = externalEventsRaw.filter(e => !feedbackMap.has(e.id));
+
+      // 4. Erstelle Feedback-Einträge für Events ohne Feedback
+      if (eventsWithoutFeedback.length > 0) {
+        const newFeedbackEntries = eventsWithoutFeedback.map(event => ({
+          external_event_id: event.id,
+          user_id: user.id,
+          tenant_id: currentTenant.id,
+          event_type: 'external_event',
+          feedback_status: 'pending',
+          priority_score: 1
+        }));
+
+        const { data: newFeedback, error: insertError } = await supabase
+          .from('appointment_feedback')
+          .insert(newFeedbackEntries)
+          .select();
+
+        if (!insertError && newFeedback) {
+          // Füge neue Feedback-Einträge zur Map hinzu
+          newFeedback.forEach(f => feedbackMap.set(f.external_event_id, f));
+        }
+      }
+
+      // 5. Transform zu AppointmentWithFeedback Interface
+      return externalEventsRaw.map(event => {
+        const feedback = feedbackMap.get(event.id);
         return {
           id: event.id,
           title: event.title,
@@ -158,16 +182,16 @@ export const useAppointmentFeedback = () => {
           user_id: event.external_calendars.user_id,
           tenant_id: event.external_calendars.tenant_id,
           event_type: 'external_event' as const,
-          feedback: {
-            id: fb.id,
-            feedback_status: fb.feedback_status,
-            notes: fb.notes,
-            completed_at: fb.completed_at,
-            priority_score: fb.priority_score,
-            has_documents: fb.has_documents,
-            has_tasks: fb.has_tasks,
-            reminder_dismissed: fb.reminder_dismissed,
-          }
+          feedback: feedback ? {
+            id: feedback.id,
+            feedback_status: feedback.feedback_status,
+            notes: feedback.notes,
+            completed_at: feedback.completed_at,
+            priority_score: feedback.priority_score,
+            has_documents: feedback.has_documents || false,
+            has_tasks: feedback.has_tasks || false,
+            reminder_dismissed: feedback.reminder_dismissed || false,
+          } : null
         };
       }) as AppointmentWithFeedback[];
     },
