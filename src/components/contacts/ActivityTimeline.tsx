@@ -10,14 +10,15 @@ import {
   StickyNote,
   UserPlus,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Trash2
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-interface Activity {
+export interface Activity {
   id: string;
   activity_type: string;
   title: string;
@@ -53,6 +54,8 @@ const getActivityIcon = (type: string) => {
       return <StickyNote className="h-4 w-4" />;
     case 'created':
       return <UserPlus className="h-4 w-4" />;
+    case 'deleted':
+      return <Trash2 className="h-4 w-4" />;
     default:
       return <FileText className="h-4 w-4" />;
   }
@@ -75,6 +78,8 @@ const getActivityColor = (type: string) => {
       return 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300';
     case 'created':
       return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300';
+    case 'deleted':
+      return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
     default:
       return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
   }
