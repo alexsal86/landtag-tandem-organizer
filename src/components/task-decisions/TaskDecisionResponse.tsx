@@ -239,16 +239,25 @@ export const TaskDecisionResponse = ({
 
   // Show response buttons (for new responses or when editing)
   return (
-    <div className="flex items-center space-x-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => handleResponse('yes')}
-        disabled={isLoading}
-        className="text-green-600 border-green-600 hover:bg-green-50"
-      >
-        <Check className="h-4 w-4" />
-      </Button>
+    <div className="space-y-3">
+      <Textarea
+        value={questionComment}
+        onChange={(e) => setQuestionComment(e.target.value)}
+        placeholder="Kommentar (optional)..."
+        rows={3}
+        className="w-full"
+      />
+      
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleResponse('yes', questionComment.trim() || undefined)}
+          disabled={isLoading}
+          className="text-green-600 border-green-600 hover:bg-green-50"
+        >
+          <Check className="h-4 w-4" />
+        </Button>
       
       <Dialog open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
         <DialogTrigger asChild>
@@ -307,7 +316,7 @@ export const TaskDecisionResponse = ({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => handleResponse('no')}
+        onClick={() => handleResponse('no', questionComment.trim() || undefined)}
         disabled={isLoading}
         className="text-red-600 border-red-600 hover:bg-red-50"
       >
@@ -318,12 +327,16 @@ export const TaskDecisionResponse = ({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setShowEdit(false)}
+          onClick={() => {
+            setShowEdit(false);
+            setQuestionComment("");
+          }}
           className="text-xs"
         >
           Abbrechen
         </Button>
       )}
+      </div>
     </div>
   );
 };

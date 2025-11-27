@@ -354,7 +354,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                           )}
 
                           {/* Creator Response Input */}
-                          {isCreator && latestResponse.response_type === 'question' && !latestResponse.creator_response && (
+                          {isCreator && latestResponse.comment && !latestResponse.creator_response && (
                             <div className="flex space-x-2">
                               <Textarea
                                 placeholder="Antwort eingeben..."
