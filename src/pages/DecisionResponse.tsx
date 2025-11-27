@@ -48,7 +48,7 @@ export default function DecisionResponse() {
           participantId,
           token,
           responseType: type,
-          comment: type === 'question' ? comment.trim() : undefined,
+          comment: comment.trim() || undefined,
         },
       });
 
@@ -173,6 +173,17 @@ export default function DecisionResponse() {
             </div>
           ) : (
             <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Kommentar (optional):</label>
+                <Textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Optionaler Kommentar zu Ihrer Antwort..."
+                  rows={3}
+                  className="mt-1"
+                />
+              </div>
+              
               <div className="grid gap-3">
                 <Button
                   onClick={() => handleSubmit('yes')}
