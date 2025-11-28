@@ -93,6 +93,13 @@ export const AppointmentFeedbackWidget = ({
     return hasPending;
   }, [settings, appointments]);
 
+  // Anzahl der offenen Feedbacks
+  const pendingFeedbackCount = useMemo(() => {
+    return appointments?.filter(a => 
+      a.feedback?.feedback_status === 'pending'
+    ).length || 0;
+  }, [appointments]);
+
   // Sortierte Termine nach Priorität
   const sortedAppointments = useMemo(() => {
     if (!appointments) return [];
@@ -297,15 +304,25 @@ export const AppointmentFeedbackWidget = ({
 
     return (
       <Card className="h-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <div className="relative">
             <CheckCircle2 className="w-5 h-5" />
-            Termin-Feedback
-            <div className="ml-auto">
-              <AppointmentFeedbackSettings />
-            </div>
-          </CardTitle>
-        </CardHeader>
+            {pendingFeedbackCount > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-2 -right-2 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] rounded-full"
+              >
+                {pendingFeedbackCount}
+              </Badge>
+            )}
+          </div>
+          Termin-Feedback
+          <div className="ml-auto">
+            <AppointmentFeedbackSettings />
+          </div>
+        </CardTitle>
+      </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <CheckCircle2 className="w-12 h-12 mb-3 opacity-50" />
@@ -335,7 +352,17 @@ export const AppointmentFeedbackWidget = ({
       )}
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5" />
+          <div className="relative">
+            <CheckCircle2 className="w-5 h-5" />
+            {pendingFeedbackCount > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-2 -right-2 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] rounded-full"
+              >
+                {pendingFeedbackCount}
+              </Badge>
+            )}
+          </div>
           Termin-Feedback
           <div className="ml-auto">
             <AppointmentFeedbackSettings />
