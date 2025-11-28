@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, PanelLeft, PanelLeftClose, Mail, Settings, Wifi, WifiOff, Activity } from 'lucide-react';
+import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, Send, Download, Calendar, User, MapPin, MessageSquare, CheckCircle, Clock, ArrowRight, UserPlus, RotateCcw, Layout, Building, Info, PanelLeft, PanelLeftClose, Mail, Settings, Wifi, WifiOff, Activity, Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -146,6 +146,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [previewZoom, setPreviewZoom] = useState(1.0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showPagination, setShowPagination] = useState(true);
+  const [showLayoutDebug, setShowLayoutDebug] = useState(false);
   
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const isUpdatingFromRemoteRef = useRef(false);
@@ -1669,6 +1670,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                 <h3 className="text-lg font-medium">DIN 5008 Vorschau</h3>
                 <div className="flex items-center gap-2">
                   <Button
+                    variant={showLayoutDebug ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowLayoutDebug(!showLayoutDebug)}
+                    title="Layout-Abstände anzeigen"
+                  >
+                    <Ruler className="h-4 w-4 mr-2" />
+                    Layout anzeigen
+                  </Button>
+                  <Separator orientation="vertical" className="h-6" />
+                  <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setPreviewZoom(Math.max(0.3, previewZoom - 0.1))}
@@ -1715,6 +1726,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
                     content={editedLetter.content || ''}
                     attachments={attachments}
                     showPagination={showPagination}
+                    debugMode={showLayoutDebug}
                   />
                 </div>
               </div>
