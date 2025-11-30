@@ -5804,11 +5804,13 @@ export type Database = {
       }
       quick_notes: {
         Row: {
+          archived_at: string | null
           category: string | null
           color: string | null
           content: string
           created_at: string
           id: string
+          is_archived: boolean | null
           is_pinned: boolean | null
           tags: string[] | null
           task_id: string | null
@@ -5817,11 +5819,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           category?: string | null
           color?: string | null
           content: string
           created_at?: string
           id?: string
+          is_archived?: boolean | null
           is_pinned?: boolean | null
           tags?: string[] | null
           task_id?: string | null
@@ -5830,11 +5834,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           category?: string | null
           color?: string | null
           content?: string
           created_at?: string
           id?: string
+          is_archived?: boolean | null
           is_pinned?: boolean | null
           tags?: string[] | null
           task_id?: string | null
