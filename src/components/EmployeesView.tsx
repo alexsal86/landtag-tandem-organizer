@@ -746,10 +746,10 @@ export function EmployeesView() {
   // Inline edit functions
   const updateHours = async (userId: string, newHours: number) => {
     console.log('SAVING HOURS:', userId, newHours);
-    if (newHours < 1 || newHours > 60) {
+    if (newHours < 1 || newHours > 39.5) {
       toast({
         title: "Ungültige Eingabe",
-        description: "Stunden müssen zwischen 1 und 60 liegen.",
+        description: "Stunden müssen zwischen 1 und 39,5 liegen. Maximal 39,5 Stunden pro Woche erlaubt.",
         variant: "destructive",
       });
       return;
@@ -791,10 +791,10 @@ export function EmployeesView() {
   };
 
   const updateDaysPerWeek = async (userId: string, newDays: number) => {
-    if (newDays < 1 || newDays > 7) {
+    if (newDays < 1 || newDays > 5) {
       toast({
         title: "Ungültige Eingabe",
-        description: "Tage müssen zwischen 1 und 7 liegen.",
+        description: "Tage müssen zwischen 1 und 5 liegen. Maximal 5 Arbeitstage pro Woche erlaubt.",
         variant: "destructive",
       });
       return;
@@ -1316,8 +1316,18 @@ export function EmployeesView() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Mitarbeiter</TableHead>
-                    <TableHead>Stunden/Woche</TableHead>
-                    <TableHead>Tage/Woche</TableHead>
+                    <TableHead>
+                      <div className="flex flex-col">
+                        <span>Stunden/Woche</span>
+                        <span className="text-xs text-muted-foreground font-normal">(max. 39,5h)</span>
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex flex-col">
+                        <span>Tage/Woche</span>
+                        <span className="text-xs text-muted-foreground font-normal">(max. 5)</span>
+                      </div>
+                    </TableHead>
                     <TableHead>Urlaubstage/Jahr</TableHead>
                     <TableHead>Beginn Arbeitsverhältnis</TableHead>
                     <TableHead>Krankentage</TableHead>
@@ -1356,7 +1366,7 @@ export function EmployeesView() {
                               value={e.hours_per_week}
                               onChange={(ev) => {
                                 const newValue = Number(ev.target.value);
-                                if (newValue >= 1 && newValue <= 60) {
+                                if (newValue >= 1 && newValue <= 39.5) {
                                   setEmployees(prev => prev.map(emp => 
                                     emp.user_id === e.user_id ? { ...emp, hours_per_week: newValue } : emp
                                   ));
@@ -1365,7 +1375,7 @@ export function EmployeesView() {
                               }}
                               className="w-20"
                               min="1"
-                              max="60"
+                              max="39.5"
                             />
                             <Badge variant="outline" className="text-xs whitespace-nowrap">
                               {Math.round((e.hours_per_week / 39.5) * 100)}%
@@ -1379,7 +1389,7 @@ export function EmployeesView() {
                             value={e.days_per_week}
                             onChange={(ev) => {
                               const newValue = Number(ev.target.value);
-                              if (newValue >= 1 && newValue <= 7) {
+                              if (newValue >= 1 && newValue <= 5) {
                                 setEmployees(prev => prev.map(emp => 
                                   emp.user_id === e.user_id ? { ...emp, days_per_week: newValue } : emp
                                 ));
@@ -1388,7 +1398,7 @@ export function EmployeesView() {
                             }}
                             className="w-20"
                             min="1"
-                            max="7"
+                            max="5"
                           />
                         </TableCell>
                         <TableCell>
