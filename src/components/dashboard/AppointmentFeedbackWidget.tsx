@@ -352,17 +352,7 @@ export const AppointmentFeedbackWidget = ({
       )}
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <div className="relative">
-            <CheckCircle2 className="w-5 h-5" />
-            {pendingFeedbackCount > 0 && (
-              <Badge 
-                variant="destructive" 
-                className="absolute -top-2 -right-2 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] rounded-full"
-              >
-                {pendingFeedbackCount}
-              </Badge>
-            )}
-          </div>
+          <CheckCircle2 className="w-5 h-5" />
           Termin-Feedback
           <div className="ml-auto">
             <AppointmentFeedbackSettings />

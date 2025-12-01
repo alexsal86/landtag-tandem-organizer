@@ -1,5 +1,7 @@
 import { Phone, Timer, FileText, Plus, X, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NavigationBadge } from "@/components/NavigationBadge";
+import { useAppointmentFeedback } from "@/hooks/useAppointmentFeedback";
 import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 import { CallLogWidget } from '@/components/widgets/CallLogWidget';
 import { PomodoroWidget } from '@/components/widgets/PomodoroWidget';
@@ -43,6 +45,7 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
     const saved = localStorage.getItem('widgetQuickAccess');
     return saved ? JSON.parse(saved) : ['quicknotes', 'calllog', 'pomodoro'];
   });
+  const { pendingFeedbackCount } = useAppointmentFeedback();
 
   useEffect(() => {
     localStorage.setItem('widgetQuickAccess', JSON.stringify(activeWidgets));
@@ -83,10 +86,15 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
             variant={activeWidget === widget.id ? "default" : "outline"}
             size="sm"
             onClick={() => onWidgetChange(widget.id)}
-            className="w-[40px] h-[40px] p-0 flex items-center justify-center transition-colors"
+            className="w-[40px] h-[40px] p-0 flex items-center justify-center transition-colors relative"
             aria-label={widget.name}
           >
             <widget.icon className="h-5 w-5" />
+            {widget.id === 'appointmentfeedback' && pendingFeedbackCount > 0 && (
+              <div className="absolute -top-1 -right-1">
+                <NavigationBadge count={pendingFeedbackCount} size="sm" />
+              </div>
+            )}
           </Button>
         ))}
         

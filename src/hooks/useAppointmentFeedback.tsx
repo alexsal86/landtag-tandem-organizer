@@ -359,6 +359,13 @@ export const useAppointmentFeedback = () => {
     refetchExternalEvents();
   }, [refetchAppointments, refetchExternalEvents]);
 
+  // Anzahl der offenen Feedbacks
+  const pendingFeedbackCount = React.useMemo(() => {
+    return allEvents.filter(event => 
+      event.feedback?.feedback_status === 'pending'
+    ).length;
+  }, [allEvents]);
+
   return {
     appointments: allEvents,
     settings,
@@ -367,5 +374,6 @@ export const useAppointmentFeedback = () => {
     createFeedback: createFeedbackMutation.mutateAsync,
     updateSettings: updateSettingsMutation.mutateAsync,
     refetch,
+    pendingFeedbackCount,
   };
 };
