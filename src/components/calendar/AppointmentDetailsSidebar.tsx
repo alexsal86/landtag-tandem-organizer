@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon, ListTodo } from "lucide-react";
+import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon, ListTodo, CheckCircle2, FileText, CheckSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,13 @@ export function AppointmentDetailsSidebar({
   }>>([]);
   const [isLoadingGuests, setIsLoadingGuests] = useState(false);
   const [isSendingInvitations, setIsSendingInvitations] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    feedback_status: 'pending' | 'completed' | 'skipped';
+    notes: string | null;
+    completed_at: string | null;
+    has_documents: boolean;
+    has_tasks: boolean;
+  } | null>(null);
   const [editData, setEditData] = useState({
     title: "",
     description: "",
@@ -74,6 +81,7 @@ export function AppointmentDetailsSidebar({
   useEffect(() => {
     if (appointment && appointment.id && !appointment.id.startsWith('blocked-')) {
       fetchGuests();
+      fetchFeedback();
     }
   }, [appointment]);
 
@@ -94,6 +102,33 @@ export function AppointmentDetailsSidebar({
       console.error('Error fetching guests:', error);
     } finally {
       setIsLoadingGuests(false);
+    }
+  };
+
+  const fetchFeedback = async () => {
+    if (!appointment || !appointment.id || appointment.id.startsWith('blocked-')) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('appointment_feedback')
+        .select('feedback_status, notes, completed_at, has_documents, has_tasks')
+        .eq('appointment_id', appointment.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setFeedback({
+          feedback_status: data.feedback_status as 'pending' | 'completed' | 'skipped',
+          notes: data.notes,
+          completed_at: data.completed_at,
+          has_documents: data.has_documents || false,
+          has_tasks: data.has_tasks || false,
+        });
+      } else {
+        setFeedback(null);
+      }
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
     }
   };
 
@@ -448,6 +483,32 @@ export function AppointmentDetailsSidebar({
     }
   };
 
+  const getFeedbackStatusLabel = (status: 'pending' | 'completed' | 'skipped') => {
+    switch (status) {
+      case 'pending':
+        return 'Ausstehend';
+      case 'completed':
+        return 'Abgeschlossen';
+      case 'skipped':
+        return 'Übersprungen';
+      default:
+        return status;
+    }
+  };
+
+  const getFeedbackStatusColor = (status: 'pending' | 'completed' | 'skipped') => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'skipped':
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
   if (!appointment) return null;
 
   return (
@@ -644,6 +705,51 @@ export function AppointmentDetailsSidebar({
               )}
             </div>
           </div>
+
+          {/* Feedback Section */}
+          {feedback && appointment.id && !appointment.id.startsWith('blocked-') && (
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div className="flex-1">
+                <div className="font-medium mb-2">Feedback</div>
+                <div className="space-y-2">
+                  <Badge className={getFeedbackStatusColor(feedback.feedback_status)}>
+                    {getFeedbackStatusLabel(feedback.feedback_status)}
+                  </Badge>
+                  {feedback.notes && (
+                    <div className="text-sm text-muted-foreground bg-muted/30 p-2 rounded-md">
+                      {feedback.notes}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    {feedback.has_documents && (
+                      <Badge variant="outline" className="text-xs">
+                        <FileText className="h-3 w-3 mr-1" />
+                        Dokumente
+                      </Badge>
+                    )}
+                    {feedback.has_tasks && (
+                      <Badge variant="outline" className="text-xs">
+                        <CheckSquare className="h-3 w-3 mr-1" />
+                        Aufgaben
+                      </Badge>
+                    )}
+                  </div>
+                  {feedback.completed_at && (
+                    <div className="text-xs text-muted-foreground">
+                      Abgeschlossen: {new Date(feedback.completed_at).toLocaleDateString('de-DE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Category */}
           {appointment.id && !appointment.id.startsWith('blocked-') && (
