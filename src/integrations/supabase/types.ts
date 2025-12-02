@@ -1007,6 +1007,354 @@ export type Database = {
         }
         Relationships: []
       }
+      case_file_appointments: {
+        Row: {
+          appointment_id: string
+          case_file_id: string
+          created_at: string
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          appointment_id: string
+          case_file_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          case_file_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_file_appointments_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_file_appointments_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_file_contacts: {
+        Row: {
+          case_file_id: string
+          contact_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          role: string | null
+        }
+        Insert: {
+          case_file_id: string
+          contact_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          role?: string | null
+        }
+        Update: {
+          case_file_id?: string
+          contact_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_file_contacts_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_file_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_file_documents: {
+        Row: {
+          case_file_id: string
+          created_at: string
+          document_id: string
+          id: string
+          notes: string | null
+          relevance: string | null
+        }
+        Insert: {
+          case_file_id: string
+          created_at?: string
+          document_id: string
+          id?: string
+          notes?: string | null
+          relevance?: string | null
+        }
+        Update: {
+          case_file_id?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          notes?: string | null
+          relevance?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_file_documents_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_file_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_file_letters: {
+        Row: {
+          case_file_id: string
+          created_at: string
+          id: string
+          letter_id: string
+          notes: string | null
+        }
+        Insert: {
+          case_file_id: string
+          created_at?: string
+          id?: string
+          letter_id: string
+          notes?: string | null
+        }
+        Update: {
+          case_file_id?: string
+          created_at?: string
+          id?: string
+          letter_id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_file_letters_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_file_letters_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "letters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_file_notes: {
+        Row: {
+          case_file_id: string
+          content: string
+          created_at: string
+          id: string
+          is_pinned: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          case_file_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          case_file_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_file_notes_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_file_tasks: {
+        Row: {
+          case_file_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          task_id: string
+        }
+        Insert: {
+          case_file_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          task_id: string
+        }
+        Update: {
+          case_file_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_file_tasks_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_file_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_file_timeline: {
+        Row: {
+          case_file_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_date: string
+          event_type: string | null
+          id: string
+          source_id: string | null
+          source_type: string | null
+          title: string
+        }
+        Insert: {
+          case_file_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date: string
+          event_type?: string | null
+          id?: string
+          source_id?: string | null
+          source_type?: string | null
+          title: string
+        }
+        Update: {
+          case_file_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string
+          event_type?: string | null
+          id?: string
+          source_id?: string | null
+          source_type?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_file_timeline_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_files: {
+        Row: {
+          case_type: string
+          created_at: string
+          description: string | null
+          id: string
+          is_private: boolean | null
+          priority: string | null
+          reference_number: string | null
+          start_date: string | null
+          status: string
+          tags: string[] | null
+          target_date: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          case_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          priority?: string | null
+          reference_number?: string | null
+          start_date?: string | null
+          status?: string
+          tags?: string[] | null
+          target_date?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          case_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          priority?: string | null
+          reference_number?: string | null
+          start_date?: string | null
+          status?: string
+          tags?: string[] | null
+          target_date?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_files_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_activities: {
         Row: {
           activity_type: string

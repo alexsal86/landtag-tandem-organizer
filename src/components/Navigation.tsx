@@ -1,4 +1,4 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive, Search } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive, Search, Briefcase } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -97,6 +97,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "contacts", label: "Kontakte", icon: Contact },
     { id: "tasks", label: "Aufgaben", icon: CheckSquare },
     { id: "decisions", label: "Entscheidungen", icon: Vote },
+    { id: "casefiles", label: "FallAkten", icon: Briefcase },
     { id: "meetings", label: "Jour fixe", icon: MessageSquare },
     { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
     { id: "wahlkreise", label: "Wahlkreise", icon: MapPin },
