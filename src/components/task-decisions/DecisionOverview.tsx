@@ -375,12 +375,44 @@ export const DecisionOverview = () => {
 
     setIsLoading(true);
     try {
+      // Get response details first to find participant
+      const { data: responseData } = await supabase
+        .from('task_decision_responses')
+        .select(`
+          participant_id,
+          decision_id,
+          task_decision_participants!inner(user_id),
+          task_decisions!inner(title)
+        `)
+        .eq('id', responseId)
+        .single();
+
       const { error } = await supabase
         .from('task_decision_responses')
         .update({ creator_response: responseText })
         .eq('id', responseId);
 
       if (error) throw error;
+
+      // Notify the participant about the creator's response
+      if (responseData) {
+        const participantUserId = (responseData as any).task_decision_participants?.user_id;
+        const decisionTitle = (responseData as any).task_decisions?.title;
+
+        if (participantUserId && participantUserId !== user?.id) {
+          await supabase.rpc('create_notification', {
+            user_id_param: participantUserId,
+            type_name: 'task_decision_creator_response',
+            title_param: 'Antwort auf Ihren Kommentar',
+            message_param: `Der Ersteller hat auf Ihren Kommentar zu "${decisionTitle}" geantwortet.`,
+            data_param: {
+              decision_id: responseData.decision_id,
+              decision_title: decisionTitle
+            },
+            priority_param: 'medium'
+          });
+        }
+      }
 
       toast({
         title: "Erfolgreich",

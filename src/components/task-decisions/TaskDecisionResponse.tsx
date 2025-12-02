@@ -140,6 +140,37 @@ export const TaskDecisionResponse = ({
         }
       }
 
+      // Notify creator if participant submitted a comment (regardless of response type)
+      if (comment?.trim()) {
+        const { data: decision } = await supabase
+          .from('task_decisions')
+          .select('title, created_by')
+          .eq('id', decisionId)
+          .single();
+
+        if (decision && decision.created_by !== (await supabase.auth.getUser()).data.user?.id) {
+          const { data: participantProfile } = await supabase
+            .from('task_decision_participants')
+            .select('profiles:user_id(display_name)')
+            .eq('id', participantId)
+            .single();
+
+          const participantName = (participantProfile as any)?.profiles?.display_name || 'Ein Teilnehmer';
+
+          await supabase.rpc('create_notification', {
+            user_id_param: decision.created_by,
+            type_name: 'task_decision_comment_received',
+            title_param: 'Neuer Kommentar zu Entscheidungsanfrage',
+            message_param: `${participantName} hat einen Kommentar zu "${decision.title}" hinterlassen.`,
+            data_param: {
+              decision_id: decisionId,
+              decision_title: decision.title
+            },
+            priority_param: 'medium'
+          });
+        }
+      }
+
       toast({
         title: "Erfolgreich",
         description: "Ihre Antwort wurde gespeichert.",
