@@ -20,6 +20,7 @@ import { TimeTrackingView } from "@/components/TimeTrackingView";
 import Administration from "@/pages/Administration";
 import { DecisionOverview } from "@/components/task-decisions/DecisionOverview";
 import { DrucksachenView } from "@/components/DrucksachenView";
+import { CaseFilesView } from "@/components/CaseFilesView";
 import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -172,6 +173,9 @@ const Index = () => {
       case "drucksachen":
         console.log('Rendering DrucksachenView');
         return <DrucksachenView />;
+      case "casefiles":
+        console.log('Rendering CaseFilesView');
+        return <CaseFilesView />;
       default:
         console.log('Rendering default Dashboard');
         return <Dashboard />;
