@@ -311,8 +311,33 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     setLoading(false);
   }, [fetchCaseFile, fetchContacts, fetchDocuments, fetchTasks, fetchAppointments, fetchLetters, fetchNotes, fetchTimeline]);
 
+  // Helper to create timeline entry
+  const createTimelineEntry = async (
+    eventType: string,
+    title: string,
+    sourceType: string,
+    sourceId: string
+  ) => {
+    if (!caseFileId || !user) return;
+    
+    try {
+      await supabase.from('case_file_timeline').insert({
+        case_file_id: caseFileId,
+        event_date: new Date().toISOString(),
+        event_type: eventType,
+        title,
+        source_type: sourceType,
+        source_id: sourceId,
+        created_by: user.id,
+      });
+      await fetchTimeline();
+    } catch (error) {
+      console.error('Error creating timeline entry:', error);
+    }
+  };
+
   // Add functions
-  const addContact = async (contactId: string, role: string = 'stakeholder', notes?: string) => {
+  const addContact = async (contactId: string, role: string = 'stakeholder', notes?: string, contactName?: string) => {
     if (!caseFileId) return false;
 
     try {
@@ -327,6 +352,15 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchContacts();
+      
+      // Create automatic timeline entry
+      await createTimelineEntry(
+        'note',
+        `Kontakt verknüpft: ${contactName || 'Unbekannt'} (${role})`,
+        'contact',
+        contactId
+      );
+      
       toast({ title: "Kontakt hinzugefügt" });
       return true;
     } catch (error: any) {
@@ -352,7 +386,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   };
 
-  const addDocument = async (documentId: string, relevance: string = 'supporting', notes?: string) => {
+  const addDocument = async (documentId: string, relevance: string = 'supporting', notes?: string, documentTitle?: string) => {
     if (!caseFileId) return false;
 
     try {
@@ -367,6 +401,15 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchDocuments();
+      
+      // Create automatic timeline entry
+      await createTimelineEntry(
+        'document',
+        `Dokument hinzugefügt: ${documentTitle || 'Unbekannt'}`,
+        'document',
+        documentId
+      );
+      
       toast({ title: "Dokument hinzugefügt" });
       return true;
     } catch (error: any) {
@@ -392,7 +435,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   };
 
-  const addTask = async (taskId: string, notes?: string) => {
+  const addTask = async (taskId: string, notes?: string, taskTitle?: string) => {
     if (!caseFileId) return false;
 
     try {
@@ -406,6 +449,15 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchTasks();
+      
+      // Create automatic timeline entry
+      await createTimelineEntry(
+        'note',
+        `Aufgabe verknüpft: ${taskTitle || 'Unbekannt'}`,
+        'task',
+        taskId
+      );
+      
       toast({ title: "Aufgabe hinzugefügt" });
       return true;
     } catch (error: any) {
@@ -431,7 +483,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   };
 
-  const addAppointment = async (appointmentId: string, notes?: string) => {
+  const addAppointment = async (appointmentId: string, notes?: string, appointmentTitle?: string) => {
     if (!caseFileId) return false;
 
     try {
@@ -445,6 +497,15 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchAppointments();
+      
+      // Create automatic timeline entry
+      await createTimelineEntry(
+        'meeting',
+        `Termin verknüpft: ${appointmentTitle || 'Unbekannt'}`,
+        'appointment',
+        appointmentId
+      );
+      
       toast({ title: "Termin hinzugefügt" });
       return true;
     } catch (error: any) {
@@ -470,7 +531,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   };
 
-  const addLetter = async (letterId: string, notes?: string) => {
+  const addLetter = async (letterId: string, notes?: string, letterTitle?: string) => {
     if (!caseFileId) return false;
 
     try {
@@ -484,6 +545,15 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchLetters();
+      
+      // Create automatic timeline entry
+      await createTimelineEntry(
+        'correspondence',
+        `Brief verknüpft: ${letterTitle || 'Unbekannt'}`,
+        'letter',
+        letterId
+      );
+      
       toast({ title: "Brief hinzugefügt" });
       return true;
     } catch (error: any) {

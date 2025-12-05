@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 interface CaseFileTasksTabProps {
   tasks: CaseFileTask[];
-  onAdd: (taskId: string, notes?: string) => Promise<boolean>;
+  onAdd: (taskId: string, notes?: string, title?: string) => Promise<boolean>;
   onRemove: (id: string) => Promise<boolean>;
 }
 
@@ -56,7 +56,8 @@ export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabPro
   const handleAdd = async () => {
     if (!selectedTaskId) return;
     setIsSubmitting(true);
-    const success = await onAdd(selectedTaskId, notes || undefined);
+    const selectedTask = availableTasks.find(t => t.id === selectedTaskId);
+    const success = await onAdd(selectedTaskId, notes || undefined, selectedTask?.title);
     setIsSubmitting(false);
     if (success) {
       setDialogOpen(false);
