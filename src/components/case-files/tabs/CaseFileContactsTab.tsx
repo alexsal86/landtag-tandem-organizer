@@ -20,13 +20,14 @@ import { Textarea } from "@/components/ui/textarea";
 
 interface CaseFileContactsTabProps {
   contacts: CaseFileContact[];
-  onAdd: (contactId: string, role: string, notes?: string) => Promise<boolean>;
+  onAdd: (contactId: string, role: string, notes?: string, name?: string) => Promise<boolean>;
   onRemove: (id: string) => Promise<boolean>;
 }
 
 export function CaseFileContactsTab({ contacts, onAdd, onRemove }: CaseFileContactsTabProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [selectedContactName, setSelectedContactName] = useState<string | null>(null);
   const [role, setRole] = useState("stakeholder");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,11 +35,12 @@ export function CaseFileContactsTab({ contacts, onAdd, onRemove }: CaseFileConta
   const handleAdd = async () => {
     if (!selectedContactId) return;
     setIsSubmitting(true);
-    const success = await onAdd(selectedContactId, role, notes || undefined);
+    const success = await onAdd(selectedContactId, role, notes || undefined, selectedContactName || undefined);
     setIsSubmitting(false);
     if (success) {
       setDialogOpen(false);
       setSelectedContactId(null);
+      setSelectedContactName(null);
       setRole("stakeholder");
       setNotes("");
     }
@@ -130,7 +132,10 @@ export function CaseFileContactsTab({ contacts, onAdd, onRemove }: CaseFileConta
               <Label>Kontakt</Label>
               <ContactSelector
                 selectedContactId={selectedContactId}
-                onSelect={(contact) => setSelectedContactId(contact?.id || null)}
+                onSelect={(contact) => {
+                  setSelectedContactId(contact?.id || null);
+                  setSelectedContactName(contact?.name || null);
+                }}
                 placeholder="Kontakt suchen..."
               />
             </div>

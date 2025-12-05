@@ -23,7 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CaseFileDocumentsTabProps {
   documents: CaseFileDocument[];
-  onAdd: (documentId: string, relevance: string, notes?: string) => Promise<boolean>;
+  onAdd: (documentId: string, relevance: string, notes?: string, title?: string) => Promise<boolean>;
   onRemove: (id: string) => Promise<boolean>;
 }
 
@@ -57,7 +57,8 @@ export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDoc
   const handleAdd = async () => {
     if (!selectedDocumentId) return;
     setIsSubmitting(true);
-    const success = await onAdd(selectedDocumentId, relevance, notes || undefined);
+    const selectedDoc = availableDocuments.find(d => d.id === selectedDocumentId);
+    const success = await onAdd(selectedDocumentId, relevance, notes || undefined, selectedDoc?.title);
     setIsSubmitting(false);
     if (success) {
       setDialogOpen(false);

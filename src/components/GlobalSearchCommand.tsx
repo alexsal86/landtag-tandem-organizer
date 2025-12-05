@@ -26,7 +26,8 @@ import {
   MessageSquare,
   CalendarPlus,
   MapPin,
-  Settings
+  Settings,
+  Briefcase
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -297,12 +298,29 @@ export function GlobalSearchCommand() {
     enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
   });
 
+  const { data: caseFiles, isLoading: caseFilesLoading } = useQuery({
+    queryKey: ['global-search-casefiles', searchQuery, currentTenant?.id],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.length < 2) return [];
+      const { data } = await supabase
+        .from('case_files')
+        .select('id, title, reference_number, status, case_type')
+        .eq('tenant_id', currentTenant!.id)
+        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%`)
+        .order('updated_at', { ascending: false })
+        .limit(5);
+      return data || [];
+    },
+    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+  });
+
   // Track search when results change
   useEffect(() => {
     if (searchQuery && searchQuery.length >= 2) {
       const resultCount = (contacts?.length || 0) + (appointments?.length || 0) + 
                           (tasks?.length || 0) + (documents?.length || 0) + 
-                          (letters?.length || 0) + (protocols?.length || 0);
+                          (letters?.length || 0) + (protocols?.length || 0) +
+                          (caseFiles?.length || 0);
       const resultTypes: string[] = [];
       if (contacts?.length) resultTypes.push('contacts');
       if (appointments?.length) resultTypes.push('appointments');
@@ -310,10 +328,11 @@ export function GlobalSearchCommand() {
       if (documents?.length) resultTypes.push('documents');
       if (letters?.length) resultTypes.push('letters');
       if (protocols?.length) resultTypes.push('protocols');
+      if (caseFiles?.length) resultTypes.push('casefiles');
       
       trackSearchMutation.mutate({ query: searchQuery, resultCount, resultTypes });
     }
-  }, [contacts, appointments, tasks, documents, letters, protocols, searchQuery]);
+  }, [contacts, appointments, tasks, documents, letters, protocols, caseFiles, searchQuery]);
 
   const runCommand = useCallback((command: () => void) => {
     if (searchQuery && searchQuery.length >= 2) {
@@ -341,6 +360,7 @@ export function GlobalSearchCommand() {
     { label: "Terminkalender", icon: Calendar, path: "/?section=calendar" },
     { label: "Kontakte", icon: Users, path: "/?section=contacts" },
     { label: "Aufgaben", icon: CheckSquare, path: "/?section=tasks" },
+    { label: "FallAkten", icon: Briefcase, path: "/?section=casefiles" },
     { label: "Entscheidungen", icon: Vote, path: "/?section=decisions" },
     { label: "Jour fixe", icon: MessageSquare, path: "/?section=meetings" },
     { label: "Planungen", icon: CalendarPlus, path: "/?section=eventplanning" },
@@ -353,10 +373,11 @@ export function GlobalSearchCommand() {
 
   const hasResults = (contacts?.length || 0) + (appointments?.length || 0) + 
                      (tasks?.length || 0) + (documents?.length || 0) + 
-                     (letters?.length || 0) + (protocols?.length || 0) > 0;
+                     (letters?.length || 0) + (protocols?.length || 0) +
+                     (caseFiles?.length || 0) > 0;
 
   const isSearching = contactsLoading || appointmentsLoading || tasksLoading || 
-                      documentsLoading || lettersLoading || protocolsLoading;
+                      documentsLoading || lettersLoading || protocolsLoading || caseFilesLoading;
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
@@ -628,6 +649,25 @@ export function GlobalSearchCommand() {
                 {protocol.meeting_date && (
                   <span className="ml-2 text-xs text-muted-foreground">
                     {format(new Date(protocol.meeting_date), "dd.MM.yyyy", { locale: de })}
+                  </span>
+                )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {caseFiles && caseFiles.length > 0 && (
+          <CommandGroup heading="📁 FallAkten">
+            {caseFiles.map((caseFile) => (
+              <CommandItem
+                key={caseFile.id}
+                onSelect={() => runCommand(() => navigate(`/?section=casefiles&casefile=${caseFile.id}`))}
+              >
+                <Briefcase className="mr-2 h-4 w-4" />
+                <span>{caseFile.title}</span>
+                {caseFile.reference_number && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    ({caseFile.reference_number})
                   </span>
                 )}
               </CommandItem>

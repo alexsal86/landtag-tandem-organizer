@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 interface CaseFileLettersTabProps {
   letters: CaseFileLetter[];
-  onAdd: (letterId: string, notes?: string) => Promise<boolean>;
+  onAdd: (letterId: string, notes?: string, title?: string) => Promise<boolean>;
   onRemove: (id: string) => Promise<boolean>;
 }
 
@@ -56,7 +56,8 @@ export function CaseFileLettersTab({ letters, onAdd, onRemove }: CaseFileLetters
   const handleAdd = async () => {
     if (!selectedLetterId) return;
     setIsSubmitting(true);
-    const success = await onAdd(selectedLetterId, notes || undefined);
+    const selectedLetter = availableLetters.find(l => l.id === selectedLetterId);
+    const success = await onAdd(selectedLetterId, notes || undefined, selectedLetter?.title);
     setIsSubmitting(false);
     if (success) {
       setDialogOpen(false);

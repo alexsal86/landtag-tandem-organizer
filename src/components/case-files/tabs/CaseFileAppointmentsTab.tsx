@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CaseFileAppointmentsTabProps {
   appointments: CaseFileAppointment[];
-  onAdd: (appointmentId: string, notes?: string) => Promise<boolean>;
+  onAdd: (appointmentId: string, notes?: string, title?: string) => Promise<boolean>;
   onRemove: (id: string) => Promise<boolean>;
 }
 
@@ -55,7 +55,8 @@ export function CaseFileAppointmentsTab({ appointments, onAdd, onRemove }: CaseF
   const handleAdd = async () => {
     if (!selectedAppointmentId) return;
     setIsSubmitting(true);
-    const success = await onAdd(selectedAppointmentId, notes || undefined);
+    const selectedAppt = availableAppointments.find(a => a.id === selectedAppointmentId);
+    const success = await onAdd(selectedAppointmentId, notes || undefined, selectedAppt?.title);
     setIsSubmitting(false);
     if (success) {
       setDialogOpen(false);
