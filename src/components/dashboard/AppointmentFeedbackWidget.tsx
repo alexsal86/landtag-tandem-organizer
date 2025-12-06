@@ -100,7 +100,7 @@ export const AppointmentFeedbackWidget = ({
     ).length || 0;
   }, [appointments]);
 
-  // Sortierte Termine nach Priorität
+  // Sortierte Termine nach Priorität - nur pending anzeigen
   const sortedAppointments = useMemo(() => {
     if (!appointments) return [];
     
@@ -109,19 +109,8 @@ export const AppointmentFeedbackWidget = ({
         // Zeige nur Termine mit Feedback
         if (!apt.feedback) return false;
         
-        // Skipped-Termine ausblenden
-        if (apt.feedback.feedback_status === 'skipped') return false;
-        
-        // Completed-Termine nur 24h anzeigen
-        if (apt.feedback.feedback_status === 'completed') {
-          if (!apt.feedback.completed_at) return false;
-          const completedDate = new Date(apt.feedback.completed_at);
-          const hoursSinceCompletion = (Date.now() - completedDate.getTime()) / (1000 * 60 * 60);
-          return hoursSinceCompletion < 24;
-        }
-        
-        // Pending-Termine immer anzeigen
-        return true;
+        // Nur pending Feedbacks anzeigen
+        return apt.feedback.feedback_status === 'pending';
       })
       .sort((a, b) => {
         const priorityA = a.feedback?.priority_score || 0;
