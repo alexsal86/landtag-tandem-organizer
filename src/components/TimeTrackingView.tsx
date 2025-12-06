@@ -151,7 +151,16 @@ export function TimeTrackingView() {
     if (!user) return;
     const { data } = await supabase.from("time_entries").select("id, started_at, ended_at").eq("user_id", user.id).eq("work_date", workDate);
     const total = data?.reduce((s, e) => e.id === excludeId || !e.started_at || !e.ended_at ? s : s + (new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000, 0) || 0;
-    if (total + grossMin > 600) throw new Error(`An diesem Tag bereits ${Math.floor(total / 60)}:${(total % 60).toString().padStart(2, '0')} Stunden erfasst. Maximal 10 Stunden pro Tag erlaubt.`);
+    
+    if (total + grossMin > 600) {
+      const formatTime = (min: number) => `${Math.floor(min / 60)}:${(min % 60).toString().padStart(2, '0')}`;
+      
+      if (total > 0) {
+        throw new Error(`Bereits ${formatTime(total)} Stunden erfasst. Mit diesem Eintrag (${formatTime(grossMin)}) wären es ${formatTime(total + grossMin)} Stunden. Maximal 10 Stunden pro Tag erlaubt.`);
+      } else {
+        throw new Error(`Der Eintrag dauert ${formatTime(grossMin)} Stunden. Maximal 10 Stunden pro Tag erlaubt.`);
+      }
+    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
