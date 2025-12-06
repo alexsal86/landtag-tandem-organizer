@@ -124,3 +124,6 @@ verify_jwt = true
 [functions.create-daily-appointment-feedback]
 verify_jwt = false
 schedule = "0 17 * * *"
+
+[functions.log-audit-event]
+verify_jwt = false

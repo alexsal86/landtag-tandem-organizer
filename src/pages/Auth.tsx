@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useLoginCustomization } from "@/hooks/useLoginCustomization";
+import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -62,6 +63,12 @@ const Auth = () => {
         setError(error.message);
       }
     } else {
+      // Log signup
+      logAuditEvent({ 
+        action: AuditActions.SIGNUP, 
+        email,
+        details: { display_name: displayName }
+      });
       toast({
         title: "Registrierung erfolgreich",
         description: "Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.",
@@ -82,6 +89,12 @@ const Auth = () => {
     setLoading(false);
 
     if (error) {
+      // Log failed login attempt
+      logAuditEvent({ 
+        action: AuditActions.LOGIN_FAILED, 
+        email,
+        details: { error: error.message }
+      });
       if (error.message.includes("Invalid login credentials")) {
         setError("Ungültige Anmeldedaten. Bitte überprüfen Sie E-Mail und Passwort.");
       } else {
@@ -98,6 +111,12 @@ const Auth = () => {
       setFactorId(factors.all[0].id);
       setShowMfaChallenge(true);
     } else {
+      // Log successful login (no MFA)
+      logAuditEvent({ 
+        action: AuditActions.LOGIN_SUCCESS, 
+        email,
+        details: { mfa_used: false }
+      });
       navigate("/");
     }
   };
@@ -115,8 +134,28 @@ const Auth = () => {
 
       if (error) throw error;
 
+      // Log successful MFA verification
+      logAuditEvent({ 
+        action: AuditActions.MFA_VERIFIED, 
+        email,
+        details: { mfa_used: true }
+      });
+      
+      // Log successful login with MFA
+      logAuditEvent({ 
+        action: AuditActions.LOGIN_SUCCESS, 
+        email,
+        details: { mfa_used: true }
+      });
+      
       navigate("/");
     } catch (error: any) {
+      // Log failed MFA attempt
+      logAuditEvent({ 
+        action: AuditActions.MFA_FAILED, 
+        email,
+        details: { error: 'Invalid MFA code' }
+      });
       setError("Ungültiger 2FA-Code. Bitte versuchen Sie es erneut.");
     } finally {
       setLoading(false);
