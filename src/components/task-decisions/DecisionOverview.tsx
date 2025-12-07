@@ -577,10 +577,7 @@ export const DecisionOverview = () => {
     return (
       <Card 
         key={decision.id} 
-        className={cn(
-          `border-l-4 ${getBorderColor(summary)} hover:bg-muted/50 transition-colors`,
-          decision.hasResponded && "bg-emerald-950/20 ring-1 ring-emerald-800/30"
-        )}
+        className={`border-l-4 ${getBorderColor(summary)} hover:bg-muted/50 transition-colors`}
       >
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2">
@@ -588,7 +585,7 @@ export const DecisionOverview = () => {
               {decision.hasResponded && (
                 <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
               )}
-              <CardTitle className="text-sm font-medium cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+              <CardTitle className="text-base font-semibold cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
                 {decision.title}
               </CardTitle>
             </div>
@@ -635,26 +632,8 @@ export const DecisionOverview = () => {
 
             {/* Right Column: Metadata, Voting, Actions - flex column für Badges unten */}
             <div className="flex flex-col justify-between min-h-[120px]">
-              {/* Top: Metadata & Voting */}
+              {/* Top: Voting */}
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-                
-                {decision.creator && (
-                  <UserBadge 
-                    userId={decision.creator.user_id}
-                    displayName={decision.creator.display_name}
-                    badgeColor={decision.creator.badge_color}
-                    size="sm"
-                  />
-                )}
 
                 {/* Voting Results - größer */}
                 {decision.participants && decision.participants.length > 0 && (
@@ -744,31 +723,50 @@ export const DecisionOverview = () => {
                 )}
               </div>
 
-              {/* Bottom: Badges - rechts unten */}
-              <div className="flex items-center gap-1 flex-wrap justify-end mt-2">
-                {decision.visible_to_all && (
-                  <Badge variant="secondary" className="text-xs">
-                    <Globe className="h-3 w-3 mr-1" />
-                    Öffentlich
-                  </Badge>
-                )}
-                {decision.isStandalone ? (
-                  <Badge variant="secondary" className="text-xs">
-                    <Vote className="h-3 w-3 mr-1" />
-                    Eigenständig
-                  </Badge>
-                ) : (
-                  <Badge variant="destructive" className="text-xs">
-                    <CheckSquare className="h-3 w-3 mr-1" />
-                    Task
-                  </Badge>
-                )}
-                {(decision.attachmentCount ?? 0) > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    <Paperclip className="h-3 w-3 mr-1" />
-                    {decision.attachmentCount}
-                  </Badge>
-                )}
+              {/* Bottom: Badges + Creator + Datum - rechts unten */}
+              <div className="flex flex-col items-end gap-1 mt-2">
+                <div className="flex items-center gap-1 flex-wrap justify-end">
+                  {decision.creator && (
+                    <UserBadge 
+                      userId={decision.creator.user_id}
+                      displayName={decision.creator.display_name}
+                      badgeColor={decision.creator.badge_color}
+                      size="sm"
+                    />
+                  )}
+                  {decision.visible_to_all && (
+                    <Badge variant="secondary" className="text-xs">
+                      <Globe className="h-3 w-3 mr-1" />
+                      Öffentlich
+                    </Badge>
+                  )}
+                  {decision.isStandalone ? (
+                    <Badge variant="secondary" className="text-xs">
+                      <Vote className="h-3 w-3 mr-1" />
+                      Eigenständig
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive" className="text-xs">
+                      <CheckSquare className="h-3 w-3 mr-1" />
+                      Task
+                    </Badge>
+                  )}
+                  {(decision.attachmentCount ?? 0) > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      <Paperclip className="h-3 w-3 mr-1" />
+                      {decision.attachmentCount}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(decision.created_at).toLocaleString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
               </div>
             </div>
           </div>
