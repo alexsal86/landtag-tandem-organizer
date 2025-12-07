@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, MessageCircle, Edit2, Paperclip } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 
 interface TaskDecisionResponseProps {
   decisionId: string;
@@ -251,17 +252,19 @@ export const TaskDecisionResponse = ({
           })}
         </span>
         
-        {/* Show participant comment */}
+        {/* Show participant comment - RichText */}
         {currentResponse.comment && (
-          <div className="text-xs text-muted-foreground">
-            <strong>Ihr Kommentar:</strong> {currentResponse.comment}
+          <div className="text-xs">
+            <strong className="text-muted-foreground">Ihr Kommentar:</strong>
+            <RichTextDisplay content={currentResponse.comment} className="mt-1" />
           </div>
         )}
         
-        {/* Show creator response */}
+        {/* Show creator response - RichText */}
         {currentResponse.creator_response && (
           <div className="bg-muted p-2 rounded text-xs">
-            <strong>Antwort:</strong> {currentResponse.creator_response}
+            <strong>Antwort:</strong>
+            <RichTextDisplay content={currentResponse.creator_response} className="mt-1" />
           </div>
         )}
       </div>
@@ -271,12 +274,11 @@ export const TaskDecisionResponse = ({
   // Show response buttons (for new responses or when editing)
   return (
     <div className="space-y-3">
-      <Textarea
-        value={questionComment}
-        onChange={(e) => setQuestionComment(e.target.value)}
+      <SimpleRichTextEditor
+        initialContent={questionComment}
+        onChange={setQuestionComment}
         placeholder="Kommentar (optional)..."
-        rows={3}
-        className="w-full"
+        minHeight="80px"
       />
       
       <div className="flex items-center space-x-2">
@@ -306,11 +308,11 @@ export const TaskDecisionResponse = ({
             <DialogTitle>Rückfrage stellen</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <Textarea
-              value={questionComment}
-              onChange={(e) => setQuestionComment(e.target.value)}
+            <SimpleRichTextEditor
+              initialContent={questionComment}
+              onChange={setQuestionComment}
               placeholder="Ihre Frage oder Ihr Kommentar..."
-              rows={4}
+              minHeight="100px"
             />
             
             {/* File Upload Section */}

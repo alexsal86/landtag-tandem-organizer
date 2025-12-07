@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { UserBadge } from "@/components/ui/user-badge";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { Check, X, MessageCircle, Send, Archive, History, Paperclip } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -333,9 +333,10 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                       {latestResponse.comment && (
                         <div className="space-y-2">
                           <div className="flex items-start justify-between">
-                            <p className="text-sm text-muted-foreground">
-                              <strong>Kommentar:</strong> {latestResponse.comment}
-                            </p>
+                            <div className="text-sm text-muted-foreground flex-1">
+                              <strong>Kommentar:</strong>
+                              <RichTextDisplay content={latestResponse.comment} className="mt-1" />
+                            </div>
                             <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
                               {new Date(latestResponse.created_at).toLocaleString('de-DE', {
                                 day: '2-digit',
@@ -347,31 +348,33 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
                             </span>
                           </div>
                           
-                          {/* Creator Response */}
+                          {/* Creator Response - RichText */}
                           {latestResponse.creator_response && (
                             <div className="bg-muted p-2 rounded text-sm">
-                              <strong>Antwort:</strong> {latestResponse.creator_response}
+                              <strong>Antwort:</strong>
+                              <RichTextDisplay content={latestResponse.creator_response} className="mt-1" />
                             </div>
                           )}
 
-                          {/* Creator Response Input */}
+                          {/* Creator Response Input - RichText */}
                           {isCreator && latestResponse.comment && !latestResponse.creator_response && (
-                            <div className="flex space-x-2">
-                              <Textarea
-                                placeholder="Antwort eingeben..."
-                                value={creatorResponses[latestResponse.id] || ''}
-                                onChange={(e) => setCreatorResponses(prev => ({
+                            <div className="space-y-2">
+                              <SimpleRichTextEditor
+                                initialContent={creatorResponses[latestResponse.id] || ''}
+                                onChange={(html) => setCreatorResponses(prev => ({
                                   ...prev,
-                                  [latestResponse.id]: e.target.value
+                                  [latestResponse.id]: html
                                 }))}
-                                className="flex-1"
+                                placeholder="Antwort eingeben..."
+                                minHeight="80px"
                               />
                               <Button
                                 size="sm"
                                 onClick={() => sendCreatorResponse(latestResponse.id)}
                                 disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}
                               >
-                                <Send className="h-4 w-4" />
+                                <Send className="h-4 w-4 mr-1" />
+                                Senden
                               </Button>
                             </div>
                           )}
