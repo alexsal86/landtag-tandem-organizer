@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useCaseFiles, CaseFileFormData, CASE_TYPES, CASE_STATUSES } from "@/hooks/useCaseFiles";
+import { useCaseFiles, CaseFileFormData } from "@/hooks/useCaseFiles";
+import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
+import { icons, LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +26,7 @@ interface CaseFileCreateDialogProps {
 
 export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFileCreateDialogProps) {
   const { createCaseFile } = useCaseFiles();
+  const { caseFileTypes } = useCaseFileTypes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CaseFileFormData>({
     title: "",
@@ -34,6 +37,12 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
     reference_number: "",
     is_private: false,
   });
+
+  const getIconComponent = (iconName?: string | null): LucideIcon | null => {
+    if (!iconName) return null;
+    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
+    return Icon || null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,11 +112,21 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CASE_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
+                    {caseFileTypes.map((type) => {
+                      const TypeIcon = getIconComponent(type.icon);
+                      return (
+                        <SelectItem key={type.id} value={type.name}>
+                          <div className="flex items-center gap-2">
+                            <span 
+                              className="w-2 h-2 rounded-full" 
+                              style={{ backgroundColor: type.color }}
+                            />
+                            {TypeIcon && <TypeIcon className="h-3 w-3" style={{ color: type.color }} />}
+                            {type.label}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

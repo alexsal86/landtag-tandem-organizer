@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useCaseFileDetails, CONTACT_ROLES, DOCUMENT_RELEVANCE } from "@/hooks/useCaseFileDetails";
-import { useCaseFiles, CASE_TYPES, CASE_STATUSES } from "@/hooks/useCaseFiles";
+import { useCaseFiles, CASE_STATUSES } from "@/hooks/useCaseFiles";
+import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
+import { icons, LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,11 +61,18 @@ interface CaseFileDetailProps {
 export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
   const details = useCaseFileDetails(caseFileId);
   const { deleteCaseFile } = useCaseFiles();
+  const { caseFileTypes } = useCaseFileTypes();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   const { caseFile, contacts, documents, tasks, appointments, letters, notes, timeline, loading } = details;
+
+  const getIconComponent = (iconName?: string | null): LucideIcon | null => {
+    if (!iconName) return null;
+    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
+    return Icon || null;
+  };
 
   if (loading) {
     return (
@@ -92,7 +101,8 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
   }
 
   const statusConfig = CASE_STATUSES.find(s => s.value === caseFile.status);
-  const typeConfig = CASE_TYPES.find(t => t.value === caseFile.case_type);
+  const typeConfig = caseFileTypes.find(t => t.name === caseFile.case_type);
+  const TypeIcon = getIconComponent(typeConfig?.icon);
 
   const handleDelete = async () => {
     const success = await deleteCaseFile(caseFile.id);
@@ -142,7 +152,16 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
                 <Badge className={cn("text-white", statusConfig?.color || "bg-gray-500")}>
                   {statusConfig?.label || caseFile.status}
                 </Badge>
-                <Badge variant="outline">{typeConfig?.label || caseFile.case_type}</Badge>
+                <Badge 
+                  variant="outline"
+                  style={{ 
+                    borderColor: typeConfig?.color,
+                    color: typeConfig?.color
+                  }}
+                >
+                  {TypeIcon && <TypeIcon className="h-3 w-3 mr-1" />}
+                  {typeConfig?.label || caseFile.case_type}
+                </Badge>
                 {caseFile.is_private && (
                   <Badge variant="secondary">
                     <Eye className="h-3 w-3 mr-1" />
