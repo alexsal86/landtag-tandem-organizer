@@ -36,6 +36,17 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
 
   const loadProfiles = async () => {
     try {
+      // Get current user's tenant
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+
+      const { data: tenantData } = await supabase
+        .from('user_tenant_memberships')
+        .select('tenant_id')
+        .eq('user_id', userData.user.id)
+        .eq('is_active', true)
+        .single();
+
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name')
@@ -44,14 +55,28 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
       if (error) throw error;
       setProfiles(data || []);
       
-      // Pre-select Abgeordneter (users with 'abgeordneter' role)
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'abgeordneter');
-      
-      if (roleData && roleData.length > 0) {
-        setSelectedUsers(roleData.map(r => r.user_id));
+      // Pre-select Abgeordneter from the same tenant
+      if (tenantData?.tenant_id) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'abgeordneter');
+        
+        if (roleData && roleData.length > 0) {
+          // Filter to only include users in the same tenant
+          const { data: tenantMembers } = await supabase
+            .from('user_tenant_memberships')
+            .select('user_id')
+            .eq('tenant_id', tenantData.tenant_id)
+            .eq('is_active', true);
+          
+          const tenantUserIds = new Set(tenantMembers?.map(m => m.user_id) || []);
+          const abgeordneteInTenant = roleData
+            .filter(r => tenantUserIds.has(r.user_id))
+            .map(r => r.user_id);
+          
+          setSelectedUsers(abgeordneteInTenant);
+        }
       }
       
       setProfilesLoaded(true);
