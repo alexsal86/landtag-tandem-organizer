@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCaseFileDetails, CONTACT_ROLES, DOCUMENT_RELEVANCE } from "@/hooks/useCaseFileDetails";
 import { useCaseFiles, CASE_STATUSES } from "@/hooks/useCaseFiles";
 import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
+import { useCaseFileTopics } from "@/hooks/useTopics";
 import { icons, LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,8 @@ import {
   MoreVertical,
   Plus,
   Pin,
-  Eye
+  Eye,
+  Tag
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -52,6 +54,7 @@ import { CaseFileAppointmentsTab } from "./tabs/CaseFileAppointmentsTab";
 import { CaseFileLettersTab } from "./tabs/CaseFileLettersTab";
 import { CaseFileNotesTab } from "./tabs/CaseFileNotesTab";
 import { CaseFileTimelineTab } from "./tabs/CaseFileTimelineTab";
+import { TopicSelector, TopicDisplay } from "./TopicSelector";
 
 interface CaseFileDetailProps {
   caseFileId: string;
@@ -62,6 +65,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
   const details = useCaseFileDetails(caseFileId);
   const { deleteCaseFile } = useCaseFiles();
   const { caseFileTypes } = useCaseFileTypes();
+  const { assignedTopics, setTopics: setAssignedTopics } = useCaseFileTopics(caseFileId);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -226,6 +230,19 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
               )}
             </div>
           )}
+
+          {/* Topics Section */}
+          <div className="mt-4 pt-4 border-t">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Themen</span>
+            </div>
+            <TopicSelector
+              selectedTopicIds={assignedTopics}
+              onTopicsChange={setAssignedTopics}
+              compact
+            />
+          </div>
 
           {caseFile.tags && caseFile.tags.length > 0 && (
             <div className="flex items-center gap-2 mt-4 flex-wrap">

@@ -626,6 +626,42 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_topics: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          id: string
+          topic_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          id?: string
+          topic_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_topics_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           calendar_uid: string | null
@@ -1293,6 +1329,42 @@ export type Database = {
           },
         ]
       }
+      case_file_topics: {
+        Row: {
+          case_file_id: string
+          created_at: string
+          id: string
+          topic_id: string
+        }
+        Insert: {
+          case_file_id: string
+          created_at?: string
+          id?: string
+          topic_id: string
+        }
+        Update: {
+          case_file_id?: string
+          created_at?: string
+          id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_file_topics_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_file_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_file_types: {
         Row: {
           color: string | null
@@ -1431,6 +1503,42 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_topics: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          topic_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          topic_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_topics_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]
@@ -2215,6 +2323,42 @@ export type Database = {
             columns: ["parent_folder_id"]
             isOneToOne: false
             referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_topics: {
+        Row: {
+          created_at: string
+          document_id: string
+          id: string
+          topic_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          id?: string
+          topic_id: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_topics_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]
@@ -7103,6 +7247,42 @@ export type Database = {
         }
         Relationships: []
       }
+      task_topics: {
+        Row: {
+          created_at: string
+          id: string
+          task_id: string
+          topic_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          task_id: string
+          topic_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          task_id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_topics_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null
@@ -7505,6 +7685,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      topics: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          label: string
+          name: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          name: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          name?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_navigation_visits: {
         Row: {
