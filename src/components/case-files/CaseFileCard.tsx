@@ -1,7 +1,9 @@
-import { CaseFile, CASE_TYPES, CASE_STATUSES } from "@/hooks/useCaseFiles";
+import { CaseFile, CASE_STATUSES } from "@/hooks/useCaseFiles";
+import { CaseFileType } from "@/hooks/useCaseFileTypes";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, FileText, CheckSquare, Calendar, Mail, Clock, Tag } from "lucide-react";
+import { icons, LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -10,11 +12,20 @@ interface CaseFileCardProps {
   caseFile: CaseFile;
   viewMode: "grid" | "list";
   onClick: () => void;
+  caseFileTypes?: CaseFileType[];
 }
 
-export function CaseFileCard({ caseFile, viewMode, onClick }: CaseFileCardProps) {
+export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }: CaseFileCardProps) {
   const statusConfig = CASE_STATUSES.find(s => s.value === caseFile.status);
-  const typeConfig = CASE_TYPES.find(t => t.value === caseFile.case_type);
+  const typeConfig = caseFileTypes.find(t => t.name === caseFile.case_type);
+
+  const getIconComponent = (iconName?: string | null): LucideIcon | null => {
+    if (!iconName) return null;
+    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
+    return Icon || null;
+  };
+
+  const TypeIcon = getIconComponent(typeConfig?.icon);
 
   const priorityColors: Record<string, string> = {
     low: "text-gray-500",
@@ -62,7 +73,18 @@ export function CaseFileCard({ caseFile, viewMode, onClick }: CaseFileCardProps)
                 <CheckSquare className="h-4 w-4 ml-2" />
                 <span>{caseFile.tasks_count || 0}</span>
               </div>
-              <Badge variant="secondary">{typeConfig?.label || caseFile.case_type}</Badge>
+              <Badge 
+                variant="secondary"
+                style={{ 
+                  backgroundColor: typeConfig?.color ? `${typeConfig.color}20` : undefined,
+                  borderColor: typeConfig?.color,
+                  color: typeConfig?.color
+                }}
+                className="border"
+              >
+                {TypeIcon && <TypeIcon className="h-3 w-3 mr-1" />}
+                {typeConfig?.label || caseFile.case_type}
+              </Badge>
               <Badge className={cn("text-white", statusConfig?.color || "bg-gray-500")}>
                 {statusConfig?.label || caseFile.status}
               </Badge>
@@ -99,7 +121,16 @@ export function CaseFileCard({ caseFile, viewMode, onClick }: CaseFileCardProps)
         )}
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline">{typeConfig?.label || caseFile.case_type}</Badge>
+          <Badge 
+            variant="outline"
+            style={{ 
+              borderColor: typeConfig?.color,
+              color: typeConfig?.color
+            }}
+          >
+            {TypeIcon && <TypeIcon className="h-3 w-3 mr-1" />}
+            {typeConfig?.label || caseFile.case_type}
+          </Badge>
           {caseFile.priority && caseFile.priority !== 'medium' && (
             <Badge variant="outline" className={priorityColors[caseFile.priority]}>
               {caseFile.priority === 'high' ? 'Hoch' : caseFile.priority === 'urgent' ? 'Dringend' : 'Niedrig'}

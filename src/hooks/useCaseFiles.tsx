@@ -41,6 +41,7 @@ export interface CaseFileFormData {
   is_private?: boolean;
 }
 
+// Legacy fallback - types are now loaded from database via useCaseFileTypes
 export const CASE_TYPES = [
   { value: 'general', label: 'Allgemein' },
   { value: 'legislation', label: 'Gesetzgebung' },
@@ -48,6 +49,10 @@ export const CASE_TYPES = [
   { value: 'initiative', label: 'Initiative' },
   { value: 'investigation', label: 'Untersuchung' },
   { value: 'project', label: 'Projekt' },
+  { value: 'petition', label: 'Petition' },
+  { value: 'small_inquiry', label: 'Kleine Anfrage' },
+  { value: 'committee_work', label: 'Ausschussarbeit' },
+  { value: 'constituency', label: 'Wahlkreis' },
 ];
 
 export const CASE_STATUSES = [

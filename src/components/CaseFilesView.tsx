@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { useCaseFiles, CaseFile, CASE_TYPES, CASE_STATUSES } from "@/hooks/useCaseFiles";
+import { useState, useMemo } from "react";
+import { useCaseFiles, CaseFile, CASE_STATUSES } from "@/hooks/useCaseFiles";
+import { useCaseFileTypes } from "@/hooks/useCaseFileTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Plus, 
   Search, 
@@ -16,22 +17,30 @@ import {
   Mail,
   LayoutGrid,
   List,
-  Filter
+  Layers,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
+import { icons, LucideIcon } from "lucide-react";
 import { CaseFileCreateDialog } from "./case-files/CaseFileCreateDialog";
 import { CaseFileCard } from "./case-files/CaseFileCard";
 import { CaseFileDetail } from "./case-files/CaseFileDetail";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
+type ViewStyle = "flat" | "grouped";
+
 export function CaseFilesView() {
   const { caseFiles, loading } = useCaseFiles();
+  const { caseFileTypes, loading: typesLoading } = useCaseFileTypes();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewStyle, setViewStyle] = useState<ViewStyle>("flat");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCaseFile, setSelectedCaseFile] = useState<CaseFile | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const filteredCaseFiles = caseFiles.filter((cf) => {
     const matchesSearch = 
@@ -45,6 +54,72 @@ export function CaseFilesView() {
 
     return matchesSearch && matchesStatus && matchesType;
   });
+
+  // Group case files by type
+  const groupedCaseFiles = useMemo(() => {
+    const groups = new Map<string, CaseFile[]>();
+    
+    // Initialize groups based on types order
+    caseFileTypes.forEach(type => {
+      groups.set(type.name, []);
+    });
+    
+    // Add "unknown" group for types not in database
+    groups.set('_unknown', []);
+    
+    filteredCaseFiles.forEach(cf => {
+      const typeName = cf.case_type || 'general';
+      if (groups.has(typeName)) {
+        groups.get(typeName)!.push(cf);
+      } else {
+        groups.get('_unknown')!.push(cf);
+      }
+    });
+    
+    // Remove empty groups
+    for (const [key, value] of groups) {
+      if (value.length === 0) {
+        groups.delete(key);
+      }
+    }
+    
+    return groups;
+  }, [filteredCaseFiles, caseFileTypes]);
+
+  // Initialize all groups as expanded
+  useMemo(() => {
+    if (expandedGroups.size === 0 && groupedCaseFiles.size > 0) {
+      setExpandedGroups(new Set(groupedCaseFiles.keys()));
+    }
+  }, [groupedCaseFiles]);
+
+  const toggleGroup = (groupName: string) => {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(groupName)) {
+      newExpanded.delete(groupName);
+    } else {
+      newExpanded.add(groupName);
+    }
+    setExpandedGroups(newExpanded);
+  };
+
+  const expandAll = () => {
+    setExpandedGroups(new Set(groupedCaseFiles.keys()));
+  };
+
+  const collapseAll = () => {
+    setExpandedGroups(new Set());
+  };
+
+  const getTypeConfig = (typeName: string) => {
+    return caseFileTypes.find(t => t.name === typeName);
+  };
+
+  const getIconComponent = (iconName?: string | null): LucideIcon | null => {
+    if (!iconName) return null;
+    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
+    return Icon || null;
+  };
 
   const statusCounts = {
     all: caseFiles.length,
@@ -62,6 +137,8 @@ export function CaseFilesView() {
       />
     );
   }
+
+  const isLoading = loading || typesLoading;
 
   return (
     <div className="space-y-6">
@@ -129,7 +206,7 @@ export function CaseFilesView() {
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Status" />
@@ -144,41 +221,67 @@ export function CaseFilesView() {
                 </SelectContent>
               </Select>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Typ" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Alle Typen</SelectItem>
-                  {CASE_TYPES.map(type => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
+                  {caseFileTypes.map(type => (
+                    <SelectItem key={type.id} value={type.name}>
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: type.color }}
+                        />
+                        {type.label}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <div className="flex border rounded-md">
                 <Button
-                  variant={viewMode === "grid" ? "secondary" : "ghost"}
+                  variant={viewStyle === "flat" ? "secondary" : "ghost"}
                   size="icon"
-                  onClick={() => setViewMode("grid")}
+                  onClick={() => setViewStyle("flat")}
+                  title="Flache Ansicht"
                 >
-                  <LayoutGrid className="h-4 w-4" />
+                  {viewMode === "grid" ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
                 </Button>
                 <Button
-                  variant={viewMode === "list" ? "secondary" : "ghost"}
+                  variant={viewStyle === "grouped" ? "secondary" : "ghost"}
                   size="icon"
-                  onClick={() => setViewMode("list")}
+                  onClick={() => setViewStyle("grouped")}
+                  title="Gruppierte Ansicht"
                 >
-                  <List className="h-4 w-4" />
+                  <Layers className="h-4 w-4" />
                 </Button>
               </div>
+              {viewStyle === "flat" && (
+                <div className="flex border rounded-md">
+                  <Button
+                    variant={viewMode === "grid" ? "secondary" : "ghost"}
+                    size="icon"
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "list" ? "secondary" : "ghost"}
+                    size="icon"
+                    onClick={() => setViewMode("list")}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Case Files List */}
-      {loading ? (
+      {isLoading ? (
         <div className={viewMode === "grid" ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-48" />
@@ -202,6 +305,75 @@ export function CaseFilesView() {
             )}
           </CardContent>
         </Card>
+      ) : viewStyle === "grouped" ? (
+        <div className="space-y-4">
+          {/* Expand/Collapse All */}
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={expandAll}>
+              Alle aufklappen
+            </Button>
+            <Button variant="outline" size="sm" onClick={collapseAll}>
+              Alle zuklappen
+            </Button>
+          </div>
+
+          {/* Grouped View */}
+          {Array.from(groupedCaseFiles.entries()).map(([typeName, files]) => {
+            const typeConfig = getTypeConfig(typeName);
+            const TypeIcon = getIconComponent(typeConfig?.icon);
+            const isExpanded = expandedGroups.has(typeName);
+
+            return (
+              <Collapsible
+                key={typeName}
+                open={isExpanded}
+                onOpenChange={() => toggleGroup(typeName)}
+              >
+                <Card>
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {isExpanded ? (
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          )}
+                          <span
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: typeConfig?.color || '#6b7280' }}
+                          />
+                          {TypeIcon && <TypeIcon className="h-5 w-5" style={{ color: typeConfig?.color }} />}
+                          <CardTitle className="text-lg">
+                            {typeConfig?.label || typeName}
+                          </CardTitle>
+                          <Badge variant="secondary" className="ml-2">
+                            {files.length}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className={viewMode === "grid" ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
+                        {files.map((caseFile) => (
+                          <CaseFileCard
+                            key={caseFile.id}
+                            caseFile={caseFile}
+                            viewMode={viewMode}
+                            onClick={() => setSelectedCaseFile(caseFile)}
+                            caseFileTypes={caseFileTypes}
+                          />
+                        ))}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            );
+          })}
+        </div>
       ) : (
         <div className={viewMode === "grid" ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
           {filteredCaseFiles.map((caseFile) => (
@@ -210,6 +382,7 @@ export function CaseFilesView() {
               caseFile={caseFile}
               viewMode={viewMode}
               onClick={() => setSelectedCaseFile(caseFile)}
+              caseFileTypes={caseFileTypes}
             />
           ))}
         </div>

@@ -40,6 +40,7 @@ import { DecisionArchiveSettings } from "@/components/administration/DecisionArc
 import { MatrixSettings } from "@/components/MatrixSettings";
 import { NewsEmailTemplateManager } from "@/components/administration/NewsEmailTemplateManager";
 import { AuditLogViewer } from "@/components/administration/AuditLogViewer";
+import { CaseFileTypeSettings } from "@/components/administration/CaseFileTypeSettings";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
