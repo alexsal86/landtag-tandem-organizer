@@ -690,8 +690,51 @@ export const DecisionOverview = () => {
                 </div>
               )}
 
-              {/* Response option for participants */}
-              {decision.isParticipant && !decision.hasResponded && decision.participant_id && (
+              {/* Participant Responses Preview */}
+              {decision.participants && decision.participants.length > 0 && (
+                <div className="space-y-1 mt-2">
+                  {decision.participants.map(participant => {
+                    const latestResponse = participant.responses[0];
+                    if (!latestResponse) return null;
+                    
+                    return (
+                      <div key={participant.id} className="flex items-center gap-2 text-xs">
+                        {latestResponse.response_type === 'yes' && (
+                          <Badge variant="outline" className="text-green-600 border-green-600 text-xs px-1">
+                            <Check className="h-2 w-2" />
+                          </Badge>
+                        )}
+                        {latestResponse.response_type === 'no' && (
+                          <Badge variant="outline" className="text-red-600 border-red-600 text-xs px-1">
+                            <X className="h-2 w-2" />
+                          </Badge>
+                        )}
+                        {latestResponse.response_type === 'question' && (
+                          <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs px-1">
+                            <MessageCircle className="h-2 w-2" />
+                          </Badge>
+                        )}
+                        
+                        <UserBadge 
+                          userId={participant.user_id}
+                          displayName={participant.profile?.display_name}
+                          badgeColor={participant.profile?.badge_color}
+                          size="sm"
+                        />
+                        
+                        {latestResponse.comment && (
+                          <span className="text-muted-foreground truncate max-w-[200px]">
+                            "{latestResponse.comment}"
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Response option for participants - always show for editing */}
+              {decision.isParticipant && decision.participant_id && (
                 <div onClick={(e) => e.stopPropagation()}>
                   <TaskDecisionResponse 
                     decisionId={decision.id}

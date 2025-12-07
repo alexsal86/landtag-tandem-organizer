@@ -66,6 +66,32 @@ export default function DecisionResponse() {
     }
   };
 
+  const handleAddComment = async () => {
+    if (!token || !participantId || !comment.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const { error: functionError } = await supabase.functions.invoke('process-decision-response', {
+        body: {
+          participantId,
+          token,
+          responseType: result.responseType,
+          comment: comment.trim(),
+        },
+      });
+
+      if (functionError) throw new Error(functionError.message);
+
+      setResult({ ...result, commentAdded: true });
+      setComment("");
+    } catch (err: any) {
+      console.error('Error adding comment:', err);
+      setError(err.message || "Fehler beim Speichern des Kommentars");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isSubmitted && result) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -76,14 +102,16 @@ export default function DecisionResponse() {
             </div>
             <CardTitle className="text-xl">Antwort gespeichert</CardTitle>
           </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">
-              Vielen Dank, {result.participantName}!
-            </p>
-            <p className="text-sm">
-              Ihre Antwort zu "{result.decisionTitle}" wurde erfolgreich gespeichert.
-            </p>
-            <div className="p-3 bg-muted rounded-lg">
+          <CardContent className="space-y-4">
+            <div className="text-center">
+              <p className="text-muted-foreground">
+                Vielen Dank, {result.participantName}!
+              </p>
+              <p className="text-sm">
+                Ihre Antwort zu "{result.decisionTitle}" wurde erfolgreich gespeichert.
+              </p>
+            </div>
+            <div className="p-3 bg-muted rounded-lg text-center">
               <p className="text-sm font-medium">
                 Ihre Antwort: 
                 <span className={`ml-2 px-2 py-1 rounded text-xs font-bold ${
@@ -97,6 +125,38 @@ export default function DecisionResponse() {
                 </span>
               </p>
             </div>
+
+            {/* Comment section after submission */}
+            {!result.commentAdded && result.responseType !== 'question' && (
+              <div className="border-t pt-4 space-y-3">
+                <label className="text-sm font-medium">Möchten Sie einen Kommentar hinzufügen?</label>
+                <Textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Optionaler Kommentar zu Ihrer Antwort..."
+                  rows={3}
+                />
+                {error && (
+                  <p className="text-sm text-red-600">{error}</p>
+                )}
+                <Button
+                  onClick={handleAddComment}
+                  disabled={isLoading || !comment.trim()}
+                  className="w-full"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Kommentar hinzufügen
+                </Button>
+              </div>
+            )}
+
+            {result.commentAdded && (
+              <div className="border-t pt-4 text-center">
+                <p className="text-sm text-green-600">✓ Kommentar wurde hinzugefügt</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
