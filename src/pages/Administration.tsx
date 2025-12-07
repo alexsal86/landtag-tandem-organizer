@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, CheckSquare, Building, FileText, DollarSign, Users, Shield, Clock, MapPin, Rss, Palette, History, Briefcase } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, CheckSquare, Building, FileText, DollarSign, Users, Shield, Clock, MapPin, Rss, Palette, History, Briefcase, Tag } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NewUserForm } from "@/components/NewUserForm";
@@ -41,6 +41,7 @@ import { MatrixSettings } from "@/components/MatrixSettings";
 import { NewsEmailTemplateManager } from "@/components/administration/NewsEmailTemplateManager";
 import { AuditLogViewer } from "@/components/administration/AuditLogViewer";
 import { CaseFileTypeSettings } from "@/components/administration/CaseFileTypeSettings";
+import { TopicSettings } from "@/components/administration/TopicSettings";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -521,22 +522,26 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="system" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            System & Allgemein
+            System
+          </TabsTrigger>
+          <TabsTrigger value="topics" className="flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            Themen
           </TabsTrigger>
           <TabsTrigger value="tags" className="flex items-center gap-2">
             <Building className="h-4 w-4" />
-            Tags & Kategorien
+            Tags
           </TabsTrigger>
           <TabsTrigger value="appointments" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            Termine & Kalender
+            Termine
           </TabsTrigger>
           <TabsTrigger value="tasks" className="flex items-center gap-2">
             <CheckSquare className="h-4 w-4" />
-            Aufgaben & ToDos
+            Aufgaben
           </TabsTrigger>
           <TabsTrigger value="casefiles" className="flex items-center gap-2">
             <Briefcase className="h-4 w-4" />
@@ -559,6 +564,11 @@ export default function Administration() {
             Archivierung
           </TabsTrigger>
         </TabsList>
+
+        {/* Zentrale Themen */}
+        <TabsContent value="topics" className="space-y-6">
+          <TopicSettings />
+        </TabsContent>
 
         {/* System & Allgemein */}
         <TabsContent value="system" className="space-y-6">
