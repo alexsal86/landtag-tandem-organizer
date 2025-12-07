@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, XCircle, MessageCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 
 export default function DecisionResponse() {
   const { participantId } = useParams<{ participantId: string }>();
@@ -130,11 +130,11 @@ export default function DecisionResponse() {
             {!result.commentAdded && result.responseType !== 'question' && (
               <div className="border-t pt-4 space-y-3">
                 <label className="text-sm font-medium">Möchten Sie einen Kommentar hinzufügen?</label>
-                <Textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
+                <SimpleRichTextEditor
+                  initialContent={comment}
+                  onChange={setComment}
                   placeholder="Optionaler Kommentar zu Ihrer Antwort..."
-                  rows={3}
+                  minHeight="80px"
                 />
                 {error && (
                   <p className="text-sm text-red-600">{error}</p>
@@ -201,13 +201,14 @@ export default function DecisionResponse() {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Ihre Frage oder Kommentar:</label>
-                <Textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Bitte beschreiben Sie Ihre Frage oder Anmerkung..."
-                  rows={4}
-                  className="mt-1"
-                />
+                <div className="mt-1">
+                  <SimpleRichTextEditor
+                    initialContent={comment}
+                    onChange={setComment}
+                    placeholder="Bitte beschreiben Sie Ihre Frage oder Anmerkung..."
+                    minHeight="100px"
+                  />
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -235,13 +236,14 @@ export default function DecisionResponse() {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Kommentar (optional):</label>
-                <Textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Optionaler Kommentar zu Ihrer Antwort..."
-                  rows={3}
-                  className="mt-1"
-                />
+                <div className="mt-1">
+                  <SimpleRichTextEditor
+                    initialContent={comment}
+                    onChange={setComment}
+                    placeholder="Optionaler Kommentar zu Ihrer Antwort..."
+                    minHeight="80px"
+                  />
+                </div>
               </div>
               
               <div className="grid gap-3">

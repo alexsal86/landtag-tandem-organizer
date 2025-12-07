@@ -2,15 +2,16 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionEditDialog } from "./DecisionEditDialog";
 import { UserBadge } from "@/components/ui/user-badge";
-import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical, Archive, RotateCcw, Paperclip } from "lucide-react";
+import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -576,13 +577,21 @@ export const DecisionOverview = () => {
     return (
       <Card 
         key={decision.id} 
-        className={`border-l-4 ${getBorderColor(summary)} hover:bg-muted/50 transition-colors`}
+        className={cn(
+          `border-l-4 ${getBorderColor(summary)} hover:bg-muted/50 transition-colors`,
+          decision.hasResponded && "bg-emerald-950/20 ring-1 ring-emerald-800/30"
+        )}
       >
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2">
-            <CardTitle className="text-sm font-medium cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
-              {decision.title}
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              {decision.hasResponded && (
+                <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+              )}
+              <CardTitle className="text-sm font-medium cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+                {decision.title}
+              </CardTitle>
+            </div>
             
             {decision.isCreator && (
               <DropdownMenu>
@@ -610,11 +619,12 @@ export const DecisionOverview = () => {
         </CardHeader>
         
         <CardContent className="pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-            {/* Left Column: Description */}
+          {/* 60/40 Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-4 mb-3">
+            {/* Left Column: Description - mehr Platz */}
             <div className="space-y-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
               {decision.description && (
-                <RichTextDisplay content={decision.description} className="text-xs line-clamp-3" />
+                <RichTextDisplay content={decision.description} className="text-sm" />
               )}
               {decision.task && (
                 <p className="text-xs text-muted-foreground italic">
@@ -623,19 +633,20 @@ export const DecisionOverview = () => {
               )}
             </div>
 
-            {/* Right Column: Metadata, Badges, Voting, Actions */}
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
-              
-              <div className="flex items-center gap-1 flex-wrap">
+            {/* Right Column: Metadata, Voting, Actions - flex column für Badges unten */}
+            <div className="flex flex-col justify-between min-h-[120px]">
+              {/* Top: Metadata & Voting */}
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+                
                 {decision.creator && (
                   <UserBadge 
                     userId={decision.creator.user_id}
@@ -644,6 +655,97 @@ export const DecisionOverview = () => {
                     size="sm"
                   />
                 )}
+
+                {/* Voting Results - größer */}
+                {decision.participants && decision.participants.length > 0 && (
+                  <div className="flex items-center gap-4 text-sm font-medium py-2">
+                    <span className="flex items-center text-green-600">
+                      <Check className="h-4 w-4 mr-1" />
+                      {summary.yesCount}
+                    </span>
+                    <span className="flex items-center text-orange-600">
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      {summary.questionCount}
+                    </span>
+                    <span className="flex items-center text-red-600">
+                      <X className="h-4 w-4 mr-1" />
+                      {summary.noCount}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      ({summary.pending} offen)
+                    </span>
+                  </div>
+                )}
+
+                {/* Participant Responses Preview - volle Länge */}
+                {decision.participants && decision.participants.length > 0 && (
+                  <div className="space-y-2">
+                    {decision.participants.map(participant => {
+                      const latestResponse = participant.responses[0];
+                      if (!latestResponse) return null;
+                      
+                      return (
+                        <div key={participant.id} className="space-y-1">
+                          <div className="flex items-center gap-2 text-xs">
+                            {latestResponse.response_type === 'yes' && (
+                              <Badge variant="outline" className="text-green-600 border-green-600 text-xs px-1.5">
+                                <Check className="h-3 w-3" />
+                              </Badge>
+                            )}
+                            {latestResponse.response_type === 'no' && (
+                              <Badge variant="outline" className="text-red-600 border-red-600 text-xs px-1.5">
+                                <X className="h-3 w-3" />
+                              </Badge>
+                            )}
+                            {latestResponse.response_type === 'question' && (
+                              <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs px-1.5">
+                                <MessageCircle className="h-3 w-3" />
+                              </Badge>
+                            )}
+                            
+                            <UserBadge 
+                              userId={participant.user_id}
+                              displayName={participant.profile?.display_name}
+                              badgeColor={participant.profile?.badge_color}
+                              size="sm"
+                            />
+                          </div>
+                          
+                          {/* Kommentar in voller Länge mit RichText */}
+                          {latestResponse.comment && (
+                            <div className="ml-8 text-xs">
+                              <RichTextDisplay content={latestResponse.comment} className="text-muted-foreground" />
+                            </div>
+                          )}
+                          
+                          {/* Creator Response */}
+                          {latestResponse.creator_response && (
+                            <div className="ml-8 bg-muted p-2 rounded text-xs">
+                              <strong>Antwort:</strong>
+                              <RichTextDisplay content={latestResponse.creator_response} className="mt-1" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Response option for participants - always show for editing */}
+                {decision.isParticipant && decision.participant_id && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <TaskDecisionResponse 
+                      decisionId={decision.id}
+                      participantId={decision.participant_id}
+                      onResponseSubmitted={handleResponseSubmitted}
+                      hasResponded={decision.hasResponded}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom: Badges - rechts unten */}
+              <div className="flex items-center gap-1 flex-wrap justify-end mt-2">
                 {decision.visible_to_all && (
                   <Badge variant="secondary" className="text-xs">
                     <Globe className="h-3 w-3 mr-1" />
@@ -668,81 +770,6 @@ export const DecisionOverview = () => {
                   </Badge>
                 )}
               </div>
-
-              {/* Voting Results */}
-              {decision.participants && decision.participants.length > 0 && (
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center text-green-600">
-                    <Check className="h-3 w-3 mr-1" />
-                    {summary.yesCount}
-                  </span>
-                  <span className="flex items-center text-orange-600">
-                    <MessageCircle className="h-3 w-3 mr-1" />
-                    {summary.questionCount}
-                  </span>
-                  <span className="flex items-center text-red-600">
-                    <X className="h-3 w-3 mr-1" />
-                    {summary.noCount}
-                  </span>
-                  <span className="text-muted-foreground">
-                    ({summary.pending} ausstehend)
-                  </span>
-                </div>
-              )}
-
-              {/* Participant Responses Preview */}
-              {decision.participants && decision.participants.length > 0 && (
-                <div className="space-y-1 mt-2">
-                  {decision.participants.map(participant => {
-                    const latestResponse = participant.responses[0];
-                    if (!latestResponse) return null;
-                    
-                    return (
-                      <div key={participant.id} className="flex items-center gap-2 text-xs">
-                        {latestResponse.response_type === 'yes' && (
-                          <Badge variant="outline" className="text-green-600 border-green-600 text-xs px-1">
-                            <Check className="h-2 w-2" />
-                          </Badge>
-                        )}
-                        {latestResponse.response_type === 'no' && (
-                          <Badge variant="outline" className="text-red-600 border-red-600 text-xs px-1">
-                            <X className="h-2 w-2" />
-                          </Badge>
-                        )}
-                        {latestResponse.response_type === 'question' && (
-                          <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs px-1">
-                            <MessageCircle className="h-2 w-2" />
-                          </Badge>
-                        )}
-                        
-                        <UserBadge 
-                          userId={participant.user_id}
-                          displayName={participant.profile?.display_name}
-                          badgeColor={participant.profile?.badge_color}
-                          size="sm"
-                        />
-                        
-                        {latestResponse.comment && (
-                          <span className="text-muted-foreground truncate max-w-[200px]">
-                            "{latestResponse.comment}"
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Response option for participants - always show for editing */}
-              {decision.isParticipant && decision.participant_id && (
-                <div onClick={(e) => e.stopPropagation()}>
-                  <TaskDecisionResponse 
-                    decisionId={decision.id}
-                    participantId={decision.participant_id}
-                    onResponseSubmitted={handleResponseSubmitted}
-                  />
-                </div>
-              )}
             </div>
           </div>
 
@@ -773,27 +800,28 @@ export const DecisionOverview = () => {
                     <p className="text-muted-foreground">{latestResponse.comment}</p>
                     
                     {latestResponse.creator_response ? (
-                      <div className="bg-white p-2 rounded border">
-                        <strong className="text-green-700">Ihre Antwort:</strong> {latestResponse.creator_response}
+                      <div className="bg-white dark:bg-muted p-2 rounded border">
+                        <strong className="text-green-700 dark:text-green-500">Ihre Antwort:</strong>
+                        <RichTextDisplay content={latestResponse.creator_response} className="mt-1" />
                       </div>
                     ) : (
-                      <div className="flex space-x-2 mt-2">
-                        <Textarea
-                          placeholder="Antwort eingeben..."
-                          value={creatorResponses[latestResponse.id] || ''}
-                          onChange={(e) => setCreatorResponses(prev => ({
+                      <div className="space-y-2 mt-2">
+                        <SimpleRichTextEditor
+                          initialContent={creatorResponses[latestResponse.id] || ''}
+                          onChange={(html) => setCreatorResponses(prev => ({
                             ...prev,
-                            [latestResponse.id]: e.target.value
+                            [latestResponse.id]: html
                           }))}
-                          className="flex-1 text-xs min-h-[60px]"
-                          rows={2}
+                          placeholder="Antwort eingeben..."
+                          minHeight="60px"
                         />
                         <Button
                           size="sm"
                           onClick={() => sendCreatorResponse(latestResponse.id)}
                           disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}
                         >
-                          <Send className="h-3 w-3" />
+                          <Send className="h-3 w-3 mr-1" />
+                          Senden
                         </Button>
                       </div>
                     )}
