@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -213,11 +213,11 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
           </div>
           <div>
             <label className="text-sm font-medium">Beschreibung (optional)</label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+            <SimpleRichTextEditor
+              initialContent={description}
+              onChange={setDescription}
               placeholder="Zusätzliche Details zur Entscheidung"
-              rows={3}
+              minHeight="100px"
             />
           </div>
 

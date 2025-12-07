@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { UserBadge } from "@/components/ui/user-badge";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { Check, X, MessageCircle, Send, Archive, History, Paperclip } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -242,7 +243,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived }:
             Aufgabe: {decision.tasks?.title}
           </p>
           {decision.description && (
-            <p className="text-sm text-muted-foreground">{decision.description}</p>
+            <RichTextDisplay content={decision.description} className="mt-2" />
           )}
           <p className="text-xs text-muted-foreground">
             Erstellt am: {new Date(decision.created_at).toLocaleString('de-DE', {
