@@ -28,8 +28,8 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [sendByEmail, setSendByEmail] = useState(false);
-  const [sendViaMatrix, setSendViaMatrix] = useState(false);
+  const [sendByEmail, setSendByEmail] = useState(true);
+  const [sendViaMatrix, setSendViaMatrix] = useState(true);
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const { toast } = useToast();
@@ -43,6 +43,17 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
       
       if (error) throw error;
       setProfiles(data || []);
+      
+      // Pre-select Abgeordneter (users with 'abgeordneter' role)
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'abgeordneter');
+      
+      if (roleData && roleData.length > 0) {
+        setSelectedUsers(roleData.map(r => r.user_id));
+      }
+      
       setProfilesLoaded(true);
     } catch (error) {
       console.error('Error loading profiles:', error);
