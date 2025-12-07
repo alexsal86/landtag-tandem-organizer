@@ -2,8 +2,8 @@ import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Vote, Mail, Plus, MessageSquare, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -384,11 +384,11 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
           </div>
           <div>
             <label className="text-sm font-medium">Beschreibung (optional)</label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+            <SimpleRichTextEditor
+              initialContent={description}
+              onChange={setDescription}
               placeholder="Zusätzliche Details zur Entscheidung"
-              rows={3}
+              minHeight="100px"
             />
           </div>
           <div className="space-y-2">

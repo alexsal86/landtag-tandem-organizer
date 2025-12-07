@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { UserBadge } from "@/components/ui/user-badge";
 import { Check, X, MessageCircle, Send } from "lucide-react";
@@ -436,7 +437,7 @@ export const TaskDecisionList = () => {
                   </Badge>
                 </div>
                 {decision.description && (
-                  <p className="text-xs text-muted-foreground mt-1">{decision.description}</p>
+                  <RichTextDisplay content={decision.description} className="text-xs mt-1" />
                 )}
                 <p className="text-xs text-muted-foreground mt-1">
                   Erstellt: {new Date(decision.created_at).toLocaleString('de-DE', {

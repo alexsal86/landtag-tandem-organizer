@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionEditDialog } from "./DecisionEditDialog";
@@ -613,7 +614,7 @@ export const DecisionOverview = () => {
             {/* Left Column: Description */}
             <div className="space-y-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
               {decision.description && (
-                <p className="text-xs text-muted-foreground line-clamp-3">{decision.description}</p>
+                <RichTextDisplay content={decision.description} className="text-xs line-clamp-3" />
               )}
               {decision.task && (
                 <p className="text-xs text-muted-foreground italic">
@@ -798,7 +799,7 @@ export const DecisionOverview = () => {
             {/* Left Column: Description */}
             <div className="space-y-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
               {decision.description && (
-                <p className="text-xs text-muted-foreground line-clamp-3">{decision.description}</p>
+                <RichTextDisplay content={decision.description} className="text-xs line-clamp-3" />
               )}
               {decision.task && (
                 <p className="text-xs text-muted-foreground italic">
