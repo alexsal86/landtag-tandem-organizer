@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { Users, Wifi, Clock } from 'lucide-react';
 
@@ -58,13 +59,27 @@ export const OnlineUsersWidget: React.FC = () => {
                           {user.display_name?.charAt(0)?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      {/* Status dot overlay */}
-                      <div 
-                        className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center"
-                        style={{ backgroundColor: statusDisplay.color }}
-                      >
-                        <span className="text-xs">{statusDisplay.emoji}</span>
-                      </div>
+                                      {/* Status emoji overlay with tooltip */}
+                                      {statusDisplay.emoji && (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div 
+                                                className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center cursor-default"
+                                                style={{ backgroundColor: statusDisplay.color }}
+                                              >
+                                                <span className="text-[10px]">{statusDisplay.emoji}</span>
+                                              </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" className="text-xs">
+                                              <p className="font-medium">{statusDisplay.label}</p>
+                                              {user.status?.custom_message && (
+                                                <p className="text-muted-foreground">{user.status.custom_message}</p>
+                                              )}
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
                     </div>
 
                     {/* User Info */}
