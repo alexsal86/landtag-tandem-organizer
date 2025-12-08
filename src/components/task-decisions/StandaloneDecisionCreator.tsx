@@ -9,6 +9,8 @@ import { Vote, Mail, Plus, MessageSquare, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
+import { TopicSelector } from "@/components/topics/TopicSelector";
+import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 
 interface StandaloneDecisionCreatorProps {
   onDecisionCreated: () => void;
@@ -32,6 +34,7 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
   const [sendViaMatrix, setSendViaMatrix] = useState(true);
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   const loadProfiles = async () => {
@@ -199,6 +202,11 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
         }
       }
 
+      // Save topics
+      if (selectedTopicIds.length > 0) {
+        await saveDecisionTopics(decision.id, selectedTopicIds);
+      }
+
       // Add participants (only if users are selected)
       if (selectedUsers.length > 0) {
         const participants = selectedUsers.map(userId => ({
@@ -355,6 +363,7 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
       setDescription("");
       setSelectedUsers([]);
       setSelectedFiles([]);
+      setSelectedTopicIds([]);
       setSendByEmail(false);
       setSendViaMatrix(false);
       setVisibleToAll(true);
@@ -458,6 +467,16 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
                 Lade Benutzer...
               </div>
             )}
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Themen (optional)</label>
+            <TopicSelector
+              selectedTopicIds={selectedTopicIds}
+              onTopicsChange={setSelectedTopicIds}
+              compact
+              placeholder="Themen hinzufügen..."
+            />
           </div>
 
           <div>
