@@ -355,35 +355,47 @@ export const useUserStatus = () => {
     }
   };
 
+  // Mapping von deutschen Status-Namen auf englische Enum-Werte
+  const statusNameMapping: Record<string, UserStatus['status_type']> = {
+    'online': 'online',
+    'abwesend': 'away',
+    'in besprechung': 'meeting',
+    'besprechung': 'meeting',
+    'pause': 'break',
+    'offline': 'offline',
+    'nicht stören': 'offline',
+  };
+
   const quickSetStatus = async (statusName: string) => {
     if (!user) return;
 
     try {
-      // First check if it's a predefined status type
-      const predefinedStatuses = ['online', 'meeting', 'break', 'away', 'offline'];
-      if (predefinedStatuses.includes(statusName)) {
-        const statusOption = statusOptions.find(opt => 
-          opt.name.toLowerCase().includes(statusName.toLowerCase())
-        );
+      const normalizedName = statusName.toLowerCase();
+      
+      // Versuche, den deutschen Namen auf einen englischen Enum-Wert zu mappen
+      const mappedStatusType = statusNameMapping[normalizedName];
+      
+      // Finde die Status-Option für Emoji und Farbe
+      const statusOption = statusOptions.find(opt => 
+        opt.name.toLowerCase() === normalizedName
+      );
 
+      if (mappedStatusType) {
+        // Bekannter Status-Typ (deutsch oder englisch)
         await updateStatus(
-          statusName as UserStatus['status_type'],
+          mappedStatusType,
           undefined,
           statusOption?.emoji,
           undefined,
-          statusName !== 'meeting' && statusName !== 'break'
+          mappedStatusType !== 'meeting' && mappedStatusType !== 'break'
         );
-        return;
-      }
-
-      // Otherwise, look for it in admin status options (custom status)
-      const option = statusOptions.find(opt => opt.name === statusName);
-      if (option) {
+      } else {
+        // Unbekannter Status → als Custom behandeln
         await updateStatus(
           'custom',
-          option.name, // Use the option name as custom message
-          option.emoji || null,
-          undefined, // No status_until for custom statuses
+          statusName, // Original-Name als Custom-Message
+          statusOption?.emoji || null,
+          undefined,
           true
         );
       }
