@@ -84,6 +84,7 @@ interface EnhancedLexicalEditorProps {
   onConnectionChange?: (connected: boolean) => void;
   showCollabDashboard?: boolean;
   onCollabDashboardToggle?: () => void;
+  editable?: boolean;
 }
 
 // Toolbar Plugin with formatting commands
@@ -653,7 +654,8 @@ export default function EnhancedLexicalEditor({
   enableCollaboration = false,
   useYjsCollaboration = ENABLE_YJS_COLLABORATION,
   showToolbar = true,
-  onConnectionChange
+  onConnectionChange,
+  editable = true
 }: EnhancedLexicalEditorProps) {
   const [localContent, setLocalContent] = useState(content);
   const [remoteContent, setRemoteContent] = useState<string>('');
@@ -684,6 +686,7 @@ export default function EnhancedLexicalEditor({
 
   const initialConfig = useMemo(() => ({
     namespace: 'EnhancedEditor',
+    editable: editable,
     theme: {
       text: {
         bold: 'font-bold',
@@ -727,7 +730,7 @@ export default function EnhancedLexicalEditor({
     onError: (error: Error) => {
       console.error('Lexical error:', error);
     }
-  }), []);
+  }), [editable]);
 
   const handleContentChange = useCallback((newContent: string, newContentNodes?: string) => {
     setLocalContent(newContent);

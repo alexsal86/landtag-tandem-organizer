@@ -1,21 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Database, MoreVertical, Users, Eye, Edit, Trash2, User, ChevronLeft, ChevronRight } from 'lucide-react';
-import SimpleLexicalEditor from './SimpleLexicalEditor';
+import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2 } from 'lucide-react';
+import EnhancedLexicalEditor from './EnhancedLexicalEditor';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTopics } from '@/hooks/useTopics';
+import { useKnowledgeDocumentTopics } from '@/hooks/useKnowledgeDocumentTopics';
+import { TopicSelector, TopicDisplay } from '@/components/topics/TopicSelector';
 
 interface KnowledgeDocument {
   id: string;
@@ -26,6 +25,7 @@ interface KnowledgeDocument {
   created_at: string;
   updated_at: string;
   is_published: boolean;
+  is_locked: boolean;
   creator_name?: string;
 }
 
@@ -34,144 +34,99 @@ const KnowledgeBaseView = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { documentId } = useParams<{ documentId: string }>();
+  const { topics, getActiveTopics } = useTopics();
   
-  // All state declarations must be at the top
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedTopicFilter, setSelectedTopicFilter] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [documentTopicsMap, setDocumentTopicsMap] = useState<Record<string, string[]>>({});
+  const [editorContent, setEditorContent] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
-  // Token-based one-time authentication for documents
-  const [authToken, setAuthToken] = useState<string | null>(
-    localStorage.getItem('knowledge_auth_token')
-  );
-  const [anonymousMode, setAnonymousMode] = useState(!user && !authToken);
+  // Topic management for selected document
+  const { 
+    assignedTopics: selectedDocTopics, 
+    setTopics: setSelectedDocTopics,
+    refreshTopics: refreshSelectedDocTopics 
+  } = useKnowledgeDocumentTopics(selectedDocument?.id);
   
   // Create document form state
   const [newDocument, setNewDocument] = useState({
     title: '',
     content: '',
-    category: 'general',
-    is_published: false
+    is_published: false,
+    selectedTopics: [] as string[]
   });
 
-  // Collaboration control - OFF by default to prevent memory issues
-  const [collaborationEnabled, setCollaborationEnabled] = useState(false);
-
-  // Handle URL-based document selection with better error handling
+  // Handle URL-based document selection
   useEffect(() => {
-    console.log('URL change detected - documentId:', documentId, 'documents count:', documents.length);
-    
     if (documentId && documents.length > 0) {
       const doc = documents.find(d => d.id === documentId);
       if (doc) {
-        console.log('Document found for URL:', doc.title, 'Content length:', doc.content?.length || 0);
-        // Only update if it's actually a different document
         if (!selectedDocument || selectedDocument.id !== doc.id) {
-          console.log('Setting selected document:', doc.title);
           setSelectedDocument(doc);
+          setEditorContent(doc.content || '');
           setIsEditorOpen(true);
           setIsSidebarCollapsed(true);
+          setHasUnsavedChanges(false);
         }
-      } else {
-        console.log('Document not found for ID:', documentId, 'available IDs:', documents.map(d => d.id));
-        // Check if we're still loading documents
-        if (!loading) {
-          console.log('Documents loaded but document not found, redirecting to /knowledge');
-          navigate('/knowledge', { replace: true });
-        }
+      } else if (!loading) {
+        navigate('/knowledge', { replace: true });
       }
     } else if (!documentId && (isEditorOpen || selectedDocument)) {
-      // Clean URL navigation - close editor and clear selection
-      console.log('No documentId in URL, closing editor');
       setSelectedDocument(null);
       setIsEditorOpen(false);
       setIsSidebarCollapsed(false);
+      setHasUnsavedChanges(false);
     }
   }, [documentId, documents, navigate, loading, selectedDocument, isEditorOpen]);
 
-  const categories = [
-    { value: 'all', label: 'Alle Kategorien' },
-    { value: 'general', label: 'Allgemein' },
-    { value: 'technical', label: 'Technisch' },
-    { value: 'process', label: 'Prozesse' },
-    { value: 'policy', label: 'Richtlinien' },
-    { value: 'meeting', label: 'Besprechungen' }
-  ];
+  // Fetch all document topics for list display
+  const fetchAllDocumentTopics = async (docIds: string[]) => {
+    if (docIds.length === 0) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('knowledge_document_topics')
+        .select('document_id, topic_id')
+        .in('document_id', docIds);
+
+      if (error) throw error;
+      
+      const topicsMap: Record<string, string[]> = {};
+      data?.forEach(item => {
+        if (!topicsMap[item.document_id]) {
+          topicsMap[item.document_id] = [];
+        }
+        topicsMap[item.document_id].push(item.topic_id);
+      });
+      setDocumentTopicsMap(topicsMap);
+    } catch (error) {
+      console.error('Error fetching document topics:', error);
+    }
+  };
 
   const fetchDocuments = async () => {
-    console.log('Fetching knowledge documents - user:', user?.id, 'token:', !!authToken, 'anonymous:', anonymousMode);
-    
-    // In anonymous mode, create demo documents for collaboration testing
-    if (anonymousMode) {
-      console.log('Running in anonymous mode - using demo documents');
-      const demoDocuments: KnowledgeDocument[] = [
-        {
-          id: 'demo-knowledge-1',
-          title: 'Meeting Notes',
-          content: 'Diese Notizen können bearbeitet werden.',
-          category: 'meeting',
-          created_by: 'anonymous',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          is_published: true,
-          creator_name: 'Anonymous'
-        },
-        {
-          id: 'demo-knowledge-2', 
-          title: 'Policy Draft Document',
-          content: 'Ein Richtlinienentwurf zur Bearbeitung.',
-          category: 'policy',
-          created_by: 'anonymous',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          is_published: true,
-          creator_name: 'Anonymous'
-        },
-        {
-          id: 'demo-knowledge-3',
-          title: 'Technical Documentation',
-          content: 'Technische Dokumentation.',
-          category: 'technical',
-          created_by: 'anonymous',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          is_published: true,
-          creator_name: 'Anonymous'
-        }
-      ];
-      setDocuments(demoDocuments);
-      setLoading(false);
-      return;
-    }
-    
-    // Regular Supabase-authenticated mode
-    if (!user && !authToken) {
-      console.log('No user or token available for fetchDocuments');
+    if (!user) {
       setLoading(false);
       return;
     }
 
-    console.log('Fetching knowledge documents for user:', user?.id);
     try {
-      console.log('Starting supabase query...');
       const { data, error } = await supabase
         .from('knowledge_documents')
         .select('*')
         .order('updated_at', { ascending: false });
 
-      console.log('Supabase query result:', { data: data?.length || 0, error });
-
       if (error) throw error;
 
       if (data && data.length > 0) {
-        console.log('Fetching creator names for', data.length, 'documents');
-        // Fetch creator names separately to avoid join issues
         const documentsWithCreator = await Promise.all(
           data.map(async (doc) => {
             const { data: profile } = await supabase
@@ -182,15 +137,15 @@ const KnowledgeBaseView = () => {
             
             return {
               ...doc,
+              is_locked: doc.is_locked || false,
               creator_name: profile?.display_name || 'Unbekannt'
             };
           })
         );
 
-        console.log('Setting documents with creators:', documentsWithCreator.length);
         setDocuments(documentsWithCreator);
+        await fetchAllDocumentTopics(documentsWithCreator.map(d => d.id));
       } else {
-        console.log('No documents found, setting empty array');
         setDocuments([]);
       }
     } catch (error) {
@@ -206,14 +161,13 @@ const KnowledgeBaseView = () => {
   };
 
   useEffect(() => {
-    console.log('KnowledgeBaseView: useEffect triggered, user:', user?.id, 'anonymous mode:', anonymousMode);
     fetchDocuments();
-  }, [user, anonymousMode]);
+  }, [user]);
 
-  // Fetch tenant ID when user changes
+  // Fetch tenant ID
   useEffect(() => {
     const fetchTenantId = async () => {
-      if (!user || anonymousMode) {
+      if (!user) {
         setTenantId(null);
         return;
       }
@@ -223,11 +177,8 @@ const KnowledgeBaseView = () => {
           _user_id: user.id
         });
 
-        if (tenantError) {
-          console.error('Error getting tenant ID:', tenantError);
-        } else {
+        if (!tenantError) {
           setTenantId(tenantData);
-          console.log('Tenant ID fetched:', tenantData);
         }
       } catch (error) {
         console.error('Error fetching tenant ID:', error);
@@ -235,7 +186,7 @@ const KnowledgeBaseView = () => {
     };
 
     fetchTenantId();
-  }, [user, anonymousMode]);
+  }, [user]);
 
   // Real-time updates
   useEffect(() => {
@@ -262,57 +213,59 @@ const KnowledgeBaseView = () => {
   }, [user]);
 
   const handleCreateDocument = async () => {
-    if (!user || !newDocument.title.trim()) return;
+    if (!user || !newDocument.title.trim() || !tenantId) return;
 
     try {
-      // Get user's primary tenant ID
-      const { data: tenantData, error: tenantError } = await supabase.rpc('get_user_primary_tenant_id', {
-        _user_id: user.id
-      });
-
-      if (tenantError) {
-        console.error('Error getting tenant ID:', tenantError);
-        throw new Error('Fehler beim Ermitteln der Tenant-ID');
-      }
-
       const { data, error } = await supabase
         .from('knowledge_documents')
         .insert([{
           title: newDocument.title,
           content: newDocument.content,
-          category: newDocument.category,
+          category: 'general',
           created_by: user.id,
-          tenant_id: tenantData,
-          is_published: newDocument.is_published
+          tenant_id: tenantId,
+          is_published: newDocument.is_published,
+          is_locked: false
         }])
         .select()
         .single();
 
       if (error) throw error;
 
+      // Save topics for the new document
+      if (newDocument.selectedTopics.length > 0) {
+        const { error: topicsError } = await supabase
+          .from('knowledge_document_topics')
+          .insert(newDocument.selectedTopics.map(topic_id => ({ 
+            document_id: data.id, 
+            topic_id 
+          })));
+        
+        if (topicsError) console.error('Error saving topics:', topicsError);
+      }
+
       toast({
         title: "Dokument erstellt",
         description: "Das neue Dokument wurde erfolgreich erstellt.",
       });
 
-      setIsCreateDialogOpen(false);
       setNewDocument({
         title: '',
         content: '',
-        category: 'general',
-        is_published: false
+        is_published: false,
+        selectedTopics: []
       });
 
-      // Open editor for the new document with proper URL navigation
       const docWithCreator = {
         ...data,
+        is_locked: false,
         creator_name: user.user_metadata?.display_name || user.email || 'Unknown'
       };
       setSelectedDocument(docWithCreator);
+      setEditorContent(data.content || '');
       setIsEditorOpen(true);
       setIsSidebarCollapsed(true);
       
-      // Navigate to the document URL for proper routing
       navigate(`/knowledge/${data.id}`, { replace: true });
     } catch (error) {
       console.error('Error creating document:', error);
@@ -324,12 +277,90 @@ const KnowledgeBaseView = () => {
     }
   };
 
-  const handleDeleteDocument = async (documentId: string) => {
+  const handleSaveDocument = async () => {
+    if (!selectedDocument || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('knowledge_documents')
+        .update({ 
+          content: editorContent,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedDocument.id);
+
+      if (error) throw error;
+
+      // Save topics
+      await setSelectedDocTopics(selectedDocTopics);
+
+      setHasUnsavedChanges(false);
+      toast({
+        title: "Gespeichert",
+        description: "Das Dokument wurde gespeichert.",
+      });
+
+      // Update local document
+      setSelectedDocument(prev => prev ? { ...prev, content: editorContent } : null);
+    } catch (error) {
+      console.error('Error saving document:', error);
+      toast({
+        title: "Fehler beim Speichern",
+        description: "Das Dokument konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToggleLock = async () => {
+    if (!selectedDocument || !user) return;
+    
+    // Only creator can toggle lock
+    if (selectedDocument.created_by !== user.id) {
+      toast({
+        title: "Keine Berechtigung",
+        description: "Nur der Ersteller kann den Sperrstatus ändern.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const newLockState = !selectedDocument.is_locked;
+      const { error } = await supabase
+        .from('knowledge_documents')
+        .update({ is_locked: newLockState })
+        .eq('id', selectedDocument.id);
+
+      if (error) throw error;
+
+      setSelectedDocument(prev => prev ? { ...prev, is_locked: newLockState } : null);
+      setDocuments(prev => prev.map(d => 
+        d.id === selectedDocument.id ? { ...d, is_locked: newLockState } : d
+      ));
+
+      toast({
+        title: newLockState ? "Dokument gesperrt" : "Dokument entsperrt",
+        description: newLockState 
+          ? "Das Dokument ist jetzt schreibgeschützt." 
+          : "Das Dokument kann jetzt bearbeitet werden.",
+      });
+    } catch (error) {
+      console.error('Error toggling lock:', error);
+      toast({
+        title: "Fehler",
+        description: "Der Sperrstatus konnte nicht geändert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
     try {
       const { error } = await supabase
         .from('knowledge_documents')
         .delete()
-        .eq('id', documentId);
+        .eq('id', docId);
 
       if (error) throw error;
 
@@ -337,6 +368,10 @@ const KnowledgeBaseView = () => {
         title: "Dokument gelöscht",
         description: "Das Dokument wurde erfolgreich gelöscht.",
       });
+
+      if (selectedDocument?.id === docId) {
+        navigate('/knowledge', { replace: true });
+      }
     } catch (error) {
       console.error('Error deleting document:', error);
       toast({
@@ -347,11 +382,13 @@ const KnowledgeBaseView = () => {
     }
   };
 
+  // Filter documents
   const filteredDocuments = documents.filter(doc => {
     const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          doc.content.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesTopic = !selectedTopicFilter || 
+                        (documentTopicsMap[doc.id]?.includes(selectedTopicFilter));
+    return matchesSearch && matchesTopic;
   });
 
   const formatDate = (dateString: string) => {
@@ -362,14 +399,30 @@ const KnowledgeBaseView = () => {
     });
   };
 
-  const getCategoryLabel = (category: string) => {
-    return categories.find(c => c.value === category)?.label || category;
+  // Extract plain text preview from content (handles HTML)
+  const getPreviewText = (content: string, maxLength: number = 300) => {
+    if (!content) return 'Kein Inhalt verfügbar...';
+    
+    // Remove HTML tags
+    const textContent = content
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    if (textContent.length <= maxLength) return textContent;
+    
+    const truncated = textContent.substring(0, maxLength);
+    const lastSpace = truncated.lastIndexOf(' ');
+    return truncated.substring(0, lastSpace > maxLength - 50 ? lastSpace : maxLength) + '...';
   };
 
-  console.log('KnowledgeBaseView render:', { loading, documentsCount: documents.length, user: user?.id });
+  const canEdit = selectedDocument && !selectedDocument.is_locked;
 
   if (loading) {
-    console.log('Showing loading state');
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -382,12 +435,12 @@ const KnowledgeBaseView = () => {
 
   return (
     <div className="h-full flex bg-background">
-      {/* Document Selection Sidebar - Collapsible */}
+      {/* Sidebar */}
       <div className={`${
         selectedDocument && isEditorOpen 
           ? isSidebarCollapsed 
             ? 'w-12' 
-            : 'w-80' 
+            : 'w-96' 
           : 'w-full'
       } flex flex-col transition-all duration-300 border-r border-border`}>
         
@@ -408,8 +461,8 @@ const KnowledgeBaseView = () => {
 
         {/* Full Sidebar Content */}
         {(!selectedDocument || !isEditorOpen || !isSidebarCollapsed) && (
-          <div className="flex-1 flex flex-col">
-            {/* Header with collapse button when editor is open */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Header */}
             <div className="flex-none border-b border-border bg-card/50 backdrop-blur-sm">
               <div className="p-6">
                 <div className="flex items-center justify-between gap-3 mb-4">
@@ -429,20 +482,6 @@ const KnowledgeBaseView = () => {
                   )}
                 </div>
 
-                {/* Mode Indicator */}
-                {anonymousMode && (
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-blue-700">
-                      <Users className="h-4 w-4" />
-                      <span className="text-sm font-medium">Demo-Modus</span>
-                    </div>
-                    <p className="text-xs text-blue-600 mt-1">
-                      Sie können diese Demo-Dokumente bearbeiten. 
-                      Änderungen werden nicht gespeichert.
-                    </p>
-                  </div>
-                )}
-
                 <Tabs defaultValue="manage" className="w-full">
                   <TabsList className="mb-4">
                     <TabsTrigger value="add" className="flex items-center gap-2">
@@ -457,10 +496,7 @@ const KnowledgeBaseView = () => {
 
                   <TabsContent value="add" className="mt-0">
                     <Card>
-                      <CardHeader>
-                        <CardTitle>Neues Dokument erstellen</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
+                      <CardContent className="p-4 space-y-4">
                         <div>
                           <Label htmlFor="title">Titel</Label>
                           <Input
@@ -471,28 +507,11 @@ const KnowledgeBaseView = () => {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="category">Kategorie</Label>
-                          <Select value={newDocument.category} onValueChange={(value) => setNewDocument(prev => ({ ...prev, category: value }))}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {categories.slice(1).map(category => (
-                                <SelectItem key={category.value} value={category.value}>
-                                  {category.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="content">Inhalt</Label>
-                          <Textarea
-                            id="content"
-                            value={newDocument.content}
-                            onChange={(e) => setNewDocument(prev => ({ ...prev, content: e.target.value }))}
-                            placeholder="Inhalt des Dokuments..."
-                            rows={4}
+                          <Label>Themen</Label>
+                          <TopicSelector
+                            selectedTopicIds={newDocument.selectedTopics}
+                            onTopicsChange={(topicIds) => setNewDocument(prev => ({ ...prev, selectedTopics: topicIds }))}
+                            placeholder="Themen auswählen..."
                           />
                         </div>
                         <div className="flex items-center space-x-2">
@@ -503,7 +522,11 @@ const KnowledgeBaseView = () => {
                           />
                           <Label htmlFor="published">Für alle sichtbar</Label>
                         </div>
-                        <Button onClick={handleCreateDocument} disabled={!newDocument.title.trim()}>
+                        <Button 
+                          onClick={handleCreateDocument} 
+                          disabled={!newDocument.title.trim()}
+                          className="w-full"
+                        >
                           Dokument erstellen
                         </Button>
                       </CardContent>
@@ -512,151 +535,129 @@ const KnowledgeBaseView = () => {
 
                   <TabsContent value="manage" className="mt-0">
                     <div className="space-y-4">
-                      <div className="flex gap-4">
-                        <div className="relative flex-1">
-                          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Dokumente durchsuchen..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10"
-                          />
-                        </div>
-                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                          <SelectTrigger className="w-48">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.map(category => (
-                              <SelectItem key={category.value} value={category.value}>
-                                {category.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      {/* Search */}
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Dokumente durchsuchen..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10"
+                        />
                       </div>
-
-                      {filteredDocuments.length === 0 ? (
-                        <Card>
-                          <CardContent className="py-12 text-center">
-                            <Database className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-foreground mb-2">
-                              {documents.length === 0 ? 'Keine Dokumente vorhanden' : 'Keine Ergebnisse gefunden'}
-                            </h3>
-                            <p className="text-muted-foreground">
-                              {documents.length === 0 
-                                ? 'Erstellen Sie Ihr erstes Dokument über den "Hinzufügen" Tab.'
-                                : 'Versuchen Sie andere Suchbegriffe oder Kategorien.'
-                              }
-                            </p>
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        <div className="grid gap-4">
-                          {filteredDocuments.map((doc) => (
-                            <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                              <CardContent 
-                                className="p-4"
-                                onClick={() => {
-                                  console.log('Document clicked:', doc.id, 'navigating to:', `/knowledge/${doc.id}`);
-                                  navigate(`/knowledge/${doc.id}`);
-                                }}
-                              >
-                                <div className="flex items-start justify-between gap-4">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <h3 className="font-medium text-foreground truncate">{doc.title}</h3>
-                                      <Badge variant="secondary" className="text-xs">
-                                        {getCategoryLabel(doc.category)}
-                                      </Badge>
-                                      {doc.is_published && (
-                                        <Badge variant="outline" className="text-xs">
-                                          Öffentlich
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                                      <span 
-                                        dangerouslySetInnerHTML={{
-                                          __html: (() => {
-                                            const content = doc.content || 'Kein Inhalt verfügbar...';
-                                            // Convert markdown to HTML for display
-                                            const htmlContent = content
-                                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                              .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                                              .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
-                                              .replace(/~~(.*?)~~/g, '<del>$1</del>')
-                                              .replace(/^### (.*$)/gm, '<strong>$1</strong>')
-                                              .replace(/^## (.*$)/gm, '<strong>$1</strong>')
-                                              .replace(/^# (.*$)/gm, '<strong>$1</strong>');
-                                            
-                                            // Remove HTML tags for length calculation
-                                            const textContent = htmlContent.replace(/<[^>]*>/g, '');
-                                            
-                                            if (textContent.length <= 100) {
-                                              return htmlContent;
-                                            }
-                                            
-                                            // Truncate to 100 characters and add ellipsis
-                                            const truncated = textContent.substring(0, 100);
-                                            const lastSpace = truncated.lastIndexOf(' ');
-                                            const cutPoint = lastSpace > 80 ? lastSpace : 100;
-                                            
-                                            // Apply formatting to truncated text
-                                            return content
-                                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                              .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                                              .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
-                                              .replace(/~~(.*?)~~/g, '<del>$1</del>')
-                                              .replace(/^### (.*$)/gm, '<strong>$1</strong>')
-                                              .replace(/^## (.*$)/gm, '<strong>$1</strong>')
-                                              .replace(/^# (.*$)/gm, '<strong>$1</strong>')
-                                              .replace(/<[^>]*>/g, '')
-                                              .substring(0, cutPoint) + '...';
-                                          })()
-                                        }}
-                                      />
-                                    </p>
-                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                      <div className="flex items-center gap-1">
-                                        <User className="h-3 w-3" />
-                                        {doc.creator_name}
-                                      </div>
-                                      <div>
-                                        Hinzugefügt: {formatDate(doc.created_at)}
-                                      </div>
-                                      {doc.updated_at !== doc.created_at && (
-                                        <div>
-                                          Aktualisiert: {formatDate(doc.updated_at)}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                    {doc.created_by === user?.id && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDeleteDocument(doc.id);
-                                        }}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-1" />
-                                        Löschen
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
+                      
+                      {/* Topic Filter */}
+                      <div className="flex flex-wrap gap-2">
+                        <Badge 
+                          variant={selectedTopicFilter === null ? "default" : "outline"}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedTopicFilter(null)}
+                        >
+                          Alle
+                        </Badge>
+                        {getActiveTopics().slice(0, 6).map(topic => (
+                          <Badge
+                            key={topic.id}
+                            variant={selectedTopicFilter === topic.id ? "default" : "outline"}
+                            className="cursor-pointer"
+                            style={selectedTopicFilter === topic.id ? { backgroundColor: topic.color } : {}}
+                            onClick={() => setSelectedTopicFilter(
+                              selectedTopicFilter === topic.id ? null : topic.id
+                            )}
+                          >
+                            {topic.label}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>
               </div>
+            </div>
+
+            {/* Document List */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {filteredDocuments.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Database className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">
+                      {documents.length === 0 ? 'Keine Dokumente vorhanden' : 'Keine Ergebnisse gefunden'}
+                    </h3>
+                    <p className="text-muted-foreground">
+                      {documents.length === 0 
+                        ? 'Erstellen Sie Ihr erstes Dokument über den "Hinzufügen" Tab.'
+                        : 'Versuchen Sie andere Suchbegriffe oder Filter.'
+                      }
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {filteredDocuments.map((doc) => (
+                    <Card 
+                      key={doc.id} 
+                      className={`hover:shadow-md transition-shadow cursor-pointer ${
+                        selectedDocument?.id === doc.id ? 'ring-2 ring-primary' : ''
+                      }`}
+                      onClick={() => navigate(`/knowledge/${doc.id}`)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <h3 className="font-medium text-foreground">{doc.title}</h3>
+                              {doc.is_locked && (
+                                <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                              )}
+                              {doc.is_published && (
+                                <Badge variant="outline" className="text-xs">Öffentlich</Badge>
+                              )}
+                            </div>
+                            
+                            {/* Topics */}
+                            {documentTopicsMap[doc.id]?.length > 0 && (
+                              <div className="mb-2">
+                                <TopicDisplay 
+                                  topicIds={documentTopicsMap[doc.id]} 
+                                  maxDisplay={3}
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Extended Preview - 300 characters */}
+                            <p className="text-sm text-muted-foreground line-clamp-4 mb-3">
+                              {getPreviewText(doc.content, 300)}
+                            </p>
+                            
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                {doc.creator_name}
+                              </div>
+                              <div>
+                                {formatDate(doc.updated_at)}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {doc.created_by === user?.id && (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteDocument(doc.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -664,35 +665,83 @@ const KnowledgeBaseView = () => {
 
       {/* Document Editor */}
       {selectedDocument && isEditorOpen && (
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Editor Header */}
           <div className="border-b border-border p-4 bg-card/50 backdrop-blur-sm">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">{selectedDocument.title}</h2>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-foreground truncate">{selectedDocument.title}</h2>
+                  {selectedDocument.is_locked && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      <Lock className="h-3 w-3" />
+                      Gesperrt
+                    </Badge>
+                  )}
+                  {hasUnsavedChanges && (
+                    <Badge variant="outline" className="text-orange-600 border-orange-600">
+                      Ungespeichert
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  {getCategoryLabel(selectedDocument.category)} • {formatDate(selectedDocument.updated_at)}
+                  {formatDate(selectedDocument.updated_at)} • {selectedDocument.creator_name}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                {/* Collaboration Toggle */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="collaboration-mode"
-                    checked={collaborationEnabled}
-                    onCheckedChange={setCollaborationEnabled}
+              
+              <div className="flex items-center gap-2">
+                {/* Topics in Editor */}
+                <div className="hidden md:block">
+                  <TopicSelector
+                    selectedTopicIds={selectedDocTopics}
+                    onTopicsChange={(topicIds) => {
+                      setSelectedDocTopics(topicIds);
+                      setHasUnsavedChanges(true);
+                    }}
+                    placeholder="Themen..."
+                    compact
                   />
-                  <Label htmlFor="collaboration-mode" className="text-sm">
-                    Kollaboration {collaborationEnabled ? '(Aktiv)' : '(Deaktiviert)'}
-                  </Label>
                 </div>
+                
+                {/* Lock Toggle - Only for creator */}
+                {selectedDocument.created_by === user?.id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleToggleLock}
+                    title={selectedDocument.is_locked ? "Entsperren" : "Sperren"}
+                  >
+                    {selectedDocument.is_locked ? (
+                      <Unlock className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+                
+                {/* Save Button */}
+                {canEdit && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleSaveDocument}
+                    disabled={!hasUnsavedChanges}
+                  >
+                    <Save className="h-4 w-4 mr-1" />
+                    Speichern
+                  </Button>
+                )}
+                
+                {/* Close Button */}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setIsEditorOpen(false);
-                    setSelectedDocument(null);
-                    setIsSidebarCollapsed(false);
-                    setCollaborationEnabled(false); // Reset collaboration when closing
+                    if (hasUnsavedChanges) {
+                      if (!confirm('Sie haben ungespeicherte Änderungen. Trotzdem schließen?')) {
+                        return;
+                      }
+                    }
                     navigate('/knowledge', { replace: true });
                   }}
                 >
@@ -702,16 +751,21 @@ const KnowledgeBaseView = () => {
             </div>
           </div>
           
-          <div className="flex-1 p-4">
-            <SimpleLexicalEditor
+          {/* Editor Content */}
+          <div className="flex-1 overflow-hidden">
+            <EnhancedLexicalEditor
               content={selectedDocument.content || ''}
               onChange={(newContent) => {
-                console.log('Editor content changed:', newContent.length, 'characters');
-                // For now, just log the changes - saving will be implemented later
+                setEditorContent(newContent);
+                if (newContent !== selectedDocument.content) {
+                  setHasUnsavedChanges(true);
+                }
               }}
-              placeholder="Beginnen Sie mit der Bearbeitung des Dokuments..."
+              placeholder={canEdit ? "Beginnen Sie mit der Bearbeitung..." : "Dieses Dokument ist schreibgeschützt."}
               documentId={selectedDocument.id}
-              enableCollaboration={collaborationEnabled}
+              enableCollaboration={false}
+              showToolbar={canEdit}
+              editable={canEdit}
             />
           </div>
         </div>
