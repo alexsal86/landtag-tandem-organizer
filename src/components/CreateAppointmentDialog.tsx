@@ -26,8 +26,10 @@ import { GuestManager } from "@/components/GuestManager";
 import { RecurrenceSelector } from "@/components/ui/recurrence-selector";
 import { useDistrictDetection } from "@/hooks/useDistrictDetection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Tag } from "lucide-react";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
+import { TopicSelector } from "@/components/topics/TopicSelector";
+import { saveAppointmentTopics } from "@/hooks/useAppointmentTopics";
 
 // Helper functions for intelligent date/time defaults
 const getDefaultStartTime = () => {
@@ -121,6 +123,7 @@ export const CreateAppointmentDialog = ({ open, onOpenChange }: CreateAppointmen
     weekdays: [] as number[],
     endDate: undefined as string | undefined,
   });
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
 
   // District detection
   const { detectDistrict, loading: districtLoading, result: districtResult, error: districtError, clearResult } = useDistrictDetection();
@@ -261,6 +264,11 @@ export const CreateAppointmentDialog = ({ open, onOpenChange }: CreateAppointmen
       if (appointmentError) {
         console.error('Appointment error:', appointmentError);
         throw appointmentError;
+      }
+
+      // Save topics for the appointment
+      if (selectedTopicIds.length > 0 && appointment) {
+        await saveAppointmentTopics(appointment.id, selectedTopicIds);
       }
 
       // Link selected contacts to appointment
@@ -749,6 +757,19 @@ export const CreateAppointmentDialog = ({ open, onOpenChange }: CreateAppointmen
                       <AppointmentFileUpload
                         onFilesChange={setUploadedFiles}
                         appointmentId={null}
+                      />
+                    </div>
+
+                    {/* Topic selection */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium flex items-center gap-2">
+                        <Tag className="h-4 w-4" />
+                        Themen
+                      </h3>
+                      <TopicSelector
+                        selectedTopicIds={selectedTopicIds}
+                        onTopicsChange={setSelectedTopicIds}
+                        placeholder="Themen zuweisen..."
                       />
                     </div>
                   </CollapsibleContent>

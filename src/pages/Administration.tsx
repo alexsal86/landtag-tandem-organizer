@@ -29,7 +29,7 @@ import { DistrictSupportManager } from "@/components/administration/DistrictSupp
 import { PartyDistrictMappingManager } from "@/components/administration/PartyDistrictMappingManager";
 import { CalendarSyncDebug } from "@/components/CalendarSyncDebug";
 import { PartyAssociationsAdmin } from "@/components/PartyAssociationsAdmin";
-import { TagAdminSettings } from "@/components/TagAdminSettings";
+// TagAdminSettings removed - using Topics system instead
 import { DocumentCategoryAdminSettings } from "@/components/DocumentCategoryAdminSettings";
 import { RSSSourceManager } from "@/components/administration/RSSSourceManager";
 import { RSSSettingsManager } from "@/components/administration/RSSSettingsManager";
@@ -531,9 +531,9 @@ export default function Administration() {
             <Tag className="h-4 w-4" />
             Themen
           </TabsTrigger>
-          <TabsTrigger value="tags" className="flex items-center gap-2">
-            <Building className="h-4 w-4" />
-            Tags
+          <TabsTrigger value="documenttypes" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Dokumenttypen
           </TabsTrigger>
           <TabsTrigger value="appointments" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
@@ -712,9 +712,8 @@ export default function Administration() {
           </Tabs>
         </TabsContent>
 
-        {/* Tags & Kategorien */}
-        <TabsContent value="tags" className="space-y-6">
-          <TagAdminSettings />
+        {/* Dokumenttypen */}
+        <TabsContent value="documenttypes" className="space-y-6">
           <DocumentCategoryAdminSettings />
         </TabsContent>
 
