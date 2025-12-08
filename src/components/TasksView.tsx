@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, CheckSquare, Square, Clock, Flag, Calendar, User, Edit2, Archive, MessageCircle, Send, Filter, Trash2, Check, X, Paperclip, Download, ChevronDown, ChevronRight, ListTodo, AlarmClock, StickyNote } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { AssignedItemsSection } from "./tasks/AssignedItemsSection";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -1588,278 +1588,72 @@ export function TasksView() {
           </div>
         </div>
 
-        {/* Assigned Tasks, Subtasks and ToDos Table */}
-        {(assignedTasks.length > 0 || assignedSubtasks.length > 0 || todos.length > 0) && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ListTodo className="h-5 w-5" />
-                Mir zugewiesene Aufgaben & Unteraufgaben ({assignedTasks.length + assignedSubtasks.length + todos.length})
-                {hideSnoozeSubtasks && assignedSubtasks.length !== filteredAssignedSubtasks.length && (
-                  <span className="text-sm text-muted-foreground">
-                    ({assignedTasks.length + filteredAssignedSubtasks.length + todos.length} sichtbar)
-                  </span>
-                )}
-              </CardTitle>
-              <div className="text-sm text-muted-foreground">
-                Aufgaben: {assignedTasks.length} | Unteraufgaben: {assignedSubtasks.length} (sichtbar: {filteredAssignedSubtasks.length}) | ToDos: {todos.length}
-                {assignedSubtasks.length !== filteredAssignedSubtasks.length && (  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleToggleHideSnoozeSubtasks(!hideSnoozeSubtasks)}
-                    className="ml-2 h-6 px-2 text-xs"
-                  >
-                    {hideSnoozeSubtasks ? 'Alle anzeigen' : 'Wiedervorlagen ausblenden'}
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Task Decision Requests for assigned tasks */}
-              <TaskDecisionList />
-            </CardContent>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]"></TableHead>
-                      <TableHead>Aufgabe/ToDo</TableHead>
-                      <TableHead>Typ/Kategorie</TableHead>
-                      <TableHead>Fälligkeitsdatum</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                  {/* Show assigned tasks */}
-                  {filteredAssignedTasksWithSnooze.map((task) => {
-                    const isSnoozed = taskSnoozes[task.id] && new Date(taskSnoozes[task.id]) > new Date();
-                    return (
-                     <TableRow key={`task-${task.id}`} className={isSnoozed ? "opacity-50" : ""}>
-                      <TableCell>
-                        <Checkbox
-                          checked={task.status === "completed"}
-                          onCheckedChange={() => {
-                            toggleTaskStatus(task.id);
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{task.title}</div>
-                        {task.description && (
-                          <div className="text-sm text-muted-foreground mt-1">
-                            {task.description.length > 100 
-                              ? `${task.description.substring(0, 100)}...` 
-                              : task.description
-                            }
-                          </div>
-                        )}
-                      </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            Aufgabe
-                          </Badge>
-                        </TableCell>
-                      <TableCell>
-                        {task.dueDate && task.dueDate !== '1970-01-01T00:00:00.000Z' && task.dueDate !== '1970-01-01' ? (
-                          <div className={`text-sm ${isOverdue(task.dueDate) ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                            {new Date(task.dueDate).toLocaleDateString('de-DE')}
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">unbefristet</div>
-                        )}
-                      </TableCell>
-                       <TableCell>
-                         <div className="flex gap-1">
-                           <Button
-                             variant="ghost"
-                             size="sm"
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               setSnoozeDialogOpen({ type: 'task', id: task.id });
-                               setSnoozeDate('');
-                             }}
-                             className="h-8 w-8 p-0"
-                             title="Auf Wiedervorlage setzen"
-                           >
-                             <AlarmClock className="h-4 w-4" />
-                           </Button>
-                           <Button
-                             variant="ghost"
-                             size="sm"
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               handleTaskClick(task);
-                             }}
-                             className="h-8 w-8 p-0"
-                             title="Aufgabe bearbeiten"
-                           >
-                             <Edit2 className="h-4 w-4" />
-                           </Button>
-                         </div>
-                       </TableCell>
-                     </TableRow>
-                   );
-                  })}
-                  
-                  {/* Show subtasks based on visibility setting */}
-                         {filteredAssignedSubtasks.map((subtask) => {
-                     const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
-                     console.log('Rendering subtask:', subtask.id, 'assigned_to:', subtask.assigned_to);
-                     return (
-                      <TableRow key={subtask.id} className={isSnoozed ? "opacity-50" : ""}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Checkbox
-                              checked={subtask.is_completed}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setCompletingSubtask(subtask.id);
-                                  setCompletionResult('');
-                                } else {
-                                  handleSubtaskComplete(subtask.id, false);
-                                }
-                              }}
-                            />
-                          </div>
-                        </TableCell>
-                       <TableCell>
-                         <div className="space-y-1">
-                           <div className="font-medium">{subtask.title || subtask.description}</div>
-                           {subtask.description && subtask.title && (
-                             <div className="text-sm text-muted-foreground">{subtask.description}</div>
-                           )}
-                             {(subtask.assigned_to_names || subtask.assigned_to) && (
-                               <div className="text-sm text-muted-foreground">
-                                 Zuständig: {subtask.assigned_to_names || resolveUserNames(subtask.assigned_to)}
-                               </div>
-                             )}
-                           {isSnoozed && (
-                             <Badge variant="secondary" className="text-xs">
-                               Wiedervorlage: {new Date(subtaskSnoozes[subtask.id]).toLocaleDateString('de-DE')}
-                             </Badge>
-                           )}
-                         </div>
-                       </TableCell>
-                       <TableCell>
-                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                           Unteraufgabe
-                         </Badge>
-                       </TableCell>
-                       <TableCell>
-                         {subtask.due_date && subtask.due_date !== '1970-01-01T00:00:00.000Z' && subtask.due_date !== '1970-01-01' ? (
-                           <div className={`text-sm ${isOverdue(subtask.due_date) ? 'text-red-600' : ''}`}>
-                             {new Date(subtask.due_date).toLocaleDateString('de-DE')}
-                             {isOverdue(subtask.due_date) && ' (überfällig)'}
-                           </div>
-                         ) : (
-                           <div className="text-sm text-muted-foreground">unbefristet</div>
-                         )}
-                       </TableCell>
-                         <TableCell>
-                           <div className="flex gap-1">
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={() => {
-                                 setSnoozeDialogOpen({ type: 'subtask', id: subtask.id });
-                                 setSnoozeDate('');
-                               }}
-                               className="h-8 w-8 p-0"
-                               title="Auf Wiedervorlage setzen"
-                             >
-                               <AlarmClock className="h-4 w-4" />
-                             </Button>
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={async () => {
-                                 // Find and open the parent task
-                                 const parentTask = tasks.find(task => task.id === subtask.task_id);
-                                 if (parentTask) {
-                                   handleTaskClick(parentTask);
-                                 }
-                               }}
-                               className="h-8 w-8 p-0"
-                               title="Übergeordnete Aufgabe bearbeiten"
-                             >
-                               <Edit2 className="h-4 w-4" />
-                             </Button>
-                           </div>
-                         </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  
-                  {/* Show todos */}
-                  {todos.map((todo) => (
-                    <TableRow key={`todo-${todo.id}`}>
-                      <TableCell>
-                        <Checkbox
-                          checked={todo.is_completed}
-                          onCheckedChange={async (checked) => {
-                            if (checked) {
-                              try {
-                                const { error } = await supabase
-                                  .from('todos')
-                                  .update({ 
-                                    is_completed: true,
-                                    completed_at: new Date().toISOString()
-                                  })
-                                  .eq('id', todo.id);
-                                
-                                if (error) throw error;
-                                loadTodos();
-                                
-                                // Trigger unicorn animation when todo is completed
-                                setShowUnicorn(true);
-                                
-                                toast({
-                                  title: "ToDo erledigt",
-                                  description: "Das ToDo wurde als erledigt markiert."
-                                });
-                              } catch (error) {
-                                console.error('Error completing todo:', error);
-                                toast({
-                                  title: "Fehler",
-                                  description: "ToDo konnte nicht als erledigt markiert werden.",
-                                  variant: "destructive"
-                                });
-                              }
-                            }
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{todo.title}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {todo.category_label}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {todo.due_date && todo.due_date !== '1970-01-01T00:00:00.000Z' && todo.due_date !== '1970-01-01' ? (
-                          <div className={`text-sm ${isOverdue(todo.due_date) ? 'text-red-600' : ''}`}>
-                            {new Date(todo.due_date).toLocaleDateString('de-DE')}
-                            {isOverdue(todo.due_date) && ' (überfällig)'}
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">unbefristet</div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {/* ToDo actions could go here */}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Assigned Tasks, Subtasks and ToDos Cards */}
+        <AssignedItemsSection
+          tasks={assignedTasks}
+          subtasks={assignedSubtasks}
+          todos={todos}
+          taskSnoozes={taskSnoozes}
+          subtaskSnoozes={subtaskSnoozes}
+          hideSnoozeSubtasks={hideSnoozeSubtasks}
+          onToggleHideSnoozeSubtasks={handleToggleHideSnoozeSubtasks}
+          onTaskToggleComplete={toggleTaskStatus}
+          onSubtaskToggleComplete={(subtaskId, completed, resultText) => {
+            if (completed) {
+              setCompletingSubtask(subtaskId);
+              setCompletionResult('');
+            } else {
+              handleSubtaskComplete(subtaskId, false);
+            }
+          }}
+          onTodoToggleComplete={async (todoId, completed) => {
+            if (completed) {
+              try {
+                const { error } = await supabase
+                  .from('todos')
+                  .update({ 
+                    is_completed: true,
+                    completed_at: new Date().toISOString()
+                  })
+                  .eq('id', todoId);
+                
+                if (error) throw error;
+                loadTodos();
+                setShowUnicorn(true);
+                
+                toast({
+                  title: "ToDo erledigt",
+                  description: "Das ToDo wurde als erledigt markiert."
+                });
+              } catch (error) {
+                console.error('Error completing todo:', error);
+                toast({
+                  title: "Fehler",
+                  description: "ToDo konnte nicht als erledigt markiert werden.",
+                  variant: "destructive"
+                });
+              }
+            }
+          }}
+          onTaskSnooze={(taskId) => {
+            setSnoozeDialogOpen({ type: 'task', id: taskId });
+            setSnoozeDate('');
+          }}
+          onSubtaskSnooze={(subtaskId) => {
+            setSnoozeDialogOpen({ type: 'subtask', id: subtaskId });
+            setSnoozeDate('');
+          }}
+          onTaskEdit={(task) => handleTaskClick(task)}
+          onSubtaskEdit={(subtask) => {
+            const parentTask = tasks.find(t => t.id === subtask.task_id);
+            if (parentTask) {
+              handleTaskClick(parentTask);
+            }
+          }}
+          resolveUserNames={resolveUserNames}
+        >
+          <TaskDecisionList />
+        </AssignedItemsSection>
 
 
         {/* Main Tasks List */}
