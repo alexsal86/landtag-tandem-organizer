@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMapFlagTypes, MapFlagType } from '@/hooks/useMapFlagTypes';
-import { useTags } from '@/hooks/useTags';
+import { useTopics } from '@/hooks/useTopics';
 import { Settings, Plus, Trash2, Pencil } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { TagIconPicker } from '@/components/contacts/TagIconPicker';
@@ -16,7 +16,7 @@ const PRESET_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#
 
 export const MapFlagTypeManager = () => {
   const { flagTypes, createFlagType, updateFlagType, deleteFlagType } = useMapFlagTypes();
-  const { tags, loading: tagsLoading } = useTags();
+  const { topics: tags, loading: tagsLoading } = useTopics();
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingType, setEditingType] = useState<MapFlagType | null>(null);

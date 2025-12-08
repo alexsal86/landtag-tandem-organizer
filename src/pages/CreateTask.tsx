@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/hooks/useTenant";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
+import { TopicSelector } from "@/components/topics/TopicSelector";
+import { useCreateTaskWithTopics } from "@/hooks/useTaskTopics";
 
 export default function CreateTask() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { currentTenant } = useTenant();
+  const { saveTaskTopics } = useCreateTaskWithTopics();
   const [loading, setLoading] = useState(false);
   const [userProfiles, setUserProfiles] = useState<Array<{
     id: string;
@@ -30,9 +33,10 @@ export default function CreateTask() {
     title: "",
     description: "",
     priority: "medium",
-    category: "personal", // Default to valid category
+    category: "personal",
     dueDate: "",
-    assignedTo: [] as string[], // Ensure this is always an array
+    assignedTo: [] as string[],
+    topicIds: [] as string[],
   });
 
   console.log('🔍 CreateTask component render - formData:', formData);
@@ -166,6 +170,11 @@ export default function CreateTask() {
 
         console.log('✅ Task created successfully:', insertedTask);
         
+        // Save topics if any selected
+        if (formData.topicIds.length > 0) {
+          await saveTaskTopics(insertedTask.id, formData.topicIds);
+        }
+        
         toast({
           title: "Aufgabe erstellt",
           description: "Die neue Aufgabe wurde erfolgreich erstellt.",
@@ -179,6 +188,7 @@ export default function CreateTask() {
           category: "personal",
           dueDate: "",
           assignedTo: [],
+          topicIds: [],
         });
 
         navigate("/tasks");
@@ -303,6 +313,19 @@ export default function CreateTask() {
                     placeholder="Personen auswählen..."
                   />
                 </div>
+              </div>
+
+              {/* Topics Section */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Tag className="h-4 w-4" />
+                  Themen (optional)
+                </Label>
+                <TopicSelector
+                  selectedTopicIds={formData.topicIds}
+                  onTopicsChange={(topicIds) => setFormData({ ...formData, topicIds })}
+                  placeholder="Themen zuweisen..."
+                />
               </div>
 
               <div className="flex gap-4 pt-4">

@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMapFlags } from '@/hooks/useMapFlags';
 import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
-import { useTags } from '@/hooks/useTags';
+import { useTopics } from '@/hooks/useTopics';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
 
@@ -21,7 +21,7 @@ interface MapFlagEditorProps {
 export const MapFlagEditor = ({ open, onOpenChange, coordinates, editFlag }: MapFlagEditorProps) => {
   const { createFlag, updateFlag } = useMapFlags();
   const { flagTypes } = useMapFlagTypes();
-  const { tags, loading: tagsLoading } = useTags();
+  const { topics: tags, loading: tagsLoading } = useTopics();
   
   console.log('Tags geladen:', tags.length, 'Loading:', tagsLoading);
   console.log('Tags:', tags);
