@@ -4145,6 +4145,42 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_document_topics: {
+        Row: {
+          created_at: string
+          document_id: string
+          id: string
+          topic_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          id?: string
+          topic_id: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_document_topics_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_document_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_documents: {
         Row: {
           category: string | null
@@ -4156,6 +4192,7 @@ export type Database = {
           editing_started_at: string | null
           id: string
           is_being_edited: boolean | null
+          is_locked: boolean
           is_published: boolean | null
           last_editor_id: string | null
           tenant_id: string
@@ -4173,6 +4210,7 @@ export type Database = {
           editing_started_at?: string | null
           id?: string
           is_being_edited?: boolean | null
+          is_locked?: boolean
           is_published?: boolean | null
           last_editor_id?: string | null
           tenant_id: string
@@ -4190,6 +4228,7 @@ export type Database = {
           editing_started_at?: string | null
           id?: string
           is_being_edited?: boolean | null
+          is_locked?: boolean
           is_published?: boolean | null
           last_editor_id?: string | null
           tenant_id?: string
