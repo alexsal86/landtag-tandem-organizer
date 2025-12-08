@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, CheckSquare, Building, FileText, DollarSign, Users, Shield, Clock, MapPin, Rss, Palette, History, Briefcase, Tag } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, Layers, Building, FileText, DollarSign, Users, Shield, Clock, MapPin, Rss, Palette, History, Briefcase, Tag } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NewUserForm } from "@/components/NewUserForm";
@@ -522,7 +522,7 @@ export default function Administration() {
       </header>
 
       <Tabs defaultValue="system" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-10">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             System
@@ -531,21 +531,13 @@ export default function Administration() {
             <Tag className="h-4 w-4" />
             Themen
           </TabsTrigger>
-          <TabsTrigger value="documenttypes" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Dokumenttypen
-          </TabsTrigger>
           <TabsTrigger value="appointments" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
             Termine
           </TabsTrigger>
-          <TabsTrigger value="tasks" className="flex items-center gap-2">
-            <CheckSquare className="h-4 w-4" />
-            Aufgaben
-          </TabsTrigger>
-          <TabsTrigger value="casefiles" className="flex items-center gap-2">
-            <Briefcase className="h-4 w-4" />
-            FallAkten
+          <TabsTrigger value="datatypes" className="flex items-center gap-2">
+            <Layers className="h-4 w-4" />
+            Datentypen
           </TabsTrigger>
           <TabsTrigger value="politics" className="flex items-center gap-2">
             <Building className="h-4 w-4" />
@@ -712,10 +704,6 @@ export default function Administration() {
           </Tabs>
         </TabsContent>
 
-        {/* Dokumenttypen */}
-        <TabsContent value="documenttypes" className="space-y-6">
-          <DocumentCategoryAdminSettings />
-        </TabsContent>
 
         {/* Termine & Kalender */}
         <TabsContent value="appointments" className="space-y-6">
@@ -955,13 +943,15 @@ export default function Administration() {
           </Tabs>
         </TabsContent>
 
-        {/* Aufgaben & ToDos */}
-        <TabsContent value="tasks" className="space-y-6">
+        {/* Datentypen (ehemals Aufgaben) */}
+        <TabsContent value="datatypes" className="space-y-6">
           <Tabs defaultValue="task-config" className="space-y-4">
             <TabsList>
               <TabsTrigger value="task-config">Aufgaben</TabsTrigger>
               <TabsTrigger value="todo-config">ToDos</TabsTrigger>
               <TabsTrigger value="decisions">Entscheidungen</TabsTrigger>
+              <TabsTrigger value="documenttypes">Dokumenttypen</TabsTrigger>
+              <TabsTrigger value="casefiletypes">FallAkten-Typen</TabsTrigger>
             </TabsList>
 
             <TabsContent value="task-config">
@@ -1165,12 +1155,15 @@ export default function Administration() {
             <TabsContent value="decisions">
               <DecisionEmailTemplates />
             </TabsContent>
-          </Tabs>
-        </TabsContent>
 
-        {/* FallAkten */}
-        <TabsContent value="casefiles" className="space-y-6">
-          <CaseFileTypeSettings />
+            <TabsContent value="documenttypes">
+              <DocumentCategoryAdminSettings />
+            </TabsContent>
+
+            <TabsContent value="casefiletypes">
+              <CaseFileTypeSettings />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Politik & Wahlkreise */}
