@@ -493,12 +493,35 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                       size="lg"
                       className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer flex-1"
                     >
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
-                        <AvatarFallback>
-                          {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={userProfile?.avatar_url || ""} alt="Profilbild" />
+                          <AvatarFallback>
+                            {(userProfile?.display_name || user?.email)?.charAt(0).toUpperCase() || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        {/* Status-Emoji Overlay */}
+                        {currentStatus && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div 
+                                  className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center cursor-default"
+                                  style={{ backgroundColor: getStatusDisplay(currentStatus).color }}
+                                >
+                                  <span className="text-[10px]">{getStatusDisplay(currentStatus).emoji}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                <p className="font-medium">{getStatusDisplay(currentStatus).label}</p>
+                                {currentStatus.custom_message && (
+                                  <p className="text-muted-foreground">{currentStatus.custom_message}</p>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-semibold">
                           {userProfile?.display_name || user?.email || "Unbekannter Benutzer"}
