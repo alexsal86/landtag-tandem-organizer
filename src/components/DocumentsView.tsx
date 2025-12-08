@@ -65,7 +65,7 @@ import { DocumentContactAddDialog } from "./documents/DocumentContactAddDialog";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 import { useStakeholderPreload } from "@/hooks/useStakeholderPreload";
 import { useDocumentContacts } from "@/hooks/useDocumentContacts";
-import { useTags } from "@/hooks/useTags";
+import { useTopics } from "@/hooks/useTopics";
 import { useDocumentCategories } from "@/hooks/useDocumentCategories";
 import { MultiSelect } from "@/components/ui/multi-select";
 
@@ -129,7 +129,7 @@ export function DocumentsView() {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const { viewType, setViewType } = useViewPreference({ key: 'documents' });
-  const { tags } = useTags();
+  const { topics: tags } = useTopics();
   const { categories: documentCategories } = useDocumentCategories();
   
   const [documents, setDocuments] = useState<Document[]>([]);

@@ -54,7 +54,7 @@ import { CaseFileAppointmentsTab } from "./tabs/CaseFileAppointmentsTab";
 import { CaseFileLettersTab } from "./tabs/CaseFileLettersTab";
 import { CaseFileNotesTab } from "./tabs/CaseFileNotesTab";
 import { CaseFileTimelineTab } from "./tabs/CaseFileTimelineTab";
-import { TopicSelector, TopicDisplay } from "./TopicSelector";
+import { TopicSelector, TopicDisplay } from "@/components/topics/TopicSelector";
 
 interface CaseFileDetailProps {
   caseFileId: string;

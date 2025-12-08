@@ -12,7 +12,7 @@ import { StakeholderToDistributionDialog } from "./StakeholderToDistributionDial
 import { TagInput } from "@/components/ui/tag-input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useTags } from "@/hooks/useTags";
+import { useTopicSuggestions } from "@/components/topics/TopicSelector";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
 import { ContactDocumentRows } from "./contacts/ContactDocumentRows";
 import { ContactFundingsList } from "./contacts/ContactFundingsList";
@@ -56,7 +56,7 @@ export function StakeholderView({
   const [editingTags, setEditingTags] = useState<string | null>(null);
   const [localTagUpdates, setLocalTagUpdates] = useState<Record<string, string[]>>({});
   const { toast } = useToast();
-  const { tagSuggestions } = useTags();
+  const { topicSuggestions: tagSuggestions } = useTopicSuggestions();
 
   // Get document counts for stakeholders
   const stakeholderIds = stakeholders.map(s => s.id);
