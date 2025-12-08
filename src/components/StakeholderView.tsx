@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { ChevronDown, ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Trash2, Tag, Users, Star, ChevronUp, FileText, Euro } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { Link } from "react-router-dom";
 import { StakeholderToDistributionDialog } from "./StakeholderToDistributionDialog";
-import { TagInput } from "@/components/ui/tag-input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useTopicSuggestions } from "@/components/topics/TopicSelector";
+import { TopicSelector, TopicDisplay } from "@/components/topics/TopicSelector";
+import { useTopics } from "@/hooks/useTopics";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
 import { ContactDocumentRows } from "./contacts/ContactDocumentRows";
 import { ContactFundingsList } from "./contacts/ContactFundingsList";
@@ -53,35 +53,80 @@ export function StakeholderView({
   const [expandedDocuments, setExpandedDocuments] = useState<Set<string>>(new Set());
   const [distributionDialogOpen, setDistributionDialogOpen] = useState(false);
   const [selectedStakeholder, setSelectedStakeholder] = useState<Contact | null>(null);
-  const [editingTags, setEditingTags] = useState<string | null>(null);
-  const [localTagUpdates, setLocalTagUpdates] = useState<Record<string, string[]>>({});
+  const [editingTopics, setEditingTopics] = useState<string | null>(null);
+  const [localTopicUpdates, setLocalTopicUpdates] = useState<Record<string, string[]>>({});
   const { toast } = useToast();
-  const { topicSuggestions: tagSuggestions } = useTopicSuggestions();
+  const { topics, loading: topicsLoading } = useTopics();
 
   // Get document counts for stakeholders
   const stakeholderIds = stakeholders.map(s => s.id);
   const { counts: documentCounts } = useContactDocumentCounts(stakeholderIds);
 
-  console.log('StakeholderView: Tag suggestions loaded:', tagSuggestions);
+  console.log('StakeholderView: Topics loaded:', topics);
 
-  const updateStakeholderTagsInDatabase = async (stakeholderId: string, tags: string[]) => {
-    try {
-      console.log('StakeholderView: Saving tags to database for stakeholder:', stakeholderId, 'with tags:', tags);
+  // Helper to get topic IDs for a stakeholder from contact_topics
+  const [stakeholderTopics, setStakeholderTopics] = useState<Record<string, string[]>>({});
+  
+  useEffect(() => {
+    const loadStakeholderTopics = async () => {
+      const stakeholderIds = stakeholders.map(s => s.id);
+      if (stakeholderIds.length === 0) return;
       
-      const { error } = await supabase
-        .from('contacts')
-        .update({ tags })
-        .eq('id', stakeholderId);
-
+      const { data, error } = await supabase
+        .from('contact_topics')
+        .select('contact_id, topic_id')
+        .in('contact_id', stakeholderIds);
+      
       if (error) {
-        console.error('StakeholderView: Database error updating tags:', error);
-        throw error;
+        console.error('Error loading stakeholder topics:', error);
+        return;
+      }
+      
+      const topicsMap: Record<string, string[]> = {};
+      data?.forEach(item => {
+        if (!topicsMap[item.contact_id]) {
+          topicsMap[item.contact_id] = [];
+        }
+        topicsMap[item.contact_id].push(item.topic_id);
+      });
+      setStakeholderTopics(topicsMap);
+    };
+    
+    loadStakeholderTopics();
+  }, [stakeholders]);
+
+  const updateStakeholderTopicsInDatabase = async (stakeholderId: string, topicIds: string[]) => {
+    try {
+      console.log('StakeholderView: Saving topics to database for stakeholder:', stakeholderId, 'with topicIds:', topicIds);
+      
+      // Delete existing topic associations
+      await supabase
+        .from('contact_topics')
+        .delete()
+        .eq('contact_id', stakeholderId);
+      
+      // Insert new topic associations
+      if (topicIds.length > 0) {
+        const { error } = await supabase
+          .from('contact_topics')
+          .insert(topicIds.map(topic_id => ({ contact_id: stakeholderId, topic_id })));
+
+        if (error) {
+          console.error('StakeholderView: Database error updating topics:', error);
+          throw error;
+        }
       }
 
-      console.log('StakeholderView: Tags saved successfully to database');
+      console.log('StakeholderView: Topics saved successfully to database');
 
-      // Clear local tag updates after successful save
-      setLocalTagUpdates(prev => {
+      // Update local state
+      setStakeholderTopics(prev => ({
+        ...prev,
+        [stakeholderId]: topicIds
+      }));
+      
+      // Clear local topic updates after successful save
+      setLocalTopicUpdates(prev => {
         const newState = { ...prev };
         delete newState[stakeholderId];
         return newState;
@@ -95,15 +140,15 @@ export function StakeholderView({
 
       toast({
         title: "Erfolg", 
-        description: "Tags wurden erfolgreich gespeichert.",
+        description: "Themen wurden erfolgreich gespeichert.",
       });
 
-      setEditingTags(null);
+      setEditingTopics(null);
     } catch (error) {
-      console.error('StakeholderView: Error saving tags:', error);
+      console.error('StakeholderView: Error saving topics:', error);
 
       // Rollback local changes on error
-      setLocalTagUpdates(prev => {
+      setLocalTopicUpdates(prev => {
         const newState = { ...prev };
         delete newState[stakeholderId];
         return newState;
@@ -111,42 +156,42 @@ export function StakeholderView({
 
       toast({
         title: "Fehler",
-        description: "Tags konnten nicht gespeichert werden. Änderungen wurden rückgängig gemacht.",
+        description: "Themen konnten nicht gespeichert werden. Änderungen wurden rückgängig gemacht.",
         variant: "destructive",
       });
     }
   };
 
-  const handleTagsLocalChange = (stakeholderId: string, newTags: string[]) => {
-    console.log('StakeholderView: Updating local tags for stakeholder:', stakeholderId, 'with tags:', newTags);
+  const handleTopicsLocalChange = (stakeholderId: string, newTopicIds: string[]) => {
+    console.log('StakeholderView: Updating local topics for stakeholder:', stakeholderId, 'with topicIds:', newTopicIds);
     
     // Update local state immediately for optimistic UI updates
-    setLocalTagUpdates(prev => ({
+    setLocalTopicUpdates(prev => ({
       ...prev,
-      [stakeholderId]: newTags
+      [stakeholderId]: newTopicIds
     }));
   };
 
-  const handleSaveTags = (stakeholderId: string) => {
-    const pendingTags = localTagUpdates[stakeholderId];
-    if (pendingTags) {
-      updateStakeholderTagsInDatabase(stakeholderId, pendingTags);
+  const handleSaveTopics = (stakeholderId: string) => {
+    const pendingTopics = localTopicUpdates[stakeholderId];
+    if (pendingTopics) {
+      updateStakeholderTopicsInDatabase(stakeholderId, pendingTopics);
     } else {
-      setEditingTags(null);
+      setEditingTopics(null);
     }
   };
 
-  const handleCancelTags = (stakeholderId: string) => {
-    console.log('StakeholderView: Canceling tag edits for stakeholder:', stakeholderId);
+  const handleCancelTopics = (stakeholderId: string) => {
+    console.log('StakeholderView: Canceling topic edits for stakeholder:', stakeholderId);
     
     // Remove local changes
-    setLocalTagUpdates(prev => {
+    setLocalTopicUpdates(prev => {
       const newState = { ...prev };
       delete newState[stakeholderId];
       return newState;
     });
     
-    setEditingTags(null);
+    setEditingTopics(null);
   };
 
   const toggleExpanded = (stakeholderId: string) => {
@@ -242,24 +287,22 @@ export function StakeholderView({
           // Disable client-side contact count sorting as it conflicts with server-side pagination
           return 0;
         case "tags":
-          const aTags = (localTagUpdates[a.id] || (a as any).tags || []);
-          const bTags = (localTagUpdates[b.id] || (b as any).tags || []);
+          const aTopics = (localTopicUpdates[a.id] || stakeholderTopics[a.id] || []);
+          const bTopics = (localTopicUpdates[b.id] || stakeholderTopics[b.id] || []);
           
-          // Smart tag sorting: stakeholders with more common tags come first
-          const aTagsArray = Array.isArray(aTags) ? aTags : [];
-          const bTagsArray = Array.isArray(bTags) ? bTags : [];
+          // Smart topic sorting: stakeholders with more topics come first
+          const aTopicsArray = Array.isArray(aTopics) ? aTopics : [];
+          const bTopicsArray = Array.isArray(bTopics) ? bTopics : [];
           
-          // Calculate tag similarity score
-          const allTags = new Set([...aTagsArray, ...bTagsArray]);
-          const aScore = aTagsArray.length;
-          const bScore = bTagsArray.length;
+          const aScore = aTopicsArray.length;
+          const bScore = bTopicsArray.length;
           
           if (aScore !== bScore) {
             aValue = aScore;
             bValue = bScore;
           } else {
-            aValue = aTagsArray.join(" ").toLowerCase();
-            bValue = bTagsArray.join(" ").toLowerCase();
+            aValue = aTopicsArray.join(" ").toLowerCase();
+            bValue = bTopicsArray.join(" ").toLowerCase();
           }
           break;
         default:
@@ -280,7 +323,7 @@ export function StakeholderView({
       
       return result;
     });
-  }, [stakeholders, sortColumn, sortDirection, onSort, localTagUpdates]);
+  }, [stakeholders, sortColumn, sortDirection, onSort, localTopicUpdates, stakeholderTopics]);
 
   const SortableTableHead = ({ children, sortKey, className = "" }: { 
     children: React.ReactNode; 
@@ -315,7 +358,7 @@ export function StakeholderView({
       {viewMode === "grid" ? (
         // Grid View
         sortedStakeholders.map((stakeholder) => {
-          const stakeholderTags = localTagUpdates[stakeholder.id] || (stakeholder as any).tags || [];
+          const currentTopicIds = localTopicUpdates[stakeholder.id] || stakeholderTopics[stakeholder.id] || [];
           const stakeholderContacts = getStakeholderContacts(stakeholder.id);
           const isExpanded = expandedStakeholders.has(stakeholder.id);
           
@@ -403,26 +446,24 @@ export function StakeholderView({
                       )}
                     </div>
 
-                    {/* Tags Section */}
+                    {/* Topics Section */}
                     <div className="pt-2">
-                      {editingTags === stakeholder.id ? (
-                        <div className="space-y-2">
-                           <TagInput
-                            tags={stakeholderTags}
-                            onTagsChange={(newTags) => {
-                              console.log('StakeholderView: TagInput onChange triggered for stakeholder:', stakeholder.id, 'with tags:', newTags);
-                              handleTagsLocalChange(stakeholder.id, newTags);
+                      {editingTopics === stakeholder.id ? (
+                        <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                          <TopicSelector
+                            selectedTopicIds={localTopicUpdates[stakeholder.id] || currentTopicIds}
+                            onTopicsChange={(newTopicIds) => {
+                              console.log('StakeholderView: TopicSelector onChange triggered for stakeholder:', stakeholder.id, 'with topicIds:', newTopicIds);
+                              handleTopicsLocalChange(stakeholder.id, newTopicIds);
                             }}
-                            placeholder="Tags hinzufügen..."
-                            className="w-full"
-                            suggestions={tagSuggestions}
+                            placeholder="Themen hinzufügen..."
                           />
                           <div className="flex gap-2">
                             <Button 
                               size="sm" 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleSaveTags(stakeholder.id);
+                                handleSaveTopics(stakeholder.id);
                               }}
                             >
                               Speichern
@@ -432,7 +473,7 @@ export function StakeholderView({
                               variant="outline"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleCancelTags(stakeholder.id);
+                                handleCancelTopics(stakeholder.id);
                               }}
                             >
                               Abbrechen
@@ -441,34 +482,18 @@ export function StakeholderView({
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 flex-wrap">
-                           {stakeholderTags.length > 0 ? (
-                             stakeholderTags.map((tag) => (
-                               <Badge 
-                                 key={tag} 
-                                 variant="secondary" 
-                                 className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   onTagClick?.(tag);
-                                 }}
-                               >
-                                 {tag}
-                               </Badge>
-                             ))
-                           ) : (
-                            <span className="text-muted-foreground text-xs">Keine Tags</span>
-                          )}
+                          <TopicDisplay topicIds={currentTopicIds} maxDisplay={3} />
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setEditingTags(stakeholder.id);
+                              setEditingTopics(stakeholder.id);
                             }}
                             className="h-6 px-2 text-xs gap-1"
                           >
                             <Tag className="h-3 w-3" />
-                            Tags bearbeiten
+                            Themen bearbeiten
                           </Button>
                         </div>
                       )}
@@ -548,7 +573,7 @@ export function StakeholderView({
                             <TableBody>
                               <ContactDocumentRows
                                 contactId={stakeholder.id}
-                                contactTags={stakeholderTags}
+                                contactTags={[]}
                               />
                             </TableBody>
                           </Table>
@@ -632,14 +657,14 @@ export function StakeholderView({
                 <TableHead>Kontakte</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefon</TableHead>
-                <SortableTableHead sortKey="tags">Tags</SortableTableHead>
+                <SortableTableHead sortKey="tags">Themen</SortableTableHead>
                 <TableHead className="w-32">Aktionen</TableHead>
                 <TableHead className="text-center w-24">Dokumente</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedStakeholders.map((stakeholder) => {
-                const stakeholderTags = localTagUpdates[stakeholder.id] || (stakeholder as any).tags || [];
+                const currentTopicIds = localTopicUpdates[stakeholder.id] || stakeholderTopics[stakeholder.id] || [];
                 const stakeholderContacts = getStakeholderContacts(stakeholder.id);
                 const isExpanded = expandedStakeholders.has(stakeholder.id);
                 
@@ -757,21 +782,20 @@ export function StakeholderView({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 flex-wrap max-w-[200px]">
-                         {editingTags === stakeholder.id ? (
-                          <div className="space-y-1 w-full">
-                            <TagInput
-                              tags={stakeholderTags}
-                              onTagsChange={(newTags) => {
-                                handleTagsLocalChange(stakeholder.id, newTags);
+                         {editingTopics === stakeholder.id ? (
+                          <div className="space-y-1 w-full" onClick={(e) => e.stopPropagation()}>
+                            <TopicSelector
+                              selectedTopicIds={localTopicUpdates[stakeholder.id] || currentTopicIds}
+                              onTopicsChange={(newTopicIds) => {
+                                handleTopicsLocalChange(stakeholder.id, newTopicIds);
                               }}
-                              placeholder="Tags..."
-                              className="w-full"
-                              suggestions={tagSuggestions}
+                              placeholder="Themen..."
+                              compact
                             />
                             <div className="flex gap-1">
                               <Button 
                                 size="sm" 
-                                onClick={() => handleSaveTags(stakeholder.id)}
+                                onClick={() => handleSaveTopics(stakeholder.id)}
                                 className="h-6 px-2 text-xs"
                               >
                                 Speichern
@@ -779,7 +803,7 @@ export function StakeholderView({
                               <Button 
                                 size="sm" 
                                 variant="outline"
-                                onClick={() => handleCancelTags(stakeholder.id)}
+                                onClick={() => handleCancelTopics(stakeholder.id)}
                                 className="h-6 px-2 text-xs"
                               >
                                 Abbrechen
@@ -788,32 +812,11 @@ export function StakeholderView({
                           </div>
                         ) : (
                           <>
-                             {stakeholderTags.length > 0 ? (
-                               stakeholderTags.slice(0, 2).map((tag) => (
-                                 <Badge 
-                                   key={tag} 
-                                   variant="secondary" 
-                                   className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     onTagClick?.(tag);
-                                   }}
-                                 >
-                                   {tag}
-                                 </Badge>
-                               ))
-                             ) : (
-                              <span className="text-muted-foreground text-xs">—</span>
-                            )}
-                            {stakeholderTags.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{stakeholderTags.length - 2}
-                              </Badge>
-                            )}
+                            <TopicDisplay topicIds={currentTopicIds} maxDisplay={2} />
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setEditingTags(stakeholder.id)}
+                              onClick={() => setEditingTopics(stakeholder.id)}
                               className="h-5 w-5 p-0 ml-1"
                             >
                               <Tag className="h-3 w-3" />
@@ -870,7 +873,7 @@ export function StakeholderView({
                   {expandedDocuments.has(stakeholder.id) && (
                     <ContactDocumentRows
                       contactId={stakeholder.id}
-                      contactTags={stakeholderTags}
+                      contactTags={[]}
                     />
                   )}
                   
