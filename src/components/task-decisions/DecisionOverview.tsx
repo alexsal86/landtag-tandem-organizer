@@ -10,6 +10,7 @@ import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionEditDialog } from "./DecisionEditDialog";
 import { UserBadge } from "@/components/ui/user-badge";
+import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -38,6 +39,7 @@ interface DecisionRequest {
   isStandalone: boolean;
   isCreator: boolean;
   attachmentCount?: number;
+  topicIds?: string[];
   creator?: {
     user_id: string;
     display_name: string | null;
@@ -287,6 +289,23 @@ export const DecisionOverview = () => {
 
         if (participantsError) throw participantsError;
 
+        // Get topics for these decisions
+        const { data: topicsData, error: topicsError } = await supabase
+          .from('task_decision_topics')
+          .select('decision_id, topic_id')
+          .in('decision_id', decisionIds);
+
+        if (topicsError) throw topicsError;
+
+        // Group topics by decision
+        const topicsByDecision = new Map<string, string[]>();
+        topicsData?.forEach(topic => {
+          if (!topicsByDecision.has(topic.decision_id)) {
+            topicsByDecision.set(topic.decision_id, []);
+          }
+          topicsByDecision.get(topic.decision_id)!.push(topic.topic_id);
+        });
+
         // Get user profiles for participants and creators
         const allUserIds = [...new Set([
           ...participantsData?.map(p => p.user_id) || [],
@@ -321,9 +340,10 @@ export const DecisionOverview = () => {
           });
         });
 
-        // Add participants data and creator info to decisions
+        // Add participants data, creator info and topics to decisions
         allDecisionsList.forEach((decision: any) => {
           decision.participants = participantsByDecision.get(decision.id) || [];
+          decision.topicIds = topicsByDecision.get(decision.id) || [];
           const creatorProfile = profileMap.get(decision.created_by);
           decision.creator = {
             user_id: decision.created_by,
@@ -619,7 +639,7 @@ export const DecisionOverview = () => {
           {/* 60/40 Layout */}
           <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-4 mb-3">
             {/* Left Column: Description - mehr Platz */}
-            <div className="space-y-1 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
+            <div className="space-y-2 cursor-pointer" onClick={() => handleOpenDetails(decision.id)}>
               {decision.description && (
                 <RichTextDisplay content={decision.description} className="text-sm" />
               )}
@@ -627,6 +647,9 @@ export const DecisionOverview = () => {
                 <p className="text-xs text-muted-foreground italic">
                   Aufgabe: {decision.task.title}
                 </p>
+              )}
+              {decision.topicIds && decision.topicIds.length > 0 && (
+                <TopicDisplay topicIds={decision.topicIds} maxDisplay={3} />
               )}
             </div>
 

@@ -7127,6 +7127,42 @@ export type Database = {
           },
         ]
       }
+      task_decision_topics: {
+        Row: {
+          created_at: string
+          decision_id: string
+          id: string
+          topic_id: string
+        }
+        Insert: {
+          created_at?: string
+          decision_id: string
+          id?: string
+          topic_id: string
+        }
+        Update: {
+          created_at?: string
+          decision_id?: string
+          id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_decision_topics_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decision_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_decisions: {
         Row: {
           archived_at: string | null

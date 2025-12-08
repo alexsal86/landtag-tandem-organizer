@@ -8,6 +8,8 @@ import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { TopicSelector } from "@/components/topics/TopicSelector";
+import { useDecisionTopics } from "@/hooks/useDecisionTopics";
 
 interface DecisionEditDialogProps {
   decisionId: string;
@@ -29,6 +31,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { assignedTopics, setTopics } = useDecisionTopics(decisionId);
 
   useEffect(() => {
     if (isOpen && decisionId) {
@@ -169,6 +172,9 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
         }
       }
 
+      // Update topics
+      await setTopics(assignedTopics);
+
       toast({
         title: "Erfolgreich",
         description: "Entscheidung wurde aktualisiert.",
@@ -245,6 +251,16 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
               selected={selectedUsers}
               onChange={setSelectedUsers}
               placeholder="Benutzer auswählen"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Themen (optional)</label>
+            <TopicSelector
+              selectedTopicIds={assignedTopics}
+              onTopicsChange={setTopics}
+              compact
+              placeholder="Themen hinzufügen..."
             />
           </div>
           
