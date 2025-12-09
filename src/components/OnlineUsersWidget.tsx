@@ -59,27 +59,25 @@ export const OnlineUsersWidget: React.FC = () => {
                           {user.display_name?.charAt(0)?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                                      {/* Status emoji overlay with tooltip */}
-                                      {statusDisplay.emoji && (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <div 
-                                                className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center cursor-default"
-                                                style={{ backgroundColor: statusDisplay.color }}
-                                              >
-                                                <span className="text-[10px]">{statusDisplay.emoji}</span>
-                                              </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right" className="text-xs">
-                                              <p className="font-medium">{statusDisplay.label}</p>
-                                              {user.status?.custom_message && (
-                                                <p className="text-muted-foreground">{user.status.custom_message}</p>
-                                              )}
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      )}
+                      {/* Status emoji overlay with tooltip */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div 
+                              className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center cursor-default"
+                              style={{ backgroundColor: statusDisplay.color }}
+                            >
+                              <span className="text-[10px]">{statusDisplay.emoji}</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="text-xs">
+                            <p className="font-medium">{statusDisplay.label}</p>
+                            {user.status?.custom_message && (
+                              <p className="text-muted-foreground">{user.status.custom_message}</p>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
 
                     {/* User Info */}
