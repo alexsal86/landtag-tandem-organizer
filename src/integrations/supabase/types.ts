@@ -8073,11 +8073,11 @@ export type Database = {
         Returns: boolean
       }
       create_default_checklist_items:
+        | { Args: { planning_id: string }; Returns: undefined }
         | {
             Args: { planning_id: string; template_id_param?: string }
             Returns: undefined
           }
-        | { Args: { planning_id: string }; Returns: undefined }
       create_knowledge_document_snapshot:
         | {
             Args: {
