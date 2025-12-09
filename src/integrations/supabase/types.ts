@@ -6885,7 +6885,9 @@ export type Database = {
       }
       task_categories: {
         Row: {
+          color: string | null
           created_at: string
+          icon: string | null
           id: string
           is_active: boolean
           label: string
@@ -6894,7 +6896,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           is_active?: boolean
           label: string
@@ -6903,7 +6907,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           is_active?: boolean
           label?: string

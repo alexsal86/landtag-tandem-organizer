@@ -30,7 +30,7 @@ import { PartyDistrictMappingManager } from "@/components/administration/PartyDi
 import { CalendarSyncDebug } from "@/components/CalendarSyncDebug";
 import { PartyAssociationsAdmin } from "@/components/PartyAssociationsAdmin";
 // TagAdminSettings removed - using Topics system instead
-import { DocumentCategoryAdminSettings } from "@/components/DocumentCategoryAdminSettings";
+// DocumentCategoryAdminSettings removed - now using ConfigurableTypeSettings
 import { RSSSourceManager } from "@/components/administration/RSSSourceManager";
 import { RSSSettingsManager } from "@/components/administration/RSSSettingsManager";
 import { CalendarSyncSettings } from "@/components/administration/CalendarSyncSettings";
@@ -40,8 +40,9 @@ import { DecisionArchiveSettings } from "@/components/administration/DecisionArc
 import { MatrixSettings } from "@/components/MatrixSettings";
 import { NewsEmailTemplateManager } from "@/components/administration/NewsEmailTemplateManager";
 import { AuditLogViewer } from "@/components/administration/AuditLogViewer";
-import { CaseFileTypeSettings } from "@/components/administration/CaseFileTypeSettings";
+// CaseFileTypeSettings removed - now using ConfigurableTypeSettings
 import { TopicSettings } from "@/components/administration/TopicSettings";
+import { ConfigurableTypeSettings } from "@/components/administration/ConfigurableTypeSettings";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -89,9 +90,7 @@ export default function Administration() {
   const [appointmentCategories, setAppointmentCategories] = useState<ConfigItem[]>([]);
   const [appointmentStatuses, setAppointmentStatuses] = useState<ConfigItem[]>([]);
   const [appointmentLocations, setAppointmentLocations] = useState<ConfigItem[]>([]);
-  const [taskCategories, setTaskCategories] = useState<ConfigItem[]>([]);
-  const [taskStatuses, setTaskStatuses] = useState<ConfigItem[]>([]);
-  const [todoCategories, setTodoCategories] = useState<ConfigItem[]>([]);
+  // taskCategories, taskStatuses, todoCategories now managed by ConfigurableTypeSettings
 
   // Template states
   const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
@@ -179,14 +178,11 @@ export default function Administration() {
         setRoles(rolesData || []);
       }
       
-      // Load configuration items
-      const [categoriesRes, statusesRes, locationsRes, taskCatRes, taskStatRes, todoCatRes, meetingTemplatesRes, planningTemplatesRes] = await Promise.all([
+      // Load configuration items (task/todo categories now managed by ConfigurableTypeSettings)
+      const [categoriesRes, statusesRes, locationsRes, meetingTemplatesRes, planningTemplatesRes] = await Promise.all([
         supabase.from('appointment_categories').select('*').order('order_index'),
         supabase.from('appointment_statuses').select('*').order('order_index'),
         supabase.from('appointment_locations').select('id, name, name, is_active, order_index').order('order_index'),
-        supabase.from('task_categories').select('*').order('order_index'),
-        supabase.from('task_statuses').select('*').order('order_index'),
-        supabase.from('todo_categories').select('*').order('order_index'),
         supabase.from('meeting_templates').select('*').order('name'),
         supabase.from('planning_templates').select('*').order('name')
       ]);
@@ -194,9 +190,6 @@ export default function Administration() {
       setAppointmentCategories(categoriesRes.data || []);
       setAppointmentStatuses(statusesRes.data || []);
       setAppointmentLocations(locationsRes.data?.map(item => ({ ...item, label: item.name })) || []);
-      setTaskCategories(taskCatRes.data || []);
-      setTaskStatuses(taskStatRes.data || []);
-      setTodoCategories(todoCatRes.data || []);
       setMeetingTemplates(meetingTemplatesRes.data || []);
       setPlanningTemplates(planningTemplatesRes.data || []);
       
@@ -490,12 +483,7 @@ export default function Administration() {
         return appointmentStatuses.length;
       case 'appointment_locations':
         return appointmentLocations.length;
-      case 'task_categories':
-        return taskCategories.length;
-      case 'task_statuses':
-        return taskStatuses.length;
-      case 'todo_categories':
-        return todoCategories.length;
+      // task_categories, task_statuses, todo_categories now managed by ConfigurableTypeSettings
       default:
         return 0;
     }
@@ -955,201 +943,29 @@ export default function Administration() {
             </TabsList>
 
             <TabsContent value="task-config">
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Aufgaben - Kategorien</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {taskCategories.map((item, index) => (
-                      <div key={item.id} className="flex items-center gap-2">
-                        {editingItem?.type === 'task_categories' && editingItem.id === item.id ? (
-                          <>
-                            <Input
-                              value={editingItem.value}
-                              onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
-                              className="flex-1"
-                            />
-                            <Button size="sm" onClick={() => saveConfigItem('task_categories', item.id, editingItem.value)}>
-                              <Check className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="flex-1">{item.label}</span>
-                            <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'task_categories', id: item.id, value: item.label })}>
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('task_categories', item.id)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {newItem?.type === 'task_categories' ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={newItem.value}
-                          onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
-                          placeholder="Neue Kategorie..."
-                          className="flex-1"
-                        />
-                        <Button size="sm" onClick={() => addConfigItem('task_categories', newItem.value)}>
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setNewItem({ type: 'task_categories', value: '' })}
-                        disabled={!!editingItem || !!newItem}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Kategorie hinzufügen
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Aufgaben - Status</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {taskStatuses.map((item, index) => (
-                      <div key={item.id} className="flex items-center gap-2">
-                        {editingItem?.type === 'task_statuses' && editingItem.id === item.id ? (
-                          <>
-                            <Input
-                              value={editingItem.value}
-                              onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
-                              className="flex-1"
-                            />
-                            <Button size="sm" onClick={() => saveConfigItem('task_statuses', item.id, editingItem.value)}>
-                              <Check className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="flex-1">{item.label}</span>
-                            <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'task_statuses', id: item.id, value: item.label })}>
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('task_statuses', item.id)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {newItem?.type === 'task_statuses' ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={newItem.value}
-                          onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
-                          placeholder="Neuer Status..."
-                          className="flex-1"
-                        />
-                        <Button size="sm" onClick={() => addConfigItem('task_statuses', newItem.value)}>
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setNewItem({ type: 'task_statuses', value: '' })}
-                        disabled={!!editingItem || !!newItem}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Status hinzufügen
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+              <ConfigurableTypeSettings
+                title="Aufgaben-Kategorien"
+                tableName="task_categories"
+                entityName="Kategorie"
+                hasIcon={true}
+                hasColor={true}
+                defaultIcon="CheckSquare"
+                defaultColor="#3b82f6"
+                deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten? Aufgaben mit dieser Kategorie behalten ihren Wert."
+              />
             </TabsContent>
 
             <TabsContent value="todo-config">
-              <Card>
-                <CardHeader>
-                  <CardTitle>ToDo - Kategorien</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {todoCategories.map((item, index) => (
-                    <div key={item.id} className="flex items-center gap-2">
-                      {editingItem?.type === 'todo_categories' && editingItem.id === item.id ? (
-                        <>
-                          <Input
-                            value={editingItem.value}
-                            onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
-                            className="flex-1"
-                          />
-                          <Button size="sm" onClick={() => saveConfigItem('todo_categories', item.id, editingItem.value)}>
-                            <Check className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="flex-1">{item.label}</span>
-                          <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'todo_categories', id: item.id, value: item.label })}>
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('todo_categories', item.id)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {newItem?.type === 'todo_categories' ? (
-                    <div className="flex gap-2">
-                      <Input
-                        value={newItem.value}
-                        onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
-                        placeholder="Neue Kategorie..."
-                        className="flex-1"
-                      />
-                      <Button size="sm" onClick={() => addConfigItem('todo_categories', newItem.value)}>
-                        <Save className="h-3 w-3" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setNewItem({ type: 'todo_categories', value: '' })}
-                      disabled={!!editingItem || !!newItem}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Kategorie hinzufügen
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
+              <ConfigurableTypeSettings
+                title="ToDo-Kategorien"
+                tableName="todo_categories"
+                entityName="Kategorie"
+                hasIcon={true}
+                hasColor={true}
+                defaultIcon="ListTodo"
+                defaultColor="#10b981"
+                deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten? ToDos mit dieser Kategorie behalten ihren Wert."
+              />
             </TabsContent>
 
             <TabsContent value="decisions">
@@ -1157,11 +973,29 @@ export default function Administration() {
             </TabsContent>
 
             <TabsContent value="documenttypes">
-              <DocumentCategoryAdminSettings />
+              <ConfigurableTypeSettings
+                title="Dokumenten-Kategorien"
+                tableName="document_categories"
+                entityName="Kategorie"
+                hasIcon={true}
+                hasColor={true}
+                defaultIcon="FileText"
+                defaultColor="#6366f1"
+                deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten? Dokumente mit dieser Kategorie behalten ihren Wert."
+              />
             </TabsContent>
 
             <TabsContent value="casefiletypes">
-              <CaseFileTypeSettings />
+              <ConfigurableTypeSettings
+                title="FallAkten-Typen"
+                tableName="case_file_types"
+                entityName="Typ"
+                hasIcon={true}
+                hasColor={true}
+                defaultIcon="Briefcase"
+                defaultColor="#3b82f6"
+                deleteWarning="Sind Sie sicher, dass Sie diesen Typ löschen möchten? FallAkten mit diesem Typ behalten ihren Wert, können aber nicht mehr gefiltert werden."
+              />
             </TabsContent>
           </Tabs>
         </TabsContent>
