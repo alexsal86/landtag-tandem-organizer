@@ -75,6 +75,7 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          icon: string | null
           id: string
           is_active: boolean
           label: string
@@ -85,6 +86,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           is_active?: boolean
           label: string
@@ -95,6 +97,7 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           is_active?: boolean
           label?: string
@@ -358,30 +361,39 @@ export type Database = {
       appointment_locations: {
         Row: {
           address: string | null
+          color: string | null
           created_at: string
           description: string | null
+          icon: string | null
           id: string
           is_active: boolean
+          label: string | null
           name: string
           order_index: number
           updated_at: string
         }
         Insert: {
           address?: string | null
+          color?: string | null
           created_at?: string
           description?: string | null
+          icon?: string | null
           id?: string
           is_active?: boolean
+          label?: string | null
           name: string
           order_index?: number
           updated_at?: string
         }
         Update: {
           address?: string | null
+          color?: string | null
           created_at?: string
           description?: string | null
+          icon?: string | null
           id?: string
           is_active?: boolean
+          label?: string | null
           name?: string
           order_index?: number
           updated_at?: string
@@ -598,7 +610,9 @@ export type Database = {
       }
       appointment_statuses: {
         Row: {
+          color: string | null
           created_at: string
+          icon: string | null
           id: string
           is_active: boolean
           label: string
@@ -607,7 +621,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           is_active?: boolean
           label: string
@@ -616,7 +632,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           is_active?: boolean
           label?: string
