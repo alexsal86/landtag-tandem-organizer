@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, Layers, Building, FileText, DollarSign, Users, Shield, Clock, MapPin, Rss, Palette, History, Briefcase, Tag } from "lucide-react";
+import { Trash2, Edit, Plus, Save, X, Check, Copy, GripVertical, Minus, Settings, Calendar, Layers, Building, FileText, Users, Clock, MapPin, Rss, Palette, History, Tag } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { NewUserForm } from "@/components/NewUserForm";
@@ -66,14 +66,7 @@ type UserRole = {
   role: RoleValue;
 };
 
-type ConfigItem = {
-  id: string;
-  name: string;
-  label: string;
-  is_active: boolean;
-  order_index: number;
-  color?: string;
-};
+// ConfigItem type removed - now managed by ConfigurableTypeSettings
 
 export default function Administration() {
   const { user, loading } = useAuth();
@@ -86,12 +79,6 @@ export default function Administration() {
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
 
-  // Configuration states
-  const [appointmentCategories, setAppointmentCategories] = useState<ConfigItem[]>([]);
-  const [appointmentStatuses, setAppointmentStatuses] = useState<ConfigItem[]>([]);
-  const [appointmentLocations, setAppointmentLocations] = useState<ConfigItem[]>([]);
-  // taskCategories, taskStatuses, todoCategories now managed by ConfigurableTypeSettings
-
   // Template states
   const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
   const [planningTemplates, setPlanningTemplates] = useState<any[]>([]);
@@ -99,10 +86,6 @@ export default function Administration() {
   const [selectedPlanningTemplate, setSelectedPlanningTemplate] = useState<any>(null);
   const [templateItems, setTemplateItems] = useState<any[]>([]);
   const [planningTemplateItems, setPlanningTemplateItems] = useState<any[]>([]);
-
-  // Editing states
-  const [editingItem, setEditingItem] = useState<{ type: string; id: string; value: string; color?: string } | null>(null);
-  const [newItem, setNewItem] = useState<{ type: string; value: string; color?: string } | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<{ id: string; field: string; value: string } | null>(null);
   const [editingPlanningTemplate, setEditingPlanningTemplate] = useState<{ id: string; field: string; value: string } | null>(null);
   const [newTemplateItem, setNewTemplateItem] = useState<{ title: string; parentIndex?: number } | null>(null);
@@ -178,18 +161,12 @@ export default function Administration() {
         setRoles(rolesData || []);
       }
       
-      // Load configuration items (task/todo categories now managed by ConfigurableTypeSettings)
-      const [categoriesRes, statusesRes, locationsRes, meetingTemplatesRes, planningTemplatesRes] = await Promise.all([
-        supabase.from('appointment_categories').select('*').order('order_index'),
-        supabase.from('appointment_statuses').select('*').order('order_index'),
-        supabase.from('appointment_locations').select('id, name, name, is_active, order_index').order('order_index'),
+      // Load templates only (config items now managed by ConfigurableTypeSettings)
+      const [meetingTemplatesRes, planningTemplatesRes] = await Promise.all([
         supabase.from('meeting_templates').select('*').order('name'),
         supabase.from('planning_templates').select('*').order('name')
       ]);
       
-      setAppointmentCategories(categoriesRes.data || []);
-      setAppointmentStatuses(statusesRes.data || []);
-      setAppointmentLocations(locationsRes.data?.map(item => ({ ...item, label: item.name })) || []);
       setMeetingTemplates(meetingTemplatesRes.data || []);
       setPlanningTemplates(planningTemplatesRes.data || []);
       
@@ -414,80 +391,7 @@ export default function Administration() {
     savePlanningTemplateItems(newItems);
   };
 
-  // Configuration item functions
-  const addConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'appointment_locations' | 'task_categories' | 'task_statuses' | 'todo_categories', value: string, color?: string) => {
-    if (!value.trim()) return;
-    
-    try {
-      const data: any = {
-        name: value.toLowerCase().replace(/\s+/g, '_'),
-        label: value,
-        order_index: getNextOrderIndex(tableName)
-      };
-      
-      if (color) data.color = color;
-      
-      const { error } = await supabase.from(tableName).insert(data);
-      if (error) throw error;
-      
-      await loadData();
-      setNewItem(null);
-      toast({ title: "Gespeichert", description: "Element erfolgreich hinzugefügt." });
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Hinzufügen.", variant: "destructive" });
-    }
-  };
-
-  const saveConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'appointment_locations' | 'task_categories' | 'task_statuses' | 'todo_categories', id: string, value: string, color?: string) => {
-    if (!value.trim()) return;
-    
-    try {
-      const data: any = {
-        name: value.toLowerCase().replace(/\s+/g, '_'),
-        label: value
-      };
-      
-      if (color) data.color = color;
-      
-      const { error } = await supabase.from(tableName).update(data).eq('id', id);
-      if (error) throw error;
-      
-      await loadData();
-      setEditingItem(null);
-      toast({ title: "Gespeichert", description: "Element erfolgreich aktualisiert." });
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
-    }
-  };
-
-  const deleteConfigItem = async (tableName: 'appointment_categories' | 'appointment_statuses' | 'appointment_locations' | 'task_categories' | 'task_statuses' | 'todo_categories', id: string) => {
-    try {
-      const { error } = await supabase.from(tableName).delete().eq('id', id);
-      if (error) throw error;
-      
-      await loadData();
-      toast({ title: "Gelöscht", description: "Element erfolgreich entfernt." });
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Löschen.", variant: "destructive" });
-    }
-  };
-
-  const getNextOrderIndex = (tableName: string) => {
-    switch (tableName) {
-      case 'appointment_categories':
-        return appointmentCategories.length;
-      case 'appointment_statuses':
-        return appointmentStatuses.length;
-      case 'appointment_locations':
-        return appointmentLocations.length;
-      // task_categories, task_statuses, todo_categories now managed by ConfigurableTypeSettings
-      default:
-        return 0;
-    }
-  };
+  // Configuration item functions now managed by ConfigurableTypeSettings
 
   if (loading) return null;
 
@@ -705,211 +609,39 @@ export default function Administration() {
             </TabsList>
 
             <TabsContent value="config">
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Termine - Kategorien</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {appointmentCategories.map((item, index) => (
-                      <div key={item.id} className="flex items-center gap-2">
-                        {editingItem?.type === 'appointment_categories' && editingItem.id === item.id ? (
-                          <>
-                            <Input
-                              value={editingItem.value}
-                              onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
-                              className="flex-1"
-                            />
-                            <Input
-                              type="color"
-                              value={editingItem.color || '#3b82f6'}
-                              onChange={(e) => setEditingItem({ ...editingItem, color: e.target.value })}
-                              className="w-12 h-9 p-1 rounded border"
-                            />
-                            <Button size="sm" onClick={() => saveConfigItem('appointment_categories', item.id, editingItem.value, editingItem.color)}>
-                              <Check className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: item.color }}></div>
-                            <span className="flex-1">{item.label}</span>
-                            <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'appointment_categories', id: item.id, value: item.label, color: item.color })}>
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('appointment_categories', item.id)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {newItem?.type === 'appointment_categories' ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={newItem.value}
-                          onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
-                          placeholder="Neue Kategorie..."
-                          className="flex-1"
-                        />
-                        <Input
-                          type="color"
-                          value={newItem.color || '#3b82f6'}
-                          onChange={(e) => setNewItem({ ...newItem, color: e.target.value })}
-                          className="w-12 h-9 p-1 rounded border"
-                        />
-                        <Button size="sm" onClick={() => addConfigItem('appointment_categories', newItem.value, newItem.color)}>
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setNewItem({ type: 'appointment_categories', value: '', color: '#3b82f6' })}
-                        disabled={!!editingItem || !!newItem}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Kategorie hinzufügen
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Termine - Status</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {appointmentStatuses.map((item, index) => (
-                      <div key={item.id} className="flex items-center gap-2">
-                        {editingItem?.type === 'appointment_statuses' && editingItem.id === item.id ? (
-                          <>
-                            <Input
-                              value={editingItem.value}
-                              onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
-                              className="flex-1"
-                            />
-                            <Button size="sm" onClick={() => saveConfigItem('appointment_statuses', item.id, editingItem.value)}>
-                              <Check className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="flex-1">{item.label}</span>
-                            <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'appointment_statuses', id: item.id, value: item.label })}>
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('appointment_statuses', item.id)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {newItem?.type === 'appointment_statuses' ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={newItem.value}
-                          onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
-                          placeholder="Neuer Status..."
-                          className="flex-1"
-                        />
-                        <Button size="sm" onClick={() => addConfigItem('appointment_statuses', newItem.value)}>
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setNewItem({ type: 'appointment_statuses', value: '' })}
-                        disabled={!!editingItem || !!newItem}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Status hinzufügen
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+              <div className="space-y-6">
+                <ConfigurableTypeSettings
+                  title="Termin-Kategorien"
+                  tableName="appointment_categories"
+                  entityName="Kategorie"
+                  hasIcon={true}
+                  hasColor={true}
+                  defaultIcon="Calendar"
+                  defaultColor="#3b82f6"
+                  deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten? Termine mit dieser Kategorie behalten ihren Wert."
+                />
                 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Termine - Orte</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {appointmentLocations.map((item, index) => (
-                      <div key={item.id} className="flex items-center gap-2">
-                        {editingItem?.type === 'appointment_locations' && editingItem.id === item.id ? (
-                          <>
-                            <Input
-                              value={editingItem.value}
-                              onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
-                              className="flex-1"
-                            />
-                            <Button size="sm" onClick={() => saveConfigItem('appointment_locations', item.id, editingItem.value)}>
-                              <Check className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="flex-1">{item.name}</span>
-                             <Button size="sm" variant="outline" onClick={() => setEditingItem({ type: 'appointment_locations', id: item.id, value: item.name })}>
-                               <Edit className="h-3 w-3" />
-                             </Button>
-                            <Button size="sm" variant="destructive" onClick={() => deleteConfigItem('appointment_locations', item.id)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {newItem?.type === 'appointment_locations' ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={newItem.value}
-                          onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
-                          placeholder="Neuer Ort..."
-                          className="flex-1"
-                        />
-                        <Button size="sm" onClick={() => addConfigItem('appointment_locations', newItem.value)}>
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setNewItem(null)}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setNewItem({ type: 'appointment_locations', value: '' })}
-                        disabled={!!editingItem || !!newItem}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Ort hinzufügen
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+                <ConfigurableTypeSettings
+                  title="Termin-Status"
+                  tableName="appointment_statuses"
+                  entityName="Status"
+                  hasIcon={true}
+                  hasColor={true}
+                  defaultIcon="CircleDot"
+                  defaultColor="#3b82f6"
+                  deleteWarning="Sind Sie sicher, dass Sie diesen Status löschen möchten? Termine mit diesem Status behalten ihren Wert."
+                />
+                
+                <ConfigurableTypeSettings
+                  title="Termin-Orte"
+                  tableName="appointment_locations"
+                  entityName="Ort"
+                  hasIcon={true}
+                  hasColor={true}
+                  defaultIcon="MapPin"
+                  defaultColor="#6366f1"
+                  deleteWarning="Sind Sie sicher, dass Sie diesen Ort löschen möchten? Termine mit diesem Ort behalten ihren Wert."
+                />
               </div>
             </TabsContent>
 
