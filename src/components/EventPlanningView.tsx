@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List, Eye, Mail } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Users, FileText, Trash2, Check, X, Upload, Clock, Edit2, MapPin, GripVertical, MessageCircle, Paperclip, ListTodo, Send, Download, Archive, Grid, List, Eye, Mail, CheckCircle, FileEdit } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -507,12 +507,10 @@ export function EventPlanningView() {
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-10"></TableHead>
           <TableHead>Titel</TableHead>
           <TableHead>Beschreibung</TableHead>
-          <TableHead>Status</TableHead>
           <TableHead>Datum</TableHead>
-          <TableHead>Privat</TableHead>
-          <TableHead>Erstellt</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -522,29 +520,27 @@ export function EventPlanningView() {
             className="cursor-pointer hover:bg-muted/50 relative"
             onClick={() => setSelectedPlanning(planning)}
           >
+            <TableCell className="w-10">
+              {planning.confirmed_date ? (
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                </div>
+              )}
+            </TableCell>
             <TableCell className="font-medium relative">
               <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} size="sm" />
               {planning.title}
             </TableCell>
             <TableCell className="max-w-xs truncate">{planning.description || '-'}</TableCell>
             <TableCell>
-              <Badge variant={planning.confirmed_date ? "default" : "secondary"}>
-                {planning.confirmed_date ? "Bestätigt" : "In Planung"}
-              </Badge>
-            </TableCell>
-            <TableCell>
               {planning.confirmed_date 
                 ? format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })
                 : "-"
               }
-            </TableCell>
-            <TableCell>
-              <Badge variant={planning.is_private ? "secondary" : "outline"}>
-                {planning.is_private ? "Privat" : "Öffentlich"}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}
             </TableCell>
           </TableRow>
         ))}
@@ -562,53 +558,48 @@ export function EventPlanningView() {
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-10"></TableHead>
           <TableHead>Titel</TableHead>
-          <TableHead>Status</TableHead>
           <TableHead>Notizen</TableHead>
-          <TableHead>{isArchived ? "Archiviert" : "Erstellt"}</TableHead>
-          <TableHead>Zuletzt bearbeitet</TableHead>
+          {isArchived && <TableHead>Archiviert</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {preparations.map((preparation) => (
-          <TableRow 
-            key={preparation.id} 
-            className="cursor-pointer hover:bg-muted/50 relative"
-            onClick={() => handlePreparationClick(preparation)}
-          >
-            <TableCell className="font-medium relative">
-              <NewItemIndicator isVisible={isItemNew(preparation.id, preparation.created_at)} size="sm" />
-              {preparation.title}
-            </TableCell>
-            <TableCell>
-              <Badge 
-                variant={
-                  preparation.status === 'completed' ? 'default' : 
-                  preparation.status === 'in_progress' ? 'secondary' : 'outline'
-                }
-              >
-                {preparation.status === 'completed' ? 'Abgeschlossen' :
-                 preparation.status === 'in_progress' ? 'In Bearbeitung' : 'Entwurf'}
-              </Badge>
-            </TableCell>
-            <TableCell className="max-w-xs truncate">
-              {preparation.notes || '-'}
-            </TableCell>
-            <TableCell>
-              {format(
-                new Date(isArchived && preparation.archived_at ? preparation.archived_at : preparation.created_at), 
-                "dd.MM.yyyy", 
-                { locale: de }
+        {preparations.map((preparation) => {
+          const statusConfig = {
+            completed: { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/20' },
+            in_progress: { icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/20' },
+            draft: { icon: FileEdit, color: 'text-muted-foreground', bg: 'bg-muted' }
+          };
+          const config = statusConfig[preparation.status as keyof typeof statusConfig] || statusConfig.draft;
+          const StatusIcon = config.icon;
+          
+          return (
+            <TableRow 
+              key={preparation.id} 
+              className="cursor-pointer hover:bg-muted/50 relative"
+              onClick={() => handlePreparationClick(preparation)}
+            >
+              <TableCell className="w-10">
+                <div className={`flex items-center justify-center w-6 h-6 rounded-full ${config.bg}`}>
+                  <StatusIcon className={`h-4 w-4 ${config.color}`} />
+                </div>
+              </TableCell>
+              <TableCell className="font-medium relative">
+                <NewItemIndicator isVisible={isItemNew(preparation.id, preparation.created_at)} size="sm" />
+                {preparation.title}
+              </TableCell>
+              <TableCell className="max-w-xs truncate">
+                {preparation.notes || '-'}
+              </TableCell>
+              {isArchived && preparation.archived_at && (
+                <TableCell>
+                  {format(new Date(preparation.archived_at), "dd.MM.yyyy", { locale: de })}
+                </TableCell>
               )}
-            </TableCell>
-            <TableCell>
-              {preparation.updated_at !== preparation.created_at 
-                ? format(new Date(preparation.updated_at), "dd.MM.yyyy HH:mm", { locale: de })
-                : "-"
-              }
-            </TableCell>
-          </TableRow>
-        ))}
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );
