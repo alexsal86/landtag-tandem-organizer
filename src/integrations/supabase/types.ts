@@ -5191,9 +5191,53 @@ export type Database = {
           },
         ]
       }
+      meeting_participants: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          id: string
+          meeting_id: string
+          role: string | null
+          status: string | null
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          id?: string
+          meeting_id: string
+          role?: string | null
+          status?: string | null
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          id?: string
+          meeting_id?: string
+          role?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_participants_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_participants_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_templates: {
         Row: {
           created_at: string
+          default_participants: string[] | null
+          default_recurrence: Json | null
           description: string | null
           id: string
           name: string
@@ -5205,6 +5249,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_participants?: string[] | null
+          default_recurrence?: Json | null
           description?: string | null
           id?: string
           name: string
@@ -5216,6 +5262,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_participants?: string[] | null
+          default_recurrence?: Json | null
           description?: string | null
           id?: string
           name?: string
@@ -5240,8 +5288,11 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_recurring_instance: boolean | null
           location: string | null
           meeting_date: string
+          parent_meeting_id: string | null
+          recurrence_rule: Json | null
           status: string
           template_id: string | null
           tenant_id: string | null
@@ -5253,8 +5304,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_recurring_instance?: boolean | null
           location?: string | null
           meeting_date: string
+          parent_meeting_id?: string | null
+          recurrence_rule?: Json | null
           status?: string
           template_id?: string | null
           tenant_id?: string | null
@@ -5266,8 +5320,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_recurring_instance?: boolean | null
           location?: string | null
           meeting_date?: string
+          parent_meeting_id?: string | null
+          recurrence_rule?: Json | null
           status?: string
           template_id?: string | null
           tenant_id?: string | null
@@ -5276,6 +5333,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "meetings_parent_meeting_id_fkey"
+            columns: ["parent_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meetings_tenant_id_fkey"
             columns: ["tenant_id"]

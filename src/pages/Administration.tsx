@@ -43,6 +43,7 @@ import { AuditLogViewer } from "@/components/administration/AuditLogViewer";
 // CaseFileTypeSettings removed - now using ConfigurableTypeSettings
 import { TopicSettings } from "@/components/administration/TopicSettings";
 import { ConfigurableTypeSettings } from "@/components/administration/ConfigurableTypeSettings";
+import { MeetingTemplateParticipantsEditor } from "@/components/meetings/MeetingTemplateParticipantsEditor";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // Roles in descending hierarchy
@@ -951,6 +952,38 @@ export default function Administration() {
                         </>
                       )}
                     </div>
+                  </CardContent>
+                )}
+                
+                {selectedTemplate && (
+                  <CardContent className="border-t pt-4">
+                    <MeetingTemplateParticipantsEditor
+                      templateId={selectedTemplate.id}
+                      defaultParticipants={selectedTemplate.default_participants || []}
+                      defaultRecurrence={selectedTemplate.default_recurrence || null}
+                      onSave={async (participants, recurrence) => {
+                        try {
+                          await supabase
+                            .from('meeting_templates')
+                            .update({
+                              default_participants: participants,
+                              default_recurrence: recurrence as any
+                            })
+                            .eq('id', selectedTemplate.id);
+                          
+                          // Update local state
+                          setSelectedTemplate({
+                            ...selectedTemplate,
+                            default_participants: participants,
+                            default_recurrence: recurrence
+                          });
+                          
+                          toast({ title: "Gespeichert", description: "Template-Einstellungen aktualisiert." });
+                        } catch (error) {
+                          toast({ title: "Fehler", description: "Speichern fehlgeschlagen.", variant: "destructive" });
+                        }
+                      }}
+                    />
                   </CardContent>
                 )}
               </Card>
