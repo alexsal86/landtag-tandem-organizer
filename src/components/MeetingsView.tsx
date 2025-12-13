@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download } from "lucide-react";
+import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { MeetingArchiveView } from "./MeetingArchiveView";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
+import { ContactSelector } from "@/components/ContactSelector";
+import { RecurrenceSelector } from "@/components/ui/recurrence-selector";
+import { MeetingParticipantsManager } from "@/components/meetings/MeetingParticipantsManager";
+
+interface RecurrenceData {
+  enabled: boolean;
+  frequency: "daily" | "weekly" | "monthly" | "yearly";
+  interval: number;
+  weekdays: number[];
+  endDate?: string;
+}
+
+interface NewMeetingParticipant {
+  contactId: string;
+  role: 'organizer' | 'participant' | 'optional';
+  contact?: {
+    id: string;
+    name: string;
+    email?: string;
+    avatar_url?: string;
+    organization?: string;
+  };
+}
 
 interface AgendaItem {
   id?: string;
@@ -67,6 +90,8 @@ interface MeetingTemplate {
   name: string;
   description?: string;
   template_items: any;
+  default_participants?: string[];
+  default_recurrence?: any;
 }
 
 interface Profile {
@@ -96,6 +121,13 @@ export function MeetingsView() {
     status: "planned"
   });
   const [newMeetingTime, setNewMeetingTime] = useState<string>("10:00");
+  const [newMeetingParticipants, setNewMeetingParticipants] = useState<NewMeetingParticipant[]>([]);
+  const [newMeetingRecurrence, setNewMeetingRecurrence] = useState<RecurrenceData>({
+    enabled: false,
+    frequency: 'weekly',
+    interval: 1,
+    weekdays: []
+  });
   const [showTaskSelector, setShowTaskSelector] = useState<{itemIndex: number} | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [activeMeeting, setActiveMeeting] = useState<Meeting | null>(null);
@@ -488,7 +520,7 @@ export function MeetingsView() {
     }
 
     try {
-      const insertData = {
+      const insertData: any = {
         title: newMeeting.title,
         description: newMeeting.description || null,
         meeting_date: format(newMeeting.meeting_date, 'yyyy-MM-dd'),
@@ -496,7 +528,8 @@ export function MeetingsView() {
         status: newMeeting.status,
         user_id: user.id,
         tenant_id: currentTenant?.id,
-        template_id: newMeeting.template_id || null
+        template_id: newMeeting.template_id || null,
+        recurrence_rule: newMeetingRecurrence.enabled ? newMeetingRecurrence : null
       };
 
       const { data, error } = await supabase
@@ -507,8 +540,19 @@ export function MeetingsView() {
 
       if (error) throw error;
 
-      // The database trigger automatically creates default agenda items
-      // so we don't need to call createDefaultAgendaItems here
+      // Add participants if any
+      if (newMeetingParticipants.length > 0 && data.id) {
+        const participantInserts = newMeetingParticipants.map(p => ({
+          meeting_id: data.id,
+          contact_id: p.contactId,
+          role: p.role,
+          status: 'pending'
+        }));
+        
+        await supabase
+          .from('meeting_participants')
+          .insert(participantInserts);
+      }
 
       const newMeetingWithDate = {...data, meeting_date: new Date(data.meeting_date)};
       setMeetings([newMeetingWithDate, ...meetings]);
@@ -529,6 +573,13 @@ export function MeetingsView() {
         meeting_date: new Date(),
         location: "",
         status: "planned"
+      });
+      setNewMeetingParticipants([]);
+      setNewMeetingRecurrence({
+        enabled: false,
+        frequency: 'weekly',
+        interval: 1,
+        weekdays: []
       });
 
       toast({
@@ -1706,7 +1757,7 @@ export function MeetingsView() {
               Neues Meeting
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Neues Meeting erstellen</DialogTitle>
               <DialogDescription>
@@ -1742,7 +1793,38 @@ export function MeetingsView() {
                 <label className="text-sm font-medium">Template</label>
                 <Select
                   value={newMeeting.template_id || 'none'}
-                  onValueChange={(value) => setNewMeeting({ ...newMeeting, template_id: value === 'none' ? undefined : value })}
+                  onValueChange={(value) => {
+                    const templateId = value === 'none' ? undefined : value;
+                    setNewMeeting({ ...newMeeting, template_id: templateId });
+                    
+                    // Load default participants and recurrence from template
+                    if (templateId) {
+                      const template = meetingTemplates.find(t => t.id === templateId);
+                      if (template) {
+                        // Load default participants if available
+                        if (template.default_participants && template.default_participants.length > 0) {
+                          // Fetch contact details for default participants
+                          supabase
+                            .from('contacts')
+                            .select('id, name, email, avatar_url, organization')
+                            .in('id', template.default_participants)
+                            .then(({ data }) => {
+                              if (data) {
+                                setNewMeetingParticipants(data.map(c => ({
+                                  contactId: c.id,
+                                  role: 'participant' as const,
+                                  contact: c
+                                })));
+                              }
+                            });
+                        }
+                        // Load default recurrence if available
+                        if (template.default_recurrence) {
+                          setNewMeetingRecurrence(template.default_recurrence);
+                        }
+                      }
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Template auswählen (optional)" />
@@ -1786,7 +1868,76 @@ export function MeetingsView() {
                   />
                 </div>
               </div>
-              <div className="flex justify-end space-x-2">
+
+              {/* Participants Section */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <label className="text-sm font-medium">Teilnehmer</label>
+                </div>
+                <ContactSelector
+                  onSelect={(contact) => {
+                    if (!newMeetingParticipants.some(p => p.contactId === contact.id)) {
+                      setNewMeetingParticipants(prev => [...prev, {
+                        contactId: contact.id,
+                        role: 'participant',
+                        contact: {
+                          id: contact.id,
+                          name: contact.name,
+                          email: contact.email,
+                          avatar_url: contact.avatar_url,
+                          organization: contact.organization
+                        }
+                      }]);
+                    }
+                  }}
+                  placeholder="Kontakt hinzufügen..."
+                  clearAfterSelect
+                />
+                {newMeetingParticipants.length > 0 && (
+                  <div className="space-y-2">
+                    {newMeetingParticipants.map((p, idx) => (
+                      <div key={p.contactId} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+                        <span className="flex-1 text-sm">{p.contact?.name}</span>
+                        <Select 
+                          value={p.role} 
+                          onValueChange={(v) => {
+                            const updated = [...newMeetingParticipants];
+                            updated[idx] = { ...p, role: v as any };
+                            setNewMeetingParticipants(updated);
+                          }}
+                        >
+                          <SelectTrigger className="w-28 h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="organizer">Organisator</SelectItem>
+                            <SelectItem value="participant">Teilnehmer</SelectItem>
+                            <SelectItem value="optional">Optional</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => setNewMeetingParticipants(prev => prev.filter((_, i) => i !== idx))}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Recurrence Section */}
+              <RecurrenceSelector
+                value={newMeetingRecurrence}
+                onChange={setNewMeetingRecurrence}
+                startDate={format(newMeeting.meeting_date instanceof Date ? newMeeting.meeting_date : new Date(newMeeting.meeting_date), 'yyyy-MM-dd')}
+              />
+
+              <div className="flex justify-end space-x-2 pt-4">
                 <Button variant="outline" onClick={() => setIsNewMeetingOpen(false)}>
                   Abbrechen
                 </Button>
