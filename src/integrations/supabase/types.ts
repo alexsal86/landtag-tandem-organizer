@@ -5193,42 +5193,42 @@ export type Database = {
       }
       meeting_participants: {
         Row: {
-          contact_id: string
           created_at: string | null
           id: string
           meeting_id: string
           role: string | null
           status: string | null
+          user_id: string
         }
         Insert: {
-          contact_id: string
           created_at?: string | null
           id?: string
           meeting_id: string
           role?: string | null
           status?: string | null
+          user_id: string
         }
         Update: {
-          contact_id?: string
           created_at?: string | null
           id?: string
           meeting_id?: string
           role?: string | null
           status?: string | null
+          user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "meeting_participants_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "meeting_participants_meeting_id_fkey"
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

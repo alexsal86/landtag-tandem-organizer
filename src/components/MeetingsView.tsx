@@ -22,7 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { MeetingArchiveView } from "./MeetingArchiveView";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
-import { ContactSelector } from "@/components/ContactSelector";
+import { UserSelector } from "@/components/UserSelector";
 import { RecurrenceSelector } from "@/components/ui/recurrence-selector";
 import { MeetingParticipantsManager } from "@/components/meetings/MeetingParticipantsManager";
 
@@ -35,14 +35,12 @@ interface RecurrenceData {
 }
 
 interface NewMeetingParticipant {
-  contactId: string;
+  userId: string;
   role: 'organizer' | 'participant' | 'optional';
-  contact?: {
+  user?: {
     id: string;
-    name: string;
-    email?: string;
+    display_name: string;
     avatar_url?: string;
-    organization?: string;
   };
 }
 
@@ -544,7 +542,7 @@ export function MeetingsView() {
       if (newMeetingParticipants.length > 0 && data.id) {
         const participantInserts = newMeetingParticipants.map(p => ({
           meeting_id: data.id,
-          contact_id: p.contactId,
+          user_id: p.userId,
           role: p.role,
           status: 'pending'
         }));
@@ -1801,19 +1799,23 @@ export function MeetingsView() {
                     if (templateId) {
                       const template = meetingTemplates.find(t => t.id === templateId);
                       if (template) {
-                        // Load default participants if available
+                        // Load default participants if available (now user IDs)
                         if (template.default_participants && template.default_participants.length > 0) {
-                          // Fetch contact details for default participants
+                          // Fetch user details for default participants
                           supabase
-                            .from('contacts')
-                            .select('id, name, email, avatar_url, organization')
-                            .in('id', template.default_participants)
+                            .from('profiles')
+                            .select('user_id, display_name, avatar_url')
+                            .in('user_id', template.default_participants)
                             .then(({ data }) => {
                               if (data) {
-                                setNewMeetingParticipants(data.map(c => ({
-                                  contactId: c.id,
+                                setNewMeetingParticipants(data.map(u => ({
+                                  userId: u.user_id,
                                   role: 'participant' as const,
-                                  contact: c
+                                  user: {
+                                    id: u.user_id,
+                                    display_name: u.display_name || 'Unbekannt',
+                                    avatar_url: u.avatar_url
+                                  }
                                 })));
                               }
                             });
@@ -1875,30 +1877,29 @@ export function MeetingsView() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <label className="text-sm font-medium">Teilnehmer</label>
                 </div>
-                <ContactSelector
-                  onSelect={(contact) => {
-                    if (!newMeetingParticipants.some(p => p.contactId === contact.id)) {
+                <UserSelector
+                  onSelect={(user) => {
+                    if (!newMeetingParticipants.some(p => p.userId === user.id)) {
                       setNewMeetingParticipants(prev => [...prev, {
-                        contactId: contact.id,
+                        userId: user.id,
                         role: 'participant',
-                        contact: {
-                          id: contact.id,
-                          name: contact.name,
-                          email: contact.email,
-                          avatar_url: contact.avatar_url,
-                          organization: contact.organization
+                        user: {
+                          id: user.id,
+                          display_name: user.display_name,
+                          avatar_url: user.avatar_url
                         }
                       }]);
                     }
                   }}
-                  placeholder="Kontakt hinzufügen..."
+                  placeholder="Teammitglied hinzufügen..."
                   clearAfterSelect
+                  excludeUserIds={newMeetingParticipants.map(p => p.userId)}
                 />
                 {newMeetingParticipants.length > 0 && (
                   <div className="space-y-2">
                     {newMeetingParticipants.map((p, idx) => (
-                      <div key={p.contactId} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                        <span className="flex-1 text-sm">{p.contact?.name}</span>
+                      <div key={p.userId} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+                        <span className="flex-1 text-sm">{p.user?.display_name}</span>
                         <Select 
                           value={p.role} 
                           onValueChange={(v) => {
