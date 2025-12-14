@@ -1,20 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export interface MeetingParticipant {
   id: string;
   meeting_id: string;
-  contact_id: string;
+  user_id: string;
   role: 'organizer' | 'participant' | 'optional';
   status: 'pending' | 'confirmed' | 'declined';
   created_at: string;
-  contact?: {
+  user?: {
     id: string;
-    name: string;
-    email?: string;
+    display_name: string;
     avatar_url?: string;
-    organization?: string;
   };
 }
 
@@ -23,16 +21,11 @@ export function useMeetingParticipants(meetingId?: string) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (meetingId) {
-      loadParticipants();
-    } else {
+  const loadParticipants = useCallback(async () => {
+    if (!meetingId) {
       setParticipants([]);
+      return;
     }
-  }, [meetingId]);
-
-  const loadParticipants = async () => {
-    if (!meetingId) return;
     
     setLoading(true);
     try {
@@ -40,20 +33,39 @@ export function useMeetingParticipants(meetingId?: string) {
         .from('meeting_participants')
         .select(`
           *,
-          contact:contacts(id, name, email, avatar_url, organization)
+          user:profiles(user_id, display_name, avatar_url)
         `)
         .eq('meeting_id', meetingId);
 
       if (error) throw error;
-      setParticipants((data || []) as MeetingParticipant[]);
+      
+      const transformedData: MeetingParticipant[] = (data || []).map(item => ({
+        id: item.id,
+        meeting_id: item.meeting_id,
+        user_id: item.user_id,
+        role: item.role as MeetingParticipant['role'],
+        status: item.status as MeetingParticipant['status'],
+        created_at: item.created_at,
+        user: item.user ? {
+          id: (item.user as any).user_id,
+          display_name: (item.user as any).display_name || 'Unbekannt',
+          avatar_url: (item.user as any).avatar_url
+        } : undefined
+      }));
+      
+      setParticipants(transformedData);
     } catch (error) {
       console.error('Error loading participants:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [meetingId]);
 
-  const addParticipant = async (contactId: string, role: 'organizer' | 'participant' | 'optional' = 'participant') => {
+  useEffect(() => {
+    loadParticipants();
+  }, [loadParticipants]);
+
+  const addParticipant = async (userId: string, role: 'organizer' | 'participant' | 'optional' = 'participant') => {
     if (!meetingId) return null;
 
     try {
@@ -61,13 +73,13 @@ export function useMeetingParticipants(meetingId?: string) {
         .from('meeting_participants')
         .insert({
           meeting_id: meetingId,
-          contact_id: contactId,
+          user_id: userId,
           role,
           status: 'pending'
         })
         .select(`
           *,
-          contact:contacts(id, name, email, avatar_url, organization)
+          user:profiles(user_id, display_name, avatar_url)
         `)
         .single();
 
@@ -75,7 +87,7 @@ export function useMeetingParticipants(meetingId?: string) {
         if (error.code === '23505') {
           toast({
             title: "Teilnehmer existiert bereits",
-            description: "Dieser Kontakt ist bereits als Teilnehmer hinzugefügt.",
+            description: "Dieses Teammitglied ist bereits als Teilnehmer hinzugefügt.",
             variant: "destructive"
           });
           return null;
@@ -83,8 +95,22 @@ export function useMeetingParticipants(meetingId?: string) {
         throw error;
       }
 
-      setParticipants(prev => [...prev, data as MeetingParticipant]);
-      return data as MeetingParticipant;
+      const newParticipant: MeetingParticipant = {
+        id: data.id,
+        meeting_id: data.meeting_id,
+        user_id: data.user_id,
+        role: data.role as MeetingParticipant['role'],
+        status: data.status as MeetingParticipant['status'],
+        created_at: data.created_at,
+        user: data.user ? {
+          id: (data.user as any).user_id,
+          display_name: (data.user as any).display_name || 'Unbekannt',
+          avatar_url: (data.user as any).avatar_url
+        } : undefined
+      };
+
+      setParticipants(prev => [...prev, newParticipant]);
+      return newParticipant;
     } catch (error) {
       console.error('Error adding participant:', error);
       toast({
@@ -138,33 +164,19 @@ export function useMeetingParticipants(meetingId?: string) {
     }
   };
 
-  const addMultipleParticipants = async (contactIds: string[], role: 'organizer' | 'participant' | 'optional' = 'participant') => {
-    if (!meetingId || contactIds.length === 0) return [];
+  const addMultipleParticipants = async (userIds: string[], role: 'organizer' | 'participant' | 'optional' = 'participant') => {
+    if (!meetingId || userIds.length === 0) return [];
 
-    try {
-      const insertData = contactIds.map(contactId => ({
-        meeting_id: meetingId,
-        contact_id: contactId,
-        role,
-        status: 'pending' as const
-      }));
-
-      const { data, error } = await supabase
-        .from('meeting_participants')
-        .insert(insertData)
-        .select(`
-          *,
-          contact:contacts(id, name, email, avatar_url, organization)
-        `);
-
-      if (error) throw error;
-
-      setParticipants(prev => [...prev, ...((data || []) as MeetingParticipant[])]);
-      return (data || []) as MeetingParticipant[];
-    } catch (error) {
-      console.error('Error adding multiple participants:', error);
-      return [];
+    const results: MeetingParticipant[] = [];
+    
+    for (const userId of userIds) {
+      const result = await addParticipant(userId, role);
+      if (result) {
+        results.push(result);
+      }
     }
+    
+    return results;
   };
 
   return {

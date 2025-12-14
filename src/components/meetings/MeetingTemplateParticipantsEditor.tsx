@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ContactSelector } from '@/components/ContactSelector';
+import { UserSelector } from '@/components/UserSelector';
 import { RecurrenceSelector } from '@/components/ui/recurrence-selector';
-import { Users, Trash2, Repeat, X } from 'lucide-react';
+import { Users, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,12 +24,10 @@ interface MeetingTemplateParticipantsEditorProps {
   onSave: (participants: string[], recurrence: RecurrenceData | null) => void;
 }
 
-interface Contact {
+interface User {
   id: string;
-  name: string;
-  email?: string;
+  display_name: string;
   avatar_url?: string;
-  organization?: string;
 }
 
 export function MeetingTemplateParticipantsEditor({
@@ -41,7 +38,7 @@ export function MeetingTemplateParticipantsEditor({
 }: MeetingTemplateParticipantsEditorProps) {
   const { currentTenant } = useTenant();
   const [participants, setParticipants] = useState<string[]>(defaultParticipants || []);
-  const [participantContacts, setParticipantContacts] = useState<Contact[]>([]);
+  const [participantUsers, setParticipantUsers] = useState<User[]>([]);
   const [recurrence, setRecurrence] = useState<RecurrenceData>(
     defaultRecurrence || {
       enabled: false,
@@ -53,42 +50,49 @@ export function MeetingTemplateParticipantsEditor({
 
   useEffect(() => {
     if (participants.length > 0) {
-      loadContactDetails();
+      loadUserDetails();
     } else {
-      setParticipantContacts([]);
+      setParticipantUsers([]);
     }
   }, [participants]);
 
-  const loadContactDetails = async () => {
+  const loadUserDetails = async () => {
     if (!currentTenant || participants.length === 0) return;
 
     try {
+      // Get user details from profiles for the participant user IDs
       const { data, error } = await supabase
-        .from('contacts')
-        .select('id, name, email, avatar_url, organization')
-        .in('id', participants)
-        .eq('tenant_id', currentTenant.id);
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', participants);
 
       if (error) throw error;
-      setParticipantContacts(data || []);
+
+      const users: User[] = (data || []).map(profile => ({
+        id: profile.user_id,
+        display_name: profile.display_name || 'Unbekannt',
+        avatar_url: profile.avatar_url
+      }));
+
+      setParticipantUsers(users);
     } catch (error) {
-      console.error('Error loading contact details:', error);
+      console.error('Error loading user details:', error);
     }
   };
 
-  const handleAddContact = (contact: Contact) => {
-    if (participants.includes(contact.id)) return;
+  const handleAddUser = (user: User) => {
+    if (participants.includes(user.id)) return;
     
-    const newParticipants = [...participants, contact.id];
+    const newParticipants = [...participants, user.id];
     setParticipants(newParticipants);
-    setParticipantContacts(prev => [...prev, contact]);
+    setParticipantUsers(prev => [...prev, user]);
     onSave(newParticipants, recurrence.enabled ? recurrence : null);
   };
 
-  const handleRemoveParticipant = (contactId: string) => {
-    const newParticipants = participants.filter(id => id !== contactId);
+  const handleRemoveParticipant = (userId: string) => {
+    const newParticipants = participants.filter(id => id !== userId);
     setParticipants(newParticipants);
-    setParticipantContacts(prev => prev.filter(c => c.id !== contactId));
+    setParticipantUsers(prev => prev.filter(u => u.id !== userId));
     onSave(newParticipants, recurrence.enabled ? recurrence : null);
   };
 
@@ -122,45 +126,41 @@ export function MeetingTemplateParticipantsEditor({
         <CardContent className="space-y-4">
           <div>
             <Label className="text-sm text-muted-foreground mb-2 block">
-              Diese Kontakte werden automatisch als Teilnehmer hinzugefügt, wenn ein Meeting mit dieser Vorlage erstellt wird.
+              Diese Teammitglieder werden automatisch als Teilnehmer hinzugefügt, wenn ein Meeting mit dieser Vorlage erstellt wird.
             </Label>
-            <ContactSelector
-              onSelect={handleAddContact}
-              placeholder="Kontakt hinzufügen..."
+            <UserSelector
+              onSelect={handleAddUser}
+              placeholder="Teammitglied hinzufügen..."
               clearAfterSelect
+              excludeUserIds={participants}
             />
           </div>
 
-          {participantContacts.length > 0 && (
+          {participantUsers.length > 0 && (
             <div className="space-y-2">
-              {participantContacts.map((contact) => (
+              {participantUsers.map((user) => (
                 <div
-                  key={contact.id}
+                  key={user.id}
                   className="flex items-center gap-3 p-2 rounded-md border bg-muted/50"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={contact.avatar_url} />
+                    <AvatarImage src={user.avatar_url} />
                     <AvatarFallback className="text-xs">
-                      {getInitials(contact.name)}
+                      {getInitials(user.display_name)}
                     </AvatarFallback>
                   </Avatar>
                   
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-sm truncate block">
-                      {contact.name}
+                      {user.display_name}
                     </span>
-                    {contact.organization && (
-                      <span className="text-xs text-muted-foreground truncate block">
-                        {contact.organization}
-                      </span>
-                    )}
                   </div>
 
                   <Button
                     size="icon"
                     variant="ghost"
                     className="h-7 w-7"
-                    onClick={() => handleRemoveParticipant(contact.id)}
+                    onClick={() => handleRemoveParticipant(user.id)}
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -169,7 +169,7 @@ export function MeetingTemplateParticipantsEditor({
             </div>
           )}
 
-          {participantContacts.length === 0 && (
+          {participantUsers.length === 0 && (
             <p className="text-sm text-muted-foreground py-2">
               Keine Standard-Teilnehmer festgelegt
             </p>

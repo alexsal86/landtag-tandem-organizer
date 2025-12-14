@@ -3,13 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ContactSelector } from '@/components/ContactSelector';
-import { Users, Trash2, UserPlus, Crown, User, UserMinus } from 'lucide-react';
+import { UserSelector } from '@/components/UserSelector';
+import { Users, Trash2, Crown, User, UserMinus } from 'lucide-react';
 import { MeetingParticipant } from '@/hooks/useMeetingParticipants';
 
 interface MeetingParticipantsManagerProps {
   participants: MeetingParticipant[];
-  onAddParticipant: (contactId: string, role: 'organizer' | 'participant' | 'optional') => void;
+  onAddParticipant: (userId: string, role: 'organizer' | 'participant' | 'optional') => void;
   onUpdateParticipant: (participantId: string, updates: { role?: string; status?: string }) => void;
   onRemoveParticipant: (participantId: string) => void;
   readOnly?: boolean;
@@ -48,12 +48,12 @@ export function MeetingParticipantsManager({
 }: MeetingParticipantsManagerProps) {
   const [selectedRole, setSelectedRole] = useState<'organizer' | 'participant' | 'optional'>('participant');
 
-  const handleAddContact = (contact: any) => {
+  const handleAddUser = (user: { id: string; display_name: string; avatar_url?: string }) => {
     // Check if already added
-    if (participants.some(p => p.contact_id === contact.id)) {
+    if (participants.some(p => p.user_id === user.id)) {
       return;
     }
-    onAddParticipant(contact.id, selectedRole);
+    onAddParticipant(user.id, selectedRole);
   };
 
   const getInitials = (name: string) => {
@@ -65,6 +65,8 @@ export function MeetingParticipantsManager({
       .slice(0, 2);
   };
 
+  const excludedUserIds = participants.map(p => p.user_id);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -75,10 +77,11 @@ export function MeetingParticipantsManager({
       {!readOnly && (
         <div className="flex gap-2">
           <div className="flex-1">
-            <ContactSelector
-              onSelect={handleAddContact}
-              placeholder="Kontakt hinzufügen..."
+            <UserSelector
+              onSelect={handleAddUser}
+              placeholder="Teammitglied hinzufügen..."
               clearAfterSelect
+              excludeUserIds={excludedUserIds}
             />
           </div>
           <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as any)}>
@@ -108,24 +111,19 @@ export function MeetingParticipantsManager({
                 className="flex items-center gap-3 p-2 rounded-md border bg-card"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={participant.contact?.avatar_url} />
+                  <AvatarImage src={participant.user?.avatar_url} />
                   <AvatarFallback className="text-xs">
-                    {getInitials(participant.contact?.name || '?')}
+                    {getInitials(participant.user?.display_name || '?')}
                   </AvatarFallback>
                 </Avatar>
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm truncate">
-                      {participant.contact?.name}
+                      {participant.user?.display_name || 'Unbekannt'}
                     </span>
                     <RoleIcon className="h-3 w-3 text-muted-foreground" />
                   </div>
-                  {participant.contact?.organization && (
-                    <span className="text-xs text-muted-foreground truncate block">
-                      {participant.contact.organization}
-                    </span>
-                  )}
                 </div>
 
                 <Badge 
