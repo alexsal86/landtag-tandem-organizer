@@ -2163,6 +2163,51 @@ export type Database = {
           },
         ]
       }
+      district_notes: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          district_id: string
+          id: string
+          tenant_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          district_id: string
+          id?: string
+          tenant_id: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          district_id?: string
+          id?: string
+          tenant_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "district_notes_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "karlsruhe_districts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "district_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       district_support_assignments: {
         Row: {
           created_at: string | null
@@ -4837,6 +4882,42 @@ export type Database = {
           },
         ]
       }
+      map_flag_topics: {
+        Row: {
+          created_at: string | null
+          flag_id: string
+          id: string
+          topic_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          flag_id: string
+          id?: string
+          topic_id: string
+        }
+        Update: {
+          created_at?: string | null
+          flag_id?: string
+          id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_flag_topics_flag_id_fkey"
+            columns: ["flag_id"]
+            isOneToOne: false
+            referencedRelation: "map_flags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "map_flag_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       map_flag_types: {
         Row: {
           color: string
@@ -4940,6 +5021,50 @@ export type Database = {
           },
           {
             foreignKeyName: "fk_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      map_routes: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          distance_meters: number | null
+          duration_seconds: number | null
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string | null
+          waypoints: Json
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string | null
+          waypoints?: Json
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string | null
+          waypoints?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_routes_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
