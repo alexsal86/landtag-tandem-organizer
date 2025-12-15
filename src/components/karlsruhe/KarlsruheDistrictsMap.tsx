@@ -7,6 +7,8 @@ import { MapFlagType } from '@/hooks/useMapFlagTypes';
 import { useMapFlagStakeholders } from '@/hooks/useMapFlagStakeholders';
 import { supabase } from '@/integrations/supabase/client';
 import { lucideIconToSvg, isLucideIcon } from '@/utils/lucideIconToSvg';
+import { RoutingMachine } from './RoutingMachine';
+import 'leaflet.heat';
 
 /**
  * Helper function to get icon display for Leaflet markers
@@ -43,6 +45,13 @@ interface KarlsruheDistrictsMapProps {
   showStakeholders?: boolean;
   showDistrictBoundaries?: boolean;
   isColorMap?: boolean;
+  // Routing props
+  waypoints?: { id: string; lat: number; lng: number; name?: string }[];
+  showRouting?: boolean;
+  onRouteFound?: (info: { distance: number; duration: number }) => void;
+  // Heatmap props
+  showHeatmap?: boolean;
+  heatmapPoints?: [number, number, number][];
 }
 
 export const KarlsruheDistrictsMap = ({
@@ -59,6 +68,11 @@ export const KarlsruheDistrictsMap = ({
   showStakeholders = true,
   showDistrictBoundaries = true,
   isColorMap = false,
+  waypoints = [],
+  showRouting = false,
+  onRouteFound,
+  showHeatmap = false,
+  heatmapPoints = [],
 }: KarlsruheDistrictsMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -469,6 +483,123 @@ export const KarlsruheDistrictsMap = ({
       window.removeEventListener('deleteFlag', handleDeleteFlag);
     };
   }, [mapReady, flags, flagTypes, visibleFlagTypes, onFlagEdit, onFlagDelete, showStakeholders]);
+
+  // Render heatmap
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || !showHeatmap || heatmapPoints.length === 0) return;
+
+    const map = mapInstanceRef.current;
+
+    // @ts-ignore - leaflet.heat types
+    const heat = L.heatLayer(heatmapPoints, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+      max: 1.0,
+      minOpacity: 0.3,
+      gradient: {
+        0.0: '#3b82f6',
+        0.3: '#22c55e',
+        0.5: '#eab308',
+        0.7: '#f97316',
+        1.0: '#ef4444',
+      },
+    });
+
+    heat.addTo(map);
+
+    return () => {
+      map.removeLayer(heat);
+    };
+  }, [mapReady, showHeatmap, heatmapPoints]);
+
+  // Render waypoint markers
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || waypoints.length === 0) return;
+
+    const map = mapInstanceRef.current;
+    const markers: L.Marker[] = [];
+
+    waypoints.forEach((wp, index) => {
+      const marker = L.marker([wp.lat, wp.lng], {
+        icon: L.divIcon({
+          html: `<div style="
+            background: #3b82f6;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            border: 2px solid white;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+          ">${index + 1}</div>`,
+          iconSize: [28, 28],
+          className: 'waypoint-marker',
+        }),
+      });
+      marker.addTo(map);
+      markers.push(marker);
+    });
+
+    return () => {
+      markers.forEach(m => m.remove());
+    };
+  }, [mapReady, waypoints]);
+
+  // Routing
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || !showRouting || waypoints.length < 2) return;
+
+    const map = mapInstanceRef.current;
+    const latLngs = waypoints.map(wp => L.latLng(wp.lat, wp.lng));
+
+    // @ts-ignore
+    const routingControl = L.Routing.control({
+      waypoints: latLngs,
+      routeWhileDragging: false,
+      showAlternatives: false,
+      fitSelectedRoutes: false,
+      addWaypoints: false,
+      show: false,
+      lineOptions: {
+        styles: [
+          { color: '#3b82f6', weight: 5, opacity: 0.8 },
+          { color: '#1d4ed8', weight: 3, opacity: 1 },
+        ],
+        extendToWaypoints: true,
+        missingRouteTolerance: 0,
+      },
+      // @ts-ignore
+      router: L.Routing.osrmv1({
+        serviceUrl: 'https://router.project-osrm.org/route/v1',
+        profile: 'driving',
+      }),
+      createMarker: () => null,
+    });
+
+    routingControl.on('routesfound', (e: any) => {
+      const routes = e.routes;
+      if (routes && routes.length > 0 && onRouteFound) {
+        const route = routes[0];
+        onRouteFound({
+          distance: route.summary.totalDistance,
+          duration: route.summary.totalTime,
+        });
+      }
+    });
+
+    routingControl.addTo(map);
+
+    return () => {
+      try {
+        map.removeControl(routingControl);
+      } catch (e) {}
+    };
+  }, [mapReady, showRouting, waypoints, onRouteFound]);
 
   return (
     <div

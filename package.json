@@ -75,6 +75,8 @@
     "jspdf": "^3.0.2",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
+    "leaflet-routing-machine": "^3.2.12",
+    "leaflet.heat": "^0.2.0",
     "lexical": "^0.35.0",
     "lovable-tagger": "^1.1.9",
     "lucide-react": "^0.544.0",

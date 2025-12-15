@@ -5,75 +5,67 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useMapFlags } from '@/hooks/useMapFlags';
+import { useMapFlags, MapFlag } from '@/hooks/useMapFlags';
 import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
-import { useTopics } from '@/hooks/useTopics';
-import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { useMapFlagTopics } from '@/hooks/useMapFlagTopics';
+import { TopicSelector } from '@/components/topics/TopicSelector';
 
 interface MapFlagEditorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   coordinates: { lat: number; lng: number } | null;
-  editFlag?: any;
+  editFlag?: MapFlag | null;
 }
 
 export const MapFlagEditor = ({ open, onOpenChange, coordinates, editFlag }: MapFlagEditorProps) => {
   const { createFlag, updateFlag } = useMapFlags();
   const { flagTypes } = useMapFlagTypes();
-  const { topics: tags, loading: tagsLoading } = useTopics();
+  const { topicIds: existingTopicIds, saveTopics } = useMapFlagTopics(editFlag?.id);
   
-  console.log('Tags geladen:', tags.length, 'Loading:', tagsLoading);
-  console.log('Tags:', tags);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [flagTypeId, setFlagTypeId] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (editFlag) {
       setTitle(editFlag.title);
       setDescription(editFlag.description || '');
       setFlagTypeId(editFlag.flag_type_id);
-      setSelectedTags(editFlag.tags || []);
+      setSelectedTopicIds(existingTopicIds);
     } else {
       setTitle('');
       setDescription('');
       setFlagTypeId(flagTypes[0]?.id || '');
-      setSelectedTags([]);
+      setSelectedTopicIds([]);
     }
-  }, [editFlag, flagTypes]);
+  }, [editFlag, flagTypes, existingTopicIds]);
 
   const handleSave = async () => {
     if (!title.trim() || !flagTypeId) return;
 
-    console.log('Speichere Flagge mit Tags:', selectedTags);
-
     if (editFlag) {
       await updateFlag.mutateAsync({
         id: editFlag.id,
-        updates: { title, description, flag_type_id: flagTypeId, tags: selectedTags },
+        updates: { title, description, flag_type_id: flagTypeId },
       });
+      await saveTopics.mutateAsync({ flagId: editFlag.id, topicIds: selectedTopicIds });
     } else if (coordinates) {
-      await createFlag.mutateAsync({
+      const result = await createFlag.mutateAsync({
         title,
         description,
         flag_type_id: flagTypeId,
         coordinates,
         metadata: {},
-        tags: selectedTags,
+        tags: [],
       });
+      // Save topics for the new flag
+      if (result?.id && selectedTopicIds.length > 0) {
+        await saveTopics.mutateAsync({ flagId: result.id, topicIds: selectedTopicIds });
+      }
     }
 
     onOpenChange(false);
-  };
-
-  const toggleTag = (tagLabel: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tagLabel) 
-        ? prev.filter(t => t !== tagLabel)
-        : [...prev, tagLabel]
-    );
   };
 
   if (flagTypes.length === 0) {
@@ -138,39 +130,12 @@ export const MapFlagEditor = ({ open, onOpenChange, coordinates, editFlag }: Map
           </div>
 
           <div className="space-y-2">
-            <Label>Verknüpfte Stakeholder-Tags</Label>
-            <div className="text-xs text-muted-foreground mb-2">
-              Stakeholder mit diesen Tags werden an dieser Flagge angezeigt
-            </div>
-            <div className="flex flex-wrap gap-2 p-3 border border-border rounded-md min-h-[60px]">
-              {tagsLoading ? (
-                <span className="text-sm text-muted-foreground">Lade Tags...</span>
-              ) : tags.length === 0 ? (
-                <span className="text-sm text-muted-foreground">Keine Tags verfügbar</span>
-              ) : (
-                tags.map((tag) => {
-                  const isSelected = selectedTags.includes(tag.label);
-                  return (
-                    <Badge
-                      key={tag.id}
-                      variant={isSelected ? "default" : "outline"}
-                      className="cursor-pointer"
-                      style={isSelected ? { backgroundColor: tag.color, borderColor: tag.color } : {}}
-                      onClick={() => toggleTag(tag.label)}
-                    >
-                      {tag.icon && <span className="mr-1">{tag.icon}</span>}
-                      {tag.label}
-                      {isSelected && <X className="ml-1 h-3 w-3" />}
-                    </Badge>
-                  );
-                })
-              )}
-            </div>
-            {selectedTags.length > 0 && (
-              <div className="text-xs text-muted-foreground">
-                {selectedTags.length} Tag{selectedTags.length !== 1 ? 's' : ''} ausgewählt
-              </div>
-            )}
+            <Label>Themen</Label>
+            <TopicSelector
+              selectedTopicIds={selectedTopicIds}
+              onTopicsChange={setSelectedTopicIds}
+              placeholder="Themen auswählen..."
+            />
           </div>
 
           {coordinates && !editFlag && (
