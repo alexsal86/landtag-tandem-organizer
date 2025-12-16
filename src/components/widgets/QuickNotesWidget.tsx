@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Save, Trash2, Pin, Tag, Palette, Search, CheckSquare, Settings, ListTodo, Square, MoreHorizontal, Check, Archive, ChevronDown, Vote } from 'lucide-react';
+import { Plus, Save, Trash2, Pin, Tag, Palette, Search, CheckSquare, Settings, ListTodo, Square, MoreHorizontal, Check, Archive, ChevronDown, Vote, Calendar, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { TaskDetailSidebar } from '@/components/TaskDetailSidebar';
+import { MeetingNoteSelector } from './MeetingNoteSelector';
 
 interface QuickNote {
   id: string;
@@ -28,6 +29,9 @@ interface QuickNote {
   task_id?: string;
   is_archived?: boolean;
   archived_at?: string;
+  meeting_id?: string;
+  meeting_result?: string;
+  added_to_meeting_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +93,9 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   const [showArchive, setShowArchive] = useState(false);
   const [decisionDialogOpen, setDecisionDialogOpen] = useState(false);
   const [noteForDecision, setNoteForDecision] = useState<QuickNote | null>(null);
+  const [meetingSelectorOpen, setMeetingSelectorOpen] = useState(false);
+  const [noteForMeeting, setNoteForMeeting] = useState<QuickNote | null>(null);
+  const [meetingNames, setMeetingNames] = useState<Record<string, { title: string; date: string }>>({});
 
   const { autoSave = true, compact = false } = configuration;
 
@@ -421,6 +428,95 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     setDecisionDialogOpen(true);
   };
 
+  const openMeetingSelector = (note: QuickNote) => {
+    setNoteForMeeting(note);
+    setMeetingSelectorOpen(true);
+  };
+
+  const addNoteToMeeting = async (noteId: string, meetingId: string, meetingTitle: string, meetingDate: string) => {
+    try {
+      const { error } = await supabase
+        .from('quick_notes')
+        .update({
+          meeting_id: meetingId,
+          added_to_meeting_at: new Date().toISOString()
+        })
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      // Update local state
+      setNotes(prev => prev.map(note => 
+        note.id === noteId 
+          ? { ...note, meeting_id: meetingId, added_to_meeting_at: new Date().toISOString() }
+          : note
+      ));
+
+      // Store meeting name for display
+      setMeetingNames(prev => ({
+        ...prev,
+        [meetingId]: { title: meetingTitle, date: meetingDate }
+      }));
+
+      toast.success(`Notiz zum Jour Fixe "${meetingTitle}" hinzugefügt`);
+      setMeetingSelectorOpen(false);
+      setNoteForMeeting(null);
+    } catch (error) {
+      console.error('Error adding note to meeting:', error);
+      toast.error('Fehler beim Hinzufügen zum Jour Fixe');
+    }
+  };
+
+  const removeNoteFromMeeting = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('quick_notes')
+        .update({
+          meeting_id: null,
+          added_to_meeting_at: null
+        })
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      // Update local state
+      setNotes(prev => prev.map(note => 
+        note.id === noteId 
+          ? { ...note, meeting_id: undefined, added_to_meeting_at: undefined }
+          : note
+      ));
+
+      toast.success('Notiz vom Jour Fixe entfernt');
+    } catch (error) {
+      console.error('Error removing note from meeting:', error);
+      toast.error('Fehler beim Entfernen vom Jour Fixe');
+    }
+  };
+
+  // Load meeting names for notes that have meeting_id
+  useEffect(() => {
+    const loadMeetingNames = async () => {
+      const meetingIds = notes.filter(n => n.meeting_id).map(n => n.meeting_id!);
+      if (meetingIds.length === 0) return;
+
+      const uniqueIds = [...new Set(meetingIds)];
+      const { data, error } = await supabase
+        .from('meetings')
+        .select('id, title, meeting_date')
+        .in('id', uniqueIds);
+
+      if (!error && data) {
+        const names: Record<string, { title: string; date: string }> = {};
+        data.forEach(m => {
+          names[m.id] = { title: m.title, date: m.meeting_date };
+        });
+        setMeetingNames(names);
+      }
+    };
+
+    loadMeetingNames();
+  }, [notes]);
+
   const filteredNotes = notes
     .filter(note => !note.task_id)
     .filter(note => showArchive ? note.is_archived : !note.is_archived)
@@ -640,10 +736,22 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                     <p className={`text-xs text-muted-foreground ${compact ? 'line-clamp-2' : 'line-clamp-3'}`}>
                       {note.content}
                     </p>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
                       {note.task_id && (
                         <Badge variant="outline" className="text-xs px-1 py-0 text-blue-600">
                           Mit Aufgabe verknüpft
+                        </Badge>
+                      )}
+                      {note.meeting_id && (
+                        <Badge variant="outline" className="text-xs px-1 py-0 text-emerald-600 bg-emerald-50 dark:bg-emerald-950">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {meetingNames[note.meeting_id]?.title || 'Jour Fixe'}
+                        </Badge>
+                      )}
+                      {note.meeting_result && (
+                        <Badge variant="outline" className="text-xs px-1 py-0 text-amber-600 bg-amber-50 dark:bg-amber-950">
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          Ergebnis vorhanden
                         </Badge>
                       )}
                       {note.tags && note.tags.length > 0 && (
@@ -656,6 +764,13 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                         </div>
                       )}
                     </div>
+                    {note.meeting_result && (
+                      <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-800">
+                        <p className="text-xs text-amber-800 dark:text-amber-200">
+                          <strong>Ergebnis:</strong> {note.meeting_result}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2">
@@ -693,6 +808,31 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                             Als Entscheidung
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuSeparator />
+                        {!showArchive && !note.meeting_id && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openMeetingSelector(note);
+                            }}
+                          >
+                            <Calendar className="h-3 w-3 mr-2" />
+                            Auf Jour Fixe setzen
+                          </DropdownMenuItem>
+                        )}
+                        {note.meeting_id && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeNoteFromMeeting(note.id);
+                            }}
+                            className="text-amber-600"
+                          >
+                            <Calendar className="h-3 w-3 mr-2" />
+                            Von Jour Fixe entfernen
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
@@ -824,6 +964,18 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
           setNoteForDecision(null);
         }}
         note={noteForDecision}
+      />
+
+      {/* Meeting Note Selector */}
+      <MeetingNoteSelector
+        open={meetingSelectorOpen}
+        onOpenChange={setMeetingSelectorOpen}
+        currentMeetingId={noteForMeeting?.meeting_id}
+        onSelect={(meetingId, meetingTitle, meetingDate) => {
+          if (noteForMeeting) {
+            addNoteToMeeting(noteForMeeting.id, meetingId, meetingTitle, meetingDate);
+          }
+        }}
       />
     </Card>
   );

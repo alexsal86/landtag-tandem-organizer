@@ -6578,6 +6578,7 @@ export type Database = {
       }
       quick_notes: {
         Row: {
+          added_to_meeting_at: string | null
           archived_at: string | null
           category: string | null
           color: string | null
@@ -6586,6 +6587,8 @@ export type Database = {
           id: string
           is_archived: boolean | null
           is_pinned: boolean | null
+          meeting_id: string | null
+          meeting_result: string | null
           tags: string[] | null
           task_id: string | null
           title: string | null
@@ -6593,6 +6596,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          added_to_meeting_at?: string | null
           archived_at?: string | null
           category?: string | null
           color?: string | null
@@ -6601,6 +6605,8 @@ export type Database = {
           id?: string
           is_archived?: boolean | null
           is_pinned?: boolean | null
+          meeting_id?: string | null
+          meeting_result?: string | null
           tags?: string[] | null
           task_id?: string | null
           title?: string | null
@@ -6608,6 +6614,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          added_to_meeting_at?: string | null
           archived_at?: string | null
           category?: string | null
           color?: string | null
@@ -6616,6 +6623,8 @@ export type Database = {
           id?: string
           is_archived?: boolean | null
           is_pinned?: boolean | null
+          meeting_id?: string | null
+          meeting_result?: string | null
           tags?: string[] | null
           task_id?: string | null
           title?: string | null
@@ -6623,6 +6632,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "quick_notes_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quick_notes_task_id_fkey"
             columns: ["task_id"]
