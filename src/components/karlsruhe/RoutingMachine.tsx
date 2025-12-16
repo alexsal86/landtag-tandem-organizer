@@ -1,16 +1,14 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
-import 'leaflet-routing-machine';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import { Waypoint } from './RoutePlannerPanel';
 
-// Extend Leaflet types for routing
-declare module 'leaflet' {
-  namespace Routing {
-    function control(options: any): any;
-    function osrmv1(options?: any): any;
-  }
-}
+// Import leaflet-routing-machine after L is available
+// @ts-ignore
+import 'leaflet-routing-machine';
+
+// Access Routing from the global L object after import
+const LRouting = (L as any).Routing;
 
 interface RoutingMachineProps {
   map: L.Map | null;
@@ -39,7 +37,7 @@ export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineP
 
     const latLngs = waypoints.map(wp => L.latLng(wp.lat, wp.lng));
 
-    const routingControl = L.Routing.control({
+    const routingControl = LRouting.control({
       waypoints: latLngs,
       routeWhileDragging: false,
       showAlternatives: false,
@@ -54,7 +52,7 @@ export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineP
         extendToWaypoints: true,
         missingRouteTolerance: 0,
       },
-      router: L.Routing.osrmv1({
+      router: LRouting.osrmv1({
         serviceUrl: 'https://router.project-osrm.org/route/v1',
         profile: 'driving',
       }),
