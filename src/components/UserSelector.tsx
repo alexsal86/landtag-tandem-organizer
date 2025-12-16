@@ -38,10 +38,13 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
-    if (currentTenant) {
+    if (currentTenant?.id) {
+      console.log('UserSelector: Fetching users for tenant', currentTenant.id);
       fetchUsers();
+    } else {
+      console.log('UserSelector: No tenant available yet, waiting...');
     }
-  }, [currentTenant]);
+  }, [currentTenant?.id]);
 
   useEffect(() => {
     if (selectedUserId && users.length > 0) {

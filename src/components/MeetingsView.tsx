@@ -25,6 +25,7 @@ import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { UserSelector } from "@/components/UserSelector";
 import { RecurrenceSelector } from "@/components/ui/recurrence-selector";
 import { MeetingParticipantsManager } from "@/components/meetings/MeetingParticipantsManager";
+import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
 
 interface RecurrenceData {
   enabled: boolean;
@@ -2244,6 +2245,13 @@ export function MeetingsView() {
                       
                       {item.description && (
                         <p className="text-muted-foreground mb-3 ml-12">{item.description}</p>
+                      )}
+
+                      {/* Show upcoming appointments for "Aktuelles aus dem Landtag" */}
+                      {item.title.toLowerCase().includes('aktuelles aus dem landtag') && (
+                        <div className="ml-12 mb-4">
+                          <UpcomingAppointmentsSection meetingDate={activeMeeting.meeting_date} />
+                        </div>
                       )}
 
                       {/* Display notes if available */}
