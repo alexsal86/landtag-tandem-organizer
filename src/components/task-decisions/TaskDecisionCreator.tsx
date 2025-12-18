@@ -3,12 +3,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Vote, Mail, MessageSquare, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
+import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
+import { ResponseOptionsPreview } from "./ResponseOptionsPreview";
+import { DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, ResponseOption, getTemplateById } from "@/lib/decisionTemplates";
 
 interface TaskDecisionCreatorProps {
   taskId: string;
@@ -32,7 +36,19 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
   const [sendViaMatrix, setSendViaMatrix] = useState(true);
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState(DEFAULT_TEMPLATE_ID);
+  const [customOptions, setCustomOptions] = useState<ResponseOption[]>([
+    { key: "option_1", label: "Option 1", color: "blue" },
+    { key: "option_2", label: "Option 2", color: "green" }
+  ]);
   const { toast } = useToast();
+
+  const currentOptions = useMemo(() => {
+    if (selectedTemplateId === "custom") {
+      return customOptions;
+    }
+    return getTemplateById(selectedTemplateId)?.options || [];
+  }, [selectedTemplateId, customOptions]);
 
   const loadProfiles = async () => {
     try {
@@ -144,6 +160,7 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
         created_by: userData.user.id,
         tenant_id: tenantData.tenant_id,
         visible_to_all: visibleToAll,
+        response_options: JSON.parse(JSON.stringify(currentOptions)),
       };
       
       console.log('Creating decision with data:', insertData);
@@ -367,6 +384,11 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
       setSendByEmail(false);
       setSendViaMatrix(false);
       setVisibleToAll(true);
+      setSelectedTemplateId(DEFAULT_TEMPLATE_ID);
+      setCustomOptions([
+        { key: "option_1", label: "Option 1", color: "blue" },
+        { key: "option_2", label: "Option 2", color: "green" }
+      ]);
       setIsOpen(false);
       onDecisionCreated();
     } catch (error) {
@@ -439,6 +461,40 @@ export const TaskDecisionCreator = ({ taskId, onDecisionCreated }: TaskDecisionC
             <p className="text-xs text-muted-foreground ml-6">
               Öffentliche Entscheidungen sind für alle Büromitarbeiter sichtbar. Die ausgewählten Benutzer können abstimmen.
             </p>
+          </div>
+
+          {/* Response Options Template Selection */}
+          <div className="space-y-3 border-t pt-4">
+            <div>
+              <label className="text-sm font-medium">Antworttyp</label>
+              <Select
+                value={selectedTemplateId}
+                onValueChange={setSelectedTemplateId}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Antworttyp wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.values(DECISION_TEMPLATES).map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      <div className="flex flex-col items-start">
+                        <span>{template.name}</span>
+                        <span className="text-xs text-muted-foreground">{template.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedTemplateId === "custom" && (
+              <ResponseOptionsEditor
+                options={customOptions}
+                onChange={setCustomOptions}
+              />
+            )}
+
+            <ResponseOptionsPreview options={currentOptions} />
           </div>
 
           <div>

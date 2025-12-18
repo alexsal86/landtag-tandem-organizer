@@ -10,7 +10,7 @@ const corsHeaders = {
 interface DecisionResponseRequest {
   participantId: string;
   token: string;
-  responseType: 'yes' | 'no' | 'question';
+  responseType: string; // Now accepts any string key from response_options
   comment?: string;
 }
 
@@ -64,7 +64,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get decision details separately
     const { data: decision, error: decisionError } = await supabase
       .from('task_decisions')
-      .select('id, title, created_by, task_id')
+      .select('id, title, created_by, task_id, response_options')
       .eq('id', participant.decision_id)
       .single();
 
@@ -74,6 +74,32 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Invalid decision:", decisionError);
       return new Response(
         JSON.stringify({ error: "Entscheidung nicht gefunden" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Validate response type against allowed options
+    const responseOptions = decision.response_options || [];
+    const validOption = responseOptions.find((opt: any) => opt.key === responseType);
+    
+    if (!validOption) {
+      console.error("Invalid response type:", responseType, "Valid options:", responseOptions.map((o: any) => o.key));
+      return new Response(
+        JSON.stringify({ error: "Ungültiger Antworttyp" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Check if option requires comment
+    if (validOption.requires_comment && !comment?.trim()) {
+      return new Response(
+        JSON.stringify({ error: "Ein Kommentar ist für diese Antwortoption erforderlich" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -198,7 +224,8 @@ const handler = async (req: Request): Promise<Response> => {
         message: "Antwort erfolgreich gespeichert",
         participantName,
         decisionTitle: decision.title,
-        responseType
+        responseType,
+        responseOptions: decision.response_options
       }),
       {
         status: 200,
