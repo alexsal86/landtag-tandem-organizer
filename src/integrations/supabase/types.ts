@@ -7400,6 +7400,7 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
+          response_options: Json | null
           status: string
           subtask_id: string | null
           task_id: string | null
@@ -7415,6 +7416,7 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
+          response_options?: Json | null
           status?: string
           subtask_id?: string | null
           task_id?: string | null
@@ -7430,6 +7432,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
+          response_options?: Json | null
           status?: string
           subtask_id?: string | null
           task_id?: string | null

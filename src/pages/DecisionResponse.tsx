@@ -2,39 +2,98 @@ import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, MessageCircle, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, XCircle, Loader2, Check, X, MessageCircle, Circle, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
+
+const getIcon = (iconName?: string, className = "h-4 w-4") => {
+  switch (iconName) {
+    case "check":
+      return <Check className={className} />;
+    case "x":
+      return <X className={className} />;
+    case "message-circle":
+      return <MessageCircle className={className} />;
+    case "star":
+      return <Star className={className} />;
+    default:
+      return <Circle className={className} />;
+  }
+};
 
 export default function DecisionResponse() {
   const { participantId } = useParams<{ participantId: string }>();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  const initialResponse = searchParams.get('response') as 'yes' | 'no' | 'question' | null;
+  const initialResponse = searchParams.get('response');
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [comment, setComment] = useState("");
-  const [responseType, setResponseType] = useState<'yes' | 'no' | 'question' | null>(initialResponse);
+  const [selectedOption, setSelectedOption] = useState<ResponseOption | null>(null);
   const [result, setResult] = useState<any>(null);
+  const [responseOptions, setResponseOptions] = useState<ResponseOption[]>(getDefaultOptions());
 
   useEffect(() => {
-    if (initialResponse && token && participantId) {
-      // Auto-submit for yes/no responses
-      if (initialResponse === 'yes' || initialResponse === 'no') {
-        handleSubmit(initialResponse);
+    if (token && participantId) {
+      loadDecisionOptions();
+    }
+  }, [token, participantId]);
+
+  useEffect(() => {
+    if (!isLoadingOptions && initialResponse && token && participantId) {
+      const option = responseOptions.find(o => o.key === initialResponse);
+      if (option && !option.requires_comment) {
+        handleSubmit(option);
       }
     }
-  }, [initialResponse, token, participantId]);
+  }, [isLoadingOptions, initialResponse, token, participantId, responseOptions]);
 
-  const handleSubmit = async (type: 'yes' | 'no' | 'question' = responseType!) => {
+  const loadDecisionOptions = async () => {
+    try {
+      // First get the decision_id from participant
+      const { data: participant, error: participantError } = await supabase
+        .from('task_decision_participants')
+        .select('decision_id')
+        .eq('id', participantId)
+        .eq('token', token)
+        .single();
+
+      if (participantError || !participant) {
+        console.error('Error loading participant:', participantError);
+        setIsLoadingOptions(false);
+        return;
+      }
+
+      // Then get the response options
+      const { data, error } = await supabase
+        .from('task_decisions')
+        .select('response_options')
+        .eq('id', participant.decision_id)
+        .single();
+
+      if (error) throw error;
+      if (data?.response_options && Array.isArray(data.response_options)) {
+        setResponseOptions(data.response_options as unknown as ResponseOption[]);
+      }
+    } catch (error) {
+      console.error('Error loading decision options:', error);
+    } finally {
+      setIsLoadingOptions(false);
+    }
+  };
+
+  const handleSubmit = async (option: ResponseOption) => {
     if (!token || !participantId) {
       setError("Ungültiger Link");
       return;
     }
 
-    if (type === 'question' && !comment.trim()) {
+    if (option.requires_comment && !comment.trim()) {
       setError("Bitte geben Sie eine Frage oder einen Kommentar ein.");
       return;
     }
@@ -47,7 +106,7 @@ export default function DecisionResponse() {
         body: {
           participantId,
           token,
-          responseType: type,
+          responseType: option.key,
           comment: comment.trim() || undefined,
         },
       });
@@ -56,7 +115,7 @@ export default function DecisionResponse() {
         throw new Error(functionError.message);
       }
 
-      setResult(data);
+      setResult({ ...data, selectedOption: option });
       setIsSubmitted(true);
     } catch (err: any) {
       console.error('Error submitting response:', err);
@@ -67,7 +126,7 @@ export default function DecisionResponse() {
   };
 
   const handleAddComment = async () => {
-    if (!token || !participantId || !comment.trim()) return;
+    if (!token || !participantId || !comment.trim() || !result?.selectedOption) return;
 
     setIsLoading(true);
     try {
@@ -75,7 +134,7 @@ export default function DecisionResponse() {
         body: {
           participantId,
           token,
-          responseType: result.responseType,
+          responseType: result.selectedOption.key,
           comment: comment.trim(),
         },
       });
@@ -93,6 +152,9 @@ export default function DecisionResponse() {
   };
 
   if (isSubmitted && result) {
+    const option = result.selectedOption;
+    const colorClasses = option ? getColorClasses(option.color) : getColorClasses("gray");
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -112,22 +174,17 @@ export default function DecisionResponse() {
               </p>
             </div>
             <div className="p-3 bg-muted rounded-lg text-center">
-              <p className="text-sm font-medium">
+              <p className="text-sm font-medium flex items-center justify-center gap-2">
                 Ihre Antwort: 
-                <span className={`ml-2 px-2 py-1 rounded text-xs font-bold ${
-                  result.responseType === 'yes' ? 'bg-green-100 text-green-800' :
-                  result.responseType === 'no' ? 'bg-red-100 text-red-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {result.responseType === 'yes' ? '✓ Ja' :
-                   result.responseType === 'no' ? '✗ Nein' :
-                   '? Frage'}
-                </span>
+                <Badge variant="outline" className={`${colorClasses.textClass} ${colorClasses.borderClass}`}>
+                  {option?.icon && getIcon(option.icon, "h-3 w-3")}
+                  <span className="ml-1">{option?.label || result.responseType}</span>
+                </Badge>
               </p>
             </div>
 
             {/* Comment section after submission */}
-            {!result.commentAdded && result.responseType !== 'question' && (
+            {!result.commentAdded && !option?.requires_comment && (
               <div className="border-t pt-4 space-y-3">
                 <label className="text-sm font-medium">Möchten Sie einen Kommentar hinzufügen?</label>
                 <SimpleRichTextEditor
@@ -181,6 +238,22 @@ export default function DecisionResponse() {
     );
   }
 
+  if (isLoadingOptions) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="py-8 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-sm text-muted-foreground mt-2">Lade Entscheidungsoptionen...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check if any option requires comment for special handling
+  const optionRequiringComment = responseOptions.find(o => o.requires_comment);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -197,7 +270,7 @@ export default function DecisionResponse() {
             </div>
           )}
 
-          {responseType === 'question' ? (
+          {selectedOption?.requires_comment ? (
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Ihre Frage oder Kommentar:</label>
@@ -213,21 +286,21 @@ export default function DecisionResponse() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => setResponseType(null)}
+                  onClick={() => setSelectedOption(null)}
                   disabled={isLoading}
                   className="flex-1"
                 >
                   Zurück
                 </Button>
                 <Button
-                  onClick={() => handleSubmit('question')}
+                  onClick={() => handleSubmit(selectedOption)}
                   disabled={isLoading || !comment.trim()}
                   className="flex-1"
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    "Frage senden"
+                    "Senden"
                   )}
                 </Button>
               </div>
@@ -247,42 +320,41 @@ export default function DecisionResponse() {
               </div>
               
               <div className="grid gap-3">
-                <Button
-                  onClick={() => handleSubmit('yes')}
-                  disabled={isLoading}
-                  className="bg-green-600 hover:bg-green-700 text-white py-3"
-                >
-                  {isLoading && responseType === 'yes' ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                  )}
-                  Ja, einverstanden
-                </Button>
-                
-                <Button
-                  onClick={() => setResponseType('question')}
-                  disabled={isLoading}
-                  variant="outline"
-                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-50 py-3"
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Frage stellen
-                </Button>
-                
-                <Button
-                  onClick={() => handleSubmit('no')}
-                  disabled={isLoading}
-                  variant="destructive"
-                  className="py-3"
-                >
-                  {isLoading && responseType === 'no' ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <XCircle className="h-4 w-4 mr-2" />
-                  )}
-                  Nein, nicht einverstanden
-                </Button>
+                {responseOptions.map((option) => {
+                  const colorClasses = getColorClasses(option.color);
+                  
+                  if (option.requires_comment) {
+                    return (
+                      <Button
+                        key={option.key}
+                        onClick={() => setSelectedOption(option)}
+                        disabled={isLoading}
+                        variant="outline"
+                        className={`py-3 ${colorClasses.textClass} ${colorClasses.borderClass}`}
+                      >
+                        {getIcon(option.icon)}
+                        <span className="ml-2">{option.label}</span>
+                      </Button>
+                    );
+                  }
+
+                  return (
+                    <Button
+                      key={option.key}
+                      onClick={() => handleSubmit(option)}
+                      disabled={isLoading}
+                      className={`py-3 ${colorClasses.bgClass} ${colorClasses.textClass} hover:opacity-90`}
+                      variant="outline"
+                    >
+                      {isLoading && selectedOption?.key === option.key ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        getIcon(option.icon)
+                      )}
+                      <span className="ml-2">{option.label}</span>
+                    </Button>
+                  );
+                })}
               </div>
             </div>
           )}
