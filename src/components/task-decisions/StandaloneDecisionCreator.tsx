@@ -5,13 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Vote, Mail, Plus, MessageSquare, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
-
+import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
+import { ResponseOptionsPreview } from "./ResponseOptionsPreview";
+import { DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, ResponseOption, getTemplateById } from "@/lib/decisionTemplates";
 interface StandaloneDecisionCreatorProps {
   onDecisionCreated: () => void;
   variant?: 'button' | 'icon';
@@ -35,7 +38,19 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
   const [visibleToAll, setVisibleToAll] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState(DEFAULT_TEMPLATE_ID);
+  const [customOptions, setCustomOptions] = useState<ResponseOption[]>([
+    { key: "option_1", label: "Option 1", color: "blue" },
+    { key: "option_2", label: "Option 2", color: "green" }
+  ]);
   const { toast } = useToast();
+
+  const currentOptions = useMemo(() => {
+    if (selectedTemplateId === "custom") {
+      return customOptions;
+    }
+    return getTemplateById(selectedTemplateId)?.options || [];
+  }, [selectedTemplateId, customOptions]);
 
   const loadProfiles = async () => {
     try {
@@ -147,6 +162,7 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
         created_by: userData.user.id,
         tenant_id: tenantData.tenant_id,
         visible_to_all: visibleToAll,
+        response_options: JSON.parse(JSON.stringify(currentOptions)),
       };
       
       console.log('Creating standalone decision with data:', insertData);
@@ -364,6 +380,11 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
       setSelectedUsers([]);
       setSelectedFiles([]);
       setSelectedTopicIds([]);
+      setSelectedTemplateId(DEFAULT_TEMPLATE_ID);
+      setCustomOptions([
+        { key: "option_1", label: "Option 1", color: "blue" },
+        { key: "option_2", label: "Option 2", color: "green" }
+      ]);
       setSendByEmail(false);
       setSendViaMatrix(false);
       setVisibleToAll(true);
@@ -452,6 +473,36 @@ export const StandaloneDecisionCreator = ({ onDecisionCreated, variant = 'button
               Öffentliche Entscheidungen sind für alle Büromitarbeiter sichtbar. Die ausgewählten Benutzer können abstimmen.
             </p>
           </div>
+
+          <div>
+            <label className="text-sm font-medium">Antworttyp</label>
+            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Vorlage auswählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(DECISION_TEMPLATES).map(([id, template]) => (
+                  <SelectItem key={id} value={id}>
+                    {template.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {DECISION_TEMPLATES[selectedTemplateId as keyof typeof DECISION_TEMPLATES]?.description}
+            </p>
+          </div>
+
+          {selectedTemplateId === "custom" && (
+            <ResponseOptionsEditor
+              options={customOptions}
+              onChange={setCustomOptions}
+            />
+          )}
+
+          {currentOptions.length > 0 && (
+            <ResponseOptionsPreview options={currentOptions} />
+          )}
 
           <div>
             <label className="text-sm font-medium">Benutzer auswählen{!visibleToAll && ' (mindestens einer erforderlich)'}</label>
