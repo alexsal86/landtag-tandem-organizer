@@ -34,18 +34,38 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
   const baseDate = typeof meetingDate === 'string' ? new Date(meetingDate) : meetingDate;
 
   useEffect(() => {
+    console.log('📅 UpcomingAppointmentsSection useEffect triggered');
+    console.log('- currentTenant:', currentTenant);
+    console.log('- currentTenant?.id:', currentTenant?.id);
+    console.log('- meetingDate:', meetingDate);
+    console.log('- baseDate:', baseDate);
+    
     if (currentTenant?.id) {
+      console.log('✅ Tenant ID found, loading appointments...');
       loadAppointments();
+    } else {
+      console.log('❌ No tenant ID, skipping appointment load');
     }
   }, [currentTenant?.id, meetingDate]);
 
   const loadAppointments = async () => {
-    if (!currentTenant?.id) return;
+    console.log('📅 loadAppointments called');
+    console.log('- currentTenant?.id:', currentTenant?.id);
+    
+    if (!currentTenant?.id) {
+      console.log('❌ No tenant ID in loadAppointments, returning');
+      return;
+    }
 
     setLoading(true);
     try {
       const startDate = startOfDay(baseDate);
       const endDate = endOfDay(addDays(baseDate, 14));
+
+      console.log('📅 Query parameters:');
+      console.log('- tenant_id:', currentTenant.id);
+      console.log('- startDate:', startDate.toISOString());
+      console.log('- endDate:', endDate.toISOString());
 
       const { data, error } = await supabase
         .from('appointments')
@@ -54,6 +74,11 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         .gte('start_time', startDate.toISOString())
         .lte('start_time', endDate.toISOString())
         .order('start_time', { ascending: true });
+
+      console.log('📅 Query result:');
+      console.log('- data:', data);
+      console.log('- data length:', data?.length);
+      console.log('- error:', error);
 
       if (error) throw error;
       setAppointments(data || []);
