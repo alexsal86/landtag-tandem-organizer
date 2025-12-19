@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat } from "lucide-react";
+import { CalendarIcon, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -111,6 +111,7 @@ export function MeetingsView() {
   const [taskDocuments, setTaskDocuments] = useState<Record<string, any[]>>({});
   const [agendaDocuments, setAgendaDocuments] = useState<Record<string, any[]>>({});
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
+  const [linkedQuickNotes, setLinkedQuickNotes] = useState<any[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
     title: "",
@@ -626,23 +627,72 @@ export function MeetingsView() {
     if (error) throw error;
   };
 
+  const loadLinkedQuickNotes = async (meetingId: string) => {
+    try {
+      console.log('📝 Loading linked quick notes for meeting:', meetingId);
+      const { data, error } = await supabase
+        .from('quick_notes')
+        .select('*')
+        .eq('meeting_id', meetingId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading linked quick notes:', error);
+        return;
+      }
+
+      console.log('📝 Found quick notes:', data?.length || 0);
+      setLinkedQuickNotes(data || []);
+    } catch (error) {
+      console.error('Error loading linked quick notes:', error);
+    }
+  };
+
+  const updateQuickNoteResult = async (noteId: string, result: string) => {
+    try {
+      const { error } = await supabase
+        .from('quick_notes')
+        .update({ meeting_result: result })
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      // Update local state
+      setLinkedQuickNotes(prev => 
+        prev.map(note => 
+          note.id === noteId ? { ...note, meeting_result: result } : note
+        )
+      );
+    } catch (error) {
+      console.error('Error updating quick note result:', error);
+      toast({
+        title: "Fehler",
+        description: "Das Ergebnis konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const startMeeting = async (meeting: Meeting) => {
     // Stop any currently active meeting first
     if (activeMeetingId && activeMeetingId !== meeting.id) {
       setActiveMeeting(null);
       setActiveMeetingId(null);
+      setLinkedQuickNotes([]);
     }
     
     setActiveMeeting(meeting);
     setActiveMeetingId(meeting.id || null);
     if (meeting.id) {
       await loadAgendaItems(meeting.id);
+      await loadLinkedQuickNotes(meeting.id);
     }
   };
 
   const stopMeeting = () => {
     setActiveMeeting(null);
     setActiveMeetingId(null);
+    setLinkedQuickNotes([]);
   };
 
   const archiveMeeting = async (meeting: Meeting) => {
@@ -2547,6 +2597,47 @@ export function MeetingsView() {
                   <div className="text-center py-8 text-muted-foreground">
                     <Clock className="h-12 w-12 mx-auto mb-4" />
                     <p>Keine Agenda-Punkte für diese Besprechung gefunden.</p>
+                  </div>
+                )}
+
+                {/* Quick Notes Section */}
+                {linkedQuickNotes.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-dashed">
+                    <div className="flex items-center gap-2 mb-4">
+                      <StickyNote className="h-5 w-5 text-amber-500" />
+                      <h3 className="font-semibold text-lg">Quick Notes für dieses Meeting</h3>
+                      <Badge variant="secondary">{linkedQuickNotes.length}</Badge>
+                    </div>
+                    <div className="space-y-4">
+                      {linkedQuickNotes.map((note) => (
+                        <Card key={note.id} className="bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                          <CardContent className="p-4">
+                            <div className="flex flex-col gap-3">
+                              <div>
+                                {note.title && (
+                                  <h4 className="font-medium mb-1">{note.title}</h4>
+                                )}
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                  {note.content}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  Erstellt: {format(new Date(note.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}
+                                </p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Ergebnis / Besprechungsnotiz</label>
+                                <Textarea
+                                  value={note.meeting_result || ''}
+                                  onChange={(e) => updateQuickNoteResult(note.id, e.target.value)}
+                                  placeholder="Ergebnis aus der Besprechung eintragen..."
+                                  className="min-h-[80px] bg-background"
+                                />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
