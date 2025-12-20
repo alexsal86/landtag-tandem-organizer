@@ -38,56 +38,56 @@ const App = () => (
     <AuthProvider>
       <TenantProvider>
         <NotificationProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <GlobalSearchCommand />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={<Index />} />
-            <Route path="/calendar" element={<Index />} />
-            <Route path="/contacts" element={<Index />} />
-            <Route path="/tasks" element={<Index />} />
-            <Route path="/decisions" element={<Index />} />
-            <Route path="/meetings" element={<Index />} />
-            <Route path="/eventplanning" element={<Index />} />
-            <Route path="/documents" element={<Index />} />
-            <Route path="/knowledge" element={<Index />} />
-            <Route path="/knowledge/:documentId" element={<Index />} />
-            <Route path="/wahlkreise" element={<Index />} />
-            <Route path="/casefiles" element={<Index />} />
-            <Route path="/stadtteile-karlsruhe" element={<KarlsruheDistricts />} />
-            <Route path="/settings" element={<Index />} />
-            <Route path="/time" element={<Index />} />
-            <Route path="/employee" element={<Index />} />
-            <Route path="/administration" element={<Index />} />
-            <Route path="/drucksachen" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/contacts/new" element={<CreateContact />} />
-            <Route path="/contacts/import" element={<ImportContacts />} />
-            <Route path="/appointments/new" element={<Navigate to="/calendar?action=create-appointment" replace />} />
-            <Route path="/tasks/new" element={<CreateTask />} />
-            
-            <Route path="/contacts/:id" element={<ContactDetail />} />
-            <Route path="/contacts/:id/edit" element={<EditContact />} />
-            <Route path="/distribution-lists/new" element={<CreateDistributionList />} />
-            <Route path="/distribution-lists/:id/edit" element={<EditDistributionList />} />
-            <Route path="/profile/edit" element={<EditProfile />} />
-            <Route path="/poll-guest/:pollId" element={<PollGuest />} />
-            <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
-            <Route path="/guest-response/:token" element={<GuestResponse />} />
-            <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
-            <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
-            <Route path="/collaboration-test" element={<CollaborationTest />} />
-            <Route path="/yjs-collaboration-test" element={<YjsCollaborationTestPage />} />
-            <Route path="/editor-test" element={<EditorTest />} />
-            <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <GlobalSearchCommand />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/dashboard" element={<Index />} />
+                <Route path="/calendar" element={<Index />} />
+                <Route path="/contacts" element={<Index />} />
+                <Route path="/tasks" element={<Index />} />
+                <Route path="/decisions" element={<Index />} />
+                <Route path="/meetings" element={<Index />} />
+                <Route path="/eventplanning" element={<Index />} />
+                <Route path="/documents" element={<Index />} />
+                <Route path="/knowledge" element={<Index />} />
+                <Route path="/knowledge/:documentId" element={<Index />} />
+                <Route path="/wahlkreise" element={<Index />} />
+                <Route path="/casefiles" element={<Index />} />
+                <Route path="/stadtteile-karlsruhe" element={<KarlsruheDistricts />} />
+                <Route path="/settings" element={<Index />} />
+                <Route path="/time" element={<Index />} />
+                <Route path="/employee" element={<Index />} />
+                <Route path="/administration" element={<Index />} />
+                <Route path="/drucksachen" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/contacts/new" element={<CreateContact />} />
+                <Route path="/contacts/import" element={<ImportContacts />} />
+                <Route path="/appointments/new" element={<Navigate to="/calendar?action=create-appointment" replace />} />
+                <Route path="/tasks/new" element={<CreateTask />} />
+                
+                <Route path="/contacts/:id" element={<ContactDetail />} />
+                <Route path="/contacts/:id/edit" element={<EditContact />} />
+                <Route path="/distribution-lists/new" element={<CreateDistributionList />} />
+                <Route path="/distribution-lists/:id/edit" element={<EditDistributionList />} />
+                <Route path="/profile/edit" element={<EditProfile />} />
+                <Route path="/poll-guest/:pollId" element={<PollGuest />} />
+                <Route path="/decision-response/:participantId" element={<DecisionResponse />} />
+                <Route path="/guest-response/:token" element={<GuestResponse />} />
+                <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
+                <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
+                <Route path="/collaboration-test" element={<CollaborationTest />} />
+                <Route path="/yjs-collaboration-test" element={<YjsCollaborationTestPage />} />
+                <Route path="/editor-test" element={<EditorTest />} />
+                <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
           </TooltipProvider>
         </NotificationProvider>
       </TenantProvider>
