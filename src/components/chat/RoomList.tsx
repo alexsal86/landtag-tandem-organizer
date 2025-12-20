@@ -1,0 +1,103 @@
+import React from 'react';
+import { cn } from '@/lib/utils';
+import { MessageSquare, Hash } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { formatDistanceToNow } from 'date-fns';
+import { de } from 'date-fns/locale';
+
+interface Room {
+  roomId: string;
+  name: string;
+  lastMessage?: string;
+  lastMessageTimestamp?: number;
+  unreadCount: number;
+}
+
+interface RoomListProps {
+  rooms: Room[];
+  selectedRoomId: string | null;
+  onSelectRoom: (roomId: string) => void;
+}
+
+export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps) {
+  const formatTimestamp = (timestamp?: number) => {
+    if (!timestamp) return '';
+    return formatDistanceToNow(new Date(timestamp), { 
+      addSuffix: true, 
+      locale: de 
+    });
+  };
+
+  const getRoomDisplayName = (room: Room) => {
+    // Extract readable name from Matrix room ID
+    if (room.name && room.name !== room.roomId) {
+      return room.name;
+    }
+    // Try to parse room alias from room ID
+    const match = room.roomId.match(/^!([^:]+):/);
+    if (match) {
+      return match[1];
+    }
+    return room.roomId;
+  };
+
+  if (rooms.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4">
+        <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
+        <p className="text-sm text-center">Keine Räume gefunden</p>
+        <p className="text-xs text-center mt-1">
+          Verbinden Sie sich mit Matrix in den Einstellungen
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <ScrollArea className="h-full">
+      <div className="space-y-1 p-2">
+        {rooms.map((room) => (
+          <button
+            key={room.roomId}
+            onClick={() => onSelectRoom(room.roomId)}
+            className={cn(
+              "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-colors",
+              "hover:bg-accent/50",
+              selectedRoomId === room.roomId && "bg-accent"
+            )}
+          >
+            <div className="flex-shrink-0 mt-0.5">
+              <Hash className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className={cn(
+                  "font-medium text-sm truncate",
+                  room.unreadCount > 0 && "text-foreground"
+                )}>
+                  {getRoomDisplayName(room)}
+                </span>
+                {room.unreadCount > 0 && (
+                  <Badge variant="default" className="flex-shrink-0 h-5 min-w-[20px] justify-center">
+                    {room.unreadCount > 99 ? '99+' : room.unreadCount}
+                  </Badge>
+                )}
+              </div>
+              {room.lastMessage && (
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  {room.lastMessage}
+                </p>
+              )}
+              {room.lastMessageTimestamp && (
+                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                  {formatTimestamp(room.lastMessageTimestamp)}
+                </p>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+    </ScrollArea>
+  );
+}

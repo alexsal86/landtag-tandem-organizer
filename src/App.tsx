@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { MatrixClientProvider } from "@/contexts/MatrixClientContext";
 import { GlobalSearchCommand } from "@/components/GlobalSearchCommand";
 import Index from "./pages/Index";
 import CreateContact from "./pages/CreateContact";
@@ -38,12 +39,13 @@ const App = () => (
     <AuthProvider>
       <TenantProvider>
         <NotificationProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <GlobalSearchCommand />
-              <Routes>
+          <MatrixClientProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <GlobalSearchCommand />
+                <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/dashboard" element={<Index />} />
                 <Route path="/calendar" element={<Index />} />
@@ -55,15 +57,16 @@ const App = () => (
                 <Route path="/documents" element={<Index />} />
                 <Route path="/knowledge" element={<Index />} />
                 <Route path="/knowledge/:documentId" element={<Index />} />
-                <Route path="/wahlkreise" element={<Index />} />
-                <Route path="/casefiles" element={<Index />} />
-                <Route path="/stadtteile-karlsruhe" element={<KarlsruheDistricts />} />
-                <Route path="/settings" element={<Index />} />
-                <Route path="/time" element={<Index />} />
-                <Route path="/employee" element={<Index />} />
-                <Route path="/administration" element={<Index />} />
-                <Route path="/drucksachen" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
+                  <Route path="/wahlkreise" element={<Index />} />
+                  <Route path="/casefiles" element={<Index />} />
+                  <Route path="/chat" element={<Index />} />
+                  <Route path="/stadtteile-karlsruhe" element={<KarlsruheDistricts />} />
+                  <Route path="/settings" element={<Index />} />
+                  <Route path="/time" element={<Index />} />
+                  <Route path="/employee" element={<Index />} />
+                  <Route path="/administration" element={<Index />} />
+                  <Route path="/drucksachen" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
                 <Route path="/contacts/new" element={<CreateContact />} />
                 <Route path="/contacts/import" element={<ImportContacts />} />
                 <Route path="/appointments/new" element={<Navigate to="/calendar?action=create-appointment" replace />} />
@@ -85,10 +88,11 @@ const App = () => (
                 <Route path="/employee-meeting/:meetingId" element={<EmployeeMeetingDetail />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </MatrixClientProvider>
         </NotificationProvider>
       </TenantProvider>
     </AuthProvider>

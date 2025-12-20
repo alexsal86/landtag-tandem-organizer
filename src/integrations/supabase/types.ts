@@ -6305,6 +6305,9 @@ export type Database = {
           dashboard_cover_image_url: string | null
           display_name: string | null
           id: string
+          matrix_access_token: string | null
+          matrix_homeserver_url: string | null
+          matrix_user_id: string | null
           tenant_id: string
           updated_at: string
           user_id: string
@@ -6319,6 +6322,9 @@ export type Database = {
           dashboard_cover_image_url?: string | null
           display_name?: string | null
           id?: string
+          matrix_access_token?: string | null
+          matrix_homeserver_url?: string | null
+          matrix_user_id?: string | null
           tenant_id: string
           updated_at?: string
           user_id: string
@@ -6333,6 +6339,9 @@ export type Database = {
           dashboard_cover_image_url?: string | null
           display_name?: string | null
           id?: string
+          matrix_access_token?: string | null
+          matrix_homeserver_url?: string | null
+          matrix_user_id?: string | null
           tenant_id?: string
           updated_at?: string
           user_id?: string

@@ -1,4 +1,4 @@
-import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive, Search, Briefcase } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, MessageSquareText, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive, Search, Briefcase } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -108,6 +108,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "settings", label: "Einstellungen", icon: Settings },
     { id: "time", label: "Zeiterfassung", icon: Clock, adminOnly: false },
     { id: "employee", label: "Mitarbeiter", icon: Users },
+    { id: "chat", label: "Chat", icon: MessageSquareText },
   ];
 
   // Load user profile and app settings
