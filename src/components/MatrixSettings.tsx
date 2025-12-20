@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { MatrixMorningSettings } from './MatrixMorningSettings';
+import { MatrixLoginForm } from './chat/MatrixLoginForm';
 
 interface MatrixSubscription {
   id: string;
@@ -310,6 +311,9 @@ export const MatrixSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Matrix Chat Login */}
+      <MatrixLoginForm />
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
