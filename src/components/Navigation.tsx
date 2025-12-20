@@ -435,6 +435,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
             <SidebarGroupContent>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {onlineUsers.slice(0, 8).map((onlineUser) => {
+                  const statusDisplay = onlineUser.status ? getStatusDisplay(onlineUser.status) : null;
                   return (
                     <div
                       key={onlineUser.user_id}
@@ -443,21 +444,44 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         isCollapsed ? "justify-center px-1 py-1" : "gap-3 px-2 py-1.5"
                       )}
                     >
-                      <Avatar className={cn(
-                        "ring-2",
-                        isCollapsed ? "h-6 w-6" : "h-8 w-8",
-                        (onlineUser.status?.status_type === 'online' || onlineUser.status?.status_type === 'custom') && 'ring-green-500',
-                        onlineUser.status?.status_type === 'meeting' && 'ring-blue-500',
-                        onlineUser.status?.status_type === 'away' && 'ring-yellow-500',
-                        onlineUser.status?.status_type === 'break' && 'ring-orange-500',
-                        onlineUser.status?.status_type === 'offline' && 'ring-gray-500',
-                        !onlineUser.status?.status_type && 'ring-gray-500'
-                      )}>
-                        <AvatarImage src={onlineUser.avatar_url || ""} alt={onlineUser.display_name || 'User'} />
-                        <AvatarFallback className="text-xs">
-                          {onlineUser.display_name?.substring(0, 2).toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar className={cn(
+                          "ring-2",
+                          isCollapsed ? "h-6 w-6" : "h-8 w-8",
+                          (onlineUser.status?.status_type === 'online' || onlineUser.status?.status_type === 'custom') && 'ring-green-500',
+                          onlineUser.status?.status_type === 'meeting' && 'ring-blue-500',
+                          onlineUser.status?.status_type === 'away' && 'ring-yellow-500',
+                          onlineUser.status?.status_type === 'break' && 'ring-orange-500',
+                          onlineUser.status?.status_type === 'offline' && 'ring-gray-500',
+                          !onlineUser.status?.status_type && 'ring-gray-500'
+                        )}>
+                          <AvatarImage src={onlineUser.avatar_url || ""} alt={onlineUser.display_name || 'User'} />
+                          <AvatarFallback className="text-xs">
+                            {onlineUser.display_name?.substring(0, 2).toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        {/* Status-Emoji Overlay */}
+                        {statusDisplay && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div 
+                                  className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border border-background flex items-center justify-center cursor-default"
+                                  style={{ backgroundColor: statusDisplay.color }}
+                                >
+                                  <span className="text-[8px]">{statusDisplay.emoji}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="text-xs">
+                                <p className="font-medium">{statusDisplay.label}</p>
+                                {onlineUser.status?.custom_message && (
+                                  <p className="text-muted-foreground">{onlineUser.status.custom_message}</p>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                       {!isCollapsed && (
                         <span className="text-muted-foreground truncate flex-1">
                           {onlineUser.display_name || 'Unbekannt'}
@@ -555,13 +579,24 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                 </Tooltip>
               </TooltipProvider>
               <NotificationBell />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleSignOut}
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <LogOut className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Abmelden</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={handleSignOut} tooltip="Abmelden">
-              <LogOut />
-              <span>Abmelden</span>
-            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
