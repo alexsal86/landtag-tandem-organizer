@@ -125,6 +125,13 @@ export const useNotifications = () => {
       // Trigger cross-tab update
       localStorage.setItem(`notifications-update-${user.id}`, Date.now().toString());
       localStorage.removeItem(`notifications-update-${user.id}`);
+      
+      // Also trigger navigation notifications update
+      localStorage.setItem('notifications_marked_read', JSON.stringify({
+        timestamp: Date.now(),
+        userId: user.id
+      }));
+      localStorage.removeItem('notifications_marked_read');
     } catch (error) {
       console.error('Error marking notification as read:', error);
       // Revert optimistic update on error
