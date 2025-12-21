@@ -1,19 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { useMatrixClient } from '@/contexts/MatrixClientContext';
 import { useToast } from '@/hooks/use-toast';
 import { RoomList } from './RoomList';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
+import { MatrixLoginForm } from './MatrixLoginForm';
 import { cn } from '@/lib/utils';
 
 export function MatrixChatView() {
-  const navigate = useNavigate();
   const { toast } = useToast();
   const {
     isConnected,
@@ -23,19 +20,15 @@ export function MatrixChatView() {
     credentials,
     sendMessage,
     getMessages,
-    totalUnreadCount
+    totalUnreadCount,
+    roomMessages
   } = useMatrixClient();
 
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
 
-  // Load messages when room is selected
-  useEffect(() => {
-    if (selectedRoomId && isConnected) {
-      const roomMessages = getMessages(selectedRoomId, 100);
-      setMessages(roomMessages);
-    }
-  }, [selectedRoomId, isConnected, getMessages]);
+  // Get messages from context (event-based, no polling needed)
+  const messages = selectedRoomId ? (roomMessages.get(selectedRoomId) || []) : [];
 
   // Auto-select first room
   useEffect(() => {
@@ -44,28 +37,18 @@ export function MatrixChatView() {
     }
   }, [rooms, selectedRoomId]);
 
-  // Refresh messages periodically
+  // Load initial messages when room is selected
   useEffect(() => {
-    if (!selectedRoomId || !isConnected) return;
-
-    const interval = setInterval(() => {
-      const roomMessages = getMessages(selectedRoomId, 100);
-      setMessages(roomMessages);
-    }, 2000);
-
-    return () => clearInterval(interval);
+    if (selectedRoomId && isConnected) {
+      getMessages(selectedRoomId, 100);
+    }
   }, [selectedRoomId, isConnected, getMessages]);
 
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = useCallback(async (message: string) => {
     if (!selectedRoomId) return;
 
     try {
       await sendMessage(selectedRoomId, message);
-      // Refresh messages after sending
-      setTimeout(() => {
-        const roomMessages = getMessages(selectedRoomId, 100);
-        setMessages(roomMessages);
-      }, 500);
     } catch (error) {
       toast({
         title: 'Fehler beim Senden',
@@ -73,42 +56,26 @@ export function MatrixChatView() {
         variant: 'destructive'
       });
     }
-  };
+  }, [selectedRoomId, sendMessage, toast]);
 
   const selectedRoom = rooms.find(r => r.roomId === selectedRoomId);
 
-  // Not connected - show setup prompt
-  if (!credentials && !isConnecting) {
+  // Show settings/login form
+  if (showSettings || (!credentials && !isConnecting)) {
     return (
       <div className="container mx-auto p-6 max-w-2xl">
-        <Card>
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 p-4 rounded-full bg-primary/10">
-              <MessageSquare className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle>Matrix Chat</CardTitle>
-            <CardDescription>
-              Verbinden Sie Ihren Matrix-Account, um den Chat zu nutzen
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm text-muted-foreground space-y-2">
-              <p>Mit der Matrix-Integration können Sie:</p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Nachrichten in Ihren Matrix-Räumen lesen</li>
-                <li>Direkt aus der Plattform antworten</li>
-                <li>Benachrichtigungen über neue Nachrichten erhalten</li>
-              </ul>
-            </div>
-            <Button 
-              onClick={() => navigate('/settings')} 
-              className="w-full"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Zu den Einstellungen
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <MessageSquare className="h-6 w-6 text-primary" />
+            Matrix Chat
+          </h1>
+          {credentials && (
+            <Button variant="outline" onClick={() => setShowSettings(false)}>
+              Zurück zum Chat
             </Button>
-          </CardContent>
-        </Card>
+          )}
+        </div>
+        <MatrixLoginForm />
       </div>
     );
   }
@@ -135,7 +102,7 @@ export function MatrixChatView() {
           <AlertDescription className="mt-2">
             <p>{connectionError}</p>
             <Button 
-              onClick={() => navigate('/settings')} 
+              onClick={() => setShowSettings(true)} 
               variant="outline" 
               size="sm" 
               className="mt-4"
@@ -184,7 +151,7 @@ export function MatrixChatView() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate('/settings')}
+              onClick={() => setShowSettings(true)}
             >
               <Settings className="h-4 w-4" />
             </Button>
