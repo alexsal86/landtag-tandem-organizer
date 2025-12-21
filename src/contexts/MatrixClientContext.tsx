@@ -40,6 +40,7 @@ interface MatrixClientContextType {
   sendMessage: (roomId: string, message: string) => Promise<void>;
   getMessages: (roomId: string, limit?: number) => MatrixMessage[];
   totalUnreadCount: number;
+  roomMessages: Map<string, MatrixMessage[]>;
 }
 
 const MatrixClientContext = createContext<MatrixClientContextType | null>(null);
@@ -249,7 +250,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     disconnect,
     sendMessage,
     getMessages,
-    totalUnreadCount
+    totalUnreadCount,
+    roomMessages: messages
   };
 
   return (
