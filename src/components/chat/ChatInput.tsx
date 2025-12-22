@@ -6,16 +6,17 @@ import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => Promise<void>;
+  onTyping?: (isTyping: boolean) => void;
   disabled?: boolean;
   placeholder?: string;
 }
 
-export function ChatInput({ onSendMessage, disabled, placeholder }: ChatInputProps) {
+export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -23,9 +24,36 @@ export function ChatInput({ onSendMessage, disabled, placeholder }: ChatInputPro
     }
   }, [message]);
 
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
+    
+    // Send typing notification
+    if (onTyping) {
+      onTyping(true);
+      
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Stop typing after 3 seconds of no input
+      typingTimeoutRef.current = setTimeout(() => {
+        onTyping(false);
+      }, 3000);
+    }
+  };
+
   const handleSend = async () => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage || isSending || disabled) return;
+
+    // Stop typing notification
+    if (onTyping) {
+      onTyping(false);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    }
 
     setIsSending(true);
     try {
@@ -39,7 +67,6 @@ export function ChatInput({ onSendMessage, disabled, placeholder }: ChatInputPro
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Send on Enter (without Shift)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -53,7 +80,7 @@ export function ChatInput({ onSendMessage, disabled, placeholder }: ChatInputPro
           <Textarea
             ref={textareaRef}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder={placeholder || 'Nachricht eingeben...'}
             disabled={disabled || isSending}

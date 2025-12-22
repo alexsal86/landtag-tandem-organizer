@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { MessageSquare, Hash } from 'lucide-react';
+import { MessageSquare, Hash, User } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,6 +12,8 @@ interface Room {
   lastMessage?: string;
   lastMessageTimestamp?: number;
   unreadCount: number;
+  isDirect?: boolean;
+  memberCount?: number;
 }
 
 interface RoomListProps {
@@ -30,11 +32,9 @@ export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps)
   };
 
   const getRoomDisplayName = (room: Room) => {
-    // Extract readable name from Matrix room ID
     if (room.name && room.name !== room.roomId) {
       return room.name;
     }
-    // Try to parse room alias from room ID
     const match = room.roomId.match(/^!([^:]+):/);
     if (match) {
       return match[1];
@@ -47,9 +47,6 @@ export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps)
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4">
         <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
         <p className="text-sm text-center">Keine Räume gefunden</p>
-        <p className="text-xs text-center mt-1">
-          Verbinden Sie sich mit Matrix in den Einstellungen
-        </p>
       </div>
     );
   }
@@ -68,7 +65,11 @@ export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps)
             )}
           >
             <div className="flex-shrink-0 mt-0.5">
-              <Hash className="h-4 w-4 text-muted-foreground" />
+              {room.isDirect ? (
+                <User className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Hash className="h-4 w-4 text-muted-foreground" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
