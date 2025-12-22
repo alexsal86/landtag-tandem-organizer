@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle } from 'lucide-react';
+import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useMatrixClient } from '@/contexts/MatrixClientContext';
@@ -8,6 +8,11 @@ import { RoomList } from './RoomList';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { MatrixLoginForm } from './MatrixLoginForm';
+import { TypingIndicator } from './TypingIndicator';
+import { ChatSearch } from './ChatSearch';
+import { RoomFilter, RoomFilterType } from './RoomFilter';
+import { CreateRoomDialog } from './CreateRoomDialog';
+import { ReplyPreview } from './ReplyPreview';
 import { cn } from '@/lib/utils';
 
 export function MatrixChatView() {
@@ -21,14 +26,37 @@ export function MatrixChatView() {
     sendMessage,
     getMessages,
     totalUnreadCount,
-    roomMessages
+    roomMessages,
+    typingUsers,
+    sendTypingNotification,
+    addReaction,
+    removeReaction,
+    createRoom,
   } = useMatrixClient();
 
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [roomFilter, setRoomFilter] = useState<RoomFilterType>('all');
+  const [replyTo, setReplyTo] = useState<{ eventId: string; sender: string; content: string } | null>(null);
 
-  // Get messages from context (event-based, no polling needed)
+  // Get messages from context
   const messages = selectedRoomId ? (roomMessages.get(selectedRoomId) || []) : [];
+  const currentTypingUsers = selectedRoomId ? (typingUsers.get(selectedRoomId) || []) : [];
+
+  // Filter rooms
+  const filteredRooms = rooms.filter(room => {
+    if (roomFilter === 'all') return true;
+    if (roomFilter === 'direct') return room.isDirect;
+    if (roomFilter === 'groups') return !room.isDirect;
+    return true;
+  });
+
+  const roomCounts = {
+    all: rooms.length,
+    direct: rooms.filter(r => r.isDirect).length,
+    groups: rooms.filter(r => !r.isDirect).length,
+  };
 
   // Auto-select first room
   useEffect(() => {
@@ -48,7 +76,8 @@ export function MatrixChatView() {
     if (!selectedRoomId) return;
 
     try {
-      await sendMessage(selectedRoomId, message);
+      await sendMessage(selectedRoomId, message, replyTo?.eventId);
+      setReplyTo(null);
     } catch (error) {
       toast({
         title: 'Fehler beim Senden',
@@ -56,7 +85,29 @@ export function MatrixChatView() {
         variant: 'destructive'
       });
     }
-  }, [selectedRoomId, sendMessage, toast]);
+  }, [selectedRoomId, sendMessage, replyTo, toast]);
+
+  const handleTyping = useCallback((isTyping: boolean) => {
+    if (selectedRoomId) {
+      sendTypingNotification(selectedRoomId, isTyping);
+    }
+  }, [selectedRoomId, sendTypingNotification]);
+
+  const handleReply = useCallback((eventId: string, sender: string, content: string) => {
+    setReplyTo({ eventId, sender, content });
+  }, []);
+
+  const handleAddReaction = useCallback(async (eventId: string, emoji: string) => {
+    if (selectedRoomId) {
+      await addReaction(selectedRoomId, eventId, emoji);
+    }
+  }, [selectedRoomId, addReaction]);
+
+  const handleRemoveReaction = useCallback(async (eventId: string, emoji: string) => {
+    if (selectedRoomId) {
+      await removeReaction(selectedRoomId, eventId, emoji);
+    }
+  }, [selectedRoomId, removeReaction]);
 
   const selectedRoom = rooms.find(r => r.roomId === selectedRoomId);
 
@@ -151,6 +202,13 @@ export function MatrixChatView() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => setShowSearch(!showSearch)}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setShowSettings(true)}
             >
               <Settings className="h-4 w-4" />
@@ -163,11 +221,24 @@ export function MatrixChatView() {
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Room List */}
         <div className="w-72 border-r flex flex-col bg-muted/30">
-          <div className="p-3 border-b">
+          <div className="p-3 border-b flex items-center justify-between">
             <h2 className="text-sm font-medium">Räume</h2>
+            <CreateRoomDialog
+              onCreateRoom={createRoom}
+              trigger={
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              }
+            />
           </div>
+          <RoomFilter
+            activeFilter={roomFilter}
+            onFilterChange={setRoomFilter}
+            counts={roomCounts}
+          />
           <RoomList
-            rooms={rooms}
+            rooms={filteredRooms}
             selectedRoomId={selectedRoomId}
             onSelectRoom={setSelectedRoomId}
           />
@@ -181,7 +252,7 @@ export function MatrixChatView() {
               <div className="px-4 py-3 border-b bg-background">
                 <h2 className="font-medium">{selectedRoom.name}</h2>
                 <p className="text-xs text-muted-foreground truncate">
-                  {selectedRoom.roomId}
+                  {selectedRoom.memberCount} Mitglieder
                 </p>
               </div>
 
@@ -189,11 +260,28 @@ export function MatrixChatView() {
               <ChatMessages
                 messages={messages}
                 currentUserId={credentials?.userId}
+                homeserverUrl={credentials?.homeserverUrl || 'https://matrix.org'}
+                onReply={handleReply}
+                onAddReaction={handleAddReaction}
+                onRemoveReaction={handleRemoveReaction}
               />
+
+              {/* Typing Indicator */}
+              <TypingIndicator typingUsers={currentTypingUsers} />
+
+              {/* Reply Preview */}
+              {replyTo && (
+                <ReplyPreview
+                  replyTo={replyTo}
+                  onCancel={() => setReplyTo(null)}
+                  className="mx-4 mb-2"
+                />
+              )}
 
               {/* Input */}
               <ChatInput
                 onSendMessage={handleSendMessage}
+                onTyping={handleTyping}
                 disabled={!isConnected}
                 placeholder={
                   isConnected 
@@ -211,6 +299,16 @@ export function MatrixChatView() {
             </div>
           )}
         </div>
+
+        {/* Search Panel */}
+        {showSearch && (
+          <div className="w-80">
+            <ChatSearch
+              messages={messages}
+              onClose={() => setShowSearch(false)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

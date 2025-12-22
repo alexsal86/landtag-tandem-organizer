@@ -1,9 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { Reply } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MediaMessage } from './MediaMessage';
+import { MessageReactions } from './MessageReactions';
+import { MessageStatus, MessageStatusType } from './MessageStatus';
 
 interface Message {
   eventId: string;
@@ -13,19 +18,39 @@ interface Message {
   content: string;
   timestamp: number;
   type: string;
+  status?: MessageStatusType;
+  replyTo?: { eventId: string; sender: string; content: string };
+  reactions?: Map<string, { count: number; userReacted: boolean }>;
+  mediaContent?: {
+    msgtype: string;
+    body: string;
+    url?: string;
+    info?: any;
+  };
 }
 
 interface ChatMessagesProps {
   messages: Message[];
   currentUserId?: string;
+  homeserverUrl: string;
   isLoading?: boolean;
+  onReply?: (eventId: string, sender: string, content: string) => void;
+  onAddReaction?: (eventId: string, emoji: string) => void;
+  onRemoveReaction?: (eventId: string, emoji: string) => void;
 }
 
-export function ChatMessages({ messages, currentUserId, isLoading }: ChatMessagesProps) {
+export function ChatMessages({ 
+  messages, 
+  currentUserId, 
+  homeserverUrl,
+  isLoading,
+  onReply,
+  onAddReaction,
+  onRemoveReaction,
+}: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -37,7 +62,6 @@ export function ChatMessages({ messages, currentUserId, isLoading }: ChatMessage
   };
 
   const getAvatarColor = (sender: string) => {
-    // Generate consistent color from sender string
     let hash = 0;
     for (let i = 0; i < sender.length; i++) {
       hash = sender.charCodeAt(i) + ((hash << 5) - hash);
@@ -57,7 +81,6 @@ export function ChatMessages({ messages, currentUserId, isLoading }: ChatMessage
     return format(date, 'dd.MM. HH:mm', { locale: de });
   };
 
-  // Group messages by date
   const groupedMessages: { date: string; messages: Message[] }[] = [];
   let currentDate = '';
 
@@ -65,10 +88,7 @@ export function ChatMessages({ messages, currentUserId, isLoading }: ChatMessage
     const messageDate = new Date(message.timestamp).toDateString();
     if (messageDate !== currentDate) {
       currentDate = messageDate;
-      groupedMessages.push({
-        date: messageDate,
-        messages: [message]
-      });
+      groupedMessages.push({ date: messageDate, messages: [message] });
     } else {
       groupedMessages[groupedMessages.length - 1].messages.push(message);
     }
@@ -80,13 +100,18 @@ export function ChatMessages({ messages, currentUserId, isLoading }: ChatMessage
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (date.toDateString() === now.toDateString()) {
-      return 'Heute';
-    }
-    if (date.toDateString() === yesterday.toDateString()) {
-      return 'Gestern';
-    }
+    if (date.toDateString() === now.toDateString()) return 'Heute';
+    if (date.toDateString() === yesterday.toDateString()) return 'Gestern';
     return format(date, 'EEEE, d. MMMM', { locale: de });
+  };
+
+  const getReactionsArray = (reactions?: Map<string, { count: number; userReacted: boolean }>) => {
+    if (!reactions) return [];
+    return Array.from(reactions.entries()).map(([key, value]) => ({
+      key,
+      count: value.count,
+      userReacted: value.userReacted,
+    }));
   };
 
   if (isLoading) {
@@ -116,7 +141,6 @@ export function ChatMessages({ messages, currentUserId, isLoading }: ChatMessage
       <div className="py-4 space-y-4">
         {groupedMessages.map((group) => (
           <div key={group.date}>
-            {/* Date separator */}
             <div className="flex items-center gap-4 my-4">
               <div className="flex-1 h-px bg-border" />
               <span className="text-xs text-muted-foreground bg-background px-2">
@@ -125,20 +149,16 @@ export function ChatMessages({ messages, currentUserId, isLoading }: ChatMessage
               <div className="flex-1 h-px bg-border" />
             </div>
 
-            {/* Messages for this date */}
             <div className="space-y-3">
               {group.messages.map((message, index) => {
                 const isOwnMessage = currentUserId === message.sender;
-                const showAvatar = index === 0 || 
-                  group.messages[index - 1].sender !== message.sender;
+                const showAvatar = index === 0 || group.messages[index - 1].sender !== message.sender;
+                const isMediaMessage = message.mediaContent && ['m.image', 'm.video', 'm.audio', 'm.file'].includes(message.mediaContent.msgtype);
 
                 return (
                   <div
                     key={message.eventId}
-                    className={cn(
-                      "flex gap-3",
-                      isOwnMessage && "flex-row-reverse"
-                    )}
+                    className={cn("flex gap-3 group", isOwnMessage && "flex-row-reverse")}
                   >
                     {showAvatar ? (
                       <Avatar className="h-8 w-8 flex-shrink-0">
@@ -153,26 +173,61 @@ export function ChatMessages({ messages, currentUserId, isLoading }: ChatMessage
                       <div className="w-8 flex-shrink-0" />
                     )}
 
-                    <div className={cn(
-                      "flex flex-col max-w-[70%]",
-                      isOwnMessage && "items-end"
-                    )}>
+                    <div className={cn("flex flex-col max-w-[70%]", isOwnMessage && "items-end")}>
                       {showAvatar && (
                         <span className="text-xs text-muted-foreground mb-1">
                           {message.senderDisplayName}
                         </span>
                       )}
-                      <div className={cn(
-                        "rounded-lg px-3 py-2 text-sm break-words",
-                        isOwnMessage 
-                          ? "bg-primary text-primary-foreground" 
-                          : "bg-muted"
-                      )}>
-                        {message.content}
+
+                      {/* Reply quote */}
+                      {message.replyTo && (
+                        <div className="text-xs text-muted-foreground bg-muted/50 border-l-2 border-primary/50 pl-2 py-1 mb-1 rounded-r">
+                          <span className="font-medium">{message.replyTo.sender}</span>
+                          <p className="truncate">{message.replyTo.content}</p>
+                        </div>
+                      )}
+
+                      {/* Message content */}
+                      {isMediaMessage && message.mediaContent ? (
+                        <MediaMessage content={message.mediaContent} homeserverUrl={homeserverUrl} />
+                      ) : (
+                        <div className={cn(
+                          "rounded-lg px-3 py-2 text-sm break-words",
+                          isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted"
+                        )}>
+                          {message.content}
+                        </div>
+                      )}
+
+                      {/* Message footer */}
+                      <div className={cn("flex items-center gap-1 mt-0.5", isOwnMessage && "flex-row-reverse")}>
+                        <span className="text-[10px] text-muted-foreground">
+                          {formatMessageTime(message.timestamp)}
+                        </span>
+                        {isOwnMessage && message.status && (
+                          <MessageStatus status={message.status} />
+                        )}
+                        {onReply && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => onReply(message.eventId, message.senderDisplayName, message.content)}
+                          >
+                            <Reply className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
-                      <span className="text-[10px] text-muted-foreground mt-0.5">
-                        {formatMessageTime(message.timestamp)}
-                      </span>
+
+                      {/* Reactions */}
+                      {(onAddReaction || getReactionsArray(message.reactions).length > 0) && (
+                        <MessageReactions
+                          reactions={getReactionsArray(message.reactions)}
+                          onAddReaction={(emoji) => onAddReaction?.(message.eventId, emoji)}
+                          onRemoveReaction={(emoji) => onRemoveReaction?.(message.eventId, emoji)}
+                        />
+                      )}
                     </div>
                   </div>
                 );
