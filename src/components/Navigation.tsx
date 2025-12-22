@@ -16,7 +16,6 @@ import { useTenant } from "@/hooks/useTenant";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useMatrixClient } from "@/contexts/MatrixClientContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -47,7 +46,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const navigate = useNavigate();
   const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
   const { notifications } = useNotifications();
-  const { totalUnreadCount: matrixUnreadCount } = useMatrixClient();
+  // Matrix unread count is handled separately in MatrixChatView
   
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -318,18 +317,12 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         )}>
                           <div className="relative">
                             <item.icon className="nav-icon transition-all duration-200" />
-                            {/* Matrix unread badge for chat item */}
-                            {item.id === 'chat' && matrixUnreadCount > 0 && isCollapsed && (
-                              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
-                                {matrixUnreadCount > 99 ? '99+' : matrixUnreadCount}
-                              </span>
-                            )}
                           </div>
                           {!isCollapsed && <span>{item.label}</span>}
                         </div>
-                        {!isCollapsed && (item.id === 'chat' ? matrixUnreadCount > 0 : navigationCounts[item.id] > 0) && (
+                        {!isCollapsed && navigationCounts[item.id] > 0 && (
                           <NavigationBadge 
-                            count={item.id === 'chat' ? matrixUnreadCount : navigationCounts[item.id]}
+                            count={navigationCounts[item.id]}
                             size="sm"
                             className={cn(
                               "nav-badge",

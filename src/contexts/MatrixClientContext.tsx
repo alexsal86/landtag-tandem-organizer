@@ -338,7 +338,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    await client.sendMessage(roomId, content);
+    // Use type assertion for the content to satisfy TypeScript
+    await client.sendMessage(roomId, content as any);
   }, [client, isConnected]);
 
   const sendTypingNotification = useCallback((roomId: string, isTyping: boolean) => {
