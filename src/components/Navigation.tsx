@@ -1,5 +1,6 @@
 import { Calendar, Users, CheckSquare, Home, FileText, Settings, LogOut, Circle, MessageSquare, MessageSquareText, Contact, Database, Clock, CalendarPlus, Shield, Edit3, Vote, MapPin, Archive, Search, Briefcase } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
+import { useMatrixClient } from "@/contexts/MatrixClientContext";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { NavigationBadge } from "./NavigationBadge";
@@ -46,7 +47,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const navigate = useNavigate();
   const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
   const { notifications } = useNotifications();
-  // Matrix unread count is handled separately in MatrixChatView
+  const { totalUnreadCount: matrixUnreadCount } = useMatrixClient();
   
   const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -317,10 +318,20 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         )}>
                           <div className="relative">
                             <item.icon className="nav-icon transition-all duration-200" />
+                            {/* Matrix unread badge for collapsed sidebar */}
+                            {item.id === 'chat' && matrixUnreadCount > 0 && isCollapsed && (
+                              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-destructive animate-pulse" />
+                            )}
                           </div>
                           {!isCollapsed && <span>{item.label}</span>}
                         </div>
-                        {!isCollapsed && navigationCounts[item.id] > 0 && (
+                        {/* Matrix unread badge for expanded sidebar */}
+                        {!isCollapsed && item.id === 'chat' && matrixUnreadCount > 0 && (
+                          <Badge variant="destructive" className="ml-auto text-xs">
+                            {matrixUnreadCount > 99 ? '99+' : matrixUnreadCount}
+                          </Badge>
+                        )}
+                        {!isCollapsed && item.id !== 'chat' && navigationCounts[item.id] > 0 && (
                           <NavigationBadge 
                             count={navigationCounts[item.id]}
                             size="sm"
