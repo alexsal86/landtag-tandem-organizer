@@ -91,6 +91,7 @@ interface MeetingTemplate {
   template_items: any;
   default_participants?: string[];
   default_recurrence?: any;
+  is_default?: boolean;
 }
 
 interface Profile {
@@ -117,7 +118,7 @@ export function MeetingsView() {
     title: "",
     description: "",
     meeting_date: new Date(),
-    location: "",
+    location: "Stuttgart",
     status: "planned"
   });
   const [newMeetingTime, setNewMeetingTime] = useState<string>("10:00");
@@ -149,6 +150,32 @@ export function MeetingsView() {
       console.log('No user found, skipping data load');
     }
   }, [user]);
+
+  // Auto-select the next upcoming meeting when meetings are loaded
+  useEffect(() => {
+    if (meetings.length > 0 && !selectedMeeting && !activeMeeting) {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const nextMeeting = meetings
+        .filter(m => new Date(m.meeting_date) >= startOfToday)
+        .sort((a, b) => new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime())[0];
+      
+      if (nextMeeting) {
+        setSelectedMeeting(nextMeeting);
+        if (nextMeeting.id) {
+          loadAgendaItems(nextMeeting.id);
+          loadLinkedQuickNotes(nextMeeting.id);
+        }
+      }
+    }
+  }, [meetings]);
+
+  // Load Quick Notes when selectedMeeting changes (for preview)
+  useEffect(() => {
+    if (selectedMeeting?.id && !activeMeeting) {
+      loadLinkedQuickNotes(selectedMeeting.id);
+    }
+  }, [selectedMeeting?.id, activeMeeting]);
 
   // Sync task changes to meeting agenda items (only title and description, not files)
   useEffect(() => {
@@ -335,10 +362,41 @@ export function MeetingsView() {
       const { data, error } = await supabase
         .from('meeting_templates')
         .select('*')
+        .order('is_default', { ascending: false })
         .order('name');
 
       if (error) throw error;
       setMeetingTemplates(data || []);
+      
+      // Auto-select default template for new meetings
+      const defaultTemplate = data?.find(t => t.is_default);
+      if (defaultTemplate) {
+        setNewMeeting(prev => ({ ...prev, template_id: defaultTemplate.id }));
+        // Load default participants if available
+        if (defaultTemplate.default_participants?.length) {
+          supabase
+            .from('profiles')
+            .select('user_id, display_name, avatar_url')
+            .in('user_id', defaultTemplate.default_participants)
+            .then(({ data: profilesData }) => {
+              if (profilesData) {
+                setNewMeetingParticipants(profilesData.map(u => ({
+                  userId: u.user_id,
+                  role: 'participant' as const,
+                  user: {
+                    id: u.user_id,
+                    display_name: u.display_name || 'Unbekannt',
+                    avatar_url: u.avatar_url
+                  }
+                })));
+              }
+            });
+        }
+        // Load default recurrence if available
+        if (defaultTemplate.default_recurrence) {
+          setNewMeetingRecurrence(defaultTemplate.default_recurrence as unknown as RecurrenceData);
+        }
+      }
     } catch (error) {
       console.error('Error loading meeting templates:', error);
     }
@@ -2993,6 +3051,40 @@ export function MeetingsView() {
                     </CardContent>
                   </Card>
                  )}
+
+              {/* Upcoming Appointments Preview */}
+              <Card className="mt-4">
+                <CardContent className="p-4">
+                  <UpcomingAppointmentsSection meetingDate={selectedMeeting.meeting_date} />
+                </CardContent>
+              </Card>
+
+              {/* Quick Notes Preview */}
+              {linkedQuickNotes.length > 0 && (
+                <Card className="mt-4">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <StickyNote className="h-5 w-5 text-amber-500" />
+                      Quick Notes für dieses Meeting
+                      <Badge variant="secondary">{linkedQuickNotes.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {linkedQuickNotes.map((note) => (
+                        <div key={note.id} className="p-3 bg-muted/50 rounded-md">
+                          <p className="text-sm">{note.content}</p>
+                          {note.meeting_result && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Ergebnis: {note.meeting_result}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </>
           ) : !activeMeeting ? (
             <Card>

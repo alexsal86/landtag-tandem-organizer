@@ -38,12 +38,8 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
-    if (currentTenant?.id) {
-      console.log('UserSelector: Fetching users for tenant', currentTenant.id);
-      fetchUsers();
-    } else {
-      console.log('UserSelector: No tenant available yet, waiting...');
-    }
+    console.log('UserSelector: Fetching users, tenant:', currentTenant?.id);
+    fetchUsers();
   }, [currentTenant?.id]);
 
   useEffect(() => {
@@ -54,37 +50,54 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   }, [selectedUserId, users]);
 
   const fetchUsers = async () => {
-    if (!currentTenant) return;
-
     setLoading(true);
     try {
-      // Get active users from the current tenant via user_tenant_memberships
-      const { data, error } = await supabase
-        .from('user_tenant_memberships')
-        .select(`
-          user_id,
-          is_active,
-          profiles:user_id (
+      let usersData: User[] = [];
+
+      // Try to get users from tenant memberships first
+      if (currentTenant?.id) {
+        const { data, error } = await supabase
+          .from('user_tenant_memberships')
+          .select(`
             user_id,
-            display_name,
-            avatar_url
-          )
-        `)
-        .eq('tenant_id', currentTenant.id)
-        .eq('is_active', true);
+            is_active,
+            profiles:user_id (
+              user_id,
+              display_name,
+              avatar_url
+            )
+          `)
+          .eq('tenant_id', currentTenant.id)
+          .eq('is_active', true);
 
-      if (error) throw error;
+        if (!error && data && data.length > 0) {
+          usersData = data
+            .filter(membership => membership.profiles)
+            .map(membership => ({
+              id: (membership.profiles as any).user_id,
+              display_name: (membership.profiles as any).display_name || 'Unbekannt',
+              avatar_url: (membership.profiles as any).avatar_url
+            }));
+        }
+      }
 
-      // Transform the data to User interface
-      const usersData: User[] = (data || [])
-        .filter(membership => membership.profiles)
-        .map(membership => ({
-          id: (membership.profiles as any).user_id,
-          display_name: (membership.profiles as any).display_name || 'Unbekannt',
-          avatar_url: (membership.profiles as any).avatar_url
-        }))
-        .sort((a, b) => a.display_name.localeCompare(b.display_name));
+      // Fallback: if no tenant or no users found, load all profiles
+      if (usersData.length === 0) {
+        console.log('UserSelector: Fallback to all profiles');
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url');
 
+        if (!profilesError && profilesData) {
+          usersData = profilesData.map(p => ({
+            id: p.user_id,
+            display_name: p.display_name || 'Unbekannt',
+            avatar_url: p.avatar_url
+          }));
+        }
+      }
+
+      usersData.sort((a, b) => a.display_name.localeCompare(b.display_name));
       setUsers(usersData);
     } catch (error) {
       console.error('Error fetching users:', error);
