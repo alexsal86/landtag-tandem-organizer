@@ -5365,6 +5365,7 @@ export type Database = {
           default_recurrence: Json | null
           description: string | null
           id: string
+          is_default: boolean | null
           name: string
           template_items: Json
           tenant_id: string | null
@@ -5378,6 +5379,7 @@ export type Database = {
           default_recurrence?: Json | null
           description?: string | null
           id?: string
+          is_default?: boolean | null
           name: string
           template_items?: Json
           tenant_id?: string | null
@@ -5391,6 +5393,7 @@ export type Database = {
           default_recurrence?: Json | null
           description?: string | null
           id?: string
+          is_default?: boolean | null
           name?: string
           template_items?: Json
           tenant_id?: string | null
