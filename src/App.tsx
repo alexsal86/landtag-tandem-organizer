@@ -25,7 +25,7 @@ import Decisions from "./pages/Decisions";
 import YjsCollaborationTestPage from "./pages/YjsCollaborationTestPage";
 import EditorTest from "./pages/EditorTest";
 import EmployeeMeetingDetail from "./pages/EmployeeMeetingDetail";
-import KarlsruheDistricts from "./pages/KarlsruheDistricts";
+import MapsView from "./pages/MapsView";
 
 import { TaskArchiveView } from "./components/TaskArchiveView";
 import CollaborationTest from "./components/CollaborationTest";
@@ -57,10 +57,11 @@ const App = () => (
                 <Route path="/documents" element={<Index />} />
                 <Route path="/knowledge" element={<Index />} />
                 <Route path="/knowledge/:documentId" element={<Index />} />
-                  <Route path="/wahlkreise" element={<Index />} />
+                  <Route path="/karten" element={<Index />} />
+                  <Route path="/wahlkreise" element={<Navigate to="/karten?tab=wahlkreise" replace />} />
+                  <Route path="/stadtteile-karlsruhe" element={<Navigate to="/karten?tab=stadtteile" replace />} />
                   <Route path="/casefiles" element={<Index />} />
                   <Route path="/chat" element={<Index />} />
-                  <Route path="/stadtteile-karlsruhe" element={<KarlsruheDistricts />} />
                   <Route path="/settings" element={<Index />} />
                   <Route path="/time" element={<Index />} />
                   <Route path="/employee" element={<Index />} />
