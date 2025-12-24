@@ -13,7 +13,7 @@ import { TasksView } from "@/components/TasksView";
 import { SettingsView } from "@/components/SettingsView";
 import { MeetingsView } from "@/components/MeetingsView";
 import { EventPlanningView } from "@/components/EventPlanningView";
-import { ElectionDistrictsView } from "@/components/ElectionDistrictsView";
+import { MapsView } from '@/pages/MapsView';
 import { PartyAssociationsMapView } from "@/components/PartyAssociationsMapView";
 import { EmployeesView } from "@/components/EmployeesView";
 import { TimeTrackingView } from "@/components/TimeTrackingView";
@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { MobileHeader } from "@/components/MobileHeader";
+import { AppHeader } from "@/components/layout/AppHeader";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -149,9 +150,9 @@ const Index = () => {
       case "eventplanning":
         console.log('Rendering EventPlanningView');
         return <EventPlanningView />;
-      case "wahlkreise":
-        console.log('Rendering ElectionDistrictsView');
-        return <ElectionDistrictsView />;
+      case "karten":
+        console.log('Rendering MapsView');
+        return <MapsView />;
       case "kreisverbände":
         console.log('Rendering PartyAssociationsMapView');
         return <PartyAssociationsMapView />;
@@ -203,6 +204,9 @@ const Index = () => {
             onSectionChange={handleSectionChange} 
           />
           <div className="flex flex-col flex-1">
+            <div className="hidden md:block">
+              <AppHeader />
+            </div>
             <MobileHeader />
             <main id="main-content" className="flex-1" tabIndex={-1}>
               {renderActiveSection()}
