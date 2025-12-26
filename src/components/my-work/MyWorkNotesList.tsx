@@ -44,9 +44,10 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
     if (!user || !currentTenant) return;
     
     try {
-      const { data, error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
         .from("quick_notes")
-        .select("*")
+        .select("id, title, content, color, is_pinned, created_at")
         .eq("user_id", user.id)
         .eq("tenant_id", currentTenant.id)
         .order("is_pinned", { ascending: false })
@@ -54,7 +55,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
         .limit(20);
 
       if (error) throw error;
-      setNotes(data || []);
+      setNotes((data as QuickNote[]) || []);
     } catch (error) {
       console.error("Error loading notes:", error);
     } finally {
