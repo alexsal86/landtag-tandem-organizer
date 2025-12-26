@@ -1,0 +1,211 @@
+import { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CalendarPlus, ExternalLink, MapPin, CheckSquare } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
+
+interface Planning {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  confirmed_date: string | null;
+  created_at: string;
+  user_id: string;
+  isCollaborator: boolean;
+  checklistProgress: {
+    completed: number;
+    total: number;
+  };
+}
+
+export function MyWorkPlanningsTab() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
+  const [plannings, setPlannings] = useState<Planning[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      loadPlannings();
+    }
+  }, [user]);
+
+  const loadPlannings = async () => {
+    if (!user) return;
+    
+    try {
+      // Load plannings where user is owner
+      const { data: ownPlannings, error: ownError } = await supabase
+        .from("event_plannings")
+        .select(`
+          id,
+          title,
+          description,
+          location,
+          confirmed_date,
+          created_at,
+          user_id,
+          event_planning_checklist_items (
+            id,
+            is_completed
+          )
+        `)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (ownError) throw ownError;
+
+      // Load plannings where user is collaborator
+      const { data: collaborations, error: collabError } = await supabase
+        .from("event_planning_collaborators")
+        .select(`
+          event_planning_id,
+          event_plannings (
+            id,
+            title,
+            description,
+            location,
+            confirmed_date,
+            created_at,
+            user_id,
+            event_planning_checklist_items (
+              id,
+              is_completed
+            )
+          )
+        `)
+        .eq("user_id", user.id);
+
+      if (collabError) throw collabError;
+
+      // Format own plannings
+      const formattedOwn: Planning[] = (ownPlannings || []).map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        location: p.location,
+        confirmed_date: p.confirmed_date,
+        created_at: p.created_at,
+        user_id: p.user_id,
+        isCollaborator: false,
+        checklistProgress: {
+          completed: (p.event_planning_checklist_items || []).filter((i: any) => i.is_completed).length,
+          total: (p.event_planning_checklist_items || []).length,
+        },
+      }));
+
+      // Format collaboration plannings
+      const formattedCollab: Planning[] = (collaborations || [])
+        .filter((c: any) => c.event_plannings && c.event_plannings.user_id !== user.id)
+        .map((c: any) => ({
+          id: c.event_plannings.id,
+          title: c.event_plannings.title,
+          description: c.event_plannings.description,
+          location: c.event_plannings.location,
+          confirmed_date: c.event_plannings.confirmed_date,
+          created_at: c.event_plannings.created_at,
+          user_id: c.event_plannings.user_id,
+          isCollaborator: true,
+          checklistProgress: {
+            completed: (c.event_plannings.event_planning_checklist_items || []).filter((i: any) => i.is_completed).length,
+            total: (c.event_plannings.event_planning_checklist_items || []).length,
+          },
+        }));
+
+      // Merge and deduplicate
+      const allPlannings = new Map<string, Planning>();
+      formattedOwn.forEach(p => allPlannings.set(p.id, p));
+      formattedCollab.forEach(p => {
+        if (!allPlannings.has(p.id)) {
+          allPlannings.set(p.id, p);
+        }
+      });
+
+      setPlannings(Array.from(allPlannings.values()));
+    } catch (error) {
+      console.error("Error loading plannings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-2 p-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <ScrollArea className="h-[500px]">
+      <div className="space-y-2 p-4">
+        {plannings.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <CalendarPlus className="h-10 w-10 mx-auto mb-2 opacity-50" />
+            <p>Keine Planungen</p>
+          </div>
+        ) : (
+          plannings.map((planning) => (
+            <div
+              key={planning.id}
+              className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+            >
+              <CalendarPlus className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-sm">{planning.title}</span>
+                  {planning.isCollaborator && (
+                    <Badge variant="secondary" className="text-xs">Mitwirkend</Badge>
+                  )}
+                </div>
+                {planning.description && (
+                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                    {planning.description}
+                  </p>
+                )}
+                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                  {planning.location && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {planning.location}
+                    </span>
+                  )}
+                  {planning.confirmed_date && (
+                    <span>
+                      {format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })}
+                    </span>
+                  )}
+                  {planning.checklistProgress.total > 0 && (
+                    <span className="flex items-center gap-1">
+                      <CheckSquare className="h-3 w-3" />
+                      {planning.checklistProgress.completed}/{planning.checklistProgress.total}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 flex-shrink-0"
+                onClick={() => navigate("/eventplanning")}
+              >
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
+          ))
+        )}
+      </div>
+    </ScrollArea>
+  );
+}
