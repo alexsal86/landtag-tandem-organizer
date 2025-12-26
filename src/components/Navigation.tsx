@@ -1,7 +1,5 @@
-import { Calendar, Users, CheckSquare, Home, FileText, LogOut, MessageSquare, MessageSquareText, Contact, Database, Clock, CalendarPlus, Shield, Vote, MapPin, Archive, Briefcase, Search } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, MessageSquare, MessageSquareText, Contact, Database, Clock, CalendarPlus, Shield, Vote, MapPin, Archive, Briefcase } from "lucide-react";
 import { useMatrixClient } from "@/contexts/MatrixClientContext";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { NavigationBadge } from "./NavigationBadge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -9,7 +7,6 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +20,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -34,8 +30,7 @@ interface NavigationProps {
 }
 
 export function Navigation({ activeSection, onSectionChange }: NavigationProps) {
-  const { signOut, user } = useAuth();
-  const { currentTenant } = useTenant();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
   const { notifications } = useNotifications();
@@ -60,21 +55,6 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
       .slice(0, 3);
   };
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      toast({
-        title: "Erfolgreich abgemeldet",
-        description: "Sie wurden erfolgreich abgemeldet.",
-      });
-    } catch (error) {
-      toast({
-        title: "Fehler beim Abmelden",
-        description: "Ein Fehler ist beim Abmelden aufgetreten.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
@@ -187,7 +167,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
 
   return (
     <Sidebar collapsible="icon" className="border-r">
-      <SidebarHeader className="border-b">
+      <SidebarHeader className="border-b h-12">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -217,14 +197,6 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
         </SidebarMenu>
       </SidebarHeader>
 
-      {!isCollapsed && (
-        <div className="flex items-center gap-2 px-3 py-2 mx-2 mt-2 rounded-md bg-muted/50 text-xs text-muted-foreground border border-border">
-          <Search className="h-3 w-3 flex-shrink-0" />
-          <span className="flex items-center gap-1">
-            Drücke <kbd className="px-1.5 py-0.5 rounded bg-background border border-border font-mono text-[10px]">⌘K</kbd> zum Suchen
-          </span>
-        </div>
-      )}
 
       <SidebarContent>
         <SidebarGroup>
@@ -398,46 +370,6 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
         {/* Online users now shown in AppHeader */}
       </SidebarContent>
 
-      <SidebarFooter className="border-t">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <div className={cn(
-              "flex items-center gap-2 px-2 py-2",
-              isCollapsed && "justify-center"
-            )}>
-              {isCollapsed ? (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleSignOut}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <LogOut className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <p>Abmelden</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSignOut}
-                  className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Abmelden
-                </Button>
-              )}
-            </div>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </Sidebar>
   );
 }

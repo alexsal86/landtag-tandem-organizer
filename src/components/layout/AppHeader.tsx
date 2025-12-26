@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ChevronRight, Settings, LogOut, User } from 'lucide-react';
+import { Search, Settings, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -133,17 +133,23 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   const statusDisplay = currentStatus ? getStatusDisplay(currentStatus) : null;
 
   const getStatusRingColor = (statusType: string) => {
+    // Correct enum values: online, meeting, break, away, offline, custom
     switch (statusType) {
-      case 'available':
+      case 'online':
         return 'ring-green-500';
-      case 'busy':
+      case 'meeting':
         return 'ring-red-500';
-      case 'away':
+      case 'break':
         return 'ring-yellow-500';
-      case 'in_meeting':
-        return 'ring-blue-500';
+      case 'away':
+        return 'ring-orange-500';
+      case 'offline':
+        return 'ring-gray-400';
+      case 'custom':
+        // For custom, we'll use the color from statusDisplay
+        return '';
       default:
-        return 'ring-gray-500';
+        return 'ring-gray-300';
     }
   };
 
@@ -151,8 +157,6 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
     <header className="h-12 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-4 sticky top-0 z-40">
       {/* Left: Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
-        <span className="font-medium text-muted-foreground">{appSettings.app_name}</span>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
         <span className="font-medium">{breadcrumbLabel}</span>
       </div>
 
@@ -194,10 +198,19 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
-              <Avatar className={cn(
-                "h-8 w-8 ring-2 ring-offset-2 ring-offset-background",
-                statusDisplay ? getStatusRingColor(currentStatus?.status_type || '') : 'ring-gray-300'
-              )}>
+              <Avatar 
+                className={cn(
+                  "h-8 w-8 ring-2 ring-offset-2 ring-offset-background",
+                  currentStatus?.status_type === 'custom' && statusDisplay?.color 
+                    ? '' 
+                    : (statusDisplay ? getStatusRingColor(currentStatus?.status_type || '') : 'ring-gray-300')
+                )}
+                style={
+                  currentStatus?.status_type === 'custom' && statusDisplay?.color
+                    ? { '--tw-ring-color': statusDisplay.color } as React.CSSProperties
+                    : undefined
+                }
+              >
                 <AvatarImage 
                   src={userProfile?.avatar_url || undefined} 
                   alt={userProfile?.display_name || 'Benutzer'} 
