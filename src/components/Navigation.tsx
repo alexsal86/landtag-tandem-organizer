@@ -58,6 +58,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
 
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
+    { id: "mywork", label: "Meine Arbeit", icon: CheckSquare },
     { id: "calendar", label: "Terminkalender", icon: Calendar },
     { id: "contacts", label: "Kontakte", icon: Contact },
     { id: "tasks", label: "Aufgaben", icon: CheckSquare },

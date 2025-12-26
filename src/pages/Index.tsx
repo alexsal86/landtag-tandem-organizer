@@ -22,6 +22,7 @@ import { DecisionOverview } from "@/components/task-decisions/DecisionOverview";
 import { DrucksachenView } from "@/components/DrucksachenView";
 import { CaseFilesView } from "@/components/CaseFilesView";
 import { MatrixChatView } from "@/components/chat/MatrixChatView";
+import { MyWorkView } from "@/components/MyWorkView";
 import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,9 @@ const Index = () => {
       case 'dashboard':
         console.log('Rendering CustomizableDashboard');
         return <CustomizableDashboard />;
+      case "mywork":
+        console.log('Rendering MyWorkView');
+        return <MyWorkView />;
       case "calendar":
         console.log('Rendering CalendarView');
         return <CalendarView />;
