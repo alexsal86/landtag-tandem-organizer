@@ -30,7 +30,7 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  { value: "capture", label: "Quick Capture", icon: StickyNote },
+  { value: "capture", label: "Quick Notes", icon: StickyNote },
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
   { value: "casefiles", label: "FallAkten", icon: Briefcase, countKey: "caseFiles" },
