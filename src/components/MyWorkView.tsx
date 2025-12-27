@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users } from "lucide-react";
+import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { MyWorkQuickCapture } from "./my-work/MyWorkQuickCapture";
@@ -21,6 +19,25 @@ interface TabCounts {
   team: number;
 }
 
+type TabValue = "capture" | "tasks" | "decisions" | "casefiles" | "plannings" | "team";
+
+interface TabConfig {
+  value: TabValue;
+  label: string;
+  icon: React.ElementType;
+  countKey?: keyof TabCounts;
+  badgeVariant?: "secondary" | "destructive";
+}
+
+const TABS: TabConfig[] = [
+  { value: "capture", label: "Quick Capture", icon: StickyNote },
+  { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
+  { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
+  { value: "casefiles", label: "FallAkten", icon: Briefcase, countKey: "caseFiles" },
+  { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
+  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive" },
+];
+
 export function MyWorkView() {
   const { user } = useAuth();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -31,7 +48,7 @@ export function MyWorkView() {
     plannings: 0,
     team: 0,
   });
-  const [activeTab, setActiveTab] = useState("tasks");
+  const [activeTab, setActiveTab] = useState<TabValue>("capture");
 
   useEffect(() => {
     if (user) {
@@ -98,9 +115,9 @@ export function MyWorkView() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="min-h-screen p-6">
       {/* Header */}
-      <div>
+      <div className="mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <ClipboardList className="h-8 w-8" />
           Meine Arbeit
@@ -110,103 +127,51 @@ export function MyWorkView() {
         </p>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Side: Quick Capture + Notes */}
-        <div className="flex flex-col gap-4">
+      {/* Tab Navigation (horizontal, oben) */}
+      <div className="flex border-b mb-6 overflow-x-auto">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const count = tab.countKey ? counts[tab.countKey] : 0;
+          const isActive = activeTab === tab.value;
+          
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                isActive
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+              {count > 0 && (
+                <Badge 
+                  variant={tab.badgeVariant || "secondary"} 
+                  className="ml-1 h-5 min-w-5 text-xs"
+                >
+                  {count}
+                </Badge>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === "capture" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
           <MyWorkNotesList refreshTrigger={refreshTrigger} />
         </div>
-
-        {/* Right Side: Tabs */}
-        <Card className="h-fit">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Übersicht</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-auto p-0 flex-wrap">
-                <TabsTrigger
-                  value="tasks"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2.5"
-                >
-                  <CheckSquare className="h-4 w-4 mr-1.5" />
-                  Aufgaben
-                  {counts.tasks > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 text-xs">
-                      {counts.tasks}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="decisions"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2.5"
-                >
-                  <Vote className="h-4 w-4 mr-1.5" />
-                  Entscheidungen
-                  {counts.decisions > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 text-xs">
-                      {counts.decisions}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="casefiles"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2.5"
-                >
-                  <Briefcase className="h-4 w-4 mr-1.5" />
-                  FallAkten
-                  {counts.caseFiles > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 text-xs">
-                      {counts.caseFiles}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="plannings"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2.5"
-                >
-                  <CalendarPlus className="h-4 w-4 mr-1.5" />
-                  Planungen
-                  {counts.plannings > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 text-xs">
-                      {counts.plannings}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="team"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2.5"
-                >
-                  <Users className="h-4 w-4 mr-1.5" />
-                  Team
-                  {counts.team > 0 && (
-                    <Badge variant="destructive" className="ml-1.5 h-5 min-w-5 text-xs">
-                      {counts.team}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="tasks" className="m-0">
-                <MyWorkTasksTab />
-              </TabsContent>
-              <TabsContent value="decisions" className="m-0">
-                <MyWorkDecisionsTab />
-              </TabsContent>
-              <TabsContent value="casefiles" className="m-0">
-                <MyWorkCaseFilesTab />
-              </TabsContent>
-              <TabsContent value="plannings" className="m-0">
-                <MyWorkPlanningsTab />
-              </TabsContent>
-              <TabsContent value="team" className="m-0">
-                <MyWorkTeamTab />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+      )}
+      
+      {activeTab === "tasks" && <MyWorkTasksTab />}
+      {activeTab === "decisions" && <MyWorkDecisionsTab />}
+      {activeTab === "casefiles" && <MyWorkCaseFilesTab />}
+      {activeTab === "plannings" && <MyWorkPlanningsTab />}
+      {activeTab === "team" && <MyWorkTeamTab />}
     </div>
   );
 }
